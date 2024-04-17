@@ -761,8 +761,8 @@ class FullWithTensorOpPattern
 
   bool MatchAndRewrite(paddle::dialect::FullWithTensorOp op,
                        pir::PatternRewriter &rewriter) const override {
-    auto shape = op->operand_source(0);
-    auto value = op->operand_source(1);
+    auto value = op->operand_source(0);
+    auto shape = op->operand_source(1);
 
     if (paddle::dialect::TransToPhiDataType(
             value.type()

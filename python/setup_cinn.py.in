@@ -138,7 +138,7 @@ if '${WITH_MKL}' == 'ON':
     cinnlibs.append('${MKLML_LIB}')
     cinnlibs.append('${MKLML_IOMP_LIB}')
 
-if '${WITH_MKLDNN}' == 'ON':
+if '${WITH_ONEDNN}' == 'ON':
     cinnlibs.append('${MKLDNN_SHARED_LIB}')
 
 cinnlibs.append('${PHI_LIB}')

@@ -493,14 +493,25 @@ class ColumnSequenceParallelLinear(Layer):
 
     def forward(self, x):
         # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
-        return SPInnerOverlapLinear.apply(
-            x,
-            self.weight,
-            self.bias,
-            self.fuse_matmul_bias,
-            self.mp_fused_linear_param_grad_add,
-            self.model_parallel_group,
-        )
+        # reuse mp_async_allreduce to do sequence parallelism overlap
+        if self.mp_async_allreduce:
+            output = SPInnerOverlapLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.fuse_matmul_bias,
+                self.mp_fused_linear_param_grad_add,
+                self.model_parallel_group,
+            )
+        else:
+            if self.is_mp:
+                input_parallel = AllGatherOp.apply(x)
+            else:
+                input_parallel = x
+            output = self.linear(
+                input_parallel, self.weight, self.bias, name=self._name
+            )
+        return output
 
 
 class MPScale(PyLayer):

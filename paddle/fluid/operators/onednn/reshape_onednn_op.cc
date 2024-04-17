@@ -37,7 +37,7 @@ static std::vector<int> extract_shape(
     PADDLE_ENFORCE_EQ(
         tensor->dims(),
         common::make_ddim({1}),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "If the element type of 'shape' in ReshapeOp is phi::DenseTensor, "
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
@@ -104,7 +104,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         break;
       case ReshapeKernelOpName::flatten:
       default:
-        PADDLE_THROW(paddle::platform::errors::OutOfRange(
+        PADDLE_THROW(phi::errors::OutOfRange(
             "Reshape kernel doesn not support that operator name"));
     }
   }
@@ -180,7 +180,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             unk_dim_idx,
             -1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Only one dimension value of 'shape' in ReshapeOp can "
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
                 common::make_ddim(shape),
@@ -190,7 +190,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
             in_dims.size(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The index of 0 in `shape` must be less than "
                 "the input tensor X's dimensions. "
                 "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
@@ -203,7 +203,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GT(
             shape[i],
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Each dimension value of 'shape' in ReshapeOp must not "
                 "be negative except one unknown dimension. "
                 "But received  shape = [%s], shape[%d] = %d.",
@@ -227,7 +227,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             output_shape[unk_dim_idx] * capacity,
             -in_size,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 'shape' attribute in ReshapeOp is invalid. "
                 "The input tensor X'size must be divisible by known "
                 "capacity of 'shape'. "
@@ -245,7 +245,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             capacity,
             in_size,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 'shape' in ReshapeOp is invalid. "
                 "The input tensor X'size must be equal to the capacity of "
                 "'shape'. "
@@ -319,7 +319,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
         InferShapeFlattenGradOp(ctx, x_dims);
         break;
       default:
-        PADDLE_THROW(paddle::platform::errors::OutOfRange(
+        PADDLE_THROW(phi::errors::OutOfRange(
             "Reshape grad kernel doesn not support that operator name"));
     }
   }
@@ -345,7 +345,7 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeMKLDNNKernel<phi::dtype::bfloat16,
                              ReshapeKernelOpName::squeeze>);
 
 REGISTER_OP_KERNEL(
@@ -353,7 +353,7 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeGradMKLDNNKernel<phi::dtype::bfloat16,
                                  ReshapeKernelOpName::squeeze>);
 
 REGISTER_OP_KERNEL(
@@ -361,7 +361,7 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeMKLDNNKernel<phi::dtype::bfloat16,
                              ReshapeKernelOpName::reshape>);
 
 REGISTER_OP_KERNEL(
@@ -369,7 +369,7 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeGradMKLDNNKernel<phi::dtype::bfloat16,
                                  ReshapeKernelOpName::reshape>);
 
 REGISTER_OP_KERNEL(
@@ -377,7 +377,7 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeMKLDNNKernel<phi::dtype::bfloat16,
                              ReshapeKernelOpName::flatten>);
 
 REGISTER_OP_KERNEL(
@@ -385,5 +385,5 @@ REGISTER_OP_KERNEL(
     MKLDNN,
     phi::CPUPlace,
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
+    ops::ReshapeGradMKLDNNKernel<phi::dtype::bfloat16,
                                  ReshapeKernelOpName::flatten>);

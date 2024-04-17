@@ -238,7 +238,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (!ReplaceResultByParameterOp(use_op)) return false;
+        if (!ReplaceResultByParameterOp(use_op)) {
+          return false;
+        }
+      } else if (use_op->isa<paddle::dialect::MemcpyH2dOp>()) {
+        return false;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -255,6 +259,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool ReplaceResultByParameterOp(pir::Operation* op) const {
+    if (op->isa<paddle::dialect::MemcpyD2hOp>()) {
+      return false;
+    }
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
       if (!CheckUseOps(use_ops)) return false;

@@ -454,7 +454,7 @@ class TestConv3DOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(
             place,
@@ -466,7 +466,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             {'Input', 'Filter'},
@@ -479,7 +479,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad_no_filter(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Input'],
@@ -493,7 +493,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad_no_input(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Filter'],

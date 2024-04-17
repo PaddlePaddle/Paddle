@@ -105,8 +105,8 @@ phi::KernelKey GetConcatExpectedKernelType(
     op_ptr->SetDnnFallback(true);
   }
   if (flag == 0) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "All Inputs of Concat OP are Empty!"));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("All Inputs of Concat OP are Empty!"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -128,7 +128,7 @@ phi::KernelKey GetReduceExpectedKernelType(
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -236,7 +236,7 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
@@ -255,7 +255,7 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
     if (!(platform::is_gpu_place(ctx.GetPlace()) ||
           platform::is_xpu_place(ctx.GetPlace()) ||
           platform::is_custom_place(ctx.GetPlace())))
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
@@ -275,7 +275,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
             platform::is_same_place(tensor.place(),
                                     ctx.device_context().GetPlace()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Place of context is %s. Place of input tensor is %s. They "
                 "are should be same, but reveived different place.",
                 string::to_string(ctx.device_context().GetPlace()),
@@ -375,18 +375,18 @@ phi::KernelKey GetInstanceNormExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
-    PADDLE_ENFORCE_EQ(in_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(
+            ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+        phi::errors::InvalidArgument("Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(in_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        in_param_type,
+        framework::TransToProtoVarType(
+            ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+        phi::errors::InvalidArgument("Bias input should be of float type"));
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -423,7 +423,7 @@ phi::KernelKey GetConvExpectedKernelType(
     PADDLE_ENFORCE_EQ(
         input_data_type,
         filter_data_type,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "input and filter data type should be consistent, "
             "but received input data type is %s and filter type "
             "is %s",

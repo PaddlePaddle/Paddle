@@ -108,6 +108,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 
@@ -408,7 +409,7 @@ bool AnalysisPredictor::Init(
     root_predictor_id_ = predictor_id_;
   }
 
-  // no matter with or without MKLDNN
+  // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   // Use Optimized model to inference
@@ -619,6 +620,9 @@ void AnalysisPredictor::ClearExtraParams() {
                            config_.shape_range_info_path_);
         }
       }
+      if (op_desc->HasAttr("predictor_id")) {
+        op_desc->SetAttr("predictor_id", predictor_id_);
+      }
     }
   }
 
@@ -781,10 +785,18 @@ bool AnalysisPredictor::PrepareProgram(
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
-    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // the analysis pass(op fuse, graph analysis, trt subgraph, onednn etc) will
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
+#ifdef PADDLE_WITH_TENSORRT
+    if (config_.tensorrt_engine_enabled()) {
+      inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+          predictor_id_;
+      VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+              << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+    }
+#endif
     if (config_.use_optimized_model_) {
       LoadParameters();
       ClearExtraParams();
@@ -897,36 +909,35 @@ bool AnalysisPredictor::PrepareExecutor() {
       };
 
 #ifdef PADDLE_WITH_CINN
+      auto CreatePassMgr = [&] {
+        pir::IrContext *ctx = pir::IrContext::Instance();
+        ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+        ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+        auto pass_manager = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        if (!config_.glog_info_disabled()) {
+          pass_manager->EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          pass_manager->EnableIRPrinting(
+              std::make_unique<pir::PassManager::IRPrinterOption>(
+                  ir_printing_conditions, ir_printing_conditions));
+        }
+        return pass_manager;
+      };
+
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
 
-        auto shape_pm = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
-        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
-        VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
-        shape_pm->Run(pir_program_.get());
+        cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
+                                                    CreatePassMgr);
       }
 
       if (config_.cinn_enabled()) {
         VLOG(4) << "[CINN] Begin ApplyCinnPass";
-        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), [&] {
-          pir::IrContext *ctx = pir::IrContext::Instance();
-          ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-          ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-          auto pass_manager = std::make_shared<::pir::PassManager>(
-              ::pir::IrContext::Instance(), 2);
-          if (!config_.glog_info_disabled()) {
-            pass_manager->EnablePrintStatistics();
-          }
-          if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting(
-                std::make_unique<pir::PassManager::IRPrinterOption>(
-                    ir_printing_conditions, ir_printing_conditions));
-          }
-          return pass_manager;
-        });
+        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
       }
 #endif
 
@@ -2011,14 +2022,6 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
-#ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
-    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
-        predictor_id_;
-    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
-            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
-  }
-#endif
   Analyzer().Run(argument_.get());
   PADDLE_ENFORCE_EQ(
       argument_->scope_valid(),

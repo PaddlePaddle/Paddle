@@ -29,7 +29,7 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(
         x_dims.size() == 2 && x_dims[1] == 1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) of SequenceEraseOp should be a 2-D phi::DenseTensor "
             "with the 2nd dimension equal to 1,"
             "but received size %d with the 2nd dimension %d.",

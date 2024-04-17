@@ -270,6 +270,24 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
+static inline bool IsStaticShape(const Value& value) {
+  const auto& value_type = value.type();
+  if (!value || !value_type ||
+      !value_type.isa<paddle::dialect::DenseTensorType>()) {
+    return false;
+  }
+  return !::common::contain_unknown_dim(
+      value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims());
+}
+
+symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
+  std::vector<symbol::DimExpr> dim_exprs;
+  for (int i = 0; i < dims.size(); ++i) {
+    dim_exprs.emplace_back(symbol::DimExpr{dims.at(i)});
+  }
+  return symbol::TensorShapeOrDataDimExprs{dim_exprs};
+}
+
 void InferSymExprForBlock(const Block& block,
                           ShapeConstraintIRAnalysis* shape_analysis) {
   for (auto& op : block) {
@@ -290,8 +308,33 @@ void InferSymExprForBlock(const Block& block,
             &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      const bool all_outs_static_dims = [&] {
+        bool all_static_dims = true;
+        for (uint32_t i = 0; i < op.num_results(); ++i) {
+          if (IsStaticShape(op.result(i))) {
+            continue;
+          } else {
+            all_static_dims = false;
+            break;
+          }
+        }
+        return all_static_dims;
+      }();
+
+      if (all_outs_static_dims) {
+        for (uint32_t i = 0; i < op.num_results(); ++i) {
+          shape_analysis->SetShapeOrDataForValue(
+              op.result(i),
+              CreateShapeOrDataByDDim(
+                  op.result(i)
+                      .type()
+                      .dyn_cast<paddle::dialect::DenseTensorType>()
+                      .dims()));
+        }
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      }
     }
     DebugPrintOpInfo(&op, shape_analysis);
     CheckInferSymWithInferMeta(&op, shape_analysis);

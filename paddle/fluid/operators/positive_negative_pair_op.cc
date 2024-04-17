@@ -49,7 +49,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
               ctx->HasInput("AccumulateNegativePair") &&
               ctx->HasInput("AccumulateNeutralPair"),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "All optional inputs(AccumulatePositivePair, "
               "AccumulateNegativePair, AccumulateNeutralPair) of "
               "PositiveNegativePairOp are required if one of them "
@@ -57,21 +57,21 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("AccumulatePositivePair"),
           scalar_dim,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Shape of Input(AccumulatePositivePair) should be [1]. Received "
               "shape of Input(AccumulatePositivePair): [%s].",
               ctx->GetInputDim("AccumulatePositivePair")));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("AccumulateNegativePair"),
           scalar_dim,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Shape of Input(AccumulateNegativePair) should be [1]. Received "
               "shape of Input(AccumulateNegativePair): [%s].",
               ctx->GetInputDim("AccumulateNegativePair")));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("AccumulateNeutralPair"),
           scalar_dim,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Shape of Input(AccumulateNeutralPair) should be [1]. Received "
               "shape of Input(AccumulateNeutralPair): [%s].",
               ctx->GetInputDim("AccumulateNeutralPair")));
@@ -82,13 +82,13 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
     auto query_dim = ctx->GetInputDim("QueryID");
     PADDLE_ENFORCE_EQ(score_dim.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Score should be a 2-D tensor. Received shape of "
                           "Input(Score): [%s].",
                           score_dim));
     PADDLE_ENFORCE_EQ(label_dim.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Label should be a 2-D tensor. Received shape of "
                           "Input(Label): [%s].",
                           label_dim));
@@ -98,7 +98,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           label_dim[0],
           score_dim[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(Score) and Input(Label) should have the same "
               "height (batch size). Received: the shape of Input(Score) is "
               "[%s], while the shape of Input(Label) is [%s]. The first "
@@ -109,7 +109,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           label_dim[1],
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The width of Label should be 1, i.e. each item should "
               "have a scalar label. Received shape of Input(Label) is [%s]. "
               "The second dimension of it is %d, while the expected is %d.",
@@ -120,7 +120,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           query_dim,
           label_dim,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(QueryID) should have the same shape as Input(Label). "
               "Received: the shape of Input(QueryID) is [%s], "
               "while the shape of Input(Label) is [%s].",
@@ -131,7 +131,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             ctx->GetInputDim("Weight"),
             label_dim,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Input(Weight) should have the same shape as Input(Label). "
                 "Received: the shape of Input(Weight) is [%s] while the shape "
                 "of Input(Label) is [%s].",
@@ -144,7 +144,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LT(
           column,
           depth,
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "Attr(column) should be less than depth(the second "
               "dimension of Input(Score)). Received Attr(column): %d, while "
               "depth is %d.",
@@ -153,7 +153,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(
           column,
           -depth,
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "Attr(column) should be greater than equal to negative "
               "depth, i.e. the second dimension of Input(Score). "
               "Received Attr(column): %d, while negative depth is %d.",

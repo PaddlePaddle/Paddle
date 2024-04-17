@@ -129,10 +129,11 @@ class TEST_API DrrPatternContext {
 
   const Op& ResultOpPattern(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {});
+      const std::unordered_map<std::string, Attribute>& attributes = {},
+      const std::unordered_map<std::string, Attribute>& runtime_attributes =
+          {});
   drr::Tensor& ResultTensorPattern(const std::string& name);
 
-  // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
   void RequireEqual(const TensorDataType& first, const TensorDataType& second);
   void RequireNativeCall(const ConstraintFunction& custom_fn);
@@ -157,34 +158,28 @@ class Op {
                               const Tensor& arg2) const;
   TEST_API void operator()(const std::vector<const Tensor*>& args,
                            const std::vector<const Tensor*>& outputs) const;
-  // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
-  // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
-  // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
-  // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
-  // const Tensor& arg3, const Tensor& arg4) const;
 
   static const char* prefix;
 
  private:
   Op(const std::string& op_type_name,
+     PatternGraph* pattern_graph,
      const std::unordered_map<std::string, Attribute>& attributes,
-     PatternGraph* pattern_graph)
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {})
       : op_type_name_(op_type_name),
+        pattern_graph_(pattern_graph),
         attributes_(attributes),
-        pattern_graph_(pattern_graph) {}
+        runtime_attributes_(runtime_attributes) {}
 
-  const std::unordered_map<std::string, Attribute>& attributes() const {
-    return attributes_;
-  }
+  std::string op_type_name_;
+  PatternGraph* pattern_graph_{nullptr};
+  std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
+
+  thread_local static int64_t count;
 
   friend class DrrPatternContext;
   friend class OpCall;
-
-  std::string op_type_name_;
-  std::unordered_map<std::string, Attribute> attributes_;
-  PatternGraph* pattern_graph_{nullptr};
-
-  thread_local static int64_t count;
 };
 
 class TEST_API Tensor {
@@ -244,7 +239,8 @@ class TEST_API OpCall {
       : op_name_(op->op_type_name_),
         inputs_(inputs),
         outputs_(outputs),
-        attributes_(op->attributes_) {}
+        attributes_(op->attributes_),
+        runtime_attributes_(op->runtime_attributes_) {}
 
   const std::string& name() const { return op_name_; }
 
@@ -256,18 +252,24 @@ class TEST_API OpCall {
     return attributes_;
   }
 
+  const std::unordered_map<std::string, Attribute>& runtime_attributes() const {
+    return runtime_attributes_;
+  }
+
  private:
   std::string op_name_;
   std::vector<const Tensor*> inputs_;
   std::vector<const Tensor*> outputs_;
   std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
 };
 
 class TEST_API ResultPattern {
  public:
-  const drr::Op& Op(
-      const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {});
+  const drr::Op&
+  Op(const std::string& op_type,
+     const std::unordered_map<std::string, Attribute>& attributes = {},
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {});
 
   drr::Tensor& Tensor(const std::string& name);
 
@@ -304,10 +306,44 @@ class TEST_API ResultPattern {
 
   Attribute VectorFloatAttr(const std::vector<float>& value) const;
 
+  // {"bool", phi::DataType::BOOL},
+  // {"uint8", phi::DataType::UINT8},
+  // {"int8", phi::DataType::INT8},
+  // {"uint16", phi::DataType::UINT16},
+  // {"int16", phi::DataType::INT16},
+  // {"uint32", phi::DataType::UINT32},
+  // {"int32", phi::DataType::INT32},
+  // {"uint64", phi::DataType::UINT64},
+  // {"int64", phi::DataType::INT64},
+  // {"float32", phi::DataType::FLOAT32},
+  // {"complex64", phi::DataType::COMPLEX64},
+  // {"complex128", phi::DataType::COMPLEX128},
+  // {"Undefined", phi::DataType::UNDEFINED},
+  // {"psting", phi::DataType::PSTRING},
+  // {"float16", phi::DataType::FLOAT16},
+  // {"bfloat16", phi::DataType::BFLOAT16},
+  // {"float64", phi::DataType::FLOAT64}};
   Attribute DataTypeAttr(const std::string& value) const;
 
+  // {"cpu", phi::CPUPlace{}},
+  // {"gpu", phi::GPUPlace{}},
+  // {"gpu_pinned", phi::GPUPinnedPlace{}},
+  // {"xpu", phi::XPUPlace{}},
+  // {"ipu", phi::IPUPlace{}},
+  // {":", phi::CustomPlace{}},
+  // {"undefined", phi::Place{}}};
   Attribute PlaceAttr(const std::string& value) const;
 
+  // {"NHWC", phi::DataLayout::kNHWC},
+  // {"NCHW", phi::DataLayout::kNCHW},
+  // {"Undefined", phi::DataLayout::kAnyLayout},
+  // {"ONEDNN", phi::DataLayout::ONEDNN},
+  // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+  // {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+  // {"NDHWC", phi::DataLayout::kNDHWC},
+  // {"NCDHW", phi::DataLayout::kNCDHW},
+  // {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+  // {"STRIDED", phi::DataLayout::STRIDED}};
   Attribute DataLayoutAttr(const std::string& value) const;
 
   Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;
