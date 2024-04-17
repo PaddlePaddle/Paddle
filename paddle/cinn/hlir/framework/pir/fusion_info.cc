@@ -14,7 +14,9 @@
 
 #include "paddle/cinn/hlir/framework/pir/fusion_info.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
+PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
@@ -108,6 +110,7 @@ std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
+  unique_fn_name_ = group.FuncName();
 
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
@@ -143,6 +146,7 @@ std::size_t FusionInfo::hash() const {
   }
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
+  if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
   return seed;
 }
 
@@ -150,6 +154,8 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   os << "FusionInfo - " << fusion_info.hash();
   if (VLOG_IS_ON(5)) {
     os << "{\n";
+    if (!FLAGS_enable_cinn_compile_cache)
+      os << "fn_name: " << fusion_info.unique_fn_name_;
     for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";
     os << "}\n";
   }

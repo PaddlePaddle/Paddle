@@ -91,6 +91,10 @@ class FusionInfo {
  private:
   std::vector<FusionOpInfo> op_infos_;
   std::size_t cached_hash_value_{0};
+
+  // Used to make same subgraphs have unique FusionInfo while
+  // FLAGS_enable_cinn_compile_cache = false, default empty;
+  std::string unique_fn_name_{""};
 };
 
 std::ostream &operator<<(std::ostream &os, const AttributeInfo &info);

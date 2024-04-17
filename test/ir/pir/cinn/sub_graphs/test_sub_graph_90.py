@@ -49,7 +49,8 @@ class LayerCase(paddle.nn.Layer):
     def forward(self, x):
         outs = []
         for fn in [self.concat_case_1, self.concat_case_2, self.concat_case_3]:
-            for i in range(1):
+            # to tigger duplicate subgraph and cache them.
+            for i in range(3):
                 outs.append(self.relu(fn()))
         outs.append(self.relu(x))
         return outs
@@ -60,7 +61,7 @@ class TestLayer(unittest.TestCase):
         self.inputs = (paddle.rand(shape=[12], dtype=paddle.float32),)
         self.net = LayerCase()
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
+    def eval(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
@@ -72,21 +73,24 @@ class TestLayer(unittest.TestCase):
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
         paddle.seed(123)
+        net.eval()
         outs = net(*self.inputs)
         return outs
 
     def check_with_flag(self, cache_size):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
+        st_out = self.eval(self.net, to_static=True)
+        cinn_out = self.eval(
             self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        np.testing.assert_equal(
-            core.pir.cinn_compilation_cache_size(), cache_size
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
+
+        # Check cache size
+        np.testing.assert_equal(
+            core.pir.cinn_compilation_cache_size(), cache_size
+        )
 
     def test_ast_prim_cinn(self):
         # NOTE(Aurelius84): Deny relu to split fused subgraph.
@@ -98,7 +102,8 @@ class TestLayer(unittest.TestCase):
         )
         self.check_with_flag(cache_size=3)
 
-    def test_ast_prim_cinn_no_cache(self):
+    def test_ast_prim_cinn_disable_cache(self):
+        core.pir.clear_cinn_compilation_cache()
         # NOTE(Aurelius84): Deny relu to split fused subgraph.
         paddle.set_flags(
             {
@@ -107,7 +112,8 @@ class TestLayer(unittest.TestCase):
                 "FLAGS_enable_cinn_compile_cache": False,
             }
         )
-        self.check_with_flag(cache_size=0)
+        # if disable cinn_compile_caceh, each subgraph will be considered as unqiue.
+        self.check_with_flag(cache_size=9)
 
 
 if __name__ == '__main__':

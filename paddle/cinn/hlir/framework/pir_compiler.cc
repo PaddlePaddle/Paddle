@@ -126,9 +126,6 @@ CompilationContextMapper::RecoverKernelInfos() {
 }
 
 void CompilationContextMapper::UpdateGlobalCache() {
-  // skip updating global cache if FLAGS_enable_cinn_compile_cache=0
-  if (!FLAGS_enable_cinn_compile_cache) return;
-
   PADDLE_ENFORCE_EQ(
       is_finalized_,
       true,

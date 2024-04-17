@@ -1877,7 +1877,7 @@ void BindUtils(pybind11::module *m) {
 #ifdef PADDLE_WITH_CINN
     pybind11::gil_scoped_release release;
     VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
-    cinn::hlir::framework::CompilationCache::Instance().Size();
+    return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
 }
