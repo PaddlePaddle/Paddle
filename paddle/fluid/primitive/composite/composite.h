@@ -217,7 +217,7 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto input_tensor = full<T>(input_dim, 0, x.dtype());
 
   std::vector<int64_t> output_dim;
-  for (int i = 0; i < x.shape().size(); i++) {
+  for (size_t i = 0; i < x.shape().size(); i++) {
     output_dim.push_back(x.shape()[i]);
   }
   output_dim.push_back(num_classes_tensor.shape()[0]);
