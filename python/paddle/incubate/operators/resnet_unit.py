@@ -26,12 +26,14 @@ from paddle.nn import (
 
 def resnet_unit(
     x,
+    maxptr_x,
     filter_x,
     scale_x,
     bias_x,
     mean_x,
     var_x,
     z,
+    maxptr_z,
     filter_z,
     scale_z,
     bias_z,
@@ -47,6 +49,7 @@ def resnet_unit(
     data_format,
     fuse_add,
     has_shortcut,
+    has_dx,
     use_global_stats,
     is_test,
     act,
@@ -97,12 +100,14 @@ def resnet_unit(
 
     inputs = {
         'X': x,
+        'MaxPtrX': maxptr_x,
         'FilterX': filter_x,
         'ScaleX': scale_x,
         'BiasX': bias_x,
         'MeanX': mean_x,
         'VarX': var_x,
         'Z': z,
+        'MaxPtrZ': maxptr_z,
         'FilterZ': filter_z,
         'ScaleZ': scale_z,
         'BiasZ': bias_z,
@@ -121,6 +126,7 @@ def resnet_unit(
         'data_format': data_format,
         'fuse_add': fuse_add,
         'has_shortcut': has_shortcut,
+        'has_dx': has_dx,
         'use_global_stats': use_global_stats,
         'is_test': is_test,
         'act_type': act,
@@ -145,7 +151,7 @@ def resnet_unit(
         type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs
     )
 
-    return out
+    return out, bit_mask
 
 
 class ResNetUnit(Layer):
@@ -166,6 +172,7 @@ class ResNetUnit(Layer):
         act='relu',
         fuse_add=False,
         has_shortcut=False,
+        has_dx=True,
         use_global_stats=False,
         is_test=False,
         filter_x_attr=None,
@@ -196,6 +203,7 @@ class ResNetUnit(Layer):
         self._act = act
         self._fuse_add = fuse_add
         self._has_shortcut = has_shortcut
+        self._has_dx = has_dx
         self._use_global_stats = use_global_stats
         self._is_test = is_test
 
@@ -327,18 +335,20 @@ class ResNetUnit(Layer):
             self.mean_z = None
             self.var_z = None
 
-    def forward(self, x, z=None):
+    def forward(self, x, maxptr_x=None, z=None, maxptr_z=None):
         if self._fuse_add and z is None:
             raise ValueError("z can not be None")
 
-        out = resnet_unit(
+        out, maxptr = resnet_unit(
             x,
+            maxptr_x,
             self.filter_x,
             self.scale_x,
             self.bias_x,
             self.mean_x,
             self.var_x,
             z,
+            maxptr_z,
             self.filter_z,
             self.scale_z,
             self.bias_z,
@@ -354,8 +364,9 @@ class ResNetUnit(Layer):
             self._data_format,
             self._fuse_add,
             self._has_shortcut,
+            self._has_dx,
             self._use_global_stats,
             self._is_test,
             self._act,
         )
-        return out
+        return out, maxptr

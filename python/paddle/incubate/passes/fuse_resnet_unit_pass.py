@@ -62,14 +62,20 @@ def fuse_resnet_unit():
         )
         return bn
 
-    def pattern_one_input(x, filter, scale, bias, mean, var):
+    def pattern_one_input(x, bitmask_x, filter, scale, bias, mean, var):
         bn = pattern_conv_bn(x, filter, scale, bias, mean, var)
         relu = ir.PassDesc.OP.relu(X=bn.Output("Y"))
         return relu
 
-    def replace_one_input(x, filter, scale, bias, mean, var):
+    def replace_one_input(x, bitmask_x, filter, scale, bias, mean, var):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
-            X=x, FilterX=filter, ScaleX=scale, BiasX=bias, MeanX=mean, VarX=var
+            X=x,
+            XBitMask=bitmask_x,
+            FilterX=filter,
+            ScaleX=scale,
+            BiasX=bias,
+            MeanX=mean,
+            VarX=var,
         )
         set_resnet_unit_attrs(resnet_unit, False)
         set_resnet_unit_outputs(resnet_unit, mean, var)
@@ -77,12 +83,14 @@ def fuse_resnet_unit():
 
     def pattern_two_input(
         x,
+        bitmask_x,
         filterX,
         scaleX,
         biasX,
         meanX,
         varX,
         z,
+        bitmask_z,
         filterZ,
         scaleZ,
         biasZ,
@@ -99,12 +107,14 @@ def fuse_resnet_unit():
 
     def replace_two_input(
         x,
+        bitmask_x,
         filterX,
         scaleX,
         biasX,
         meanX,
         varX,
         z,
+        bitmask_z,
         filterZ,
         scaleZ,
         biasZ,
@@ -113,12 +123,14 @@ def fuse_resnet_unit():
     ):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x,
+            XBitMask=bitmask_x,
             FilterX=filterX,
             ScaleX=scaleX,
             BiasX=biasX,
             MeanX=meanX,
             VarX=varX,
             Z=z,
+            ZBitMask=bitmask_z,
             FilterZ=filterZ,
             ScaleZ=scaleZ,
             BiasZ=biasZ,
