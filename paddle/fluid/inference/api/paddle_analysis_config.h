@@ -936,29 +936,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
-  /// \brief Turn on the usage of Lite sub-graph engine.
-  ///
-  /// \param precision_mode Precision used in Lite sub-graph engine.
-  /// \param passes_filter Set the passes used in Lite sub-graph engine.
-  /// \param ops_filter Operators not supported by Lite.
-  ///
-  void EnableLiteEngine(Precision precision_mode = Precision::kFloat32,
-                        bool zero_copy = false,
-                        const std::vector<std::string>& passes_filter = {},
-                        const std::vector<std::string>& ops_filter = {});
-
-  ///
   /// \brief Turn on the usage of Lite sub-graph engine with opencl.
   ///
   void EnableOpenCL();
-
-  ///
-  /// \brief A boolean state indicating whether the Lite sub-graph engine is
-  /// used.
-  ///
-  /// \return bool whether the Lite sub-graph engine is used.
-  ///
-  bool lite_engine_enabled() const { return false; }
 
   ///
   /// \brief Control whether to debug IR graph analysis phase.

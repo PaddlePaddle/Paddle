@@ -508,46 +508,21 @@ void AnalysisPredictor::InitPlace() {
     }
 #endif
   } else if (config_.use_xpu()) {
-    if (config_.lite_engine_enabled()) {
-#ifdef LITE_SUBGRAPH_WITH_XPU
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of Host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      place_ = paddle::platform::CPUPlace();
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use an XPU lite engine, but Paddle was not compiled "
-          "with it."));
-#endif  // LITE_SUBGRAPH_WITH_XPU
-    } else {
 #ifdef PADDLE_WITH_XPU
-      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
-      place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+    phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
+    place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use XPU forward propagation (inference without lite "
-          "engine), but Paddle was not compiled "
-          "with WITH_XPU."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use XPU forward propagation (inference without lite "
+        "engine), but Paddle was not compiled "
+        "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
-    }
   } else if (config_.NNAdapter().use_nnadapter) {
-    if (config_.lite_engine_enabled()) {
-      place_ = paddle::platform::CPUPlace();
-#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
-      PADDLE_THROW(
-          platform::errors::Unavailable("You tried to use an NNAdapter lite "
-                                        "engine, but Paddle was not compiled "
-                                        "with it."));
-#endif  // LITE_SUBGRAPH_WITH_NNADAPTER
-    } else {
-      PADDLE_THROW(
-          platform::errors::Unavailable("You tried to use NNadapter forward "
-                                        "propagation (inference without lite "
-                                        "engine), but Paddle was not compiled "
-                                        "with LITE_WITH_NNADAPTER."));
-    }
+    PADDLE_THROW(
+        platform::errors::Unavailable("You tried to use NNadapter forward "
+                                      "propagation (inference without lite "
+                                      "engine), but Paddle was not compiled "
+                                      "with LITE_WITH_NNADAPTER."));
   } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
     place_ = paddle::platform::IPUPlace();
@@ -1807,39 +1782,6 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_->SetUseXpu(config_.use_xpu_);
-  if (config_.lite_engine_enabled()) {
-    argument_->SetCpuMathLibraryNumThreads(
-        config_.cpu_math_library_num_threads());
-    argument_->SetLitePrecisionMode(static_cast<int>(
-        paddle::ConvertPrecision(config_.lite_precision_mode_)));
-    argument_->SetLitePassesFilter(config_.lite_passes_filter_);
-    argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
-    argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
-    argument_->SetUseOpenCL(config_.use_opencl_);
-    // NNAdapter related
-    argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
-    argument_->SetNNAdapterDeviceNames(
-        config_.NNAdapter().nnadapter_device_names);
-    argument_->SetNNAdapterContextProperties(
-        config_.NNAdapter().nnadapter_context_properties);
-    argument_->SetNNAdapterModelCacheDir(
-        config_.NNAdapter().nnadapter_model_cache_dir);
-    argument_->SetNNAdapterSubgraphPartitionConfigBuffer(
-        config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
-    argument_->SetNNAdapterSubgraphPartitionConfigPath(
-        config_.NNAdapter().nnadapter_subgraph_partition_config_path);
-    std::vector<std::string> buffer_keys;
-    std::vector<std::vector<char>> buffer_vals;
-    for (auto const &it : config_.NNAdapter().nnadapter_model_cache_buffers) {
-      buffer_keys.emplace_back(it.first);
-      buffer_vals.emplace_back(it.second);
-    }
-    argument_->SetNNAdapterModelCacheToken(buffer_keys);
-    argument_->SetNNAdapterModelCacheBuffer(buffer_vals);
-    LOG(INFO) << "Lite subgraph engine is enabled";
-  }
 
 #ifdef PADDLE_WITH_IPU
   argument_->SetUseIpu(config_.use_ipu());
@@ -2388,17 +2330,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    if (config_.lite_engine_enabled()) {
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      res->SetPlace(PaddlePlace::kCPU);
-    } else {
-      auto xpu_place = place_;
-      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-    }
+    auto xpu_place = place_;
+    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,
@@ -2439,17 +2372,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    if (config_.lite_engine_enabled()) {
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      res->SetPlace(PaddlePlace::kCPU);
-    } else {
-      auto xpu_place = place_;
-      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-    }
+    auto xpu_place = place_;
+    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,

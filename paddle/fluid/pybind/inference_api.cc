@@ -971,14 +971,7 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int64_t>>(),
            py::arg("use_calib_mode") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
-      .def("enable_lite_engine",
-           &AnalysisConfig::EnableLiteEngine,
-           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("zero_copy") = false,
-           py::arg("passes_filter") = std::vector<std::string>(),
-           py::arg("ops_filter") = std::vector<std::string>())
       .def("enable_opencl", &AnalysisConfig::EnableOpenCL)
-      .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,

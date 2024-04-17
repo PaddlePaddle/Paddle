@@ -1323,12 +1323,6 @@ void AnalysisConfig::DisableGlogInfo() {
   Update();
 }
 
-void AnalysisConfig::EnableLiteEngine(
-    Precision precision_mode,
-    bool zero_copy,
-    const std::vector<std::string> &passes_filter,
-    const std::vector<std::string> &ops_filter) {}
-
 void AnalysisConfig::EnableOpenCL() {
   use_opencl_ = true;
   Update();
