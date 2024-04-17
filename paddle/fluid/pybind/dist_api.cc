@@ -116,9 +116,9 @@ TensorDistAttribute CreateTensorDistAttribute(
 }
 
 OperationDistAttribute CreateOperationDistAttribute(
-    const phi::distributed::ProcessMesh& mesh,
-    const std::vector<TensorDistAttribute>& operand_dist_attrs,
-    const std::vector<TensorDistAttribute>& result_dist_attrs) {
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<TensorDistAttribute> &operand_dist_attrs,
+    const std::vector<TensorDistAttribute> &result_dist_attrs) {
   return OperationDistAttribute::get(
       pir::IrContext::Instance(), mesh, operand_dist_attrs, result_dist_attrs);
 }

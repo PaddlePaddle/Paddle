@@ -101,52 +101,58 @@ class TestReshardPToRCrossMesh:
         )
         for op in dist_program.global_block().ops:
             if op.name() == 'pd_op.send_v2':
-                assert(op.dist_attr.num_operand_dist_attrs() == 1)
-                assert(op.dist_attr.num_result_dist_attrs() == 0)
+                assert op.dist_attr.num_operand_dist_attrs() == 1
+                assert op.dist_attr.num_result_dist_attrs() == 0
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
 
-                assert(op.dist_attr.process_mesh == self._in_mesh)
-                assert(op_operand_dist_attr.process_mesh == self._in_mesh)
-                assert(op_operand_dist_attr.dims_mapping == [-1, -1])
-                assert(op_operand_dist_attr.partial_status == {0: paddle.distributed.ReduceType.kRedSum})
-                
+                assert op.dist_attr.process_mesh == self._in_mesh
+                assert op_operand_dist_attr.process_mesh == self._in_mesh
+                assert op_operand_dist_attr.dims_mapping == [-1, -1]
+                assert op_operand_dist_attr.partial_status == {
+                    0: paddle.distributed.ReduceType.kRedSum
+                }
+
             elif op.name() == 'pd_op.recv_v2':
                 # check op dist_attr
-                assert(op.dist_attr.num_operand_dist_attrs() == 0)
-                assert(op.dist_attr.num_result_dist_attrs() == 1)
+                assert op.dist_attr.num_operand_dist_attrs() == 0
+                assert op.dist_attr.num_result_dist_attrs() == 1
 
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)
 
-                assert(op_result_dist_attr.process_mesh == self._out_mesh)
-                assert(op_result_dist_attr.dims_mapping == [-1, -1])
-                assert(op_result_dist_attr.partial_status == {0: paddle.distributed.ReduceType.kRedSum})
+                assert op_result_dist_attr.process_mesh == self._out_mesh
+                assert op_result_dist_attr.dims_mapping == [-1, -1]
+                assert op_result_dist_attr.partial_status == {
+                    0: paddle.distributed.ReduceType.kRedSum
+                }
             elif op.name() == 'pd_op.c_allreduce_sum_':
                 continue
                 # check op dist_attr
-                assert(op.dist_attr.num_operand_dist_attrs() == 1)
-                assert(op.dist_attr.num_result_dist_attrs() == 1)
+                assert op.dist_attr.num_operand_dist_attrs() == 1
+                assert op.dist_attr.num_result_dist_attrs() == 1
 
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)
 
-                assert(op.dist_attr.process_mesh == self._in_mesh)
-                assert(op_operand_dist_attr.process_mesh == self._in_mesh)
-                assert(op_operand_dist_attr.dims_mapping == [-1, -1])
-                assert(op_operand_dist_attr.partial_status == {0: paddle.distributed.ReduceType.kRedSum})
+                assert op.dist_attr.process_mesh == self._in_mesh
+                assert op_operand_dist_attr.process_mesh == self._in_mesh
+                assert op_operand_dist_attr.dims_mapping == [-1, -1]
+                assert op_operand_dist_attr.partial_status == {
+                    0: paddle.distributed.ReduceType.kRedSum
+                }
 
-                assert(op_result_dist_attr.process_mesh == self._out_mesh)
-                assert(op_result_dist_attr.dims_mapping == [-1, -1])
-                assert(op_result_dist_attr.partial_status == {})
+                assert op_result_dist_attr.process_mesh == self._out_mesh
+                assert op_result_dist_attr.dims_mapping == [-1, -1]
+                assert op_result_dist_attr.partial_status == {}
 
                 # check op_value dist_attr
-                assert(op.num_results() == 1)
+                assert op.num_results() == 1
                 op_value = op.result(0)
-                assert(op_value.is_dense_tensor_type())
-                assert(op_value.is_dist_dense_tensor_type())
-                assert(op_value.is_dist_dense_tensor_type())
-                assert(op_value.dist_attr().process_mesh == self._out_mesh) 
-                assert(op_value.dist_attr().dims_mapping == [-1, -1])
-                assert(op_value.dist_attr().partial_status == {})
+                assert op_value.is_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.dist_attr().process_mesh == self._out_mesh
+                assert op_value.dist_attr().dims_mapping == [-1, -1]
+                assert op_value.dist_attr().partial_status == {}
 
 
 if __name__ == '__main__':

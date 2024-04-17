@@ -97,9 +97,7 @@ def apply_reshard_pass(program):
                 src_dist_attr = op_dist_attr.operand_dist_attr(0)
                 dst_dist_attr = op_dist_attr.result_dist_attr(0)
 
-                reshard_func = choose_reshard_func(
-                    src_dist_attr, dst_dist_attr
-                )
+                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
                 reshard_func.reshard(
                     new_program, op, src_dist_attr, dst_dist_attr
                 )

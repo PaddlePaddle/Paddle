@@ -22,11 +22,11 @@ import paddle.pir.core as ir_static
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.jit.translated_layer import TranslatedLayer
-from paddle.nn.layer import layers
 from paddle.distributed.auto_parallel.placement_type import (
     to_placements,
 )
+from paddle.jit.translated_layer import TranslatedLayer
+from paddle.nn.layer import layers
 
 from . import logging_utils
 from .utils import (
@@ -190,7 +190,9 @@ class FunctionSpec:
 
                     if isinstance(var_spec, DistributedInputSpec):
                         # paddle.distributed.shard_tensor(feed_value)
-                        placements = to_placements(var_spec.dims_mapping, var_spec)
+                        placements = to_placements(
+                            var_spec.dims_mapping, var_spec
+                        )
                         dist_feed_value = paddle._pir_ops.shard_tensor(
                             feed_value, var_spec.mesh, placements
                         )

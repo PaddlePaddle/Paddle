@@ -15,6 +15,13 @@
 import os
 
 import numpy as np
+from test_utils import (
+    BATCH_SIZE,
+    CLASS_NUM,
+    IMAGE_SIZE,
+    DemoNet,
+    create_data_loader,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -23,7 +30,7 @@ from paddle.distributed.auto_parallel.static.pir_pass import (
     apply_reshard_pass,
 )
 from paddle.framework import core
-from test_utils import DemoNet, create_data_loader, BATCH_SIZE, BATCH_NUM, IMAGE_SIZE, CLASS_NUM
+
 
 class TestReshardPToR:
     def __init__(self):
@@ -97,30 +104,32 @@ class TestReshardPToR:
         for op in ops:
             if op.name() == 'pd_op.c_allreduce_sum_':
                 # check op dist_attr
-                assert(op.dist_attr.num_operand_dist_attrs() == 1)
-                assert(op.dist_attr.num_result_dist_attrs() == 1)
+                assert op.dist_attr.num_operand_dist_attrs() == 1
+                assert op.dist_attr.num_result_dist_attrs() == 1
 
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)
 
-                assert(op.dist_attr.process_mesh == self._mesh)
-                assert(op_operand_dist_attr.process_mesh == self._mesh)
-                assert(op_operand_dist_attr.dims_mapping == [-1, -1])
-                assert(op_operand_dist_attr.partial_status == {0: paddle.distributed.ReduceType.kRedSum})
+                assert op.dist_attr.process_mesh == self._mesh
+                assert op_operand_dist_attr.process_mesh == self._mesh
+                assert op_operand_dist_attr.dims_mapping == [-1, -1]
+                assert op_operand_dist_attr.partial_status == {
+                    0: paddle.distributed.ReduceType.kRedSum
+                }
 
-                assert(op_result_dist_attr.process_mesh == self._mesh)
-                assert(op_result_dist_attr.dims_mapping == [-1, -1])
-                assert(op_result_dist_attr.partial_status == {})
+                assert op_result_dist_attr.process_mesh == self._mesh
+                assert op_result_dist_attr.dims_mapping == [-1, -1]
+                assert op_result_dist_attr.partial_status == {}
 
                 # check op_value dist_attr
-                assert(op.num_results() == 1)
+                assert op.num_results() == 1
                 op_value = op.result(0)
-                assert(op_value.is_dense_tensor_type())
-                assert(op_value.is_dist_dense_tensor_type())
-                assert(op_value.is_dist_dense_tensor_type())
-                assert(op_value.dist_attr().process_mesh == self._mesh) 
-                assert(op_value.dist_attr().dims_mapping == [-1, -1])
-                assert(op_value.dist_attr().partial_status == {})
+                assert op_value.is_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.dist_attr().process_mesh == self._mesh
+                assert op_value.dist_attr().dims_mapping == [-1, -1]
+                assert op_value.dist_attr().partial_status == {}
 
     def run_pir_to_static_test_case(self):
         paddle.disable_static()
@@ -142,7 +151,6 @@ class TestReshardPToR:
             mode = "train"
             dist_model.train()
             main_program = dist_model._engine._pir_dist_main_progs["train"]
-
 
         relu_idx = 0
         matmul_idx = 0
@@ -166,7 +174,7 @@ class TestReshardPToR:
         ]
         index = -1
         for op_name in backward_op_list:
-            assert(ops[index].name() == op_name)
+            assert ops[index].name() == op_name
             index = index - 1
 
         for op in ops:
@@ -177,89 +185,69 @@ class TestReshardPToR:
             # while tensor's stop_gradient is true, the corresponding grad tensor is initialized.
             if not tensor.initialized():
                 continue
-            assert(tensor.is_dist_dense_tensor_type())
-            assert(tensor.dist_attr().process_mesh.shape == [2])
-            assert(tensor.dist_attr().process_mesh.process_ids == [0, 1])
+            assert tensor.is_dist_dense_tensor_type()
+            assert tensor.dist_attr().process_mesh.shape == [2]
+            assert tensor.dist_attr().process_mesh.process_ids == [0, 1]
 
             if op.name() == 'pd_op.data':
                 if data_idx != 0:
-                    assert(tensor.dist_attr().dims_mapping == [-1, -1])
-                    assert(tensor.dist_attr().partial_dims == set())
+                    assert tensor.dist_attr().dims_mapping == [-1, -1]
+                    assert tensor.dist_attr().partial_dims == set()
                 data_idx += 1
             elif op.name() == 'builtin.parameter':
-                assert(tensor.is_dense_tensor_type())
-                assert(tensor.is_dist_dense_tensor_type())
-                assert(tensor.is_dist_dense_tensor_type())
-                assert(tensor.dist_attr().process_mesh.shape == [2])
-                assert(
-                    tensor.dist_attr().process_mesh.process_ids == [0, 1]
-                )
+                assert tensor.is_dense_tensor_type()
+                assert tensor.is_dist_dense_tensor_type()
+                assert tensor.is_dist_dense_tensor_type()
+                assert tensor.dist_attr().process_mesh.shape == [2]
+                assert tensor.dist_attr().process_mesh.process_ids == [0, 1]
                 if tensor.shape == [IMAGE_SIZE, IMAGE_SIZE]:
-                    assert(tensor.dist_attr().dims_mapping == [-1, 0])
+                    assert tensor.dist_attr().dims_mapping == [-1, 0]
                 elif tensor.shape == [IMAGE_SIZE, CLASS_NUM]:
-                    assert(tensor.dist_attr().dims_mapping == [0, -1])
-                assert(tensor.dist_attr().partial_dims == set())
+                    assert tensor.dist_attr().dims_mapping == [0, -1]
+                assert tensor.dist_attr().partial_dims == set()
             if op.name() == 'pd_op.relu':
                 if relu_idx == 0:
-                    assert(tensor.dist_attr().dims_mapping == [-1, -1])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape ==  [BATCH_SIZE, IMAGE_SIZE]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, -1]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE]
                 elif relu_idx == 1:
-                    assert(tensor.dist_attr().dims_mapping == [-1, 0])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE // 2]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, 0]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE // 2]
                 elif relu_idx == 2:
-                    assert(tensor.dist_attr().dims_mapping == [-1, -1])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, -1]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
                 relu_idx += 1
             if op.name() == 'pd_op.matmul':
                 if matmul_idx == 0:
-                    assert(tensor.dist_attr().dims_mapping == [-1, 0])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE // 2]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, 0]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE // 2]
                 elif matmul_idx == 1:
-                    assert(tensor.dist_attr().dims_mapping == [-1, -1])
-                    assert(tensor.dist_attr().partial_dims == {0})
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, -1]
+                    assert tensor.dist_attr().partial_dims == {0}
+                    assert tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
                 matmul_idx += 1
             if op.name() == 'pd_op.matmul_grad':
                 if matmul_grad_idx == 0:
-                    assert(tensor.dist_attr().dims_mapping == [-1, 0])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, 0]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [BATCH_SIZE, CLASS_NUM]
                 elif matmul_grad_idx == 1:
-                    assert(tensor.dist_attr().dims_mapping == [-1, -1])
-                    assert(tensor.dist_attr().partial_dims == {0})
-                    assert(
-                        tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, -1]
+                    assert tensor.dist_attr().partial_dims == {0}
+                    assert tensor._local_shape == [BATCH_SIZE, IMAGE_SIZE]
                 matmul_grad_idx += 1
             if op.name() == 'pd_op.sgd_':
                 if sgd_idx == 0:
-                    assert(tensor.dist_attr().dims_mapping == [0, -1])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [IMAGE_SIZE // 2, CLASS_NUM]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [0, -1]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [IMAGE_SIZE // 2, CLASS_NUM]
                 elif sgd_idx == 1:
-                    assert(tensor.dist_attr().dims_mapping == [-1, 0])
-                    assert(tensor.dist_attr().partial_dims == set())
-                    assert(
-                        tensor._local_shape == [IMAGE_SIZE, IMAGE_SIZE // 2]
-                    )
+                    assert tensor.dist_attr().dims_mapping == [-1, 0]
+                    assert tensor.dist_attr().partial_dims == set()
+                    assert tensor._local_shape == [IMAGE_SIZE, IMAGE_SIZE // 2]
                 sgd_idx += 1
 
 

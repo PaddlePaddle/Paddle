@@ -63,7 +63,11 @@ class PToRReshardFunction(ReshardFunction):
 
         # set dist type and dist attr
         reduced_value.set_type(op_type)
-        reduced_value.get_defining_op().dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(src_mesh, [src_dist_attr], [dst_dist_attr])
+        reduced_value.get_defining_op().dist_attr = (
+            paddle.base.libpaddle.pir.create_op_dist_attribute(
+                src_mesh, [src_dist_attr], [dst_dist_attr]
+            )
+        )
         if reshard_op:
             op.result(0).replace_all_uses_with(reduced_value)
             program.global_block().remove_op(op)
