@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+from sys.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 from paddle.static import InputSpec
+
+os.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ArangeNet(paddle.nn.Layer):
