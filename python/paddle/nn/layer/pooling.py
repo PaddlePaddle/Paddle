@@ -384,7 +384,7 @@ class LPPool2D(Layer):
 
             >>> # lp pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> output = LPPool2D(input)
             >>> print(output.shape)
             [1, 3, 16, 16]

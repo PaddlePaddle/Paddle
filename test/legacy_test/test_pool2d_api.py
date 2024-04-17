@@ -360,32 +360,6 @@ class TestPool2D_API(unittest.TestCase):
             result = avg_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-    def test_pool2d(self):
-        for place in self.places:
-            self.check_max_dygraph_results(place)
-            self.check_avg_dygraph_results(place)
-            self.check_max_dygraph_stride_is_none(place)
-            self.check_avg_dygraph_stride_is_none(place)
-            self.check_max_dygraph_padding(place)
-            self.check_avg_divisor(place)
-            self.check_max_dygraph_padding_results(place)
-            self.check_max_dygraph_ceilmode_results(place)
-            self.check_max_dygraph_nhwc_results(place)
-            self.check_lp_dygraph_results(place)
-            self.check_lp_dygraph_stride_is_none(place)
-            self.check_lp_dygraph_ceilmode_results(place)
-            self.check_lp_dygraph_nhwc_results(place)
-            self.check_lp_dygraph_results_norm_type_is_inf(place)
-            self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
-
-    @test_with_pir_api
-    def test_pool2d_static(self):
-        paddle.enable_static()
-        for place in self.places:
-            self.check_max_static_results(place)
-            self.check_avg_static_results(place)
-        paddle.disable_static()
-
     def check_lp_static_results(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -626,6 +600,33 @@ class TestPool2D_API(unittest.TestCase):
             )
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    @test_with_pir_api
+    def test_pool2d_static(self):
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_static_results(place)
+            self.check_avg_static_results(place)
+            self.check_lp_static_results(place)
+        paddle.disable_static()
+
+    def test_pool2d(self):
+        for place in self.places:
+            self.check_max_dygraph_results(place)
+            self.check_avg_dygraph_results(place)
+            self.check_max_dygraph_stride_is_none(place)
+            self.check_avg_dygraph_stride_is_none(place)
+            self.check_max_dygraph_padding(place)
+            self.check_avg_divisor(place)
+            self.check_max_dygraph_padding_results(place)
+            self.check_max_dygraph_ceilmode_results(place)
+            self.check_max_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_results(place)
+            self.check_lp_dygraph_stride_is_none(place)
+            self.check_lp_dygraph_ceilmode_results(place)
+            self.check_lp_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_results_norm_type_is_inf(place)
+            self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
 
 
 class TestPool2DError_API(unittest.TestCase):
