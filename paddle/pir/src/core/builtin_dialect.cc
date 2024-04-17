@@ -108,6 +108,8 @@ void BuiltinDialect::PrintType(pir::Type type, std::ostream& os) const {
       os << "x";
     }
     tensor_type.dtype().Print(os);
+
+    os << " " << tensor_type.data_layout();
     os << ">";
   }
 }

@@ -1034,6 +1034,7 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
+        print(new_program, flush=True)
         if (
             new_program._pipeline_opt
             and "standalone_opt" in new_program._pipeline_opt
