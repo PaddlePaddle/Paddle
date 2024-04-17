@@ -423,7 +423,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -676,18 +675,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-if(WIN32)
-  py_test_modules(
-    test_parallel_executor_transformer_auto_growth MODULES
-    test_parallel_executor_transformer_auto_growth ENVS
-    FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
-else()
-  py_test_modules(
-    test_parallel_executor_transformer_auto_growth MODULES
-    test_parallel_executor_transformer_auto_growth ENVS
-    FLAGS_allocator_strategy=auto_growth)
-endif()
-
 py_test_modules(
   test_fuse_bn_add_act_pass
   MODULES
@@ -819,8 +806,6 @@ set_tests_properties(test_distributed_fused_lamb_op_without_clip
 set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
                      PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_transformer_auto_growth
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
