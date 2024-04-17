@@ -69,6 +69,18 @@ void ReadModule(const std::string& file_path,
   std::ifstream f(file_path);
   Json data = Json::parse(f);
 
+  if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
+      data[BASE_CODE][MAGIC] == PIR) {
+    uint64_t file_version =
+        data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
+    if (file_version != pir_version) {
+      PADDLE_THROW(
+          common::errors::InvalidArgument("Invalid model version file."));
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));
+  }
+
   ProgramReader reader(pir_version);
   reader.RecoverProgram(&(data[PROGRAM]), program);
 }

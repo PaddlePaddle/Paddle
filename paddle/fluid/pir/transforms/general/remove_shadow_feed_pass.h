@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,18 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
 
-#include "paddle/cinn/ir/ir.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace cinn {
-namespace optim {
+namespace pir {
 
-/**
- * Given Expr AST, translate dynamic shape in buffers to
- * static shape, the pass is just used on Nvidia GPU temporarily.
- */
-void CudaTransBufferWithDynamicShape(ir::Expr* expr);
+class Pass;
 
-}  // namespace optim
-}  // namespace cinn
+IR_API std::unique_ptr<Pass> CreateRemoveShadowFeedPass();
+
+}  // namespace pir

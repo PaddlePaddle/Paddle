@@ -1979,6 +1979,7 @@
     func : meshgrid
     data_type : inputs
   backward : meshgrid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
