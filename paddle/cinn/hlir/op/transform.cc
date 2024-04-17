@@ -1320,7 +1320,6 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
       ::common::errors::InvalidArgument(
           "The output type of Gather is empty! Please check again."));
 
-  // TODO(6clc): to judge axis's category
   int axis = 0;
   if (attrs.attr_store.contains("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
@@ -1355,15 +1354,12 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
                           ::common::errors::InvalidArgument(
                               "The first input args's type should be Tensor"));
 
-        // TODO(6clc): to judge axis's category
-        // CHECK_EQ(input_args.size(), 3U);
-        // CHECK(input_args[2].is_string());
         std::string tensor_name = input_args[2].operator std::string();
 
         auto out = pe::Gather(x.as_tensor_ref(),
                               index.as_tensor_ref(),
-                              output_shape,
                               axis,
+                              output_shape,
                               tensor_name);
         auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
         stages->InsertLazily(out);
