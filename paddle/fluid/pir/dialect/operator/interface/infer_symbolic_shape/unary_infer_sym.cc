@@ -254,6 +254,13 @@ bool EinsumOpInferSymbolicShape(
   return true;
 }
 
+bool ExpandOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  return true;
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -341,15 +348,8 @@ bool NonzeroOpInferSymbolicShape(
       phi::errors::InvalidArgument(
           "Input(x) should have number of dimension at least 1."));
 
-  PADDLE_ENFORCE_EQ(
-      x_data.has_value(),
-      false,
-      phi::errors::InvalidArgument(
-          "InferSymbolicShape of NonzeroOp only support input with "
-          "value now."));
-
-  auto out_shape = x_shape;
-  out_shape.insert(out_shape.begin(), -1);
+  std::string sym_name = shape_analysis->GetNextSymName();
+  decltype(x_shape) out_shape{sym_name, x_shape.size()};
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};

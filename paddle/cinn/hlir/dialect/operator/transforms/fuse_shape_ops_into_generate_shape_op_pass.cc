@@ -348,6 +348,10 @@ bool ReplaceShapeOpsToGenerateShape(
   auto ShapeOrDataDimExprs4Value =
       [&shape_analysis](
           pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    // if(!shape_analysis->HasShapeOrDataForValue(value)){
+    //   VLOG(6)<<"55555555555555:"<<value;
+    // }
+
     CHECK(shape_analysis->HasShapeOrDataForValue(value));
     return shape_analysis->GetShapeOrDataForValue(value);
   };
