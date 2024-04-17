@@ -36,7 +36,9 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
         fused_ops_name_(fused_ops_name),
         benefit_(benefit) {}
 
-  std::string name() const override { return "OperatorScaleFusePattern"; }
+  std::string name() const override {
+    return fusable_ops_ + "ScaleFusePattern";
+  }
 
   uint32_t benefit() const override { return benefit_; }
 
@@ -57,6 +59,13 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      op_attrs.emplace("fused_output_scale", pat.Attr("fused_output_scale"));
+      op_attrs.emplace("fused_reshape2_shape",
+                       pat.Attr("fused_reshape2_shape"));
+
       has_attr = true;
     } else if (fusable_ops_ == paddle::dialect::MatmulOp::name()) {
       op_attrs.emplace("transpose_x", pat.Attr("transpose_x"));
@@ -170,6 +179,12 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("scale_out", pat.Attr("scale_out"));
       fused_op_attrs.emplace("force_fp32_output",
                              pat.Attr("force_fp32_output"));
+      fused_op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      fused_op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      fused_op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      fused_op_attrs.emplace("fused_output_scale", pat.Attr("full_1_value"));
+      fused_op_attrs.emplace("fused_reshape2_shape",
+                             pat.Attr("fused_reshape2_shape"));
 
     } else if (fusable_ops_ == paddle::onednn::dialect::FusedMatmulOp::name()) {
       fused_op_attrs.emplace("matmul_alpha", pat.Attr("matmul_alpha"));
@@ -250,7 +265,6 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     const auto &fused_op = res.Op(fused_ops_name_, fused_op_attrs);
-
     if (fusable_ops_ == paddle::onednn::dialect::FcOp::name() ||
         fusable_ops_ == paddle::onednn::dialect::FusedMatmulOp::name()) {
       fused_op({&res.Tensor("X"), &res.Tensor("Y"), &res.Tensor("Input3")},
