@@ -1035,7 +1035,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_optimization_level",
            &AnalysisConfig::SetOptimizationLevel,
            py::arg("opt_level") = 2)
-      .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);
 

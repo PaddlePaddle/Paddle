@@ -517,12 +517,6 @@ void AnalysisPredictor::InitPlace() {
         "engine), but Paddle was not compiled "
         "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
-  } else if (config_.NNAdapter().use_nnadapter) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("You tried to use NNadapter forward "
-                                      "propagation (inference without lite "
-                                      "engine), but Paddle was not compiled "
-                                      "with LITE_WITH_NNADAPTER."));
   } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
     place_ = paddle::platform::IPUPlace();
