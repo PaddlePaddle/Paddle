@@ -31,3 +31,9 @@ endif()
 if(NOT WIN32)
   paddle_test(test_vjp_pir SRCS test_vjp.cc)
 endif()
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_comp_eager)
+endif()
