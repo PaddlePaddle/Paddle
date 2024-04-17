@@ -44,112 +44,51 @@ RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
   return {};
 }
 
-SplitDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+std::pair<std::vector<ValueDim>, std::vector<ValueDim>> SplitReduceDims(
     const ShardableAxesSignature& signature, pir::Operation* op) {
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
   std::set<std::string> output_names_set(output_names.begin(),
                                          output_names.end());
-  auto result = SplitDims();
+
+  std::vector<ValueDim> reduce_dims;
+  std::vector<ValueDim> non_reduce_dims;
+
   int idx = 0;
   for (const auto& in : input_names) {
     if (output_names_set.count(in) == 0) {
-      result.non_related.emplace_back(v, idx);
+      reduce_dims.emplace_back(v, idx);
     } else {
-      result.related.emplace_back(v, idx);
+      non_reduce_dims.emplace_back(v, idx);
     }
     idx += 1;
   }
-  return result;
-}
 
-SplitDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-    const ShardableAxesSignature& signature, const pir::Operation* op) {
-  const auto& v = op->result(0);
-  const auto& input_names = signature.inputs[0].axis_names;
-  const auto& output_names = signature.outputs[0].axis_names;
-  std::set<std::string> input_names_set(input_names.begin(), input_names.end());
-  auto result = SplitDims();
-  int idx = 0;
-  for (const auto& name : output_names) {
-    if (input_names_set.count(name) == 0) {
-      result.non_related.emplace_back(v, idx);
-    } else {
-      result.related.emplace_back(v, idx);
+  if (VLOG_IS_ON(4)) {
+    std::stringstream ss;
+    ss << "SplitDims:\nreduce_dims:\n";
+    for (const auto& dim : reduce_dims) {
+      ss << dim.DebugStr() << "\n";
     }
-    idx += 1;
-  }
-  return result;
-}
-
-template <typename T>
-bool RelativeJudgePolicy<T>::IsBroadcastEdge(
-    const std::vector<ValueDim>& upstream_out_dims,
-    const std::vector<ValueDim>& downstream_reduce_dims) {
-  VLOG(4) << "IsBroadcastEdge: upstream_out_dims.size()"
-          << upstream_out_dims.size();
-  VLOG(4) << "IsBroadcastEdge: downstream_reduce_dims.size()"
-          << downstream_reduce_dims.size();
-
-  for (const auto& downstream_reduce_dim : downstream_reduce_dims) {
-    for (const auto& upstream_out_dim : upstream_out_dims) {
-      VLOG(4) << "upstream_out_dim: " << upstream_out_dim.DebugStr()
-              << " downstream_reduce_dim: " << downstream_reduce_dim.DebugStr();
-      if (IsRelated(upstream_out_dim, downstream_reduce_dim)) {
-        return false;
-      }
+    ss << "non_reduce_dims:\n";
+    for (const auto& dim : non_reduce_dims) {
+      ss << dim.DebugStr() << "\n";
     }
+    VLOG(4) << ss.str();
   }
 
-  VLOG(4) << "IsBroadcastEdge";
-  return true;
+  return {reduce_dims, non_reduce_dims};
 }
 
 template <typename T>
-bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& upstream_tree =
-      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern_);
-  VLOG(4) << "upstream->stmt_pattern_:"
-          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
-  const auto& downstream_tree =
-      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern_);
-  VLOG(4) << "downstream->stmt_pattern_"
-          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
-  const auto& maybe_downstream_op = GetDownstreamFromCandidate(
-      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
-  int idx = 0;
-  for (const auto& r_pattern : downstream_tree.childs()) {
-    idx += 1;
-    VLOG(4) << "downstream_tree.reduce_patterns_"
-            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
-  }
-  if (!maybe_downstream_op.has_value()) {
-    VLOG(4) << "can't find candidate from patterns. can fuse return false.";
-    return false;
-  }
-  const pir::Value& reduce_out_value =
-      upstream_tree.GetRootPattern().GetReduceOp()->result(0);
-  pir::Operation* downstream_reduce_op =
-      maybe_downstream_op.value().GetReduceOp();
-  const auto& split_reduce_dim_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
-  VLOG(4) << split_reduce_dim_result.DebugStr();
-  const auto& upstream_output_dims = GetAllValueDimFromValue(reduce_out_value);
-  auto res = IsBroadcastEdge(upstream_output_dims,
-                             split_reduce_dim_result.non_related);
-  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
-  return res;
-}
-
-template <typename T>
-SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
+std::pair<std::vector<ValueDim>, std::vector<ValueDim>>
+RelativeJudgePolicy<T>::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
-  VLOG(4) << "SplitDimsWithRelationship";
-  auto result = SplitDims();
+  std::vector<ValueDim> related_dims;
+  std::vector<ValueDim> non_related_dims;
+
   bool is_related = false;
   for (auto& target_dim : targets) {
     is_related = false;
@@ -157,13 +96,26 @@ SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
       if (IsRelated(related_dim, target_dim)) is_related = true;
     }
     if (is_related) {
-      result.related.push_back(target_dim);
+      related_dims.push_back(target_dim);
     } else {
-      result.non_related.push_back(target_dim);
+      non_related_dims.push_back(target_dim);
     }
   }
 
-  return result;
+  if (VLOG_IS_ON(4)) {
+    std::stringstream ss;
+    ss << "SplitDims:\nrelated_dims:\n";
+    for (const auto& dim : related_dims) {
+      ss << dim.DebugStr() << "\n";
+    }
+    ss << "non_related_dims:\n";
+    for (const auto& dim : non_related_dims) {
+      ss << dim.DebugStr() << "\n";
+    }
+    VLOG(4) << ss.str();
+  }
+
+  return {related_dims, non_related_dims};
 }
 
 bool DimsEqual(const std::vector<ValueDim>& first,
@@ -197,45 +149,65 @@ bool DimsEqual(const std::vector<ValueDim>& first,
 }
 
 template <typename T>
+bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  const auto& upstream_tree =
+      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern_);
+  const auto& downstream_tree =
+      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern_);
+
+  VLOG(4) << "upstream->stmt_pattern_:"
+          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
+  VLOG(4) << "downstream->stmt_pattern_"
+          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
+
+  const auto& maybe_downstream_op = GetDownstreamFromCandidate(
+      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
+  int idx = 0;
+  for (const auto& r_pattern : downstream_tree.childs()) {
+    idx += 1;
+    VLOG(4) << "downstream_tree.reduce_patterns_"
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
+  }
+  if (!maybe_downstream_op.has_value()) {
+    VLOG(4) << "can't find candidate from patterns. can fuse return false.";
+    return false;
+  }
+  const pir::Value& reduce_out_value =
+      upstream_tree.GetRootPattern().GetReduceOp()->result(0);
+  pir::Operation* downstream_reduce_op =
+      maybe_downstream_op.value().GetReduceOp();
+
+  const auto& [downstream_reduce_dims, _UNUSED] = SplitReduceDims(
+      axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
+
+  const auto& upstream_output_dims = GetAllValueDimFromValue(
+      reduce_out_value, GetUsageIdx(/* TODO find out downstream op*/));
+  const auto& [related, _UNUSED] =
+      SplitDimsWithRelationship(downstream_reduce_dims, upstream_output_dims);
+  auto res = (related.size() == 0);
+  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
+  return res;
+}
+
+template <typename T>
 bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   VLOG(4) << "RT can fuse";
 
-  // const auto& split_reduce_dims_result =
-  //     SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-  //         axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
+                      upstream->sink_op_);
 
-  // VLOG(4) << split_reduce_dims_result.DebugStr();
-
-  // const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  // const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
-
-  // TODO(wuzhanfei) fix bug in relation that if has multi path in graph
-  // test_rms_norm can test
-
-  const auto& split_reduce_input_dims_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
-
-  const auto& split_reduce_output_dims_result =
-      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_non_reduce_dims =
-      split_reduce_output_dims_result.related;
-  // replace codes upside with original design
-
-  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
-      GetAllValueDimFromValue(downstream->sink_op_->result(0)),
+  // usage_idx is not important, for this is downstream output value
+  // downstream output value must have been used for there is yield op, so
+  // usage_idx==0 exists
+  const auto& [_UNUSED, non_related_dims] = SplitDimsWithRelationship(
+      GetAllValueDimFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
-  VLOG(4) << split_trivial_dims_result.DebugStr();
-
-  auto res =
-      DimsEqual(split_trivial_dims_result.non_related, upstream_reduce_dims);
-  res = res || IsFlattenDimSmaller(upstream, downstream);
+  auto res = DimsEqual(non_related_dims, upstream_reduce_dims) ||
+             IsFlattenDimSmaller(upstream, downstream);
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
 }
@@ -243,14 +215,12 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
 template <typename T>
 bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& split_reduce_dims_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
-  const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
+                      upstream->sink_op_);
 
-  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
-      GetAllValueDimFromValue(downstream->sink_op_->result(0)),
+  const auto& [related_dims, _UNUSED] = SplitDimsWithRelationship(
+      GetAllValueDimFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   VLOG(4) << "IsFlattenDimSmaller: "
@@ -258,11 +228,9 @@ bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
   int rank = axes_info_.GetSignature(downstream->sink_op_)
                  .outputs[0]
                  .axis_names.size();
-  VLOG(4) << "IsFlattenDimSmaller: " << rank << " "
-          << split_trivial_dims_result.related.size() << " "
-          << upstream_non_reduce_dims.size();
-  bool res = (rank - split_trivial_dims_result.related.size()) <=
-             upstream_non_reduce_dims.size();
+  VLOG(4) << "IsFlattenDimSmaller: " << rank << " " << related_dims.size()
+          << " " << upstream_non_reduce_dims.size();
+  bool res = (rank - related_dims.size()) <= upstream_non_reduce_dims.size();
   VLOG(4) << "IsFlattenDimSmaller: " << res;
   return res;
 }
@@ -289,34 +257,13 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
-  // TODO(xiongkun): replace after fix bug in relation that if has multi path in
-  // graph const auto& split_reduce_dims_result =
-  // SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-  // axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
+                      upstream->sink_op_);
 
-  // const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  // const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
-  //
-
-  const auto& split_reduce_input_dims_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
-  const auto& split_reduce_output_dims_result =
-      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_non_reduce_dims =
-      split_reduce_output_dims_result.related;
-
-  // =======================
-
-  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
-      GetAllValueDimFromValue(downstream->sink_op_->result(0)),
+  const auto& [_UNUSED, trivial_reorder_dims] = SplitDimsWithRelationship(
+      GetAllValueDimFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
-
-  const auto& trivial_reorder_dims = split_trivial_dims_result.non_related;
 
   // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
   // trivial_reorder_dims.size() == 0);
