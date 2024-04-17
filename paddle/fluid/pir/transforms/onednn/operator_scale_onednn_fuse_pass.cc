@@ -46,7 +46,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    bool has_attr = false;
+
     if (fusable_ops_ == paddle::onednn::dialect::FcOp::name()) {
       op_attrs.emplace("in_num_col_dims", pat.Attr("in_num_col_dims"));
       op_attrs.emplace("activation_type", pat.Attr("activation_type"));
@@ -65,12 +65,9 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("fused_output_scale", pat.Attr("fused_output_scale"));
       op_attrs.emplace("fused_reshape2_shape",
                        pat.Attr("fused_reshape2_shape"));
-
-      has_attr = true;
     } else if (fusable_ops_ == paddle::dialect::MatmulOp::name()) {
       op_attrs.emplace("transpose_x", pat.Attr("transpose_x"));
       op_attrs.emplace("transpose_y", pat.Attr("transpose_y"));
-      has_attr = true;
     } else if (fusable_ops_ == paddle::onednn::dialect::FusedMatmulOp::name()) {
       op_attrs.emplace("trans_x", pat.Attr("trans_x"));
       op_attrs.emplace("trans_y", pat.Attr("trans_y"));
@@ -91,7 +88,6 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
-      has_attr = true;
     } else if (fusable_ops_ ==
                    paddle::onednn::dialect::FusedElementwiseAddOp::name() ||
                fusable_ops_ ==
@@ -110,11 +106,9 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_x", pat.Attr("scale_x"));
       op_attrs.emplace("scale_y", pat.Attr("scale_y"));
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
-      has_attr = true;
     }
 
-    const auto &op =
-        has_attr ? pat.Op(fusable_ops_, op_attrs) : pat.Op(fusable_ops_);
+    const auto &op = pat.Op(fusable_ops_, op_attrs);
 
     const auto &full_1 = pat.Op(paddle::dialect::FullOp::name(),
                                 {{"value", pat.Attr("full_1_value")}});
