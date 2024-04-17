@@ -53,10 +53,6 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
-
 
 def get_pir_parameters(program):
     """
@@ -83,18 +79,18 @@ def set_var(name, ndarray):
     p = t._place()
     if p.is_cpu_place():
         place = paddle.base.CPUPlace()
-    elif p.is_cuda_pinned_place():
-        place = paddle.base.CUDAPinnedPlace()
-    elif p.is_xpu_place():
-        p = paddle.base.core.Place()
-        p.set_place(t._place())
-        place = paddle.base.XPUPlace(p.xpu_device_id())
-    elif p.is_custom_place():
-        p = paddle.base.core.Place()
-        p.set_place(t._place())
-        place = paddle.base.CustomPlace(
-            paddle.device.get_device().split(':')[0], p.custom_device_id()
-        )
+    # elif p.is_cuda_pinned_place():
+    #     place = paddle.base.CUDAPinnedPlace()
+    # elif p.is_xpu_place():
+    #     p = paddle.base.core.Place()
+    #     p.set_place(t._place())
+    #     place = paddle.base.XPUPlace(p.xpu_device_id())
+    # elif p.is_custom_place():
+    #     p = paddle.base.core.Place()
+    #     p.set_place(t._place())
+    #     place = paddle.base.CustomPlace(
+    #         paddle.device.get_device().split(':')[0], p.custom_device_id()
+    #     )
     else:
         p = paddle.base.core.Place()
         p.set_place(t._place())
@@ -470,7 +466,9 @@ def save_pir(program, model_path, protocol=4, **configs):
         pickle.dump(opt_dict, f, protocol=protocol)
 
     # save program
-    paddle.core.serialize_pir_program(program, model_path, 1, True, False, True)
+    paddle.core.serialize_pir_program(
+        program, model_path + ".json", 1, True, False, True
+    )
 
 
 @static_only
