@@ -14,8 +14,8 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <string>
-#include "paddle/cinn/common/bfs_walker.h"
-#include "paddle/cinn/common/topo_walker.h"
+#include "paddle/common/bfs_walker.h"
+#include "paddle/common/topo_walker.h"
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -61,8 +61,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
         }
       };
 
-  cinn::common::BfsWalker<Operation*> build_subgraph_walker(
-      GetNextVisitOpForBuild);
+  ::common::BfsWalker<Operation*> build_subgraph_walker(GetNextVisitOpForBuild);
   build_subgraph_walker(val.defining_op(), [&](Operation* op) {
     subgraph_ops.insert(op);
     bool has_prev_op = false;
@@ -96,8 +95,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
           }
         }
       };
-  cinn::common::TopoWalker<Operation*> topo_infer_walker(
-      GetPrevVisitOpForInfer, GetNextVisitOpForInfer);
+  ::common::TopoWalker<Operation*> topo_infer_walker(GetPrevVisitOpForInfer,
+                                                     GetNextVisitOpForInfer);
 
   topo_infer_walker(start_ops.begin(), start_ops.end(), [&](Operation* op) {
     auto infer_symbolic_shape_interface =
