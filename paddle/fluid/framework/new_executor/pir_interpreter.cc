@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -82,6 +83,8 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(check_dyshape);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -1810,6 +1813,181 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << " runs on " << platform::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+      if (FLAGS_pir_apply_shape_optimization_pass && FLAGS_check_dyshape) {
+        auto source_op_id_attr = instr_node->Operation()
+                                     ->attribute("source_op_id")
+                                     .dyn_cast<pir::IndexAttribute>();
+        if (source_op_id_attr) {
+          auto out_ddims =
+              instr_node->GetOutputDims(scope_, value_exe_info_.get());
+          if (!instr_node->Operation()->attribute("sym_shapedata")) {
+            platform::errors::PreconditionNotMet(
+                instr_node->Name() + "must have attribute 'sym_shapedata'");
+          }
+
+          auto source_op_id = source_op_id_attr.data();
+          if (instr_node->Name() == "if_instruction") {
+            std::string cond_var_name = value_exe_info_->GetVarName(
+                instr_node->Operation()->operand_source(0));
+            VLOG(vlog_level)
+                << "################ " << instr_node->Name()
+                << ", operand_source(0) var_name = " << cond_var_name;
+            paddle::framework::Variable* cond_var = nullptr;
+
+            for (auto it = instr_node->Inputs().begin();
+                 it != instr_node->Inputs().end();) {
+              auto& input = *it;
+              auto var_name = value_exe_info_->GetVarName(input.first);
+              paddle::framework::Variable* var = scope_->FindVar(var_name);
+              if (var_name == cond_var_name) {
+                VLOG(vlog_level) << "################ " << instr_node->Name()
+                                 << ", maybe cond var_name = " << var_name;
+                cond_var = var;
+              }
+              ++it;
+            }
+
+            bool cond_rst = false;
+            if (cond_var->IsType<phi::DenseTensor>()) {
+              const phi::DenseTensor& tensor =
+                  cond_var->Get<phi::DenseTensor>();
+              std::string type_str = DataTypeToString(
+                  paddle::framework::TransToProtoVarType(tensor.dtype()));
+              PADDLE_ENFORCE_EQ(
+                  type_str,
+                  "bool",
+                  platform::errors::PreconditionNotMet(
+                      "if_instruction's inputs[1] must be bool and numel == 1, "
+                      "but got type %s and numel == %d",
+                      type_str,
+                      tensor.numel()));
+
+              phi::DenseTensor cpu_tensor;
+              paddle::platform::CPUPlace place;
+              paddle::framework::TensorCopy(tensor, place, &cpu_tensor);
+              cond_rst = *(cpu_tensor.data<bool>());
+            } else {
+              phi::errors::Unimplemented(
+                  "checking symbol shape for if_instruction only support "
+                  "DenseTensor now");
+            }
+            VLOG(vlog_level)
+                << "################ " << instr_node->Name()
+                << ", cond value = " << cond_rst
+                << ", attribute(\"out_shapedata\") = "
+                << instr_node->Operation()->attribute("out_shapedata");
+
+            auto shapeordata = instr_node->Operation()
+                                   ->attribute("out_shapedata")
+                                   .dyn_cast<pir::shape::SymbolAttribute>()
+                                   .data();
+            VLOG(vlog_level) << "################ " << instr_node->Name()
+                             << ", cond value = " << cond_rst
+                             << ", shapeordata = " << shapeordata;
+
+            ShapeOrData runtime_shapeordata_tmp = shapeordata;
+            if (cond_rst) {
+              runtime_shapeordata_tmp =
+                  instr_node->Operation()
+                      ->attribute("true_shapedata")
+                      .dyn_cast<pir::shape::SymbolAttribute>()
+                      .data();
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ": true_shapedata = {" << runtime_shapeordata_tmp
+                  << "}, shapedata = {" << shapeordata << "}";
+            } else {
+              runtime_shapeordata_tmp =
+                  instr_node->Operation()
+                      ->attribute("false_shapedata")
+                      .dyn_cast<pir::shape::SymbolAttribute>()
+                      .data();
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ": false_shapedata = {" << runtime_shapeordata_tmp
+                  << "}, shapedata = {" << shapeordata << "}";
+            }
+
+            uint32_t num_rsts = instr_node->Operation()->num_results();
+            VLOG(vlog_level)
+                << "################ " << instr_node->Name()
+                << ", num_results = " << num_rsts << ", runtime_shapedata = {"
+                << runtime_shapeordata_tmp << "}, shapedata = {" << shapeordata
+                << "}";
+
+            TensorListExprs runtime_shapeordata;
+            if (runtime_shapeordata_tmp.isa<TensorListExprs>()) {
+              runtime_shapeordata =
+                  runtime_shapeordata_tmp.dyn_cast<TensorListExprs>();
+            } else {
+              runtime_shapeordata.emplace_back(
+                  runtime_shapeordata_tmp.dyn_cast<TensorExprs>());
+            }
+
+            PADDLE_ENFORCE_EQ(num_rsts,
+                              runtime_shapeordata.size(),
+                              platform::errors::PreconditionNotMet(
+                                  "if_instruction's num_results(%d) MUST "
+                                  "== runtime_shapeordata.size()(%d)",
+                                  num_rsts,
+                                  runtime_shapeordata.size()));
+            PADDLE_ENFORCE_EQ(num_rsts,
+                              out_ddims.size(),
+                              platform::errors::PreconditionNotMet(
+                                  "if_instruction's num_results(%d) MUST "
+                                  "== out_ddims.size()(%d)",
+                                  num_rsts,
+                                  out_ddims.size()));
+
+            for (uint32_t rst_idx = 0; rst_idx < num_rsts; rst_idx++) {
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ", rst_idx = " << rst_idx
+                  << ", runtime_exprs.size = " << runtime_shapeordata.size();
+
+              ExprVec runtime_exprs =
+                  paddle::dialect::details::GetExprVecFromShape(
+                      runtime_shapeordata[rst_idx]);
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ", rst_idx = " << rst_idx << ", runtime_exprs = "
+                  << paddle::dialect::details::PrintVec(runtime_exprs);
+              ExprVec compiletime_exprs =
+                  paddle::dialect::details::GetExprVecFromShape(
+                      shapeordata.dyn_cast<TensorListExprs>()[rst_idx]);
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ", rst_idx = " << rst_idx << ", runtime_exprs = "
+                  << paddle::dialect::details::PrintVec(runtime_exprs)
+                  << ", compiletime_exprs = "
+                  << paddle::dialect::details::PrintVec(compiletime_exprs);
+              PADDLE_ENFORCE_EQ(
+                  runtime_exprs.size(),
+                  compiletime_exprs.size(),
+                  platform::errors::PreconditionNotMet(
+                      "if_instruction's runtime_exprs.size() MUST "
+                      "== compiletime_exprs.size()"));
+              std::ostringstream os;
+              for (size_t i = 0; i < runtime_exprs.size(); i++) {
+                os << compiletime_exprs[i] << "=" << runtime_exprs[i];
+                if (i < runtime_exprs.size() - 1) os << sym_sep;
+                map_sym2sym[compiletime_exprs[i]] = runtime_exprs[i];
+              }
+              paddle::dialect::details::CheckSymShapeByValue(
+                  source_op_id,
+                  instr_node->Name() + " " +
+                      instr_node->DebugStringEx(scope_, value_exe_info_.get()),
+                  out_ddims[rst_idx],
+                  shapeordata);
+            }
+          }
+
+        } else {
+          VLOG(vlog_level) << "################ " << instr_node->Name()
+                           << " has no source_op_id_attr";
+        }
+      }
+
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       memory::LogDeviceMemoryStats(cur_place, instr_node->Name());

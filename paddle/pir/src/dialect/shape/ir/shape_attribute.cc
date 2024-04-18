@@ -36,6 +36,9 @@ void SetShapeAttrForOp(pir::Operation* op,
   op->set_attribute(
       SymbolAttribute::attr_name,
       pir::StrAttribute::get(pir::IrContext::Instance(), attr_str.str()));
+  op->set_attribute(
+      "sym_shapedata",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 }
 
 }  // namespace pir::shape

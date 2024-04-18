@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
@@ -23,8 +24,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
-
-constexpr int vlog_level = 3;
+COMMON_DECLARE_bool(check_dyshape);
 
 // TODO(zhangbopd): Some op results infered by InferSymbolicShape is NOT consist
 // with the result infered by InferMeta and should be fixed.
@@ -359,7 +359,8 @@ bool HasDynamicShape(const pir::Program& program) {
         auto shape_type =
             op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
         if (shape_type && shape_type.IsDynamicShape()) {
-          VLOG(vlog_level) << "###### HasDynamicShape == true";
+          FLAGS_check_dyshape = true;
+          VLOG(vlog_level) << "###### HasDynamicShape == true, ";
           return true;
         }
       }

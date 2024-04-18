@@ -35,6 +35,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -329,8 +330,20 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
 
   // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
   // result_num == 0 should be supported in future
+  symbol::TensorListShapeOrDataDimExprs true_results, false_results, if_results;
   if (num_results() > 0) {
     for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+      true_results.emplace_back(
+          shape_analysis
+              ->GetShapeOrDataForValue(
+                  true_block().back().operand_source(rst_idx))
+              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
+      false_results.emplace_back(
+          shape_analysis
+              ->GetShapeOrDataForValue(
+                  false_block().back().operand_source(rst_idx))
+              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
+
       const auto &true_dims =
           GetSymExprForBlockResult(true_block().back(), rst_idx);
       const auto &false_dims =
@@ -367,7 +380,21 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
           result(rst_idx),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(out_dims)});
+      if_results.emplace_back(symbol::TensorShapeOrDataDimExprs(out_dims));
     }
+
+    VLOG(0) << "IfOp::InferSymbolicShape: if_shape_data = " << if_results;
+    (*this)->set_attribute("out_shapedata",
+                           pir::shape::SymbolAttribute::get(
+                               pir::IrContext::Instance(), if_results));
+
+    (*this)->set_attribute("true_shapedata",
+                           pir::shape::SymbolAttribute::get(
+                               pir::IrContext::Instance(), true_results));
+    symbol::ShapeOrDataDimExprs false_shape_data{false_results};
+    (*this)->set_attribute("false_shapedata",
+                           pir::shape::SymbolAttribute::get(
+                               pir::IrContext::Instance(), false_shape_data));
 
     return true;
   } else {
