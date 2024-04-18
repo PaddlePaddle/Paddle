@@ -490,6 +490,8 @@ bool AnalysisPredictor::Init(
   }
 #endif
 
+  TryShrinkMemory();
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
@@ -1012,7 +1014,10 @@ bool AnalysisPredictor::PrepareExecutor() {
       constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                          sub_scope_);
       basic_pass_pm.AddPass(std::move(constant_folding_pass));
-      basic_pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
+      dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                              sub_scope_);
+      basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
       basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
       if (!config_.glog_info_disabled()) {
         basic_pass_pm.EnablePrintStatistics();

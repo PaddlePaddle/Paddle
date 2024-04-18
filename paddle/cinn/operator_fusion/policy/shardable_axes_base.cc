@@ -103,8 +103,9 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   auto output_axes = std::vector<std::string>();
 
   for (int i = 0; i < input_rank; i++) {
-    if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
-        reduce_axis_idx.end()) {
+    if (reduce_axis_idx.empty() ||
+        std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
+            reduce_axis_idx.end()) {
       if (keep_dim) {
         output_axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       }  // else do nothing

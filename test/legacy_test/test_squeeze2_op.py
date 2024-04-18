@@ -22,6 +22,7 @@ from test_attribute_var import UnittestBase
 import paddle
 from paddle.base import core
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -284,16 +285,12 @@ class TestSqueezeAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         def test_axes_type():
-            x2 = paddle.static.data(name="x2", shape=[2, 1, 25], dtype="int32")
-            self.squeeze(x2, axis=2.1)
-
-        self.assertRaises(TypeError, test_axes_type)
-
-    def test_pir_error(self):
-        def test_axes_type():
-            with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x2 = paddle.static.data(
                     name="x2", shape=[2, 1, 25], dtype="int32"
                 )
