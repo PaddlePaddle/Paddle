@@ -24,20 +24,17 @@
 namespace common {
 
 template <typename NodeT, typename IterT>
-TopoWalker<NodeT> MakeSubgraphWalker(
-    const TopoWalker<NodeT>& walker,
-    IterT src_begin,
-    IterT src_end,
-    IterT sink_begin,
-    IterT sink_end) {
+TopoWalker<NodeT> MakeSubgraphWalker(const TopoWalker<NodeT>& walker,
+                                     IterT src_begin,
+                                     IterT src_end,
+                                     IterT sink_begin,
+                                     IterT sink_end) {
   TopoWalker<NodeT> reversed_walker(walker.VisitNextNodes,
-                                                  walker.VisitPrevNodes);
-  auto ReachableToOneSrc =
-      MakeIsReachableFromSrcPredicator<NodeT, IterT>(
-          walker, src_begin, src_end);
-  auto ReachableToOneSink =
-      MakeIsReachableFromSrcPredicator<NodeT, IterT>(
-          reversed_walker, sink_begin, sink_end);
+                                    walker.VisitPrevNodes);
+  auto ReachableToOneSrc = MakeIsReachableFromSrcPredicator<NodeT, IterT>(
+      walker, src_begin, src_end);
+  auto ReachableToOneSink = MakeIsReachableFromSrcPredicator<NodeT, IterT>(
+      reversed_walker, sink_begin, sink_end);
 
   auto VisitPrevNodes = [ReachableToOneSrc, ReachableToOneSink, walker](
                             NodeT node,

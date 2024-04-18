@@ -19,6 +19,7 @@
 namespace cinn::common {
 
 template <typename NodeT, typename IterT>
-using MakeIsReachableFromSrcPredicator = ::common::MakeIsReachableFromSrcPredicator<NodeT, IterT>;
+using MakeIsReachableFromSrcPredicator =
+    ::common::MakeIsReachableFromSrcPredicator<NodeT, IterT>;
 
 }  // namespace cinn::common
