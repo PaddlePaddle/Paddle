@@ -5480,7 +5480,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
                         MetaConfig config) {
 #define UNSQUEEZE_MAX_RANK_SUPPORTED 8
   const auto& x_dims = x.dims();
-  // Validity Check: input tensor dims (<6).
+  // Validity Check: input tensor dims (<=8).
   PADDLE_ENFORCE_LE(x_dims.size(),
                     UNSQUEEZE_MAX_RANK_SUPPORTED,
                     phi::errors::InvalidArgument(
