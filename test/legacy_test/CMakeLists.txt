@@ -243,7 +243,6 @@ endif()
 
 if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
-  list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
 
 if(WITH_COVERAGE

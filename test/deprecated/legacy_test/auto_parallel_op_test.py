@@ -23,6 +23,8 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, cast
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from prim_op_test import OpTestUtils, _as_list, convert_uint16_to_float, flatten
 from utils import dygraph_guard
 
