@@ -5761,7 +5761,6 @@ void FakeQuantizeInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* out_scale) {
   UnchangedInferMeta(x, out);
-  // out->set_dims(x.dims());
   out_scale->set_dims({1});
 }
 
@@ -5786,10 +5785,7 @@ void FakeQuantizeRangeInferMeta(const MetaTensor& x,
     out_scales->set_dims({window_size});
   }
 
-  // If is_test is set to true, there is no need for out_scale.
-  if (!is_test) {
-    out_scale->set_dims({1});
-  }
+  out_scale->set_dims({1});
 }
 
 void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
