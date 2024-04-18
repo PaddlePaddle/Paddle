@@ -14,7 +14,10 @@
 
 #pragma once
 
-#include "paddle/common/dfs_topo_walker.h"
+#include <array>
+#include <functional>
+#include <stack>
+#include <unordered_set>
 
 namespace cinn {
 namespace common {
@@ -33,7 +36,77 @@ namespace common {
 template <typename NodeType,
           typename NodeHash = std::hash<NodeType>,
           typename NodeEqual = std::equal_to<NodeType>>
-using DfsTopoWalker = ::common::DfsTopoWalker<NodeType, NodeHash, NodeEqual>;
+class DfsTopoWalker final {
+ public:
+  DfsTopoWalker(const DfsTopoWalker&) = delete;
+  DfsTopoWalker(DfsTopoWalker&&) = delete;
+
+  using NodeHandlerType = std::function<void(NodeType)>;
+  using NodesVisitorType =
+      std::function<void(NodeType, const NodeHandlerType&)>;
+
+  DfsTopoWalker(const NodesVisitorType& VisitPreNodes,
+                const NodesVisitorType& VisitNextNodes)
+      : VisitPreNodes_(VisitPreNodes), VisitNextNodes_(VisitNextNodes) {}
+
+  // Start walking from 1 node and make every effort to access all nodes that
+  // meet the walking rules.
+  // If there are more than 1 nodes with a degree of 0 in a graph,
+  // only one part will be accessed.
+  // If you want to access the entire graph,
+  // you need to provide all starting nodes.
+  void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
+    std::array<NodeType, 1> nodes{node};
+    (*this)(nodes.begin(), nodes.end(), NodeHandler);
+  }
+
+  // Start walking from a collection of node and make every effort to access all
+  // nodes that meet the walking rules.
+  // If there are other start nodes in a graph,
+  // some nodes on the graph will not be accessed.
+  // If you want to access the entire graph,
+  // you need to provide all starting nodes.
+  template <typename NodeIt>
+  void operator()(NodeIt begin,
+                  NodeIt end,
+                  const NodeHandlerType& NodeHandler) const {
+    std::stack<NodeType> node_stack;
+    std::unordered_set<NodeType, NodeHash, NodeEqual> visited;
+    std::unordered_map<NodeType, int, NodeHash, NodeEqual> in_degree;
+    const auto& InitInDegree = [&](NodeType node) {
+      if (in_degree.count(node) == 0) {
+        in_degree[node] = 0;
+        VisitPreNodes_(node, [&](NodeType in_node) { ++in_degree[node]; });
+      }
+    };
+    const auto& UpdateInDegree = [&](NodeType node) {
+      InitInDegree(node);
+      --in_degree[node];
+    };
+    const auto& TryPush = [&](NodeType node) {
+      InitInDegree(node);
+      if (visited.count(node) == 0 && in_degree[node] == 0) {
+        node_stack.push(node);
+        visited.insert(node);
+      }
+    };
+
+    for (NodeIt iter = begin; iter != end; ++iter) {
+      TryPush(*iter);
+      while (!node_stack.empty()) {
+        NodeType cur = node_stack.top();
+        node_stack.pop();
+        NodeHandler(cur);
+        VisitNextNodes_(cur, UpdateInDegree);
+        VisitNextNodes_(cur, TryPush);
+      }
+    }
+  }
+
+ private:
+  NodesVisitorType VisitNextNodes_;
+  NodesVisitorType VisitPreNodes_;
+};
 
 }  // namespace common
 }  // namespace cinn

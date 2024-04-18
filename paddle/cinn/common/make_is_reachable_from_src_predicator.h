@@ -14,12 +14,21 @@
 
 #pragma once
 
-#include "paddle/common/make_is_reachable_from_src_predicator.h"
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+
+#include "paddle/cinn/common/topo_walker.h"
 
 namespace cinn::common {
 
 template <typename NodeT, typename IterT>
-using MakeIsReachableFromSrcPredicator =
-    ::common::MakeIsReachableFromSrcPredicator<NodeT, IterT>;
+std::function<bool(NodeT)> MakeIsReachableFromSrcPredicator(
+    const TopoWalker<NodeT>& walker, IterT src_begin, IterT src_end) {
+  auto nodes = std::make_shared<std::unordered_set<NodeT>>();
+  nodes->insert(src_begin, src_end);
+  walker(src_begin, src_end, [&](NodeT node) { nodes->insert(node); });
+  return [nodes](NodeT node) { return nodes->count(node) > 0; };
+}
 
 }  // namespace cinn::common
