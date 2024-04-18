@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
@@ -117,6 +118,11 @@ inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
     return shapeordata.shape();
   }
 }
+
+// int64_t product(const std::vector<symbol::DimExpr> &dim_expr_vector);
+
+common::DDim DimExprVec2DDim(
+    const std::vector<symbol::DimExpr> &dim_expr_vector);
 
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 

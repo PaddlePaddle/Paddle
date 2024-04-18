@@ -120,4 +120,27 @@ void BuildCstrEqForTensorListAlongAxis(
   }
 }
 
+// int64_t product(const std::vector<symbol::DimExpr> &dim_expr_vector) {
+//   if (dim_expr_vector.size() == -1) {
+//     return 0;
+//   }
+
+//   std::vector<int> tmp_shape;
+//   for(const auto& dim_expr:dim_expr_vector){
+//     tmp_shape.emplace_back(dim_expr.get<int>());
+//   }
+//   DDim tmp_dims = common::make_ddim(tmp_shape);
+
+//   return common::make_ddim(tmp_dims);
+// }
+
+common::DDim DimExprVec2DDim(
+    const std::vector<symbol::DimExpr> &dim_expr_vector) {
+  std::vector<std::int64_t> tmp_shape;
+  for (const auto &dim_expr : dim_expr_vector) {
+    tmp_shape.emplace_back(dim_expr.dyn_cast<std::int64_t>());
+  }
+  return common::make_ddim(tmp_shape);
+}
+
 }  // namespace paddle::dialect::details

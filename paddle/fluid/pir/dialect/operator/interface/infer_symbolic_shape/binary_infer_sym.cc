@@ -66,57 +66,64 @@ namespace paddle::dialect {
 
 bool BceLossOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto x_shape_or_data =
+  const auto input_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto label_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
+
+  const std::vector<symbol::DimExpr> &input_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
+    if (input_shape_or_data.data().has_value()) {
+      dim_expr_vector = input_shape_or_data.data().value();
     } else {
-      dims = x_shape_or_data.shape();
+      dim_expr_vector = input_shape_or_data.shape();
     }
-    return dims;
+    return dim_expr_vector;
   }();
 
-  const std::vector<symbol::DimExpr> &label_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
+  const std::vector<symbol::DimExpr> &label_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
     if (label_shape_or_data.data().has_value()) {
-      dims = label_shape_or_data.data().value();
+      dim_expr_vector = label_shape_or_data.data().value();
     } else {
-      dims = label_shape_or_data.shape();
+      dim_expr_vector = label_shape_or_data.shape();
     }
-    return dims;
+    return dim_expr_vector;
   }();
 
-  PADDLE_ENFORCE_EQ(x_dims.size(),
+  common::DDim input_dims = details::DimExprVec2DDim(input_dim_expr_vector);
+  common::DDim label_dims = details::DimExprVec2DDim(label_dim_expr_vector);
+  int rank = input_dims.size();
+
+  PADDLE_ENFORCE_EQ(rank,
                     label_dims.size(),
                     phi::errors::InvalidArgument(
                         "Input(X) and Input(Label) shall have the same rank."
                         "But received: the rank of Input(X) is [%d], "
                         "the rank of Input(Label) is [%d].",
-                        x_dims.size(),
+                        rank,
                         label_dims.size()));
 
-  for (size_t i = 0; i < x_dims.size(); i++) {
-    PADDLE_ENFORCE_EQ(
-        x_dims[i] == label_dims[i] || x_dims[i].Get<int64_t>() <= 0 ||
-            label_dims[i].Get<int64_t>() <= 0,
-        true,
-        phi::errors::InvalidArgument(
-            "Input(X) and Input(Label) shall have the same "
-            "shape, or one of the two is less than or equal to 0. "
-            "But received: the shape of Input(X) is "
-            "[%s], the shape of Input(Label) is [%s].",
-            x_dims[i],
-            label_dims[i]));
+  bool check = true;
+  if (common::product(input_dims) <= 0 || common::product(label_dims) <= 0) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(input_dims,
+                      label_dims,
+                      phi::errors::InvalidArgument(
+                          "Input(X) and Input(Label) shall have the same "
+                          "shape. But received: the shape of Input(X) is "
+                          "[%s], the shape of Input(Label) is [%s].",
+                          input_dims,
+                          label_dims));
   }
 
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
-    std::vector<symbol::DimExpr> out_dims = x_dims;
+    std::vector<symbol::DimExpr> out_dim_expr_vector = input_dim_expr_vector;
     return symbol::ShapeOrDataDimExprs{
-        symbol::TensorShapeOrDataDimExprs(out_dims)};
+        symbol::TensorShapeOrDataDimExprs(out_dim_expr_vector)};
   }();
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);

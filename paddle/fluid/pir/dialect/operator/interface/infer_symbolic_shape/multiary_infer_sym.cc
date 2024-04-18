@@ -333,39 +333,86 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto label_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
+
+  const std::vector<symbol::DimExpr> &x_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
     if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
+      dim_expr_vector = x_shape_or_data.data().value();
     } else {
-      dims = x_shape_or_data.shape();
+      dim_expr_vector = x_shape_or_data.shape();
     }
-    return dims;
+    return dim_expr_vector;
   }();
 
-  const std::vector<symbol::DimExpr> &label_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
+  const std::vector<symbol::DimExpr> &label_dim_expr_vector = [&] {
+    std::vector<symbol::DimExpr> dim_expr_vector;
     if (label_shape_or_data.data().has_value()) {
-      dims = label_shape_or_data.data().value();
+      dim_expr_vector = label_shape_or_data.data().value();
     } else {
-      dims = label_shape_or_data.shape();
+      dim_expr_vector = label_shape_or_data.shape();
     }
-    return dims;
+    return dim_expr_vector;
   }();
 
-  PADDLE_ENFORCE_EQ(x_dims.size(),
+  common::DDim x_dims = details::DimExprVec2DDim(x_dim_expr_vector);
+  common::DDim label_dims = details::DimExprVec2DDim(label_dim_expr_vector);
+  int rank = x_dims.size();
+
+  PADDLE_ENFORCE_EQ(rank,
                     label_dims.size(),
                     phi::errors::InvalidArgument(
                         "Input(X) and Input(Label) shall have the same rank."
                         "But received: the rank of Input(X) is [%d], "
                         "the rank of Input(Label) is [%d].",
-                        x_dims.size(),
+                        rank,
                         label_dims.size()));
 
+  bool check = true;
+  if (common::product(x_dims) <= 0 || common::product(label_dims) <= 0) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        common::slice_ddim(x_dims, 0, rank),
+        common::slice_ddim(label_dims, 0, rank),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of "
+            "Input(X) is [%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            label_dims));
+
+    if (shape_analysis->HasShapeOrDataForValue(op->operand_source(2))) {
+      const auto pos_weight_shape_or_data =
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+      const std::vector<symbol::DimExpr> &pos_weight_dim_expr_vector = [&] {
+        std::vector<symbol::DimExpr> dims;
+        if (pos_weight_shape_or_data.data().has_value()) {
+          dims = pos_weight_shape_or_data.data().value();
+        } else {
+          dims = pos_weight_shape_or_data.shape();
+        }
+        return dims;
+      }();
+      common::DDim pos_weight_dims =
+          details::DimExprVec2DDim(pos_weight_dim_expr_vector);
+      PADDLE_ENFORCE_EQ(
+          common::slice_ddim(pos_weight_dims, 0, rank),
+          common::slice_ddim(label_dims, 0, rank),
+          phi::errors::InvalidArgument(
+              "Input(pos_weight) and Input(Label) shall have the same shape "
+              "But received: the shape of Input(PosWeight) is [%s], "
+              "the shape of Input(Label) is [%s].",
+              pos_weight_dims,
+              label_dims));
+    }
+  }
+
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
-    std::vector<symbol::DimExpr> out_dims = x_dims;
+    std::vector<symbol::DimExpr> out_dim_expr_vector = x_dim_expr_vector;
     return symbol::ShapeOrDataDimExprs{
-        symbol::TensorShapeOrDataDimExprs(out_dims)};
+        symbol::TensorShapeOrDataDimExprs(out_dim_expr_vector)};
   }();
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);

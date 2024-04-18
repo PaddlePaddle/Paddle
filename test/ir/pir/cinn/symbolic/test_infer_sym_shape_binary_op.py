@@ -25,6 +25,56 @@ import paddle
 from paddle.static import InputSpec
 
 
+class BCELossNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input, label):
+        reduction = 'mean'
+        bce_loss = paddle.nn.loss.BCELoss(reduction=reduction)
+        out = bce_loss(input, label)
+        return out
+
+
+class BceLossOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            [np.random.rand(4, 5), np.random.rand(4, 5)],
+        ]
+
+        self.expected = [
+            'shape[S0, S3], data[NULL]',
+        ]
+
+    @unittest.skip("TODO: WintersMontagne10335")
+    def test_eval_symbolic(self):
+        net = BCELossNet()
+
+        for i in range(len(self.cases)):
+            input, label = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(input.shape))],
+                dtype='float32',
+            )
+            label_spec = InputSpec(
+                shape=[None for index in range(len(label.shape))],
+                dtype='float32',
+            )
+
+            input_spec = [x_spec, label_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            expected_symbol = [self.expected[i]]
+
+            # RuntimeError: Unexpected index
+            check_infer_results(
+                net, input_spec, 'pd_op.bce_loss', expected_symbol
+            )
+
+        return True
+
+
 class EmbeddingNet(paddle.nn.Layer):
     def __init__(self, num_embeddings, embedding_dim):
         super().__init__()
