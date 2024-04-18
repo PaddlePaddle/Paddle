@@ -28,20 +28,20 @@ const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
       "Can not find the usage of value %s in op %s", v.impl(), op->name()));
 }
 
-ValueDim GetAllSingleDimFromValue(const pir::Value& v, const size_t usage_idx) {
-  ValueDim value_dims;
+ValueDim GetAllDimUsageFromValue(const pir::Value& v, const size_t usage_idx) {
+  ValueDim valud_dim;
   size_t rank = GetRank(v);
   for (size_t i = 0; i < rank; ++i) {
-    value_dims.emplace_back(v, i, usage_idx);
+    valud_dim.emplace_back(v, i, usage_idx);
   }
-  return value_dims;
+  return valud_dim;
 }
 
 static std::vector<ValueDim> GetInputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;
   for (const auto& v : op->operands()) {
     value_dims.emplace_back(
-        GetAllSingleDimFromValue(v.source(), GetUsageIdx(v.source(), op)));
+        GetAllDimUsageFromValue(v.source(), GetUsageIdx(v.source(), op)));
   }
   return value_dims;
 }
@@ -52,25 +52,25 @@ static std::vector<std::vector<ValueDim>> GetOutputValueDim(
   for (const auto& v : op->results()) {
     std::vector<ValueDim> single_output_value_dim;
     for (size_t i = 0; i < v.use_count(); i++) {
-      single_output_value_dim.emplace_back(GetAllSingleDimFromValue(v, i));
+      single_output_value_dim.emplace_back(GetAllDimUsageFromValue(v, i));
     }
     result.emplace_back(single_output_value_dim);
   }
   return result;
 }
 
-static std::vector<SingleDim> GetAllInputSingleDim(pir::Operation* op) {
+static std::vector<DimUsage> GetAllInputDimUsage(pir::Operation* op) {
   return ConcatAll(GetInputValueDim(op));
 }
 
-static std::vector<SingleDim> GetAllOutputSingleDim(pir::Operation* op) {
+static std::vector<DimUsage> GetAllOutputDimUsage(pir::Operation* op) {
   return ConcatAll(ConcatAll(GetOutputValueDim(op)));
 }
 
-static SingleDimRelation CreateOpRelativenessForDefault(pir::Operation* op) {
-  SingleDimRelation res;
-  const std::vector<SingleDim>& input_single_dims = GetAllInputSingleDim(op);
-  const std::vector<SingleDim>& output_single_dims = GetAllOutputSingleDim(op);
+static DimUsageRelation CreateOpRelativenessForDefault(pir::Operation* op) {
+  DimUsageRelation res;
+  const std::vector<DimUsage>& input_single_dims = GetAllInputDimUsage(op);
+  const std::vector<DimUsage>& output_single_dims = GetAllOutputDimUsage(op);
 
   for (const auto& in_dim : input_single_dims) {
     for (const auto& out_dim : output_single_dims) {
@@ -80,9 +80,8 @@ static SingleDimRelation CreateOpRelativenessForDefault(pir::Operation* op) {
   return res;
 }
 
-static SingleDimRelation CreateOpRelativenessForElementWise(
-    pir::Operation* op) {
-  SingleDimRelation res;
+static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
+  DimUsageRelation res;
   const std::vector<ValueDim>& input_value_dims = GetInputValueDim(op);
   const std::vector<ValueDim>& output_value_dims =
       ConcatAll(GetOutputValueDim(op));
@@ -128,33 +127,33 @@ static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
   return res;
 }
 
-static SingleDimRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
-  SingleDimRelation res;
+static DimUsageRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
+  DimUsageRelation res;
   const auto& in_value = op->operand(0).source();
   const auto& out_value = op->result(0);
   size_t usage_idx = GetUsageIdx(in_value, op);
   for (const auto& t : GetNonBroadCastDims(op)) {
     for (size_t i = 0; i < out_value.use_count(); i++) {
-      res[SingleDim(in_value, t.first, usage_idx)]
-         [SingleDim(out_value, t.second, i)] = true;
+      res[DimUsage(in_value, t.first, usage_idx)]
+         [DimUsage(out_value, t.second, i)] = true;
     }
   }
   return res;
 }
 
-static SingleDimRelation CreateOpRelativenessForReduce(pir::Operation* op) {
+static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   const auto& reduce_axis_idx = GetReduceAxisIdx(op);
-  SingleDimRelation res;
+  DimUsageRelation res;
   const size_t input_rank = GetRank(op->operand_source(0));
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
   for (int i = 0; i < input_rank; i++) {
     if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) ==
         reduce_axis_idx.end()) {
-      auto input_dim = SingleDim(
+      auto input_dim = DimUsage(
           op->operand_source(0), i, GetUsageIdx(op->operand_source(0), op));
       for (size_t j = 0; j < op->result(0).use_count(); ++j) {
-        res[input_dim][SingleDim(op->result(0), out_idx, j)] = true;
+        res[input_dim][DimUsage(op->result(0), out_idx, j)] = true;
       }
       out_idx += 1;
     } else {
@@ -164,7 +163,7 @@ static SingleDimRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   return res;
 }
 
-static std::optional<SingleDimRelation> CreateOpRelativenessForSpecialOps(
+static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
     pir::Operation* op) {
   if (op->num_results() != 1) {
     VLOG(4) << "Now we do not support op with multi outputs, use default: "
@@ -188,16 +187,16 @@ static std::optional<SingleDimRelation> CreateOpRelativenessForSpecialOps(
   return {};
 }
 
-static SingleDimRelation GetSingleOpRelation(pir::Operation* op) {
+static DimUsageRelation GetSingleOpRelation(pir::Operation* op) {
   const auto& special_result = CreateOpRelativenessForSpecialOps(op);
   if (special_result != std::nullopt) {
-    VLOG(4) << "[SingleDimRelation] GetSingleOpRelation for special op: \n"
+    VLOG(4) << "[DimUsageRelation] GetSingleOpRelation for special op: \n"
             << op->name() << " : " << RelationDebugStr(special_result.value());
     return special_result.value();
   }
 
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
-  SingleDimRelation result;
+  DimUsageRelation result;
   if (kind == hlir::framework::kReduction) {
     result = CreateOpRelativenessForReduce(op);
   } else if (kind == hlir::framework::kElementWise) {
@@ -207,14 +206,14 @@ static SingleDimRelation GetSingleOpRelation(pir::Operation* op) {
   } else {
     result = CreateOpRelativenessForDefault(op);
   }
-  VLOG(4) << "[SingleDimRelation] GetSingleOpRelation: \n"
+  VLOG(4) << "[DimUsageRelation] GetSingleOpRelation: \n"
           << op->name() << " : " << RelationDebugStr(result);
   return result;
 }
 
-static std::vector<std::pair<SingleDim, SingleDim>> FlattenRelation(
-    const SingleDimRelation& axes_relation) {
-  std::vector<std::pair<SingleDim, SingleDim>> res;
+static std::vector<std::pair<DimUsage, DimUsage>> FlattenRelation(
+    const DimUsageRelation& axes_relation) {
+  std::vector<std::pair<DimUsage, DimUsage>> res;
   for (const auto& in_dim_pair : axes_relation) {
     for (const auto& out_dim_pair : in_dim_pair.second) {
       res.emplace_back(in_dim_pair.first, out_dim_pair.first);
@@ -223,9 +222,9 @@ static std::vector<std::pair<SingleDim, SingleDim>> FlattenRelation(
   return res;
 }
 
-SingleDimRelation AnalysisIndexExprRelation(
+DimUsageRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops) {
-  SingleDimRelation res;
+  DimUsageRelation res;
 
   for (size_t i = ops.size(); i >= 1; --i) {
     pir::Operation* op = ops[i - 1];
@@ -244,9 +243,9 @@ SingleDimRelation AnalysisIndexExprRelation(
   return res;
 }
 
-std::string RelationDebugStr(const SingleDimRelation& relation) {
+std::string RelationDebugStr(const DimUsageRelation& relation) {
   std::stringstream ss;
-  ss << "SingleDim Relation:\n";
+  ss << "DimUsage Relation:\n";
   for (const auto& [src, dsts] : relation) {
     ss << src.DebugStr() << " \n Related To: -> \n";
     for (const auto& [dst, _boolean] : dsts) {

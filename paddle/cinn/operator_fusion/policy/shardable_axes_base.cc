@@ -77,8 +77,8 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
 std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
     pir::Operation* op) {
   if (op->num_results() != 1) {
-    VLOG(4) << "Now we do not support op with multi outputs: " << op->name()
-            << "Create Default Signature";
+    VLOG(4) << "Now we do not support op with multi outputs, create default: "
+            << op->name();
     return CreateDefaultSignature(op);
   }
   if (op->isa<cinn::dialect::ReshapeOp>()) {

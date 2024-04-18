@@ -40,12 +40,12 @@ class RelativeJudgePolicy final : public Policy<T> {
       const PatternNodePtr<T>& upstream,
       const PatternNodePtr<T>& downstream) override;
 
-  bool IsRelated(SingleDim in, SingleDim out) {
+  bool IsRelated(DimUsage in, DimUsage out) {
     return index_expr_map_[in].count(out) == 1;
   }
 
  private:
-  SingleDimRelation index_expr_map_;
+  DimUsageRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
                                const PatternNodePtr<T>&);
@@ -53,9 +53,9 @@ class RelativeJudgePolicy final : public Policy<T> {
                            const PatternNodePtr<T>& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
                                  const PatternNodePtr<T>&);
-  std::pair<std::vector<SingleDim>, std::vector<SingleDim>>
-  SplitDimsWithRelationship(const std::vector<SingleDim>& targets,
-                            const std::vector<SingleDim>& related_with);
+  std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
+  SplitDimsWithRelationship(const std::vector<DimUsage>& targets,
+                            const std::vector<DimUsage>& related_with);
   std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
       const ReducePattern<T>& upstream,
       const std::vector<ReducePattern<T>>& candidates);

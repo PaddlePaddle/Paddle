@@ -44,7 +44,7 @@ RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
   return {};
 }
 
-std::pair<std::vector<SingleDim>, std::vector<SingleDim>> SplitReduceDims(
+std::pair<std::vector<DimUsage>, std::vector<DimUsage>> SplitReduceDims(
     const ShardableAxesSignature& signature, pir::Operation* op) {
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
@@ -52,8 +52,8 @@ std::pair<std::vector<SingleDim>, std::vector<SingleDim>> SplitReduceDims(
   std::set<std::string> output_names_set(output_names.begin(),
                                          output_names.end());
 
-  std::vector<SingleDim> reduce_dims;
-  std::vector<SingleDim> non_reduce_dims;
+  std::vector<DimUsage> reduce_dims;
+  std::vector<DimUsage> non_reduce_dims;
   auto usage_idx = GetUsageIdx(v, op);
 
   int idx = 0;
@@ -83,12 +83,12 @@ std::pair<std::vector<SingleDim>, std::vector<SingleDim>> SplitReduceDims(
 }
 
 template <typename T>
-std::pair<std::vector<SingleDim>, std::vector<SingleDim>>
-RelativeJudgePolicy<T>::SplitDimsWithRelationship(
-    const std::vector<SingleDim>& targets,
-    const std::vector<SingleDim>& related_with) {
-  std::vector<SingleDim> related_dims;
-  std::vector<SingleDim> non_related_dims;
+std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
+RelativeJudgePolicy<T>::SplitFirstIfRelatedBySecond(
+    const std::vector<DimUsage>& targets,
+    const std::vector<DimUsage>& related_with) {
+  std::vector<DimUsage> related_dims;
+  std::vector<DimUsage> non_related_dims;
 
   bool is_related = false;
   for (auto& target_dim : targets) {
@@ -105,7 +105,7 @@ RelativeJudgePolicy<T>::SplitDimsWithRelationship(
 
   if (VLOG_IS_ON(4)) {
     std::stringstream ss;
-    ss << "SplitDimsWithRelationship:\nrelated_dims:\n";
+    ss << "SplitFirstIfRelatedBySecond:\nrelated_dims:\n";
     for (const auto& dim : related_dims) {
       ss << dim.DebugStr() << "\n";
     }
@@ -119,10 +119,10 @@ RelativeJudgePolicy<T>::SplitDimsWithRelationship(
   return {related_dims, non_related_dims};
 }
 
-bool DimsEqual(const std::vector<SingleDim>& first,
-               const std::vector<SingleDim>& second) {
-  const auto GetDimInfo = [](const std::vector<SingleDim>& dims)
-      -> std::unordered_map<size_t, int> {
+bool ElementwiseEqual(const std::vector<DimUsage>& first,
+                      const std::vector<DimUsage>& second) {
+  const auto GetDimInfo =
+      [](const std::vector<DimUsage>& dims) -> std::unordered_map<size_t, int> {
     std::unordered_map<size_t, int> result;
     for (const auto& dim : dims) {
       VLOG(4) << dim.DebugStr();
@@ -198,10 +198,10 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
       SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
                       downstream_reduce_op);
 
-  const auto& upstream_output_dims = GetAllSingleDimFromValue(
+  const auto& upstream_output_dims = GetAllDimUsageFromValue(
       reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
   const auto& [related, _UNUSED] =
-      SplitDimsWithRelationship(downstream_reduce_dims, upstream_output_dims);
+      SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
   auto res = (related.size() == 0);
   VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
   return res;
@@ -219,11 +219,11 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
   // usage_idx is not important, for this is downstream output value
   // downstream output value must have been used for there is yield op, so
   // usage_idx==0 exists
-  const auto& [_UNUSED, non_related_dims] = SplitDimsWithRelationship(
-      GetAllSingleDimFromValue(downstream->sink_op_->result(0), 0),
+  const auto& [_UNUSED, non_related_dims] = SplitFirstIfRelatedBySecond(
+      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
-  auto res = DimsEqual(non_related_dims, upstream_reduce_dims) ||
+  auto res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
              IsFlattenDimSmaller(upstream, downstream);
 
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
@@ -237,8 +237,8 @@ bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
       SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
                       upstream->sink_op_);
 
-  const auto& [related_dims, _UNUSED] = SplitDimsWithRelationship(
-      GetAllSingleDimFromValue(downstream->sink_op_->result(0), 0),
+  const auto& [related_dims, _UNUSED] = SplitFirstIfRelatedBySecond(
+      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   VLOG(4) << "IsFlattenDimSmaller: "
@@ -279,13 +279,13 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
       SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
                       upstream->sink_op_);
 
-  const auto& [_UNUSED, trivial_reorder_dims] = SplitDimsWithRelationship(
-      GetAllSingleDimFromValue(downstream->sink_op_->result(0), 0),
+  const auto& [_UNUSED, trivial_reorder_dims] = SplitFirstIfRelatedBySecond(
+      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
   // trivial_reorder_dims.size() == 0);
-  std::unordered_set<SingleDim, SingleDimHash> visited_dims;
+  std::unordered_set<DimUsage, DimUsageHash> visited_dims;
   std::vector<size_t> result;
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {

@@ -18,16 +18,14 @@
 
 namespace cinn::fusion {
 
-struct SingleDim {
-  SingleDim(const pir::Value& v, const size_t idx, const size_t usage_idx)
-      : v_(v), idx_(idx), usage_idx_(usage_idx) {}
+struct DimUsage {
   pir::Value v_;
   size_t idx_;
   size_t usage_idx_;  // value is used by which op
-  SingleDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {}
-  SingleDim() = default;
-  SingleDim(const SingleDim& v) = default;
-  bool operator==(const SingleDim& v) const {
+  DimUsage(const pir::Value& v, const size_t idx, const size_t usage_idx)
+      : v_(v), idx_(idx), usage_idx_(usage_idx) {}
+  DimUsage(const DimUsage& v) = default;
+  bool operator==(const DimUsage& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_) && (usage_idx_ == v.usage_idx_);
   }
 
@@ -37,7 +35,7 @@ struct SingleDim {
 
   std::string DebugStr() const {
     std::ostringstream oss;
-    oss << "SingleDim || Value: " << v_.impl();
+    oss << "DimUsage || Value: " << v_.impl();
     oss << ", Index: " << idx_;
     oss << ", UsageIdx: " << usage_idx_;
     oss << ", ";
@@ -50,8 +48,8 @@ static std::size_t hash_two(std::size_t h1, std::size_t h2) {
   return h1 ^ (h2 << 1);
 }
 
-struct SingleDimHash {
-  std::size_t operator()(const SingleDim& p) const {
+struct DimUsageHash {
+  std::size_t operator()(const DimUsage& p) const {
     auto h1 = std::hash<size_t>{}(p.idx_);
     auto h2 = std::hash<pir::Value>{}(p.v_);
     auto h3 = std::hash<size_t>{}(p.usage_idx_);
@@ -61,19 +59,19 @@ struct SingleDimHash {
   }
 };
 
-using ValueDim = std::vector<SingleDim>;
+using ValueUsage = std::vector<DimUsage>;
 
-using SingleDimRelation =
-    std::unordered_map<SingleDim,
-                       std::unordered_map<SingleDim, bool, SingleDimHash>,
-                       SingleDimHash>;
-// SingleDimRelation[in][out] = True; means f(out) = in is related.
+using DimUsageRelation =
+    std::unordered_map<DimUsage,
+                       std::unordered_map<DimUsage, bool, DimUsageHash>,
+                       DimUsageHash>;
+// DimUsageRelation[in][out] = True; means f(out) = in is related.
 
-SingleDimRelation AnalysisIndexExprRelation(
+DimUsageRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops);
 const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op);
-std::vector<SingleDim> GetAllSingleDimFromValue(const pir::Value& v,
-                                                const size_t usage_idx);
-std::string RelationDebugStr(const SingleDimRelation& relation);
+std::vector<DimUsage> GetAllDimUsageFromValue(const pir::Value& v,
+                                              const size_t usage_idx);
+std::string RelationDebugStr(const DimUsageRelation& relation);
 
 }  // namespace cinn::fusion
