@@ -29,6 +29,8 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
+std::mutex ShapeConstraintIRAnalysis::mutex_;
+
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
