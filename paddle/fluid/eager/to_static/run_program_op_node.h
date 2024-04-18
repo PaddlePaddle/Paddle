@@ -570,6 +570,9 @@ inline void PirRunProgramAPI(
     skip_names = details::GetNameFromValue(
         forward_global_block, output_values, false, true);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
+    skip_names = details::GetNameFromValue(
+        forward_global_block, input_values, true, false);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
