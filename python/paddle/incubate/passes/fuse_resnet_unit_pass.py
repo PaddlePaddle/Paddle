@@ -70,7 +70,7 @@ def fuse_resnet_unit():
     def replace_one_input(x, bitmask_x, filter, scale, bias, mean, var):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x,
-            XBitMask=bitmask_x,
+            MaxPtrX=bitmask_x,
             FilterX=filter,
             ScaleX=scale,
             BiasX=bias,
@@ -123,14 +123,14 @@ def fuse_resnet_unit():
     ):
         resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x,
-            XBitMask=bitmask_x,
+            MaxPtrX=bitmask_x,
             FilterX=filterX,
             ScaleX=scaleX,
             BiasX=biasX,
             MeanX=meanX,
             VarX=varX,
             Z=z,
-            ZBitMask=bitmask_z,
+            MaxPtrZ=bitmask_z,
             FilterZ=filterZ,
             ScaleZ=scaleZ,
             BiasZ=biasZ,
