@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
 from paddle.framework import LayerHelper, in_dynamic_mode
 
@@ -155,7 +155,7 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             [1, 2, 2, 4, 3, 3])
     """
     if in_dynamic_mode():
-        return _legacy_C_ops.limit_by_capacity(
+        return _C_ops.limit_by_capacity(
             expert_count, capacity, 'n_worker', n_worker
         )
     else:
