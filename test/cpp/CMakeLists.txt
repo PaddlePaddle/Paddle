@@ -1,4 +1,4 @@
-if(NOT WITH_CPP_TEST)
+if(WIN32 AND NOT WITH_CPP_TEST)
   return()
 endif()
 add_subdirectory(auto_parallel)
