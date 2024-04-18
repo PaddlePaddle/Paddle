@@ -28,6 +28,11 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
 
 ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
     pir::Operation* op) {
+  return op_signature_map_[op];
+}
+
+ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
+    pir::Operation* op) {
   auto result = ShardableAxesSignature();
   auto origin_sig = op_signature_map_[op];
   for (const auto& axes : origin_sig.inputs) {
