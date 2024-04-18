@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <sstream>
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -177,7 +178,7 @@ namespace std {
 template <>
 struct hash<symbol::ShapeOrDataDimExprs> {
   std::size_t operator()(const symbol::ShapeOrDataDimExprs& obj) const {
-    std::ostream os;
+    std::ostringstream os;
     os << obj;
     return std::hash<std::string>()(os.str());
   }
