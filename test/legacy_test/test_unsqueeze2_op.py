@@ -101,6 +101,22 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
+# Test for output rank=7
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (1, 2, 3, 4)
+        self.new_shape = (10, 1, 1, 1, 1, 2, 5)
+
+
+# Test for output rank=8
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (1, 2, 3, 4, 5)
+        self.new_shape = (10, 1, 1, 1, 1, 1, 2, 5)
+
+
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = ()

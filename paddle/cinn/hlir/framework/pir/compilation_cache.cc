@@ -24,7 +24,7 @@ void* BackendResource::GetHostFuncPtr() const {
   VLOG(4) << "Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(ptr,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Can't find kernel function %s", host_fn_name_));
   return ptr;
 }
@@ -34,8 +34,8 @@ void* BackendResource::GetInferFuncPtr() const {
   void* ptr = backend_compiler_->Lookup(infer_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(
       ptr,
-      phi::errors::InvalidArgument("Can't find infer shape function %s",
-                                   infer_fn_name_));
+      ::common::errors::InvalidArgument("Can't find infer shape function %s",
+                                        infer_fn_name_));
   return ptr;
 }
 
@@ -61,7 +61,7 @@ const CompilationCache::CacheValue& CompilationCache::Get(
   PADDLE_ENFORCE_EQ(
       Has(key),
       true,
-      phi::errors::NotFound("%s is not in CompliatonCache.", key));
+      ::common::errors::NotFound("%s is not in CompliatonCache.", key));
   return cache_.at(key);
 }
 
@@ -71,6 +71,12 @@ pir::CINNKernelInfo CompilationCache::GetKernelInfo(const CacheKey& key) const {
 
 void CompilationCache::Insert(const CacheKey& key, const CacheValue& value) {
   VLOG(6) << "Insert CompilationCache for: " << key;
+  PADDLE_ENFORCE_EQ(Has(key),
+                    false,
+                    ::common::errors::PreconditionNotMet(
+                        "%s is already in CompliatonCache while calling "
+                        "CompilationCache::Insert().",
+                        key));
   cache_.insert({key, value});
 }
 
