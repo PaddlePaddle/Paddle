@@ -27,27 +27,31 @@ from .optimizer import Optimizer
 __all__ = []
 
 
-class NAdam(Optimizer):
+class RAdam(Optimizer):
     r"""
-    The NAdam optimizer is implemented based on the Adam Optimization
-    in paper `Incorporating Nesterov Momentum into Adam <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>`_.
-    The main improvement is to combine the advantages of Nesterov momentum and Adam adaptive learning rate.
+    The RAdam optimizer is implemented based on the Adam Optimization
+    in paper `On the Variance of the Adaptive Learning Rate and Beyond <https://arxiv.org/abs/1908.03265>`_.
+    RAdam improved the initial stability of training by modifying Adam's momentum term.
 
     .. math::
 
-       \begin{aligned}
+        \begin{aligned}
             &\textbf{for} \: t=1 \: \textbf{to} \: \ldots \: \textbf{do}                         \\
-            &\hspace{5mm} \mu_t \leftarrow \beta_1 \big(1 - \frac{1}{2}  \rho ^{t \psi} \big)     \\
-            &\hspace{5mm} \mu_{t+1} \leftarrow \beta_1 \big(1 - \frac{1}{2} \rho ^{(t+1)\psi}\big)\\
-            &\hspace{5mm}m_t           \leftarrow   \beta_1 m_{t-1} + (1 - \beta_1) g_t          \\
-            &\hspace{5mm}v_t           \leftarrow   \beta_2 v_{t-1} + (1-\beta_2) g^2_t          \\
-            &\hspace{5mm}\widehat{m_t} \leftarrow \mu_{t+1} m_t/(1-\prod_{i=1}^{t+1}\mu_i) + (1-\mu_t) g_t /(1-\prod_{i=1}^{t} \mu_{i})                         \\
-            &\hspace{5mm}\widehat{v_t} \leftarrow   v_t/\big(1-\beta_2^t \big)                   \\
-            &\hspace{5mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t}/
-                \big(\sqrt{\widehat{v_t}} + \epsilon \big)                                       \\
-            &\hspace{0mm} \text{ 其中 } \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)}, \: \theta_0 \text{ (params)}, \: f(\theta) \text{ (objective)} \\
-            &\hspace{0mm} \: \lambda \text{ (weight decay)}, \:\psi \text{ (momentum decay)} \: \rho \text{ (momentum decay base) } \\
-       \end{aligned}
+            &\hspace{6mm}m_t           \leftarrow   \beta_1 m_{t-1} + (1 - \beta_1) g_t          \\
+            &\hspace{6mm}v_t           \leftarrow   \beta_2 v_{t-1} + (1-\beta_2) g^2_t          \\
+            &\hspace{6mm}\widehat{m_t} \leftarrow   m_t/\big(1-\beta_1^t \big)                   \\
+            &\hspace{6mm}\rho_t \leftarrow \rho_{\infty} -
+                2 t \beta^t_2 /\big(1-\beta_2^t \big)                                    \\
+            &\hspace{6mm}\textbf{if} \: \rho_t > 5                                               \\
+            &\hspace{12mm} l_t \leftarrow \frac{\sqrt{ (1-\beta^t_2) }}{ \sqrt{v_t} +\epsilon  } \\
+            &\hspace{12mm} r_t \leftarrow
+        \sqrt{\frac{(\rho_t-4)(\rho_t-2)\rho_{\infty}}{(\rho_{\infty}-4)(\rho_{\infty}-2) \rho_t}} \\
+            &\hspace{12mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t} r_t l_t        \\
+            &\hspace{6mm}\textbf{else}                                                           \\
+            &\hspace{12mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t}                \\
+            &\hspace{0mm} \text{ 其中 } \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)}, \: \theta_t \text{ (params)} \\
+            &\hspace{0mm} \rho_{\infty} \leftarrow 2/(1-\beta_2) -1
+        \end{aligned}
 
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
@@ -67,8 +71,6 @@ class NAdam(Optimizer):
         epsilon (float): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        momentum_decay (float): momentum momentum_decay. The default value is 0.004.
-        momentum_decay_base (float): momentum momentum_decay_base. The default value is 0.96.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
@@ -78,7 +80,7 @@ class NAdam(Optimizer):
             The default value is None.
 
     **Notes**:
-        **Currently, NAdam doesn't support sparse parameter optimization.**
+        **Currently, RAdam doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
@@ -90,11 +92,11 @@ class NAdam(Optimizer):
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
 
-            >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
+            >>> radam = paddle.optimizer.RAdam(learning_rate=0.1,
             ...                     parameters=linear.parameters())
             >>> out.backward()
-            >>> nadam.step()
-            >>> nadam.clear_grad()
+            >>> radam.step()
+            >>> radam.clear_grad()
 
             >>> # Note that the learning_rate of linear_2 is 0.01.
             >>> linear_1 = paddle.nn.Linear(10, 10)
@@ -103,7 +105,7 @@ class NAdam(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> opt = paddle.optimizer.NAdam(
+            >>> opt = paddle.optimizer.RAdam(
             ...     learning_rate=0.1,
             ...     parameters=[{
             ...         'params': linear_1.parameters()
@@ -122,9 +124,9 @@ class NAdam(Optimizer):
 
     """
 
-    _momentum_decay_pow_acc_str = "momentum_decay_pow"
+    _beta1_pow_acc_str = "beta1_pow"
     _beta2_pow_acc_str = "beta2_pow"
-    _mu_product_acc_str = "mu_product"
+    _rho_acc_str = "rho"
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
 
@@ -134,8 +136,6 @@ class NAdam(Optimizer):
         beta1=0.9,
         beta2=0.999,
         epsilon=1.0e-8,
-        momentum_decay=0.004,
-        momentum_decay_base=0.96,
         parameters=None,
         weight_decay=None,
         grad_clip=None,
@@ -157,14 +157,6 @@ class NAdam(Optimizer):
             raise ValueError(
                 f"Invalid beta2: {beta2}, expect 0. <= beta2 < 1.0."
             )
-        if not 0.0 <= momentum_decay:
-            raise ValueError(
-                f"Invalid momentum_decay value: {momentum_decay}, expect momentum_decay >= 0."
-            )
-        if not 0.0 <= momentum_decay_base:
-            raise ValueError(
-                f"Invalid momentum_decay_base value: {momentum_decay_base}, expect momentum_decay_base >= 0."
-            )
 
         super().__init__(
             learning_rate=learning_rate,
@@ -174,20 +166,16 @@ class NAdam(Optimizer):
             name=name,
         )
 
-        self.type = "nadam"
+        self.type = "radam"
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self._momentum_decay_base = momentum_decay_base
-        self._momentum_decay = momentum_decay
         self._multi_precision = False
         self._master_weights = {}
         self._default_dict = {
             'beta1': beta1,
             'beta2': beta2,
             'epsilon': epsilon,
-            'momentum_decay': momentum_decay,
-            'momentum_decay_base': momentum_decay_base,
         }
 
     def _add_moments_pows(self, p):
@@ -198,7 +186,7 @@ class NAdam(Optimizer):
             )
 
         self._add_accumulator(
-            name=self._momentum_decay_pow_acc_str,
+            name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
             fill_value=1.0,
@@ -214,7 +202,7 @@ class NAdam(Optimizer):
             device='cpu',
         )
         self._add_accumulator(
-            name=self._mu_product_acc_str,
+            name=self._rho_acc_str,
             param=p,
             dtype=acc_dtype,
             fill_value=1.0,
@@ -259,14 +247,14 @@ class NAdam(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        momentum_decay_pow_acc = self._get_accumulator_master(
-            self._momentum_decay_pow_acc_str, param_and_grad[0]
+        beta1_pow_acc = self._get_accumulator_master(
+            self._beta1_pow_acc_str, param_and_grad[0]
         )
         beta2_pow_acc = self._get_accumulator_master(
             self._beta2_pow_acc_str, param_and_grad[0]
         )
-        mu_product_acc = self._get_accumulator_master(
-            self._mu_product_acc_str, param_and_grad[0]
+        rho_acc = self._get_accumulator_master(
+            self._rho_acc_str, param_and_grad[0]
         )
         moment1_acc = self._get_accumulator_master(
             self._moment1_acc_str, param_and_grad[0]
@@ -284,21 +272,19 @@ class NAdam(Optimizer):
         )
 
         if in_dynamic_or_pir_mode():
-            _C_ops.nadam_(
+            _C_ops.radam_(
                 param_and_grad[0],
                 param_and_grad[1],
                 self._create_param_lr(param_and_grad),
-                momentum_decay_pow_acc,
+                beta1_pow_acc,
                 beta2_pow_acc,
-                mu_product_acc,
+                rho_acc,
                 moment1_acc,
                 moment2_acc,
                 master_weight,
                 self._beta1,
                 self._beta2,
                 self._epsilon,
-                self._momentum_decay,
-                self._momentum_decay_base,
                 find_master,
             )
             return None
@@ -306,9 +292,9 @@ class NAdam(Optimizer):
             inputs = {
                 "param": param_and_grad[0],
                 "grad": param_and_grad[1],
-                "momentum_decay_pow": momentum_decay_pow_acc,
+                "beta1_pow": beta1_pow_acc,
                 "beta2_pow": beta2_pow_acc,
-                "mu_product": mu_product_acc,
+                "rho": rho_acc,
                 "moment1": moment1_acc,
                 "moment2": moment2_acc,
                 "learning_rate": self._create_param_lr(param_and_grad),
@@ -316,9 +302,9 @@ class NAdam(Optimizer):
 
             outputs = {
                 "param_out": param_and_grad[0],
-                "momentum_decay_pow_out": momentum_decay_pow_acc,
+                "beta1_pow_out": beta1_pow_acc,
                 "beta2_pow_out": beta2_pow_acc,
-                "mu_product_out": mu_product_acc,
+                "rho_out": rho_acc,
                 "moment1_out": moment1_acc,
                 "moment2_out": moment2_acc,
             }
@@ -326,7 +312,7 @@ class NAdam(Optimizer):
             if find_master:
                 inputs["master_param"] = master_weight
                 outputs["master_param_out"] = master_weight
-            nadam_op = block.append_op(
+            radam_op = block.append_op(
                 type=self.type,
                 inputs=inputs,
                 outputs=outputs,
@@ -334,23 +320,15 @@ class NAdam(Optimizer):
                     "epsilon": self._epsilon,
                     "beta1": self._beta1,
                     "beta2": self._beta2,
-                    "momentum_decay": self._momentum_decay,
-                    "momentum_decay_base": self._momentum_decay_base,
                 },
                 stop_gradient=True,
             )
 
-            return nadam_op
+            return radam_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
-        self._momentum_decay = parameters.get(
-            'momentum_decay', self._default_dict['momentum_decay']
-        )
-        self._momentum_decay_base = parameters.get(
-            'momentum_decay_base', self._default_dict['momentum_decay_base']
-        )
         parameters = parameters.get('params')
         return parameters

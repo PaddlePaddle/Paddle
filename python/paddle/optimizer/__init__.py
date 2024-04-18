@@ -19,11 +19,11 @@ from .adam import Adam
 from .adamax import Adamax
 from .adamw import AdamW
 from .asgd import ASGD
-from .lamb import Lamb
 from .lbfgs import LBFGS
 from .momentum import Momentum
 from .nadam import NAdam
 from .optimizer import Optimizer
+from .radam import RAdam
 from .rmsprop import RMSProp
 from .rprop import Rprop
 from .sgd import SGD
@@ -35,12 +35,13 @@ __all__ = [
     'AdamW',
     'Adamax',
     'ASGD',
+    'RAdam',
     'RMSProp',
     'Adadelta',
     'SGD',
     'Rprop',
     'Momentum',
-    'NAdam'
+    'NAdam',
     'Lamb',
     'LBFGS',
 ]
