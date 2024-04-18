@@ -20,6 +20,7 @@ from test_to_static_pir_program import create_data_loader
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.base.framework import _current_expected_place
 
 BATCH_SIZE = 4
 BATCH_NUM = 40
@@ -98,9 +99,8 @@ class PPDemoNet(nn.Layer):
 # class TestMLPReplicated(unittest.TestCase):
 #     def test_to_static_program(self):
 #         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
-#         mesh1 = dist.ProcessMesh([0, 1], dim_names=["x"])
-#         mesh2 = dist.ProcessMesh([0, 1], dim_names=["x"])
-#         replicated_layer = PPDemoNet(mesh, False)
+#         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+#         replicated_layer = DemoNet(mesh, False)
 #         opt = paddle.optimizer.SGD(
 #             learning_rate=0.1, parameters=replicated_layer.parameters()
 #         )
@@ -180,26 +180,27 @@ class TestMLPPipelineParallel(unittest.TestCase):
         print(
             "================" + "partitioner dist program" + "================"
         )
+        dist_program = apply_partition_pass(dist_program)
         print(dist_program)
 
-        # dist_model.train()
-        # mode = "train"
-        # # dist_model._engine._build(mode)
-        # # main_program = dist_model._engine._pir_main_progs[mode]
+        dist_model.train()
+        mode = "train"
+        # dist_model._engine._build(mode)
+        # main_program = dist_model._engine._pir_main_progs[mode]
 
-        # # TODO(2024-Q2) hack for engine api
-        # # main_program = dist_model._engine._pir_main_progs[mode]
-        # dist_model._engine._has_prepared[mode] = True
-        # dist_model._mode = mode
-        # dist_model._engine._mode = mode
-        # paddle.disable_static()
-        # dist_model._engine._initialize(mode)
-        # dist_model._engine._executor = paddle.static.Executor(
-        #     _current_expected_place()
-        # )
+        # TODO(2024-Q2) hack for engine api
+        # main_program = dist_model._engine._pir_main_progs[mode]
+        dist_model._engine._has_prepared[mode] = True
+        dist_model._mode = mode
+        dist_model._engine._mode = mode
+        paddle.disable_static()
+        dist_model._engine._initialize(mode)
+        dist_model._engine._executor = paddle.static.Executor(
+            _current_expected_place()
+        )
 
-        # for batch_id, (image, label) in enumerate(dist_loader()):
-        #     loss = dist_model(image, label)
+        for batch_id, (image, label) in enumerate(dist_loader()):
+            loss = dist_model(image, label)
 
 
 if __name__ == "__main__":
