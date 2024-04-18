@@ -41,7 +41,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
     PADDLE_ENFORCE_EQ(
         ((stream != nullptr && comm != nullptr) || comm_ctx != nullptr),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "NCCLComm and Stream should be provided if use NCCL "
             "to send the shape info."));
   }
@@ -131,14 +131,14 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for recv_v2 op must be non-negative.", rid));
 
     int peer = ctx.Attr<int>("peer");
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
     gpuStream_t stream = nullptr;
@@ -180,7 +180,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -191,20 +191,20 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
       VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      PADDLE_ENFORCE_LT(peer,
-                        comm->nranks(),
-                        platform::errors::InvalidArgument(
-                            "The value of peer (%d) you set must "
-                            "be less than comm->nranks (%d).",
-                            peer,
-                            comm->nranks()));
+      PADDLE_ENFORCE_LT(
+          peer,
+          comm->nranks(),
+          phi::errors::InvalidArgument("The value of peer (%d) you set must "
+                                       "be less than comm->nranks (%d).",
+                                       peer,
+                                       comm->nranks()));
       stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
@@ -223,8 +223,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           dynamic_shape,
           false,
-          platform::errors::InvalidArgument("Dynamic shape for send/recv not "
-                                            "support LoDTensorArray for now."));
+          phi::errors::InvalidArgument("Dynamic shape for send/recv not "
+                                       "support LoDTensorArray for now."));
       auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < out_array->size(); ++idx) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
@@ -267,20 +267,20 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       comm_ctx->Recv(out, numel, peer, stream);
     } else {
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      PADDLE_ENFORCE_LT(peer,
-                        comm->nranks(),
-                        platform::errors::InvalidArgument(
-                            "The value of peer (%d) you set must "
-                            "be less than comm->nranks (%d).",
-                            peer,
-                            comm->nranks()));
+      PADDLE_ENFORCE_LT(
+          peer,
+          comm->nranks(),
+          phi::errors::InvalidArgument("The value of peer (%d) you set must "
+                                       "be less than comm->nranks (%d).",
+                                       peer,
+                                       comm->nranks()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " recv "
               << common::product(out->dims()) << " from " << peer;
     }
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "
         "NCCL version >= 2.7.3 is needed."));
 #endif
@@ -305,5 +305,5 @@ PD_REGISTER_STRUCT_KERNEL(recv_v2,
                           int,
                           int64_t,
                           int8_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

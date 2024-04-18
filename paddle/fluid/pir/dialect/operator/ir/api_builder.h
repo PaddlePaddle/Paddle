@@ -59,6 +59,10 @@ class ApiBuilder {
   void SetInsertionPoint(pir::Operation* op) {
     builder_->set_insertion_point(op);
   }
+
+  void SetInsertionPointAfter(pir::Operation* op) {
+    builder_->SetInsertionPointAfter(op);
+  }
   /// Set the insertion point to the end of specified block.
   void SetInsertionPointToBlockEnd(pir::Block* block) {
     builder_->SetInsertionPointToBlockEnd(block);
