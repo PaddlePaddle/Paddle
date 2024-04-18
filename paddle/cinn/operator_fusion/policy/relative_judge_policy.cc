@@ -198,7 +198,7 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
       SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
                       downstream_reduce_op);
 
-  const auto& upstream_output_dims = GetAllDimUsageFromValue(
+  const auto& upstream_output_dims = GetValueUsage(
       reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
   const auto& [related, _UNUSED] =
       SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
@@ -220,7 +220,7 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
   // downstream output value must have been used for there is yield op, so
   // usage_idx==0 exists
   const auto& [_UNUSED, non_related_dims] = SplitFirstIfRelatedBySecond(
-      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
+      GetValueUsage(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   auto res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
@@ -238,7 +238,7 @@ bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
                       upstream->sink_op_);
 
   const auto& [related_dims, _UNUSED] = SplitFirstIfRelatedBySecond(
-      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
+      GetValueUsage(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   VLOG(4) << "IsFlattenDimSmaller: "
@@ -280,7 +280,7 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
                       upstream->sink_op_);
 
   const auto& [_UNUSED, trivial_reorder_dims] = SplitFirstIfRelatedBySecond(
-      GetAllDimUsageFromValue(downstream->sink_op_->result(0), 0),
+      GetValueUsage(downstream->sink_op_->result(0), 0),
       upstream_non_reduce_dims);
 
   // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||

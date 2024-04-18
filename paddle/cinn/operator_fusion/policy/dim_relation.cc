@@ -28,8 +28,8 @@ const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
       "Can not find the usage of value %s in op %s", v.impl(), op->name()));
 }
 
-ValueDim GetAllDimUsageFromValue(const pir::Value& v, const size_t usage_idx) {
-  ValueDim valud_dim;
+ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
+  ValueUsage valud_dim;
   size_t rank = GetRank(v);
   for (size_t i = 0; i < rank; ++i) {
     valud_dim.emplace_back(v, i, usage_idx);
@@ -37,22 +37,22 @@ ValueDim GetAllDimUsageFromValue(const pir::Value& v, const size_t usage_idx) {
   return valud_dim;
 }
 
-static std::vector<ValueDim> GetInputValueDim(pir::Operation* op) {
-  std::vector<ValueDim> value_dims;
+static std::vector<ValueUsage> GetInputValueUsage(pir::Operation* op) {
+  std::vector<ValueUsage> value_dims;
   for (const auto& v : op->operands()) {
     value_dims.emplace_back(
-        GetAllDimUsageFromValue(v.source(), GetUsageIdx(v.source(), op)));
+        GetValueUsage(v.source(), GetUsageIdx(v.source(), op)));
   }
   return value_dims;
 }
 
-static std::vector<std::vector<ValueDim>> GetOutputValueDim(
+static std::vector<std::vector<ValueUsage>> GetOutputValueUsage(
     pir::Operation* op) {
-  std::vector<std::vector<ValueDim>> result;
+  std::vector<std::vector<ValueUsage>> result;
   for (const auto& v : op->results()) {
-    std::vector<ValueDim> single_output_value_dim;
+    std::vector<ValueUsage> single_output_value_dim;
     for (size_t i = 0; i < v.use_count(); i++) {
-      single_output_value_dim.emplace_back(GetAllDimUsageFromValue(v, i));
+      single_output_value_dim.emplace_back(GetValueUsage(v, i));
     }
     result.emplace_back(single_output_value_dim);
   }
@@ -60,11 +60,11 @@ static std::vector<std::vector<ValueDim>> GetOutputValueDim(
 }
 
 static std::vector<DimUsage> GetAllInputDimUsage(pir::Operation* op) {
-  return ConcatAll(GetInputValueDim(op));
+  return ConcatAll(GetInputValueUsage(op));
 }
 
 static std::vector<DimUsage> GetAllOutputDimUsage(pir::Operation* op) {
-  return ConcatAll(ConcatAll(GetOutputValueDim(op)));
+  return ConcatAll(ConcatAll(GetOutputValueUsage(op)));
 }
 
 static DimUsageRelation CreateOpRelativenessForDefault(pir::Operation* op) {
@@ -82,9 +82,9 @@ static DimUsageRelation CreateOpRelativenessForDefault(pir::Operation* op) {
 
 static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
   DimUsageRelation res;
-  const std::vector<ValueDim>& input_value_dims = GetInputValueDim(op);
-  const std::vector<ValueDim>& output_value_dims =
-      ConcatAll(GetOutputValueDim(op));
+  const std::vector<ValueUsage>& input_value_dims = GetInputValueUsage(op);
+  const std::vector<ValueUsage>& output_value_dims =
+      ConcatAll(GetOutputValueUsage(op));
 
   for (auto in_value_dim : input_value_dims) {
     for (auto out_value_dim : output_value_dims) {
