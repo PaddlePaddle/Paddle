@@ -65,7 +65,8 @@ static std::vector<std::vector<ValueDim>> GetAllOutputValueDim(
 static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
   ValueDimRelation res;
   for (const auto& v : op->operands()) {
-    const auto& value_dims = GetAllValueDimFromValue(v.source());
+    const auto& value_dims =
+        GetAllValueDimFromValue(v.source(), GetUsageIdx(v.source(), op));
     const auto& out_value_dims = GetAllOutputValueDim(op);
     CHECK_EQ(value_dims.size(), out_value_dims.size());
     for (size_t i = 0; i < value_dims.size(); ++i) {

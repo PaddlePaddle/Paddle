@@ -69,6 +69,7 @@ using ValueDimRelation =
 ValueDimRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops);
 const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op);
-std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v);
+std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v,
+                                              const size_t usage_idx);
 
 }  // namespace cinn::fusion

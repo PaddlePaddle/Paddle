@@ -196,8 +196,9 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
 
-  const auto& [downstream_reduce_dims, _UNUSED] = SplitReduceDims(
-      axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
+  const auto& [downstream_reduce_dims, downstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
+                      downstream_reduce_op);
 
   const auto& upstream_output_dims = GetAllValueDimFromValue(
       reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
