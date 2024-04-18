@@ -1453,6 +1453,51 @@ std::shared_ptr<OpStrategy> StrategyForTril(
   return strategy;
 }
 
+std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute assign_out_compute([=](lang::Args args,
+                                                lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input arguments of AssignOut compute is empty! Please check.\n";
+    CINNValuePack pack_args = args[0];
+    CHECK_EQ(pack_args.size(), 3U)
+        << "3 input tensors is needed for AssignOut compute\n";
+    Expr x = pack_args[0];
+    CHECK(x.as_tensor());
+    Expr out = pack_args[1];
+    CHECK(out.as_tensor());
+    CHECK(!output_shapes.empty());
+    auto tensor_x = x.as_tensor_ref();
+    auto tensor_out = out.as_tensor_ref();
+
+    std::string tensor_name = pack_args[2].operator std::string();
+    auto new_out = Compute(
+        tensor_x->shape,
+        [=](const std::vector<Expr> &indice) { return tensor_x(indice); },
+        tensor_name);
+
+    CHECK(!out_type.empty())
+        << "Output type of AssignOut is empty! Please check.\n";
+    if (!tensor_out->buffer.defined()) {
+      tensor_out->WithBuffer(out_type.front());
+    }
+    new_out->Bind(tensor_out->buffer);
+
+    auto stages = CreateStages({tensor_x, tensor_out, new_out});
+    std::vector<CINNValue> res{CINNValue(new_out), CINNValue(stages)};
+    *ret = CINNValuePack{res};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      assign_out_compute, lang::PackedFunc(), "strategy.default", 1);
+  return strategy;
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -1786,6 +1831,15 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForTril)
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
+
+  CINN_REGISTER_OP(assign_out_)
+      .describe("Copy the value of the first parameter to the second one")
+      .set_num_inputs(2)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForAssignOutSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
 

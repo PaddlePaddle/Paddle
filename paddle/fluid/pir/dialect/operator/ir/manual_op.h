@@ -660,7 +660,8 @@ class AssignOut_Op
                      paddle::dialect::InferMetaInterface,
                      paddle::dialect::VjpInterface,
                      paddle::dialect::GetKernelTypeForVarInterface,
-                     paddle::dialect::InplaceTrait> {
+                     paddle::dialect::InplaceTrait,
+                     pir::SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.assign_out_"; }

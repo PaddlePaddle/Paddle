@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
@@ -43,7 +42,6 @@ namespace paddle {
 namespace operators::details {
 
 using framework::OpDesc;
-using framework::ParallelExecutor;
 using framework::ProgramDesc;
 using framework::ir::Graph;
 using framework::paddle2cinn::Name2VarInfoMap;
