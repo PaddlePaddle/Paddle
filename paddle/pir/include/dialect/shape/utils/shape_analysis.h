@@ -35,7 +35,7 @@ class IR_API ShapeConstraintIRAnalysis {
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  void GetAndSetShapeOrDataForValueFromDefiningOp(Value val);
+  void InferShapeOrDataForValue(Value val);
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
 

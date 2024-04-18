@@ -14,7 +14,9 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <string>
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
+#include "paddle/cinn/common/bfs_walker.h"
+#include "paddle/cinn/common/topo_walker.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace pir {
@@ -44,23 +46,76 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.count(val) > 0;
 }
 
-void ShapeConstraintIRAnalysis::GetAndSetShapeOrDataForValueFromDefiningOp(
-    Value val) {
-  auto infer_symbolic_shape_interface =
-      val.defining_op()
-          ->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-  if (infer_symbolic_shape_interface) {
-    infer_symbolic_shape_interface.InferSymbolicShape(this);
-    if (!HasShapeOrDataForValue(val)) {
-      PADDLE_THROW(
-          phi::errors::Fatal(val.defining_op()->name() +
-                             " HAS ERROR on InferSymbolicShape backtrack!"));
-    }
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        val.defining_op()->name() +
-        " DOES NOT have InferSymbolicShapeInterface!"));
+void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
+  if (HasShapeOrDataForValue(val)) {
+    return;
   }
+  std::unordered_set<Operation*> subgraph_ops;
+  std::vector<Operation*> start_ops;
+  const auto& GetNextVisitOpForBuild =
+      [&](Operation* op, const std::function<void(Operation*)>& Visit) {
+        for (auto& operand : op->operands_source()) {
+          if (operand.impl() && !HasShapeOrDataForValue(operand)) {
+            Visit(operand.defining_op());
+          }
+        }
+      };
+
+  cinn::common::BfsWalker<Operation*> build_subgraph_walker(
+      GetNextVisitOpForBuild);
+  build_subgraph_walker(val.defining_op(), [&](Operation* op) {
+    subgraph_ops.insert(op);
+    bool has_prev_op = false;
+    for (auto& operand : op->operands_source()) {
+      if (operand.impl() && !HasShapeOrDataForValue(operand)) {
+        has_prev_op = true;
+      }
+    }
+    if (!has_prev_op) {
+      start_ops.emplace_back(op);
+    }
+  });
+
+  const auto& GetPrevVisitOpForInfer =
+      [&](Operation* op, const std::function<void(Operation*)>& Visit) {
+        for (auto& operand : op->operands_source()) {
+          if (operand.impl() && subgraph_ops.count(operand.defining_op())) {
+            Visit(operand.defining_op());
+          }
+        }
+      };
+  const auto& GetNextVisitOpForInfer =
+      [&](Operation* op, const std::function<void(Operation*)>& Visit) {
+        for (uint32_t i = 0; i < op->num_results(); ++i) {
+          for (auto iter = op->result(i).use_begin();
+               iter != op->result(i).use_end();
+               ++iter) {
+            if (subgraph_ops.count(iter->owner())) {
+              Visit(iter->owner());
+            }
+          }
+        }
+      };
+  cinn::common::TopoWalker<Operation*> topo_infer_walker(
+      GetPrevVisitOpForInfer, GetNextVisitOpForInfer);
+
+  topo_infer_walker(start_ops.begin(), start_ops.end(), [&](Operation* op) {
+    auto infer_symbolic_shape_interface =
+        op->dyn_cast<pir::InferSymbolicShapeInterface>();
+    if (infer_symbolic_shape_interface) {
+      infer_symbolic_shape_interface.InferSymbolicShape(this);
+      for (auto& result_value : op->results()) {
+        if (result_value && (!HasShapeOrDataForValue(result_value))) {
+          PADDLE_THROW(phi::errors::Fatal(op->name() +
+                                          " HAS ERROR on InferSymbolicShape!"));
+        }
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          val.defining_op()->name() +
+          " DOES NOT have InferSymbolicShapeInterface!"));
+    }
+  });
 }
 
 const symbol::ShapeOrDataDimExprs&
@@ -73,7 +128,7 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   }
   if (!HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op
-    GetAndSetShapeOrDataForValueFromDefiningOp(val);
+    InferShapeOrDataForValue(val);
   }
 
   return value_to_shape_or_data_.at(val);
