@@ -36,6 +36,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/value.h"
 
 namespace paddle {
@@ -858,6 +859,24 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
   attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
 }
 
+void CastPyArg2AttrIRProgram(PyObject* obj,
+                             paddle::framework::AttributeMap& attrs,  // NOLINT
+                             const std::string& key,
+                             const std::string& op_type,
+                             ssize_t arg_pos) {
+  VLOG(1) << "After Process pir::Program*";
+  ::pybind11::detail::instance* inst =
+      (::pybind11::detail::instance*)obj;  // NOLINT
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+
+  ::pir::Program* program = reinterpret_cast<::pir::Program*>(vh[0]);
+
+  attrs[key] = program;
+  // attrs[key] = reinterpret_cast<::pir::Program*>(vh[0]);
+  //  attrs[key] = vh[0];
+}
+
 void CastPyArg2AttrValues(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
                           const std::string& key,
@@ -998,6 +1017,7 @@ void ConstructAttrMapForRunProgram(
                         attr_end));
 
   PyObject* obj = nullptr;
+  attrs["testkey"] = std::string("testvalue");
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
     VLOG(1) << "Start Process " << arg_pos;
     Py_ssize_t key_len = 0;
@@ -1020,11 +1040,11 @@ void ConstructAttrMapForRunProgram(
 
     if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
       CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
-    } else if (std::set<std::string>({"global_block",
-                                      "forward_global_block",
-                                      "backward_global_block"})
-                   .count(key)) {
+    } else if (std::set<std::string>({"global_block"}).count(key)) {
       CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"forward_program", "backward_program"})
+                   .count(key)) {
+      CastPyArg2AttrIRProgram(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);

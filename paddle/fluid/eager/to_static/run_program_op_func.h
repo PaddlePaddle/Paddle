@@ -317,6 +317,26 @@ inline void pir_run_program_ad_func(
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
+    auto* backward_program =
+        PADDLE_GET_CONST(::pir::Program*, attrs.at("backward_program"));
+
+    auto* forward_program =
+        PADDLE_GET_CONST(::pir::Program*, attrs.at("forward_program"));
+
+    auto testkey = PADDLE_GET_CONST(std::string, attrs.at("testkey"));
+
+    VLOG(1) << "[pir_run_program_ad_func] testkey: " << testkey;
+    // TODO(gouzil): 对比一下这里的attrs的地址
+    VLOG(1) << "[pir_run_program_ad_func] attrs: " << &attrs;
+
+    VLOG(1) << "[pir_run_program_ad_func] backward_program: "
+            << backward_program;
+    VLOG(1) << "[pir_run_program_ad_func] backward_program: "
+            << backward_program->num_ops();
+    VLOG(1) << "[pir_run_program_ad_func] forward_program: " << forward_program;
+    VLOG(1) << "[pir_run_program_ad_func] forward_program: "
+            << forward_program->num_ops();
+
     // Clear unused x vars
     auto filter_x = pir_filter_unused_input_var_in_backward(x_tmp, "bx", attrs);
     // Set TensorWrappers

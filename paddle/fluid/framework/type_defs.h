@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
@@ -40,6 +41,7 @@ class InferShapeContext;
 class InferVarTypeContext;
 class VarDesc;
 class BlockDesc;
+class ProgramDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
@@ -67,7 +69,9 @@ using Attribute = paddle::variant<paddle::blank,
                                   paddle::experimental::Scalar,
                                   std::vector<paddle::experimental::Scalar>,
                                   ::pir::Block*,
-                                  std::vector<::pir::Value>>;
+                                  std::vector<::pir::Value>,
+                                  ::pir::Program*,
+                                  ProgramDesc*>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 using OpCreator =
