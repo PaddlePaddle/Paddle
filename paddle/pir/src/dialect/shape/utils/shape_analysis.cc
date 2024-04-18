@@ -65,6 +65,12 @@ void ShapeConstraintIRAnalysis::GetAndSetShapeOrDataForValueFromDefiningOp(
 
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
+  // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprs
+  if (!val) {
+    static symbol::ShapeOrDataDimExprs empty{
+        symbol::TensorShapeOrDataDimExprs{}};
+    return empty;
+  }
   if (!HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op
     GetAndSetShapeOrDataForValueFromDefiningOp(val);
