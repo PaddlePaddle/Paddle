@@ -185,6 +185,8 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
       sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
     }
   } else {
+    std::cerr << "context_->config.tile_config.tree_reduce_num "
+              << context_->config.tile_config.tree_reduce_num << std::endl;
     std::vector<int> split_factors{
         static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
     sch->Split(loops[reduce_current_axis_], split_factors);

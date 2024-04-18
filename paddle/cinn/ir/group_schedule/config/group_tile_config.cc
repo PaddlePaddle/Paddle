@@ -69,6 +69,7 @@ std::unordered_map<BucketInfo, ScheduleConfig::TileConfig, BucketInfoHash>
 BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@!\n";
   if (base_info->spatial_numel == 1) {  // reduce all
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ 1,
@@ -142,6 +143,9 @@ BuildPureStaticShapeConfig(
         int64_t(std::ceil(base_info->reduce_numel * 1.0 / 256.0));
     int64_t spatial_inner_num = 1;
     int64_t tree_reduce_num = reduce_block / reduce_inner_num;
+
+    std::cerr << "tree reduce num " << reduce_block << "\t" << reduce_inner_num
+              << "\t" << tree_reduce_num << std::endl;
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 2049,
@@ -211,6 +215,7 @@ std::unordered_map<BucketInfo, ScheduleConfig::TileConfig, BucketInfoHash>
 BuildStaticReduceConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  std::cerr << "@@@@!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
   if (base_info->reduce_numel == 1) {
     BucketInfo bucket_info__1_1023{/* sp_lower_bound = */ 1,
                                    /* sp_upper_bound = */ 1023,
@@ -277,6 +282,8 @@ BuildStaticReduceConfig(
         int64_t(std::ceil(base_info->reduce_numel * 1.0 / 256.0));
     int64_t spatial_inner_num = 1;
     int64_t tree_reduce_num = reduce_block / reduce_inner_num;
+    std::cerr << "tree reduce num " << reduce_block << "\t" << reduce_inner_num
+              << "\t" << tree_reduce_num << std::endl;
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 2049,
