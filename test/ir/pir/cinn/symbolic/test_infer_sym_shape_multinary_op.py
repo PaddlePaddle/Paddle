@@ -64,6 +64,59 @@ class ExpandOpInferSymbolicShapeTest(TestBase):
         return out
 
 
+class MeshgridNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        out_x, out_y = paddle.meshgrid(x, y)
+        return out_x, out_y
+
+
+class MeshgridOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.x_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(100),
+            np.random.rand(1000),
+        ]
+        self.y_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(1000),
+            np.random.rand(100),
+        ]
+
+        self.expected = [
+            'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = MeshgridNet()
+
+        for i in range(len(self.x_cases)):
+            x = self.x_cases[i]
+            y = self.y_cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            y_spec = InputSpec(
+                shape=[None for _ in range(len(y.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec, y_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(
+                net, input_spec, 'pd_op.meshgrid', self.expected
+            )
+
+        # TODO(WintersMontagne10335): Add builtin.meshgrid op infer symbolic shape test
+        #                Not added because attribute `sym_shape_str` does not support multi-output op now.
+        #                See also: paddle/fluid/pir/transforms/shape_optimization_pass.cc:144.
+
+
 class LinspaceNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
