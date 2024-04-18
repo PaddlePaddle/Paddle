@@ -23,6 +23,7 @@ Program::Program(IrContext* context) {
 }
 
 Program::~Program() {
+  VLOG(1) << "[Program] Destroy Program";
   if (module_) {
     module_.Destroy();
   }
