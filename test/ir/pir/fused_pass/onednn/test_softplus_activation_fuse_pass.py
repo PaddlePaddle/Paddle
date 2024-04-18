@@ -90,7 +90,9 @@ class TestSoftplusActivationFusePattern(PassTest):
                         out = paddle.nn.functional.tanh(softplus_out)
 
                     out = paddle.assign(out)
-                    self.pass_list = [{"softplus_activation_fuse_pass": {}}]
+                    self.pass_attr_list = [
+                        {"softplus_activation_fuse_pass": {}}
+                    ]
                     self.feeds = {
                         "x": np.random.random(x_shape).astype("float32")
                     }
