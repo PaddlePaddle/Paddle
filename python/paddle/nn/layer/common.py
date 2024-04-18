@@ -189,9 +189,7 @@ class Linear(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
-        )
+        return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
 class Upsample(Layer):
@@ -439,14 +437,7 @@ class Upsample(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
-            main_str,
-            self.mode,
-            self.align_corners,
-            self.align_mode,
-            self.data_format,
-            name_str,
-        )
+        return f'{main_str}, mode={self.mode}, align_corners={self.align_corners}, align_mode={self.align_mode}, data_format={self.data_format}{name_str}'
 
 
 class UpsamplingNearest2D(Layer):
@@ -720,13 +711,7 @@ class Bilinear(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
-            self._in1_features,
-            self._in2_features,
-            self._out_features,
-            self._dtype,
-            name_str,
-        )
+        return f'in1_features={self._in1_features}, in2_features={self._in2_features}, out_features={self._out_features}, dtype={self._dtype}{name_str}'
 
 
 class Dropout(Layer):
@@ -1089,9 +1074,7 @@ class Pad1D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
-        )
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
 
 class Pad2D(Layer):
@@ -1163,9 +1146,7 @@ class Pad2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
-        )
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
 
 class ZeroPad2D(Layer):
@@ -1306,9 +1287,7 @@ class Pad3D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
-        )
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
 
 class CosineSimilarity(Layer):
@@ -1606,13 +1585,7 @@ class Unfold(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
-            self.kernel_sizes,
-            self.dilations,
-            self.paddings,
-            self.strides,
-            name_str,
-        )
+        return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
 
 class Fold(Layer):
@@ -1704,13 +1677,7 @@ class Fold(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
-            self.kernel_sizes,
-            self.dilations,
-            self.paddings,
-            self.strides,
-            name_str,
-        )
+        return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
 
 class Flatten(Layer):

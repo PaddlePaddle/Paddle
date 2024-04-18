@@ -48,15 +48,15 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rank_offset_dims[0],
         ins_num,
-        platform::errors::InvalidArgument("Input(RankOffset) has wrong rows."));
-    PADDLE_ENFORCE_EQ((rank_offset_dims[1] - 1) / 2,
-                      max_rank,
-                      platform::errors::InvalidArgument(
-                          "Input(RankOffset) has wrong columns."));
+        phi::errors::InvalidArgument("Input(RankOffset) has wrong rows."));
+    PADDLE_ENFORCE_EQ(
+        (rank_offset_dims[1] - 1) / 2,
+        max_rank,
+        phi::errors::InvalidArgument("Input(RankOffset) has wrong columns."));
     PADDLE_ENFORCE_EQ(
         max_rank * max_rank * x_fea_dim,
         para_row,
-        platform::errors::InvalidArgument("Input(RankParam) has wrong rows."));
+        phi::errors::InvalidArgument("Input(RankParam) has wrong rows."));
 
     int block_matrix_row = max_rank * x_fea_dim;
 

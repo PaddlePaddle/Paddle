@@ -36,7 +36,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Input(X)'s rank must be 2, but received x's rank "
                         "is:%d, x dim is:[%s]",
                         x_dims.size(),
@@ -48,7 +48,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     auto c_dims = ctx->GetInputDim("C0");
     PADDLE_ENFORCE_EQ(h_dims,
                       c_dims,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimension of Input(H0) and Input(C0) should be "
                           "same, but received h0 dims is:[%s], c0 dims is:[%s]",
                           h_dims,
@@ -58,14 +58,14 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   auto wx_dims = ctx->GetInputDim("WeightX");
   PADDLE_ENFORCE_EQ(wx_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The rank of Input(WeightX) should be 2, but received "
                         "WeightX's rank is:%d, WeightX dim is:[%s]",
                         wx_dims.size(),
                         wx_dims));
   PADDLE_ENFORCE_EQ(wx_dims[0],
                     x_dims[1],
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The first dimension of Input(WeightX) "
                         "should equal to second dimension of Input(X), but "
                         "received WeightX first dim is:%d, X second dim is:%d",
@@ -77,14 +77,14 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(wh_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The rank of Input(WeightH) should be 2, but received "
                         "WeightH rank is:%d, WeightH dim is:[%s]",
                         wh_dims.size(),
                         wh_dims));
   PADDLE_ENFORCE_EQ(wh_dims[0],
                     frame_size,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) "
                         "should equal to frame size, but received WeightH "
                         "first dim is:%d, frame size is:%d.",
@@ -93,7 +93,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(wh_dims[1],
                     4 * frame_size,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) "
                         "should equal to 4 * frame_size, but received WeightH "
                         "second dimension is:%d, frame size is:%d.",
@@ -103,14 +103,14 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   auto b_dims = ctx->GetInputDim("Bias");
   PADDLE_ENFORCE_EQ(b_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The rank of Input(Bias) should be 2, but received "
                         "Bias rank is:%d, Bias dim is:[%s]",
                         b_dims.size(),
                         b_dims));
   PADDLE_ENFORCE_EQ(b_dims[0],
                     1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The first dimension of Input(Bias) should be 1, but "
                         "received Bias's dimension is:[%s]",
                         b_dims));
@@ -118,7 +118,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->Attrs().Get<bool>("use_peepholes")) {
     PADDLE_ENFORCE_EQ(b_dims[1],
                       7 * frame_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second dimension of Input(Bias) should be "
                           "7 * %d if enable peepholes connection, but received "
                           "Bias dim is:[%s]",
@@ -129,7 +129,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         b_dims[1],
         4 * frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of Input(Bias) should be "
             "4 * %d if disable peepholes, but received Bias dim is:[%s]",
             frame_size,

@@ -15,18 +15,22 @@
 #include <any>
 
 #include "paddle/common/layout.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#endif
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
-#include "paddle/phi/core/enforce.h"
+
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
-#endif
+
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace drr {
@@ -55,15 +59,92 @@ void OperationFactory::RegisterManualOpCreator() {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
   RegisterOperationCreator(
+      "builtin.slice",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<pir::SliceOp>(
+            inputs[0],
+            attrs.at("index").dyn_cast<pir::Int32Attribute>().data());
+      });
+  RegisterOperationCreator(
       "pd_op.scale",
       [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
-        return rewriter.Build<paddle::dialect::ScaleOp>(
-            inputs[0],
-            inputs[1],
-            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
-            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+        if (inputs.size() == 2) {
+          return rewriter.Build<paddle::dialect::ScaleOp>(
+              inputs[0],
+              inputs[1],
+              attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+              attrs.at("bias_after_scale")
+                  .dyn_cast<pir::BoolAttribute>()
+                  .data());
+        }
+        return rewriter.Build<paddle::dialect::ScaleOp>(inputs[0], attrs);
+      });
+  RegisterOperationCreator(
+      "pd_op.slice",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 3) {
+          PADDLE_ENFORCE_NE(attrs.find("axes"),
+                            attrs.end(),
+                            phi::errors::InvalidArgument(
+                                "'axes' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> axes;
+          for (size_t i = 0;
+               i < attrs.at("axes").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            axes.push_back(attrs.at("axes")
+                               .dyn_cast<pir::ArrayAttribute>()
+                               .at(i)
+                               .dyn_cast<pir::Int64Attribute>()
+                               .data());
+          }
+
+          PADDLE_ENFORCE_NE(
+              attrs.find("infer_flags"),
+              attrs.end(),
+              phi::errors::InvalidArgument(
+                  "'infer_flags' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> infer_flags;
+          for (size_t i = 0;
+               i <
+               attrs.at("infer_flags").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            infer_flags.push_back(attrs.at("infer_flags")
+                                      .dyn_cast<pir::ArrayAttribute>()
+                                      .at(i)
+                                      .dyn_cast<pir::Int64Attribute>()
+                                      .data());
+          }
+
+          PADDLE_ENFORCE_NE(
+              attrs.find("decrease_axis"),
+              attrs.end(),
+              phi::errors::InvalidArgument(
+                  "'decrease_axis' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> decrease_axis;
+          for (size_t i = 0;
+               i <
+               attrs.at("decrease_axis").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            decrease_axis.push_back(attrs.at("decrease_axis")
+                                        .dyn_cast<pir::ArrayAttribute>()
+                                        .at(i)
+                                        .dyn_cast<pir::Int64Attribute>()
+                                        .data());
+          }
+          return rewriter.Build<paddle::dialect::SliceOp>(inputs[0],
+                                                          inputs[1],
+                                                          inputs[2],
+                                                          axes,
+                                                          infer_flags,
+                                                          decrease_axis);
+        }
+        return rewriter.Build<paddle::dialect::SliceOp>(inputs[0], attrs);
       });
 #ifdef PADDLE_WITH_DNNL
   RegisterOperationCreator(
@@ -239,10 +320,11 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
   }
 }
 
-pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
-                                     const MatchContextImpl& src_match_ctx) {
+pir::AttributeMap CreateAttributeMap(
+    const std::unordered_map<std::string, Attribute>& attrs,
+    const MatchContextImpl& src_match_ctx) {
   pir::AttributeMap attr_map;
-  for (const auto& kv : op_call.attributes()) {
+  for (const auto& kv : attrs) {
     std::visit(
         [&](auto&& arg) {
           if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
@@ -261,12 +343,12 @@ pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
   return attr_map;
 }
 
-pir::Value GetIrValueByDrrTensor(const Tensor& tensor,
+pir::Value GetIrValueByDrrTensor(const Tensor* tensor,
                                  const MatchContextImpl& res_match_ctx) {
-  if (tensor.is_none()) {
+  if (tensor->is_none()) {
     return pir::Value{};
   }
-  return res_match_ctx.GetIrValue(tensor.name());
+  return res_match_ctx.GetIrValue(tensor->name());
 }
 
 std::vector<pir::Value> GetIrValuesByDrrTensors(
@@ -275,16 +357,21 @@ std::vector<pir::Value> GetIrValuesByDrrTensors(
   std::vector<pir::Value> ir_values;
   ir_values.reserve(tensors.size());
   for (const auto* tensor : tensors) {
-    ir_values.push_back(GetIrValueByDrrTensor(*tensor, res_match_ctx));
+    ir_values.push_back(GetIrValueByDrrTensor(tensor, res_match_ctx));
   }
   return ir_values;
 }
 
-void BindIrOutputs(const OpCall& op_call,
-                   pir::Operation* op,
-                   MatchContextImpl* match_ctx) {
-  for (size_t i = 0; i < op_call.outputs().size(); ++i) {
-    match_ctx->BindIrValue(op_call.outputs()[i]->name(), op->result(i));
+void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
+                                 pir::Operation* op,
+                                 MatchContextImpl* match_ctx) {
+  PADDLE_ENFORCE_LE(
+      tensors.size(),
+      op->num_results(),
+      phi::errors::InvalidArgument(
+          "The size of drr outputs should less equal the size of pir outputs"));
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    match_ctx->BindIrValue(tensors[i]->name(), op->result(i));
   }
 }
 
@@ -293,15 +380,17 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 pir::PatternRewriter& rewriter,  // NOLINT
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
-  const auto& inputs = op_call.inputs();
-  std::vector<pir::Value> ir_values =
-      GetIrValuesByDrrTensors(inputs, *res_match_ctx);
   pir::Operation* op = OperationFactory::Instance().CreateOperation(
       op_call.name(),
-      ir_values,
-      CreateAttributeMap(op_call, src_match_ctx),
+      GetIrValuesByDrrTensors(op_call.inputs(), *res_match_ctx),
+      CreateAttributeMap(op_call.attributes(), src_match_ctx),
       rewriter);
-  BindIrOutputs(op_call, op, res_match_ctx);
+  auto runtime_attr_map =
+      CreateAttributeMap(op_call.runtime_attributes(), src_match_ctx);
+  for (const auto& kv : runtime_attr_map) {
+    op->set_attribute(kv.first, kv.second);
+  }
+  BindIrOutputsWithDrrOutputs(op_call.outputs(), op, res_match_ctx);
   VLOG(6) << "Drr create [" << op_call.name() << " @" << op << "] op done.";
   return op;
 }

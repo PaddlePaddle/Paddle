@@ -111,7 +111,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         out_dim,
         out_grad_dim,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Out) and Input(Out@GRAD) of "
             "SequenceSoftmaxGrad operator do not match. The Input(Out)'s shape "
             "is [%s], the Input(Out@GRAD)'s shape is [%s].",

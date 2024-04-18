@@ -232,12 +232,12 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
-                            true,
-                            platform::errors::InvalidArgument(
-                                "'quant_axis' should be 0 or 1, but "
-                                "the received is %d",
-                                quant_axis));
+          PADDLE_ENFORCE_EQ(
+              quant_axis == 0 || quant_axis == 1,
+              true,
+              phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                           "the received is %d",
+                                           quant_axis));
         });
     AddAttr<int>("x_num_col_dims",
                  "The x_num_col_dims of mul. Only used for mul or matmul.")
@@ -245,7 +245,7 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
         .AddCustomChecker([](const int& x_num_col_dims) {
           PADDLE_ENFORCE_EQ(x_num_col_dims == 0,
                             false,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'x_num_col_dims' should be larger than 0, but "
                                 "the received is %d",
                                 x_num_col_dims));
