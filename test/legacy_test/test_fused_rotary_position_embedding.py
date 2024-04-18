@@ -867,6 +867,93 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             )
         paddle.disable_static()
 
+    @test_with_pir_api
+    def test_static_qkvpacked(self):
+        if self.shape_k is None or self.shape_v is None:
+            # dynamic mode test is enough
+            return
+        paddle.disable_static()
+
+        num_group = self.shape_q[2] // self.shape_k[2]
+
+        def packqkv(q, k, v):
+            tq = q.reshape((0, 0, num_group, k.shape[-2], q.shape[-1]))
+            kv = paddle.stack([k, v], axis=2)
+            qkv = paddle.concat([tq, kv], axis=2)
+            return qkv
+
+        def unpackqkv(qkv):
+            out_q = qkv[:, :, :num_group, :, :].reshape(self.shape_q)
+            out_k = qkv[:, :, num_group, :, :]
+            out_v = qkv[:, :, num_group + 1, :, :]
+            return out_q, out_k, out_v
+
+        tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
+            self.seed, True, rotate_half=True
+        )
+        p_fw, p_bw = self.get_forward_backward(
+            paddle_fused_rotary_position_embedding,
+            seed=self.seed,
+            use_neox_rotary_style=False,
+        )
+
+        tensor_qkv = packqkv(tensor_q, tensor_k, tensor_v)
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            qkv = paddle.static.data(
+                name="qkv", shape=tensor_qkv.shape, dtype=self.dtype
+            )
+
+            sin = paddle.static.data(
+                name="sin",
+                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                dtype=self.dtype,
+            )
+            cos = paddle.static.data(
+                name="cos",
+                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                dtype=self.dtype,
+            )
+
+            out_qkv = fused_rotary_position_embedding_qkvpacked(
+                qkv,
+                rotate_k=True,
+                rotate_kv=True,
+                sin=sin,
+                cos=cos,
+                position_ids=None,
+                use_neox_rotary_style=False,
+            )
+
+        exe = paddle.static.Executor()
+
+        feed = {
+            "sin": tensor_sin.numpy(),
+            "cos": tensor_cos.numpy(),
+        }
+        for var_name, input_tensor in zip(["qkv"], [tensor_qkv]):
+            feed[var_name] = input_tensor.numpy()
+
+        fetch_list = [out_qkv]
+
+        outs = exe.run(
+            main,
+            feed=feed,
+            fetch_list=fetch_list,
+        )
+
+        outs = outs[0]
+        outs = [outs[:, :, :num_group], outs[:, :, -2], outs[:, :, -1]]
+        outs[0] = outs[0].reshape(self.shape_q)
+
+        for i in range(len(p_fw)):
+            np.testing.assert_allclose(
+                p_fw[i].numpy(), outs[i], rtol=self.rtol, atol=self.atol
+            )
+        paddle.disable_static()
+
     def test_errors(self):
         def test_error1():
             f_fw, f_bw = self.get_forward_backward(
@@ -890,6 +977,27 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             )
 
         self.assertRaises(AssertionError, test_error2)
+
+        def test_error3():
+            f_fw, f_bw = self.get_forward_backward_qkvpacked(
+                seed=self.seed,
+                test_time_major=False,
+                with_sin_cos=False,
+                use_neox_rotary_style=False,
+            )
+
+        self.assertRaises(AssertionError, test_error3)
+
+        def test_error4():
+            position_ids = paddle.to_tensor(self.position_ids_list)
+            f_fw, f_bw = self.get_forward_backward_qkvpacked(
+                seed=self.seed,
+                test_time_major=False,
+                with_sin_cos=False,
+                position_ids=position_ids,
+            )
+
+        self.assertRaises(AssertionError, test_error4)
 
 
 if __name__ == "__main__":
