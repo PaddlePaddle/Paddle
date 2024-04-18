@@ -300,3 +300,5 @@ if(${len} GREATER_EQUAL 1)
 endif()
 
 set_pit_tests_properties()
+
+add_subdirectory(deprecated)

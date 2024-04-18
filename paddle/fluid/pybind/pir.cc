@@ -1715,6 +1715,9 @@ void BindUtils(pybind11::module *m) {
   });
   m->def("set_insertion_point",
          [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_after", [](Operation *op) {
+    ApiBuilder::Instance().SetInsertionPointAfter(op);
+  });
   m->def("set_insertion_point_to_block_end", [](Block *block) {
     ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
   });
