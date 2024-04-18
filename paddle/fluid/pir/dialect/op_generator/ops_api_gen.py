@@ -119,6 +119,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'dequantize_linear',
     'dequantize_linear_',
     'coalesce_tensor_',
+    'send_v2',
+    'recv_v2',
+    'c_allgather',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -128,7 +131,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'assign_pos',
     'batch_fc',
     'barrier',
-    'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
     'c_allreduce_min',
@@ -166,11 +168,9 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_sum',
     'random_routing',
     'rank_attention',
-    'recv_v2',
     'rnn_',
     'row_conv',
     'seed',
-    'send_v2',
     'shadow_feed',
     'shadow_feed_tensors',
     'shuffle_batch',
