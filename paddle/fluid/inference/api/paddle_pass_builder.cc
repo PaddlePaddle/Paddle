@@ -228,7 +228,6 @@ const std::vector<std::string> kCINNCompilerPasses{
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "gpu_cpu_map_matmul_to_mul_pass",
-    "build_cinn_pass",
 };
 
 const std::vector<std::string> CpuBasicPasses{

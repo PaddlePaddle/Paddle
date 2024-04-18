@@ -44,7 +44,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/passes.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -63,6 +62,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -1871,6 +1871,14 @@ void BindUtils(pybind11::module *m) {
     pybind11::gil_scoped_release release;
     VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
     cinn::hlir::framework::CompilationCache::Instance().Clear();
+#endif
+  });
+
+  m->def("cinn_compilation_cache_size", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
 }

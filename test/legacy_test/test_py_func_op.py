@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import compiler
 
 dev_cnt = 2
 if base.core.is_compiled_with_cuda():
@@ -171,7 +170,7 @@ def reader():
         )
 
 
-def test_main(use_cuda, use_py_func_op, use_parallel_executor):
+def test_main(use_cuda, use_py_func_op):
     if use_cuda and not base.core.is_compiled_with_cuda():
         return None
 
@@ -197,12 +196,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             exe.run(base.default_startup_program())
 
             train_cp = base.default_main_program()
-
-            if use_parallel_executor:
-                train_cp = compiler.CompiledProgram(base.default_main_program())
-                fetch_list = [loss.name]
-            else:
-                fetch_list = [loss]
+            fetch_list = [loss]
 
             ret = []
             for epoch_id in range(2):
@@ -215,27 +209,17 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
 
 class TestPyFuncOpUseExecutor(unittest.TestCase):
-    def setUp(self):
-        self.use_parallel_executor = False
-
     def test_loss_diff(self):
         for use_cuda in [True, False]:
             losses = []
             for use_py_func_op in [True, False]:
-                L = test_main(
-                    use_cuda, use_py_func_op, self.use_parallel_executor
-                )
+                L = test_main(use_cuda, use_py_func_op)
                 if L is not None:
                     losses.append(L)
 
                 for idx in range(len(losses) - 1):
                     max_diff = np.max(np.abs(losses[idx] - losses[0]))
                     self.assertAlmostEqual(max_diff, 0, delta=1e-3)
-
-
-class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):
-    def setUp(self):
-        self.use_parallel_executor = True
 
 
 if __name__ == '__main__':
