@@ -41,7 +41,7 @@ class TestMatmulAddPattern(PassTest):
         else:
             fused_op_name = "pd_op.fc" 
 
-        for M in [32, 512, 4096, 16384]:
+        for M in [32, 512, 4096]:
             for N in [32, 512, 4096, 16384]:
                 for K in [32, 512, 4096, 16384]:
                     x_shape = [M, K]

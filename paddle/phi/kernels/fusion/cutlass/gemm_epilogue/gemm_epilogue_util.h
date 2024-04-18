@@ -48,9 +48,9 @@ typedef enum {
   MATMUL_ADD,
   MATMUL_ADD_RELU,
   MATMUL_ADD_GELU,
-  // MATMUL_ADD_SILU,
-  // MATMUL_ADD_LEAKY_RELU,
-  // MATMUL_ADD_SIGMOID,
+  MATMUL_ADD_SILU,
+  MATMUL_ADD_LEAKY_RELU,
+  MATMUL_ADD_SIGMOID,
 } OpType;
 
 // gemm_epilogue_diff_gpu calculate diff of cutlass output and baseline output, you can

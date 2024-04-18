@@ -78,15 +78,15 @@ __global__ void naive_gemm_epilogue_kernel(
       case MATMUL_ADD_GELU:
         accumulator = 0.5*accumulator*(1+naive_tanh(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
         break;
-      // case MATMUL_ADD_LEAKY_RELU:
-      //   accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
-      //   break;
-      // case MATMUL_ADD_SIGMOID:
-      //   accumulator = 1.f / (1.f + std::exp(-accumulator));
-      //   break;
-      // case MATMUL_ADD_SILU:
-      //   accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
-      //   break;
+      case MATMUL_ADD_LEAKY_RELU:
+        accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
+        break;
+      case MATMUL_ADD_SIGMOID:
+        accumulator = 1.f / (1.f + std::exp(-accumulator));
+        break;
+      case MATMUL_ADD_SILU:
+        accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
+        break;
       default:
           break;
     }
@@ -136,12 +136,12 @@ std::string OpType2String(OpType op_type) {
       return "matmul_add_relu";
     case MATMUL_ADD_GELU:
       return "matmul_add_gelu";
-    // case MATMUL_ADD_SIGMOID:
-    //   return "matmul_add_sigmoid";
-    // case MATMUL_ADD_LEAKY_RELU:
-    //   return "matmul_add_leaky_relu";
-    // case MATMUL_ADD_SILU:
-    //   return "matmul_add_silu";
+    case MATMUL_ADD_SIGMOID:
+      return "matmul_add_sigmoid";
+    case MATMUL_ADD_LEAKY_RELU:
+      return "matmul_add_leaky_relu";
+    case MATMUL_ADD_SILU:
+      return "matmul_add_silu";
     default:
       break;
   }

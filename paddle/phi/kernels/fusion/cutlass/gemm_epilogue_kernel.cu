@@ -163,15 +163,15 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   else if (activation_type == "gelu"){
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddGelu"));
   } 
-  // else if (activation_type == "leaky_relu") {
-  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
-  // } 
-  // else if (activation_type == "sigmoid") {
-  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
-  // } 
-  // else if (activation_type == "swish") {
-  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
-  // } 
+  else if (activation_type == "leaky_relu") {
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
+  } 
+  else if (activation_type == "sigmoid") {
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
+  } 
+  else if (activation_type == "swish") {
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
+  } 
   else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation_type: %s.", activation_type.c_str()));
