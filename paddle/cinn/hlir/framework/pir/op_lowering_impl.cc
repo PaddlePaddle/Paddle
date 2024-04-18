@@ -41,6 +41,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
@@ -705,6 +706,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   return {pack[0].operator ir::Expr().as_lowered_func_ref()};
 }
 
+std::unordered_set<std::string> CollectStoreBufferNames(
+    const std::vector<ir::Expr>& func_bodies) {
+  std::unordered_set<std::string> buffer_names;
+  std::vector<ir::Expr> blocks = ir::analyzer::GetAllBlocks(func_bodies);
+  for (const ir::Expr& block : blocks) {
+    ir::Tensor tensor = ir::analyzer::GetStoreTensorOfSBlock(block);
+    if (tensor->buffer.defined()) {
+      buffer_names.insert(tensor->buffer->name);
+    }
+  }
+  return buffer_names;
+}
+
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
@@ -715,13 +729,18 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     std::vector<ir::Tensor>* infer_shape_arg_tensor) {
   // 1.Prepare function args
   group->mut_input_names().clear();
+  std::unordered_set<std::string> store_buffer_names =
+      CollectStoreBufferNames(func_bodies);
   std::unordered_set<std::string> arg_name_set;
   for (auto& arg_tensor : *group_func_arg_tensors) {
     // input data name.
     group->mut_input_names().push_back(arg_tensor->name);
-    // input args
-    (*group_func_args)
-        .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
+    // args
+    ir::Argument::IO io_type =
+        store_buffer_names.count(arg_tensor->buffer->name) > 0
+            ? ir::Argument::IO::kOutput
+            : ir::Argument::IO::kInput;
+    (*group_func_args).emplace_back(arg_tensor->buffer, io_type);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
 
@@ -979,6 +998,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
         this->target_ != cinn::common::DefaultNVGPUTarget()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
+    } else {
+      op_func_arg_tensors->push_back(expr.as_tensor_ref());
     }
   }
 
