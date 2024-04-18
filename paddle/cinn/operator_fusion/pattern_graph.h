@@ -33,10 +33,8 @@ class PatternGraph {
 
   std::vector<PatternNodePtr<T>> ClusterOps();
 
- public:
   void SinkTrivialPattern();
   void HorizontalFusion();
-  void FuseReducePattern();
   void ReduceLiftReduceTree();
   void ReduceTreeGrown();
   void ReduceTree_Trivial_Fusion();

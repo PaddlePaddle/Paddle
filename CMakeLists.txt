@@ -306,7 +306,6 @@ option(
   SANITIZER_TYPE
   "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined"
   OFF)
-option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
