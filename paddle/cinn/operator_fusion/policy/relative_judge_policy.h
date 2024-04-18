@@ -35,8 +35,8 @@ struct ValueDim {
       }
       // For inputs of the program, the defining_op is nullptr, we use it's user
       // as the related op.
-      PADDLE_ENFORCE_EQ(!v.use_empty(),
-                        true,
+      PADDLE_ENFORCE_EQ(v.use_empty(),
+                        false,
                         phi::errors::PreconditionNotMet(
                             "Value is an input value, it should have a use."));
       return v.first_use().owner();
