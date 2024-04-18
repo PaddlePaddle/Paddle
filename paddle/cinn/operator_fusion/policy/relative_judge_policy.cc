@@ -54,13 +54,14 @@ std::pair<std::vector<ValueDim>, std::vector<ValueDim>> SplitReduceDims(
 
   std::vector<ValueDim> reduce_dims;
   std::vector<ValueDim> non_reduce_dims;
+  auto usage_idx = GetUsageIdx(v, op);
 
   int idx = 0;
   for (const auto& in : input_names) {
     if (output_names_set.count(in) == 0) {
-      reduce_dims.emplace_back(v, idx);
+      reduce_dims.emplace_back(v, idx, usage_idx);
     } else {
-      non_reduce_dims.emplace_back(v, idx);
+      non_reduce_dims.emplace_back(v, idx, usage_idx);
     }
     idx += 1;
   }
@@ -148,6 +149,21 @@ bool DimsEqual(const std::vector<ValueDim>& first,
   return true;
 }
 
+pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
+                           const pir::Value& value) {
+  std::vector<pir::Operation*> results;
+  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
+       ++consumer_it) {
+    pir::Operation* user_op = consumer_it.owner();
+    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
+    if (iter != candidates.end()) {
+      results.emplace_back(*iter);
+    }
+  }
+  CHECK(results.size() == 1) << "Zero Or Multi User Op Found In Candidates!";
+  return results.front();
+}
+
 template <typename T>
 bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
@@ -175,6 +191,8 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
   }
   const pir::Value& reduce_out_value =
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
+  auto downstream_connect_op =
+      FindUserOp(downstream_tree.ops(), reduce_out_value);
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
 
@@ -182,7 +200,7 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
       axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
 
   const auto& upstream_output_dims = GetAllValueDimFromValue(
-      reduce_out_value, GetUsageIdx(/* TODO find out downstream op*/));
+      reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
   const auto& [related, _UNUSED] =
       SplitDimsWithRelationship(downstream_reduce_dims, upstream_output_dims);
   auto res = (related.size() == 0);
