@@ -100,6 +100,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", " << block_z << "}, num_args=" << num_args
           << ", shared_memory_bytes=" << shared_memory_bytes
           << ", stream=" << stream;
+  VLOG(-1) << "DEBUG kernel_fn=" << kernel_fn;
 
   std::vector<void *> kernel_args;
   {

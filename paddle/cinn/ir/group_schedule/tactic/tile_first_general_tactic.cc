@@ -97,6 +97,9 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
+  VLOG(6) << "Before MergeReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   MergeReduceAxis(sch, block_id);
   VLOG(6) << "After MergeReduceAxis on block: [" << block_id
           << "], loop nest:\n"

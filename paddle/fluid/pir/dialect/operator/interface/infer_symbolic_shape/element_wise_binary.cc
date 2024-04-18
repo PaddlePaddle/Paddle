@@ -69,6 +69,8 @@ bool InferSymbolicShapeElementWiseBinary(
       } else if (shape_1[i] == 1) {
         shapes.emplace_back(shape_0[i]);
       } else {
+        // shape_analysis->AddEqualCstr(shape_0[i], shape_1[i]);
+        // shapes.emplace_back(shape_0[i]);
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
       }
     }
