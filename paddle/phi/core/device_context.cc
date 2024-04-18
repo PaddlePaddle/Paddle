@@ -153,8 +153,6 @@ struct DeviceContext::Impl {
       // `initialized`. Fix other tensor class when needed.
       if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
           tensor->place() != place) {
-        std::cout << tensor->place() << std::endl;
-        std::cout << place << std::endl;
         ClearHolder(tensor);
       }
     } else {

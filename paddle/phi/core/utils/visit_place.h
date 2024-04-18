@@ -60,7 +60,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return visitor(p);
 #else
       PADDLE_THROW(phi::errors::Unavailable(
-          ("Paddle is not compiled with XPU. Cannot visit xpu device")));
+          ("Paddle is not compiled with XPU. Cannot visit xpu_pinned")));
       return typename Visitor::result_type();
 #endif
     }
