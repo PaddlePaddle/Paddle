@@ -396,9 +396,10 @@ Tensor silu_decomp(const Tensor& x) {
   }
 
   // res = x / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-  auto exp_temp = exp<T>(full<T>(empty_shape, -1, x_tmp.dtype()) * x_tmp);
-  auto res = x_tmp / (exp_temp + one);
+  // auto one = full<T>(empty_shape, 1, x_tmp.dtype());
+  // auto exp_temp = exp<T>(full<T>(empty_shape, -1, x_tmp.dtype()) * x_tmp);
+  // auto res = x_tmp / (exp_temp + one);
+  auto res = x * sigmoid(x);
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -693,26 +694,26 @@ Tensor hardswish_decomp(const Tensor& x) {
   return (minimum_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
-template <typename T>
-Tensor sigmoid_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
+// template <typename T>
+// Tensor sigmoid_decomp(const Tensor& x) {
+//   auto org_dtype = x.dtype();
+//   Tensor x_cast = x;
 
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
+//   bool need_cast = is_half_dtype(org_dtype);
+//   if (need_cast) {
+//     x_cast = cast<T>(x, DataType::FLOAT32);
+//   }
 
-  // res = 1 / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_cast.dtype());
-  auto exp_tmp = exp<T>(full<T>(empty_shape, -1, x_cast.dtype()) * x_cast);
-  auto res = one / (one + exp_tmp);
-  if (need_cast) {
-    return cast<T>(res, org_dtype);
-  } else {
-    return res;
-  }
-}
+//   // res = 1 / (1 + exp(-x))
+//   auto one = full<T>(empty_shape, 1, x_cast.dtype());
+//   auto exp_tmp = exp<T>(full<T>(empty_shape, -1, x_cast.dtype()) * x_cast);
+//   auto res = one / (one + exp_tmp);
+//   if (need_cast) {
+//     return cast<T>(res, org_dtype);
+//   } else {
+//     return res;
+//   }
+// }
 
 template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
