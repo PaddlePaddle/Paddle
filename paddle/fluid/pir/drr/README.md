@@ -26,7 +26,11 @@ public:
         pat.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
     // 4. Define Constrain
-    pat.RequireEqual(pat("tmp").dtype(), pat.Tensor("ret").dtype());
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto ret_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("ret"));
+      auto arg0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("tmp"));
+      return ret_dtype == arg0_dtype;
+    });
 
     // 5. Define ResultPattern
     auto res = pat.ResultPattern();
