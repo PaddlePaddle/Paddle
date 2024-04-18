@@ -48,12 +48,12 @@ typedef struct {
 } GemmEpilogueAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
-extern "C" void MatmulAddRelu(GemmEpilogueAllParams params);
-extern "C" void MatmulAddLeakyRelu(GemmEpilogueAllParams params);
-extern "C" void MatmulAddSilu(GemmEpilogueAllParams params);
 extern "C" void MatmulAdd(GemmEpilogueAllParams params);
-extern "C" void MatmulAddSigmoid(GemmEpilogueAllParams params);
+extern "C" void MatmulAddRelu(GemmEpilogueAllParams params);
 extern "C" void MatmulAddGelu(GemmEpilogueAllParams params);
+// extern "C" void MatmulAddLeakyRelu(GemmEpilogueAllParams params);
+// extern "C" void MatmulAddSilu(GemmEpilogueAllParams params);
+// extern "C" void MatmulAddSigmoid(GemmEpilogueAllParams params);
 
 }  // namespace cutlass_internal
 }  // namespace fusion

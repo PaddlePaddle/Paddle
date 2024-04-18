@@ -154,19 +154,25 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   void* dlhandler = phi::dynload::GetCutlassGemmEpilogueHandle();
   func gemm_epilogue_func = NULL;
   CHECK_EQ(dlhandler == NULL, false);
-  if (activation_type == "relu") {
-    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddRelu"));
-  } else if (activation_type == "swish") {
-    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
-  } else if (activation_type == "identity" || activation_type == "") {
+  if (activation_type == "identity" || activation_type == "") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAdd"));
-  } else if (activation_type == "leaky_relu") {
-    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
-  } else if (activation_type == "sigmoid") {
-    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
-  } else if (activation_type == "gelu"){
+  }
+  else if (activation_type == "relu") {
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddRelu"));
+  }  
+  else if (activation_type == "gelu"){
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddGelu"));
-  } else {
+  } 
+  // else if (activation_type == "leaky_relu") {
+  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
+  // } 
+  // else if (activation_type == "sigmoid") {
+  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
+  // } 
+  // else if (activation_type == "swish") {
+  //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
+  // } 
+  else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation_type: %s.", activation_type.c_str()));
   }

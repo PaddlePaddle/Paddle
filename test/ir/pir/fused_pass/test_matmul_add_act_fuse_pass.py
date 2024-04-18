@@ -35,56 +35,57 @@ class TestMatmulAddPattern(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = False     # option
+        use_cutlass = True     # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
         else:
             fused_op_name = "pd_op.fc" 
 
-        for x_shape in [[48, 11008], [2, 11008]]:
-            M = x_shape[0]
-            for w_shape in [[11008, 4096], [11008, 4608]]:
-                N = w_shape[1]
-                for y_shape in [[N], [M, N]]:
-                    if fused_op_name == "pd_op.fc" and len(y_shape) == 2: 
-                        continue
-                    with paddle.pir_utils.IrGuard():
-                        start_prog = paddle.static.Program()
-                        main_prog = paddle.static.Program()
-                        with paddle.pir.core.program_guard(
-                            main_prog, start_prog
-                        ):
-                            x = paddle.static.data(
-                                name='x', shape=x_shape, dtype='float16'
-                            )
-                            w = paddle.static.data(
-                                name='w', shape=w_shape, dtype='float16'
-                            )
-                            y = paddle.static.data(
-                                name='y', shape=y_shape, dtype='float16'
-                            )
-                            out = paddle.add(paddle.matmul(x, w), y)
-                            out = paddle.assign(out)
-                            self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": use_cutlass}}]
-                            self.feeds = {
-                                "x": np.random.random(x_shape).astype(
-                                    "float16"
-                                ),
-                                "w": np.random.random(w_shape).astype(
-                                    "float16"
-                                ),
-                                "y": np.random.random(y_shape).astype(
-                                    "float16"
-                                ),
-                            }
-                            self.fetch_list = [out]
-                            self.valid_op_map = {
-                                "pd_op.add": 0,
-                                "pd_op.matmul": 0,
-                                fused_op_name: 1,
-                            }
+        for M in [32, 512, 4096, 16384]:
+            for N in [32, 512, 4096, 16384]:
+                for K in [32, 512, 4096, 16384]:
+                    x_shape = [M, K]
+                    w_shape = [K, N]
+                    for y_shape in  [[N], [M, N]]:
+                        if fused_op_name == "pd_op.fc" and len(y_shape) == 2: 
+                            continue
+                        with paddle.pir_utils.IrGuard():
+                            start_prog = paddle.static.Program()
+                            main_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                x = paddle.static.data(
+                                    name='x', shape=x_shape, dtype='float16'
+                                )
+                                w = paddle.static.data(
+                                    name='w', shape=w_shape, dtype='float16'
+                                )
+                                y = paddle.static.data(
+                                    name='y', shape=y_shape, dtype='float16'
+                                )
+                                out = paddle.add(paddle.matmul(x, w), y)
+                                out = paddle.assign(out)
+                                self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": use_cutlass}}]
+                                self.feeds = {
+                                    "x": np.random.random(x_shape).astype(
+                                            "float16"
+                                        ),
+                                    "w": np.random.random(w_shape).astype(
+                                            "float16"
+                                        ),
+                                    "y": np.random.random(y_shape).astype(
+                                            "float16"
+                                        ),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.add": 0,
+                                    "pd_op.matmul": 0,
+                                    fused_op_name: 1,
+                                }
 
-                            yield [main_prog, start_prog], False
+                                yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():
@@ -172,7 +173,7 @@ class TestMatmulAddActPattern(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = False      # option
+        use_cutlass = True      # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
             acts = ["pd_op.relu", "pd_op.gelu"]
@@ -259,52 +260,53 @@ class TestMatmulAddActPatternReverseAdd(PassTest):
         acts_map = {"pd_op.relu": paddle.nn.functional.relu,
                     "pd_op.gelu": paddle.nn.functional.gelu}
         for act in acts:
-            for x_shape in [[48, 11008], [2, 11008]]:
-                M = x_shape[0]
-                for w_shape in [[11008, 4096], [11008, 4608]]:
-                    N = w_shape[1]
-                    for y_shape in [[N], [M, N]]:
-                        with paddle.pir_utils.IrGuard():
-                            start_prog = paddle.static.Program()
-                            main_prog = paddle.static.Program()
-                            with paddle.pir.core.program_guard(
-                                main_prog, start_prog
-                            ):
-                                x = paddle.static.data(
-                                    name='x', shape=x_shape, dtype='float16'
-                                )
-                                w = paddle.static.data(
-                                    name='w', shape=w_shape, dtype='float16'
-                                )
-                                y = paddle.static.data(
-                                    name='y', shape=y_shape, dtype='float16'
-                                )
+            for M in [32, 512, 4096]:
+                for N in [32, 512, 4096]:
+                    for K in [32, 512, 4096]:
+                        x_shape = [M, K]
+                        w_shape = [K, N]
+                        for y_shape in  [[N], [M, N]]:
+                            with paddle.pir_utils.IrGuard():
+                                start_prog = paddle.static.Program()
+                                main_prog = paddle.static.Program()
+                                with paddle.pir.core.program_guard(
+                                    main_prog, start_prog
+                                ):
+                                    x = paddle.static.data(
+                                        name='x', shape=x_shape, dtype='float16'
+                                    )
+                                    w = paddle.static.data(
+                                        name='w', shape=w_shape, dtype='float16'
+                                    )
+                                    y = paddle.static.data(
+                                        name='y', shape=y_shape, dtype='float16'
+                                    )
 
-                                matmul_add_out = paddle.add(y, paddle.matmul(x, w))
-                                out = acts_map[act](matmul_add_out)
-                                out = paddle.assign(out)
+                                    matmul_add_out = paddle.add(y, paddle.matmul(x, w))
+                                    out = acts_map[act](matmul_add_out)
+                                    out = paddle.assign(out)
 
-                                self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": True}}]
-                                self.feeds = {
-                                    "x": np.random.random(x_shape).astype(
-                                        "float16"
-                                    ),
-                                    "w": np.random.random(w_shape).astype(
-                                        "float16"
-                                    ),
-                                    "y": np.random.random(y_shape).astype(
-                                        "float16"
-                                    ),
-                                }
-                                self.fetch_list = [out]
-                                self.valid_op_map = {
-                                    "pd_op.matmul": 0,
-                                    "pd_op.add": 0,
-                                    act: 0,
-                                    "pd_op.gemm_epilogue": 1,
-                                }
+                                    self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": True}}]
+                                    self.feeds = {
+                                        "x": np.random.random(x_shape).astype(
+                                            "float16"
+                                        ),
+                                        "w": np.random.random(w_shape).astype(
+                                            "float16"
+                                        ),
+                                        "y": np.random.random(y_shape).astype(
+                                            "float16"
+                                        ),
+                                    }
+                                    self.fetch_list = [out]
+                                    self.valid_op_map = {
+                                        "pd_op.matmul": 0,
+                                        "pd_op.add": 0,
+                                        act: 0,
+                                        "pd_op.gemm_epilogue": 1,
+                                    }
 
-                                yield [main_prog, start_prog], False
+                                    yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():

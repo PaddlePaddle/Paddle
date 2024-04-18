@@ -71,22 +71,22 @@ __global__ void naive_gemm_epilogue_kernel(
 
     switch (op_type) {
       case MATMUL_ADD:
-          break;
-      case MATMUL_ADD_RELU:
-          accumulator = accumulator > 0 ? accumulator : 0;
-          break;
-      case MATMUL_ADD_SILU:
-          accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
-          break;
-      case MATMUL_ADD_LEAKY_RELU:
-        accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
         break;
-      case MATMUL_ADD_SIGMOID:
-        accumulator = 1.f / (1.f + std::exp(-accumulator));
+      case MATMUL_ADD_RELU:
+        accumulator = accumulator > 0 ? accumulator : 0;
         break;
       case MATMUL_ADD_GELU:
         accumulator = 0.5*accumulator*(1+naive_tanh(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
         break;
+      // case MATMUL_ADD_LEAKY_RELU:
+      //   accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
+      //   break;
+      // case MATMUL_ADD_SIGMOID:
+      //   accumulator = 1.f / (1.f + std::exp(-accumulator));
+      //   break;
+      // case MATMUL_ADD_SILU:
+      //   accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
+      //   break;
       default:
           break;
     }
@@ -134,14 +134,14 @@ std::string OpType2String(OpType op_type) {
       return "matmul_add";
     case MATMUL_ADD_RELU:
       return "matmul_add_relu";
-    case MATMUL_ADD_SILU:
-      return "matmul_add_silu";
-    case MATMUL_ADD_SIGMOID:
-      return "matmul_add_sigmoid";
-    case MATMUL_ADD_LEAKY_RELU:
-      return "matmul_add_leaky_relu";
     case MATMUL_ADD_GELU:
       return "matmul_add_gelu";
+    // case MATMUL_ADD_SIGMOID:
+    //   return "matmul_add_sigmoid";
+    // case MATMUL_ADD_LEAKY_RELU:
+    //   return "matmul_add_leaky_relu";
+    // case MATMUL_ADD_SILU:
+    //   return "matmul_add_silu";
     default:
       break;
   }
@@ -153,6 +153,9 @@ int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(GemmEpilogueAllParams)>> &all_func,
     const GemmEpilogueAllParams &params,
     OpType op_type) {
+
+    std::cout << "we are tunning for problem: [" << params.m << ", " << params.n << ", " <<  params.k << "]"<< std::endl;
+
     constexpr int WARMUP = 10;
     constexpr int REPEAT = 10;
     float min_time = 100000.f;
@@ -187,6 +190,34 @@ int ProfileToGetBestConfig(
       if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
         min_time = elapsed_time;
         min_time_index = i;
+
+        if (params.data_type == GemmEpilogueDataType::fp16) {
+          // debug code
+          std::cout << "fp16_"
+                    << OpType2String(op_type) << ": tactic " << i
+                    << " has max diff "
+                    << gemm_epilogue_diff_gpu<half>(params, op_type)
+                    << " compared with baseline,"
+                    << "cost_time: " << elapsed_time << "ms." << std::endl;
+        } 
+        else if (params.data_type == GemmEpilogueDataType::bf16) {
+          // debug code
+          std::cout << "bf16_"
+                    << OpType2String(op_type) << ": tactic " << i
+                    << " has max diff "
+                    << gemm_epilogue_diff_gpu<__nv_bfloat16>(params, op_type)
+                    << " compared with baseline,"
+                    << "cost_time: " << elapsed_time << "ms." << std::endl;
+        }
+        else if(params.data_type == GemmEpilogueDataType::fp32){
+          // debug code
+          std::cout << "fp32_"
+                    << OpType2String(op_type) << ": tactic " << i
+                    << " has max diff "
+                    << gemm_epilogue_diff_gpu<float>(params, op_type)
+                    << " compared with baseline,"
+                    << "cost_time: " << elapsed_time << "ms." << std::endl;
+        }
       }
     }
 

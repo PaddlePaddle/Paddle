@@ -61,45 +61,45 @@ fba_kernel_leaky_alpha = fba_kernel.replace(
 class FbaAct(enum.Enum):
     Identity = 1
     Relu = 2
-    Silu = 3
-    LeakyRelu = 4
-    Sigmoid = 5
-    Gelu = 6
+    Gelu = 3
+    # LeakyRelu = 4
+    # Sigmoid = 5
+    # Silu = 6
 
 SupportedAct = [
     FbaAct.Identity,
     FbaAct.Relu,
-    FbaAct.Silu,
-    FbaAct.LeakyRelu,
-    FbaAct.Sigmoid,
     FbaAct.Gelu,
+    # FbaAct.LeakyRelu,
+    # FbaAct.Sigmoid,
+    # FbaAct.Silu,
 ]
 
 ActTag = {
     SupportedAct[0]: 'cutlass::epilogue::thread::LinearCombination',
     SupportedAct[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
-    SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
-    SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
-    SupportedAct[4]: 'cutlass::epilogue::thread::LinearCombinationSigmoid',
-    SupportedAct[5]: 'cutlass::epilogue::thread::LinearCombinationGELU',
+    SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationGELU',
+    # SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
+    # SupportedAct[4]: 'cutlass::epilogue::thread::LinearCombinationSigmoid',
+    # SupportedAct[5]: 'cutlass::epilogue::thread::LinearCombinationSilu',
 }
 
 UnderScoreName = {
     SupportedAct[0]: "matmul_add",
     SupportedAct[1]: "matmul_add_relu",
-    SupportedAct[2]: "matmul_add_silu",
-    SupportedAct[3]: "matmul_add_leaky_relu",
-    SupportedAct[4]: "matmul_add_sigmoid",
-    SupportedAct[5]: "matmul_add_gelu",
+    SupportedAct[2]: "matmul_add_gelu",
+    # SupportedAct[3]: "matmul_add_leaky_relu",
+    # SupportedAct[4]: "matmul_add_sigmoid",
+    # SupportedAct[5]: "matmul_add_silu",
 }
 
 CamelName = {
     SupportedAct[0]: "MatmulAdd",
     SupportedAct[1]: "MatmulAddRelu",
-    SupportedAct[2]: "MatmulAddSilu",
-    SupportedAct[3]: "MatmulAddLeakyRelu",
-    SupportedAct[4]: "MatmulAddSigmoid",
-    SupportedAct[5]: "MatmulAddGelu",
+    SupportedAct[2]: "MatmulAddGelu",
+    # SupportedAct[3]: "MatmulAddLeakyRelu",
+    # SupportedAct[4]: "MatmulAddSigmoid",
+    # SupportedAct[5]: "MatmulAddSilu",
 }
 
 # layouts = [
@@ -114,7 +114,9 @@ layouts = [
 
 swizzling_functors = [
     'GemmIdentityThreadblockSwizzle<1>',
-    'ThreadblockSwizzleStreamK'
+    'GemmIdentityThreadblockSwizzle<2>',
+    'GemmIdentityThreadblockSwizzle<4>',
+    # 'GemmIdentityThreadblockSwizzle<8>',
 ]
 
 # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
@@ -186,8 +188,8 @@ def generate_sm75_1688():
                             suffix += 1
                             
                             fba_kernel_ = fba_kernel
-                            if epi_func in [FbaAct.LeakyRelu]:
-                                fba_kernel_ = fba_kernel_leaky_alpha
+                            # if epi_func in [FbaAct.LeakyRelu]:
+                            #     fba_kernel_ = fba_kernel_leaky_alpha
                             kernel_str = (
                                 fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
                             )
@@ -222,8 +224,8 @@ def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
     suffix += 1
     
     fba_kernel_ = fba_kernel
-    if epi_func in [FbaAct.LeakyRelu]:
-        fba_kernel_ = fba_kernel_leaky_alpha
+    # if epi_func in [FbaAct.LeakyRelu]:
+    #     fba_kernel_ = fba_kernel_leaky_alpha
     kernel_str = (
         fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
     )
@@ -247,32 +249,33 @@ def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
 def sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func):
     all_kernel_names = ""
     all_kernel_declares = ""
-    kernel_dict["swizzling_functor"] = 'GemmIdentityThreadblockSwizzle<1>'
-    for split_k_fac in split_k_factors:
-        kernel_dict["split_k_factor"] = split_k_fac
-        kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
-        suffix += 1
-        
-        fba_kernel_ = fba_kernel
-        if epi_func in [FbaAct.LeakyRelu]:
-            fba_kernel_ = fba_kernel_leaky_alpha
-        kernel_str = (
-            fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
-        )
-        file_name = (
-            build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
-        )
-        write_kernel_to_file(kernel_str, file_name)
+    for swizzling_functor in swizzling_functors:
+        kernel_dict["swizzling_functor"] = swizzling_functor
+        for split_k_fac in split_k_factors:
+            kernel_dict["split_k_factor"] = split_k_fac
+            kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
+            suffix += 1
+            
+            fba_kernel_ = fba_kernel
+            # if epi_func in [FbaAct.LeakyRelu]:
+            #     fba_kernel_ = fba_kernel_leaky_alpha
+            kernel_str = (
+                fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
+            )
+            file_name = (
+                build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
+            )
+            write_kernel_to_file(kernel_str, file_name)
 
-        all_kernel_names += (
-            kernel_dict["kernel_func_name"] + ", \n"
-        )
-        all_kernel_declares += (
-            "cutlass::Status "
-            + kernel_dict["kernel_func_name"]
-            + "(const GemmEpilogueAllParams& params);"
-            + "\n"
-        )
+            all_kernel_names += (
+                kernel_dict["kernel_func_name"] + ", \n"
+            )
+            all_kernel_declares += (
+                "cutlass::Status "
+                + kernel_dict["kernel_func_name"]
+                + "(const GemmEpilogueAllParams& params);"
+                + "\n"
+            )
     return all_kernel_names, all_kernel_declares, suffix
 
 
