@@ -100,7 +100,7 @@ class TestPrepareDecoderAttentionMask(unittest.TestCase):
 
     def test_eval(self):
         eager_outs = self.eval(mode="eager")
-        dy_outs = self.eval(use_cinn=False)
+        dy_outs = self.eval(use_cinn=True)
 
         for cinn_out, dy_out in zip(eager_outs, dy_outs):
             np.testing.assert_allclose(

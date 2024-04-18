@@ -292,6 +292,13 @@ class RelativeJudgePolicy final : public Policy<T> {
   SplitDims SplitDimsWithRelationship(
       const std::vector<ValueDim>& targets,
       const std::vector<ValueDim>& related_with);
+  std::vector<ValueDim> getDownstreamUnrelatedDims(
+      const PatternNodePtr<T>& upstream,
+      const PatternNodePtr<T>& downstream,
+      ShardableAxesInfoManager& axes_info);  // NOLINT
+  std::vector<ValueDim> getUpstreamReduceDims(
+      const PatternNodePtr<T>& upstream,
+      ShardableAxesInfoManager& axes_info);  // NOLINT
   std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
       const ReducePattern<T>& upstream,
       const std::vector<ReducePattern<T>>& candidates);
