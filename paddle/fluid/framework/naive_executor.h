@@ -93,8 +93,6 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void CloneLiteEngine(int num, void* stream);
-
   void RegisterOutputHook(const HookFunc& hookfunc);
   void RegisterInputHook(const HookFunc& hookfunc);
   void RegisterOutputHook(const PirHookFunc& hookfunc);
