@@ -833,5 +833,20 @@ void abs_triple_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void sigmoid_double_grad(const Tensor& out,
+                         const Tensor& fwd_grad_out,
+                         const Tensor& grad_x_grad,
+                         Tensor* out_grad,
+                         Tensor* fwd_grad_out_grad) {
+  if (out_grad) {
+    set_output<T>((1 - 2 * out) * fwd_grad_out * grad_x_grad, out_grad);
+  }
+
+  if (fwd_grad_out_grad) {
+    set_output<T>((1 - out) * out * grad_x_grad, fwd_grad_out_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

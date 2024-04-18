@@ -2149,6 +2149,7 @@
     func : sigmoid_double_grad
   backward : sigmoid_triple_grad
   inplace : (grad_x_grad -> fwd_grad_out_grad)
+  composite :  sigmoid_double_grad(out, fwd_grad_out, grad_x_grad, out_grad, fwd_grad_out_grad)
 
 - backward_op : sigmoid_grad
   forward : sigmoid (Tensor x) -> Tensor(out)
