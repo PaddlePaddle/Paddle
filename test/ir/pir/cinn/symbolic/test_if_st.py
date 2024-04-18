@@ -12,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 from os.path import dirname
+
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_all'] = 'true'
+os.environ['FLAGS_prim_enable_dynamic'] = 'true'
+os.environ['FLAGS_print_ir'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_use_cinn'] = '1'
+os.environ['FLAGS_cinn_bucket_compile'] = '1'
+os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import numpy as np
 
