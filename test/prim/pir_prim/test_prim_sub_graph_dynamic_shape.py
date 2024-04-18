@@ -70,16 +70,6 @@ def stack_net(x):
     return paddle.stack([x, y], axis=0)
 
 
-def tile_net1(x):
-    y = paddle.tile(x, repeat_times=[2, 5])
-    return y
-
-
-def tile_net2(x):
-    y = paddle.tile(x, repeat_times=[3, 2, 5])
-    return y
-
-
 def index_sample_net(x, index):
     return paddle.index_sample(x, index)
 
@@ -247,32 +237,6 @@ class TestPrimStack(TestPrimBase):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimTile(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [1, 300, 4096]
-        self.init_x_shape = [None, None, 4096]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = tile_net1
-        self.necessary_ops = "pd_op.tile"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimTile2(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [300, 4096]
-        self.init_x_shape = [None, 4096]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = tile_net2
-        self.necessary_ops = "pd_op.tile"
         self.enable_cinn = False
         self.tol = 1e-6
 

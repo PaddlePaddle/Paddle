@@ -107,6 +107,7 @@
     param : [x]
   inplace : (output -> out)
   backward : assign_out__grad
+  traits : pir::SideEffectTrait
 
 - op : assign_pos
   args : (Tensor x, Tensor cum_count, Tensor eff_num_len)

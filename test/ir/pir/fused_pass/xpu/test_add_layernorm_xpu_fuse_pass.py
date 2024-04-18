@@ -54,7 +54,7 @@ class TestAddLayernormXpuFusePattern(PassTest):
                 layer_norm = paddle.nn.LayerNorm(add_out.shape[-1:])
                 out = layer_norm(add_out)
                 out = paddle.assign(out)
-                self.pass_list = ['add_layernorm_xpu_fuse_pass']
+                self.pass_attr_list = [{'add_layernorm_xpu_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 64, 28, 28)).astype("float32"),
                     "y": np.random.random((3, 64, 28, 28)).astype("float32"),

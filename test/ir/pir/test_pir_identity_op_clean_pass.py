@@ -37,7 +37,7 @@ class TestRemoveUselessScalePattern(PassTest):
                 )
                 out = paddle.scale(x, scale=1.0, bias=0.0)
                 out = paddle.assign(out)
-                self.pass_list = ['identity_op_clean_pass']
+                self.pass_attr_list = [{'identity_op_clean_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32")
                 }
@@ -85,7 +85,7 @@ class TestRemoveRedundantScalePattern(PassTest):
                             bias_after_scale=bias_after_scale_2,
                         )
                         out = paddle.assign(out)
-                        self.pass_list = ['identity_op_clean_pass']
+                        self.pass_attr_list = [{'identity_op_clean_pass': {}}]
                         self.feeds = {
                             "x": np.random.random((3, 1, 28, 28)).astype(
                                 "float32"
@@ -119,7 +119,7 @@ class TestRemoveUselessCastPattern(PassTest):
                     )
                     out = paddle.cast(x, tmp_type)
                     out = paddle.assign(out)
-                    self.pass_list = ['identity_op_clean_pass']
+                    self.pass_attr_list = [{'identity_op_clean_pass': {}}]
                     self.feeds = {
                         "x": np.random.random((3, 1, 28, 28)).astype(tmp_type)
                     }
@@ -150,7 +150,7 @@ class TestRemoveUselessConcatPattern(PassTest):
                 )
                 out = paddle.concat(x=[x_input])
                 out = paddle.assign(out)
-                self.pass_list = ['identity_op_clean_pass']
+                self.pass_attr_list = [{'identity_op_clean_pass': {}}]
                 self.feeds = {
                     "x_input": np.random.random((3, 1, 28, 28)).astype(
                         "float32"
@@ -185,7 +185,7 @@ class TestRemoveRedundantCastPattern(PassTest):
                         )
                         out = paddle.cast(paddle.cast(x, type_1), type_2)
                         out = paddle.assign(out)
-                        self.pass_list = ['identity_op_clean_pass']
+                        self.pass_attr_list = [{'identity_op_clean_pass': {}}]
                         self.feeds = {
                             "x": np.random.random((3, 1, 28, 28)).astype(
                                 "float16"
@@ -235,7 +235,9 @@ class TestDeleteDropoutOpPatternPattern(PassTest):
                             dropout_net.eval()  # set is_test=true
                             dropout_out = dropout_net(transpose_out)
                             out = paddle.assign(dropout_out)
-                            self.pass_list = ['identity_op_clean_pass']
+                            self.pass_attr_list = [
+                                {'identity_op_clean_pass': {}}
+                            ]
                             self.feeds = {
                                 "x": np.random.random((2, 3, 4)).astype(
                                     "float32"
