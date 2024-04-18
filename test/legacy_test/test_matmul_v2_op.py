@@ -68,7 +68,9 @@ class TestMatMulV2Op(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
         if self.is_bfloat16_op():
             x = np.random.random(self.x_shape).astype(np.float32)
             y = np.random.random(self.y_shape).astype(np.float32)
@@ -123,6 +125,7 @@ class TestMatMulV2Op(OpTest):
                 if hasattr(self, 'check_cinn')
                 else True,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -174,6 +177,7 @@ class TestMatMulOp3(TestMatMulV2Op):
                 else True,
                 check_pir=True,
                 check_auto_parallel=True,
+                check_prim_pir=True,
             )
 
 
@@ -411,7 +415,11 @@ class TestMatMulV2OpAutoParallel(OpTest):
                 check_auto_parallel=True,
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_auto_parallel=True)
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_auto_parallel=True,
+            )
 
 
 # --------------------test matmul fp16--------------------

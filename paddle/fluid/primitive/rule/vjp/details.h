@@ -780,6 +780,69 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void matmul_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out_grad,
+                 bool transpose_x,
+                 bool transpose_y,
+                 Tensor* x_grad,
+                 Tensor* y_grad) {
+  printf("x\n");
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    printf("shape:%d\n", x.shape()[i]);
+  }
+  printf("y\n");
+  for (size_t i = 0; i < y.shape().size(); i++) {
+    printf("shape:%d\n", y.shape()[i]);
+  }
+  printf("out_grad\n");
+  for (size_t i = 0; i < out_grad.shape().size(); i++) {
+    printf("shape:%d\n", out_grad.shape()[i]);
+  }
+  auto temp_x_unsqueeze = x;
+  if (x.shape().size() == 1) {
+    temp_x_unsqueeze = unsqueeze<T>(x, {0});
+  }
+  auto temp_y_unsqueeze = y;
+  if (y.shape().size() == 1) {
+    temp_y_unsqueeze = unsqueeze<T>(y, {1});
+  }
+  printf("temp_x_unsqueeze\n");
+  for (size_t i = 0; i < temp_x_unsqueeze.shape().size(); i++) {
+    printf("shape:%d\n", temp_x_unsqueeze.shape()[i]);
+  }
+  printf("temp_y_unsqueeze\n");
+  for (size_t i = 0; i < temp_y_unsqueeze.shape().size(); i++) {
+    printf("shape:%d\n", temp_y_unsqueeze.shape()[i]);
+  }
+  auto unsqueeze_out_grad = out_grad;
+  if (out_grad.shape().size() == 0) {
+    unsqueeze_out_grad = full<T>({1, 1}, 1.0, x.dtype());
+  } else if (out_grad.shape().size() == 1) {
+    auto out_axis = x.shape().size() > y.shape().size() ? 1 : 0;
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_axis});
+  }
+
+  printf("unsqueeze_out_grad\n");
+  for (size_t i = 0; i < unsqueeze_out_grad.shape().size(); i++) {
+    printf("shape:%d\n", unsqueeze_out_grad.shape()[i]);
+  }
+
+  if (x_grad) {
+    auto x_grad_mm =
+        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, true);
+    auto x_grad_out = reshape<T>(x_grad_mm, x.shape());
+    set_output<T>(x_grad_out, x_grad);
+  }
+  if (y_grad) {
+    auto y_grad_mm =
+        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, true, false);
+    auto y_grad_out = reshape<T>(y_grad_mm, y.shape());
+    set_output<T>(y_grad_out, y_grad);
+  }
+}
+
+template <typename T>
 void maximum_grad(const Tensor& x,
                   const Tensor& y,
                   const Tensor& out_grad,

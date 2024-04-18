@@ -539,6 +539,36 @@ void stack_grad(const std::vector<Tensor>& x,
 }
 
 template <typename T>
+void matmul_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out_grad,
+                 bool transpose_x,
+                 bool transpose_y,
+                 Tensor* x_grad,
+                 Tensor* y_grad) {
+  if (x_grad) {
+    auto temp_x = out_grad * y;
+    auto reduced_x =
+        temp_x.sum(std::vector<int64_t>({0}), temp_x.dtype(), false);
+    std::vector<Tensor> concat_x;
+    concat_x.push_back(reduced_x);
+    concat_x.push_back(reduced_x);
+    auto x_grad_out = concat<T>(concat_x, 0);
+    set_output<T>(x_grad_out, x_grad);
+  }
+  if (y_grad) {
+    auto temp_y = out_grad * x;
+    auto reduced_y =
+        temp_y.sum(std::vector<int64_t>({1}), temp_y.dtype(), false);
+    std::vector<Tensor> concat_y;
+    concat_y.push_back(reduced_y);
+    concat_y.push_back(reduced_y);
+    auto y_grad_out = concat<T>(concat_y, 0);
+    set_output<T>(y_grad_out, y_grad);
+  }
+}
+
+template <typename T>
 void multiply_grad(const Tensor& x,
                    const Tensor& y,
                    const Tensor& out_grad,
