@@ -76,6 +76,8 @@ struct PatternNode {
   }
   void ClearUpstream() { upstream_.clear(); }
   void ClearDownstream() { downstream_.clear(); }
+  void UniqueUpstream() { upstream_ = UniqueVectorBySet(upstream_); }
+  void UniqueDownstream() { downstream_ = UniqueVectorBySet(downstream_); }
 
  private:
   StmtPattern<T> stmt_pattern_;

@@ -237,8 +237,10 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
   return res;
 }
 
-static std::vector<ValueDim> GatherDimsExcept(
-    const std::vector<ValueDim>& dims, const std::vector<size_t>& except) {
+namespace {
+
+std::vector<ValueDim> GatherDimsExcept(const std::vector<ValueDim>& dims,
+                                       const std::vector<size_t>& except) {
   std::vector<ValueDim> result;
   for (size_t i = 0; i < dims.size(); i++) {
     if (std::find(except.begin(), except.end(), i) == except.end()) {
@@ -248,7 +250,7 @@ static std::vector<ValueDim> GatherDimsExcept(
   return result;
 }
 
-static symbol::DimExpr GetProductDimExprForValueDims(
+symbol::DimExpr GetProductDimExprForValueDims(
     const std::vector<ValueDim>& dims) {
   if (dims.empty()) {
     return 0;
@@ -262,8 +264,8 @@ static symbol::DimExpr GetProductDimExprForValueDims(
   return shape_analysis.GetProductDimExpr(dims[0].v_, dim_idx);
 }
 
-static bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
-                                    const std::vector<ValueDim>& second) {
+bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
+                             const std::vector<ValueDim>& second) {
   if (first.empty()) return true;
   const auto& first_product = GetProductDimExprForValueDims(first);
   const auto& second_product = GetProductDimExprForValueDims(second);
@@ -278,6 +280,8 @@ static bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
   }
   return shape_analysis.IsEqual(first_product, second_product);
 }
+
+}  // namespace
 
 template <typename T>
 bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
