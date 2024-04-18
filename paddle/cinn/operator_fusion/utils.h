@@ -51,7 +51,7 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   std::vector<int64_t> reduce_axis_idx;
   if (input_rank == 0) {
-    VLOG(4) << "GetReduceAxisIdx: ";
+    VLOG(4) << "Reduce op has 0D Tensor input, return empty reduce_axis";
     return reduce_axis_idx;
   }
   for (int i = 0; i < axis_attr.size(); ++i) {
