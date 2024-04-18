@@ -346,8 +346,9 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
           out.place(), target_args_def.backend, transform_flag)) {
     out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
     if (!trans_layout && !trans_dtype &&
-        tensor.place().GetType() == AllocationType::GPUPINNED) {
-      // Sharing buffer on GPUPINNED place is a special case due to historical
+        (tensor.place().GetType() == AllocationType::GPUPINNED ||
+         tensor.place().GetType() == AllocationType::XPUPINNED)) {
+      // Sharing buffer on PINNED place is a special case due to historical
       // reasons, and it should not be implemented in this way from a
       // reasonable point of view, but because the performance of the previous
       // model depends on the inplace operation here, the model performance
@@ -466,7 +467,8 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
       return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
     }
 
-    if (selected_rows.place().GetType() == AllocationType::GPUPINNED) {
+    if (selected_rows.place().GetType() == AllocationType::GPUPINNED ||
+        selected_rows.place().GetType() == AllocationType::XPUPINNED) {
       if (NeedTransform2Contiguous(
               false, selected_rows.value().meta().is_contiguous())) {
         auto dense_out = Trans2Contiguous(selected_rows.value());

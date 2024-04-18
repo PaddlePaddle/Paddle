@@ -136,6 +136,15 @@ static void RunKernelFunc(
         } else {
           kernel_ctx.EmplaceBackInput(std::move(custom_in));
         }
+#elif defined(PADDLE_WITH_XPU)
+        if (custom_in.is_xpu_pinned()) {
+          VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+          auto xpu_place = phi::XPUPlace(platform::GetXPUCurrentDeviceId());
+          auto custom_xpu_in = custom_in.copy_to(xpu_place, true);
+          kernel_ctx.EmplaceBackInput(std::move(custom_xpu_in));
+        } else {
+          kernel_ctx.EmplaceBackInput(std::move(custom_in));
+        }
 #else
         kernel_ctx.EmplaceBackInput(std::move(custom_in));
 #endif

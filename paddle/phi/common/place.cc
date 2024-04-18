@@ -82,6 +82,9 @@ Place GetPinnedPlace(const Place &place) {
     case AllocationType::GPU:
       return phi::GPUPinnedPlace();
       break;
+    case AllocationType::XPU:
+      return phi::XPUPinnedPlace();
+      break;
     default:
       return place;
   }

@@ -563,6 +563,7 @@ def monkey_patch_tensor():
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
                     core.XPUPlace,
+                    core.XPUPinnedPlace,
                     core.CustomPlace,
                 ),
             ):

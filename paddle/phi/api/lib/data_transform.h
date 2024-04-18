@@ -183,6 +183,11 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
     ret = src_place.GetType() != AllocationType::CPU;
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  if (target == Backend::XPU) {
+    ret = ret || (src_place.GetType() == AllocationType::XPUPINNED);
+  }
+#endif
   return ret;
 }
 

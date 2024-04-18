@@ -284,10 +284,10 @@ void Copy<platform::XPUPlace, platform::XPUPinnedPlace>(
     const void* src,
     size_t num) {
   if (num <= 0) {
-    VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
+    VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
     return;
   }
-  platform::MemcpySyncD2H(dst, src, num, src_place);
+  platform::MemcpySyncH2D(dst, src, num, src_place);
 }
 
 // NOTE: only for (CPUPlace, XPUPinnedPlace and XPUPlace) -> (XPUPlace).
