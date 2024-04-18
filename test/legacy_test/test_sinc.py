@@ -122,25 +122,27 @@ class TestSincAPI(unittest.TestCase):
             x = paddle.sinc(x)
 
     def test_input_dype_error(self):
+        paddle.enable_static()
+        place = paddle.CPUPlace()
         with self.assertRaises(TypeError):
-            x = np.random.rand(6).astype('int32')
-            x = paddle.to_tensor(x)
-            x = paddle.sinc(x)
+            x_data = np.random.rand(6).astype('int32')
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            exe = base.Executor(place)
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name='x', shape=[6], dtype='int32')
+                res = paddle.sinc(x)
+                static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
 
         with self.assertRaises(TypeError):
-            x = np.random.rand(6).astype('int64')
-            x = paddle.to_tensor(x)
-            x = paddle.sinc(x)
-
-        with self.assertRaises(TypeError):
-            x = np.random.rand(6).astype('int32')
-            x = paddle.to_tensor(x)
-            paddle.sinc_(x)
-
-        with self.assertRaises(TypeError):
-            x = np.random.rand(6).astype('int64')
-            x = paddle.to_tensor(x)
-            paddle.sinc_(x)
+            x_data = np.random.rand(6).astype('int64')
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            exe = base.Executor(place)
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name='x', shape=[6], dtype='int64')
+                res = paddle.sinc(x)
+                static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
 
     def test_inplace(self):
         def run_dygraph(place):
