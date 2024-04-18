@@ -589,7 +589,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #if !defined(PADDLE_WITH_XPU)
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Cannot use XPUPinnedPlace, Please recompile and reinstall your "
-            "paddle with PADDLE_WITH_XPU=ON"))
+            "paddle with PADDLE_WITH_XPU=ON"));
 #endif
         return std::make_unique<platform::XPUPinnedPlace>();
       }))
