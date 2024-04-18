@@ -424,9 +424,48 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     if trans_x:
         trans_x_y_dims_mapping(True, False, X_var_dims_mapping, None)
 
-    gradient_synchronization(
-        ctx, backward_op, act_grad_names, out_grad_names, rank_id
-    )
+    Out_grad_dims_mapping = dist_attr.get_input_dims_mapping(Out_grad.name)
+    if (
+        len(X_var_dims_mapping) == 2
+        and len(Out_grad_dims_mapping) == 2
+        and X_var_dims_mapping[0] > -1
+        and Out_grad_dims_mapping[0] > -1
+    ):
+        assert X_var_dims_mapping[0] == Out_grad_dims_mapping[0]
+        parallel_axis = X_var_dims_mapping[0]
+        group_ranks = _get_comm_group(
+            process_mesh_group,
+            process_mesh_shape,
+            parallel_axis,
+            rank_id,
+        )
+        group = new_process_group(group_ranks)
+        c_allreduce_sum_op = main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': kwargs['Y@GRAD']},
+            outputs={'Out': kwargs['Y@GRAD']},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+                OP_ROLE_KEY: OpRole.Backward,
+            },
+        )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
+        )
+        Y_grad_dist_attr = dist_attr.get_output_dist_attr(kwargs['Y@GRAD'][0])
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            dist_attr.process_mesh,
+            Y_grad_dist_attr,
+            ctx,
+            chunk_id=dist_attr.chunk_id,
+        )
+    else:
+        gradient_synchronization(
+            ctx, backward_op, act_grad_names, out_grad_names, rank_id
+        )
 
     if col_parallel and has_x_grad:
         # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad

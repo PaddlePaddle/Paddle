@@ -451,10 +451,9 @@ class AdamW(Optimizer):
             else None
         )
         lr = self._create_param_lr(param_and_grad)
-        if lr.is_dist():
+        lr_local = lr
+        if paddle.in_dynamic_mode() and lr.is_dist():
             lr_local = lr._local_value()
-        else:
-            lr_local = lr
 
         # create the adamw optimize op
         if in_dynamic_or_pir_mode():

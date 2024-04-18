@@ -92,6 +92,18 @@ void TensorDistAttr::set_annotated(
   annotated_ = annotated;
 }
 
+const std::map<int64_t, ReduceType> TensorDistAttr::partial_status_for_python()
+    const {
+  std::map<int64_t, ReduceType> partial_status;
+  for (auto& kv : partial_status_) {
+    std::cout << "partial_dim:" << kv.first
+              << " type:" << static_cast<int>(kv.second) << " str_type:"
+              << ReduceTypeStrings[static_cast<size_t>(kv.second)];
+    partial_status[kv.first] = kv.second;
+  }
+  return partial_status;
+}
+
 const std::set<int64_t> TensorDistAttr::partial_dims() const {
   std::set<int64_t> keys;
   for (auto& kv : partial_status_) {

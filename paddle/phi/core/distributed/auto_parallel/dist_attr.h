@@ -101,6 +101,8 @@ class TEST_API TensorDistAttr {
   // return vector of mesh dims on which the this tensor is partial on
   const std::set<int64_t> partial_dims() const;
 
+  const std::map<int64_t, ReduceType> partial_status_for_python() const;
+
   const paddle::flat_hash_map<int64_t, ReduceType>& partial_status() const {
     return partial_status_;
   }

@@ -279,13 +279,24 @@ class ClipHelper:
                 mapping[rank_] = []
             sizes = [0] * self.world_nranks
             for param in params:
-                rank = sizes.index(min(sizes))
-                mapping[rank].append(param.name)
+                # In MoE expert parallelization, the experts' parameter are
+                # not on all processes, so they should be mapped to the ranks
+                # that they are actuallly on.
+                rank_candidates = param.dist_attr.process_mesh.process_ids
+                target_rank = rank_candidates[0]
+                tmp_size = sizes[target_rank]
+                for rank in rank_candidates:
+                    if sizes[rank] < tmp_size:
+                        target_rank = rank
+                        tmp_size = sizes[rank]
+                mapping[target_rank].append(param.name)
+                # rank = sizes.index(min(sizes))
+                # mapping[rank].append(param.name)
                 numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
                 ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
-                sizes[rank] += numel
+                sizes[target_rank] += numel
         return mapping
 
 
@@ -327,6 +338,12 @@ class ClipGradByGlobalNormPass(PassBase):
             dist_params_grads, rank_id, block, dist_context, context
         )
         self._remove_no_need_ops_vars(block)
+
+        # print("===== main_program after global_norm_clip pass =====")
+        # with open("main_program_after_global_norm_clip.txt", "w") as f:
+        #     f.write(str(main_program))
+        # print(main_program)
+        # print("\n\n")
 
     def _remove_no_need_ops_vars(self, block):
         removed_op_out_type = [

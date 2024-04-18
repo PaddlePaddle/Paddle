@@ -72,6 +72,11 @@ class Partitioner:
         self._dist_varname_suffix = ""
         self._forward_op_id2forward_op = {}
 
+        # mark whether current op is in MoE Layer
+        self.in_moe_layer = False
+        # serial_block_id --> serial_varname --> shape of dist_var in moe layer
+        self.shape_in_moe_layer = defaultdict(dict)
+
     def partition(
         self, serial_main_program, serial_startup_program, params_grads
     ):
@@ -136,7 +141,7 @@ class Partitioner:
             assert var.persistable
             new_name = var.name + self._dist_varname_suffix
             temp_varname_map[var.name] = new_name
-            target_shape = _partition_var(
+            target_shape = self._partition_var(
                 self._dist_context, ref_block, target_block, var.name, new_name
             )
             var2shape[new_name] = target_shape
@@ -238,6 +243,62 @@ class Partitioner:
 
         return partitioned_main_prog, partitioned_params_and_grads
 
+    def _partition_var(
+        self, dist_context, src_block, dst_block, src_varname, dst_varname
+    ):
+        """
+        partition include: split + replicate
+        """
+        src_var = src_block.var(src_varname)
+
+        if src_var.type in __no_shape_var_type__:
+            persist = getattr(src_var, 'persistable', False)
+            new_var = dst_block.create_var(
+                type=src_var.type,
+                name=dst_varname,
+                persistable=persist,
+                stop_gradient=True,
+            )
+            target_shape = None
+        else:
+            dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
+            target_shape = _get_dist_shape(src_var, dist_attr)
+            # if the variable's shapes in moe layer are different between
+            # serial program and dist program, we should use the shape in
+            # dist program.
+            if (
+                self.in_moe_layer
+                and src_var.name in self.shape_in_moe_layer[src_block.idx]
+            ):
+                target_shape = self.shape_in_moe_layer[src_block.idx][
+                    src_var.name
+                ]
+            # if "local_tensor_from_dist_api" in src_varname and src_var.op.type == "assign":
+            #     op = src_var.op
+            #     print("op:", op)
+            #     print("op.type:", op.type)
+            #     dist_input_var = dst_block.var(op.input_arg_names[0])
+            #     target_shape = dist_input_var.shape
+
+            if isinstance(src_var, Parameter):
+                new_var = _partition_parameter(
+                    dist_context, src_var, dst_block, dst_varname, target_shape
+                )
+            else:
+                new_var = _partition_intermediate_var(
+                    dist_context, src_var, dst_block, dst_varname, target_shape
+                )
+
+        # print("src_var_name:", src_varname, "dst_var_name:", dst_varname, "target_shape:", target_shape, "new_var_shape:", new_var.shape)
+
+        dist_attr = copy.deepcopy(
+            dist_context.get_tensor_dist_attr_for_program(src_var)
+        )
+        assert dist_attr is not None
+        dist_context.set_tensor_dist_attr_for_program(new_var, dist_attr)
+
+        return target_shape
+
     def partition_block(self, ref_block, target_block):
         dist_op_context = self._dist_context.dist_op_context
 
@@ -259,6 +320,7 @@ class Partitioner:
         # partition
         appended_grad_times = 0
         for idx, op in enumerate(ref_block.ops):
+            # print("===== partitioner idx:%d op:%s ====="%(idx, str(op)))
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (
                 is_forward_op(ref_block.ops[idx - 1])
@@ -281,7 +343,7 @@ class Partitioner:
                         serial_input_varname + self._dist_varname_suffix
                     )
                     if ref_block.has_var(serial_input_varname):
-                        _partition_var(
+                        self._partition_var(
                             self._dist_context,
                             ref_block,
                             target_block,
@@ -306,7 +368,7 @@ class Partitioner:
                         serial_output_varname + self._dist_varname_suffix
                     )
                     if ref_block.has_var(serial_output_varname):
-                        _partition_var(
+                        self._partition_var(
                             self._dist_context,
                             ref_block,
                             target_block,
@@ -319,6 +381,28 @@ class Partitioner:
 
             # partition op
             if is_forward_op(op) or op_dist_attr.is_recompute:
+                # In MoE expert parallelization, the process mesh of variables
+                # in MoE Layer are local, which are different from those before
+                # the MoE Layer. Use "_partition_var" to partition variables in
+                # MoE Layer will get an error shape due to the difference between
+                # the process mesh. So, here use infer_shape to get the correct
+                # variable shape in MoE Layer.
+                if op.type == "assign":
+                    # In forward phase, the computation in MoE Layer starts from
+                    # "local_tensor_from_dist api" and ends at "dtensor_from_local api".
+                    # These two apis are implemented with "assign" op and their
+                    # outputs are named corresponding to the api name.
+                    if (
+                        "local_tensor_from_dist_api"
+                        in op.desc.output_arg_names()[0]
+                    ):
+                        self.in_moe_layer = True
+                    if (
+                        "dtensor_from_local_api"
+                        in op.desc.output_arg_names()[0]
+                    ):
+                        self.in_moe_layer = False
+
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_forward_impl = _get_dist_op_forward_implement(
                     op, self._dist_context
@@ -326,8 +410,34 @@ class Partitioner:
                 dist_op_forward_impl.forward(
                     self._dist_context, **kinputs, **koutputs
                 )
+                if self.in_moe_layer:
+                    op_in_dist_program = target_block.ops[-1]
+                    op_in_dist_program.desc.infer_shape(target_block.desc)
+                    for serial_output_varname in op.desc.output_arg_names():
+                        dist_var = self._get_dist_var_by_serial_varname(
+                            serial_output_varname, target_block
+                        )
+                        if (
+                            serial_output_varname
+                            not in self.shape_in_moe_layer[ref_block.idx]
+                        ):
+                            self.shape_in_moe_layer[ref_block.idx][
+                                serial_output_varname
+                            ] = dist_var.shape
+                        # print("serial var:", ref_block.var(serial_output_varname))
+                        # print("dist var:", dist_var)
 
             elif is_backward_op(op):
+                if op.type == "assign":
+                    # In backward phase, the computation in MoE Layer starts from
+                    # "dtensor_from_local api" and ends at "local_tensor_from_dist api".
+                    if (
+                        "local_tensor_from_dist_api"
+                        in op.desc.input_arg_names()[0]
+                    ):
+                        self.in_moe_layer = False
+                    if "dtensor_from_local_api" in op.desc.input_arg_names()[0]:
+                        self.in_moe_layer = True
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, self._forward_op_id2forward_op
@@ -343,6 +453,20 @@ class Partitioner:
                     **koutputs,
                     **{"grad_var_to_var": grad_var_to_var},
                 )
+                if self.in_moe_layer:
+                    op_in_dist_program = target_block.ops[-1]
+                    op_in_dist_program.desc.infer_shape(target_block.desc)
+                    for serial_output_varname in op.desc.output_arg_names():
+                        dist_var = self._get_dist_var_by_serial_varname(
+                            serial_output_varname, target_block
+                        )
+                        if (
+                            serial_output_varname
+                            not in self.shape_in_moe_layer[ref_block.idx]
+                        ):
+                            self.shape_in_moe_layer[ref_block.idx][
+                                serial_output_varname
+                            ] = dist_var.shape
             elif is_optimize_op(op):
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must be 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
@@ -359,6 +483,7 @@ class Partitioner:
                 raise NotImplementedError(
                     f"partitioner only support forward and backward, optimize ops, but got {str(op)}"
                 )
+            # print("\n\n")
 
     def _is_valid_annotated_program(self, program):
         # TODO (ZJ-LIANG) should check all block
@@ -381,6 +506,14 @@ class Partitioner:
         )
 
         return all_ops_annotated and all_vars_annotated
+
+    def _get_dist_var_by_serial_varname(self, serial_varname, dist_block):
+        target_block_id = dist_block.idx
+        dist_varname = self._serial2dist_varname_mapping[target_block_id][
+            serial_varname
+        ]
+        assert dist_block.has_var(dist_varname)
+        return dist_block.var(dist_varname)
 
     def _get_dist_var_by_serial_var(
         self, serial_var, partitioned_main_prog, block_id
@@ -463,45 +596,6 @@ def _partition_intermediate_var(
     )
 
     return var
-
-
-def _partition_var(
-    dist_context, src_block, dst_block, src_varname, dst_varname
-):
-    """
-    partition include: split + replicate
-    """
-    src_var = src_block.var(src_varname)
-
-    if src_var.type in __no_shape_var_type__:
-        persist = getattr(src_var, 'persistable', False)
-        new_var = dst_block.create_var(
-            type=src_var.type,
-            name=dst_varname,
-            persistable=persist,
-            stop_gradient=True,
-        )
-        target_shape = None
-    else:
-        dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
-        target_shape = _get_dist_shape(src_var, dist_attr)
-
-        if isinstance(src_var, Parameter):
-            new_var = _partition_parameter(
-                dist_context, src_var, dst_block, dst_varname, target_shape
-            )
-        else:
-            new_var = _partition_intermediate_var(
-                dist_context, src_var, dst_block, dst_varname, target_shape
-            )
-
-    dist_attr = copy.deepcopy(
-        dist_context.get_tensor_dist_attr_for_program(src_var)
-    )
-    assert dist_attr is not None
-    dist_context.set_tensor_dist_attr_for_program(new_var, dist_attr)
-
-    return target_shape
 
 
 def _get_dist_op_backward_implement(

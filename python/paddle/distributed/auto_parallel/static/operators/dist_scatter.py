@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
 from ..completion import get_phi_spmd_rule
-from ..utils import get_dist_tensor_spec
+from ..process_group import new_process_group
+from ..utils import _get_comm_group, get_dist_tensor_spec
 from .common import (
+    DistributedOperatorImpl,
     DistributedOperatorImplContainer,
-    get_default_distributed_operator_impl,
+    register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
     update_op_dims_mapping,
 )
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedScatter(DistributedOperatorImplContainer):
@@ -76,11 +82,103 @@ class DistributedScatter(DistributedOperatorImplContainer):
     @staticmethod
     def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
         op_dist_attr = dist_op.dist_attr
-        default_impl = get_default_distributed_operator_impl()
-        op_dist_attr.impl_type = default_impl.type
-        op_dist_attr.impl_idx = default_impl.idx
+        op_dist_attr.impl_type = dist_op.serial_op.type
+        op_dist_attr.impl_idx = 0
 
         return False
 
 
 register_distributed_operator_impl_container(DistributedScatter("scatter"))
+
+
+class DistributedScatterImpl0(DistributedOperatorImpl):
+    def __init__(self, name):
+        super().__init__(name)
+        self._forward_implemented = True
+        self._backward_implemented = True
+
+    def is_input_compatible(self, dist_op):
+        return True
+
+    def is_output_compatible(self, dist_op):
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        return True
+
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
+        dist_op_context = ctx.dist_op_context
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
+        op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+
+        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
+
+        dst_op = main_block.ops[-1]
+        assert dst_op.type == "scatter"
+
+        # HACK clear the partial state of output
+        # only use all_reduce_sum now.
+        for out_varname in dst_op.desc.output_arg_names():
+            op_out_dist_attr = dst_op.dist_attr.get_output_dist_attr(
+                out_varname
+            )
+            if op_out_dist_attr._is_partial():
+                partial_dims = op_out_dist_attr._partial_dims()
+                partial_status = op_out_dist_attr._partial_status()
+                print("===== handle partial in dist_op =====")
+                print(
+                    "op:",
+                    dst_op.type,
+                    "out_var:",
+                    out_varname,
+                    "partial_dims:",
+                    partial_dims,
+                    "partial_status:",
+                    partial_status,
+                )
+                for partial_dim, reduce_type in partial_status.items():
+                    mesh = op_out_dist_attr.process_mesh
+                    group_ranks = _get_comm_group(
+                        mesh.process_ids,
+                        mesh.shape,
+                        partial_dim,
+                        rank_id,
+                    )
+                    sync_group = new_process_group(group_ranks)
+
+                    c_allreduce_sum_op = main_block.append_op(
+                        type='c_allreduce_sum',
+                        inputs={'X': [out_varname]},
+                        outputs={'Out': [out_varname]},
+                        attrs={
+                            'ring_id': sync_group.id,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Forward,
+                        },
+                    )
+                    op_out_dist_attr._clean_partial_status()
+                    print("allreduce_type:", c_allreduce_sum_op.type)
+
+                    set_comm_op_dist_attr_for_program(
+                        c_allreduce_sum_op,
+                        mesh,
+                        op_out_dist_attr,
+                        ctx,
+                        chunk_id=op_out_dist_attr.chunk_id,
+                    )
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
+
+
+register_distributed_operator_impl(
+    "scatter", DistributedScatterImpl0("scatter")
+)

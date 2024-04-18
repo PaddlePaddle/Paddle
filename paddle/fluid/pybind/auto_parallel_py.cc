@@ -578,7 +578,14 @@ void BindAutoParallel(py::module *m) {
       .def("__str__", &TensorDistAttr::to_string)
       .def(
           "_is_partial", &TensorDistAttr::is_partial, py::arg("mesh_axis") = -1)
+      .def("_set_partial_status",
+           static_cast<void (TensorDistAttr::*)(
+               const std::vector<int64_t> &dims, const phi::ReduceType &type)>(
+               &TensorDistAttr::set_partial_status),
+           py::arg("dims"),
+           py::arg("type") = phi::ReduceType::kRedSum)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
+      .def("_partial_status", &TensorDistAttr::partial_status_for_python)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_set_partial_dims",
            [](TensorDistAttr &self, const std::vector<int64_t> &dims) {
@@ -755,27 +762,27 @@ void BindAutoParallel(py::module *m) {
       },
       py::return_value_policy::reference);
 
-  m->def("local_tensors_from_dist",
-         [](py::handle py_tensor,
-            const std::vector<ProcessMesh> &local_meshes,
-            const Placements &local_placements,
-            const ProcessMesh &global_mesh,
-            const Placements &global_placements) {
-           auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-           return local_tensors_from_dist_ad_function(tensor,
-                                                      local_meshes,
-                                                      local_placements,
-                                                      global_mesh,
-                                                      global_placements);
-         })
+  // m->def("local_tensors_from_dist",
+  //        [](py::handle py_tensor,
+  //           const std::vector<ProcessMesh> &local_meshes,
+  //           const Placements &local_placements,
+  //           const ProcessMesh &global_mesh,
+  //           const Placements &global_placements) {
+  //          auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+  //          return local_tensors_from_dist_ad_function(tensor,
+  //                                                     local_meshes,
+  //                                                     local_placements,
+  //                                                     global_mesh,
+  //                                                     global_placements);
+  //        });
 
-      // TODO(liuzhenhai): DistributedMapper is not used for now, but
-      // dist_mapper_test need the symbols touch DistributedMapper to be linked,
-      // remove it later
-      m->def("touch_dist_mapper", []() {
-        DistributedMapper mapper;
-        return mapper.to_string();
-      });
+  // TODO(liuzhenhai): DistributedMapper is not used for now, but
+  // dist_mapper_test need the symbols touch DistributedMapper to be linked,
+  // remove it later
+  m->def("touch_dist_mapper", []() {
+    DistributedMapper mapper;
+    return mapper.to_string();
+  });
 }
 
 static void parse_tensors(PyObject *obj,

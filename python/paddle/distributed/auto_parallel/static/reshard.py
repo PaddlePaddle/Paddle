@@ -1366,13 +1366,13 @@ class Resharder:
             input_name = op.input_arg_names[0]
             output_name = op.output_arg_names[0]
             if (
-                "local_tensor_api" in input_name
-                or "local_tensor_api" in output_name
+                "local_tensor_from_dist_api" in input_name
+                or "local_tensor_from_dist_api" in output_name
             ):
                 return True
             if (
-                "dtensor_from_local" in input_name
-                or "dtensor_from_local" in output_name
+                "dtensor_from_local_api" in input_name
+                or "dtensor_from_local_api" in output_name
             ):
                 return True
         return False
@@ -1426,12 +1426,13 @@ class Resharder:
                         tensor_process_mesh
                         not in self.dist_context.process_meshes
                     ):
-                        # assert whether -1 when union.
-                        for item in tensor_dims_mapping:
-                            if item != -1:
-                                raise ValueError(
-                                    "The dim must be -1 when tensor process mesh is a union."
-                                )
+                        if IGNORE_UNION_MESH is False:
+                            # assert whether -1 when union.
+                            for item in tensor_dims_mapping:
+                                if item != -1:
+                                    raise ValueError(
+                                        "The dim must be -1 when tensor process mesh is a union."
+                                    )
                     is_reshard = True
 
                 # judge whether need reshard by process_mesh
@@ -1522,10 +1523,16 @@ class Resharder:
         # op input's attr is process_mesh([0, 1]) dims_mapping([0, -1])
         # reshard will insert split op before the reshard_op
         if is_union_process_mesh_tensor:
-            assert (
-                len(set(source_dims_mapping)) == 1
-                and list(set(source_dims_mapping))[0] == -1
-            )
+            # assert (
+            #     len(set(source_dims_mapping)) == 1
+            #     and list(set(source_dims_mapping))[0] == -1
+            # )
+            # if (
+            #     len(set(source_dims_mapping)) == 1
+            #     and list(set(source_dims_mapping))[0] == -1
+            # ):
+            #     print("===== union_mesh_tensor in find_op_desc ==== ")
+            #     print("source_process_group: ", source_process_group, "source_dims_mapping: ", source_dims_mapping, "target_process_group: ", target_process_group, "target_dims_mapping: ", target_dims_mapping)
             if set(target_process_group).intersection(
                 set(source_process_group)
             ):
@@ -2554,8 +2561,8 @@ class Resharder:
                         )
 
     def _reshard_input(self, block):
-        print("============ block in reshard_input =============")
-        print(block)
+        # print("============ block in reshard_input =============")
+        # print(block)
         idx = 0
         while idx < len(block.ops):
             pre_op_count = len(block.ops)
@@ -2566,8 +2573,8 @@ class Resharder:
                 continue
 
             dist_op = self.dist_context.get_dist_op_for_program(op)
-            print("****** dist_op ******")
-            print(dist_op)
+            # print("****** dist_op ******")
+            # print(dist_op)
             if dist_op is not None:
                 if op.type in _g_subblock_ops:
                     if not self.is_condition_replicative(op):
@@ -2613,9 +2620,10 @@ class Resharder:
                         and self.dist_context.process_meshes
                     ):
                         is_union_process_mesh_tensor = True
-                        assert dist_tensor.dist_attr.dims_mapping.count(
-                            -1
-                        ) == len(dist_tensor.dist_attr.dims_mapping)
+                        if IGNORE_UNION_MESH is False:
+                            assert dist_tensor.dist_attr.dims_mapping.count(
+                                -1
+                            ) == len(dist_tensor.dist_attr.dims_mapping)
 
                     op_input_attrs = self.get_op_input_attrs(op, var_name)
                     for input_attr in op_input_attrs:
@@ -3011,8 +3019,8 @@ class Resharder:
                 idx += 1
 
     def reshard(self):
-        if not IGNORE_UNION_MESH:
-            self._remove_global_process_mesh()
+        # if not IGNORE_UNION_MESH:
+        self._remove_global_process_mesh()
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             # change the var_name before resharding sub block
             if block_idx in Resharder.while_block_info:
