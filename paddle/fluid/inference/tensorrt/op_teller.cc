@@ -390,7 +390,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         auto input_var_name = desc.Input("Input")[0];
         auto* input_var_desc = block->FindVarRecursive(input_var_name);
         auto input_dtype = input_var_desc->GetDataType();
-        if (input_dtype == framework::proto::VarType::FP16) return false;
+        if (input_dtype == framework::proto::VarType::FP16 ||
+            input_dtype == framework::proto::VarType::BF16) {
+          LOG(INFO) << "fused_conv2d_add_act will use cutlass HWC kernel";
+          return false;
+        }
       }
     }
 
