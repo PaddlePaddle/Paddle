@@ -59,6 +59,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
@@ -71,6 +72,7 @@
     data_type : param
   optional : master_param, skip_update, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adamax_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
@@ -82,6 +84,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (inf_norm -> inf_norm_out), (master_param ->master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adamw_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, float lr_ratio = 1.0f, float coeff = 0.01f, bool with_decay = false, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
@@ -94,6 +97,7 @@
     data_type : param
   optional : master_param, skip_update, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
@@ -221,6 +225,7 @@
     support_trans_dtype : learning_rate, n
   optional : master_param, master_param_out
   inplace : (param -> param_out), (d -> d_out), (y -> y_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : asin
   args : (Tensor x)
@@ -1603,6 +1608,7 @@
     data_type : param
   optional : master_param, skip_update, beta1_pow_out, beta2_pow_out, master_param_outs
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
+  traits : pir::SideEffectTrait
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
@@ -1959,6 +1965,7 @@
     data_type : param
   optional: master_param, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : merged_momentum_
   args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -1970,6 +1977,7 @@
     data_type : param
   optional: master_param, master_param_out
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : meshgrid
   args : (Tensor[] inputs)
@@ -2002,6 +2010,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : multi_dot
   args : (Tensor[] x)
@@ -2366,6 +2375,7 @@
     data_type : param
   optional : mean_grad, master_param, master_param_outs
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out), (master_param->master_param_outs)
+  traits : pir::SideEffectTrait
 
 - op : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false)
@@ -2424,6 +2434,7 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (prev -> prev_out), (learning_rate -> learning_rate_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : rsqrt
   args : (Tensor x)
@@ -2553,6 +2564,7 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : shape
   args : (Tensor input)
