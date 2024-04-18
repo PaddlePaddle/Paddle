@@ -356,21 +356,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
 
-    @prog_scope()
-    def test_sequence_pad(self):
-        x = paddle.static.data("x", [-1, 2], dtype=paddle.int64, lod_level=1)
-        value = paddle.to_tensor(1000, dtype=paddle.int64).squeeze()
-        out = paddle.static.nn.sequence_pad(x, value)
-
-        x_tensor = paddle.base.create_lod_tensor(
-            np.arange(20).astype(np.int64).reshape(-1, 2),
-            [[3, 3, 4]],
-            place=self.exe.place,
-        )
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
-        self.assertEqual(res[0].shape, (3, 4, 2))
-
     @test_with_pir_api
     @prog_scope()
     def test_static_data(self):

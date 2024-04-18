@@ -1528,6 +1528,7 @@
   kernel :
     func : isfinite {dense -> dense},
            isfinite_sr {selected_rows -> selected_rows}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isinf
   args : (Tensor x)
