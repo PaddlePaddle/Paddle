@@ -3631,7 +3631,7 @@ void RAdamInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_EQ(param_dim,
                     moment1.dims(),
                     phi::errors::InvalidArgument(
-                        "Param and Momentum input of NAdamOp "
+                        "Param and Momentum input of RAdamOp "
                         "should have the same dimension. But received "
                         "Param's dim [%s] and Moment1 [%s]",
                         param_dim,
@@ -3639,7 +3639,7 @@ void RAdamInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_EQ(param_dim,
                     moment2.dims(),
                     phi::errors::InvalidArgument(
-                        "Param and Momentum input of NAdamOp "
+                        "Param and Momentum input of RAdamOp "
                         "should have the same dimension. But received "
                         "Param's dim [%s] and Moment2 [%s]",
                         param_dim,
@@ -3649,7 +3649,7 @@ void RAdamInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_EQ(common::product(lr_dim),
                     1,
                     phi::errors::InvalidArgument(
-                        "Learning Rate of NAdamOp should be a scalar. But "
+                        "Learning Rate of RAdamOp should be a scalar. But "
                         "received LearningRate's dim [%s]",
                         common::product(lr_dim)));
 
@@ -3657,7 +3657,7 @@ void RAdamInferMeta(const MetaTensor& param,
     PADDLE_ENFORCE_EQ(param_dim,
                       master_param.dims(),
                       errors::InvalidArgument(
-                          "Param and MasterParam input of NAdamOp should "
+                          "Param and MasterParam input of RAdamOp should "
                           "have same dimension. But "
                           "received Param dims: [%s], MasterParam dims: [%s].",
                           param_dim,
