@@ -195,9 +195,6 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_XPU_XHPC
-  if (causal == false) {
-    PADDLE_THROW(phi::errors::Unimplemented("causal should be true"));
-  }
   if (return_softmax == true) {
     PADDLE_THROW(phi::errors::Unimplemented("return_softmax should be false"));
   }
@@ -246,6 +243,10 @@ void FlashAttnKernel(const Context& ctx,
   XPUType* out_data = reinterpret_cast<XPUType*>(out->data<T>());
   float* softmax_lse_data = softmax_lse->data<float>();
 
+  const float* bias_data = nullptr;
+  if (attn_mask.get_ptr() != nullptr) {
+    bias_data = attn_mask->data<float>();
+  }
   // template <typename T, typename TACCUM, typename TGEMM, typename TID> int
   // mha_varlen_fwd(xdnn::Context* ctx, const T* q, const T* k, const T* v, T*
   // out, TACCUM* softmax_lse, const xdnn::VectorParam<TID>& lod_seqlens_q,
@@ -271,7 +272,11 @@ void FlashAttnKernel(const Context& ctx,
       num_heads_k,                  // head_num_k
       head_size,                    // head_dim
       1.0f / std::sqrt(head_size),  // softmax_scale
-      dropout                       // p_dropout
+      dropout,                      // p_dropout
+      0x45678901,                   // seed
+      causal,                       // is_causal
+      nullptr,                      // attn_mask
+      bias_data                     // bias
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
 #else
