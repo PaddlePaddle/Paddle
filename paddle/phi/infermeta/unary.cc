@@ -5478,14 +5478,16 @@ void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* out,
                         MetaConfig config) {
+#define UNSQUEEZE_MAX_RANK_SUPPORTED 8
   const auto& x_dims = x.dims();
   // Validity Check: input tensor dims (<6).
   PADDLE_ENFORCE_LE(x_dims.size(),
-                    6,
+                    UNSQUEEZE_MAX_RANK_SUPPORTED,
                     phi::errors::InvalidArgument(
                         "Invalid "
                         "dimensions, the rank of Input(X) "
-                        "should be in the range of [1, 6] (Eigen limit)"));
+                        "should be in the range of [1, %d] (Eigen limit)",
+                        UNSQUEEZE_MAX_RANK_SUPPORTED));
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape.  set all elements to -1.
     int output_size = static_cast<int>(x.dims().size() + axes.GetData().size());
@@ -5500,6 +5502,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     }
     out->set_dtype(x.dtype());
   }
+#undef UNSQUEEZE_MAX_RANK_SUPPORTED
 }
 
 void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,

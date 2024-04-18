@@ -274,7 +274,7 @@
 
 - op : generate_proposals
   version :
-    - checkpoint : Registe generate_proposals_v2 for adding the attribute of pixel_offset
+    - checkpoint : Register generate_proposals_v2 for adding the attribute of pixel_offset
       action :
         - add_attr : pixel_offset
           comment : If true, im_shape pixel offset is 1.

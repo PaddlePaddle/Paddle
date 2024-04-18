@@ -84,19 +84,19 @@ class CorrelationOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input1");
     auto in2_dims = ctx->GetInputDim("Input2");
 
-    PADDLE_ENFORCE_EQ(in_dims.size() == 4,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of CorrelationOp must be 4 dims."
-                          "But received dims is %d.",
-                          in_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() == 4,
+        true,
+        phi::errors::InvalidArgument("Input(X) of CorrelationOp must be 4 dims."
+                                     "But received dims is %d.",
+                                     in_dims.size()));
 
-    PADDLE_ENFORCE_EQ(in2_dims.size() == 4,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Y) of CorrelationOp must be 4 dims."
-                          "But received dims is %d.",
-                          in2_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        in2_dims.size() == 4,
+        true,
+        phi::errors::InvalidArgument("Input(Y) of CorrelationOp must be 4 dims."
+                                     "But received dims is %d.",
+                                     in2_dims.size()));
     std::vector<int64_t> output_shape =
         CorrelationOutputSize(static_cast<int>(in_dims[0]),
                               static_cast<int>(in_dims[2]),
@@ -114,11 +114,11 @@ class CorrelationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
-    PADDLE_ENFORCE_EQ(input_data_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Input2")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "X and Y shoule have the same datatype"));
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        framework::TransToProtoVarType(
+            ctx.Input<phi::DenseTensor>("Input2")->dtype()),
+        phi::errors::InvalidArgument("X and Y shoule have the same datatype"));
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
@@ -173,7 +173,7 @@ class CorrelationKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::Unimplemented("Correlation only supports GPU now."));
+        phi::errors::Unimplemented("Correlation only supports GPU now."));
   }
 };
 

@@ -209,11 +209,9 @@ if(WITH_ROCM)
     "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
-    "gpu/multiclass_nms3_kernel.cu"
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
-    "gpu/rms_norm_grad_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpudnn/mha_cudnn_frontend.cu"
     "fusion/gpu/block_multi_head_attention_kernel.cu"
@@ -262,7 +260,9 @@ if(NOT
     AND AVX512F_FOUND
     AND AVX512F_FLAG
     AND WITH_MKL))
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
 endif()
 
 file(
