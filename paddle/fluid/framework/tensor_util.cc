@@ -893,14 +893,14 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
   if (typeid(int8_t) == typeid(T) || typeid(uint8_t) == typeid(T)) {
     if (element_num > 0) {
       os << signed(inspect[0]);
-      for (int j = 1; j < element_num; ++j) {
+      for (int j = 1; j < 10; ++j) {
         os << " " << signed(inspect[j]);
       }
     }
   } else {
     if (element_num > 0) {
       os << inspect[0];
-      for (int j = 1; j < element_num; ++j) {
+      for (int j = 1; j < 10; ++j) {
         os << " " << inspect[j];
       }
     }

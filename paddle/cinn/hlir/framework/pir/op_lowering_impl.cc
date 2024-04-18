@@ -198,7 +198,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     bool apply_op_schedule,
     bool apply_group_schedule,
     bool apply_pass) {
-  VLOG(4) << "BucketLower Group : \n" << *group;
+  std::cerr << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -221,7 +221,17 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // =========== OpFusion ============
 
+  std::cerr << "before OperationFusion: ";
+  for (const auto& f : func_bodies) {
+    std::cerr << f << std::endl;
+  }
+  std::cerr << "############################################111";
   func_bodies = OperationFusion(ops, func_bodies);
+  std::cerr << "after OperationFusion: ";
+  for (const auto& f : func_bodies) {
+    std::cerr << f << std::endl;
+  }
+  std::cerr << "############################################222";
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================

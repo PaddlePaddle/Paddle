@@ -69,7 +69,11 @@ Expr Optimize(Expr e,
   // CudaTransBufferWithDynamicShape(&copied);
 #endif
 
+  // std::cout << "before optim " << copied << std::endl;
+
   SimplifyBlocks(&copied);
+
+  // std::cout << "after optim " << copied << std::endl;
   VLOG(4) << "After SimplifyBlocks:" << copied;
 
   MapExternCall(&copied, target);
@@ -79,10 +83,10 @@ Expr Optimize(Expr e,
   VLOG(10) << "After Optimize ExternCallMultiOutputShallowStore:" << copied;
   // Simplify already contains CastSimplify
   Simplify(&copied);
-  VLOG(10) << "After Optimize Simplify:" << copied;
+  std::cerr << "After Optimize Simplify:" << copied;
 
-  IfFusion(&copied);
-  VLOG(10) << "After Optimize IfFusion" << copied;
+  // IfFusion(&copied);
+  // std::cerr << "After Optimize IfFusion" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";
@@ -93,6 +97,7 @@ Expr Optimize(Expr e,
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
   auto copied = ir::ir_utils::IRCopy(Expr(module));
+
   ReplaceCrossThreadReduction(&copied);
   UnrollLoop(&copied);
   VectorizeLoops(&copied, Target());
@@ -106,6 +111,7 @@ ir::Module Optimize(const ir::Module& module, const Target& target) {
   LowerIntrin(&copied, target);
   VLOG(10) << "After LowerIntrin:" << copied.as_module_ref();
 
+  // std::cerr << "after optim " << copied.as_module_ref() << std::endl;
   return copied.as_module_ref();
 }
 

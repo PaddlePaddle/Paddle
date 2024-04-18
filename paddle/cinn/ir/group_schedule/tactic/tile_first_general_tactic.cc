@@ -125,7 +125,7 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
-  Unroll(sch, block_id);
+  // Unroll(sch, block_id);
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   SetReduceType(sch, block_id);

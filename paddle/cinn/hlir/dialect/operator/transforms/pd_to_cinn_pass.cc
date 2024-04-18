@@ -201,11 +201,11 @@ class ReshapeOpPattern
   using pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ReshapeOp op) const override {
-    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    // const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto scale_factor_gen_op = op->operand_source(1).defining_op();
-    auto full_op =
-        scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    return !is_denied && full_op;
+    std::cerr << "full gene " << scale_factor_gen_op->name() << std::endl;
+    auto full_op = scale_factor_gen_op->isa<paddle::dialect::FullIntArrayOp>();
+    return full_op;
   }
 
   void Rewrite(paddle::dialect::ReshapeOp op,
@@ -234,6 +234,48 @@ class ReshapeOpPattern
     auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
         op->operand_source(0), vec_out_shape);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+    rewriter.EraseOp(op);
+  }
+};
+
+class FullLikeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullLikeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FullLikeOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::FullLikeOp op) const override {
+    // const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    auto value_gen_op = op->operand_source(1).defining_op();
+
+    auto full_op = value_gen_op->isa<paddle::dialect::FullOp>();
+
+    auto dynamic_shape = op->operand_source(0)
+                             .type()
+                             .dyn_cast<pir::ShapedTypeInterface>()
+                             .IsDynamicShape();
+    return full_op && (!dynamic_shape);
+  }
+
+  void Rewrite(paddle::dialect::FullLikeOp op,
+               pir::PatternRewriter &rewriter) const override {
+    auto valu_gen_op = op->operand_source(1).defining_op();
+    auto full_op = valu_gen_op->dyn_cast<paddle::dialect::FullOp>();
+
+    auto init_value =
+        full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
+
+    auto like_tensor_type = op->operand_source(0)
+                                .type()
+                                .dyn_cast<paddle::dialect::DenseTensorType>();
+    auto new_shape = phi::vectorize(like_tensor_type.dims());
+
+    auto data_type =
+        paddle::dialect::TransToPhiDataType(like_tensor_type.dtype());
+
+    auto new_full = rewriter.Build<paddle::dialect::FullOp>(
+        new_shape, init_value, data_type, phi::CPUPlace());
+
+    rewriter.ReplaceAllUsesWith(op.result(0), new_full.result(0));
     rewriter.EraseOp(op);
   }
 };

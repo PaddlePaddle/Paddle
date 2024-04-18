@@ -188,6 +188,20 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
+
+  // std::cerr << "kernel op " << phi_op_name_ << std::endl;
+
+  // for( size_t i = 0; i < kernel_context_.InputsSize(); ++i )
+  // {
+  //   std::cerr << "input  " << i << "\n" <<
+  //   kernel_context_.InputAt<phi::DenseTensor>(i) << std::endl;
+  // }
+
+  // for( size_t i = 0; i < kernel_context_.OutputsSize(); ++i )
+  // {
+  //   std::cerr << "output  " << i << "\n" <<
+  //   *(kernel_context_.MutableOutputAt<phi::DenseTensor>(i) )<< std::endl;
+  // }
 }
 
 }  // namespace framework

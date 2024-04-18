@@ -56,6 +56,8 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
         for (int i = 0; i < node->stmts.size(); ++i) {
           if (need_remove_ids.count(i) == 0) {
             new_stmts.push_back(node->stmts[i]);
+          } else {
+            std::cerr << "remove schedule block: " << node->stmts[i];
           }
         }
         return new_stmts;
@@ -155,6 +157,9 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 void EliminateDeadScheduleBlock(Expr* e,
                                 const std::vector<std::string>& output_names) {
   VLOG(6) << "Start EliminateDeadScheduleBlock" << *e;
+  for (auto n : output_names) {
+    VLOG(1) << "in EliminateDeadScheduleBlock, output: " << n;
+  }
   ScheduleBlockDCE eliminator(output_names);
   eliminator(e);
   VLOG(6) << "End EliminateDeadScheduleBlock: " << *e;

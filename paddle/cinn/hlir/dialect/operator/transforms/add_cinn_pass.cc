@@ -48,6 +48,7 @@
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(check_infer_symbolic);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
@@ -83,6 +84,8 @@ void ApplyPdToCinnPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -102,6 +105,7 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -185,7 +189,7 @@ void ApplyCinnLowerPass(
   }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
