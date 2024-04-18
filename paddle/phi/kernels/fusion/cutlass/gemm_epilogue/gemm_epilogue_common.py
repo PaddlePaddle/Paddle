@@ -45,10 +45,10 @@ cutlass::Status ${kernel_func_name}(const GemmEpilogueAllParams& params) {
 CommonCutlassGemmEpilogueKernelArguments = '''
     /// Arguments
     cutlass::gemm::GemmCoord problem_size{params.m, params.n, params.k};
-    cutlass::bfloat16_t *input = (cutlass::bfloat16_t *)(params.input);
-    cutlass::bfloat16_t *weight = (cutlass::bfloat16_t *)(params.weight);
-    cutlass::bfloat16_t *bias = (cutlass::bfloat16_t *)(params.bias);
-    cutlass::bfloat16_t *output = (cutlass::bfloat16_t *)(params.output);
+    ${element_a} *input = (${element_a} *)(params.input);
+    ${element_b} *weight = (${element_b} *)(params.weight);
+    ${element_c} *bias = (${element_c} *)(params.bias);
+    ${element_c} *output = (${element_c} *)(params.output);
     // Only available in RRR format
     int64_t batch_stride_C = problem_size.n();
     if(!params.isVec_bias)     { batch_stride_C = problem_size.mn().product(); }
