@@ -118,8 +118,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     //
     // Constraints.
     //
-    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx)
-                              -> bool {
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
@@ -357,8 +356,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     //
     // Constraints.
     //
-    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx)
-                              -> bool {
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
