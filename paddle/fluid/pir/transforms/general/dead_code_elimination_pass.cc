@@ -15,8 +15,10 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include <cstdint>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_trait.h"
@@ -38,6 +40,12 @@ class DeadCodeEliminationPass : public pir::Pass {
       EraseOp(*op->GetParentProgram()->block(), &num_erasers);
       updated = pre_num_erasers != num_erasers;
     }
+    if (Has(pir::Pass::kParamScopeAttr)) {
+      auto scope = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+      if (deleted_vars_.size() > 0) {
+        scope->EraseVars(deleted_vars_);
+      }
+    }
     AddStatistics(num_erasers);
   }
 
@@ -56,6 +64,13 @@ class DeadCodeEliminationPass : public pir::Pass {
     }
 
     for (auto* op : deleted_ops) {
+      if (op->isa<pir::ParameterOp>()) {
+        auto parameter_op = op->dyn_cast<pir::ParameterOp>();
+        deleted_vars_.push_back(parameter_op.param_name());
+      } else if (op->isa<pir::ConstantTensorOp>()) {
+        auto constant_tensor_op = op->dyn_cast<pir::ConstantTensorOp>();
+        deleted_vars_.push_back(constant_tensor_op.tensor_name());
+      }
       op->Erase();
       (*num_erasers)++;
     }
@@ -73,6 +88,8 @@ class DeadCodeEliminationPass : public pir::Pass {
       EraseOp(block, num_erasers);
     }
   }
+
+  std::vector<std::string> deleted_vars_;
 };
 
 }  // namespace
