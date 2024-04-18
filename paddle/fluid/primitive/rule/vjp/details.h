@@ -743,7 +743,6 @@ void silu_grad(const Tensor& x,
       auto res = out_grad_cast * sigmoid<T>(x_cast) * (1.0 + x_cast - out_cast);
       set_output<T>(cast<T>(res, org_dtype), x_grad);
     } else {
-      auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
       auto res = out_grad * sigmoid<T>(x) * (1.0 + x - out);
       set_output<T>(res, x_grad);
     }
