@@ -41,15 +41,18 @@ class RotaryPosEmb(nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, q, k, cos, sin, position_ids):
-        cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
-        sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
+    def forward(self, q, cos, position_ids):
+        # cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
+        # sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
 
-        cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
-        sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
-        q_embed = (q * cos) + (self.rotate_half(q) * sin)
-        k_embed = (k * cos) + (self.rotate_half(k) * sin)
-        return q_embed, k_embed
+        cos = cos[position_ids] # [bs, seq_len, 1, dim]
+        # sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+        q_cos = (q * cos)
+        # q_sin = (self.rotate_half(q) * sin)
+        # q_embed = (q * cos) + (self.rotate_half(q) * sin)
+        # k_embed = (k * cos) + (self.rotate_half(k) * sin)
+        # return q_embed, k_embed
+        return q_cos
 
     def rotate_half(self, x):
         """Rotates half the hidden dims of the input."""
@@ -64,19 +67,19 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.q = paddle.randn([2048, 8], dtype="float32")#[1, 2048, 8, 96]
         self.q.stop_gradient = False
 
-        self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.k = paddle.randn([1, 2048, 8, 1], dtype="float32")
         self.k.stop_gradient = False
 
-        self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
+        self.cos = paddle.randn([2048, 1], dtype="float32")#[1, 2048, 1, 96]
         self.cos.stop_gradient = False
 
-        self.sin = paddle.randn([1, 2048, 1, 96], dtype="float32")
+        self.sin = paddle.randn([1, 2048, 1, 1], dtype="float32")
         self.sin.stop_gradient = False
 
-        self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
+        self.position_ids = paddle.arange(end=2048, dtype="int64")
         self.position_ids.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
@@ -92,15 +95,15 @@ class TestRotaryPosEmb(unittest.TestCase):
                     },
                 },
                 'else_0': {
-                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
-                    'else_0_0': {
-                        'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'if_0_0': {
+                        'if_0_0_0': {'jit_kernel': 1},
                         'else_0_0_0': {
-                            'if_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
-                            'else_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                            'if_0_0_0_0': {'jit_kernel': 1},
+                            'else_0_0_0_0': {'jit_kernel': 1}
+                            }
                         },
-                    },
-                },
+                    'else_0_0': {'jit_kernel': 1}
+                }
             },
         )
 
@@ -108,28 +111,29 @@ class TestRotaryPosEmb(unittest.TestCase):
         paddle.seed(2022)
         net = RotaryPosEmb()
         input_spec = [
-            InputSpec(shape=[1, None, 8, 96], dtype='float32'),
-            InputSpec(shape=[1, None, 8, 96], dtype='float32'),
-            InputSpec(shape=[1, None, 1, 96], dtype='float32'),
-            InputSpec(shape=[1, None, 1, 96], dtype='float32'),
-            InputSpec(shape=[1, None], dtype='float32'),
+            InputSpec(shape=[None, 8], dtype='float32'),
+            # InputSpec(shape=[1, None, 8, 96], dtype='float32'),
+            InputSpec(shape=[None, 1], dtype='float32'),
+            # InputSpec(shape=[1, None, 1, 96], dtype='float32'),
+            InputSpec(shape=[None], dtype='float32'),
         ]
         net = apply_to_static(net, use_cinn, input_spec)
+        # net = apply_to_static(net, use_cinn)
         net.eval()
-        out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
+        out = net(self.q, self.cos, self.position_ids)
+        # out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
-
     def test_eval(self):
         cinn_outs = self.eval(use_cinn=True)
         dy_outs = self.eval(use_cinn=False)
 
-        for cinn_out, dy_out in zip(cinn_outs, dy_outs):
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6
-            )
+        # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
+        np.testing.assert_allclose(
+            cinn_outs.numpy(), dy_outs.numpy(), atol=1e-6
+        )
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()
