@@ -83,6 +83,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
   VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->Build(module, "");
   compilation_result->SetBackendResource(backend_resource);
+  VLOG(5) << "End to compile module into cuda kernel.";
   return compilation_result;
 }
 

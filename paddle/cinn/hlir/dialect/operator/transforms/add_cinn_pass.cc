@@ -21,6 +21,7 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -38,7 +39,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
@@ -46,15 +46,18 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(disable_dyshape_in_train);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
 
 namespace {
 bool HasDynamicShape(const pir::Program& program) {
+  if (FLAGS_disable_dyshape_in_train) {
+    return false;
+  }
   for (const auto& op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
       continue;
@@ -127,8 +130,6 @@ void ApplyGroupOpPass(::pir::Program* program,
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());

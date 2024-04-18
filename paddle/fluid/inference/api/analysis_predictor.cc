@@ -121,7 +121,7 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -930,12 +930,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
-
-        auto shape_pm = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
-        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
-        VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
-        shape_pm->Run(pir_program_.get());
 
         cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
                                                     CreatePassMgr);

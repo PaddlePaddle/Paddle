@@ -216,7 +216,7 @@ bool DiagonalOpInferSymbolicShape(
   out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
   out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
 
-  symbol::DimExprBuilder builder{nullptr};
+  symbol::DimExprBuilder builder;
   symbol::DimExpr zero{0};
   symbol::DimExpr res_shape;
   symbol::DimExpr offset_sym{offset};
