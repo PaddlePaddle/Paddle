@@ -1098,14 +1098,10 @@ def save(layer, path, input_spec=None, **configs):
         # 3. share parameters from Layer to scope & record var info
         with dygraph.guard():
             if use_pir_api():
-                for param_or_buffer in concrete_program.parameters[0]:
-                    param_or_buffer_tensor = scope.var(
-                        param_or_buffer.name
-                    ).get_tensor()
+                for tensor, value in zip(*concrete_program.parameters):
+                    param_or_buffer_tensor = scope.var(value.name).get_tensor()
                     src_tensor = (
-                        state_var_dict[param_or_buffer.name]
-                        .value()
-                        .get_tensor()
+                        state_var_dict[tensor.name].value().get_tensor()
                     )
                     param_or_buffer_tensor._share_data_with(src_tensor)
             else:
@@ -1206,6 +1202,7 @@ def save(layer, path, input_spec=None, **configs):
                 clip_extra=configs.clip_extra,
                 skip_prune_program=configs.skip_prune_program,
             )
+
         if combine_params:
             clone_main_program = concrete_program.main_program.clone()
             clone_main_program = clone_main_program._prune_with_input(
@@ -1213,6 +1210,7 @@ def save(layer, path, input_spec=None, **configs):
             )
             for block in clone_main_program.blocks:
                 combine_vars.update(block.vars)
+
     # save shared params
     if combine_params:
         # sort vars by name

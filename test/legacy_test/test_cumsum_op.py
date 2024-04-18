@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -513,9 +515,8 @@ class BadInputTest(unittest.TestCase):
 class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
-        # self.temp_dir = tempfile.TemporaryDirectory()
-        # self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
-        self.save_path = "./tensor_axis_cumsum"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()

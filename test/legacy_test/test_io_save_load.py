@@ -107,7 +107,7 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
 
         paddle.jit.save(net, save_path)
-        if not paddle.base.framework.in_pir_mode():
+        if not paddle.base.framework.use_pir_api():
             net = paddle.jit.load(save_path)
             net.train()
 
