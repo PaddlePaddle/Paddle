@@ -18,6 +18,9 @@
 
 namespace cinn::fusion {
 
+// TODO(@wuzhanfei) ops like a = b + b, the Value b is used by AddOp twice
+// Currently we can not mark them as two differnt DimUsage
+
 struct DimUsage {
   pir::Value v_;
   size_t idx_;

@@ -54,8 +54,8 @@ class RelativeJudgePolicy final : public Policy<T> {
   bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
                                  const PatternNodePtr<T>&);
   std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
-  SplitDimsWithRelationship(const std::vector<DimUsage>& targets,
-                            const std::vector<DimUsage>& related_with);
+  SplitFirstIfRelatedBySecond(const std::vector<DimUsage>& targets,
+                              const std::vector<DimUsage>& related_with);
   std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
       const ReducePattern<T>& upstream,
       const std::vector<ReducePattern<T>>& candidates);
