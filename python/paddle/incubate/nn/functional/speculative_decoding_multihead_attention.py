@@ -16,7 +16,6 @@ from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
-# 输出的 shape 和 q 的 shape 一致
 def speculative_decoding_multihead_attention(
     qkv,
     key_cache,
@@ -31,13 +30,15 @@ def speculative_decoding_multihead_attention(
     rope_emb=None,
     mask=None,
     qkv_bias=None,
-    token_num_in_cache=-1,
+    max_enc_len_this_time=0,
+    max_dec_len_this_time=0,
+    token_num_in_cache=0,
     max_seq_len=-1,
     use_neox_style=False,
     compute_dtype="default",
 ):
     """
-    Speculative-decoding Multi-head attention for text summarization.
+    Speculative-decoding Multi-head attention for decoding multiple tokens one times.
 
     Args:
         qkv (Tensor): The qkv Tensor. Its shape is [token_num, 3 * num_head * head_size].
@@ -50,10 +51,12 @@ def speculative_decoding_multihead_attention(
         cum_offsets (Tensor): The offsets from padding to unpadding. Its shape is [batchsize].
         cu_seqlens_q (Tensor): The cum sequence lengths of query. Its shape is [batchsize + 1, 1].
         cu_seqlens_k (Tensor): The cum sequence lengths of key. Its shape is [batchsize + 1, 1].
-        qkv_bias (Tensor): The bias of qkv. Its shape is [3 * num_head * head_size].
-        token_num_in_cache (Int): The number of tokens in the cache. Default is -1.
         rope_emb (Tensor): The RoPE embedding. Its shape is [2, batchsize, max_seq_len, 1, head_size // 2].
         mask (Tensor): The mask of qk_matmul in encoder. Its shape is [batchsize, 1, max_seq_len, max_seq_len].
+        qkv_bias (Tensor): The bias of qkv. Its shape is [3 * num_head * head_size].
+        max_enc_len_this_time (Int): The max length of the encoder. Because we only support bsz=1 for speculative-sampling, so it is an integer.
+        max_dec_len_this_time (Int): The max length of the decoder. Default is 0.
+        token_num_in_cache (Int): The number of valid tokens in the cache. Default is -1.
         max_seq_len (Int): The max length of the input. Default is -1.
         use_neox_style (Bool): Whether neox_style RoPE is used or not. Default is False.
         compute_dtype (Str): A compute dtype, is used to represent the input data type. Default is "default", which means compute dtype is determined by input dtype. However, if the dtype of input is Int32, this value should be set to actual dtype of the model.
@@ -77,6 +80,8 @@ def speculative_decoding_multihead_attention(
             rope_emb,
             mask,
             qkv_bias,
+            max_enc_len_this_time,
+            max_dec_len_this_time,
             token_num_in_cache,
             max_seq_len,
             use_neox_style,
@@ -97,6 +102,9 @@ def speculative_decoding_multihead_attention(
     inputs['cum_offsets'] = cum_offsets
     inputs['cu_seqlens_q'] = cu_seqlens_q
     inputs['cu_seqlens_k'] = cu_seqlens_k
+    inputs['max_enc_len_this_time'] = max_enc_len_this_time
+    inputs['max_dec_len_this_time'] = max_dec_len_this_time
+
     if rope_emb is not None:
         inputs['rope_emb'] = rope_emb
     if mask is not None:
@@ -105,8 +113,6 @@ def speculative_decoding_multihead_attention(
         inputs["qkv_bias"] = qkv_bias
     if token_num_in_cache is not None:
         inputs["token_num_in_cache"] = token_num_in_cache
-
-
     outputs = {
         'fmha_out': out,
         'qkv_out': qkv,

@@ -1055,25 +1055,28 @@ __global__ void cache_kernel(
   }
 }
 
-// Put the first cur_token_num tokens from kv_cache and unpadding_kv to unpadding_kv_after_cache.
+// Put the first cur_token_num tokens from kv_cache and unpadding_kv to
+// unpadding_kv_after_cache.
 template <typename T, int VecSize = 1>
 __global__ void write_cache_to_unpadding_kv_kernel(
-    const T *__restrict__ unpadding_k,    // [cur_num_tokens, num_heads, dim_head]
-    const T *__restrict__ unpadding_v,    // [cur_num_tokens, num_heads, dim_head]
-    const T *__restrict__ key_cache,    // [1, max_seq_len, num_head, dim_head] 
-    const T *__restrict__ value_cache,  // [1, max_seq_len, num_head, dim_head] 
-    T *__restrict__ unpadding_k_after_cache,  // [cur_token_num + token_num_in_cache, num_head, dim_head]
-    T *__restrict__ unpadding_v_after_cache,  // [cur_token_num + token_num_in_cache, num_head, dim_head]
-    // const int *__restrict__ padding_offsets,  // [num_tokens]
-    const int token_num_in_cache,     // [bsz]，kv_cache 里的 token 数目
-    const int cur_num_tokens_k, // 当前 query 的 token数目
+    const T *__restrict__ unpadding_k,  // [cur_num_tokens, num_heads, dim_head]
+    const T *__restrict__ unpadding_v,  // [cur_num_tokens, num_heads, dim_head]
+    const T *__restrict__ key_cache,    // [1, max_seq_len, num_head, dim_head]
+    const T *__restrict__ value_cache,  // [1, max_seq_len, num_head, dim_head]
+    T *__restrict__ unpadding_k_after_cache,  // [cur_token_num +
+                                              // token_num_in_cache, num_head,
+                                              // dim_head]
+    T *__restrict__ unpadding_v_after_cache,  // [cur_token_num +
+                                              // token_num_in_cache, num_head,
+                                              // dim_head]
+    const int token_num_in_cache,  // [bsz]，kv_cache 里的 token 数目
+    const int cur_num_tokens_k,    // 当前 query 的 token数目
     const int num_heads,
     const int dim_head) {
-
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT unpadding_k_after_cache_vec;
   LoadT unpadding_v_after_cache_vec;
-  
+
   int64_t idx = (blockDim.x * blockIdx.x + threadIdx.x) * VecSize;
   int stride = blockDim.x * gridDim.x * VecSize;
 
@@ -1081,20 +1084,27 @@ __global__ void write_cache_to_unpadding_kv_kernel(
   const int64_t offset = cur_num_tokens_k * hidden_size;
   const int64_t cur_hidden_size = token_num_in_cache * hidden_size;
 
-  for (; idx < cur_hidden_size; idx+=stride) {
+  for (; idx < cur_hidden_size; idx += stride) {
     phi::Load<T, VecSize>(&key_cache[idx], &unpadding_k_after_cache_vec);
     phi::Load<T, VecSize>(&value_cache[idx], &unpadding_v_after_cache_vec);
 
-    phi::Store<T, VecSize>(unpadding_k_after_cache_vec, &unpadding_k_after_cache[idx]);
-    phi::Store<T, VecSize>(unpadding_v_after_cache_vec, &unpadding_v_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_k_after_cache_vec,
+                           &unpadding_k_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_v_after_cache_vec,
+                           &unpadding_v_after_cache[idx]);
   }
 
-  for (; cur_hidden_size <= idx && idx < cur_hidden_size + offset; idx+=stride) {
-    phi::Load<T, VecSize>(&unpadding_k[idx - cur_hidden_size], &unpadding_k_after_cache_vec);
-    phi::Load<T, VecSize>(&unpadding_v[idx - cur_hidden_size], &unpadding_v_after_cache_vec);
+  for (; cur_hidden_size <= idx && idx < cur_hidden_size + offset;
+       idx += stride) {
+    phi::Load<T, VecSize>(&unpadding_k[idx - cur_hidden_size],
+                          &unpadding_k_after_cache_vec);
+    phi::Load<T, VecSize>(&unpadding_v[idx - cur_hidden_size],
+                          &unpadding_v_after_cache_vec);
 
-    phi::Store<T, VecSize>(unpadding_k_after_cache_vec, &unpadding_k_after_cache[idx]);
-    phi::Store<T, VecSize>(unpadding_v_after_cache_vec, &unpadding_v_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_k_after_cache_vec,
+                           &unpadding_k_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_v_after_cache_vec,
+                           &unpadding_v_after_cache[idx]);
   }
 }
 
@@ -1373,17 +1383,19 @@ void CacheKernel(
 }
 
 // overload for speculative decoding
-// Put the first cur_token_num tokens from kv_cache and unpadding_kv to unpadding_kv_after_cache.
+// Put the first cur_token_num tokens from kv_cache and unpadding_kv to
+// unpadding_kv_after_cache.
 template <typename T>
 void WriteCacheToKVKernel(
     const phi::GPUContext &dev_ctx,
     const phi::DenseTensor &unpadding_k,  // [cur_token_num, num_head, dim_head]
     const phi::DenseTensor &unpadding_v,  // [cur_token_num, num_head, head_dim]
-    const phi::DenseTensor &key_cache, // [bsz(1), max_seq_len, num_head, dim_head](has been transposed.) 
+    const phi::DenseTensor &key_cache,    // [bsz(1), max_seq_len, num_head,
+                                          // dim_head](has been transposed.)
     const phi::DenseTensor &value_cache,
-    phi::DenseTensor &unpadding_k_after_cache,
-    phi::DenseTensor &unpadding_v_after_cache,
-    const int token_num_in_cache, // cache 中当前非初始化的 token 的数量
+    phi::DenseTensor *unpadding_k_after_cache,
+    phi::DenseTensor *unpadding_v_after_cache,
+    const int token_num_in_cache,  // cache 中当前非初始化的 token 的数量
     const int batch_size,
     const int num_tokens,
     const int num_heads,
@@ -1399,18 +1411,18 @@ void WriteCacheToKVKernel(
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
 
-  write_cache_to_unpadding_kv_kernel<DataType_, PackSize><<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
-    reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_k.data<T>())),
-    reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_v.data<T>())),
-    reinterpret_cast<DataType_ *>(const_cast<T*>(key_cache.data<T>())),
-    reinterpret_cast<DataType_ *>(const_cast<T*>(value_cache.data<T>())),
-    reinterpret_cast<DataType_ *>(unpadding_k_after_cache.data<T>()),
-    reinterpret_cast<DataType_ *>(unpadding_v_after_cache.data<T>()),
-    token_num_in_cache,
-    num_tokens,
-    num_heads,
-    head_size
-  );
+  write_cache_to_unpadding_kv_kernel<DataType_, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+          reinterpret_cast<DataType_ *>(const_cast<T *>(unpadding_k.data<T>())),
+          reinterpret_cast<DataType_ *>(const_cast<T *>(unpadding_v.data<T>())),
+          reinterpret_cast<DataType_ *>(const_cast<T *>(key_cache.data<T>())),
+          reinterpret_cast<DataType_ *>(const_cast<T *>(value_cache.data<T>())),
+          reinterpret_cast<DataType_ *>(unpadding_k_after_cache.data<T>()),
+          reinterpret_cast<DataType_ *>(unpadding_v_after_cache.data<T>()),
+          token_num_in_cache,
+          num_tokens,
+          num_heads,
+          head_size);
 }
 
 template <typename T, int VecSize>
@@ -1764,7 +1776,6 @@ __global__ void NeoxVariableLengthRotarySpecuKernel(
   }
 }
 
-
 template <typename T, int VecSize = 1>
 __global__ void VariableLengthRotaryKernel(
     const T *qkv,
@@ -1864,7 +1875,8 @@ __global__ void VariableLengthRotarySpecuKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int emb_idx = (ori_seq_id + token_num_in_cahce) * half_lastdim + h_bias / 2;
+    const int emb_idx =
+        (ori_seq_id + token_num_in_cahce) * half_lastdim + h_bias / 2;
     const int64_t base_idx = token_idx * 3 * hidden_size +
                              qkv_id * hidden_size + hi * last_dim + h_bias;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
@@ -1939,11 +1951,10 @@ void rotary_qk_variable(
   }
 }
 
-
 // used in the decoder phase of speculative decoding
 // NOTE: when use this kernel, please set use_neox_style = true.
 template <typename T>
-void rotary_qk_variable_multi_token(
+void rotary_qk_variable_specu(
     const phi::GPUContext &dev_ctx,
     T *qkv,                   // [token_num, 3, num_head, dim_head]
     const T *qkv_input,       // qkv
@@ -2994,7 +3005,19 @@ __global__ void GetMaxLenKernel(const int *seq_lens,
 int GetMaxLen(const phi::GPUContext &dev_ctx,
               const phi::DenseTensor &seq_lens_tensor,
               phi::DenseTensor *max_len_tensor,
-              const int batch_size);
+              const int batch_size) {
+  constexpr int blockSize = 128;
+  int max_len_cpu = 0;
+  GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
+      seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
+  memory_utils::Copy(phi::CPUPlace(),
+                     &max_len_cpu,
+                     dev_ctx.GetPlace(),
+                     max_len_tensor->data<int>(),
+                     sizeof(int),
+                     dev_ctx.stream());
+  return max_len_cpu;
+}
 
 template <typename T, int VecSize>
 __global__ void InitOutValueKernel(T *output_data,

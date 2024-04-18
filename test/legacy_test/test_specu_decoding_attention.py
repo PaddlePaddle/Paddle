@@ -15,15 +15,14 @@
 import unittest
 import numpy as np
 import paddle
+from paddle.framework import core
 from paddle.incubate.nn.functional import (
     speculative_decoding_multihead_attention,
 )
-from paddle.framework import core
-
-from test_block_multihead_attention import RopeEmbedding, get_cuda_version, is_sm_supported
 
 paddle.seed(2024)
 np.random.seed(2024)
+
 
 def naive_attention_impl(
     query,
@@ -76,6 +75,7 @@ def naive_attention_impl(
     result = paddle.matmul(softmax_result, value)
     return result
 
+
 def remove_padding(seq_lens, cu_seq_lens, inputs, token_num):
     bsz, num_head, seq_len, dim_head = inputs.shape
     output = paddle.zeros(
@@ -88,6 +88,7 @@ def remove_padding(seq_lens, cu_seq_lens, inputs, token_num):
         end_idx = cu_seq_lens[i + 1]
         output[start_idx:end_idx, :] = inputs[i, :seq_len_now, :]
     return output
+
 
 def get_padding_offset(bsz, max_seq_len, seq_lens_this_time):
     cum_offsets_now = paddle.cumsum(max_seq_len - seq_lens_this_time)
@@ -198,7 +199,7 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         )
 
         self.token_num = self.padding_offset.shape[0]
-    
+
     def test_all(self):
         paddle.disable_static()
         # encoder
@@ -250,18 +251,22 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             None,  # rope
             None,  # attn_mask
             None,  # qkv_bias
-            0, # num_tokens_in_cache
+            0,  # num_tokens_in_cache
             self.max_dec_len,  # max_seq_len,
             False,  # use_neox_rotary_style
         )
 
-        k_out = qkv_out[:, self.hid_dim:2 * self.hid_dim]
-        k_out = paddle.reshape(k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
-        self.cache_k[:, :self.seq_len, :, :] = k_out
+        k_out = qkv_out[:, self.hid_dim : 2 * self.hid_dim]
+        k_out = paddle.reshape(
+            k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head]
+        )
+        self.cache_k[:, : self.seq_len, :, :] = k_out
 
-        v_out = qkv_out[:, 2 * self.hid_dim:]
-        v_out = paddle.reshape(v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
-        self.cache_v[:, :self.seq_len, :, :] = v_out
+        v_out = qkv_out[:, 2 * self.hid_dim :]
+        v_out = paddle.reshape(
+            v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head]
+        )
+        self.cache_v[:, : self.seq_len, :, :] = v_out
 
         np.testing.assert_allclose(
             out.numpy(),
@@ -316,7 +321,11 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-        ) = get_padding_offset(self.batch_size, self.token_num_decoder_phase, self.seq_lens_this_time)
+        ) = get_padding_offset(
+            self.batch_size,
+            self.token_num_decoder_phase,
+            self.seq_lens_this_time,
+        )
 
         out_ = (
             naive_attention_impl(
@@ -334,7 +343,13 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             .reshape([self.token_num_decoder_phase, -1])
         )
 
-        out, qkv_out, cache_k_out, cache_v_out = speculative_decoding_multihead_attention(
+        self.cu_seqlens_k[1] += self.token_num
+        (
+            out,
+            qkv_out,
+            cache_k_out,
+            cache_v_out,
+        ) = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
             self.cache_v,
@@ -348,8 +363,12 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             None,  # rope
             None,  # attn_mask
             None,  # qkv_bias
+            0,  # max_enc_len_this_time
+            self.seq_len
+            + self.token_num_decoder_phase,  # max_dec_len_this_time
             self.token_num,  # num_tokens_in_cache,
             self.max_dec_len,  # max_seq_len,
+            True,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
@@ -436,7 +455,6 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
         )
 
         self.token_num = self.padding_offset.shape[0]
-    
 
     def get_rotary_position_embedding(self, position_ids, head_dim):
         bsz, max_seq_len = position_ids.shape[:2]
@@ -505,7 +523,6 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
         )
         q, k = self.rope._apply_rope(sinusoidal_pos, q, k)
 
-
         out_ = naive_attention_impl(
             q, k, v, None, None, None, None, self.attention_mask, self.scale
         )
@@ -525,21 +542,28 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-            self.rope_emb, # rope
+            self.rope_emb,  # rope
             None,  # attn_mask
             None,  # qkv_bias
-            0, # num_tokens_in_cache
+            self.seq_len,  # max_enc_len_this_time
+            0,  # max_dec_len_this_time
+            0,  # num_tokens_in_cache
             self.max_dec_len,  # max_seq_len,
+            False,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
-        k_out = qkv_out[:, self.hid_dim:2 * self.hid_dim]
-        k_out = paddle.reshape(k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
-        self.cache_k[:, :self.seq_len, :, :] = k_out
+        k_out = qkv_out[:, self.hid_dim : 2 * self.hid_dim]
+        k_out = paddle.reshape(
+            k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head]
+        )
+        self.cache_k[:, : self.seq_len, :, :] = k_out
 
-        v_out = qkv_out[:, 2 * self.hid_dim:]
-        v_out = paddle.reshape(v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
-        self.cache_v[:, :self.seq_len, :, :] = v_out
+        v_out = qkv_out[:, 2 * self.hid_dim :]
+        v_out = paddle.reshape(
+            v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head]
+        )
+        self.cache_v[:, : self.seq_len, :, :] = v_out
 
         np.testing.assert_allclose(
             out.numpy(),
@@ -589,8 +613,10 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             axis=1,
         ).reshape([self.token_num_decoder_phase, -1])
         sinusoidal_pos = self.rope._rotary_position_embedding(
-            self.seq_len + self.token_num_decoder_phase, self.dim_head, self.dtype
-        )[:, :, -self.token_num_decoder_phase:, :] 
+            self.seq_len + self.token_num_decoder_phase,
+            self.dim_head,
+            self.dtype,
+        )[:, :, -self.token_num_decoder_phase :, :]
         q, k = self.rope._apply_rope(sinusoidal_pos, q, k)
 
         (
@@ -598,7 +624,11 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-        ) = get_padding_offset(self.batch_size, self.token_num_decoder_phase, self.seq_lens_this_time)
+        ) = get_padding_offset(
+            self.batch_size,
+            self.token_num_decoder_phase,
+            self.seq_lens_this_time,
+        )
 
         out_ = (
             naive_attention_impl(
@@ -615,8 +645,14 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             .transpose([0, 2, 1, 3])
             .reshape([self.token_num_decoder_phase, -1])
         )
+        self.cu_seqlens_k[1] += self.token_num
 
-        out, qkv_out, cache_k_out, cache_v_out = speculative_decoding_multihead_attention(
+        (
+            out,
+            qkv_out,
+            cache_k_out,
+            cache_v_out,
+        ) = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
             self.cache_v,
@@ -630,8 +666,12 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             self.rope_emb,  # rope
             None,  # attn_mask
             None,  # qkv_bias
+            0,  # max_enc_len_this_time
+            self.seq_len
+            + self.token_num_decoder_phase,  # max_dec_len_this_time
             self.token_num,  # num_tokens_in_cache,
             self.max_dec_len,  # max_seq_len,
+            True,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
@@ -653,6 +693,7 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             rtol=5e-03,
             atol=1e-03,
         )
+
 
 if __name__ == '__main__':
     unittest.main()

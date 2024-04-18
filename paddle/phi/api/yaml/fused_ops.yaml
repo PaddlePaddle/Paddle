@@ -499,7 +499,7 @@
   output : Tensor(out), Tensor(out_max)
 =======
 - op : speculative_decoding_multihead_attention_
-  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor rope_emb, Tensor mask, Tensor qkv_bias, int token_num_in_cache, int max_seq_len, bool use_neox_style, str compute_dtype = "default")
+  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor rope_emb, Tensor mask, Tensor qkv_bias, int max_enc_len_this_time, int max_dec_len_this_time, int token_num_in_cache, int max_seq_len, bool use_neox_style, str compute_dtype = "default")
   output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
 >>>>>>> v1.0: support speculative decoding
   infer_meta :
