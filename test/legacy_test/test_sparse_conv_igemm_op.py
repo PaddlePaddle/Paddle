@@ -28,11 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] * 10
-    + paddle.device.cuda.get_device_capability()[1]
-    < 75,
-    "run test when minimum gpu's compute capability is 7.5.",
+    not core.is_compiled_with_cuda(),
+    "only test when CUDA is available",
 )
 class TestSparseConvImplicitGemm(unittest.TestCase):
     def test_SubmConv2D_igemm_forward(self):
@@ -46,7 +43,7 @@ class TestSparseConvImplicitGemm(unittest.TestCase):
             indices, values, dense_shape, False
         )
 
-        subm_conv3d = paddle.sparse.nn.SubmConv2D(
+        subm_conv2d = paddle.sparse.nn.SubmConv2D(
             1,
             1,
             3,
@@ -57,13 +54,13 @@ class TestSparseConvImplicitGemm(unittest.TestCase):
             backend='igemm',
         )
         # set weight to all ones
-        subm_conv3d.weight = paddle.create_parameter(
+        subm_conv2d.weight = paddle.create_parameter(
             (3, 3, 1, 1),
             dtype='float32',
             default_initializer=paddle.nn.initializer.Constant(value=1.0),
         )
 
-        sparse_out = subm_conv3d(sparse_input)
+        sparse_out = subm_conv2d(sparse_input)
         # the output shape of subm_conv is same as input shape
         np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
         np.testing.assert_array_equal(
@@ -99,6 +96,68 @@ class TestSparseConvImplicitGemm(unittest.TestCase):
         )
 
         sparse_out = subm_conv3d(sparse_input)
+        # the output shape of subm_conv is same as input shape
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(
+            correct_out_values, sparse_out.values().numpy()
+        )
+
+    def test_submconv2d_igemm_forward(self):
+        indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 3, 4, 1]
+        correct_out_values = [[5], [6], [11], [8]]
+        sparse_input = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+
+        weight = paddle.ones((3, 3, 1, 1), dtype='float32')
+        bias = paddle.ones((1), dtype='float32')
+        sparse_out = paddle.sparse.nn.functional.subm_conv2d_igemm(
+            sparse_input,
+            weight,
+            bias,
+            stride=1,
+            padding=1,
+            dilation=1,
+            groups=1,
+            data_format="NHWC",
+            key='subm_conv_2d',
+        )
+
+        # the output shape of subm_conv is same as input shape
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(
+            correct_out_values, sparse_out.values().numpy()
+        )
+
+    def test_submconv3d_igemm_forward(self):
+        indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 1, 3, 4, 1]
+        correct_out_values = [[5], [6], [11], [8]]
+        sparse_input = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+
+        weight = paddle.ones((1, 3, 3, 1, 1), dtype='float32')
+        bias = paddle.ones((1), dtype='float32')
+        sparse_out = paddle.sparse.nn.functional.subm_conv3d_igemm(
+            sparse_input,
+            weight,
+            bias,
+            stride=1,
+            padding=1,
+            dilation=1,
+            groups=1,
+            data_format="NDHWC",
+            key='subm_conv_3d',
+        )
+
         # the output shape of subm_conv is same as input shape
         np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
         np.testing.assert_array_equal(
