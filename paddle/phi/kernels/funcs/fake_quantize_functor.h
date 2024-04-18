@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/transform.h"

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/common/hostdevice.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
