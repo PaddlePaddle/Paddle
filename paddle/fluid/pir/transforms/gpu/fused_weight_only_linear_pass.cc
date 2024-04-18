@@ -75,7 +75,7 @@ class FusedWeightOnlyLinearWithBiasPattern
     //
     // Constraints.
     //
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
             return false;
@@ -190,7 +190,7 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
     //
     // Constraints.
     //
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
             return false;

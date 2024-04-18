@@ -63,7 +63,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
     combine_op(combine_in, {&pat.Tensor("combine_out")});
     concat_op({&pat.Tensor("combine_out"), &full_op()},
               {&pat.Tensor("concat_out")});
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [this](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto flatten_out_shape_0 =
               pir::GetShapeFromValue(match_ctx.Tensor("flatten_out_0"));

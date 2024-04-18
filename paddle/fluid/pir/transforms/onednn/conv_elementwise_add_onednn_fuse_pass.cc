@@ -56,7 +56,7 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("add_out") =
         add(pat.Tensor("conv2d_out"), pat.Tensor("residual_param"));
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
@@ -137,7 +137,7 @@ class ConvElementwiseAddAsYPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_out") =
         add(pat.Tensor("residual_param"), pat.Tensor("conv2d_out"));
 
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
@@ -234,7 +234,7 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("add_out") =
         add(pat.Tensor("conv2d_out"), pat.Tensor("residual_param"));
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");
@@ -333,7 +333,7 @@ class FusedConvBiasElementwiseAddAsYPattern
 
     pat.Tensor("add_out") =
         add(pat.Tensor("residual_param"), pat.Tensor("conv2d_out"));
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto padding_algorithm =
               match_ctx.Attr<std::string>("padding_algorithm");

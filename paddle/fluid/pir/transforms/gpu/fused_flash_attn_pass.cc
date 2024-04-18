@@ -96,7 +96,7 @@ class FlashAttnPatternQscale : public paddle::drr::DrrPatternBase {
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
           if (!q_dtype.isa<pir::Float16Type>() &&
@@ -240,7 +240,7 @@ class FlashAttnPatternOutscale : public paddle::drr::DrrPatternBase {
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
           if (!q_dtype.isa<pir::Float16Type>() &&
@@ -389,7 +389,7 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
           if (!q_dtype.isa<pir::Float16Type>() &&

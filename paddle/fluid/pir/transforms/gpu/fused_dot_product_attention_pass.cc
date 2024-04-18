@@ -86,7 +86,7 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
@@ -239,7 +239,7 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
@@ -372,7 +372,7 @@ class FusedDotProductAttentionWithDropoutPattern
     src.Tensor("out") = o_transpose(src.Tensor("context_matmul_out"));
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
@@ -540,7 +540,7 @@ class FusedDotProductAttentionGradWithDropoutPattern
                      {&src.Tensor("k_grad")});
 
     // Constraints
-    src.RequireNativeCall(
+    src.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;

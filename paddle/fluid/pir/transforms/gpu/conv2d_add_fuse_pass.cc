@@ -43,7 +43,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
-    pat.RequireNativeCall(
+    pat.AddConstraint(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
           if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
             return false;
