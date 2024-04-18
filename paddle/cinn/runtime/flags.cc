@@ -343,17 +343,38 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
+void CheckCompileOptionImpl(cinn::common::UnknownArch) {
+  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+}
+
+void CheckCompileOptionImpl(cinn::common::X86Arch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::ARMArch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
+#if defined(CINN_WITH_CUDNN)
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support NVGPU, please try to "
+      "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOption(cinn::common::Arch arch) {
+  return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
+                    arch.variant());
+}
+
 cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
-  if (!IsCompiledWithCUDA() &&
-      target.arch == cinn::common::Target::Arch::NVGPU) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "Current CINN version does not support NVGPU, please try to "
-        "recompile with -DWITH_CUDA."));
-  } else {
-    target_ = target;
-  }
+  CheckCompileOption(target.arch);
+  target_ = target;
 }
 
 cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }

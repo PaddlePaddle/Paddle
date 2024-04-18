@@ -1524,6 +1524,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)                                                     \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                     \
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)         \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(             \
+          "CINNStrategySymbolic",                                             \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)               \
       .set_attr("infershape",                                                 \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))     \
       .set_attr("inferdtype",                                                 \

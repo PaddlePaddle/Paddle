@@ -39,7 +39,7 @@ class RowConvOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     PADDLE_ENFORCE_EQ(filter_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Filter)'s dimensions should be 2. Received: "
                           "Input(Filter)'s shape: [%s].",
                           filter_dims));

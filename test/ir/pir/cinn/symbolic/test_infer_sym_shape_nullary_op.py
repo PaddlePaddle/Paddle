@@ -110,7 +110,7 @@ class EmptyOpInferSymbolicShapeTest(TestBase):
     def test_eval_symbolic(self):
         net = EmptyNet()
 
-        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        x_spec = InputSpec(shape=[None, None, None], dtype='int32')
         input_spec = [x_spec]
         net = apply_to_static(net, False, input_spec)
         net.eval()

@@ -33,8 +33,6 @@ bool BicubicInterpOpInferSymbolicShape(
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
-  const std::vector<float> &scale =
-      paddle::dialect::details::GetVectorAttr<float>(op, "scale");
 
   std::vector<int> size_tensor;
   if (out_d != -1) size_tensor.push_back(out_d);
@@ -261,7 +259,7 @@ bool ConcatOpInferSymbolicShape(
 
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source = op->operand_source(0);
+  pir::Value operand_source = op->operand_source(1);
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
@@ -327,6 +325,38 @@ bool LogspaceOpInferSymbolicShape(
 bool NearestInterpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool MeshgridOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  const symbol::ShapeOrDataDimExprs sym_shape_dim_exprs = [&] {
+    symbol::TensorListShapeOrDataDimExprs shape_dim_exprs_list;
+    std::vector<symbol::DimExpr> vec;
+
+    for (auto &shape_data : shape_data_list) {
+      if (shape_data.shape().size() == 0) {
+        vec.emplace_back(1);
+      } else {
+        vec.emplace_back(shape_data.shape()[0]);
+      }
+    }
+
+    auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
+
+    for (size_t i = 0; i < shape_data_list.size(); i++) {
+      shape_dim_exprs_list.emplace_back(shape_dim_exprs);
+    }
+
+    return symbol::ShapeOrDataDimExprs(shape_dim_exprs_list);
+  }();
+
+  pir::Value res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, sym_shape_dim_exprs);
+  return true;
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
