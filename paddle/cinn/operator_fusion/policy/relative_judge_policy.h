@@ -17,6 +17,7 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
@@ -25,8 +26,22 @@ struct ValueDim {
   size_t idx_;
   pir::ShapeConstraintIRAnalysis shape_analysis_;
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
+    // Just get a related op to get the shape analysis. It can be value's
+    // upstream op (defining op) or downstream op (user op).
+    const auto get_related_op_from_value =
+        [](const pir::Value& v) -> pir::Operation* {
+      if (v.defining_op() != nullptr) {
+        return v.defining_op();
+      }
+      // For inputs of the program, the defining_op is nullptr, we use it's user
+      // as the related op.
+      PADDLE_ENFORCE_EQ(!v.use_empty(),
+                        true,
+                        "Value is an input value, it should have a use.");
+      return v.first_use().owner();
+    };
     shape_analysis_ = pir::ShapeAnalysisManager::Instance().Get(
-        v.defining_op()->GetParentProgram());
+        get_related_op_from_value(v)->GetParentProgram());
   }
   ValueDim() = default;
   ValueDim(const ValueDim& v) = default;
@@ -49,6 +64,10 @@ struct ValueDim {
     oss << ", ";
     v_.defining_op()->Print(oss);
     return oss.str();
+  }
+
+  const pir::ShapeConstraintIRAnalysis& shape_analysis() const {
+    return shape_analysis_;
   }
 };
 

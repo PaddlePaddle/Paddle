@@ -259,9 +259,7 @@ static symbol::DimExpr GetProductDimExprForValueDims(
   for (const auto& dim : dims) {
     dim_idx.emplace_back(dim.idx_);
   }
-  const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-      dims[0].v_.defining_op()->GetParentProgram());
-  return shape_analysis.GetProductDimExpr(dims[0].v_, dim_idx);
+  return dims[0].shape_analysis().GetProductDimExpr(dims[0].v_, dim_idx);
 }
 
 static bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
@@ -269,8 +267,7 @@ static bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
   if (first.empty()) return true;
   const auto& first_product = GetProductDimExprForValueDims(first);
   const auto& second_product = GetProductDimExprForValueDims(second);
-  const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-      first[0].v_.defining_op()->GetParentProgram());
+  const auto& shape_analysis = first[0].shape_analysis();
   if (second_product.isa<int64_t>() && first_product.isa<int64_t>()) {
     VLOG(4) << "Static Shape: left is "
             << std::get<int64_t>(first_product.variant()) << " ; right is "
