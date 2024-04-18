@@ -35,7 +35,7 @@ struct ValueDim {
   }
 
   symbol::DimExpr GetSymbolicDim() const {
-    return shape_analysis_.GetShapeOrDataForValue(v_).shape().at(idx_);
+    return shape_analysis_.GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
