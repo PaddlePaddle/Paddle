@@ -7678,6 +7678,18 @@ def sinc(x, name=None):
     if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
+    if x.dtype not in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+        DataType.FLOAT16,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+    ]:
+        raise TypeError(
+            f"The data type of input must be one of ['float16', 'float32', 'float64'], but got {x.dtype}"
+        )
+
     tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
     tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
     return paddle.divide(tmp.sin(), tmp)
@@ -7691,6 +7703,15 @@ def sinc_(x, name=None):
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    if x.dtype not in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    ]:
+        raise TypeError(
+            f"The data type of input must be one of ['float16', 'float32', 'float64'], but got {x.dtype}"
+        )
 
     paddle.where_(x != 0, x, paddle.full_like(x, 1.0e-20))
     paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))

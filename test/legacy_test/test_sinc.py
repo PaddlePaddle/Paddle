@@ -121,6 +121,27 @@ class TestSincAPI(unittest.TestCase):
             x = np.random.rand(6).astype('float32')
             x = paddle.sinc(x)
 
+    def test_input_dype_error(self):
+        with self.assertRaises(TypeError):
+            x = np.random.rand(6).astype('int32')
+            x = paddle.to_tensor(x)
+            x = paddle.sinc(x)
+
+        with self.assertRaises(TypeError):
+            x = np.random.rand(6).astype('int64')
+            x = paddle.to_tensor(x)
+            x = paddle.sinc(x)
+
+        with self.assertRaises(TypeError):
+            x = np.random.rand(6).astype('int32')
+            x = paddle.to_tensor(x)
+            paddle.sinc_(x)
+
+        with self.assertRaises(TypeError):
+            x = np.random.rand(6).astype('int64')
+            x = paddle.to_tensor(x)
+            paddle.sinc_(x)
+
     def test_inplace(self):
         def run_dygraph(place):
             paddle.disable_static(place)
