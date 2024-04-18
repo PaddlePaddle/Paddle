@@ -502,6 +502,18 @@
     func : spatial_transformer_resblock_xpu
     data_type : x
 
+- op : speculative_decoding_multihead_attention_
+  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor rope_emb, Tensor mask, Tensor qkv_bias, int max_enc_len_this_time, int max_dec_len_this_time, int token_num_in_cache, int max_seq_len, bool use_neox_style, str compute_dtype = "default")
+  output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
+  infer_meta :
+    func : SpeculativeDecodingMultiheadAttentionInferMeta
+  kernel :
+    func : speculative_decoding_multihead_attention
+    data_type : qkv
+  optional : pre_key_cache, pre_value_cache, rope_emb, mask, qkv_bias
+  inplace : (qkv -> qkv_out), (key_cache -> key_cache_out), (value_cache -> value_cache_out)
+  support_dygraph_mode : true
+
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)
@@ -532,16 +544,3 @@
     func : yolo_box_xpu
     data_type : x
   optional : x_max
-
-- op : speculative_decoding_multihead_attention_
-  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask,  Tensor tgt_mask, Tensor qkv_bias, Tensor out_shift, Tensor out_smooth, int max_seq_len, bool use_neox_style, str compute_dtype = "default")
-  output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
-  infer_meta :
-    func : SpeculativeDecodingMultiheadAttentionInferMeta
-  kernel :
-    func : speculative_decoding_multihead_attention
-    data_type : qkv
-  optional : pre_key_cache, pre_value_cache, rope_emb, mask, tgt_mask, qkv_bias, out_shift, out_smooth
-  inplace : (qkv -> qkv_out), (key_cache -> key_cache_out), (value_cache -> value_cache_out)
-  support_dygraph_mode : true
-

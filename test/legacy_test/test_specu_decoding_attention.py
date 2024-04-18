@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
+
 import numpy as np
+from test_block_multihead_attention import RopeEmbedding
+
 import paddle
 from paddle.framework import core
 from paddle.incubate.nn.functional import (
@@ -22,6 +27,33 @@ from paddle.incubate.nn.functional import (
 
 paddle.seed(2024)
 np.random.seed(2024)
+
+
+is_sm8x = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] >= 0
+)
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 def naive_attention_impl(
@@ -251,6 +283,8 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             None,  # rope
             None,  # attn_mask
             None,  # qkv_bias
+            self.seq_len,  # max_enc_len_this_time
+            0,  # max_dec_len_this_time
             0,  # num_tokens_in_cache
             self.max_dec_len,  # max_seq_len,
             False,  # use_neox_rotary_style
@@ -579,11 +613,10 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
         self.token_num_decoder_phase = 5
         self.seq_lens_this_time[:] = self.token_num_decoder_phase
 
-        # 多 token
         self.shape = (
             self.batch_size,
             self.num_head,
-            self.token_num_decoder_phase,
+            self.token_num_decoder_phase,  # multi token
             self.dim_head,
         )
         query = np.random.random(self.shape)

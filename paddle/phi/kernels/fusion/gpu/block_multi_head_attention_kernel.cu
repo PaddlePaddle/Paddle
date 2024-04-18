@@ -25,23 +25,6 @@
 namespace phi {
 namespace fusion {
 
-int GetMaxLen(const phi::GPUContext &dev_ctx,
-              const phi::DenseTensor &seq_lens_tensor,
-              phi::DenseTensor *max_len_tensor,
-              const int batch_size) {
-  constexpr int blockSize = 128;
-  int max_len_cpu = 0;
-  GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
-      seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
-                     &max_len_cpu,
-                     dev_ctx.GetPlace(),
-                     max_len_tensor->data<int>(),
-                     sizeof(int),
-                     dev_ctx.stream());
-  return max_len_cpu;
-}
-
 template <typename data_t>
 inline HOSTDEVICE data_t RoundWithTiesToEven(data_t x) {
   data_t xLower = floor(x);
