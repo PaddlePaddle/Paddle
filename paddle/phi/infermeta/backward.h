@@ -141,6 +141,26 @@ void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
                                            MetaTensor* logits_grad,
                                            MetaConfig config = MetaConfig());
 
+void DataNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale_w,
+    const MetaTensor& bias,
+    const MetaTensor& scales,
+    const MetaTensor& means,
+    const MetaTensor& y_grad,
+    float epsilon,
+    int slot_dim,
+    float summary_decay_rate,
+    bool enable_scale_and_shift,
+    const std::string& data_layout,
+    bool sync_stats,
+    MetaTensor* x_grad,
+    MetaTensor* batch_size_grad,
+    MetaTensor* batch_sum_grad,
+    MetaTensor* batch_square_sum_grad,
+    MetaTensor* scale_w_grad,
+    MetaTensor* bias_grad);
+
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,

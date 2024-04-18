@@ -43,6 +43,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
+    DataNormOp::name(),
+    DataNormGradOp::name(),
     DistributedPushSparseOp::name(),
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),

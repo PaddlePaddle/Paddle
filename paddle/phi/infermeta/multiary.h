@@ -272,6 +272,24 @@ void CudnnLSTMInferMeta(
     MetaTensor* reserve,
     MetaTensor* state_out);
 
+void DataNormInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& batch_size,
+    const MetaTensor& batch_sum,
+    const MetaTensor& batch_square_sum,
+    const MetaTensor& scale_w,
+    const MetaTensor& bias,
+    float epsilon,
+    int slot_dim,
+    float summary_decay_rate,
+    bool enable_scale_and_shift,
+    const std::string& data_layout,
+    bool sync_stats,
+    MetaTensor* y,
+    MetaTensor* means,
+    MetaTensor* scales,
+    MetaConfig config= MetaConfig());
+
 void DecayedAdagradInferMeta(const MetaTensor& param,
                              const MetaTensor& grad,
                              const MetaTensor& moment,
