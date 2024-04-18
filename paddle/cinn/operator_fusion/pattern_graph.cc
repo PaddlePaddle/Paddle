@@ -173,6 +173,11 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
         }
       }
     }
+
+    // unique all upstream / downstream node.
+    // c = a + a ; then add will have 2 same upstream.
+    cur_node->downstream_ = UniqueVectorBySet(cur_node->downstream_);
+    cur_node->upstream_ = UniqueVectorBySet(cur_node->upstream_);
   }
 
   VLOG(4) << "PatternGraph Created, pattern node size: "

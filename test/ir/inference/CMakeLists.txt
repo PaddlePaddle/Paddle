@@ -57,13 +57,6 @@ if(WIN32)
        "test_trt_explicit_quantization_mobilenet")
 endif()
 
-# Only for cpu(mkl + openblas)
-set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
-
-foreach(CPU_UT ${TEST_INFERENCE_CPU_UT})
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${CPU_UT})
-endforeach()
-
 foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
@@ -151,18 +144,6 @@ if(WITH_ONEDNN
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
-endif()
-
-if(NOT WITH_ONEDNN
-   AND NOT TENSORRT_FOUND
-   AND NOT WITH_GPU)
-  foreach(target ${TEST_INFERENCE_CPU_UT})
-    py_test_modules(${target} MODULES ${target})
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
-  endforeach()
-
-  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 1000)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
