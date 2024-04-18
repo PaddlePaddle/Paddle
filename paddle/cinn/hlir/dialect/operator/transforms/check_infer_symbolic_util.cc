@@ -37,8 +37,7 @@ DimExprs4ValueT MakeDimExprs4Value(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
-  const auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(program);
+  auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
   return
       [shape_analysis](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
         return shape_analysis->GetShapeOrDataForValue(value);
