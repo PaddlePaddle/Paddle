@@ -70,9 +70,6 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         )
         self.perf_path = './perfstat'
 
-    def test_parallel_executor_statistics(self):
-        self.run_with_statistics(executor='ParallelExecutor')
-
     def test_executor_statistics(self):
         self.run_with_statistics(executor='Executor')
 
@@ -87,13 +84,6 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         paddle.seed(2020)
         # note: startup program is empty
         main_program, startup_program, fetch_list = build_program()
-
-        enable = True
-        if executor == 'ParallelExecutor':
-            main_program = paddle.base.compiler.CompiledProgram(main_program)
-            enable = False
-        elif executor == 'Executor':
-            enable = False
 
         scope = paddle.static.Scope()
         with paddle.static.scope_guard(scope):

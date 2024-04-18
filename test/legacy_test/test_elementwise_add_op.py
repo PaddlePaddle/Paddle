@@ -54,7 +54,7 @@ class TestElementwiseAddOp(OpTest):
         return not self.use_mkldnn and self.axis == -1
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
             check_dygraph=self.check_dygraph(),
             check_pir=self.check_dygraph(),
@@ -62,7 +62,7 @@ class TestElementwiseAddOp(OpTest):
         )
 
     def test_check_grad_normal(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
@@ -76,7 +76,7 @@ class TestElementwiseAddOp(OpTest):
         )
 
     def test_check_grad_ignore_x(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
@@ -91,7 +91,7 @@ class TestElementwiseAddOp(OpTest):
         )
 
     def test_check_grad_ignore_y(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
@@ -152,7 +152,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         place = core.CUDAPlace(0)
         self.check_output_with_place(
             place,

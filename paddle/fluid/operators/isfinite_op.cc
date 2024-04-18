@@ -61,7 +61,7 @@ class OverflowOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           true,
           false,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The input type mismatch, the type of Input(X) must be Tensor or "
               "SelectedRows, please check your input."));
     }

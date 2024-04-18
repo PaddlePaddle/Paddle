@@ -28,6 +28,18 @@ def tril(x):
     return paddle.tril(x)
 
 
+def isinf(x):
+    return paddle.isinf(x)
+
+
+def isfinite(x):
+    return paddle.isfinite(x)
+
+
+def isnan(x):
+    return paddle.isnan(x)
+
+
 def tril_diag_neg(x):
     return paddle.tril(x, -1)
 
@@ -176,6 +188,114 @@ class TestCinnSubGrapTrilDiagPos(unittest.TestCase):
         net = CINNSubGraphNet(tril_diag_pos)
         input_spec = [
             InputSpec(shape=[None, 128], dtype='float32'),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval_symbolic(self):
+        cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnSubGrapIsInf(unittest.TestCase):
+    """
+    Test Pir API + @to_static + CINN.
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.prepare_data()
+
+    def prepare_data(self):
+        self.x_shape = [32, 32]
+        self.x = paddle.randn(self.x_shape, dtype="float32")
+        self.x.stop_gradient = False
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet(isinf)
+        input_spec = [
+            InputSpec(shape=[None, 32], dtype='float32'),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval_symbolic(self):
+        cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnSubGrapIsFinite(unittest.TestCase):
+    """
+    Test Pir API + @to_static + CINN.
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.prepare_data()
+
+    def prepare_data(self):
+        self.x_shape = [32, 32]
+        self.x = paddle.randn(self.x_shape, dtype="float32")
+        self.x.stop_gradient = False
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet(isfinite)
+        input_spec = [
+            InputSpec(shape=[None, 32], dtype='float32'),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval_symbolic(self):
+        cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnSubGrapIsNan(unittest.TestCase):
+    """
+    Test Pir API + @to_static + CINN.
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.prepare_data()
+
+    def prepare_data(self):
+        self.x_shape = [32, 32]
+        self.x = paddle.randn(self.x_shape, dtype="float32")
+        self.x.stop_gradient = False
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet(isnan)
+        input_spec = [
+            InputSpec(shape=[None, 32], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()

@@ -29,20 +29,20 @@ class CScatterOp : public framework::OperatorWithKernel {
     int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of ranks (%d) must be greater than 1 "
                           "to use collective op (c_scatter op).",
                           nranks));
     PADDLE_ENFORCE_GE(
         root_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The root_id (%d) for c_scatter_op must be non-negative.",
             root_id));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             root_id));
     framework::DDim dim = ctx->GetInputDim("X");
@@ -96,4 +96,4 @@ PD_REGISTER_STRUCT_KERNEL(c_scatter,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

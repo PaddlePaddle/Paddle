@@ -298,10 +298,9 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     // input
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
@@ -704,10 +703,9 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     const phi::DenseTensor* y_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));

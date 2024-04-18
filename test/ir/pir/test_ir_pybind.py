@@ -48,6 +48,8 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(pir_program, program)
 
+        self.assertEqual(len(pir_program.blocks), 1)
+
     def test_block(self):
         pir_program = get_ir_program()
         block = pir_program.global_block()

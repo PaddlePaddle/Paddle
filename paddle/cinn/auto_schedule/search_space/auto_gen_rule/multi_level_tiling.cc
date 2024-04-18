@@ -434,9 +434,9 @@ void MultiLevelTiling::ApplyCacheWrite(ir::IRSchedule* ir_schedule,
   }
 }
 
-const std::unordered_map<cinn::common::Target::Arch, MultiLevelTiling::Config>
+const std::unordered_map<cinn::common::Arch, MultiLevelTiling::Config>
     MultiLevelTiling::kConfigs{
-        {cinn::common::Target::Arch::NVGPU,
+        {cinn::common::NVGPUArch{},
          MultiLevelTiling::Config{
              /*bind_axis*/ std::vector<std::string>{"blockIdx.x",
                                                     "threadIdx.x"},
@@ -446,7 +446,7 @@ const std::unordered_map<cinn::common::Target::Arch, MultiLevelTiling::Config>
              /*write_cache_memory_type*/ std::string("local"),
              /*write_cache_levels*/ std::vector<int>{3},
          }},
-        {cinn::common::Target::Arch::X86,
+        {cinn::common::X86Arch{},
          MultiLevelTiling::Config{
              /*bind_axis*/ std::vector<std::string>{},
              /*tile_struct*/ std::string("SSRSRS"),

@@ -69,7 +69,7 @@ class LRNOneDNNHandler
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"),
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "is_test attribute should be set to False in training phase."));
 
     const int n = ctx.Attr<int>("n");
@@ -123,11 +123,11 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         is_float_type,
         true,
-        platform::errors::PreconditionNotMet("DNNL LRN must use float data."));
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
-                      true,
-                      paddle::platform::errors::PreconditionNotMet(
-                          "Operator DNNL LRN must use CPUPlace"));
+        phi::errors::PreconditionNotMet("DNNL LRN must use float data."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
+        phi::errors::PreconditionNotMet("Operator DNNL LRN must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
@@ -169,11 +169,11 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const bool is_float_type = std::is_same<T, float>::value;
     PADDLE_ENFORCE_EQ(is_float_type,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "DNNL LRN GradOpKernel must use float data."));
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL LRNGrad must use CPUPlace"));
 
     auto in_x = ctx.Input<phi::DenseTensor>("X");

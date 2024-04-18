@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +39,7 @@ struct CUDATypeTraits;
 
 template <>
 struct CUDATypeTraits<half> {
-  typedef platform::float16 TYPE;
+  typedef phi::dtype::float16 TYPE;
 };
 
 template <>
