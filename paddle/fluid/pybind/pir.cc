@@ -290,6 +290,24 @@ void BindProgram(py::module *m) {
           },
           return_value_policy::reference)
       .def(
+          "clone",
+          [](std::shared_ptr<Program> self, pir::IrMapping &mapper) {
+            return self->Clone(mapper);
+          },
+          return_value_policy::reference)
+      .def(
+          "list_vars",
+          [](std::shared_ptr<Program> self) {
+            std::vector<pir::Value> vars;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                vars.push_back(var);
+              }
+            }
+            return vars;
+          },
+          return_value_policy::reference)
+      .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
           return_value_policy::reference)
