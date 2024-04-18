@@ -75,7 +75,6 @@ class Naive_fc_net(paddle.nn.Layer):
         use_raw_recompute=False,
         recompute_kwargs={},
         raise_value_error=False,
-        recompute_use_kwargs_as_inputs=False,
     ):
         super().__init__()
         self.recompute_blocks = recompute_blocks
@@ -116,7 +115,6 @@ class Naive_fc_net(paddle.nn.Layer):
                     self.runfunc2, self.runfunc3, self.runfunc4
                 ),
             ]
-        self.recompute_use_kwargs_as_inputs = recompute_use_kwargs_as_inputs
 
     def forward(self, inputs):
         if self.use_fleet_sq and not self.use_raw_recompute:
@@ -137,14 +135,9 @@ class Naive_fc_net(paddle.nn.Layer):
         )
         for i in range(len(self.layers)):
             if i in self.recompute_blocks:
-                if self.recompute_use_kwargs_as_inputs:
-                    inputs = recompute(
-                        self.layers[i], pos=pos, x=inputs, **recompute_kwargs
-                    )
-                else:
-                    inputs = recompute(
-                        self.layers[i], inputs, pos, **recompute_kwargs
-                    )
+                inputs = recompute(
+                    self.layers[i], inputs, pos, **recompute_kwargs
+                )
             else:
                 inputs = self.layers[i](inputs, pos)
 
@@ -160,7 +153,6 @@ def run_model(
     segments=1,
     enable_autocast=False,
     pure_fp16=False,
-    recompute_use_kwargs_as_inputs=False,
 ):
     gen = paddle.seed(10)
     gen.manual_seed(10)
@@ -176,7 +168,6 @@ def run_model(
         segments=segments,
         recompute_kwargs=recompute_kwargs,
         raise_value_error=raise_value_error,
-        recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
     )
 
     if pure_fp16:
@@ -217,12 +208,7 @@ def run_model(
 
 
 class TestRecompute(unittest.TestCase):
-    def test_base_case(
-        self,
-        enable_autocast=False,
-        pure_fp16=False,
-        recompute_use_kwargs_as_inputs=False,
-    ):
+    def test_base_case(self, enable_autocast=False, pure_fp16=False):
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
             self.assertEqual(param_ref, param)
@@ -245,7 +231,6 @@ class TestRecompute(unittest.TestCase):
                 enable_autocast=enable_autocast,
                 pure_fp16=pure_fp16,
                 recompute_kwargs={"use_reentrant": flag},
-                recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
@@ -255,7 +240,6 @@ class TestRecompute(unittest.TestCase):
                 enable_autocast=enable_autocast,
                 pure_fp16=pure_fp16,
                 recompute_kwargs={"use_reentrant": flag},
-                recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
@@ -265,7 +249,6 @@ class TestRecompute(unittest.TestCase):
                 enable_autocast=enable_autocast,
                 pure_fp16=pure_fp16,
                 recompute_kwargs={"use_reentrant": flag},
-                recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
@@ -275,7 +258,6 @@ class TestRecompute(unittest.TestCase):
                 enable_autocast=enable_autocast,
                 pure_fp16=pure_fp16,
                 recompute_kwargs={"use_reentrant": flag},
-                recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
@@ -286,7 +268,6 @@ class TestRecompute(unittest.TestCase):
                 enable_autocast=enable_autocast,
                 pure_fp16=pure_fp16,
                 recompute_kwargs={"use_reentrant": flag},
-                recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
             )
             check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
@@ -310,34 +291,23 @@ class TestRecompute(unittest.TestCase):
 
     def test_fc_net_with_dropout(self):
         self.test_base_case()
-        self.test_base_case(recompute_use_kwargs_as_inputs=True)
 
     def test_fc_net_without_restore_rng(self):
         for flag in [True, False]:
-            for recompute_use_kwargs_as_inputs in [True, False]:
-                loss_ref, param_ref, grad_ref = run_model(
-                    recompute_block=[2],
-                    recompute_kwargs={
-                        "preserve_rng_state": False,
-                        "use_reentrant": flag,
-                    },
-                    enable_autocast=True,
-                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
-                )
+            loss_ref, param_ref, grad_ref = run_model(
+                recompute_block=[2],
+                recompute_kwargs={
+                    "preserve_rng_state": False,
+                    "use_reentrant": flag,
+                },
+                enable_autocast=True,
+            )
 
     def test_fc_net_with_amp(self):
         self.test_base_case(enable_autocast=True)
-        self.test_base_case(
-            enable_autocast=True, recompute_use_kwargs_as_inputs=True
-        )
 
     def test_fc_net_with_fp16(self):
         self.test_base_case(enable_autocast=True, pure_fp16=True)
-        self.test_base_case(
-            enable_autocast=True,
-            pure_fp16=True,
-            recompute_use_kwargs_as_inputs=True,
-        )
 
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
@@ -345,7 +315,7 @@ class TestRecompute(unittest.TestCase):
         pos.stop_gradient = False
 
         kwargs = {"pos": pos, "use_reentrant": True}
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2],
                 recompute_kwargs=kwargs,
@@ -358,57 +328,46 @@ class TestRecompute(unittest.TestCase):
         )
 
     def test_recompute_inputs_with_param(self):
-        for flag in [True, False]:
-            for recompute_use_kwargs_as_inputs in [True, False]:
-                pos = paddle.randn(shape=[10, 10], dtype="float32")
-                new_pos = EagerParamBase(
-                    shape=pos.shape, dtype=pos.dtype, name=pos.name
-                )
-                pos._share_buffer_to(new_pos)
-                new_pos.stop_gradient = False
+        pos = paddle.randn(shape=[10, 10], dtype="float32")
+        new_pos = EagerParamBase(
+            shape=pos.shape, dtype=pos.dtype, name=pos.name
+        )
+        pos._share_buffer_to(new_pos)
+        new_pos.stop_gradient = False
 
-                loss, param, grad = run_model(
-                    recompute_block=[2, 4],
-                    recompute_kwargs={"pos": new_pos, "use_reentrant": flag},
-                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
-                )
+        loss, param, grad = run_model(
+            recompute_block=[], recompute_kwargs={"pos": new_pos}
+        )
 
-                loss_ref, param_ref, grad_ref = run_model(
-                    recompute_block=[1, 2, 3],
-                    recompute_kwargs={"pos": new_pos, "use_reentrant": flag},
-                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
-                )
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[1, 2, 3], recompute_kwargs={"pos": new_pos}
+        )
 
-                self.assertEqual(loss_ref, loss)
-                self.assertEqual(param_ref, param)
-                self.assertEqual(grad_ref, grad)
+        self.assertEqual(loss_ref, loss)
+        self.assertEqual(param_ref, param)
+        self.assertEqual(grad_ref, grad)
 
     def test_recompute_inputs_with_tuple(self):
-        for flag in [True, False]:
-            for recompute_use_kwargs_as_inputs in [True, False]:
-                pos = paddle.randn(shape=[10, 10], dtype="float32")
-                new_pos = EagerParamBase(
-                    shape=pos.shape, dtype=pos.dtype, name=pos.name
-                )
-                pos._share_buffer_to(new_pos)
-                pos.stop_gradient = False
-                new_pos.stop_gradient = False
+        pos = paddle.randn(shape=[10, 10], dtype="float32")
+        new_pos = EagerParamBase(
+            shape=pos.shape, dtype=pos.dtype, name=pos.name
+        )
+        pos._share_buffer_to(new_pos)
+        pos.stop_gradient = False
+        new_pos.stop_gradient = False
 
-                loss, param, grad = run_model(
-                    recompute_block=[2, 4],
-                    recompute_kwargs={"pos": (pos,), "use_reentrant": flag},
-                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
-                )
+        loss, param, grad = run_model(
+            recompute_block=[2, 4], recompute_kwargs={"pos": (pos,)}
+        )
 
-                loss_ref, param_ref, grad_ref = run_model(
-                    recompute_block=[1, 2, 3],
-                    recompute_kwargs={"pos": (new_pos,), "use_reentrant": flag},
-                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
-                )
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[1, 2, 3],
+            recompute_kwargs={"pos": (new_pos,)},
+        )
 
-                self.assertEqual(loss_ref, loss)
-                self.assertEqual(param_ref, param)
-                self.assertEqual(grad_ref, grad)
+        self.assertEqual(loss_ref, loss)
+        self.assertEqual(param_ref, param)
+        self.assertEqual(grad_ref, grad)
 
 
 if __name__ == '__main__':
