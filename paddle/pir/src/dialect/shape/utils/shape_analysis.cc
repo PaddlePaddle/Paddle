@@ -47,6 +47,7 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 }
 
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
+  std::lock_guard<std::mutex> guard(mutex_);
   if (HasShapeOrDataForValue(val)) {
     return;
   }
