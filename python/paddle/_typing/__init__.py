@@ -1,54 +1,64 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Basic
-from .basic import IntSequence as IntSequence
-from .basic import NestedNumbericSequence as NestedNumbericSequence
-from .basic import NestedSequence as NestedSequence
-from .basic import Numberic as Numberic
-from .basic import NumbericSequence as NumbericSequence
+from .basic import (
+    IntSequence as IntSequence,
+    NestedNumbericSequence as NestedNumbericSequence,
+    NestedSequence as NestedSequence,
+    Numberic as Numberic,
+    NumbericSequence as NumbericSequence,
+)
 
 # Device
-from .device import CPUPlace as CPUPlace
-from .device import CUDAPlace as CUDAPlace
-from .device import CustomPlace as CustomPlace
-from .device import IPUPlace as IPUPlace
-from .device import MLUPlace as MLUPlace
-from .device import NPUPlace as NPUPlace
-from .device import Place as Place
-from .device import PlaceLike as PlaceLike
-from .device import XPUPlace as XPUPlace
+from .device_like import (
+    CPUPlace as CPUPlace,
+    CUDAPlace as CUDAPlace,
+    CustomPlace as CustomPlace,
+    IPUPlace as IPUPlace,
+    MLUPlace as MLUPlace,
+    NPUPlace as NPUPlace,
+    PlaceLike as PlaceLike,
+    XPUPlace as XPUPlace,
+)
 
 # DType
-from .dtype import DTypeLike as DTypeLike
-from .dtype import bfloat16 as bfloat16
-from .dtype import bool as bool
-from .dtype import complex64 as complex64
-from .dtype import complex128 as complex128
-from .dtype import dtype as dtype
-from .dtype import float16 as float16
-from .dtype import float32 as float32
-from .dtype import float64 as float64
-from .dtype import int8 as int8
-from .dtype import int16 as int16
-from .dtype import int32 as int32
-from .dtype import int64 as int64
-from .dtype import uint8 as uint8
+from .dtype_like import DTypeLike as DTypeLike
 
 # DataLayout
-from .layout import DataLayout0D as DataLayout0D
-from .layout import DataLayout1D as DataLayout1D
-from .layout import DataLayout1DVariant as DataLayout1DVariant
-from .layout import DataLayout2D as DataLayout2D
-from .layout import DataLayout3D as DataLayout3D
-from .layout import DataLayoutImage as DataLayoutImage
-from .layout import DataLayoutND as DataLayoutND
+from .layout import (
+    DataLayout0D as DataLayout0D,
+    DataLayout1D as DataLayout1D,
+    DataLayout1DVariant as DataLayout1DVariant,
+    DataLayout2D as DataLayout2D,
+    DataLayout3D as DataLayout3D,
+    DataLayoutImage as DataLayoutImage,
+    DataLayoutND as DataLayoutND,
+    DataLayoutSparseCOO as DataLayoutSparseCOO,
+    DataLayoutSparseCSR as DataLayoutSparseCSR,
+    DataLayoutStrided as DataLayoutStrided,
+)
 
 # Shape
-from .shape import DynamicShapeLike as DynamicShapeLike
-from .shape import ShapeLike as ShapeLike
-
-from .shape import Size1 as Size1
-from .shape import Size2 as Size2
-from .shape import Size3 as Size3
-from .shape import Size4 as Size4
-from .shape import Size5 as Size5
-from .shape import Size6 as Size6
-from .shape import SizeN as SizeN
+from .shape import (
+    DynamicShapeLike as DynamicShapeLike,
+    ShapeLike as ShapeLike,
+    Size1 as Size1,
+    Size2 as Size2,
+    Size3 as Size3,
+    Size4 as Size4,
+    Size5 as Size5,
+    Size6 as Size6,
+    SizeN as SizeN,
+)

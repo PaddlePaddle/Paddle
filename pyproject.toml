@@ -71,7 +71,6 @@ select = [
 
     # Pylint
     "PLE",
-    "PLC0414",
     "PLC3002",
     "PLR0206",
     "PLR0402",
