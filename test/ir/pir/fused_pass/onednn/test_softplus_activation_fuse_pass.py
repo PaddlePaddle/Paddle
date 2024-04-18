@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../")
 from pass_test import PassTest
 
 import paddle
@@ -98,7 +101,7 @@ class TestSoftplusActivationFusePattern(PassTest):
                     }
                     self.fetch_list = [out]
                     self.valid_op_map = {
-                        "onednn_op.softplus": 1,
+                        "onednn_op.fused_softplus": 1,
                         "pd_op.matmul": 0,
                         "pd_op.add": 0,
                         "pd_op.abs": 0,
@@ -147,11 +150,11 @@ class TestSoftplusGeluTanhFusePattern(PassTest):
                 softplus_out = paddle.nn.functional.softplus(x)
                 out = paddle.nn.functional.gelu(softplus_out, approximate=True)
                 out = paddle.assign(out)
-                self.pass_list = [{"softplus_activation_fuse_pass": {}}]
+                self.pass_attr_list = [{'softplus_activation_fuse_pass': {}}]
                 self.feeds = {"x": np.random.random((3, 2)).astype("float32")}
                 self.fetch_list = [out]
                 self.valid_op_map = {
-                    "onednn_op.softplus": 1,
+                    "onednn_op.fused_softplus": 1,
                     "pd_op.gelu": 0,
                 }
                 return [main_prog, start_prog]
@@ -189,11 +192,11 @@ class TestSoftplusClipFusePattern(PassTest):
                 softplus_out = paddle.nn.functional.softplus(x)
                 out = paddle.clip(softplus_out)
                 out = paddle.assign(out)
-                self.pass_list = [{"softplus_activation_fuse_pass": {}}]
+                self.pass_attr_list = [{'softplus_activation_fuse_pass': {}}]
                 self.feeds = {"x": np.random.random((3, 2)).astype("float32")}
                 self.fetch_list = [out]
                 self.valid_op_map = {
-                    "onednn_op.softplus": 1,
+                    "onednn_op.fused_softplus": 1,
                     "pd_op.clip": 0,
                 }
                 return [main_prog, start_prog]

@@ -253,7 +253,7 @@ class SoftplusActivationFusePass : public pir::PatternRewritePass {
       ps.Add(paddle::drr::Create<SoftplusActivationFusePattern>(
           context,
           paddle::dialect::SoftplusOp::name(),
-          paddle::onednn::dialect::SoftplusOp::name(),
+          paddle::onednn::dialect::FusedSoftplusOp::name(),
           benefit_idx,
           act_op));
       benefit_idx++;
@@ -261,12 +261,12 @@ class SoftplusActivationFusePass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<SoftplusGeluTanhFusePattern>(
         context,
         paddle::dialect::SoftplusOp::name(),
-        paddle::onednn::dialect::SoftplusOp::name(),
+        paddle::onednn::dialect::FusedSoftplusOp::name(),
         benefit_idx++));
     ps.Add(paddle::drr::Create<SoftplusClipFusePattern>(
         context,
         paddle::dialect::SoftplusOp::name(),
-        paddle::onednn::dialect::SoftplusOp::name(),
+        paddle::onednn::dialect::FusedSoftplusOp::name(),
         benefit_idx++));
     return ps;
   }
