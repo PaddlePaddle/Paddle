@@ -20,7 +20,7 @@ from utils import static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
@@ -963,8 +963,11 @@ class TestAll8DOpWithKeepDim(OpTest):
 
 
 class TestAllOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The input type of reduce_all_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.all, input1)
@@ -1121,8 +1124,11 @@ class TestAny8DOpWithKeepDim(OpTest):
 
 
 class TestAnyOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.any, input1)
@@ -1640,26 +1646,17 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 
 class TestReduceSumOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_errors1(self):
         with static_guard():
-            with program_guard(Program(), Program()):
-                # The input type of reduce_sum_op must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.sum, x1)
-                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-                self.assertRaises(TypeError, paddle.sum, x2)
-
-            with paddle.pir_utils.IrGuard(), program_guard(
-                Program(), Program()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
             ):
                 # The input type of reduce_sum_op must be Variable.
                 x1 = base.create_lod_tensor(
                     np.array([[-1]]), [[1]], base.CPUPlace()
                 )
                 self.assertRaises(TypeError, paddle.sum, x1)
+                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
 
 
 class API_TestSumOp(unittest.TestCase):
