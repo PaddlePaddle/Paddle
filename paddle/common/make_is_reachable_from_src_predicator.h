@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,21 @@
 
 #pragma once
 
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "paddle/common/topo_walker.h"
 
-namespace cinn {
 namespace common {
 
-// Topological order visitor
-template <typename NodeType>
-using TopoWalker = ::common::TopoWalker<NodeType>;
+template <typename NodeT, typename IterT>
+std::function<bool(NodeT)> MakeIsReachableFromSrcPredicator(
+    const TopoWalker<NodeT>& walker, IterT src_begin, IterT src_end) {
+  auto nodes = std::make_shared<std::unordered_set<NodeT>>();
+  nodes->insert(src_begin, src_end);
+  walker(src_begin, src_end, [&](NodeT node) { nodes->insert(node); });
+  return [nodes](NodeT node) { return nodes->count(node) > 0; };
+}
 
 }  // namespace common
-}  // namespace cinn
