@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+
 #include "paddle/common/flags.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
@@ -173,9 +175,9 @@ void CheckInferSymWithInferMeta(
     // InferMeta funcs of some Ops are not corrrect now, we don't check them.
     if (!NeedCheckInferSymbolicWithInferMeta(op->name(), i)) continue;
 
-    if (res.type().isa<paddle::dialect::DenseTensorType>()) {
-      const std::vector<int64_t>& infer_meta_shape = common::vectorize(
-          res.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    if (res.type().isa<pir::DenseTensorType>()) {
+      const std::vector<int64_t>& infer_meta_shape =
+          common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
       const std::vector<symbol::DimExpr>& infer_sym_shape =
           shape_analysis->GetShapeOrDataForValue(res).shape();
 
@@ -272,12 +274,11 @@ class ShapeOptimizationPass : public pir::Pass {
 
 static inline bool IsStaticShape(const Value& value) {
   const auto& value_type = value.type();
-  if (!value || !value_type ||
-      !value_type.isa<paddle::dialect::DenseTensorType>()) {
+  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
     return false;
   }
   return !::common::contain_unknown_dim(
-      value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims());
+      value_type.dyn_cast<pir::DenseTensorType>().dims());
 }
 
 symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
@@ -292,7 +293,7 @@ void InferSymExprForBlock(const Block& block,
                           ShapeConstraintIRAnalysis* shape_analysis) {
   for (auto& op : block) {
     auto infer_symbolic_shape_interface =
-        op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+        op.dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
       PrintOpInfo(&op);
       PADDLE_ENFORCE_EQ(
@@ -326,10 +327,7 @@ void InferSymExprForBlock(const Block& block,
           shape_analysis->SetShapeOrDataForValue(
               op.result(i),
               CreateShapeOrDataByDDim(
-                  op.result(i)
-                      .type()
-                      .dyn_cast<paddle::dialect::DenseTensorType>()
-                      .dims()));
+                  op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
         }
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(

@@ -121,7 +121,7 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -489,6 +489,8 @@ bool AnalysisPredictor::Init(
     InitDeviceContexts();
   }
 #endif
+
+  TryShrinkMemory();
 
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
@@ -1012,7 +1014,10 @@ bool AnalysisPredictor::PrepareExecutor() {
       constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                          sub_scope_);
       basic_pass_pm.AddPass(std::move(constant_folding_pass));
-      basic_pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
+      dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                              sub_scope_);
+      basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
       basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
       if (!config_.glog_info_disabled()) {
         basic_pass_pm.EnablePrintStatistics();

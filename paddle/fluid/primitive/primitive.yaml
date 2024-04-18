@@ -54,6 +54,7 @@
 - scale
 - matmul
 - assign
+- assign_out_
 - max
 - min
 - maximum
