@@ -15,6 +15,7 @@
 #pragma once
 #include <ostream>
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace cinn::hlir::framework::pir {
 
@@ -90,6 +91,7 @@ class FusionInfo {
 
  private:
   std::vector<FusionOpInfo> op_infos_;
+  std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
   std::size_t cached_hash_value_{0};
 
   // Used to make same subgraphs have unique FusionInfo while

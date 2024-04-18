@@ -74,18 +74,21 @@ std::vector<::pir::Value> OpLoweringGroup::GetGroupOutputValues() const {
   return output_values;
 }
 
-std::unordered_set<::pir::Value> OpLoweringGroup::GetInputOpValues() const {
-  std::unordered_set<::pir::Value> group_inputs;
+std::vector<::pir::Value> OpLoweringGroup::GetInputOpValues() const {
+  std::unordered_set<::pir::Value> visited_values;
+  std::vector<::pir::Value> group_inputs;
   std::unordered_set<::pir::Operation*> ops_set(this->ops_.begin(),
                                                 this->ops_.end());
 
   // count all op's input Value
-  for (auto op : ops_set) {
+  for (auto op : ops_) {
     for (auto& value : op->operands_source()) {
       if (!value || !value.type() || ops_set.count(value.defining_op()))
         continue;
+      if (visited_values.count(value)) continue;
       // if the input value owner op is not in OpSet, it's the group's input
-      group_inputs.insert(value);
+      visited_values.insert(value);
+      group_inputs.push_back(value);
     }
   }
   return group_inputs;
