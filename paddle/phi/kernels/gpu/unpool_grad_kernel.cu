@@ -188,8 +188,18 @@ void Unpool3dGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    unpool_grad, GPU, ALL_LAYOUT, phi::UnpoolGradKernel, float, double) {}
+PD_REGISTER_KERNEL(unpool_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnpoolGradKernel,
+                   float,
+                   double,
+                   int64_t) {}
 
-PD_REGISTER_KERNEL(
-    unpool3d_grad, GPU, ALL_LAYOUT, phi::Unpool3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(unpool3d_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Unpool3dGradKernel,
+                   float,
+                   double,
+                   int64_t) {}
