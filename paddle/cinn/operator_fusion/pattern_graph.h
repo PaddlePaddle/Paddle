@@ -182,9 +182,9 @@ struct MergeReduceTreeAndTrivialOperation {
     auto downstream = node->downstream().at(0);
     auto fake_reduce_iter_idx =
         graph->policy_manager().GetFakeReduceIterIdx(node, downstream);
-    auto merge_pattern_fn = [&fake_reduce_iter_idx](
-                                const StmtPattern<Phrase>& first,
-                                const StmtPattern<Phrase>& secend) {
+    const auto merge_pattern_fn = [&fake_reduce_iter_idx](
+                                      const StmtPattern<Phrase>& first,
+                                      const StmtPattern<Phrase>& secend) {
       auto rt_pattern = std::get<ReduceTreePlusTrivialPattern<Phrase>>(
           MergePattern<Phrase>(first, secend));
       rt_pattern.fake_reduce_iter_idx = fake_reduce_iter_idx;
