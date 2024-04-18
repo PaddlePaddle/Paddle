@@ -37,7 +37,8 @@ struct ValueDim {
       // as the related op.
       PADDLE_ENFORCE_EQ(!v.use_empty(),
                         true,
-                        "Value is an input value, it should have a use.");
+                        phi::errors::PreconditionNotMet(
+                            "Value is an input value, it should have a use."));
       return v.first_use().owner();
     };
     shape_analysis_ = pir::ShapeAnalysisManager::Instance().Get(
