@@ -28,17 +28,15 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
 
 ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
     pir::Operation* op) {
-  return op_signature_map_[op];
-  // TODO(baizhou) fix broadcast signature and enable here
-  // auto result = ShardableAxesSignature();
-  // auto origin_sig = op_signature_map_[op];
-  // for (const auto& axes : origin_sig.inputs) {
-  //   result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  // }
-  // for (const auto& axes : origin_sig.outputs) {
-  //   result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  // }
-  // return result;
+  auto result = ShardableAxesSignature();
+  auto origin_sig = op_signature_map_[op];
+  for (const auto& axes : origin_sig.inputs) {
+    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  for (const auto& axes : origin_sig.outputs) {
+    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  return result;
 }
 
 ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
@@ -181,7 +179,8 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     pir::Operation* op) {
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
-    VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature : \n"
+    VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature for "
+               "Special Op: \n"
             << op->name() << " : " << special_result.value().DebugStr();
     return special_result.value();
   }

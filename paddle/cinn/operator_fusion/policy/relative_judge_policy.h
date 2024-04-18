@@ -14,9 +14,9 @@
 
 #pragma once
 #include <functional>
+#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
-#include "paddle/cinn/operator_fusion/policy/value_dim_relation.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -40,12 +40,12 @@ class RelativeJudgePolicy final : public Policy<T> {
       const PatternNodePtr<T>& upstream,
       const PatternNodePtr<T>& downstream) override;
 
-  bool IsRelated(ValueDim in, ValueDim out) {
+  bool IsRelated(SingleDim in, SingleDim out) {
     return index_expr_map_[in].count(out) == 1;
   }
 
  private:
-  ValueDimRelation index_expr_map_;
+  SingleDimRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
                                const PatternNodePtr<T>&);
@@ -53,9 +53,9 @@ class RelativeJudgePolicy final : public Policy<T> {
                            const PatternNodePtr<T>& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
                                  const PatternNodePtr<T>&);
-  std::pair<std::vector<ValueDim>, std::vector<ValueDim>>
-  SplitDimsWithRelationship(const std::vector<ValueDim>& targets,
-                            const std::vector<ValueDim>& related_with);
+  std::pair<std::vector<SingleDim>, std::vector<SingleDim>>
+  SplitDimsWithRelationship(const std::vector<SingleDim>& targets,
+                            const std::vector<SingleDim>& related_with);
   std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
       const ReducePattern<T>& upstream,
       const std::vector<ReducePattern<T>>& candidates);

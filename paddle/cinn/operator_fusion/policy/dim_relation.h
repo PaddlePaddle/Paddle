@@ -18,16 +18,16 @@
 
 namespace cinn::fusion {
 
-struct ValueDim {
-  ValueDim(const pir::Value& v, const size_t idx, const size_t usage_idx)
+struct SingleDim {
+  SingleDim(const pir::Value& v, const size_t idx, const size_t usage_idx)
       : v_(v), idx_(idx), usage_idx_(usage_idx) {}
   pir::Value v_;
   size_t idx_;
   size_t usage_idx_;  // value is used by which op
-  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {}
-  ValueDim() = default;
-  ValueDim(const ValueDim& v) = default;
-  bool operator==(const ValueDim& v) const {
+  SingleDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {}
+  SingleDim() = default;
+  SingleDim(const SingleDim& v) = default;
+  bool operator==(const SingleDim& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_) && (usage_idx_ == v.usage_idx_);
   }
 
@@ -37,8 +37,9 @@ struct ValueDim {
 
   std::string DebugStr() const {
     std::ostringstream oss;
-    oss << "ValueDim UsageIdx " << usage_idx_ << " : ";
-    oss << "Index: " << idx_;
+    oss << "SingleDim || Value: " << v_.impl();
+    oss << ", Index: " << idx_;
+    oss << ", UsageIdx: " << usage_idx_;
     oss << ", ";
     v_.defining_op()->Print(oss);
     return oss.str();
@@ -49,8 +50,8 @@ static std::size_t hash_two(std::size_t h1, std::size_t h2) {
   return h1 ^ (h2 << 1);
 }
 
-struct ValueDimHash {
-  std::size_t operator()(const ValueDim& p) const {
+struct SingleDimHash {
+  std::size_t operator()(const SingleDim& p) const {
     auto h1 = std::hash<size_t>{}(p.idx_);
     auto h2 = std::hash<pir::Value>{}(p.v_);
     auto h3 = std::hash<size_t>{}(p.usage_idx_);
@@ -60,16 +61,19 @@ struct ValueDimHash {
   }
 };
 
-using ValueDimRelation =
-    std::unordered_map<ValueDim,
-                       std::unordered_map<ValueDim, bool, ValueDimHash>,
-                       ValueDimHash>;
-// ValueDimRelation[in][out] = True; means f(out) = in is related.
+using ValueDim = std::vector<SingleDim>;
 
-ValueDimRelation AnalysisIndexExprRelation(
+using SingleDimRelation =
+    std::unordered_map<SingleDim,
+                       std::unordered_map<SingleDim, bool, SingleDimHash>,
+                       SingleDimHash>;
+// SingleDimRelation[in][out] = True; means f(out) = in is related.
+
+SingleDimRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops);
 const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op);
-std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v,
-                                              const size_t usage_idx);
+std::vector<SingleDim> GetAllSingleDimFromValue(const pir::Value& v,
+                                                const size_t usage_idx);
+std::string RelationDebugStr(const SingleDimRelation& relation);
 
 }  // namespace cinn::fusion

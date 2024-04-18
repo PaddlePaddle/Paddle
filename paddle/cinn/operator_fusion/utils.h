@@ -110,6 +110,15 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T>
+std::vector<T> ConcatAll(const std::vector<std::vector<T>>& all) {
+  std::vector<T> result;
+  for (const auto& vec : all) {
+    result = ConcatVector(result, vec);
+  }
+  return result;
+}
+
 template <typename T, typename F>
 std::vector<T> FilterVector(const std::vector<T>& first, const F& func) {
   std::vector<T> result;

@@ -6,4 +6,4 @@ gather_srcs(
   relative_judge_policy.cc
   general_topo_policy.cc
   shardable_axes_policy.cc
-  value_dim_relation.cc)
+  dim_relation.cc)
