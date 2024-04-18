@@ -90,7 +90,7 @@ class TestSoftplusActivationFusePattern(PassTest):
                         out = paddle.nn.functional.tanh(softplus_out)
 
                     out = paddle.assign(out)
-                    self.pass_list = ["softplus_activation_fuse_pass"]
+                    self.pass_list = [{"softplus_activation_fuse_pass": {}}]
                     self.feeds = {
                         "x": np.random.random(x_shape).astype("float32")
                     }
@@ -145,7 +145,7 @@ class TestSoftplusGeluTanhFusePattern(PassTest):
                 softplus_out = paddle.nn.functional.softplus(x)
                 out = paddle.nn.functional.gelu(softplus_out, approximate=True)
                 out = paddle.assign(out)
-                self.pass_list = ['softplus_activation_fuse_pass']
+                self.pass_list = [{"softplus_activation_fuse_pass": {}}]
                 self.feeds = {"x": np.random.random((3, 2)).astype("float32")}
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -187,7 +187,7 @@ class TestSoftplusClipFusePattern(PassTest):
                 softplus_out = paddle.nn.functional.softplus(x)
                 out = paddle.clip(softplus_out)
                 out = paddle.assign(out)
-                self.pass_list = ['softplus_activation_fuse_pass']
+                self.pass_list = [{"softplus_activation_fuse_pass": {}}]
                 self.feeds = {"x": np.random.random((3, 2)).astype("float32")}
                 self.fetch_list = [out]
                 self.valid_op_map = {
