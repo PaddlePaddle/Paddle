@@ -1180,43 +1180,41 @@ void CudnnLSTMInferMeta(
   state_out->set_dtype(phi::DataType::UINT8);
 }
 
-void DataNormInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& batch_size,
-    const MetaTensor& batch_sum,
-    const MetaTensor& batch_square_sum,
-    const MetaTensor& scale_w,
-    const MetaTensor& bias,
-    float epsilon,
-    int slot_dim,
-    float summary_decay_rate,
-    bool enable_scale_and_shift,
-    const std::string& data_layout,
-    bool sync_stats,
-    MetaTensor* y,
-    MetaTensor* means,
-    MetaTensor* scales,
-    MetaConfig config) { // 这里注意不能使用默认参数
+void DataNormInferMeta(const MetaTensor& x,
+                       const MetaTensor& batch_size,
+                       const MetaTensor& batch_sum,
+                       const MetaTensor& batch_square_sum,
+                       const MetaTensor& scale_w,
+                       const MetaTensor& bias,
+                       float epsilon,
+                       int slot_dim,
+                       float summary_decay_rate,
+                       bool enable_scale_and_shift,
+                       const std::string& data_layout,
+                       bool sync_stats,
+                       MetaTensor* y,
+                       MetaTensor* means,
+                       MetaTensor* scales,
+                       MetaConfig config) {  // 这里注意不能使用默认参数
   const auto x_dims = x.dims();
   const DataLayout datalayout = common::StringToDataLayout(data_layout);
 
-  PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Input X must have 2 to 5 dimensions."));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() >= 2 && x_dims.size() <= 5,
+      true,
+      phi::errors::InvalidArgument("Input X must have 2 to 5 dimensions."));
 
   const int64_t C =
-      (datalayout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (datalayout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
 
-  PADDLE_ENFORCE_EQ(batch_size.dims().size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "The input dim of BatchSize should be 1"));
-  PADDLE_ENFORCE_EQ(batch_sum.dims().size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "The input dim of BatchSum should be 1"));
+  PADDLE_ENFORCE_EQ(
+      batch_size.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument("The input dim of BatchSize should be 1"));
+  PADDLE_ENFORCE_EQ(
+      batch_sum.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument("The input dim of BatchSum should be 1"));
   PADDLE_ENFORCE_EQ(batch_square_sum.dims().size(),
                     1UL,
                     phi::errors::InvalidArgument(
@@ -1243,20 +1241,20 @@ void DataNormInferMeta(
         scale_dim.size(),
         1UL,
         phi::errors::InvalidArgument("the dimension of scale"
-                                          "must equal to 1. But received: "
-                                          "the shape of scale is [%s], "
-                                          "the dimension of scale is [%d]",
-                                          scale_dim,
-                                          scale_dim.size()));
+                                     "must equal to 1. But received: "
+                                     "the shape of scale is [%s], "
+                                     "the dimension of scale is [%d]",
+                                     scale_dim,
+                                     scale_dim.size()));
     PADDLE_ENFORCE_EQ(
         bias_dim.size(),
         1UL,
         phi::errors::InvalidArgument("the dimension of bias"
-                                          "must equal to 1. But received: "
-                                          "the shape of bias is [%s],"
-                                          "the dimension of bias is [%d]",
-                                          bias_dim,
-                                          bias_dim.size()));
+                                     "must equal to 1. But received: "
+                                     "the shape of bias is [%s],"
+                                     "the dimension of bias is [%d]",
+                                     bias_dim,
+                                     bias_dim.size()));
     bool check = true;
     if (config.is_runtime &&
         (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
