@@ -23,15 +23,18 @@ namespace cinn::fusion {
 template <typename T>
 struct PatternNode {
   using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
+  using MergePatternFn = std::function<StmtPattern<T>(const StmtPattern<T>&,
+                                                      const StmtPattern<T>&)>;
 
   explicit PatternNode(const PatternContent<T>& content)
       : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern<T>(content)) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
-                       PatternNodePtr fused_down_node)
+                       PatternNodePtr fused_down_node,
+                       MergePatternFn merge_pattern_fn)
       : sink_op_(fused_down_node->sink_op_),
-        stmt_pattern_(MergePattern<T>(fused_up_node->stmt_pattern_,
-                                      fused_down_node->stmt_pattern_)) {
+        stmt_pattern_(merge_pattern_fn(fused_up_node->stmt_pattern_,
+                                       fused_down_node->stmt_pattern_)) {
     // Update the upstream & downstream
     ExtendVector(&upstream_, fused_up_node->upstream());
     ExtendVector(&upstream_, fused_down_node->upstream());
@@ -57,7 +60,7 @@ struct PatternNode {
   }
 
   pir::Operation* sink_op() const { return sink_op_; }
-  StmtPattern<T>& stmt_pattern() { return stmt_pattern_; }
+  const StmtPattern<T>& stmt_pattern() const { return stmt_pattern_; }
   void set_stmt_pattern(const StmtPattern<T>& pattern) {
     stmt_pattern_ = pattern;
   }

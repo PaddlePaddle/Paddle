@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
+#include <functional>
 #include "paddle/cinn/operator_fusion/backend/pattern.h"
 #include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern.h"
@@ -214,9 +215,11 @@ std::string PatternGraph<T>::GraphInfo() const {
 
 template <typename T>
 PatternNodePtr<T> PatternGraph<T>::MergeNode(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+    const PatternNodePtr<T>& upstream,
+    const PatternNodePtr<T>& downstream,
+    MergePatternFn<T> merge_pattern_fn) {
   PatternNodePtr<T> merged_node =
-      std::make_shared<PatternNode<T>>(upstream, downstream);
+      std::make_shared<PatternNode<T>>(upstream, downstream, merge_pattern_fn);
 
   // Update upstream and downstream nodes.
   for (const auto& upstream_node : merged_node->upstream()) {

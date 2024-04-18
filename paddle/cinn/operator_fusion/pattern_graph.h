@@ -23,6 +23,9 @@ namespace cinn::fusion {
 
 template <typename T>
 using PatternNodePtrSet = std::unordered_set<PatternNodePtr<T>>;
+template <typename T>
+using MergePatternFn =
+    std::function<StmtPattern<T>(const StmtPattern<T>&, const StmtPattern<T>&)>;
 
 template <typename T>
 class PatternGraph {
@@ -44,7 +47,8 @@ class PatternGraph {
   void AppendNode(const PatternNodePtr<T>& node);
   std::string GraphInfo() const;
   PatternNodePtr<T> MergeNode(const PatternNodePtr<T>& upstream,
-                              const PatternNodePtr<T>& downstream);
+                              const PatternNodePtr<T>& downstream,
+                              MergePatternFn<T> merge_pattern_fn);
   std::vector<PatternNodePtr<T>> SortByTopoOrder();
 
   const PatternNodePtrSet<T>& all_pattern_nodes() const {
@@ -157,7 +161,7 @@ struct MergeReduceTreeOperation {
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
-    auto merged_node = graph->MergeNode(node, downstream);
+    auto merged_node = graph->MergeNode(node, downstream, MergePattern<Phrase>);
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -178,9 +182,16 @@ struct MergeReduceTreeAndTrivialOperation {
     auto downstream = node->downstream().at(0);
     auto fake_reduce_iter_idx =
         graph->policy_manager().GetFakeReduceIterIdx(node, downstream);
-    PatternNodePtr<Phrase> merged_node = graph->MergeNode(node, downstream);
-    std::get<ReduceTreePlusTrivialPattern<Phrase>>(merged_node->stmt_pattern())
-        .fake_reduce_iter_idx = fake_reduce_iter_idx;
+    auto merge_pattern_fn = [&fake_reduce_iter_idx](
+                                const StmtPattern<Phrase>& first,
+                                const StmtPattern<Phrase>& secend) {
+      auto rt_pattern = std::get<ReduceTreePlusTrivialPattern<Phrase>>(
+          MergePattern<Phrase>(first, secend));
+      rt_pattern.fake_reduce_iter_idx = fake_reduce_iter_idx;
+      return rt_pattern;
+    };
+    PatternNodePtr<Phrase> merged_node =
+        graph->MergeNode(node, downstream, merge_pattern_fn);
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
@@ -210,7 +221,8 @@ struct MergeTrivialPatternOperation {
               downstream->stmt_pattern()) ||
           std::holds_alternative<TrivialPattern<Phrase>>(
               downstream->stmt_pattern())) {
-        auto merged_node = graph->MergeNode(upstream, downstream);
+        auto merged_node =
+            graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
         graph->RemoveNode(downstream);
         VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "
@@ -231,6 +243,31 @@ struct LiftToHorizontalFusionPatternOperation {
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     node->set_stmt_pattern(
         HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
+  }
+};
+
+struct HorizontalFusionOperation {
+  template <typename Phrase>
+  void operator()(PatternGraph<Phrase>* graph,
+                  const PatternNodePtr<Phrase>& i,
+                  const PatternNodePtr<Phrase>& j) {
+    PADDLE_ENFORCE_EQ(
+        GetPatternName(i->stmt_pattern()),
+        HorizontalFusionPattern<Phrase>::name(),
+        phi::errors::PreconditionNotMet(
+            "The pattern of the first node should be HorizontalFusionPattern, "
+            "but got %s.",
+            GetPatternName(i->stmt_pattern())));
+    PADDLE_ENFORCE_EQ(
+        GetPatternName(j->stmt_pattern()),
+        HorizontalFusionPattern<Phrase>::name(),
+        phi::errors::PreconditionNotMet(
+            "The pattern of the second node should be HorizontalFusionPattern, "
+            "but got %s.",
+            GetPatternName(j->stmt_pattern())));
+    graph->MergeNode(i, j, MergePattern<Phrase>);
+    graph->RemoveNode(i);
+    graph->RemoveNode(j);
   }
 };
 
@@ -308,31 +345,6 @@ struct HorizontalFusionConstrain {
                                  .dims();
     return graph.topo_manager().CanFuse(first, second) &&
            first_dim == second_dim;
-  }
-};
-
-struct HorizontalFusionOperation {
-  template <typename T>
-  void operator()(PatternGraph<T>* graph,
-                  const PatternNodePtr<T>& i,
-                  const PatternNodePtr<T>& j) {
-    PADDLE_ENFORCE_EQ(
-        GetPatternName(i->stmt_pattern()),
-        HorizontalFusionPattern<T>::name(),
-        phi::errors::PreconditionNotMet(
-            "The pattern of the first node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternName(i->stmt_pattern())));
-    PADDLE_ENFORCE_EQ(
-        GetPatternName(j->stmt_pattern()),
-        HorizontalFusionPattern<T>::name(),
-        phi::errors::PreconditionNotMet(
-            "The pattern of the second node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternName(j->stmt_pattern())));
-    graph->MergeNode(i, j);
-    graph->RemoveNode(i);
-    graph->RemoveNode(j);
   }
 };
 
