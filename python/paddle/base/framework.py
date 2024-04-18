@@ -3055,7 +3055,6 @@ class Operator:
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
-        "copy_cross_scope",
     }
 
     def __init__(
