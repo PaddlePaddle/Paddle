@@ -1873,6 +1873,14 @@ void BindUtils(pybind11::module *m) {
     cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
   });
+
+  m->def("cinn_compilation_cache_size", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    return cinn::hlir::framework::CompilationCache::Instance().Size();
+#endif
+  });
 }
 
 namespace {

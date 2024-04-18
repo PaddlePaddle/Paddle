@@ -71,6 +71,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
   }
+  VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
   return ctx_mapper.RecoverKernelInfos();
@@ -115,8 +116,11 @@ CompilationContextMapper::RecoverKernelInfos() {
 
   std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
   for (size_t i = 0; i < fusion_infos_.size(); ++i) {
-    kernel_infos[i] =
-        CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
+    const auto& compilation_result =
+        FLAGS_enable_cinn_compile_cache
+            ? CompilationCache::Instance().Get(fusion_infos_[i])
+            : compilation_results_[i];
+    kernel_infos[i] = compilation_result->GetKernelInfo();
   }
   return kernel_infos;
 }
