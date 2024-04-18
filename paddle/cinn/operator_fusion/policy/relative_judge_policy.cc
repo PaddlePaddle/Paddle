@@ -168,12 +168,12 @@ SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
 
 bool DimsEqual(const std::vector<ValueDim>& first,
                const std::vector<ValueDim>& second) {
-  const auto GetDimInfo =
-      [](const std::vector<ValueDim>& dims) -> std::unordered_map<size_t, int> {
-    std::unordered_map<size_t, int> result;
+  const auto GetDimInfo = [](const std::vector<ValueDim>& dims)
+      -> std::unordered_map<symbol::DimExpr, int> {
+    std::unordered_map<symbol::DimExpr, int> result;
     for (const auto& dim : dims) {
       VLOG(4) << "dim: " << dim.DebugStr();
-      size_t value = dim.GetNumericValue();
+      symbol::DimExpr value = dim.GetSymbolDim();
       VLOG(4) << "value: " << value;
       if (result.find(value) == result.end()) {
         result[value] = 1;
@@ -184,9 +184,11 @@ bool DimsEqual(const std::vector<ValueDim>& first,
     return result;
   };
   VLOG(4) << "GetDimInfo";
-  const std::unordered_map<size_t, int>& first_dims = GetDimInfo(first);
+  const std::unordered_map<symbol::DimExpr, int>& first_dims =
+      GetDimInfo(first);
   VLOG(4) << "GetDimInfo";
-  const std::unordered_map<size_t, int>& second_dims = GetDimInfo(second);
+  const std::unordered_map<symbol::DimExpr, int>& second_dims =
+      GetDimInfo(second);
   if (first_dims.size() != second_dims.size()) return false;
   for (const auto& [dim_value, count] : first_dims) {
     if (second_dims.find(dim_value) == second_dims.end() ||
@@ -325,7 +327,7 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {
       if (visited_dims.find(trivial_dim) == visited_dims.end() &&
-          trivial_dim.GetNumericValue() == reduce_dim.GetNumericValue()) {
+          trivial_dim.SymbolicEqualTo(reduce_dim)) {
         visited_dims.emplace(trivial_dim);
         result.emplace_back(trivial_dim.idx_);
         break;
