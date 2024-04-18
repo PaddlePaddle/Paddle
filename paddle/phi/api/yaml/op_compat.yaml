@@ -817,13 +817,6 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
-- op : dequantize_log
-  inputs :
-    x : X
-    dict : Dict
-  outputs :
-    out : Out
-
 - op : det (determinant)
   backward : det_grad (determinant_grad)
   inputs :

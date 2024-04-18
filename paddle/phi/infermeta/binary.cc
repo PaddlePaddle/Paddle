@@ -1087,7 +1087,7 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
                             MetaTensor* out) {
-  out->set_dtype(dict.dtype());
+  out->set_dtype(x.dtype());
   out->share_dims(x);
   out->share_lod(x);
 }
