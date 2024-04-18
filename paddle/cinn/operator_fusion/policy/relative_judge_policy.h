@@ -36,12 +36,12 @@ struct ValueDim {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
 
-  symbol::DimExpr GetSymbolDim() const {
+  symbol::DimExpr GetSymbolicDim() const {
     return shape_analysis_.GetShapeOrDataForValue(v_).shape().at(idx_);
   }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
-    return shape_analysis_.IsEqual(GetSymbolDim(), other.GetSymbolDim());
+    return shape_analysis_.IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
   }
 
   std::string DebugStr() const {

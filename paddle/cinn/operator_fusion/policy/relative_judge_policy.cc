@@ -173,7 +173,7 @@ bool DimsEqual(const std::vector<ValueDim>& first,
     std::unordered_map<symbol::DimExpr, int> result;
     for (const auto& dim : dims) {
       VLOG(4) << "dim: " << dim.DebugStr();
-      symbol::DimExpr value = dim.GetSymbolDim();
+      symbol::DimExpr value = dim.GetSymbolicDim();
       VLOG(4) << "value: " << value;
       if (result.find(value) == result.end()) {
         result[value] = 1;
