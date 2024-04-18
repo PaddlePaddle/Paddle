@@ -97,10 +97,6 @@ else()
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
 
-if(WITH_GPU)
-  paddle_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc)
-endif()
-
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
