@@ -102,6 +102,10 @@ class IR_API ShapeConstraintIRAnalysis {
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitute_map_;
 
   symbol::ConstraintsManager constraints_manager_;
+
+  using DimExprSubstitutionPattern =
+      std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+  DimExprSubstitutionPattern substitution_pattern_;
 };
 
 class IR_API ShapeAnalysisManager {
