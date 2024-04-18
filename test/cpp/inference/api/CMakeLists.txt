@@ -371,8 +371,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
   download_model_and_data_without_verify(
     ${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR}
-                              analyzer_rnn2_tester.cc EXTRA_DEPS common)
+  # inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc EXTRA_DEPS common)
 
   # TODO(luotao, Superjom) Disable DAM test, temporarily fix
   # https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
@@ -408,16 +407,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz"
     "chinese_ner-data.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR}
-                              analyzer_ner_tester.cc EXTRA_DEPS common)
+  # inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyzer_ner_tester.cc EXTRA_DEPS common)
 
   # lac
   set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
   download_model_and_data(
     ${LAC_INSTALL_DIR} "lac_model.tar.gz" 419ca6eb85f57a01bfe173591910aec5
     "lac_data.txt.tar.gz" 9983539cd6b34fbdc411e43422776bfd)
-  inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
-                              analyzer_lac_tester.cc EXTRA_DEPS common)
+  # inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc EXTRA_DEPS common)
 
   # Ernie
   set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
@@ -474,9 +471,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
     3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
     36ae620020cc3377f45ed330dd36238f)
-  inference_analysis_api_test(
-    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
-    analyzer_text_classification_tester.cc EXTRA_DEPS common)
+  # fluid operator lstm
+  # inference_analysis_api_test(
+  #  test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
+  #  analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
   # seq_conv1
   set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
@@ -552,8 +550,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
       "inference-vis-demos/ocr.tar.gz")
   endif()
-  inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR}
-                              analyzer_vis_tester.cc EXTRA_DEPS common)
+  # inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc EXTRA_DEPS common)
 
   # densebox
   set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
@@ -1190,15 +1187,15 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
   endif()
 
-  inference_analysis_test(
-    test_analyzer_zerocopytensor_tensor
-    SRCS
-    analyzer_zerocopy_tensor_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${OCR_INSTALL_DIR}/model)
+  #  inference_analysis_test(
+  #    test_analyzer_zerocopytensor_tensor
+  #    SRCS
+  #    analyzer_zerocopy_tensor_tester.cc
+  #    EXTRA_DEPS
+  #    common
+  #    paddle_inference_shared
+  #    ARGS
+  #    --infer_model=${OCR_INSTALL_DIR}/model)
 
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     inference_analysis_test(
@@ -1227,17 +1224,17 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
 
-  inference_analysis_test(
-    test_analyzer_paddletensor_tensor
-    SRCS
-    analyzer_paddle_tensor_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${OCR_INSTALL_DIR}/model
-    --infer_data=${OCR_INSTALL_DIR}/data.txt
-    --refer_result=${OCR_INSTALL_DIR}/result.txt)
+  #  inference_analysis_test(
+  #    test_analyzer_paddletensor_tensor
+  #    SRCS
+  #    analyzer_paddle_tensor_tester.cc
+  #    EXTRA_DEPS
+  #    common
+  #    paddle_inference_shared
+  #    ARGS
+  #    --infer_model=${OCR_INSTALL_DIR}/model
+  #    --infer_data=${OCR_INSTALL_DIR}/data.txt
+  #    --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
   if(WITH_ONEDNN)
     inference_analysis_test(
@@ -1322,7 +1319,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)

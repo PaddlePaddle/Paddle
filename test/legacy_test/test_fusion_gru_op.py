@@ -12,12 +12,94 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 
 import numpy as np
 from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fc
-from test_gru_op import gru
+
+
+def gru(
+    input,  # T x 3D
+    lod,  # 1 x N
+    h0,  # N x D
+    weight,  # D x 3D
+    bias,  # 1 x 3D
+    is_reverse,
+    act_state,
+    act_gate,
+    dtype='float32',
+    origin_mode=False,
+):
+    def _seq_to_batch(lod, is_reverse):
+        idx_in_seq_list = []
+        seq_lens = lod[0]
+        seq_starts = [0]
+        for i in range(len(seq_lens)):
+            seq_starts.append(seq_starts[-1] + seq_lens[i])
+        sorted_seqs = sorted(
+            range(len(seq_lens)),
+            key=functools.cmp_to_key(lambda x, y: seq_lens[y] - seq_lens[x]),
+        )
+        num_batch = seq_lens[sorted_seqs[0]]
+        for batch_idx in range(num_batch):
+            idx_in_seq = []
+            for i in range(len(seq_lens)):
+                if seq_lens[sorted_seqs[i]] <= batch_idx:
+                    break
+                idx = (
+                    (seq_starts[sorted_seqs[i] + 1] - 1 - batch_idx)
+                    if is_reverse
+                    else (seq_starts[sorted_seqs[i]] + batch_idx)
+                )
+                idx_in_seq.append(idx)
+            idx_in_seq_list.append(idx_in_seq)
+        return idx_in_seq_list, sorted_seqs
+
+    def _step(x, h_p, w, b, act_state, act_gate):
+        T = x.shape[0]
+        D = w.shape[0]
+        g = x + np.tile(b, (T, 1))
+        w_u_r = w.flatten()[: D * D * 2].reshape((D, D * 2))
+        u_r = act_gate(np.dot(h_p, w_u_r) + g[:, : D * 2])
+        u = u_r[:, :D]
+        r = u_r[:, D : D * 2]
+        r_h_p = r * h_p
+        w_c = w.flatten()[D * D * 2 :].reshape((D, D))
+        c = act_state(np.dot(r_h_p, w_c) + g[:, D * 2 :])
+        g = np.hstack((u_r, c))
+        if origin_mode:
+            h = (1 - u) * c + u * h_p
+        else:
+            h = u * c + (1 - u) * h_p
+        return g, r_h_p, h
+
+    T = sum(lod[0])
+    N = len(lod[0])
+    D = weight.shape[0]
+    batch_gate = np.zeros((T, 3 * D), dtype=dtype)
+    batch_reset_hidden_prev = np.zeros((T, D), dtype=dtype)
+    batch_hidden = np.zeros((T, D), dtype=dtype)
+    hidden = np.zeros((T, D), dtype=dtype)
+
+    idx_in_seq_list, sorted_seqs = _seq_to_batch(lod, is_reverse)
+    h_p = h0[[seq for seq in sorted_seqs if lod[0][seq] > 0]]
+
+    max_seq_len = len(idx_in_seq_list)
+    end_idx = 0
+    for batch_idx in range(max_seq_len):
+        x = input[idx_in_seq_list[batch_idx]]
+        g, r_h_p, h = _step(x, h_p, weight, bias, act_state, act_gate)
+        if batch_idx < (max_seq_len - 1):
+            h_p = h[: len(idx_in_seq_list[batch_idx + 1])]
+        start_idx = end_idx
+        end_idx = start_idx + len(idx_in_seq_list[batch_idx])
+        batch_gate[start_idx:end_idx] = g
+        batch_reset_hidden_prev[start_idx:end_idx] = r_h_p
+        batch_hidden[start_idx:end_idx] = h
+        hidden[idx_in_seq_list[batch_idx]] = h
+    return batch_gate, batch_reset_hidden_prev, batch_hidden, hidden
 
 
 def fusion_gru(
