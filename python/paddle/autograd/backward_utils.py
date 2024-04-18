@@ -236,8 +236,7 @@ class State:
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
-            shape = item.shape
-            if -1 in shape:
+            if item.initialized() and -1 in item.shape:
                 warnings.warn(
                     f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
                 )
