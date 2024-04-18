@@ -17,8 +17,6 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
-#include "paddle/common/enforce.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::fusion {
 
