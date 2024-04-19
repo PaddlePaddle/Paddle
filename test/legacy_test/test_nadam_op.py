@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from copy import deepcopy
 
 import numpy as np
 from op_test import OpTest
@@ -20,6 +21,9 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.framework import core
+
+RTOL = 1e-06
+ATOL = 1e-06
 
 
 def nadam_step(inputs, attributes):
@@ -161,7 +165,7 @@ class TestNAdamOp(OpTest):
             mu_product_out,
             moment1_out,
             moment2_out,
-        ) = nadam_step(self.inputs, self.attrs)
+        ) = nadam_step(deepcopy(self.inputs), deepcopy(self.attrs))
 
         self.outputs = {
             "param_out": param_out,
@@ -173,7 +177,7 @@ class TestNAdamOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, rtol=RTOL, atol=ATOL)
 
 
 @unittest.skipIf(
@@ -181,7 +185,9 @@ class TestNAdamOp(OpTest):
 )
 class TestNAdamOpGPU(TestNAdamOp):
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, rtol=RTOL, atol=ATOL
+        )
 
 
 class TestNAdamAPI(unittest.TestCase):

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from copy import deepcopy
 
 import numpy as np
 from op_test import OpTest
@@ -20,6 +21,9 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.framework import core
+
+RTOL = 1e-06
+ATOL = 1e-06
 
 
 def radam_step(inputs, attributes):
@@ -40,6 +44,7 @@ def radam_step(inputs, attributes):
     beta2 = attributes['beta2']
 
     rho_inf = 2 / (1 - beta2) - 1
+
     beta1_pow *= beta1
     beta2_pow *= beta2
 
@@ -53,7 +58,7 @@ def radam_step(inputs, attributes):
     rho_t = rho_inf - 2 * rho
 
     if rho_t > 5:
-        l_t = np.sqrt(1 - beta2_pow) / (moment2 + epsilon)
+        l_t = np.sqrt(1 - beta2_pow) / (np.sqrt(moment2) + epsilon)
         r_t = np.sqrt(
             ((rho_t - 4) * (rho_t - 2) * rho_inf)
             / ((rho_inf - 4) * (rho_inf - 2) * rho_t)
@@ -151,7 +156,7 @@ class TestRAdamOp(OpTest):
             rho_out,
             moment1_out,
             moment2_out,
-        ) = radam_step(self.inputs, self.attrs)
+        ) = radam_step(deepcopy(self.inputs), deepcopy(self.attrs))
 
         self.outputs = {
             "param_out": param_out,
@@ -163,15 +168,15 @@ class TestRAdamOp(OpTest):
         }
 
     def _init_rho(self, rho_inf):
-        return np.array((rho_inf - 5) / 2 + 0.123).astype("float32")
+        return np.array((rho_inf - 5) / 2 + 5.0).astype("float32")
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, rtol=RTOL, atol=ATOL)
 
 
 class TestRAdamOpRhoSmall(TestRAdamOp):
     def _init_rho(self, rho_inf):
-        return np.array((rho_inf - 5) / 2 - 0.123).astype("float32")
+        return np.array((rho_inf - 5) / 2 - 5.0).astype("float32")
 
 
 @unittest.skipIf(
@@ -179,7 +184,14 @@ class TestRAdamOpRhoSmall(TestRAdamOp):
 )
 class TestRAdamOpGPU(TestRAdamOp):
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, rtol=RTOL, atol=ATOL
+        )
+
+
+class TestRAdamOpGPURhoSmall(TestRAdamOpGPU):
+    def _init_rho(self, rho_inf):
+        return np.array((rho_inf - 5) / 2 - 5.0).astype("float32")
 
 
 class TestRAdamAPI(unittest.TestCase):
