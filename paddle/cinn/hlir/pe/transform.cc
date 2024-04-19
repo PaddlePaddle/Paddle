@@ -27,6 +27,7 @@
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -1057,7 +1058,7 @@ ir::Tensor Transpose(const ir::Tensor& input,
 
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
-                 const std::vector<int>& axes,
+                 const std::vector<int>& const_axes,
                  const std::vector<int>& strides,
                  const std::vector<int>& decrease_axis,
                  const std::vector<Expr>& output_shape,
@@ -1066,6 +1067,21 @@ ir::Tensor Slice(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape.as_int32());
   }
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   if (axis < 0) {
+                     PADDLE_ENFORCE_GE(
+                         axis + rank,
+                         0,
+                         ::common::errors::InvalidArgument(
+                             "The axis of slice is out of range"));
+                     return axis + rank;
+                   }
+                   return axis;
+                 });
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
     if (new_starts[i] < -input_shape[axes[i]]) {
@@ -1110,7 +1126,7 @@ ir::Tensor Slice(const ir::Tensor& A,
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
                          const std::vector<int>& starts,
-                         const std::vector<int>& axes,
+                         const std::vector<int>& const_axes,
                          const std::vector<int>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
@@ -1125,6 +1141,21 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  starts.end(),
                  std::back_inserter(new_starts),
                  [](const int start) { return ir::Expr(start); });
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   if (axis < 0) {
+                     PADDLE_ENFORCE_GE(
+                         axis + rank,
+                         0,
+                         ::common::errors::InvalidArgument(
+                             "The axis of slice is out of range"));
+                     return axis + rank;
+                   }
+                   return axis;
+                 });
 
   for (int i = 0; i < axes.size(); i++) {
     if (input_shape[axes[i]].is_constant()) {
