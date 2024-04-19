@@ -39,7 +39,6 @@ DEFINE_C_REDUCE_CPU_KERNEL(CReduceProd, kRedProd)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod,
                              ops::CReduceOp,

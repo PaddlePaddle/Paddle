@@ -160,7 +160,6 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_concat,
                           XPU,
@@ -169,5 +168,5 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           float,
                           int,
                           int64_t,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
