@@ -20,6 +20,11 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#include <musa_fp16.h>
+#endif
+
 #include "paddle/common/ddim.h"
 
 namespace phi {

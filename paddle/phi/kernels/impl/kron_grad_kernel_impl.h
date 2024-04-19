@@ -178,7 +178,7 @@ struct KronGradOpFunctor {
     const int64_t *p_stride_y = nullptr;
     const int64_t *p_stride_dout = nullptr;
     const int64_t *p_shape_y = nullptr;
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_dout(ndims);
@@ -232,7 +232,7 @@ struct KronGradOpFunctor {
     for_range(func);
 
 // reduce_sum along aixs 1
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
       phi::SumKernel<T, Context>(

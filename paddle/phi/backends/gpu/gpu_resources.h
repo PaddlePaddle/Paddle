@@ -41,8 +41,8 @@ void DestroyBlasLtHandle(blasLtHandle_t handle);
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place);
 void DestroyDnnHandle(dnnHandle_t handle);
 
-void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream);
-void DestroySolverHandle(solverHandle_t solver_handle);
+// void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream);
+// void DestroySolverHandle(solverHandle_t solver_handle);
 
 void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream);
 void DestroySparseHandle(sparseHandle_t handle);

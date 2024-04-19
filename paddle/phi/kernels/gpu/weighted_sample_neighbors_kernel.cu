@@ -25,6 +25,12 @@
 #include "cub/cub.cuh"
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#include <murand_kernel.h>
+#include "cub/cub.cuh"
+#endif
+
 #include "math.h"  // NOLINT
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"

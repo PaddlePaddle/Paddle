@@ -98,7 +98,7 @@ ComputeMatmulImpl(const framework::ExecutionContext &context) {
 
   int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   head_number = context.Attr<int>("head_number");
 #endif
 
@@ -112,7 +112,7 @@ ComputeMatmulImpl(const framework::ExecutionContext &context) {
     }
   }
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
   if (head_number > 1) {
@@ -271,7 +271,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP)  && !defined(PADDLE_WITH_MUSA)
     if (context.HasAttr("head_number")) {
       head_number = context.Attr<int>("head_number");
     }
@@ -403,7 +403,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -645,7 +645,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
@@ -788,7 +788,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsExtra();
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif

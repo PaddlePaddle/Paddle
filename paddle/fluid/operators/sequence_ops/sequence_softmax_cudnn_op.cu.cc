@@ -26,44 +26,44 @@ template <typename T>
 class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    // auto* x = ctx.Input<LoDTensor>("X");
+    // auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto& lod = x->lod();
-    auto& dims = x->dims();
+    // auto& lod = x->lod();
+    // auto& dims = x->dims();
 
-    const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        dims[0],
-        static_cast<int64_t>(lod[level].back()),
-        platform::errors::InvalidArgument(
-            "The first dimension of Input(X) should be equal to the sum of all "
-            "sequences' lengths. But received first dimension of Input(X) is "
-            "%d, the sum of all sequences' lengths is %d.",
-            dims[0],
-            static_cast<int64_t>(lod[level].back())));
-    PADDLE_ENFORCE_EQ(dims[0],
-                      x->numel(),
-                      platform::errors::InvalidArgument(
-                          "The width of each timestep in Input(X) of "
-                          "SequenceSoftmaxOp should be 1."));
+    // const size_t level = lod.size() - 1;
+    // PADDLE_ENFORCE_EQ(
+    //     dims[0],
+    //     static_cast<int64_t>(lod[level].back()),
+    //     platform::errors::InvalidArgument(
+    //         "The first dimension of Input(X) should be equal to the sum of all "
+    //         "sequences' lengths. But received first dimension of Input(X) is "
+    //         "%d, the sum of all sequences' lengths is %d.",
+    //         dims[0],
+    //         static_cast<int64_t>(lod[level].back())));
+    // PADDLE_ENFORCE_EQ(dims[0],
+    //                   x->numel(),
+    //                   platform::errors::InvalidArgument(
+    //                       "The width of each timestep in Input(X) of "
+    //                       "SequenceSoftmaxOp should be 1."));
 
-    out->mutable_data<T>(ctx.GetPlace());
-    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
-      Tensor x_i = x->Slice(start_pos, end_pos);
-      Tensor out_i = out->Slice(start_pos, end_pos);
+    // out->mutable_data<T>(ctx.GetPlace());
+    // for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+    //   int start_pos = static_cast<int>(lod[level][i]);
+    //   int end_pos = static_cast<int>(lod[level][i + 1]);
+    //   Tensor x_i = x->Slice(start_pos, end_pos);
+    //   Tensor out_i = out->Slice(start_pos, end_pos);
 
-      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i =
-          // common::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
-          common::make_ddim({1UL, end_pos - start_pos});
-      x_i.Resize(dims_i);
-      out_i.Resize(dims_i);
-      phi::funcs::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
-          ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
-    }
+    //   // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+    //   framework::DDim dims_i =
+    //       // common::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
+    //       common::make_ddim({1UL, end_pos - start_pos});
+    //   x_i.Resize(dims_i);
+    //   out_i.Resize(dims_i);
+    //   phi::funcs::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+    //       ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
+    // }
   }
 };
 
@@ -71,36 +71,36 @@ template <typename T>
 class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<LoDTensor>("Out");
-    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    if (x_grad) {
-      x_grad->set_lod(x->lod());
-    }
-    auto& lod = x->lod();
-    const size_t level = lod.size() - 1;
+    // auto* out = ctx.Input<LoDTensor>("Out");
+    // auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    // auto* x = ctx.Input<LoDTensor>("X");
+    // auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    // if (x_grad) {
+    //   x_grad->set_lod(x->lod());
+    // }
+    // auto& lod = x->lod();
+    // const size_t level = lod.size() - 1;
 
-    x_grad->mutable_data<T>(ctx.GetPlace());  // NOLINT
-    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
+    // x_grad->mutable_data<T>(ctx.GetPlace());  // NOLINT
+    // for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+    //   int start_pos = static_cast<int>(lod[level][i]);
+    //   int end_pos = static_cast<int>(lod[level][i + 1]);
 
-      Tensor out_i = out->Slice(start_pos, end_pos);
-      Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
-      Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
+    //   Tensor out_i = out->Slice(start_pos, end_pos);
+    //   Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
+    //   Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
 
-      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = common::make_ddim({1UL, end_pos - start_pos});
-      out_i.Resize(dims_i);
-      out_grad_i.Resize(dims_i);
-      x_grad_i.Resize(dims_i);
-      phi::funcs::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
-          ctx.template device_context<phi::GPUContext>(),
-          &out_i,
-          &out_grad_i,
-          &x_grad_i);
-    }
+    //   // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+    //   framework::DDim dims_i = common::make_ddim({1UL, end_pos - start_pos});
+    //   out_i.Resize(dims_i);
+    //   out_grad_i.Resize(dims_i);
+    //   x_grad_i.Resize(dims_i);
+    //   phi::funcs::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+    //       ctx.template device_context<phi::GPUContext>(),
+    //       &out_i,
+    //       &out_grad_i,
+    //       &x_grad_i);
+    // }
   }
 };
 

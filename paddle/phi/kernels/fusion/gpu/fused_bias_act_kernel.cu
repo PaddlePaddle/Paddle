@@ -21,7 +21,7 @@ PHI_DECLARE_bool(use_fast_math);
 namespace phi {
 namespace fusion {
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 template <typename T,
           typename Functor,
           int VecSize,
@@ -448,7 +448,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
   int rows = x.dims()[0];
   int cols = x.dims()[1];
   if (x.dtype() == phi::DataType::INT32) {

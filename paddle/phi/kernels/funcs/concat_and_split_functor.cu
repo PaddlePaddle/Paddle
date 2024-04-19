@@ -49,7 +49,7 @@ static inline void GetBlockDims(const phi::GPUContext& context,
   *grid_dims = dim3(grid_cols, grid_rows, 1);
 }
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else

@@ -55,6 +55,7 @@ from .framework import (
     is_compiled_with_cinn,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
+    is_compiled_with_musa,
     is_compiled_with_xpu,
     Variable,
     require_version,

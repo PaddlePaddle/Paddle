@@ -27,33 +27,33 @@ class NCCLTypeWrapper;
 template <>
 class NCCLTypeWrapper<float> {
  public:
-  static const ncclDataType_t type = ncclFloat;
+  static const mcclDataType_t type = mcclFloat;
 };
 
 template <>
 class NCCLTypeWrapper<double> {
  public:
-  static const ncclDataType_t type = ncclDouble;
+  static const mcclDataType_t type = mcclDouble;
 };
 
-static ncclRedOp_t str_to_nccl_red_type(std::string reduction) {
-  static const std::unordered_map<std::string, ncclRedOp_t> str_to_type = {
-      {"ncclSum", ncclSum},
-      {"ncclMin", ncclMin},
-      {"ncclMax", ncclMax},
-      {"ncclProd", ncclProd},
+static mcclRedOp_t str_to_nccl_red_type(std::string reduction) {
+  static const std::unordered_map<std::string, mcclRedOp_t> str_to_type = {
+      {"mcclSum", mcclSum},
+      {"mcclMin", mcclMin},
+      {"mcclMax", mcclMax},
+      {"mcclProd", mcclProd},
   };
   auto it = str_to_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != str_to_type.end(),
                     true,
                     platform::errors::InvalidArgument(
-                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
+                        "Invalid nccl reduction. Must be mcclMin | mcclMax | "
+                        "mcclProd | mcclSum"));
   return it->second;
 }
 
 template <typename T, typename DeviceContext>
-class NCCLAllReduceKernel : public framework::OpKernel<T> {
+class mcclAllReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
@@ -74,7 +74,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
             << " invoke allreduce. send " << x->numel() << " recv "
             << out->numel();
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclAllReduce(x->data<T>(),
+        platform::dynload::mcclAllReduce(x->data<T>(),
                                          out->mutable_data<T>(ctx.GetPlace()),
                                          out->numel(),
                                          NCCLTypeWrapper<T>::type,
@@ -115,7 +115,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclReduce(x->data<T>(),
+        platform::dynload::mcclReduce(x->data<T>(),
                                       recvbuffer,
                                       x->numel(),
                                       NCCLTypeWrapper<T>::type,
@@ -144,7 +144,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     if (idx == root) {
       auto* x = ctx.Input<phi::DenseTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
           x->numel(),
           NCCLTypeWrapper<T>::type,
@@ -157,7 +157,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << common::product(out->dims());
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclBcast(out->mutable_data<T>(ctx.GetPlace()),
+          platform::dynload::mcclBcast(out->mutable_data<T>(ctx.GetPlace()),
                                        out->numel(),
                                        NCCLTypeWrapper<T>::type,
                                        root,
@@ -173,8 +173,8 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 PD_REGISTER_STRUCT_KERNEL(
-    ncclAllReduce, GPU, ALL_LAYOUT, ops::NCCLAllReduceKernel, float) {}
+    mcclAllReduce, GPU, ALL_LAYOUT, ops::mcclAllReduceKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
-    ncclBcast, GPU, ALL_LAYOUT, ops::NCCLBcastKernel, float) {}
+    mcclBcast, GPU, ALL_LAYOUT, ops::NCCLBcastKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
     ncclReduce, GPU, ALL_LAYOUT, ops::NCCLReduceKernel, float) {}

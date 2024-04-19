@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__)  || defined(__MUSACC__) || defined(__NVCC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
@@ -114,7 +114,7 @@ void PoolRawKernel(const Context& ctx,
         int reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__)  || defined(__MUSACC__) || defined(__NVCC__)
           auto stream = ctx.stream();
           funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
               ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);

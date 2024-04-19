@@ -48,7 +48,7 @@ void BindCommContextManager(py::module *m) {
           .def_static("set_device_id",
                       &phi::distributed::CommContextManager::SetDeviceId,
                       py::call_guard<py::gil_scoped_release>())
-#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL)
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,

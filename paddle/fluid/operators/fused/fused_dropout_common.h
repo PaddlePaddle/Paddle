@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <cooperative_groups.h>
-#include <cuda.h>
-#include <curand_kernel.h>
+#include <musa.h>
+#include <murand_kernel.h>
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"

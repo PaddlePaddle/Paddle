@@ -32,7 +32,7 @@ __global__ void StridedCopyCaseZeroFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = 0;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) ||  defined(PADDLE_WITH_MUSA)
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -467,7 +467,7 @@ __global__ void Strided2ContiguousCaseZeroFunc(
                               blockDim.z * blockDim.y * blockDim.x +
                           threadIdx.z * blockDim.y * blockDim.x +
                           threadIdx.y * blockDim.x + threadIdx.x;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined (PADDLE_WITH_MUSA)
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -881,7 +881,7 @@ __global__ void Contiguous2StridedCaseZeroFunc(
                          threadIdx.z * blockDim.y * blockDim.x +
                          threadIdx.y * blockDim.x + threadIdx.x;
   int64_t output_offset = 0;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined (PADDLE_WITH_MUSA)
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -1339,6 +1339,11 @@ void StridedCopyKernel(const Context& dev_ctx,
               input_data,
               phi::SizeOf(input.dtype()),
               hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(output_data,
+               input_data,
+               phi::SizeOf(input.dtype()),
+               musaMemcpyDeviceToDevice);          
 #else
     cudaMemcpy(output_data,
                input_data,

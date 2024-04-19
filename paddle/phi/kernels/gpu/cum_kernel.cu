@@ -229,6 +229,8 @@ ThrustCumsumKernel(const Context& dev_ctx,
                    bool exclusive) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
+#elif defined(__MUSACC__)
+  const auto& policy = thrust::musa::par.on(dev_ctx.stream());
 #else
   phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                              dev_ctx.stream());

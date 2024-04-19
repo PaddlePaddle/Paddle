@@ -34,14 +34,14 @@ class Scope;
 namespace paddle {
 namespace operators {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+static void GenNCCLID(std::vector<mcclUniqueId>* nccl_ids) {
   for (auto& nccl_id : *nccl_ids) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetUniqueId(&nccl_id));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGetUniqueId(&nccl_id));
   }
 }
 
-static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
+static void CopyNCCLIDToVar(const std::vector<mcclUniqueId>& nccl_ids,
                             std::function<std::string(size_t)> func,
                             const framework::Scope& scope) {
   for (size_t i = 0; i < nccl_ids.size(); ++i) {
@@ -51,8 +51,8 @@ static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
         var,
         platform::errors::NotFound("Variable with name %s is not found",
                                    var_name.c_str()));
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
-    memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
+    auto nccl_id = var->GetMutable<mcclUniqueId>();
+    memcpy(nccl_id, &nccl_ids[i], sizeof(mcclUniqueId));
   }
 }
 
@@ -130,7 +130,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", trainers:" << ss.str();
 
     int server_fd = -1;
-    std::vector<ncclUniqueId> nccl_ids;
+    std::vector<mcclUniqueId> nccl_ids;
     nccl_ids.resize(nccl_comm_num);
 
     /// 1. init flat

@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -32,8 +32,8 @@ namespace operators {
 template <typename T>
 struct GlobalScatterFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+// #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
     auto global_count = ctx.Input<phi::DenseTensor>("global_count");
@@ -72,7 +72,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       global_count_len = cpu_global_count.numel();
     }
 
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
@@ -173,7 +173,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       auto recv_buf = out->data<T>();
 
       for (auto i = 0; i < n_expert; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupStart());
         for (auto j = 0; j < nranks; ++j) {
           int idx = i + j * n_expert;
           if (cpu_local_count_data[idx]) {
@@ -196,14 +196,14 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
             recv_ptr += cpu_global_count_data[idx];
           }
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupEnd());
       }
     }
 
-#else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
+// #else
+//     PADDLE_THROW(
+//         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+// #endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
@@ -214,8 +214,8 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
 template <typename T>
 struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+// #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
     auto global_count = ctx.Input<phi::DenseTensor>("global_count");
@@ -311,14 +311,16 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
 
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());    
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
 
-#else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
+// #else
+//     PADDLE_THROW(
+//         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+// #endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));

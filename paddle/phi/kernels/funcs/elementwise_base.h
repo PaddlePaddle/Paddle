@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__) || defined(__xpu__) || defined(__MUSACC__)
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/function_traits.h"
@@ -150,7 +150,7 @@ class MidWiseTransformIterator<T, CPUContext>
   int64_t post_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 template <typename T>
 class RowwiseTransformIterator<T, GPUContext>
     : public thrust::iterator_adaptor<RowwiseTransformIterator<T, GPUContext>,
@@ -485,7 +485,7 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__) || defined(__xpu__)
 
 // static unroller
 template <template <int Index, int VecSize> typename Func,

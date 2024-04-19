@@ -329,6 +329,8 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
 #ifdef PADDLE_WITH_HIP
     hipMemset(temp_qk_bias, 0, sizeof(float) * size);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(temp_qk_bias, 0, sizeof(float) * size);
 #else
     cudaMemset(temp_qk_bias, 0, sizeof(float) * size);
 #endif

@@ -45,6 +45,19 @@ class ConvSearchCache {
   AlgorithmsCache<miopenConvFwdAlgorithm_t>* GetConvFusion() {
     return &fusion_forward_cache_;
   }
+#elif defined(PADDLE_WITH_MUSA)
+  AlgorithmsCache<mudnnConvFwdAlgorithm_t>* GetForward() {
+    return &forward_cache_;
+  }
+  AlgorithmsCache<mudnnConvBwdDataAlgorithm_t>* GetBackwardData() {
+    return &backward_data_cache_;
+  }
+  AlgorithmsCache<mudnnConvBwdWeightsAlgorithm_t>* GetBackwardFilter() {
+    return &backward_filter_cache_;
+  }
+  AlgorithmsCache<mudnnConvFwdAlgorithm_t>* GetConvFusion() {
+    return &fusion_forward_cache_;
+  }
 #else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetForward() {
     return &forward_cache_;
@@ -72,6 +85,11 @@ class ConvSearchCache {
   AlgorithmsCache<miopenConvBwdDataAlgorithm_t> backward_data_cache_;
   AlgorithmsCache<miopenConvBwdWeightsAlgorithm_t> backward_filter_cache_;
   AlgorithmsCache<miopenConvFwdAlgorithm_t> fusion_forward_cache_;
+#elif defined(PADDLE_WITH_MUSA)
+  AlgorithmsCache<mudnnConvFwdAlgorithm_t> forward_cache_;
+  AlgorithmsCache<mudnnConvBwdDataAlgorithm_t> backward_data_cache_;
+  AlgorithmsCache<mudnnConvBwdWeightsAlgorithm_t> backward_filter_cache_;
+  AlgorithmsCache<mudnnConvFwdAlgorithm_t> fusion_forward_cache_;
 #else
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;

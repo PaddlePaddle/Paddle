@@ -72,6 +72,8 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
 #ifdef PADDLE_WITH_HIP
   hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
 #else
   cudaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
 #endif
@@ -93,6 +95,11 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
             item_count_ptr + num_input,
             sizeof(int),
             hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(&total_unique_items,
+            item_count_ptr + num_input,
+            sizeof(int),
+            musaMemcpyDeviceToHost);       
 #else
   cudaMemcpy(&total_unique_items,
              item_count_ptr + num_input,
@@ -344,6 +351,11 @@ void ReindexDst(const Context& dev_ctx,
               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
               sizeof(int),
               hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(&count_i,
+              thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+              sizeof(int),
+              musaMemcpyDeviceToHost); 
 #else
     cudaMemcpy(&count_i,
                thrust::raw_pointer_cast(dst_ptr.data()) + node_len,

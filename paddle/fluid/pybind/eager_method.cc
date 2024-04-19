@@ -318,11 +318,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor->Holder()->size());
     }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   } else if (self->tensor.is_gpu()) {
     eager_gil_scoped_release guard;
 #if defined(PADDLE_WITH_CUDA)
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_MUSA)
+    gpuMemcpyKind kind = musaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
     phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();

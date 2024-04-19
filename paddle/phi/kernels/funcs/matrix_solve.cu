@@ -26,7 +26,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
                                                 const DenseTensor& a,
                                                 const DenseTensor& b,
                                                 DenseTensor* out) {
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 
   // solve the equation: Ax = B,
   // use cuBlas cublas<S/D>getrfBatched funcion to performs the LU

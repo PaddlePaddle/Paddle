@@ -49,8 +49,8 @@ class HeterPs : public HeterPsBase {
                 size_t chunk_size,
                 int stream_num) override;
 #if defined(PADDLE_WITH_CUDA)
-  void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
-                              const std::vector<ncclComm_t>& inter_comms,
+  void set_nccl_comm_and_size(const std::vector<mcclComm_t>& inner_comms,
+                              const std::vector<mcclComm_t>& inter_comms,
                               int comm_size,
                               int rank_id) override;
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;

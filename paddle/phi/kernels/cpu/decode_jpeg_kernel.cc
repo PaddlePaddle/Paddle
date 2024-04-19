@@ -30,3 +30,5 @@ void DecodeJpegKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     decode_jpeg, CPU, ALL_LAYOUT, phi::DecodeJpegKernel, uint8_t) {}
+PD_REGISTER_KERNEL(
+    decode_jpeg, GPU, ALL_LAYOUT, phi::DecodeJpegKernel, uint8_t) {}

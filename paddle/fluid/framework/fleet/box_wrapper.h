@@ -595,6 +595,9 @@ class BoxWrapper {
       data->resize(len);
 #ifdef PADDLE_WITH_HIP
       hipMemcpy(data->data(), gpu_data, sizeof(T) * len, hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemcpy(
+          data->data(), gpu_data, sizeof(T) * len, musaMemcpyDeviceToHost);
 #else
       cudaMemcpy(
           data->data(), gpu_data, sizeof(T) * len, cudaMemcpyDeviceToHost);

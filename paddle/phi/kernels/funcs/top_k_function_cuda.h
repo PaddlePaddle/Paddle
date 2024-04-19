@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <vector>
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -1126,6 +1126,15 @@ bool SortTopk(const phi::GPUContext& ctx,
                  << hipGetErrorString(err);
       return false;
     }
+#elif defined(__MUSACC__)
+    if (err != musaSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "musacub::DeviceSegmentedRadixSort::SortPairsDescending to "
+                    "calculate "
+                    "temp_storage_bytes, status: "
+                 << musaGetErrorString(err);
+      return false;
+    }
 #else
     if (err != cudaSuccess) {
       LOG(ERROR)
@@ -1151,12 +1160,12 @@ bool SortTopk(const phi::GPUContext& ctx,
                                                  0,
                                                  sizeof(T) * 8,
                                                  cu_stream);
-#ifdef __HIPCC__
-    if (err != hipSuccess) {
+#ifdef __MUSACC__
+    if (err != musaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "hipcub::DeviceSegmentedRadixSort::SortPairs to calculate "
                     "temp_storage_bytes, status: "
-                 << hipGetErrorString(err);
+                 << musaGetErrorString(err);
       return false;
     }
 #else
@@ -1187,14 +1196,14 @@ bool SortTopk(const phi::GPUContext& ctx,
         0,
         sizeof(T) * 8,
         cu_stream);
-#ifdef __HIPCC__
-    if (err != hipSuccess) {
+#ifdef __MUSACC__
+    if (err != musaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "hipcub::DeviceSegmentedRadixSort::SortPairsDescending to "
                     "sort input, "
                     "temp_storage_bytes: "
                  << temp_storage_bytes
-                 << ", status: " << hipGetErrorString(err);
+                 << ", status: " << musaGetErrorString(err);
       return false;
     }
 #else
@@ -1223,14 +1232,14 @@ bool SortTopk(const phi::GPUContext& ctx,
                                                  0,
                                                  sizeof(T) * 8,
                                                  cu_stream);
-#ifdef __HIPCC__
-    if (err != hipSuccess) {
+#ifdef __MUSACC__
+    if (err != musaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "hipcub::DeviceSegmentedRadixSort::SortPairs to "
                     "sort input, "
                     "temp_storage_bytes: "
                  << temp_storage_bytes
-                 << ", status: " << hipGetErrorString(err);
+                 << ", status: " << musaGetErrorString(err);
       return false;
     }
 #else

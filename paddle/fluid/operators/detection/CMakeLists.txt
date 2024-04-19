@@ -11,7 +11,7 @@ function(detection_library TARGET_NAME)
   set(srcs)
   # filter cuda source file when not build with cuda/rocm
   foreach(src ${detection_library_SRCS})
-    if(NOT WITH_GPU AND NOT WITH_ROCM)
+    if(NOT WITH_GPU AND NOT WITH_ROCM  AND NOT WITH_MUSA)
       if(${src} MATCHES ".*\\.cc$")
         list(APPEND srcs ${src})
       endif()
@@ -57,7 +57,7 @@ detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   set(TMPDEPS memory)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)

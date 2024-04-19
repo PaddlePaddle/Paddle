@@ -22,6 +22,9 @@ add_subdirectory(autotune)
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
+if(WITH_MUSA)
+  list(REMOVE_ITEM kernel_cu "sparse/*.h")
+endif()
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
@@ -39,6 +42,43 @@ file(
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
+
+if(WITH_MUSA)
+  # 创建要排除的文件模式列表
+  file(
+  GLOB files_to_remove
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "sparse/gpu/*.cu"
+  "gpudnn/*.cu")
+
+  list(REMOVE_ITEM kernel_cu ${files_to_remove})
+  message(STATUS "files_to_remove:${files_to_remove}")
+
+  list(
+    REMOVE_ITEM 
+    kernel_cu 
+    "strings/gpu/strings_lower_upper_kernel.cu" 
+    "strings/gpu/strings_copy_kernel.cu" 
+    "fusion/gpu/block_multi_head_attention_kernel.cu"
+    "gpu/cudnn_lstm_kernel.cu"
+    "gpu/cudnn_lstm_grad_kernel.cu"
+    "gpu/instance_norm_kernel.cu"
+    "gpu/instance_norm_grad_kernel.cu"
+    "gpu/log_softmax_kernel.cu"
+    "gpu/log_softmax_grad_kernel.cu"
+    "gpu/weighted_sample_neighbors_kernel.cu"
+    "gpu/cross_entropy_kernel.cu"
+    "gpu/cross_entropy_grad_kernel.cu"
+    "gpu/gelu_kernel.cu"
+    "gpu/gelu_grad_kernel.cu"
+    "gpu/rnn_kernel.cu.cc"
+    "gpu/rnn_grad_kernel.cu.cc"
+    "gpu/clip_by_norm_kernel.cu"
+    "selected_rows/gpu/clip_by_norm_kernel.cu"
+    "gpu/softmax_grad_kernel.cu"
+    "gpu/softmax_kernel.cu"
+    )
+endif()
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
@@ -193,6 +233,10 @@ set(cc_search_pattern
     "fusion/*.cc"
     "stride/*.cc"
     "fusion/cpu/*.cc")
+if(WITH_MUSA)
+    list(REMOVE_ITEM cc_search_pattern "sparse/*.cc")
+    list(REMOVE_ITEM cc_search_pattern "sparse/cpu/*.cc")    
+endif()
 
 if(WITH_MKLDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
@@ -222,7 +266,7 @@ file(
   "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
   "sparse/xpu/*.cc")
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
   kernel_declare("${kernel_cu}")
 endif()

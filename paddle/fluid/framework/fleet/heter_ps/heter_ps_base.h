@@ -46,8 +46,8 @@ class HeterPsBase {
   virtual int get_index_by_devid(int devid) = 0;
 #if defined(PADDLE_WITH_CUDA)
   virtual void set_nccl_comm_and_size(
-      const std::vector<ncclComm_t>& inner_comms,
-      const std::vector<ncclComm_t>& inter_comms,
+      const std::vector<mcclComm_t>& inner_comms,
+      const std::vector<mcclComm_t>& inter_comms,
       int comm_size,
       int rank_id) = 0;
   virtual void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) = 0;

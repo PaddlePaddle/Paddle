@@ -117,7 +117,7 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
@@ -126,11 +126,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)|| defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -1101,7 +1101,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("height", &phi::SelectedRows::height)
       .def("set_rows",
            [](phi::SelectedRows &self, std::vector<int64_t> rows) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
              self.set_rows(rows);
 #else
         std::vector<int64_t> new_rows(rows);

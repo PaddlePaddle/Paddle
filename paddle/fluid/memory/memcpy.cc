@@ -257,7 +257,7 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
 
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 
 #ifdef PADDLE_WITH_HIP
@@ -268,6 +268,18 @@ inline void SyncCUDAStream() {
   hipError_t e_sync = hipSuccess;
   while (e_sync = hipStreamQuery(0)) {
     if (e_sync == hipErrorNotReady) continue;
+    break;
+  }
+#endif
+}
+#elif defined(PADDLE_WITH_MUSA)
+inline void SyncCUDAStream() {
+#if !defined(_WIN32)
+  musaStreamSynchronize(0);
+#else
+  musaError_t e_sync = musaSuccess;
+  while (e_sync = musaStreamQuery(0)) {
+    if (e_sync == musaErrorNotReady) continue;
     break;
   }
 #endif
@@ -314,6 +326,12 @@ TEST_API void Copy<platform::CPUPlace, platform::CUDAPlace>(
                              num,
                              hipMemcpyDeviceToHost,
                              reinterpret_cast<gpuStream_t>(stream));
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpyAsync(dst,
+                             src,
+                             num,
+                             musaMemcpyDeviceToHost,
+                             reinterpret_cast<gpuStream_t>(stream));
 #else
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -326,6 +344,8 @@ TEST_API void Copy<platform::CPUPlace, platform::CUDAPlace>(
         "GpuMemcpySync:GPU->CPU", platform::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToHost);
 #else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
 #endif
@@ -358,6 +378,12 @@ TEST_API void Copy<platform::CUDAPlace, platform::CPUPlace>(
                              num,
                              hipMemcpyHostToDevice,
                              reinterpret_cast<gpuStream_t>(stream));
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpyAsync(dst,
+                             src,
+                             num,
+                             musaMemcpyHostToDevice,
+                             reinterpret_cast<gpuStream_t>(stream));                           
 #else
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -370,6 +396,8 @@ TEST_API void Copy<platform::CUDAPlace, platform::CPUPlace>(
         "GpuMemcpySync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpySync(dst, src, num, musaMemcpyHostToDevice);
 #else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
 #endif
@@ -404,6 +432,12 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
                                num,
                                hipMemcpyDeviceToDevice,
                                reinterpret_cast<gpuStream_t>(stream));
+#elif defined(PADDLE_WITH_MUSA)    
+      platform::GpuMemcpyAsync(dst,
+                               src,
+                               num,
+                               musaMemcpyDeviceToDevice,
+                               reinterpret_cast<gpuStream_t>(stream));                    
 #else
       platform::GpuMemcpyAsync(dst,
                                src,
@@ -417,6 +451,8 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
                                          1);
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+      platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToDevice);
 #else
       platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
 #endif
@@ -503,6 +539,12 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
                              num,
                              hipMemcpyDeviceToHost,
                              reinterpret_cast<gpuStream_t>(stream));
+#elif defined(PADDLE_WITH_MUSA)   
+    platform::GpuMemcpyAsync(dst,
+                             src,
+                             num,
+                             musaMemcpyDeviceToHost,
+                             reinterpret_cast<gpuStream_t>(stream));                     
 #else
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -516,6 +558,8 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
                                        1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpySync(dst, src, num, musaMemcpyDeviceToHost);
 #else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
 #endif
@@ -545,6 +589,12 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
                              num,
                              hipMemcpyHostToDevice,
                              reinterpret_cast<gpuStream_t>(stream));
+#elif defined(PADDLE_WITH_MUSA)                
+    platform::GpuMemcpyAsync(dst,
+                             src,
+                             num,
+                             musaMemcpyHostToDevice,
+                             reinterpret_cast<gpuStream_t>(stream));         
 #else
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -558,6 +608,8 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
                                        1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    platform::GpuMemcpySync(dst, src, num, musaMemcpyHostToDevice);
 #else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
 #endif
@@ -747,7 +799,7 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
       dst_place.GetType() == phi::AllocationType::CPU) {  // NOLINT
     std::memcpy(dst, src, num);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
            dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     std::memcpy(dst, src, num);
@@ -844,7 +896,7 @@ void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
 }
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 
 template <>
 void Copy<phi::Place, phi::Place>(phi::Place dst_place,

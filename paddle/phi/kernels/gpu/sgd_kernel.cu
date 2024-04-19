@@ -197,6 +197,22 @@ PD_REGISTER_KERNEL(sgd,
 }
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_KERNEL(sgd,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SGDDenseKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+#endif
+
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(sgd,
                    GPU,

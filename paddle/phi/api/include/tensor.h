@@ -24,6 +24,11 @@ limitations under the License. */
 using gpuStream_t = cudaStream_t;
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+using gpuStream_t = musaStream_t;
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 using gpuStream_t = hipStream_t;
@@ -413,7 +418,7 @@ class PADDLE_API Tensor final {
    */
   void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   /**
    * @brief Get the stream where the tensor is currently located
    * This is a deprecated method and may be removed in the future!

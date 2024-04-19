@@ -18,10 +18,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #else
 #include <hipcub/hipcub.hpp>
@@ -33,7 +33,7 @@ namespace cub = hipcub;
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
@@ -104,7 +104,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         DataTypeToString(index_type),
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 
   auto output_dim = out_grad.dims();
   auto stride_dim = common::stride(input_dim);
@@ -179,7 +179,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
   }
 
   DenseTensor index;
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
   auto output_dim = out_grad.dims();
   auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];

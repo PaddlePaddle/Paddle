@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU_KP)
 
 #include <array>
@@ -112,7 +112,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
-  solverHandle_t cusolver_dn_handle() const;
+  // solverHandle_t cusolver_dn_handle() const;
 
   /*! \brief  Return cusparse handle in the device context. */
   sparseHandle_t cusparse_handle() const;
@@ -183,10 +183,10 @@ class PADDLE_API GPUContext : public DeviceContext,
 
  public:
   /*! \brief  Return nccl communicators. */
-  ncclComm_t nccl_comm() const;
+  mcclComm_t nccl_comm() const;
 
   /*! \brief  Set nccl communicators. */
-  void set_nccl_comm(ncclComm_t comm);
+  void set_nccl_comm(mcclComm_t comm);
 
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.
@@ -232,14 +232,14 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetBlasTF32Handle(blasHandle_t);
   void SetBlasTF32Handle(std::function<blasHandle_t()>&&);
 
-  void SetBlasLtHandle(blasLtHandle_t);
-  void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
+  // void SetBlasLtHandle(blasLtHandle_t);
+  // void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
 
   void SetDnnHandle(dnnHandle_t);
   void SetDnnHandle(std::function<dnnHandle_t()>&&);
 
-  void SetSolverHandle(solverHandle_t);
-  void SetSolverHandle(std::function<solverHandle_t()>&&);
+  // void SetSolverHandle(solverHandle_t);
+  // void SetSolverHandle(std::function<solverHandle_t()>&&);
 
   void SetSparseHandle(sparseHandle_t);
   void SetSparseHandle(std::function<sparseHandle_t()>&&);
@@ -276,7 +276,7 @@ using GPUDNNContext = GPUContext;
 // because we want to implement a KPS-based kernel and make it run
 // on GPU and XPU at the same time, so we need KPSContext when registering
 // KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 using KPSContext = GPUContext;
 #endif
 
@@ -287,7 +287,7 @@ struct DefaultDevice;
 }  // namespace Eigen
 
 namespace phi {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // Currently, GPUPinnedContext is only used to data copying.
 class GPUPinnedContext
     : public DeviceContext,

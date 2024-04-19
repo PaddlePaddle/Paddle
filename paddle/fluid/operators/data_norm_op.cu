@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -216,7 +216,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         d_batch_square_sum);
 
     if (need_sync_stats) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       int rid = 0;
       platform::NCCLComm *comm = nullptr;
       const auto &comm_context_manager =
@@ -247,59 +247,59 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
       }
 
       if (comm_ctx) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm_ctx->GetNcclComm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm_ctx->GetNcclComm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm_ctx->GetNcclComm(),
             stream));
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm->comm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm->comm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
             platform::ToNCCLDataType(
                 framework::TransToProtoVarType(x->dtype())),
-            ncclSum,
+            mcclSum,
             comm->comm(),
             stream));
       }

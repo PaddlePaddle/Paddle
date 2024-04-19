@@ -141,7 +141,7 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
-  // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
+  // 1. Gather rows number from all workers. Here use mcclAllGather to do this,
   // but we can use other ways to implement is in the future
   auto &src_rows = src.rows();
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
