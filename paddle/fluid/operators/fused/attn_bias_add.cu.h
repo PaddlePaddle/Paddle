@@ -32,9 +32,9 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -73,23 +73,23 @@ __global__ void BroadcastKernelBinary(
 
   // load in0
   if (use_broadcast[0]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD>(
+    phi::kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD>(
         arg0, in0, fix, configlists[0], numel);
   } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
+    phi::kps::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
   }
   // load in1
   if (use_broadcast[1]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD>(
+    phi::kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD>(
         arg1, in1, fix, configlists[1], numel);
   } else {
-    kernel_primitives::ReadData<InT, VecSize, 1>(arg1, in1 + fix, num);
+    phi::kps::ReadData<InT, VecSize, 1>(arg1, in1 + fix, num);
   }
   // compute
-  kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, Functor>(
+  phi::kps::ElementwiseBinary<InT, OutT, VecSize, 1, Functor>(
       result, arg0, arg1, func);
   // store
-  kernel_primitives::WriteData<OutT, VecSize, 1, true>(out + fix, result, num);
+  phi::kps::WriteData<OutT, VecSize, 1, true>(out + fix, result, num);
 }
 
 // bias add forward impl for "[m, n] + [n] = [m, n]"
