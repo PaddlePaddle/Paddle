@@ -126,15 +126,21 @@ class MergeParallelMatmulPattern
             .result(0);
 
     for (size_t i = 0; i < merge_ops.size(); ++i) {
-      auto split_out = rewriter
-                           .Build<paddle::dialect::SliceOp>(
-                               matmul_out,
-                               std::vector<std::int64_t>{-1},
-                               std::vector<std::int64_t>{combine_shapes[i]},
-                               std::vector<int64_t>{combine_shapes[i + 1]},
-                               std::vector<std::int64_t>{},
-                               std::vector<std::int64_t>{})
-                           .result(0);
+      auto split_out =
+          rewriter
+              .Build<paddle::dialect::SliceOp>(
+                  matmul_out,
+                  std::vector<std::int64_t>{
+                      matmul_out.type()
+                          .dyn_cast<paddle::dialect::DenseTensorType>()
+                          .dims()
+                          .size() -
+                      1},
+                  std::vector<std::int64_t>{combine_shapes[i]},
+                  std::vector<int64_t>{combine_shapes[i + 1]},
+                  std::vector<std::int64_t>{},
+                  std::vector<std::int64_t>{})
+              .result(0);
 
       rewriter.ReplaceAllUsesWith(merge_ops[i]->result(0), split_out);
       rewriter.EraseOp(merge_ops[i]);
