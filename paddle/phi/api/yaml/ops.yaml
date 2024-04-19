@@ -547,6 +547,7 @@
     func : clip
     data_type : x
   backward : clip_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : clip_by_norm
   args : (Tensor x, float max_norm)
@@ -697,6 +698,7 @@
     func : cross_entropy_with_softmax
     data_type : input
   backward : cross_entropy_with_softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cummax
   args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)

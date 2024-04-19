@@ -261,13 +261,23 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
           "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
           "but not TensorListShapeOrDataDimExprs."));
 
+  auto lhs_shape_data_shape = lhs_shape_data.shape();
+  auto rhs_shape_data_shape = rhs_shape_data.shape();
+
+  if (lhs_shape_data_shape.size() == 0 && lhs_dim_idxs.size() > 0) {
+    lhs_shape_data_shape.emplace_back(1);
+  }
+  if (rhs_shape_data_shape.size() == 0 && rhs_dim_idxs.size() > 0) {
+    rhs_shape_data_shape.emplace_back(1);
+  }
+
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
   for (int i : lhs_dim_idxs) {
     lhs_product = lhs_product * lhs_shape_data.shape()[i];
   }
   for (int i : rhs_dim_idxs) {
-    rhs_product = rhs_product * rhs_shape_data.shape()[i];
+    rhs_product = rhs_product * rhs_shape_data_shape[i];
   }
   return symbol::SimplifyDimExpr(lhs_product) ==
          symbol::SimplifyDimExpr(rhs_product);

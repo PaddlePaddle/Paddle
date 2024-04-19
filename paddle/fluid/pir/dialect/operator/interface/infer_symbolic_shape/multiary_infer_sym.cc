@@ -257,6 +257,33 @@ bool ConcatOpInferSymbolicShape(
   return true;
 }
 
+bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &input_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &attributes = op->attributes();
+
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  if (axis < 0) axis += input_shape.shape().size();
+
+  auto softmax_dim = input_shape.shape();
+  auto out_dim = input_shape.shape();
+  out_dim[axis] = 1;
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(softmax_dim));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(out_dim));
+
+  return true;
+}
+
+bool CrossEntropyWithSoftmax_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return CrossEntropyWithSoftmaxOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(1);
