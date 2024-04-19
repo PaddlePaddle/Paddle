@@ -794,7 +794,14 @@ def _get_backward_op_type(block, op, idx):
                 for i in range(idx, idx + 5):
                     if not is_backward_op(ops[i]):
                         return False
-                    ops_names.append(ops[i].type)
+                    if op[i].type == "matmul_v2":
+                        output_arg_names = op[i].output_arg_names
+                        name = output_arg_names[0].split("@")[0]
+                        if not block._find_var_recursive(name):
+                            return False
+                        var = block._find_var_recursive(name)
+                        if not var.is_parameter:
+                            return False
                 if ops_names == ops_pattern:
                     return True
         return False
