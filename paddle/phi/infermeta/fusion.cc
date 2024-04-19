@@ -4302,7 +4302,7 @@ void SpeculativeDecodingMultiheadAttentionInferMeta(
     MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  const int num_head = key_cache_dims[1];
+  const int num_head = key_cache_dims[2];
   const int dim_head = key_cache_dims[3];
   fmha_out->set_dims({input_dims[0], num_head * dim_head});
   qkv_out->set_dims(qkv.dims());
