@@ -68,7 +68,7 @@ struct ValueDim {
     return oss.str();
   }
 
-  const pir::ShapeConstraintIRAnalysis& shape_analysis() const {
+  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
     auto shape_analysis_ptr = shape_analysis_.lock();
     PADDLE_ENFORCE_NOT_NULL(
         shape_analysis_ptr,
