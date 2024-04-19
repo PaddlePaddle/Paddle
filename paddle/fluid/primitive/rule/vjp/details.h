@@ -808,7 +808,7 @@ void matmul_grad(const Tensor& x,
     auto x_grad_trans = x_grad_mm;
     if (transpose_x) {
       std::vector<int> reverse_perm;
-      for (int i = 0; i < x_grad_trans.shape().size(); i++) {
+      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
         reverse_perm.push_back(i);
       }
       std::swap(reverse_perm[reverse_perm.size() - 1],
@@ -834,7 +834,7 @@ void matmul_grad(const Tensor& x,
     auto y_grad_trans = y_grad_mm;
     if (transpose_y) {
       std::vector<int> reverse_perm;
-      for (int i = 0; i < y_grad_mm.shape().size(); i++) {
+      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
         reverse_perm.push_back(i);
       }
       std::swap(reverse_perm[reverse_perm.size() - 1],
