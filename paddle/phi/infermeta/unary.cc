@@ -5762,6 +5762,7 @@ void FakeQuantizeInferMeta(const MetaTensor& x,
                            MetaTensor* out_scale) {
   UnchangedInferMeta(x, out);
   out_scale->set_dims({1});
+  out_scale->set_dtype(x.dtype());
 }
 
 void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
@@ -5771,6 +5772,7 @@ void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
   UnchangedInferMeta(x, out);
   auto in_dims = x.dims();
   out_scale->set_dims({in_dims[quant_axis]});
+  out_scale->set_dtype(x.dtype());
 }
 
 void FakeQuantizeRangeInferMeta(const MetaTensor& x,
@@ -5783,9 +5785,11 @@ void FakeQuantizeRangeInferMeta(const MetaTensor& x,
 
   if (out_scales != nullptr) {
     out_scales->set_dims({window_size});
+    out_scales->set_dtype(x.dtype());
   }
 
   out_scale->set_dims({1});
+  out_scale->set_dtype(x.dtype());
 }
 
 void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
@@ -5797,10 +5801,12 @@ void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
   out_scale->set_dims({1});
   if (out_state != nullptr) {
     out_state->set_dims({1});
+    out_state->set_dtype(x.dtype());
   }
 
   if (out_accum != nullptr) {
     out_accum->set_dims({1});
+    out_accum->set_dtype(x.dtype());
   }
 }
 
