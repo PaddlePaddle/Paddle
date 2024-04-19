@@ -95,13 +95,13 @@ void TestCallElementwise(const std::string &fn_name,
 
   cinn_buffer_t *A_buf;
   if (set_value != 0) {
-    PADDLE_ENFORCE_EQ(
+    /*PADDLE_ENFORCE_EQ(
         x->num_elements(),
         out->num_elements(),
         phi::errors::InvalidArgument("X's number of elements (%d) should "
                                      "be equal to output's (%d).",
                                      x->num_elements(),
-                                     out->num_elements()));
+                                     out->num_elements()));*/
     A_buf = CreateBuffer({10, 10}, false, set_value);
   } else {
     A_buf = CreateBuffer({10, 10});

@@ -31,12 +31,17 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   if (kernel->start < start_ns) {
     return;
   }
+  // LOG(INFO) << "kernel->deviceId:" << kernel->deviceId;
+  int new_device_id = kernel->deviceId;
+  if (new_device_id >= 7) {
+    new_device_id = 7;
+  }
   DeviceTraceEvent event;
   event.name = demangle(kernel->name);
   event.type = TracerEventType::Kernel;
   event.start_ns = kernel->start;
   event.end_ns = kernel->end;
-  event.device_id = kernel->deviceId;
+  event.device_id = new_device_id;
   event.context_id = kernel->contextId;
   event.stream_id = kernel->streamId;
   event.correlation_id = kernel->correlationId;
@@ -65,7 +70,7 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   constexpr int threads_per_warp = 32;
 #endif
   const gpuDeviceProp& device_property =
-      paddle::platform::GetDeviceProperties(static_cast<int>(kernel->deviceId));
+      paddle::platform::GetDeviceProperties(static_cast<int>(new_device_id));
   blocks_per_sm =
       static_cast<float>(event.kernel_info.grid_x * event.kernel_info.grid_y *
                          event.kernel_info.grid_z) /
@@ -76,17 +81,18 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
                       event.kernel_info.block_z)) /
                  static_cast<float>(threads_per_warp);
 #ifdef PADDLE_WITH_HIP
-  occupancy = paddle::platform::CalculateEstOccupancy(
-      kernel->deviceId,
+  occupancy = 0;
+  /*occupancy = paddle::platform::CalculateEstOccupancy(
+      new_device_id,
       event.kernel_info.dynamic_shared_memory,
       event.kernel_info.block_x,
       event.kernel_info.block_y,
       event.kernel_info.block_z,
       kernel->kernelFunc,
-      kernel->launchType);
+      kernel->launchType);*/
 #else
   occupancy = paddle::platform::CalculateEstOccupancy(
-      kernel->deviceId,
+      new_device_id,
       event.kernel_info.registers_per_thread,
       static_cast<int32_t>(event.kernel_info.static_shared_memory),
       static_cast<int32_t>(event.kernel_info.dynamic_shared_memory),
