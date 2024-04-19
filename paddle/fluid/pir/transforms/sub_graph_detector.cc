@@ -490,12 +490,12 @@ std::vector<pir::Value> AnalysisExternalInputs(const Operation* op) {  // NOLINT
   }
   auto group_op =
       const_cast<Operation*>(op)->dyn_cast<cinn::dialect::GroupOp>();
-  auto group_ops = std::unordered_set<::pir::Value>(
+  auto group_ops = std::unordered_set<pir::Operation*>(
       group_op.GetOperators().begin(), group_op.GetOperators().end());
   std::unordered_set<::pir::Value> group_inputs;
   // count all op's input Value
-  for (auto op : group_ops) {
-    for (auto& value : op->operands_source()) {
+  for (auto item : group_ops) {
+    for (auto& value : item->operands_source()) {
       if (!value || !value.type() ||
           group_ops.find(value.defining_op()) != group_ops.end())
         continue;
