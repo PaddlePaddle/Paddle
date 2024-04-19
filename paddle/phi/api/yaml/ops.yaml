@@ -2122,6 +2122,7 @@
   kernel :
     func : nonzero
     data_type: condition
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
@@ -2297,6 +2298,16 @@
     func : reciprocal
   inplace : (x -> out)
   backward : reciprocal_grad
+
+- op : reduce_as
+  args : (Tensor x, Tensor target)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceAsInferMeta
+  kernel :
+    func : reduce_as
+    data_type : x
+  backward : reduce_as_grad
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
