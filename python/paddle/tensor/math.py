@@ -7760,6 +7760,7 @@ def isposinf(x, name=None):
         x,
         "x",
         [
+            'bfloat16',
             'float16',
             'float32',
             'float64',
@@ -7806,6 +7807,7 @@ def isneginf(x, name=None):
         x,
         "x",
         [
+            'bfloat16',
             'float16',
             'float32',
             'float64',

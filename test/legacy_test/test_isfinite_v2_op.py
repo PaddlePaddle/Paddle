@@ -60,7 +60,10 @@ def run_eager(x_np, op_str, use_gpu=True):
 def np_data_generator(
     low, high, np_shape, type, sv_list, op_str, *args, **kwargs
 ):
-    x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
+    if type == 'bfloat16':
+        x_np = np.random.uniform(low, high, np_shape).astype(np.uint16)
+    else:
+        x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
     # x_np.shape[0] >= len(sv_list)
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
@@ -197,6 +200,16 @@ TEST_META_DATA3 = [
     },
 ]
 
+TEST_META_DATA4 = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [8, 17, 5, 6, 7],
+        'type': 'bfloat16',
+        'sv_list': [-np.inf, np.inf],
+    },
+]
+
 
 def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
     for meta_data in data_set:
@@ -271,6 +284,19 @@ class TestCUDAFP16(unittest.TestCase):
 
     def test_neginf(self):
         test(self, 'isneginf', True, data_set=TEST_META_DATA3)
+
+
+@unittest.skipIf(
+    not base.core.is_compiled_with_cuda()
+    or not base.core.is_bfloat16_supported(base.core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestCUDABFP16(unittest.TestCase):
+    def test_posinf(self):
+        test(self, 'isposinf', True, data_set=TEST_META_DATA4)
+
+    def test_neginf(self):
+        test(self, 'isneginf', True, data_set=TEST_META_DATA4)
 
 
 class TestError(unittest.TestCase):
