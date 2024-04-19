@@ -24,6 +24,11 @@ import numpy as np
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import (
+    ValueSet,
+    get_real_op_inputs,
+    some_in_set,
+)
 from paddle.base import (
     core,
     default_main_program,
@@ -99,6 +104,58 @@ def set_var(name, ndarray):
     t.set(ndarray, place)
 
 
+def append_pir_fetch_ops(program, fetch_name_var_maps):
+    """
+    Append fetch ops to the program.
+    Args:
+        program(Program): Specify a program you want to append fetch op.
+        fetch_vars(Tensor | list[Tensor]): Values returned by inference.
+    Returns:
+        modify program
+    """
+    for i, (var, name) in enumerate(fetch_name_var_maps):
+        out = paddle._pir_ops.fetch(var, name, i)
+        out.persistable = True
+
+
+def pir_prune_with_input(program, feed_vars, target_vars):
+    """
+    Prune a program according to feed_vars and target_vars.
+    Args:
+        program(Program): Specify a program you want to prune.
+        feed_vars(Tensor | list[Tensor]): Values needed by inference.
+        target_vars(Tensor | list[Tensor]): Values returned by inference.
+    Returns
+        modify program
+    """
+    if not isinstance(program, paddle.static.Program):
+        raise TypeError(
+            "program type must be `paddle.static.Program`, but received `%s`"
+            % type(program)
+        )
+
+    total_ops = program.global_block().ops
+    intersection_op_flags = [True] * len(total_ops)
+
+    # from output to input
+    target_vars_ = ValueSet(target_vars)
+    for i, op in reversed(list(enumerate(total_ops))):
+        if some_in_set(op.results(), target_vars_):
+            for operand in get_real_op_inputs(op):
+                target_vars_.add(operand)
+        else:
+            intersection_op_flags[i] = False
+
+    for i, op in reversed(list(enumerate(total_ops))):
+        if not intersection_op_flags[i]:
+            if some_in_set(op.results(), ValueSet(feed_vars)):
+                raise ValueError(
+                    f"The feed_var create by: '{op.name()}' is not involved in the target_vars calculation"
+                    f"Please remove it from feed_vars ."
+                )
+            program.global_block().remove_op(op)
+
+
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
@@ -146,49 +203,54 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
     if not all(isinstance(v, pir.Value) for v in feed_vars):
-        raise TypeError("feed_vars type must be a Value or a list of Variable.")
+        raise TypeError("feed_vars type must be a Value or a list of Value.")
     if not isinstance(fetch_vars, list):
         fetch_vars = [fetch_vars]
     if not all(isinstance(v, pir.Value) for v in fetch_vars):
-        raise TypeError(
-            "fetch_vars type must be a Value or a list of Variable."
-        )
+        raise TypeError("fetch_vars type must be a Value or a list of Value.")
 
     # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
+
     with paddle.static.program_guard(program):
         uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
+        for var in fetch_vars:
             if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
+                var_ = paddle.scale(fetch_vars[0], 1.0)
+                uniq_fetch_vars.append(var_)
+            fetch_vars = uniq_fetch_vars
 
     # serialize program
-    copy_program = program.clone()
+    value_map = paddle.pir.IrMapping()
+    copy_program = program.clone(value_map)
     global_block = copy_program.global_block()
-    remove_ops = []
+    clone_feed_vars = [value_map.look_up(v) for v in feed_vars]
+    clone_fetch_vars = [value_map.look_up(v) for v in fetch_vars]
+
     for op in global_block.ops:
-        if op.name() == "pd_op.feed" or op.name() == "pd_op.fetch":
-            remove_ops.append(op)
+        # can not delete feed op because it's output used by other op.
+        if op.name() == "pd_op.fetch":
+            global_block.remove_op(op)
 
-    for op in remove_ops:
-        global_block.remove_op(op)
-
-    # feed_var_names = [var.name for var in feed_vars]
-
-    # skip_prune_program = kwargs.get('skip_prune_program', False)
-    # if not skip_prune_program:
-    #     copy_program = copy_program._prune_with_input(
-    #         feeded_var_names=feed_var_names, targets=fetch_vars
-    #     )
+    skip_prune_program = kwargs.get('skip_prune_program', False)
+    # if feed var is not conect with target_vars, it will be delete.
+    if not skip_prune_program:
+        pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
     # copy_program = copy_program._inference_optimize(prune_read_op=True)
-    # fetch_var_names = [var.name for var in fetch_vars]
-    # prepend_feed_ops(copy_program, feed_var_names)
-    # append_fetch_ops(copy_program, fetch_var_names)
+
+    fetch_vars_tuple = []
+    for i, var in enumerate(clone_fetch_vars):
+        if "name" in var.get_defining_op().attrs():
+            fetch_vars_tuple.append(
+                (var, var.get_defining_op().attrs()['name'])
+            )
+        else:
+            fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
+    with paddle.static.program_guard(copy_program):
+        append_pir_fetch_ops(copy_program, fetch_vars_tuple)
 
     return copy_program
 
