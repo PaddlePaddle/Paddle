@@ -778,61 +778,77 @@ void subtract_double_grad(const Tensor& y,
         auto grad_x_grad_dims = common::vectorize(grad_x_grad.dims());
         auto grad_out_dims = common::vectorize(grad_out.dims());
         auto broadcast_dims = grad_x_grad_dims;
-        auto grad_x_grad_broadcast = grad_x_grad.get();
         // reshape to same dims
+        bool need_reshape = false;
         if (grad_out_dims.size() > grad_x_grad_dims.size()) {
+          need_reshape = true;
           for (int i = 0; i < grad_out_dims.size() - grad_x_grad_dims.size();
                ++i) {
-            grad_x_grad_dims.insert(grad_x_grad_dims.begin(), 1);
-          }
-          grad_x_grad_broadcast = reshape<T>(grad_x_grad.get(), broadcast_dims);
-        }
-        bool need_tile = false;
-        for (int i = 0; i < broadcast_dims.size(); ++i) {
-          if (grad_out_dims[i] > 1 && grad_x_grad_dims[i] == 1) {
-            broadcast_dims[i] = grad_out_dims[i];
-            need_tile = true;
-          } else {
-            broadcast_dims[i] = 1;
+            broadcast_dims.insert(broadcast_dims.begin(), 1);
           }
         }
         // tile if needed
-        if (need_tile) {
-          grad_x_grad_broadcast = tile<T>(grad_x_grad_broadcast, broadcast_dims)
+        auto repeat_times = broadcast_dims;
+        bool need_tile = false;
+        for (int i = 0; i < broadcast_dims.size(); ++i) {
+          if (grad_out_dims[i] > 1 && broadcast_dims[i] == 1) {
+            repeat_times[i] = grad_out_dims[i];
+            need_tile = true;
+          } else {
+            repeat_times[i] = 1;
+          }
         }
-        set_output<T>(grad_x_grad_broadcast, grad_out_grad);
+        if (need_reshape && need_tile) {
+          set_output<T>(grad_out_grad,
+                        tile<T>(reshape<T>(grad_x_grad.get(), broadcast_dims),
+                                repeat_times));
+        } else if (need_reshape) {
+          set_output<T>(grad_out_grad,
+                        reshape<T>(grad_x_grad.get(), broadcast_dims));
+        } else if (need_tile) {
+          set_output<T>(grad_out_grad,
+                        tile<T>(grad_x_grad.get(), repeat_times));
+        }
       } else {
         by_pass<T>(grad_x_grad.get(), grad_out_grad);
       }
     } else if (grad_y_grad) {
       if (grad_y_grad.get().dims() != grad_out.dims()) {
         // broad cast grad_y_grad to grad_out
-        auto grad_y_grad_broadcast = tile(grad_y_grad.get(), grad_out);
+        auto grad_y_grad_dims = common::vectorize(grad_y_grad.dims());
         auto grad_out_dims = common::vectorize(grad_out.dims());
         auto broadcast_dims = grad_y_grad_dims;
-        auto grad_y_grad_broadcast = grad_y_grad.get();
         // reshape to same dims
+        bool need_reshape = false;
         if (grad_out_dims.size() > grad_y_grad_dims.size()) {
+          need_reshape = true;
           for (int i = 0; i < grad_out_dims.size() - grad_y_grad_dims.size();
                ++i) {
-            grad_y_grad_dims.insert(grad_y_grad_dims.begin(), 1);
-          }
-          grad_y_grad_broadcast = reshape<T>(grad_y_grad.get(), broadcast_dims);
-        }
-        bool need_tile = false;
-        for (int i = 0; i < broadcast_dims.size(); ++i) {
-          if (grad_out_dims[i] > 1 && grad_y_grad_dims[i] == 1) {
-            broadcast_dims[i] = grad_out_dims[i];
-            need_tile = true;
-          } else {
-            broadcast_dims[i] = 1;
+            broadcast_dims.insert(broadcast_dims.begin(), 1);
           }
         }
         // tile if needed
-        if (need_tile) {
-          grad_y_grad_broadcast = tile<T>(grad_y_grad_broadcast, broadcast_dims)
+        auto repeat_times = broadcast_dims;
+        bool need_tile = false;
+        for (int i = 0; i < broadcast_dims.size(); ++i) {
+          if (grad_out_dims[i] > 1 && broadcast_dims[i] == 1) {
+            repeat_times[i] = grad_out_dims[i];
+            need_tile = true;
+          } else {
+            repeat_times[i] = 1;
+          }
         }
-        set_output<T>(grad_y_grad_broadcast, grad_out_grad);
+        if (need_reshape && need_tile) {
+          set_output<T>(grad_out_grad,
+                        tile<T>(reshape<T>(grad_y_grad.get(), broadcast_dims),
+                                repeat_times));
+        } else if (need_reshape) {
+          set_output<T>(grad_out_grad,
+                        reshape<T>(grad_y_grad.get(), broadcast_dims));
+        } else if (need_tile) {
+          set_output<T>(grad_out_grad,
+                        tile<T>(grad_y_grad.get(), repeat_times));
+        }
       } else {
         by_pass<T>(-grad_y_grad.get(), grad_out_grad);
       }
