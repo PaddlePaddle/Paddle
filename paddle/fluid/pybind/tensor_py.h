@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
@@ -325,7 +325,7 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 #endif
   } else if (platform::is_gpu_place(self.place()) ||
              platform::is_cuda_pinned_place(self.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     const T *a = self.data<T>();
     auto p = self.place();
     paddle::memory::Copy(
@@ -362,7 +362,7 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
 #endif
   } else if (platform::is_gpu_place(self->place()) ||
              platform::is_cuda_pinned_place(self->place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     auto p = self->place();
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(
@@ -457,7 +457,7 @@ void SetTensorFromPyArrayT(
         "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     if (paddle::platform::is_gpu_place(place)) {
       // NOTE(wangxi): When copying data to the accelerator card,
       // we need set_device(dev_id) first.
@@ -466,6 +466,9 @@ void SetTensorFromPyArrayT(
 #ifdef PADDLE_WITH_HIP
       paddle::platform::GpuMemcpySync(
           dst, array.data(), array.nbytes(), hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+      paddle::platform::GpuMemcpySync(
+          dst, array.data(), array.nbytes(), musaMemcpyHostToDevice);
 #else
       paddle::platform::GpuMemcpySync(
           dst, array.data(), array.nbytes(), cudaMemcpyHostToDevice);
@@ -790,7 +793,7 @@ inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
     output->mutable_data(place, self.dtype());
 #endif
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     if (platform::is_cuda_pinned_place(place)) {
       output->mutable_data(place, self.dtype());
     } else if ((platform::is_gpu_place(place))) {
@@ -1047,11 +1050,13 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
   } else if (is_gpu_tensor) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #if defined(PADDLE_WITH_CUDA)
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+#elif defined(PADDLE_WITH_MUSA)
+    gpuMemcpyKind kind = musaMemcpyDeviceToHost;
 #endif
     phi::DenseTensor cpu_tensor;
     platform::CPUPlace cpu_place;

@@ -161,6 +161,11 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
             values.data(),
             values.size() * sizeof(float*),
             hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(gpu_values,
+            values.data(),
+            values.size() * sizeof(float*),
+            musaMemcpyHostToDevice);            
 #else
   cudaMemcpy(gpu_values,
              values.data(),
@@ -250,6 +255,10 @@ void BoxWrapper::CopyKeys(const paddle::platform::Place& place,
                      slot_num,
                      total_len);
   hipStreamSynchronize(stream);
+#elif defined(PADDLE_WITH_MUSA)
+  CopyKeysKernel<<<(total_len + 512 - 1) / 512, 512, 0, stream>>>(
+      origin_keys, total_keys, gpu_len, slot_num, total_len);
+  musaStreamSynchronize(stream);
 #else
   CopyKeysKernel<<<(total_len + 512 - 1) / 512, 512, 0, stream>>>(
       origin_keys, total_keys, gpu_len, slot_num, total_len);
@@ -295,6 +304,19 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
             slot_vector_.data(),
             slot_lengths_lod.size() * sizeof(int),
             hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(gpu_values,
+             grad_values.data(),
+             grad_values.size() * sizeof(float*),
+             musaMemcpyHostToDevice);
+  musaMemcpy(gpu_len,
+             slot_lengths_lod.data(),
+             slot_lengths.size() * sizeof(int64_t),
+             musaMemcpyHostToDevice);
+  musaMemcpy(d_slot_vector,
+             slot_vector_.data(),
+             slot_lengths_lod.size() * sizeof(int),
+             musaMemcpyHostToDevice);
 #else
   cudaMemcpy(gpu_values,
              grad_values.data(),

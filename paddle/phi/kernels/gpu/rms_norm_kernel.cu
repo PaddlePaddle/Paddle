@@ -38,8 +38,9 @@ limitations under the License.
 #include <assert.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 #include <cub/cub.cuh>
 #endif
 
@@ -47,7 +48,7 @@ namespace phi {
 
 namespace {
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 
 constexpr int kWarpSize = 32;
 
@@ -949,8 +950,8 @@ void RmsNormKernel(const Context& dev_ctx,
                    const float quant_min_bound,
                    DenseTensor* out,
                    DenseTensor* residual_out) {
-#if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE(false, "not supported");
 #else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 

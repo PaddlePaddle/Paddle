@@ -19,6 +19,11 @@
 #include <cuda_runtime.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#include <musa_runtime.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif

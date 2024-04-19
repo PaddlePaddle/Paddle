@@ -517,6 +517,7 @@ from .device import (  # noqa: F401
     is_compiled_with_distribute,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
+    is_compiled_with_musa,
     is_compiled_with_custom_device,
 )
 

@@ -42,18 +42,18 @@ extern void* rccl_dso_handle;
 
 #define RCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
-  __macro(ncclGetUniqueId);             \
+  __macro(mcclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
   __macro(ncclCommUserRank);            \
-  __macro(ncclAllReduce);               \
-  __macro(ncclBcast);                   \
-  __macro(ncclAllGather);               \
-  __macro(ncclGroupStart);              \
-  __macro(ncclGroupEnd);                \
+  __macro(mcclAllReduce);               \
+  __macro(mcclBcast);                   \
+  __macro(mcclAllGather);               \
+  __macro(mcclGroupStart);              \
+  __macro(mcclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
   __macro(ncclCommGetAsyncError);       \
@@ -67,7 +67,7 @@ RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
 #if NCCL_VERSION_CODE >= 2304
-#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(mcclGetVersion);
 RCCL_RAND_ROUTINE_EACH_AFTER_2304(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 

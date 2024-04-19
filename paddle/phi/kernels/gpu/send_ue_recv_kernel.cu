@@ -144,6 +144,9 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
       int* dst_count_data = dst_count->data<int>();
 #ifdef PADDLE_WITH_HIP
       hipMemset(dst_count_data, 0, input_size * sizeof(int));
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemsetAsync(
+          dst_count_data, 0, input_size * sizeof(int), ctx.stream());
 #else
       cudaMemsetAsync(
           dst_count_data, 0, input_size * sizeof(int), ctx.stream());

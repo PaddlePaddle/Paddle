@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -28,7 +28,7 @@ void DistConcatKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int nranks,
                       DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   DenseTensor temp_out;
   auto temp_out_dims = x.dims();
   temp_out_dims[0] *= nranks;

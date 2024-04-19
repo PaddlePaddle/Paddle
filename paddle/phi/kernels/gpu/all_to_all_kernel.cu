@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/utils.h"
 #endif
@@ -29,8 +29,7 @@ template <typename T, typename Context>
 void AllToAllKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto x_dims = x.dims();
   out->Resize(x_dims);
   dev_ctx.template Alloc<T>(out);
@@ -74,17 +73,13 @@ void AllToAllKernel(const Context& dev_ctx,
   comm_ctx->GroupEnd();
 #else
   PADDLE_THROW(
-      platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
-#else
-  PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
 #endif
 }
 
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
 PD_REGISTER_KERNEL(all_to_all,
                    GPU,
                    ALL_LAYOUT,
@@ -99,18 +94,18 @@ PD_REGISTER_KERNEL(all_to_all,
                    bool,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
-#else
-PD_REGISTER_KERNEL(all_to_all,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AllToAllKernel,
-                   float,
-                   double,
-                   int,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int64_t,
-                   bool,
-                   phi::dtype::float16) {}
-#endif
+// #else
+// PD_REGISTER_KERNEL(all_to_all,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::AllToAllKernel,
+//                    float,
+//                    double,
+//                    int,
+//                    int8_t,
+//                    uint8_t,
+//                    int16_t,
+//                    int64_t,
+//                    bool,
+//                    phi::dtype::float16) {}
+// #endif

@@ -18,7 +18,7 @@ from paddle.base.framework import in_dygraph_mode
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...device import get_cudnn_version, is_compiled_with_rocm
+from ...device import get_cudnn_version, is_compiled_with_rocm,is_compiled_with_musa
 
 __all__ = []
 

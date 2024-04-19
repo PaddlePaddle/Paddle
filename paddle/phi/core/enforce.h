@@ -23,6 +23,16 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <mublas.h>
+#include <mudnn.h>
+#include <mufft.h>
+#include <murand.h>
+#include <musparse.h>
+#include <thrust/system/musa/error.h>
+#include <thrust/system_error.h>
+#endif 
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <miopen/miopen.h>
@@ -55,6 +65,17 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/mufft.h"
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
+#include "paddle/phi/backends/dynload/murand.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#include <error.h>
+#include "paddle/phi/backends/dynload/mccl.h"
+#endif  // __APPLE__
+#endif 
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/backends/dynload/hiprand.h"
@@ -69,7 +90,7 @@ limitations under the License. */
 // Note: these headers for simplify demangle type string
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -326,6 +347,17 @@ struct EnforceNotMet : public std::exception {
       abort();                                                     \
     }                                                              \
   } while (0)
+#elif defined(__MUSACC__)
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)               \
+  do {                                                             \
+    if (!(_IS_NOT_ERROR)) {                                        \
+      printf("Error: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__,                                             \
+             __LINE__,                                             \
+             #_IS_NOT_ERROR,                                       \
+             ##__VA_ARGS__);                                       \
+    }                                                              \
+  } while (0)
 #else
 #define PADDLE_ENFORCE(COND, ...)                               \
   do {                                                          \
@@ -570,7 +602,7 @@ DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, mcclSuccess);
 #endif
 
 }  // namespace details
@@ -666,7 +698,7 @@ inline std::string build_nvidia_error_msg(CUresult stat) {
 /**************** NCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
-  return nccl_result != ncclSuccess;
+  return nccl_result != mcclSuccess;
 }
 
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
@@ -867,7 +899,7 @@ inline std::string build_rocm_error_msg(rocblas_status stat) {
 /****** RCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 inline bool is_error(ncclResult_t nccl_result) {
-  return nccl_result != ncclSuccess;
+  return nccl_result != mcclSuccess;
 }
 
 inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
@@ -903,7 +935,7 @@ DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
 DEFINE_EXTERNAL_API_TYPE(hipfftResult_t, HIPFFT_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
-DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, mcclSuccess);
 #endif
 
 }  // namespace details
@@ -958,13 +990,241 @@ inline void retry_sleep(unsigned millisecond) {
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
       auto __summary__ = phi::errors::External(                         \
-          ::phi::enforce::build_rocm_error_msg(__cond__));              \
+          ::phi::enforce::build_musa_error_msg(__cond__));              \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
   } while (0)
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**************************************************************************/
+/***************************** MUSA ERROR **********************************/
+#ifdef PADDLE_WITH_MUSA
+
+/***** MUSA ERROR *****/
+inline bool is_error(musaError_t e) { return e != musaSuccess; }
+
+inline std::string build_musa_error_msg(musaError_t e) {
+  std::ostringstream sout;
+  sout << " Musa error(" << e << "), " << musaGetErrorString(e) << ".";
+  return sout.str();
+}
+
+/***** MURAND ERROR *****/
+inline bool is_error(murandStatus_t stat) {
+  return stat != MURAND_STATUS_SUCCESS;
+}
+
+inline const char* murandGetErrorString(murandStatus_t stat) {
+  switch (stat) {
+    case MURAND_STATUS_SUCCESS:
+      return "MURAND_STATUS_SUCCESS";
+    case MURAND_STATUS_VERSION_MISMATCH:
+      return "MURAND_STATUS_VERSION_MISMATCH";
+    case MURAND_STATUS_NOT_CREATED:
+      return "MURAND_STATUS_NOT_CREATED";
+    case MURAND_STATUS_ALLOCATION_FAILED:
+      return "MURAND_STATUS_ALLOCATION_FAILED";
+    case MURAND_STATUS_TYPE_ERROR:
+      return "MURAND_STATUS_TYPE_ERROR";
+    case MURAND_STATUS_OUT_OF_RANGE:
+      return "MURAND_STATUS_OUT_OF_RANGE";   
+    case MURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return "MURAND_STATUS_LENGTH_NOT_MULTIPLE";   
+    case MURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return "MURAND_STATUS_DOUBLE_PRECISION_REQUIRED";                
+    case MURAND_STATUS_LAUNCH_FAILURE:
+      return "MURAND_STATUS_LAUNCH_FAILURE";          
+    case MURAND_STATUS_INTERNAL_ERROR:
+      return "MURAND_STATUS_INTERNAL_ERROR";      
+    case MURAND_STATUS_NOT_IMPLEMENTED:
+      return "MURAND_STATUS_NOT_IMPLEMENTED";                    
+    default:
+      return "Unknown murand status";
+  }
+}
+
+inline std::string build_musa_error_msg(murandStatus_t stat) {
+  std::string msg(" Murand error, ");
+  return msg + murandGetErrorString(stat) + " ";
+}
+
+/***** mudnn ERROR *****/
+// inline bool is_error(mudnnStatus_t stat) {
+//   return stat != cudnnStatusSuccess;
+// }
+
+// inline std::string build_rocm_error_msg(miopenStatus_t stat) {
+//   std::string msg(" Miopen error, ");
+//   return msg + phi::dynload::miopenGetErrorString(stat) + " ";
+// }
+
+/***** MUBLAS ERROR *****/
+inline bool is_error(mublasStatus stat) {
+  return stat != MUBLAS_STATUS_SUCCESS;
+}
+
+inline const char* mublasGetErrorString(mublasStatus stat) {
+  switch (stat) {
+    case MUBLAS_STATUS_SUCCESS:
+      return "MUBLAS_STATUS_SUCCESS";
+    case MUBLAS_STATUS_INVALID_HANDLE:
+      return "MUBLAS_STATUS_INVALID_HANDLE";
+    case MUBLAS_STATUS_NOT_IMPLEMENTED:
+      return "MUBLAS_STATUS_NOT_IMPLEMENTED";
+    case MUBLAS_STATUS_INVALID_POINTER:
+      return "MUBLAS_STATUS_INVALID_POINTER";
+    case MUBLAS_STATUS_INVALID_SIZE:
+      return "MUBLAS_STATUS_INVALID_SIZE";    
+    case MUBLAS_STATUS_MEMORY_ERROR:
+      return "MUBLAS_STATUS_MEMORY_ERROR";
+    case MUBLAS_STATUS_INTERNAL_ERROR:
+      return "MUBLAS_STATUS_INTERNAL_ERROR";
+    case MUBLAS_STATUS_PERF_DEGRADED:
+      return "MUBLAS_STATUS_PERF_DEGRADED";
+    case MUBLAS_STATUS_SIZE_QUERY_MISMATCH:
+      return "MUBLAS_STATUS_SIZE_QUERY_MISMATCH";
+    case MUBLAS_STATUS_SIZE_INCREASED:
+      return "MUBLAS_STATUS_SIZE_INCREASED";     
+    case MUBLAS_STATUS_SIZE_UNCHANGED:
+      return "MUBLAS_STATUS_SIZE_UNCHANGED";       
+    case MUBLAS_STATUS_INVALID_VALUE:
+      return "MUBLAS_STATUS_INVALID_VALUE";       
+    case MUBLAS_STATUS_CONTINUE:
+      return "MUBLAS_STATUS_CONTINUE";       
+    case MUBLAS_STATUS_CHECK_NUMERICS_FAIL:
+      return "MUBLAS_STATUS_CHECK_NUMERICS_FAIL";                                                                      
+    default:
+      return "Unknown mublas status";
+  }
+}
+
+inline std::string build_musa_error_msg(mublasStatus stat) {
+  std::string msg(" mublas error, ");
+  return msg + mublasGetErrorString(stat) + " ";
+}
+
+/****** MCCL ERROR ******/
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+inline bool is_error(mcclResult_t mccl_result) {
+  return mccl_result != mcclSuccess;
+}
+
+inline std::string build_musa_error_msg(mcclResult_t mccl_result) {
+  std::string msg(" Mccl error, ");
+  return msg + phi::dynload::mcclGetErrorString(mccl_result) + " ";
+}
+#endif  // not(__APPLE__) and PADDLE_WITH_MCCL
+
+/***** MUFFT ERROR *****/
+inline bool is_error(mufftResult_t stat) { return stat != MUFFT_SUCCESS; }
+
+inline std::string build_musa_error_msg(mufftResult_t stat) {
+  std::string msg(" MUFFT error, ");
+  return msg + phi::dynload::mufftGetErrorString(stat) + " ";
+}
+
+namespace details {
+
+template <typename T>
+struct ExternalApiType {};
+
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
+  }
+
+DEFINE_EXTERNAL_API_TYPE(musaError_t, musaSuccess);
+DEFINE_EXTERNAL_API_TYPE(murandStatus_t, MURAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mublasStatus, MUBLAS_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mufftResult_t, MUFFT_SUCCESS);
+
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+DEFINE_EXTERNAL_API_TYPE(mcclResult_t, mcclSuccess);
+#endif
+
+}  // namespace details
+
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                   \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      auto __summary__ = phi::errors::External(            \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);               \
+    }                                                      \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+    }                                                      \
+  } while (0)
+
+inline void retry_sleep(unsigned millisecond) {
+#ifdef _WIN32
+  Sleep(millisecond);
+#else
+  sleep(millisecond);
+#endif
+}
+
+#define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    int retry_count = 1;                                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
+    constexpr auto __success_type__ =                                   \
+        ::phi::enforce::details::ExternalApiType<                       \
+            __CUDA_STATUS_TYPE__>::kSuccess;                            \
+    while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
+      ::phi::enforce::retry_sleep(10000);                               \
+      __cond__ = (COND);                                                \
+      ++retry_count;                                                    \
+    }                                                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                       \
+      auto __summary__ = phi::errors::External(                         \
+          ::phi::enforce::build_musa_error_msg(__cond__));              \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
+  } while (0)
+
+#undef DEFINE_EXTERNAL_API_TYPE
+#endif  // PADDLE_WITH_MUSA
+
+
+
+
+
 
 }  // namespace enforce
 using namespace enforce;  // NOLINT

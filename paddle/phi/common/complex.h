@@ -26,12 +26,17 @@
 #include <thrust/complex.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <muComplex.h>
+#include <thrust/complex.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
 #include <thrust/complex.h>  // NOLINT
 #endif
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
@@ -41,7 +46,7 @@
 #define PADDLE_ALIGN(x)
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // todo
 #define PADDLE_WITH_CUDA_OR_HIP_COMPLEX
 #endif
@@ -66,7 +71,7 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE complex(T real, T imag) : real(real), imag(imag) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
   template <typename T1>
   HOSTDEVICE inline explicit complex(const thrust::complex<T1>& c) {
@@ -95,6 +100,14 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   HOSTDEVICE inline explicit operator hipDoubleComplex() const {
     return make_hipDoubleComplex(real, imag);
   }
+#elif defined(PADDLE_WITH_MUSA)
+  HOSTDEVICE inline explicit operator muFloatComplex() const {
+    return make_muFloatComplex(real, imag);
+  }
+
+  HOSTDEVICE inline explicit operator muDoubleComplex() const {
+    return make_muDoubleComplex(real, imag);
+  }  
 #else
   HOSTDEVICE inline explicit operator cuFloatComplex() const {
     return make_cuFloatComplex(real, imag);

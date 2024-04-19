@@ -51,6 +51,13 @@ if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
 
+if(WITH_MUSA)
+  set(DEPENDENT_LIBRARIES "")
+  list(APPEND DEPENDENT_LIBRARIES "/usr/local/musa/lib/libmudnn.so")
+  list(APPEND PHI_DEPS ${DEPENDENT_LIBRARIES})
+endif()
+
+
 if(WITH_ASCEND_CL)
   list(APPEND PHI_DEPS npu_hccl)
 endif()
@@ -136,6 +143,9 @@ if(WITH_GPU)
 elseif(WITH_ROCM)
   hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
   target_link_libraries(phi ${PHI_DEPS})
+elseif(WITH_MUSA)
+  musa_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
+  target_link_libraries(phi ${PHI_DEPS})  
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}

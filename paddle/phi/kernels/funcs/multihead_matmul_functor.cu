@@ -18,6 +18,12 @@
 
 #include <cub/cub.cuh>  // NOLINT
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#include <musa_runtime.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 
@@ -569,7 +575,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
             FINAL_MASK);
       } else {
         if (bias_is_mask) {
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
+#if defined(__HIPCC__)  || defined(__MUSACC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
                             phi::errors::InvalidArgument(
@@ -611,7 +617,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
             FINAL_MASK);
       } else {
         if (bias_is_mask) {
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
+#if defined(__HIPCC__)  || defined(__MUSACC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
                             phi::errors::InvalidArgument(

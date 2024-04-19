@@ -23,8 +23,8 @@
 namespace cub = hipcub;
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
-#include <cuda_fp16.h>
+#if defined(__MUSACC__)
+#include <musa_fp16.h>
 #endif
 
 #include "paddle/common/errors.h"

@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#include <musa_runtime.h>
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -127,7 +132,7 @@ __global__ void EmbEltwiseLayernormKernel(int hidden,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: EmbEltwiseLayernormKernel
+#ifdef __CUDACC__  // @{ Half kernel: EmbEltwiseLayernormKernel
 template <>
 __global__ void EmbEltwiseLayernormKernel<half, 256>(int hidden,
                                                      const int64_t* ids,

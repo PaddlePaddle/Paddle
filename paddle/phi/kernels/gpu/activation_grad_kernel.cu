@@ -234,10 +234,7 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh,
                                                t_min,
                                                t_max);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
-                                               CudaSTanhGradFunctor,
-                                               scale_a,
-                                               scale_b);
+
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
                                                CudaSoftplusGradFunctor,
@@ -379,7 +376,12 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
                                    ThresholdedReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(stanh_grad, STanhGradKernel)
+//TODO:MCC COMPILE ERROR
+// PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(stanh_grad, STanhGradKernel)
+// DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
+//                                                CudaSTanhGradFunctor,
+//                                                scale_a,
+//                                                scale_b);
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(softplus_grad,
                                                 SoftplusGradKernel)

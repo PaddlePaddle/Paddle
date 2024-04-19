@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
 #endif
@@ -757,7 +757,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetOpType() const = 0;
 };
 
-#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__) || defined(__MUSACC__)
 template <typename T,
           template <typename>
           class ReduceBaseOp,

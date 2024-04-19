@@ -135,6 +135,8 @@ def get_gpu_util(index=None):
     )
     if paddle.device.is_compiled_with_rocm():
         return query_rocm_smi(q, index=index, dtype=d)
+    if paddle.device.is_compiled_with_musa():
+        return query_musa_smi(q, index=index, dtype=d)
     return query_smi(q, index=index, dtype=d)
 
 

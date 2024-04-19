@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/multinomial_kernel.h"
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -103,9 +103,9 @@ __global__ void sampleMultinomialWithReplacement(
   size_t idx = gridDim.x * blockDim.x * blockIdx.y + blockDim.x * blockIdx.x +
                threadIdx.x;
 
-#if defined(__NVCC__)
-  curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, offset, &state);
+#if defined(__MUSACC__)
+  murandStatePhilox4_32_10_t state;
+  murand_init(seed, idx, offset, &state);
 #else
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx, offset, &state);
@@ -114,8 +114,8 @@ __global__ void sampleMultinomialWithReplacement(
   int sample = blockIdx.x * blockDim.x + threadIdx.x;
   for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
-#if defined(__NVCC__)
-      T rng_number = static_cast<T>(curand_uniform4(&state).x);
+#if defined(__MUSACC__)
+      T rng_number = static_cast<T>(murand_uniform4(&state).x);
 #else
       T rng_number = static_cast<T>(hiprand_uniform4(&state).x);
 #endif

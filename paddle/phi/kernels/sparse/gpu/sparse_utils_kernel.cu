@@ -20,6 +20,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/musparse.h"
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
@@ -132,6 +137,8 @@ void DenseToCooKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::remove(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

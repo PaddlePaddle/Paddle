@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -30,7 +30,7 @@ template <typename T, typename DeviceContext>
 class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
@@ -105,14 +105,14 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     if (comm_ctx) {
-      comm_ctx->ReduceScatter(out, *in, ncclSum, stream);
+      comm_ctx->ReduceScatter(out, *in, mcclSum, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
           send_buff,
           recv_buff,
           recv_numel,
-          static_cast<ncclDataType_t>(dtype),
-          ncclSum,
+          static_cast<mcclDataType_t>(dtype),
+          mcclSum,
           comm->comm(),
           stream));
     }
@@ -135,9 +135,9 @@ PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
                           ops::CReduceScatterOpCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-#endif
+// #endif
                           int,
                           int64_t,
                           plat::float16) {

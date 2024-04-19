@@ -391,7 +391,7 @@ TEST(enforce, hip_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(HIPFFT_ALLOC_FAILED, "HIPFFT error"));
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
-  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
+  EXPECT_TRUE(CheckCudaStatusSuccess(mcclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "Rccl error"));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "Rccl error"));
 #endif
@@ -498,7 +498,7 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NOT_SUPPORTED, "CUFFT error"));
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
+  EXPECT_TRUE(CheckCudaStatusSuccess(mcclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "NCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "NCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclInternalError,

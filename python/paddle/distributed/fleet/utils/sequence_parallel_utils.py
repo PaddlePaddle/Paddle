@@ -220,6 +220,7 @@ def is_fused_matmul_bias_supported():
     if (
         paddle.is_compiled_with_cuda()
         and not paddle.is_compiled_with_rocm()
+        and not paddle.is_compiled_with_musa()
         or paddle.is_compiled_with_xpu()
     ):
         return hasattr(core.eager.ops.legacy, "fused_gemm_epilogue")

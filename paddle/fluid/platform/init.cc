@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -57,8 +57,8 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
@@ -169,7 +169,7 @@ void InitDevices() {
 #endif
     /*Init all available devices by default */
     std::vector<int> devices;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     try {
       // use user specified GPUs in single-node multi-process mode.
       devices = platform::GetSelectedDevices();
@@ -209,7 +209,7 @@ void InitDevices(const std::vector<int> devices) {
       continue;
     }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     places.emplace_back(platform::CUDAPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -220,7 +220,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   }
   places.emplace_back(platform::CPUPlace());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -431,19 +431,19 @@ void InitMemoryMethod() {
     memory_method->allocation_deleter =
         paddle::memory::allocation::Allocator::AllocationDeleter;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     memory_method->copy_with_stream =
         paddle::memory::Copy<phi::Place, phi::Place>;
 #endif
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
     // TODO(GhostScreaming): Use phi methods later.
     memory_method->get_allocator =
         [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {

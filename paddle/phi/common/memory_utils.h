@@ -34,6 +34,11 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#include <musa.h>
+#endif
+
 namespace phi {
 
 struct MemoryInterface {
@@ -128,7 +133,7 @@ struct MemoryInterface {
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   /**
    * @brief get the memory usage of current GPU device.
    *
@@ -161,8 +166,8 @@ struct MemoryInterface {
       bool disable_setting_default_stream_for_allocator,
       int stream_priority);
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
   phi::Allocator* (*get_allocator)(int device_id, phi::gpuStream_t stream);
   phi::Allocator* (*get_host_allocator)();
   phi::Allocator* (*get_zero_allocator)(int device_id);
@@ -292,7 +297,7 @@ class MemoryUtils {
     return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   void GpuMemoryUsage(size_t* available, size_t* total) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NOT_NULL(
@@ -344,8 +349,8 @@ class MemoryUtils {
             "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)|| defined(PADDLE_WITH_MCCL))
   const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
     return memory_method_->get_allocator(device_id, stream);
   }
@@ -421,7 +426,7 @@ void Copy(const Place& dst_place,
 
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
@@ -434,8 +439,8 @@ void EmplaceDeviceContexts(
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)|| defined(PADDLE_WITH_MCCL))
 const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
 
 const Allocator* GetHostAllocator();

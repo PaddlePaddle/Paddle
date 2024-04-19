@@ -552,7 +552,7 @@ void ChromeTracingLogger::LogMetaInfo(const std::string& version,
                                        span_indx);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void ChromeTracingLogger::LogDeviceProperty(
     const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
   // add device property information
@@ -627,6 +627,44 @@ void ChromeTracingLogger::LogDeviceProperty(
   }
 #endif
 #if defined(PADDLE_WITH_HIP)
+  for (auto it = device_property_map.begin(); it != device_property_map.end();
+       it++) {
+    const gpuDeviceProp& device_property = it->second;
+    if (device_nums > 1) {
+      output_file_stream_ << string_format(std::string(
+                                               R"JSON(
+    {
+      "id": %u, "name": "%s", "totalGlobalMem": %llu,
+      "computeMajor": %d, "computeMinor": %d,
+      "smCount": %d
+    },
+  )JSON"),
+                                           it->first,
+                                           device_property.name,
+                                           device_property.totalGlobalMem,
+                                           device_property.major,
+                                           device_property.minor,
+                                           device_property.multiProcessorCount);
+    } else {
+      output_file_stream_ << string_format(std::string(
+                                               R"JSON(
+      {
+        "id": %u, "name": "%s", "totalGlobalMem": %llu,
+        "computeMajor": %d, "computeMinor": %d,
+        "smCount": %d
+      }],
+    )JSON"),
+                                           it->first,
+                                           device_property.name,
+                                           device_property.totalGlobalMem,
+                                           device_property.major,
+                                           device_property.minor,
+                                           device_property.multiProcessorCount);
+    }
+    device_nums -= 1;
+  }
+#endif
+#if defined(PADDLE_WITH_MUSA)
   for (auto it = device_property_map.begin(); it != device_property_map.end();
        it++) {
     const gpuDeviceProp& device_property = it->second;

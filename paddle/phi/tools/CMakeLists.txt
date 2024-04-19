@@ -5,6 +5,10 @@ if(WITH_GPU)
   endif()
 endif()
 
+if(WITH_MUSA)
+  return()
+endif()
+
 add_executable(print_phi_kernels print_phi_kernels.cc)
 target_link_libraries(print_phi_kernels phi common)
 if(WIN32)

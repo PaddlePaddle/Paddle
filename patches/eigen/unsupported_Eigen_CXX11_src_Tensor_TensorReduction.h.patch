@@ -1,0 +1,13 @@
+diff --git a/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h b/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h
+index 0a65591e6..74679b700 100644
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h
+@@ -14,7 +14,7 @@
+ // clang is incompatible with the CUDA syntax wrt making a kernel a class friend,
+ // so we'll use a macro to make clang happy.
+ #ifndef KERNEL_FRIEND
+-#if defined(__clang__) && (defined(__CUDA__) || defined(__HIP__))
++#if defined(__clang__) && (defined(__CUDA__) || defined(__HIP__) || defined(__MUSA__))
+ #define KERNEL_FRIEND friend __global__ EIGEN_HIP_LAUNCH_BOUNDS_1024
+ #else
+ #define KERNEL_FRIEND friend

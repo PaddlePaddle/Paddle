@@ -186,7 +186,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     AppendPassWithCheck(strategy_.fuse_bn_add_act_ops_, "fuse_bn_add_act_pass");
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MCCL)) && \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
@@ -348,7 +348,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
                                 DeviceType use_device,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
@@ -380,7 +380,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -400,7 +400,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -428,7 +428,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -545,7 +545,7 @@ USE_PASS(fused_feedforward_pass);
 #ifdef PADDLE_WITH_DNNL
 USE_PASS(mkldnn_placement_pass);
 #endif
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MCCL)) && \
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif

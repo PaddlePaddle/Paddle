@@ -72,17 +72,17 @@ REGISTER_TRAINER_CLASS(DistMultiTrainer);
 REGISTER_TRAINER_CLASS(HeterPipelineTrainer);
 #endif
 
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP  || defined PADDLE_WITH_MUSA || \
      defined PADDLE_WITH_XPU) &&                            \
     (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || defined PADDLE_WITH_MCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
 #endif
 }  // namespace framework

@@ -784,7 +784,7 @@ void FleetWrapper::PushDenseVarsSync(
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
     (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope,
@@ -816,6 +816,9 @@ void FleetWrapper::PushDenseVarsAsync(
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, stream));
     hipEventSynchronize(event);
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, stream));
+    musaEventSynchronize(event);
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
