@@ -173,12 +173,6 @@ const std::vector<std::string> kDlnneSubgraphPasses({
     "dlnne_subgraph_pass",           //
 });
 
-const std::vector<std::string> kLiteSubgraphPasses({
-#ifdef PADDLE_WITH_LITE
-    "lite_subgraph_pass",
-#endif
-});
-
 // TODO(inference): Most of the existing pass fusion operators do not
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
@@ -635,9 +629,12 @@ const std::vector<std::string> kPirMkldnnPasses{
     "matmul_transpose_reshape_fuse_pass",
     "matmul_elementwise_add_fuse_pass",
     "matmul_activation_fuse_pass",
+    "softplus_activation_fuse_pass",
     "conv_elementwise_add_onednn_fuse_pass",
     "conv_activation_onednn_fuse_pass",
-    "conv_concat_activation_onednn_fuse_pass"};
+    "conv_concat_activation_onednn_fuse_pass",
+    "elementwise_act_onednn_fuse_pass",
+    "operator_unsqueeze_onednn_fuse_pass"};
 
 const std::vector<std::string> kPirCpuPasses{};
 
