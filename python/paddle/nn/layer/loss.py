@@ -2244,6 +2244,16 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         in_features (int): Number of features in the input tensor.
         n_classes (int): Number of classes in the dataset.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
+        weight_attr (ParamAttr, optional): The attribute for the learnable
+            weight of this layer. The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to paddle.ParamAttr.
+        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+            of this layer. If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to paddle.ParamAttr. The default value is None and the bias will be
+            initialized to zero.
         div_value (float, optional): value used as an exponent to compute sizes of the clusters. Default: 4.0.
         head_bias (bool, optional): If ``True``, adds a bias term to the 'head' of the adaptive softmax. Default: ``False``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -2297,6 +2307,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         in_features,
         n_classes,
         cutoffs,
+        weight_attr=None,
+        bias_attr=None,
         div_value=4.0,
         head_bias=False,
         name=None,
@@ -2322,6 +2334,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         self.n_classes = n_classes
         self.cutoffs = cutoffs + [n_classes]
         self.div_value = div_value
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
         self.is_head_bias = head_bias
 
         self.shortlist_size = self.cutoffs[0]
@@ -2330,14 +2344,14 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         self.head_weight = self.create_parameter(
             shape=[self.in_features, self.head_size],
-            attr=None,
+            attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False,
         )
         if self.is_head_bias:
             self.head_bias = self.create_parameter(
                 shape=[self.head_size],
-                attr=None,
+                attr=self._bias_attr,
                 dtype=self._dtype,
                 is_bias=True,
             )
@@ -2353,7 +2367,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             projection.append(
                 self.create_parameter(
                     shape=[self.in_features, hsz],
-                    attr=None,
+                    attr=self._weight_attr,
                     dtype=self._dtype,
                     is_bias=False,
                 )
@@ -2361,7 +2375,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             projection.append(
                 self.create_parameter(
                     shape=[hsz, osz],
-                    attr=None,
+                    attr=self._weight_attr,
                     dtype=self._dtype,
                     is_bias=False,
                 )

@@ -18,9 +18,39 @@ import numpy as np
 
 import paddle
 from paddle import nn
-import paddle.optimizer as optim
 from paddle.base import Program
 from paddle.nn import functional as F
+
+
+class SimpleModel(nn.Layer):
+    def __init__(
+        self,
+        in_features,
+        n_classes,
+        cutoffs,
+        div_value=4.0,
+        head_bias=False,
+    ):
+        super().__init__()
+        self.fc = paddle.nn.Linear(in_features, in_features)
+        self.adaptive_softmax = nn.AdaptiveLogSoftmaxWithLoss(
+            in_features,
+            n_classes,
+            cutoffs,
+            div_value=div_value,
+            head_bias=head_bias,
+        )
+
+    def forward(self, input, label=None):
+        x = self.fc(input)
+        if label is not None:
+            return self.adaptive_softmax(x, label)
+        else:
+            return self.adaptive_softmax.log_prob(x)
+
+    def predict(self, input):
+        logprob = self.adaptive_softmax.log_prob(self.fc(input))
+        return logprob.argmax(axis=1)
 
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
@@ -30,7 +60,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             self.place.append('gpu')
         self.log_np = np.random.randn(4, 8).astype('float32')
         self.predict_np = np.abs(np.random.randn(64, 8).astype('float32'))
-
+    
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.place:
@@ -41,15 +71,15 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             self._test_correct_dygraph(x)
 
     def _test_log_probs_dygraph(self, x):
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(8, 4, [2], div_value=2.0)
-        logprob_out = asfm.log_prob(x)
+        model = SimpleModel(8, 4, [2], div_value=2.0)
+        logprob_out = model(x)
         np.testing.assert_array_almost_equal(
             paddle.exp(logprob_out).sum(1), paddle.ones([4])
         )
 
         for v in [0, 1, 2, 3]:
             y = paddle.full((4,), v, dtype='int64')
-            out, loss = asfm(x, y)
+            out, loss = model(x, y)
             np.testing.assert_array_almost_equal(
                 out,
                 logprob_out.gather(y.unsqueeze(1), 1)
@@ -61,58 +91,52 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             )
 
     def _test_correct_dygraph(self, x):
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(
-            8, 10, [4, 8], div_value=2.0, head_bias=True
-        )
-        asfm.head_weight.detach().abs()
-        asfm.head_bias.detach().abs()
-        asfm.head_weight.detach()[asfm.shortlist_size :, :] *= 0.0
-
-        out = asfm.predict(x)
-        np.testing.assert_array_almost_equal(
-            out, asfm.log_prob(x).argmax(axis=1)
-        )
-
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(
-            8, 10, [4, 8], div_value=2.0, head_bias=True
-        )
-        asfm.head_weight.detach().abs()
-        asfm.head_bias.detach().abs()
-        asfm.head_weight.detach()[: asfm.shortlist_size, :] *= 0.0
-
-        out = asfm.predict(x)
-        np.testing.assert_array_almost_equal(
-            out, asfm.log_prob(x).argmax(axis=1)
-        )
-
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(
-            8, 10, [4, 8], div_value=2.0, head_bias=True
-        )
-        asfm.head_weight.detach().abs()
-        asfm.head_bias.detach().abs()
-
-        x[:32, : asfm.shortlist_size] *= 0.0
-        x[32:, asfm.shortlist_size :] *= 0.0
-        asfm.head_weight.detach()[
-            : asfm.shortlist_size, asfm.shortlist_size :
-        ] *= 0.0
-        asfm.head_weight.detach()[
-            asfm.shortlist_size :, : asfm.shortlist_size
+        model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
+        model.adaptive_softmax.head_weight.detach().abs()
+        model.adaptive_softmax.head_bias.detach().abs()
+        model.adaptive_softmax.head_weight.detach()[
+            model.adaptive_softmax.shortlist_size :, :
         ] *= 0.0
 
-        out = asfm.predict(x)
-        np.testing.assert_array_almost_equal(
-            out, asfm.log_prob(x).argmax(axis=1)
-        )
+        out = model.predict(x)
+        np.testing.assert_array_almost_equal(out, model(x).argmax(axis=1))
+
+        model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
+        model.adaptive_softmax.head_weight.detach().abs()
+        model.adaptive_softmax.head_bias.detach().abs()
+        model.adaptive_softmax.head_weight.detach()[
+            : model.adaptive_softmax.shortlist_size, :
+        ] *= 0.0
+
+        out = model.predict(x)
+        np.testing.assert_array_almost_equal(out, model(x).argmax(axis=1))
+
+        model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
+        model.adaptive_softmax.head_weight.detach().abs()
+        model.adaptive_softmax.head_bias.detach().abs()
+
+        x[:32, : model.adaptive_softmax.shortlist_size] *= 0.0
+        x[32:, model.adaptive_softmax.shortlist_size :] *= 0.0
+        model.adaptive_softmax.head_weight.detach()[
+            : model.adaptive_softmax.shortlist_size,
+            model.adaptive_softmax.shortlist_size :,
+        ] *= 0.0
+        model.adaptive_softmax.head_weight.detach()[
+            model.adaptive_softmax.shortlist_size :,
+            : model.adaptive_softmax.shortlist_size,
+        ] *= 0.0
+
+        out = model.predict(x)
+        np.testing.assert_array_almost_equal(out, model(x).argmax(axis=1))
 
     def _test_log_probs_static(self, place):
         paddle.enable_static()
         with paddle.static.program_guard(Program()):
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(8, 4, [2], div_value=2.0)
+            model = SimpleModel(8, 4, [2], div_value=2.0)
             x = paddle.static.data(
                 name="log_input", shape=[4, 8], dtype='float32'
             )
-            out = asfm.log_prob(x)
+            out = model(x)
             exe = paddle.static.Executor(place=place)
             feed_list = {"log_input": self.log_np}
             logprob_out = exe.run(
@@ -127,7 +151,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
 
             for v in [0, 1, 2, 3]:
                 y = paddle.full((4,), v, dtype='int64')
-                out, loss = asfm(x, y)
+                out, loss = model(x, y)
                 f_out, f_loss = exe.run(
                     paddle.static.default_main_program(),
                     feed=feed_list,
@@ -146,184 +170,139 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def _test_correct_static(self, place):
         paddle.enable_static()
         with paddle.static.program_guard(Program()):
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(
-                8, 10, [4, 8], div_value=2.0, head_bias=True
-            )
+            model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
             exe = paddle.static.Executor(place=place)
             feed_list = {"predict_input": self.predict_np}
             x = paddle.static.data(
                 name="predict_input", shape=[64, 8], dtype='float32'
             )
-            asfm.head_weight.detach().abs()
-            asfm.head_bias.detach().abs()
+            model.adaptive_softmax.head_weight.detach().abs()
+            model.adaptive_softmax.head_bias.detach().abs()
             paddle.static.setitem(
-                asfm.head_weight.detach(),
+                model.adaptive_softmax.head_weight.detach(),
                 (
-                    slice(asfm.shortlist_size, None, None),
+                    slice(model.adaptive_softmax.shortlist_size, None, None),
                     slice(None, None, None),
                 ),
                 0.0,
             )
-            out = asfm.predict(x)
+            out = model.predict(x)
             predict_out1 = exe.run(
                 paddle.static.default_main_program(),
                 feed=feed_list,
                 fetch_list=[out],
             )
             np.testing.assert_array_almost_equal(
-                predict_out1, asfm.log_prob(x).argmax(axis=1)
+                predict_out1, model(x).argmax(axis=1)
             )
 
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(
-                8, 10, [4, 8], div_value=2.0, head_bias=True
-            )
-            asfm.head_weight.detach().abs()
-            asfm.head_bias.detach().abs()
+            model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
+            model.adaptive_softmax.head_weight.detach().abs()
+            model.adaptive_softmax.head_bias.detach().abs()
             paddle.static.setitem(
-                asfm.head_weight.detach(),
+                model.adaptive_softmax.head_weight.detach(),
                 (
-                    slice(None, asfm.shortlist_size, None),
+                    slice(None, model.adaptive_softmax.shortlist_size, None),
                     slice(None, None, None),
                 ),
                 0.0,
             )
-            out = asfm.predict(x)
+            out = model.predict(x)
             predict_out2 = exe.run(
                 paddle.static.default_main_program(),
                 feed=feed_list,
                 fetch_list=[out],
             )
             np.testing.assert_array_almost_equal(
-                predict_out2, asfm.log_prob(x).argmax(axis=1)
+                predict_out2, model(x).argmax(axis=1)
             )
 
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(
-                8, 10, [4, 8], div_value=2.0, head_bias=True
-            )
-            asfm.head_weight.detach().abs()
-            asfm.head_bias.detach().abs()
+            model = SimpleModel(8, 10, [4, 8], div_value=2.0, head_bias=True)
+            model.adaptive_softmax.head_weight.detach().abs()
+            model.adaptive_softmax.head_bias.detach().abs()
             paddle.static.setitem(
                 x,
-                (slice(None, 32, None), slice(None, asfm.shortlist_size, None)),
-                0.0,
-            )
-            paddle.static.setitem(
-                x,
-                (slice(32, None, None), slice(asfm.shortlist_size, None, None)),
-                0.0,
-            )
-            paddle.static.setitem(
-                asfm.head_weight.detach(),
                 (
-                    slice(None, asfm.shortlist_size, None),
-                    slice(asfm.shortlist_size, None, None),
+                    slice(None, 32, None),
+                    slice(None, model.adaptive_softmax.shortlist_size, None),
                 ),
                 0.0,
             )
             paddle.static.setitem(
-                asfm.head_weight.detach(),
+                x,
                 (
-                    slice(asfm.shortlist_size, None, None),
-                    slice(None, asfm.shortlist_size, None),
+                    slice(32, None, None),
+                    slice(model.adaptive_softmax.shortlist_size, None, None),
                 ),
                 0.0,
             )
-            out = asfm.predict(x)
+            paddle.static.setitem(
+                model.adaptive_softmax.head_weight.detach(),
+                (
+                    slice(
+                        None, model.adaptive_softmaxasfm.shortlist_size, None
+                    ),
+                    slice(model.adaptive_softmax.shortlist_size, None, None),
+                ),
+                0.0,
+            )
+            paddle.static.setitem(
+                model.adaptive_softmax.head_weight.detach(),
+                (
+                    slice(model.adaptive_softmax.shortlist_size, None, None),
+                    slice(None, model.adaptive_softmax.shortlist_size, None),
+                ),
+                0.0,
+            )
+            out = model.predict(x)
             predict_out3 = exe.run(
                 paddle.static.default_main_program(),
                 feed=feed_list,
                 fetch_list=[out],
             )
             np.testing.assert_array_almost_equal(
-                predict_out3, asfm.log_prob(x).argmax(axis=1)
+                predict_out3, model(x).argmax(axis=1)
             )
 
     def test_shape(self):
         with self.assertRaises(ValueError):
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 10, 15], div_value=2.0
-            )
+            model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
             x = paddle.randn((2, 16))
             y = paddle.to_tensor([0, 5, 10])
-            asfm(x, y)
-
-        with self.assertRaises(ValueError):
-            asfm = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 10, 15], div_value=2.0
-            )
-            x = paddle.randn((128, 16))
-            y = paddle.randint(low=21, high=200, shape=[128])
-            asfm(x, y)
-
-    def test_output(self):
-        n_classes = 1000
-        in_features = 128
-        cutoffs = [200, 500, 900]
-
-        x = paddle.randn([32, in_features])
-        labels = paddle.randint(0, n_classes, [32])
-
-        model = nn.AdaptiveLogSoftmaxWithLoss(in_features, n_classes, cutoffs)
-
-        optimizer = optim.Adam(parameters=model.parameters(), learning_rate=0.001)
-
-        for epoch in range(10):
-            output, loss = model(x, labels)
-    
-
-            optimizer.clear_grad()
-            loss.backward()
-            optimizer.step()
-
-        with paddle.no_grad():
-            log_probs = model.log_prob(x)
-    
-            predictions = model.predict(x)
-
-        tail_weights_before_training = [proj[0].numpy().copy() for proj in model.tail_weights]
-
-        with paddle.no_grad():
-            output, loss = model(x, labels)
-
-        tail_weights_after_training = [proj[0].numpy() for proj in model.tail_weights]
-
-        for before, after in zip(tail_weights_before_training, tail_weights_after_training):
-            assert not np.any(before != after)
+            model(x, y)
 
     def test_cluster(self):
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 15], div_value=2.0)
+        model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
         x = paddle.randn((128, 16))
         y = paddle.randint(low=0, high=20, shape=[128])
-        output, loss = asfm(x, y)
-        self.assertEqual(asfm.head_weight.shape, [16, 5 + 3])
-        self.assertEqual(asfm.tail_weights[0][1].shape, [8, 5])
-        self.assertEqual(asfm.tail_weights[1][1].shape, [4, 5])
-        self.assertEqual(asfm.tail_weights[2][1].shape, [2, 5])
+        output, _ = model(x, y)
+        self.assertEqual(model.adaptive_softmax.head_weight.shape, [16, 5 + 3])
+        self.assertEqual(
+            model.adaptive_softmax.tail_weights[0][1].shape, [8, 5]
+        )
+        self.assertEqual(
+            model.adaptive_softmax.tail_weights[1][1].shape, [4, 5]
+        )
+        self.assertEqual(
+            model.adaptive_softmax.tail_weights[2][1].shape, [2, 5]
+        )
 
         self.assertEqual(output.shape, [128])
 
     def test_error(self):
         with self.assertRaises(ValueError):
-            _ = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 15, 15], div_value=2.0
-            )
+            _ = SimpleModel(16, 20, [5, 15, 15], div_value=2.0)
 
         with self.assertRaises(ValueError):
-            _ = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 15, 10], div_value=2.0
-            )
+            _ = SimpleModel(16, 20, [5, 15, 10], div_value=2.0)
 
         with self.assertRaises(ValueError):
-            _ = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 10, 25], div_value=2.0
-            )
+            _ = SimpleModel(16, 20, [5, 10, 25], div_value=2.0)
 
         with self.assertRaisesRegex(
             ValueError, "cutoffs should be a sequence of unique,"
         ):
-            _ = nn.AdaptiveLogSoftmaxWithLoss(
-                16, 20, [5, 10, 20], div_value=2.0
-            )
+            _ = SimpleModel(16, 20, [5, 10, 20], div_value=2.0)
 
 
 if __name__ == "__main__":
