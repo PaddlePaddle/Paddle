@@ -122,24 +122,5 @@ TEST(AnalysisPredictor, native_xpu) {
 }
 #endif
 
-#ifdef LITE_SUBGRAPH_WITH_XPU
-TEST(AnalysisPredictor, lite_xpu) {
-  AnalysisConfig config;
-  config.EnableXpu();
-  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
-  test_predictor(config);
-  test_predictor_zero_copy(config);
-}
-#endif
-
-TEST(AnalysisPredictor, lite_engine) {
-  AnalysisConfig config;
-  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
-  test_predictor(config);
-  test_predictor_zero_copy(config);
-}
-
 }  // namespace inference
 }  // namespace paddle

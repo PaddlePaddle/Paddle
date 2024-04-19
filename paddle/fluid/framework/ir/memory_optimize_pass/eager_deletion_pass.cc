@@ -321,6 +321,3 @@ USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(pylayer_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
-#ifdef PADDLE_WITH_CINN
-USE_PASS(share_varinfo_into_cinn_pass);
-#endif
