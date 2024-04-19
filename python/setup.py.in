@@ -771,10 +771,10 @@ if '${WITH_ONEDNN}' == 'ON':
         # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
         # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
-        command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
+        command = "patchelf --set-rpath '$ORIGIN/' ${ONEDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libdnnl.so failed, command: %s" % command)
-    shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    shutil.copy('${ONEDNN_SHARED_LIB}', libs_path)
     if os.name != 'nt':
         package_data['paddle.libs']+=['libdnnl.so.3']
     else:
@@ -904,7 +904,7 @@ for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
 if '${WITH_ONEDNN}' == 'ON':
-    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
+    headers += list(find_files('*', '${ONEDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
