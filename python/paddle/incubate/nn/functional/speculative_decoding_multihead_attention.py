@@ -56,7 +56,7 @@ def speculative_decoding_multihead_attention(
         qkv_bias (Tensor): The bias of qkv. Its shape is [3 * num_head * head_size].
         max_enc_len_this_time (Int): The max length of the encoder. Because we only support bsz=1 for speculative-sampling, so it is an integer.
         max_dec_len_this_time (Int): The max length of the decoder. Default is 0.
-        token_num_in_cache (Int): The number of valid tokens in the cache. Default is -1.
+        token_num_in_cache (Int): The number of valid tokens in the cache. This parameter is used to adapt the target model's logic for rejecting tokens. For example, target model run the forward pass for 5 tokens, but only accept 3 tokens, so the parameter should set to 3 in the next peer. Default is 0.
         max_seq_len (Int): The max length of the input. Default is -1.
         use_neox_style (Bool): Whether neox_style RoPE is used or not. Default is False.
         compute_dtype (Str): A compute dtype, is used to represent the input data type. Default is "default", which means compute dtype is determined by input dtype. However, if the dtype of input is Int32, this value should be set to actual dtype of the model.

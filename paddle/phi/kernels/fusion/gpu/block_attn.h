@@ -1069,8 +1069,10 @@ __global__ void write_cache_to_unpadding_kv_kernel(
     T *__restrict__ unpadding_v_after_cache,  // [cur_token_num +
                                               // token_num_in_cache, num_head,
                                               // dim_head]
-    const int token_num_in_cache,  // [bsz]，kv_cache 里的 token 数目
-    const int cur_num_tokens_k,    // 当前 query 的 token数目
+    const int token_num_in_cache,  // [bsz]，valid token_num in cache
+    const int
+        cur_num_tokens_k,  // Token_num of current key. In speculative decoding,
+                           // token_num_k > token_num_q in decoder phase.
     const int num_heads,
     const int dim_head) {
   using LoadT = phi::AlignedVector<T, VecSize>;
@@ -1382,7 +1384,6 @@ void CacheKernel(
   }
 }
 
-// overload for speculative decoding
 // Put the first cur_token_num tokens from kv_cache and unpadding_kv to
 // unpadding_kv_after_cache.
 template <typename T>
@@ -1395,7 +1396,7 @@ void WriteCacheToKVKernel(
     const phi::DenseTensor &value_cache,
     phi::DenseTensor *unpadding_k_after_cache,
     phi::DenseTensor *unpadding_v_after_cache,
-    const int token_num_in_cache,  // cache 中当前非初始化的 token 的数量
+    const int token_num_in_cache,  // the token_num in cache that are valid.
     const int batch_size,
     const int num_tokens,
     const int num_heads,
@@ -1404,7 +1405,7 @@ void WriteCacheToKVKernel(
   typedef typename traits_::DataType DataType_;
 
   // stage 1: write qkv to cache [pre_cache_length:]
-  int elem_nums = unpadding_k_after_cache.numel();  // just k and v
+  int elem_nums = unpadding_k_after_cache->numel();  // just k and v
   constexpr int PackSize = 16 / sizeof(T);
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -1417,8 +1418,8 @@ void WriteCacheToKVKernel(
           reinterpret_cast<DataType_ *>(const_cast<T *>(unpadding_v.data<T>())),
           reinterpret_cast<DataType_ *>(const_cast<T *>(key_cache.data<T>())),
           reinterpret_cast<DataType_ *>(const_cast<T *>(value_cache.data<T>())),
-          reinterpret_cast<DataType_ *>(unpadding_k_after_cache.data<T>()),
-          reinterpret_cast<DataType_ *>(unpadding_v_after_cache.data<T>()),
+          reinterpret_cast<DataType_ *>(unpadding_k_after_cache->data<T>()),
+          reinterpret_cast<DataType_ *>(unpadding_v_after_cache->data<T>()),
           token_num_in_cache,
           num_tokens,
           num_heads,

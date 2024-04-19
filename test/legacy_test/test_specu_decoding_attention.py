@@ -317,11 +317,10 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         self.token_num_decoder_phase = 5
         self.seq_lens_this_time[:] = self.token_num_decoder_phase
 
-        # 多 token
         self.shape = (
             self.batch_size,
             self.num_head,
-            self.token_num_decoder_phase,
+            self.token_num_decoder_phase,  # token_num > 1 in decoder phase
             self.dim_head,
         )
         query = np.random.random(self.shape)

@@ -40,7 +40,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
     const paddle::optional<DenseTensor>& qkv_bias,
     const int max_enc_len_this_time,
     const int max_dec_len_this_time,
-    int token_num_in_cache,
+    const int token_num_in_cache,
     int max_seq_len,
     bool use_neox_style,
     const std::string& compute_dtype,
@@ -131,7 +131,6 @@ void SpeculativeDecodingMultiheadAttentionKernel(
       VLOG(3) << "causual: " << causual;
     }
 
-    VLOG(3) << "you got here1 !";
     qkv_transpose_split<T>(dev_ctx,
                            unpadding_q.data<T>(),
                            unpadding_k.data<T>(),
@@ -207,8 +206,8 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                             unpadding_v,
                             key_cache,
                             value_cache,
-                            unpadding_k_after_cache,
-                            unpadding_v_after_cache,
+                            &unpadding_k_after_cache,
+                            &unpadding_v_after_cache,
                             token_num_in_cache,
                             bsz,
                             token_num,
