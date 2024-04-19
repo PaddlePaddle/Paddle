@@ -859,7 +859,7 @@ def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
             elif is_forward_op(op):
                 type_to_ops["forward"].append(op)
             elif is_backward_op(op):
-                types = _get_backward_op_type(block, op)
+                types = _get_backward_op_type(block, op, idx)
                 dealed_op_idx = dealed_op_idx + len(types) - 1
                 for i, type in enumerate(types):
                     type_to_ops[type].append(block.ops[idx + i])
