@@ -333,16 +333,17 @@ bool NonzeroOpInferSymbolicShape(
   const auto &x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
 
   PADDLE_ENFORCE_GE(
-      x_shape.size(),
+      rank,
       1UL,
       phi::errors::InvalidArgument(
           "Input(x) should have number of dimension at least 1."));
 
   std::string sym_name = shape_analysis->GetNextSymName();
   std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
-                                         symbol::DimExpr{x_shape.size()}};
+                                         symbol::DimExpr{rank}};
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
