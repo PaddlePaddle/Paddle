@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -137,12 +136,3 @@ REGISTER_OPERATOR(
     ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::TDMSamplerKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
