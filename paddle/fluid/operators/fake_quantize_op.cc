@@ -94,7 +94,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
             in.data<T>() + in.numel(),
             out->mutable_data<T>(ctx.GetPlace()),
             phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-      auto out_e = framework::EigenVector<T>::Flatten(*out);
+      auto out_e = phi::EigenVector<T>::Flatten(*out);
       out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
     } else {
       trans(ctx,
