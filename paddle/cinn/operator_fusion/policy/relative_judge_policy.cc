@@ -147,6 +147,37 @@ bool ElementwiseEqual(const std::vector<DimUsage>& first,
   return true;
 }
 
+symbol::DimExpr GetProductDimExprForValueDims(
+    const std::vector<DimUsage>& dims) {
+  if (dims.empty()) {
+    return 0;
+  }
+  std::vector<int> dim_idx;
+  for (const auto& dim : dims) {
+    dim_idx.emplace_back(dim.idx_);
+  }
+  const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+      dims[0].v_.defining_op()->GetParentProgram());
+  return shape_analysis.GetProductDimExpr(dims[0].v_, dim_idx);
+}
+
+bool IsProductSmallerOrEqual(const std::vector<DimUsage>& first,
+                             const std::vector<DimUsage>& second) {
+  if (first.empty()) return true;
+  const auto& first_product = GetProductDimExprForValueDims(first);
+  const auto& second_product = GetProductDimExprForValueDims(second);
+  const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+      first[0].v_.defining_op()->GetParentProgram());
+  if (second_product.isa<int64_t>() && first_product.isa<int64_t>()) {
+    VLOG(4) << "Static Shape: left is "
+            << std::get<int64_t>(first_product.variant()) << " ; right is "
+            << std::get<int64_t>(second_product.variant());
+    return std::get<int64_t>(first_product.variant()) <=
+           std::get<int64_t>(second_product.variant());
+  }
+  return shape_analysis.IsEqual(first_product, second_product);
+}
+
 pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
                            const pir::Value& value) {
   std::vector<pir::Operation*> results;
@@ -166,13 +197,13 @@ template <typename T>
 bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& upstream_tree =
-      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern());
   const auto& downstream_tree =
-      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern());
 
-  VLOG(4) << "upstream->stmt_pattern_:"
+  VLOG(4) << "upstream->stmt_pattern():"
           << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
-  VLOG(4) << "downstream->stmt_pattern_"
+  VLOG(4) << "downstream->stmt_pattern()"
           << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
 
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
@@ -213,55 +244,38 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
   VLOG(4) << "RT can fuse";
 
   const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
-      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
-                      upstream->sink_op_);
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
+                      upstream->sink_op());
 
   // usage_idx is not important, for this is downstream output value
   // downstream output value must have been used for there is yield op, so
   // usage_idx==0 exists
   const auto& [_UNUSED, non_related_dims] = SplitFirstIfRelatedBySecond(
-      GetValueUsage(downstream->sink_op_->result(0), 0),
+      GetValueUsage(downstream->sink_op()->result(0), 0),
       upstream_non_reduce_dims);
 
-  auto res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
-             IsFlattenDimSmaller(upstream, downstream);
+  const auto& fakes = GetFakeReduceIterIdx(upstream, downstream);
+  const auto& downstream_free_dims = GatherVectorExcept(
+      GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
+
+  auto res =
+      ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+      IsProductSmallerOrEqual(upstream_non_reduce_dims, downstream_free_dims);
 
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
 }
 
 template <typename T>
-bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
-      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
-                      upstream->sink_op_);
-
-  const auto& [related_dims, _UNUSED] = SplitFirstIfRelatedBySecond(
-      GetValueUsage(downstream->sink_op_->result(0), 0),
-      upstream_non_reduce_dims);
-
-  VLOG(4) << "IsFlattenDimSmaller: "
-          << axes_info_.GetSignature(downstream->sink_op_).DebugStr();
-  int rank = axes_info_.GetSignature(downstream->sink_op_)
-                 .outputs[0]
-                 .axis_names.size();
-  VLOG(4) << "IsFlattenDimSmaller: " << rank << " " << related_dims.size()
-          << " " << upstream_non_reduce_dims.size();
-  bool res = (rank - related_dims.size()) <= upstream_non_reduce_dims.size();
-  VLOG(4) << "IsFlattenDimSmaller: " << res;
-  return res;
-}
-
-template <typename T>
 bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
                                      const PatternNodePtr<T>& downstream) {
-  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
-      std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
+      std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern())) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
-  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
-      std::holds_alternative<ReduceTreePattern<T>>(downstream->stmt_pattern_)) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
+      std::holds_alternative<ReduceTreePattern<T>>(
+          downstream->stmt_pattern())) {
     return ReduceTreeGrownCanMerge(upstream, downstream);
   }
   return true;  // other case.
@@ -270,17 +284,17 @@ bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
 template <typename T>
 std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  if (!std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
-      !std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
+  if (!std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern()) &&
+      !std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern())) {
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
   const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
-      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
-                      upstream->sink_op_);
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
+                      upstream->sink_op());
 
   const auto& [_UNUSED, trivial_reorder_dims] = SplitFirstIfRelatedBySecond(
-      GetValueUsage(downstream->sink_op_->result(0), 0),
+      GetValueUsage(downstream->sink_op()->result(0), 0),
       upstream_non_reduce_dims);
 
   // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||

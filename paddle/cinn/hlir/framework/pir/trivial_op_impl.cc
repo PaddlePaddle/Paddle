@@ -36,6 +36,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+PD_DECLARE_bool(group_schedule_tiling_first);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -134,6 +136,7 @@ std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root) {
   return ExprSetFinderUtils::MapVector<ir::Var>(
       vars, [&](const auto& v) -> ir::Var {
+        VLOG(4) << "Start Append Bound for " << v;
         VLOG(4) << "AppendBound for " << v << ", lower: "
                 << (ExprSetFinderUtils::ChildFors *
                     ExprSetFinderUtils::IsForIterVar(v) *
@@ -179,6 +182,7 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
     }
   };
   VLOG(4) << "GetOutputIters";
+  VLOG(4) << "Before AppendBound:" << _GetRootExpr(op);
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 
@@ -560,6 +564,9 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
+  CHECK(FLAGS_group_schedule_tiling_first)
+      << "TrivialFusion must be used with tiling first, set "
+         "FLAGS_group_schedule_tiling_first=1";
   const auto& ops = trivial_fusion_detail::FilterVector(
       original_ops, [](const ::pir::Operation* op) {
         if (op->name() == "cinn_op.generate_shape") {
@@ -579,7 +586,7 @@ std::vector<ir::Expr> OperationFusion(
   CHECK(fusion_nodes.size() == 1)
       << "Only support one fusion node in backend now.";
 
-  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern_);
+  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
   for (const auto& expr : output) {
     VLOG(4) << expr;

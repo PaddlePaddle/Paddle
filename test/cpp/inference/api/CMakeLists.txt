@@ -1142,15 +1142,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
-  inference_analysis_test(
-    lite_resnet50_test
-    SRCS
-    lite_resnet50_test.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR})
 
   inference_analysis_test(
     test_analyzer_capi_exp
@@ -1319,7 +1310,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)

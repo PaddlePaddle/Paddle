@@ -49,8 +49,6 @@ class RelativeJudgePolicy final : public Policy<T> {
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
                                const PatternNodePtr<T>&);
-  bool IsFlattenDimSmaller(const PatternNodePtr<T>& upstream,
-                           const PatternNodePtr<T>& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
                                  const PatternNodePtr<T>&);
   std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
