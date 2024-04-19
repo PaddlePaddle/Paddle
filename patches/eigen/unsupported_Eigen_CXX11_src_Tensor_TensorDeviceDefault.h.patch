@@ -1,0 +1,15 @@
+diff --git a/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h b/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h
+index 46b9d3ab2..3bef5b621 100644
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h
+@@ -92,6 +92,10 @@ struct DefaultDevice {
+     // Running on a HIP device
+     // return 1 as major for HIP
+     return 1;
++#elif defined(EIGEN_MUSA_ARCH)
++    // Running on a MUSA device
++    // return 1 as major for MUSA
++    return 1;
+ #else
+     // Running on a CUDA device
+     return EIGEN_CUDA_ARCH / 100;

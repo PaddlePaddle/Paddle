@@ -43,7 +43,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
@@ -693,7 +693,7 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       .def("clone",
            [](PaddlePredictor &self, phi::CUDAStream &stream) {
              return self.Clone(stream.raw_stream());
@@ -743,7 +743,7 @@ void BindNativePredictor(py::module *m) {
       .def("zero_copy_run", &NativePaddlePredictor::ZeroCopyRun)
       .def("clone",
            [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       .def("clone",
            [](NativePaddlePredictor &self, phi::CUDAStream &stream) {
              return self.Clone(stream.raw_stream());
@@ -790,7 +790,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
       .def("exp_enable_mixed_precision_ops",
            &AnalysisConfig::Exp_EnableMixedPrecisionOps)
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
              self.SetExecStream(stream.raw_stream());
@@ -1143,7 +1143,7 @@ void BindAnalysisPredictor(py::module *m) {
            &AnalysisPredictor::analysis_argument,
            py::return_value_policy::reference)
       .def("clone", [](AnalysisPredictor &self) { return self.Clone(nullptr); })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       .def("clone",
            [](AnalysisPredictor &self, phi::CUDAStream &stream) {
              return self.Clone(stream.raw_stream());
@@ -1190,7 +1190,7 @@ void BindPaddleInferPredictor(py::module *m) {
            })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       .def("clone",
            [](paddle_infer::Predictor &self, phi::CUDAStream &stream) {
              return self.Clone(stream.raw_stream());

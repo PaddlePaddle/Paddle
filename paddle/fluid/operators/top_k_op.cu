@@ -15,7 +15,8 @@ limitations under the License. */
 #pragma once
 #include <cstdio>
 #include <vector>
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

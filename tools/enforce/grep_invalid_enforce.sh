@@ -39,7 +39,7 @@
 #         PADDLE_THROW("binding failed on ep: %s", ep);
 #         PADDLE_THROW("listen on server fd failed");
 #         PADDLE_THROW("accept the new socket fd failed");
-#         PADDLE_THROW("reading the ncclUniqueId from socket failed");
+#         PADDLE_THROW("reading the mcclUniqueId from socket failed");
 #         PADDLE_ENFORCE_EQ(addr.size(), 2UL,
 #                             "The endpoint should contain host and port: %s", ep);
 #         PADDLE_THROW("create socket failed");

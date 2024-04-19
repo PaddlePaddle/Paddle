@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP  // HIP not support cusolver
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA)   // HIP not support cusolver
 
 #include <math.h>
 #include <algorithm>

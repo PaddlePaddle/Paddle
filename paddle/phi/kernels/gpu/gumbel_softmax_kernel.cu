@@ -18,8 +18,9 @@
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
+#if defined(__NVCC__) || defined(__MUSACC__)
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

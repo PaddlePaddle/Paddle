@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/barrier_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -30,12 +30,12 @@ template <typename T, typename DeviceContext>
 class BarrierOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data();
@@ -62,7 +62,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       auto stream = comm_ctx->GetStream();
-      ncclRedOp_t nccl_red_type = ncclSum;
+      mcclRedOp_t nccl_red_type = mcclSum;
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
       platform::GpuStreamSync(stream);
       VLOG(3) << "new NCCLCommContext has rid " << rid;
@@ -70,8 +70,8 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       // should ExecutionContext for calc stream.
       auto stream = ctx.cuda_device_context().stream();
-      ncclRedOp_t nccl_red_type = ncclSum;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
+      mcclRedOp_t nccl_red_type = mcclSum;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(sendbuff,
                                                                   recvbuff,
                                                                   numel,
                                                                   dtype,

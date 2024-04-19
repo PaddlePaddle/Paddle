@@ -31,12 +31,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
-USE_OP_ITSELF(ncclAllReduce);
+USE_OP_ITSELF(mcclAllReduce);
 USE_OP_ITSELF(ncclReduce);
-USE_OP_ITSELF(ncclBcast);
-PD_DECLARE_KERNEL(ncclAllReduce, GPU, ALL_LAYOUT);
+USE_OP_ITSELF(mcclBcast);
+PD_DECLARE_KERNEL(mcclAllReduce, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(ncclReduce, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(ncclBcast, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(mcclBcast, GPU, ALL_LAYOUT);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -136,7 +136,7 @@ class NCCLTester : public ::testing::Test {
 
 void NCCLTester::testNcclAllReduceOp() {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
-  op2->SetType("ncclAllReduce");
+  op2->SetType("mcclAllReduce");
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
   op2->SetOutput("Out", {"rt"});
@@ -249,7 +249,7 @@ void NCCLTester::testNcclReduceOp() {
 void NCCLTester::testNcclBcastOp() {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 0;
-  op2->SetType("ncclBcast");
+  op2->SetType("mcclBcast");
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
   op2->SetOutput("Out", {"rt"});

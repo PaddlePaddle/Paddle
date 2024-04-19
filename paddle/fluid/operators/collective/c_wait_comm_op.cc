@@ -19,7 +19,7 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -47,7 +47,7 @@ class CWaitCommOp : public framework::OperatorBase {
             "wait_comm op can run on gpu place only for now, but got %s",
             place.DebugString()));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     int ring_id = Attr<int>("ring_id");
 
     gpuStream_t compute_stream =
@@ -89,6 +89,9 @@ class CWaitCommOp : public framework::OperatorBase {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, comm_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(compute_stream, event, 0));    
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));

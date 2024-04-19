@@ -54,12 +54,12 @@ template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
     defined(PADDLE_WITH_XPU_KP)
 template class TypeInfoTraits<phi::DeviceContext, GPUContext>;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 #endif
 

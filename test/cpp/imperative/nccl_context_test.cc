@@ -38,7 +38,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
+void BcastNCCLId(int local_rank, std::vector<mcclUniqueId>* nccl_ids) {
   auto strategy = GetStrategy(local_rank);
   int server_fd = platform::CreateListenSocket(strategy.current_endpoint_);
 
@@ -50,18 +50,18 @@ void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
 }
 
 TEST(BcastNCCLId, Run) {
-  std::vector<ncclUniqueId> nccl_ids;
+  std::vector<mcclUniqueId> nccl_ids;
   nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    platform::dynload::mcclGetUniqueId(&nccl_ids[i]);
   }
 
   std::thread t(BcastNCCLId, 0, &nccl_ids);
 
-  std::vector<ncclUniqueId> recv_nccl_ids;
+  std::vector<mcclUniqueId> recv_nccl_ids;
   recv_nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&recv_nccl_ids[i]);
+    platform::dynload::mcclGetUniqueId(&recv_nccl_ids[i]);
   }
   BcastNCCLId(1, &recv_nccl_ids);
 

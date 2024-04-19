@@ -1,0 +1,15 @@
+diff --git a/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h b/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h
+index 9422dcd7a..e889b7eca 100644
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h
+@@ -331,6 +331,10 @@ struct GpuDevice {
+   hipLaunchKernelGGL(kernel, dim3(gridsize), dim3(blocksize), (sharedmem), (device).stream(), __VA_ARGS__); \
+   gpu_assert(hipGetLastError() == hipSuccess);
+ 
++#elif defined(EIGEN_MUSACC)
++#define LAUNCH_GPU_KERNEL(kernel, gridsize, blocksize, sharedmem, device, ...)             \
++  (kernel) <<< (gridsize), (blocksize), (sharedmem), (device).stream() >>> (__VA_ARGS__);   \
++  gpu_assert(musaGetLastError() == musaSuccess);
+ #else
+  
+ #define LAUNCH_GPU_KERNEL(kernel, gridsize, blocksize, sharedmem, device, ...)             \

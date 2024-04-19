@@ -102,6 +102,29 @@ PHI_DEFINE_string(rccl_dir,
                   "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+
+PHI_DEFINE_string(mudnn_dir,
+                  "",
+                  "Specify path for loading libmudnn.so. For instance, "
+                  "/usr/local/musa/lib. If empty [default], dlopen "
+                  "will search mudnn from LD_LIBRARY_PATH");
+
+PHI_DEFINE_string(musa_dir,
+                  "",
+                  "Specify path for loading rocm library, such as libmublas, "
+                  "For instance, /usr/local/musa/lib. "
+                  "If default, dlopen will search rocm from LD_LIBRARY_PATH");
+
+PHI_DEFINE_string(mccl_dir,
+                  "",
+                  "Specify path for loading mccl library, such as libmccl.so. "
+                  "For instance, /usr/local/musa/lib. If default, "
+                  "dlopen will search rccl from LD_LIBRARY_PATH");
+#endif
+
+
+
 #ifdef PADDLE_WITH_XPU
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
@@ -326,6 +349,8 @@ void* GetCublasDsoHandle() {
       FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmublas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
@@ -367,6 +392,9 @@ void* GetCUDNNDsoHandle() {
       FLAGS_cudnn_dir, win_cudnn_lib, true, {cuda_lib_path}, win_warn_meg);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(
+      FLAGS_cudnn_dir, "libmudnn.so", false, {cuda_lib_path});
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
@@ -391,6 +419,8 @@ void* GetCurandDsoHandle() {
       FLAGS_cuda_dir, win_curand_lib, true, {cuda_lib_path});
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmurand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
@@ -403,6 +433,12 @@ void* GetROCFFTDsoHandle() {
 #else
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipfft.so");
 #endif
+}
+#endif
+
+#ifdef PADDLE_WITH_MUSA
+void* GetMUFFTDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmufft.so");
 }
 #endif
 
@@ -436,6 +472,8 @@ void* GetCusparseDsoHandle() {
       FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsparse.so");
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmusparse.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
 #endif
@@ -446,6 +484,8 @@ void* GetNVRTCDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmusart.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -456,6 +496,8 @@ void* GetCUDADsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmusa.so", false);
 #elif defined(_WIN32)
   char system32_dir[MAX_PATH];
   GetSystemDirectory(system32_dir, MAX_PATH);
@@ -513,6 +555,9 @@ void* GetNCCLDsoHandle() {
       "You may need to install 'rccl' from ROCM official website: "
       "https://rocmdocs.amd.com/en/latest/Installation_Guide/"
       "Installation-Guide.html before install PaddlePaddle.");
+#elif defined(PADDLE_WITH_MUSA)
+  std::string warning_msg(
+      "You may need to install 'mccl' from musa official website.");
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
@@ -526,6 +571,9 @@ void* GetNCCLDsoHandle() {
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
   return GetDsoHandleFromSearchPath(
       FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
+#elif defined(PADDLE_WITH_MUSA) && defined(PADDLE_WITH_MCCL)
+  return GetDsoHandleFromSearchPath(
+      FLAGS_mccl_dir, "libmccl.so", true, {}, warning_msg);
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);

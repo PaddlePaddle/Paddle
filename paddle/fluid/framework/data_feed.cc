@@ -271,6 +271,8 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_HIP)
     hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(dst, src, size, musaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_XPU_KP)
     xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
@@ -1529,7 +1531,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 #endif
 }
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {

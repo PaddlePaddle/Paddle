@@ -29,7 +29,7 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
+#if !defined(__NVCC__) && !defined(__HIPCC___) && !defined(__MUSACC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>
 void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
                                        T *gate_value,

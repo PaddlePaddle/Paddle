@@ -22,7 +22,7 @@
 
 namespace paddle {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 InferGPUContext::InferGPUContext(const phi::Place& place)
     : phi::GPUContext(place, false) {}
 #endif

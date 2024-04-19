@@ -97,7 +97,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
 }
 #endif
 #endif
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
                    ALL_LAYOUT,

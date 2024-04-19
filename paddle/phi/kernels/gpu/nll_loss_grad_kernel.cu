@@ -36,6 +36,8 @@ void NllLossGradKernel(const Context& dev_ctx,
   auto total_weight_data = total_weight.data<T>();
 #ifdef PADDLE_WITH_HIP
   hipMemset(dx_data, 0, dx->numel() * sizeof(T));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(dx_data, 0, dx->numel() * sizeof(T));
 #else
   cudaMemset(dx_data, 0, dx->numel() * sizeof(T));
 #endif

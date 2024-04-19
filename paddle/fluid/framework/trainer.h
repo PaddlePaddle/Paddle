@@ -159,7 +159,7 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP  || defined(PADDLE_WITH_MUSA)|| \
      defined PADDLE_WITH_XPU) &&                            \
     (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 class HeterServiceContext {
@@ -175,7 +175,7 @@ class HeterServiceContext {
   int place_num_;
   Scope* scope_{nullptr};
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   gpuEvent_t event_;
 #endif
   std::vector<OperatorBase*> ops_;
@@ -207,7 +207,7 @@ class HeterXpuTrainer : public TrainerBase {
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
   template <typename T>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   void HeterMemCpy(phi::DenseTensor* tensor,
                    phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
@@ -245,7 +245,7 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<Scope*> place_scopes_;
   BtObjectPool<HeterServiceContext> object_pool_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   std::vector<gpuStream_t> copy_streams_;
   std::vector<gpuEvent_t> events_;
 #endif
@@ -253,7 +253,7 @@ class HeterXpuTrainer : public TrainerBase {
 
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || defined PADDLE_WITH_MCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUTrainer : public TrainerBase {
@@ -305,7 +305,7 @@ class PSGPUTrainer : public TrainerBase {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}

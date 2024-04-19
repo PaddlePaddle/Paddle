@@ -932,7 +932,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
   }
   if (config.is_runtime) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     int64_t numel = 0;
     for (auto item : input) {
       const auto& dim = item->dims();

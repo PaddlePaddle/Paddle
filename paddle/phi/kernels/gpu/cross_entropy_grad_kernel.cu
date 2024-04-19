@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_grad_kernel.h"
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -277,7 +277,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,
                    ALL_LAYOUT,

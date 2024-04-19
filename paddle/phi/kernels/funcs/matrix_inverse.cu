@@ -24,7 +24,7 @@ template <typename Context, typename T>
 void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                                                   const DenseTensor& a,
                                                   DenseTensor* a_inv) {
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
   const auto& mat_dims = a.dims();
   const int rank = mat_dims.size();
   int n = mat_dims[rank - 1];

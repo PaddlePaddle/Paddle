@@ -30,11 +30,15 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#endif
+
 namespace phi {
 
-#ifdef PADDLE_WITH_HIP
-static void RecordEventTimerCallback(hipStream_t stream,
-                                     hipError_t status,
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+static void RecordEventTimerCallback(musaStream_t stream,
+                                     musaError_t status,
                                      void *user_data) {
   struct timeval time_now {};
   gettimeofday(&time_now, nullptr);
@@ -60,6 +64,9 @@ class GpuTimer {
 #ifdef PADDLE_WITH_HIP
     hipEventCreate(&start_);
     hipEventCreate(&stop_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventCreate(&start_);
+    musaEventCreate(&stop_);    
 #else
     cudaEventCreate(&start_);
     cudaEventCreate(&stop_);
@@ -74,6 +81,9 @@ class GpuTimer {
 #ifdef PADDLE_WITH_HIP
     hipEventDestroy(start_);
     hipEventDestroy(stop_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventDestroy(start_);
+    musaEventDestroy(stop_);
 #else
     cudaEventDestroy(start_);
     cudaEventDestroy(stop_);
@@ -83,6 +93,8 @@ class GpuTimer {
   void Start(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
     hipEventRecord(start_, stream);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventRecord(start_, stream);
 #else
     cudaEventRecord(start_, stream);
 #endif
@@ -91,6 +103,8 @@ class GpuTimer {
   void Stop(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
     hipEventRecord(stop_, stream);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventRecord(stop_, stream);
 #else
     cudaEventRecord(stop_, stream);
 #endif
@@ -101,6 +115,9 @@ class GpuTimer {
 #ifdef PADDLE_WITH_HIP
     hipEventSynchronize(stop_);
     hipEventElapsedTime(&milliseconds, start_, stop_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventSynchronize(stop_);
+    musaEventElapsedTime(&milliseconds, start_, stop_);
 #else
     cudaEventSynchronize(stop_);
     cudaEventElapsedTime(&milliseconds, start_, stop_);
@@ -144,6 +161,12 @@ class CalculateStreamTimer {
                                RecordEventTimerCallback,
                                reinterpret_cast<void *>(&start_time_),
                                0));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaStreamAddCallback(calculated_stream_,
+                               RecordEventTimerCallback,
+                               reinterpret_cast<void *>(&start_time_),
+                               0));                              
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamAddCallback(calculated_stream_,
@@ -163,6 +186,12 @@ class CalculateStreamTimer {
                                RecordEventTimerCallback,
                                reinterpret_cast<void *>(&end_time_),
                                0));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaStreamAddCallback(calculated_stream_,
+                               RecordEventTimerCallback,
+                               reinterpret_cast<void *>(&end_time_),
+                               0));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamAddCallback(calculated_stream_,
@@ -178,6 +207,8 @@ class CalculateStreamTimer {
     if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(calculated_stream_));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(calculated_stream_));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream_));
 #endif
@@ -189,6 +220,8 @@ class CalculateStreamTimer {
     if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(calculated_stream_));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(calculated_stream_));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream_));
 #endif

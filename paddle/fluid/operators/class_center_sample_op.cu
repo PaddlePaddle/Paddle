@@ -19,6 +19,14 @@
 #include <hipcub/hipcub.hpp>
 typedef hiprandState curandState;
 namespace cub = hipcub;
+
+#elif defined(PADDLE_WITH_MUSA)
+#include <murand.h>
+#include <murand_kernel.h>
+
+#include <cub/cub.cuh>
+typedef murandState curandState;
+
 #else
 #include <curand.h>
 #include <curand_kernel.h>
@@ -34,7 +42,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -75,6 +83,11 @@ __global__ void RandomSampleClassCenter(const int64_t n,
   hiprand_init(local_seed, id, increment, &localState);
   CUDA_KERNEL_LOOP(i, n) {
     buffer[i] = static_cast<T>(hiprand(&localState) % max_val);
+  }
+#elif defined(PADDLE_WITH_MUSA)
+  murand_init(local_seed, id, increment, &localState);
+  CUDA_KERNEL_LOOP(i, n) {
+    buffer[i] = static_cast<T>(murand(&localState) % max_val);
   }
 #else
   curand_init(local_seed, id, increment, &localState);
@@ -352,7 +365,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {
@@ -397,15 +410,15 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
       if (comm_ctx) {
         comm_ctx->AllReduce(
-            &num_classes_per_device, num_classes_per_device, ncclSum, stream);
+            &num_classes_per_device, num_classes_per_device, mcclSum, stream);
         paddle::platform::GpuStreamSync(stream);
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclAllReduce(
             num_classes_per_device_ptr,
             num_classes_per_device_ptr,
             num_classes_per_device.numel(),
             phi::ToNCCLDataType(num_classes_per_device.dtype()),
-            ncclSum,
+            mcclSum,
             comm->comm(),
             stream));
       }

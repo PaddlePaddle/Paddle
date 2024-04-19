@@ -30,16 +30,16 @@ namespace distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
+NCCLCommContext::NCCLCommContext(int rank, int size, mcclUniqueId nccl_id)
     : CommContext(rank, size) {
-  NCCL_CHECK(
-      phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
-  NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
+  MCCL_CHECK(
+      phi::dynload::mcclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+  MCCL_CHECK(phi::dynload::mcclGetVersion(&nccl_version_));
 }
 
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
 
-ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
+mcclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
 gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
 
@@ -77,7 +77,7 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, root, rank_, nccl_comm_);
   }
-  NCCL_CHECK(phi::dynload::ncclBroadcast(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclBroadcast(in_tensor.data(),
                                          out_tensor->data(),
                                          in_tensor.numel(),
                                          ToNCCLDataType(in_tensor.type()),
@@ -100,7 +100,7 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  NCCL_CHECK(phi::dynload::ncclAllGather(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclAllGather(in_tensor.data(),
                                          out_tensor->data(),
                                          in_tensor.numel(),
                                          ToNCCLDataType(in_tensor.type()),
@@ -109,7 +109,7 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
-                                    ncclRedOp_t reduce_type,
+                                    mcclRedOp_t reduce_type,
                                     gpuStream_t stream) {
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
                                                       in_tensor,
@@ -122,7 +122,7 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  NCCL_CHECK(phi::dynload::ncclReduceScatter(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclReduceScatter(in_tensor.data(),
                                              out_tensor->data(),
                                              out_tensor->numel(),
                                              ToNCCLDataType(in_tensor.type()),
@@ -141,7 +141,7 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
     NCCLDynamicCheck::CheckShape(in_tensor, rank_, rank_, nccl_comm_);
   }
 
-  NCCL_CHECK(phi::dynload::ncclSend(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclSend(in_tensor.data(),
                                     count,
                                     ToNCCLDataType(in_tensor.dtype()),
                                     peer,
@@ -160,7 +160,7 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
   }
 
-  NCCL_CHECK(phi::dynload::ncclRecv(out_tensor->data(),
+  MCCL_CHECK(phi::dynload::mcclRecv(out_tensor->data(),
                                     count,
                                     ToNCCLDataType(out_tensor->dtype()),
                                     peer,
@@ -172,7 +172,7 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
 
 void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                ncclRedOp_t reduce_type,
+                                mcclRedOp_t reduce_type,
                                 gpuStream_t stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
@@ -185,7 +185,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  NCCL_CHECK(phi::dynload::ncclAllReduce(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclAllReduce(in_tensor.data(),
                                          out_tensor->data(),
                                          in_tensor.numel(),
                                          ToNCCLDataType(in_tensor.type()),
@@ -196,7 +196,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
 
 void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              const phi::DenseTensor& in_tensor,
-                             ncclRedOp_t reduce_type,
+                             mcclRedOp_t reduce_type,
                              int root,
                              gpuStream_t stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
@@ -210,7 +210,7 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                                    rank_,
                                                    nccl_comm_);
   }
-  NCCL_CHECK(phi::dynload::ncclReduce(in_tensor.data(),
+  MCCL_CHECK(phi::dynload::mcclReduce(in_tensor.data(),
                                       out_tensor->data(),
                                       in_tensor.numel(),
                                       ToNCCLDataType(in_tensor.type()),
@@ -221,23 +221,23 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void NCCLCommContext::GroupStart() {
-  NCCL_CHECK(phi::dynload::ncclGroupStart());
+  MCCL_CHECK(phi::dynload::mcclGroupStart());
 }
-void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+void NCCLCommContext::GroupEnd() { MCCL_CHECK(phi::dynload::mcclGroupEnd()); }
 
-#if NCCL_VERSION_CODE >= 21100
-void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
+// #if NCCL_VERSION_CODE >= 21100
+void NCCLCommContext::RedOpCreatePreMulSum(mcclRedOp_t* op,
                                            void* scalar,
-                                           ncclDataType_t dtype,
-                                           ncclScalarResidence_t residence) {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+                                           mcclDataType_t dtype,
+                                           mcclScalarResidence_t residence) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclRedOpCreatePreMulSum(
       op, scalar, dtype, residence, nccl_comm_));
 }
 
-void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, nccl_comm_));
+void NCCLCommContext::RedOpDestroy(mcclRedOp_t op) {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclRedOpDestroy(op, nccl_comm_));
 }
-#endif
+// #endif
 
 }  // namespace distributed
 }  // namespace phi

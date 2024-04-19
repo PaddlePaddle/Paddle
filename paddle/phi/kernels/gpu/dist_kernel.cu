@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
 namespace phi {
 
 #define FULL_MASK 0xffffffff

@@ -34,6 +34,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -103,6 +107,17 @@ void SynchronizeAllDevice() {
   }
   SetDeviceId(pre_device_id);
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+  int pre_device_id = GetCurrentDeviceId();
+  int count = GetGPUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
+  }
+  SetDeviceId(pre_device_id);
+#endif
+
 #ifdef PADDLE_WITH_HIP
   int pre_device_id = GetCurrentDeviceId();
   int count = GetGPUDeviceCount();
@@ -141,7 +156,7 @@ void PrintMemProfiler(
             << "    Memory Profiling Report     "
             << "<-------------------------\n\n";
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   int num_gpus = GetGPUDeviceCount();
   std::cout.setf(std::ios::left);
   if (num_gpus > 0) {
@@ -343,7 +358,7 @@ void SetEvent(bool merge_thread,
     if (rit != pushed_events->rend()) {
       double event_time = 0;
       double gpu_time = 0.0f;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       gpu_time = rit->CudaElapsedMs(analyze_event);
 #endif
       double cpu_time = rit->CpuElapsedMs(analyze_event);

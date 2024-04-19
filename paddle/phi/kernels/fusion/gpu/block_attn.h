@@ -18,7 +18,6 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
-
 namespace phi {
 namespace fusion {
 

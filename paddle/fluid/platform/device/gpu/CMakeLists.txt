@@ -28,6 +28,18 @@ elseif(WITH_ROCM)
     cudnn_desc_test
     SRCS cudnn_desc_test.cc
     DEPS dynload_cuda)
+elseif(WITH_MUSA)
+  # add_subdirectory(musa)
+  musa_library(
+    gpu_info
+    SRCS gpu_info.cc
+    DEPS phi common glog enforce monitor dynload_cuda)
+
+  musa_test(cuda_helper_test SRCS cuda_helper_test.cu)
+  musa_test(
+    cudnn_desc_test
+    SRCS cudnn_desc_test.cc
+    DEPS dynload_cuda)
 endif()
 
 cc_library(

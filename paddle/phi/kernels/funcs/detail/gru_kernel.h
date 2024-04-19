@@ -44,7 +44,7 @@ class gru_resetOutput {
           (*value_reset_output + *value_reset_bias) * (*value_reset_gate);
     }
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset output
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group GRU reset output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -90,7 +90,7 @@ class gru_finalOutput {
                       ((*value_update_gate) * (*value_frame_state));
     }
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU final output
+#if !defined(__NVCC__) && !defined(__HIPCC___) && !defined(__MUSACC___)// @{ Group GRU final output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -150,7 +150,7 @@ class gru_stateGrad {
           *grad_output * (*value_update_gate), *value_frame_state, act_input);
     }
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU state grad
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group GRU state grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -211,7 +211,7 @@ class gru_resetGrad {
     *grad_reset_gate =
         activation(*grad_reset_gate, *value_reset_gate, act_gate);
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset grad
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group GRU reset grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -265,7 +265,7 @@ class gru {
         reset_output * (*grad_frame_state), *value_reset_gate, act_gate);
     *grad_reset_output = (*value_reset_gate) * (*grad_frame_state);
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU CPU
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group GRU CPU
 #ifndef __AVX__
   static const bool avx = false;
 #else

@@ -81,7 +81,7 @@ __global__ void SkipLayerNormKernel(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel
+#ifdef __MUSACC__  // @{ Half kernel: SkipLayerNormKernel
 template <>
 __global__ void SkipLayerNormKernel<half, 256>(int num,
                                                int hidden,
@@ -169,7 +169,7 @@ __global__ void SkipLayerNormKernel2(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel2
+#ifdef __MUSACC__  // @{ Half kernel: SkipLayerNormKernel2
 template <>
 __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        int hidden,
@@ -256,7 +256,7 @@ __global__ void SkipLayerNormSmallKernel(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormSmallKernel
+#ifdef __MUSACC__  // @{ Half kernel: SkipLayerNormSmallKernel
 template <>
 __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
                                                    int hidden,
@@ -377,7 +377,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
                 reinterpret_cast<const float2 *>(bias),
                 eps);
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__
+#ifdef __MUSACC__
       } else if (std::is_same<T, __half>::value) {
         SkipLayerNormKernel2<__half, __half2, threads>
             <<<block, threads, 0, stream>>>(

@@ -104,8 +104,8 @@ void SyncBatchNormKernel(const Context& ctx,
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+    mcclComm_t comm = static_cast<mcclComm_t>(detail::GetCCLComm(x.place(), 0));
     if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
@@ -114,11 +114,11 @@ void SyncBatchNormKernel(const Context& ctx,
       int dtype = phi::ToNCCLDataType(mean_out->dtype());
       // In-place operation
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllReduce(stats,
+          phi::dynload::mcclAllReduce(stats,
                                       stats,
                                       2 * C + 1,
-                                      static_cast<ncclDataType_t>(dtype),
-                                      ncclSum,
+                                      static_cast<mcclDataType_t>(dtype),
+                                      mcclSum,
                                       comm,
                                       stream));
       VLOG(3) << "Sync result using all reduce";

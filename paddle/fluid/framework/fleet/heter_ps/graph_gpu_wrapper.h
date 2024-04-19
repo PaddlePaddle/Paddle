@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 
 #ifdef PADDLE_WITH_HETERPS
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_ptr.h>
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
@@ -302,9 +302,9 @@ class GraphGpuWrapper {
   int node_size_ = 1;
   int multi_node_ = 0;
 #ifdef PADDLE_WITH_CUDA
-  std::vector<ncclComm_t> inner_comms_;
-  std::vector<ncclComm_t> inter_comms_;
-  std::vector<ncclUniqueId> inter_ncclids_;
+  std::vector<mcclComm_t> inner_comms_;
+  std::vector<mcclComm_t> inter_comms_;
+  std::vector<mcclUniqueId> inter_ncclids_;
 #endif
 };  // class GraphGpuWrapper
 #endif

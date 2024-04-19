@@ -41,14 +41,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 
 PHI_DECLARE_double(eager_delete_tensor_gb);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -69,7 +69,7 @@ static std::once_flag gProfileOnce;
 static bool gProfileStarted = false;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 std::once_flag p2p_init_flag;
 #endif
 
@@ -148,7 +148,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -162,7 +162,7 @@ class ParallelExecutorPrivate {
               << bst.hierarchical_allreduce_exter_nranks_;
     }
 
-    std::vector<ncclUniqueId *> flat_nccl_ids;
+    std::vector<mcclUniqueId *> flat_nccl_ids;
     if (nranks_ == 1) {
       // FIXME(gongwb): need not to create ncclid when nranks==1
       nccl_ctxs_->InitFlatCtxs(
@@ -173,18 +173,18 @@ class ParallelExecutorPrivate {
     if (bst.enable_parallel_graph_) {
       VLOG(1) << "use only one ncclid in pg model";
 
-      ncclUniqueId *nccl_id = nullptr;
+      mcclUniqueId *nccl_id = nullptr;
 
       std::string var_name = platform::GetFlatNCCLVarName(0);
       auto nccl_id_var = scope->FindVar(var_name);
       if (nccl_id_var) {
-        nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        nccl_id = nccl_id_var->GetMutable<mcclUniqueId>();
         VLOG(10) << "find nccl_id_var:" << var_name << ", nccl_id:" << nccl_id;
       } else {
-        nccl_id = new ncclUniqueId();
+        nccl_id = new mcclUniqueId();
         PADDLE_ENFORCE_EQ(
-            platform::dynload::ncclGetUniqueId(nccl_id),
-            ncclSuccess,
+            platform::dynload::mcclGetUniqueId(nccl_id),
+            mcclSuccess,
             platform::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
                 "system settings or NCCL library error, please debug on NCCL"));
@@ -213,7 +213,7 @@ class ParallelExecutorPrivate {
       PADDLE_ENFORCE_NOT_NULL(
           nccl_id_var,
           platform::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
-      auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+      auto nccl_id = nccl_id_var->GetMutable<mcclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
 
@@ -221,25 +221,25 @@ class ParallelExecutorPrivate {
         places_, flat_nccl_ids, bst.num_trainers_, bst.trainer_id_);
 
     if (bst.use_hierarchical_allreduce_) {
-      std::vector<ncclUniqueId *> inter_nccl_ids;
+      std::vector<mcclUniqueId *> inter_nccl_ids;
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
         PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
                                 platform::errors::NotFound(
                                     "Can't find nccl_id_var '%s'.", var_name));
-        auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        auto inter_nccl_id = nccl_id_var->GetMutable<mcclUniqueId>();
         inter_nccl_ids.push_back(inter_nccl_id);
       }
 
-      std::vector<ncclUniqueId *> exter_nccl_ids;
+      std::vector<mcclUniqueId *> exter_nccl_ids;
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
         PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
                                 platform::errors::NotFound(
                                     "Can't find nccl_id_var '%s'.", var_name));
-        auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
+        auto nccl_id = nccl_id_var->GetMutable<mcclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
 
@@ -400,7 +400,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
@@ -512,7 +512,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     }
     std::unique_ptr<GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       if (IsFastEagerDeletionModeEnabled()) {
         gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
                                                              max_memory_size);
@@ -623,7 +623,7 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
 }
 
 void InitP2P(const std::vector<platform::Place> &places) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   std::call_once(p2p_init_flag, [&]() {
     int count = places.size();
     if (count <= 1) return;
@@ -644,6 +644,10 @@ void InitP2P(const std::vector<platform::Place> &places) {
         hipError_t ret =
             hipDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
         if (ret != hipSuccess || can_acess != 1) {
+#elif defined(PADDLE_WITH_MUSA)
+        musaError_t ret =
+            musaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != musaSuccess || can_acess != 1) {
 #else
         cudaError_t ret =
             cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
@@ -655,6 +659,8 @@ void InitP2P(const std::vector<platform::Place> &places) {
           platform::CUDADeviceGuard guard(devices[i]);
 #ifdef PADDLE_WITH_HIP
           hipDeviceEnablePeerAccess(devices[j], 0);
+#elif defined(PADDLE_WITH_MUSA)
+          musaDeviceEnablePeerAccess(devices[j], 0);          
 #else
           cudaDeviceEnablePeerAccess(devices[j], 0);
 #endif
@@ -807,12 +813,12 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
-      ncclDataType_t data_type = platform::ToNCCLDataType(dtype);
+      mcclDataType_t data_type = platform::ToNCCLDataType(dtype);
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -840,7 +846,7 @@ void ParallelExecutor::BCastParamsToDevices(
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
-          platform::dynload::ncclBcast(buffers[i],
+          platform::dynload::mcclBcast(buffers[i],
                                        numel,
                                        data_type,
                                        0,
@@ -1282,7 +1288,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && defined(_WIN32)
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         device_count,
@@ -1291,8 +1297,8 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
   }
 #endif
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL) && !defined(PADDLE_WITH_MCCL))
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         device_count,
@@ -1450,7 +1456,7 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
   }
 
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     member_->InitOrGetNCCLCommunicator(global_scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -1501,7 +1507,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
   std::vector<ir::Graph *> async_graphs(device_count);
 
   auto &graphs = *device_graphs;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
@@ -1656,7 +1662,7 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
     final_graphs = *async_graphs;
   } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
     bool is_inference = details::IsDataParallelInferenceGraph(*graph);

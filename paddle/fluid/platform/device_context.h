@@ -53,6 +53,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
 
+
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
+#include "paddle/fluid/platform/dynload/mudnn.h"
+#include "paddle/fluid/platform/dynload/mublas.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"  // NOLINT
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#include "paddle/fluid/platform/dynload/mccl.h"
+#endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
+#endif
+
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -136,7 +148,7 @@ namespace xpu = baidu::xpu::api;
 using XPUDeviceContext = phi::XPUContext;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 #endif
 
@@ -165,7 +177,7 @@ struct DefaultDeviceContextType<phi::IPUPlace> {
 };
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 template <>
 struct DefaultDeviceContextType<phi::GPUPinnedPlace> {
   using TYPE = paddle::platform::CUDAPinnedDeviceContext;

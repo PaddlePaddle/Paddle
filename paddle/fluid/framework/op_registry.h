@@ -359,7 +359,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
 #else
@@ -446,7 +446,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \

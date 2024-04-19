@@ -24,7 +24,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
 #endif
 
@@ -57,8 +57,8 @@ class CommContextManager {
 
   CommContext* Get(const std::string& unique_comm_key) const;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  int GetRingId(const ncclComm_t& comm) const;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+  int GetRingId(const mcclComm_t& comm) const;
 #endif
 
   bool Has(const std::string& unique_comm_key) const;
@@ -71,7 +71,7 @@ class CommContextManager {
 
   std::vector<int> GetGroupRanks(const std::string& pg_key) const;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,

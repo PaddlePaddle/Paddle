@@ -29,17 +29,17 @@ namespace dynload {
 
 #define RCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
-  __macro(ncclGetUniqueId);             \
+  __macro(mcclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
   __macro(ncclCommUserRank);            \
-  __macro(ncclAllReduce);               \
-  __macro(ncclBcast);                   \
-  __macro(ncclAllGather);               \
-  __macro(ncclGroupStart);              \
-  __macro(ncclGroupEnd);                \
+  __macro(mcclAllReduce);               \
+  __macro(mcclBcast);                   \
+  __macro(mcclAllGather);               \
+  __macro(mcclGroupStart);              \
+  __macro(mcclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
@@ -52,7 +52,7 @@ RCCL_RAND_ROUTINE_EACH_AFTER_2212(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
 #if NCCL_VERSION_CODE >= 2304
-#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(mcclGetVersion);
 RCCL_RAND_ROUTINE_EACH_AFTER_2304(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 

@@ -25,6 +25,8 @@
 #include "paddle/phi/kernels/funcs/cufft_util.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/hipfft_util.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/kernels/funcs/mufft_util.h"
 #endif
 
 namespace phi {

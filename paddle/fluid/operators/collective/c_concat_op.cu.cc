@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -38,7 +38,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
@@ -65,7 +65,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           rank,
                           nranks));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     phi::DenseTensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
@@ -130,10 +130,10 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         comm_ctx->AllGather(&temp_out, *x, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclAllGather(send_buff,
+            platform::dynload::mcclAllGather(send_buff,
                                              recv_buff,
                                              send_numel,
-                                             static_cast<ncclDataType_t>(dtype),
+                                             static_cast<mcclDataType_t>(dtype),
                                              comm->comm(),
                                              stream));
       }
@@ -175,8 +175,8 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           double,
                           int,
                           int64_t,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-#endif
+// #endif
                           plat::float16) {
 }

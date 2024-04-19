@@ -23,6 +23,9 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#endif
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
@@ -80,6 +83,11 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStream_t stream;
   hipStreamCreate(&stream);
   hipStreamSynchronize(stream);
+#endif
+#ifdef PADDLE_WITH_MUSA
+  musaStream_t stream;
+  musaStreamCreate(&stream);
+  musaStreamSynchronize(stream);
 #endif
   auto profiler_result = profiler->Stop();
   auto nodetree = profiler_result->GetNodeTrees();

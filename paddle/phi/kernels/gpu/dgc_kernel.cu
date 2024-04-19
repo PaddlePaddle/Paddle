@@ -183,7 +183,7 @@ void DGCKernel(const Context& dev_ctx,
 
   int buf_size = paddle::communication::dgc::get_buffer_size(k);
   phi::Allocator::AllocationPtr tmp_ious_data;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
     tmp_ious_data = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),

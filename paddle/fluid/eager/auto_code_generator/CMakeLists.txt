@@ -27,6 +27,10 @@ if(WITH_ROCM)
   target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
 endif()
 
+if(WITH_MUSA)
+  target_link_libraries(eager_generator ${MUSARTC_LIB})
+endif()
+
 if(WITH_CINN)
   target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
 endif()

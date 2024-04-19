@@ -28,6 +28,11 @@
 #ifdef PADDLE_WITH_CUDA
 #include <curand_kernel.h>
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#include <murand_kernel.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand_kernel.h>
 #endif
@@ -37,6 +42,13 @@ using COMPAT_RANDSTATEPHILOX4_32_10_T = curandStatePhilox4_32_10_t;
 #define COMPAT_RAND_INIT curand_init
 #define COMPAT_RAND_UNIFORM curand_uniform
 #define COMPAT_RAND_NORMAL curand_normal
+
+#elif defined(PADDLE_WITH_MUSA)
+using COMPAT_RANDSTATEPHILOX4_32_10_T = murandStatePhilox4_32_10_t;
+#define COMPAT_RAND_INIT murand_init
+#define COMPAT_RAND_UNIFORM murand_uniform
+#define COMPAT_RAND_NORMAL murand_normal
+
 #elif defined(PADDLE_WITH_HIP)
 using COMPAT_RANDSTATEPHILOX4_32_10_T = hiprandStatePhilox4_32_10_t;
 #define COMPAT_RAND_INIT hiprand_init

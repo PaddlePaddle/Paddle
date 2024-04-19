@@ -17,6 +17,11 @@ limitations under the License. */
 #if defined(PADDLE_WITH_RCCL)
 #include <rccl.h>
 #endif
+
+#if defined(PADDLE_WITH_MCCL)
+#include <mccl.h>
+#endif
+
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -24,12 +29,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -92,8 +97,8 @@ class CCommInitOp : public framework::OperatorBase {
 #endif
     } else {
 // TODO(wangxi): Put this in the unified header file
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      using UniqueId = ncclUniqueId;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+      using UniqueId = mcclUniqueId;
       using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
       using UniqueId = BKCLUniqueId;
@@ -109,7 +114,7 @@ class CCommInitOp : public framework::OperatorBase {
           platform::errors::PreconditionNotMet(
               "CCommInitOp can run on gpu or xpu place only."));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
@@ -145,7 +150,7 @@ class CCommInitOp : public framework::OperatorBase {
         return;
       }
 #endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
       VLOG(3) << "#### use old comm lab ####";
       UniqueId* comm_id = var->GetMutable<UniqueId>();

@@ -49,6 +49,8 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 
 #ifdef PADDLE_WITH_HIP
   hipMemset(p_output, 0, memset_bytes);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(p_output, 0, memset_bytes);
 #else
   cudaMemset(p_output, 0, memset_bytes);
 #endif

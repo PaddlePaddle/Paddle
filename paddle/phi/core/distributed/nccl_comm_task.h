@@ -21,6 +21,8 @@
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
+#elif defined(PADDLE_WITH_MCCL)
+#include "paddle/phi/backends/dynload/mccl.h"
 #else
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
@@ -42,7 +44,7 @@ class NCCLCommTask : public CommTask {
                int64_t numel = 0,
                bool sync_op = true,
                bool use_calc_stream = false,
-               ncclComm_t = nullptr,
+               mcclComm_t = nullptr,
                gpuStream_t = nullptr,
                CommType comm_type = CommType::UNKNOWN,
                int64_t timeout = DefaultTimeout);
@@ -71,6 +73,8 @@ class NCCLCommTask : public CommTask {
 
 #ifdef PADDLE_WITH_CUDA
   unsigned int cuda_event_flags_ = cudaEventDisableTiming;
+#elif defined(PADDLE_WITH_MUSA)
+  unsigned int musa_event_flags_ = musaEventDisableTiming;
 #else  // PADDLE_WITH_HIP
   unsigned int hip_event_flags_ = hipEventDisableTiming;
 #endif

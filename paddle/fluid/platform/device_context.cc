@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/generator.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -53,7 +53,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 template <typename DevCtx>
 typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
@@ -86,7 +86,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
   DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
   auto& instance = paddle::memory::allocation::AllocatorFacade::Instance();
   if (p.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ctx,
@@ -184,7 +184,7 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #endif
     } else if (place.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       EmplaceDeviceContext<phi::GPUContext>(
           place_to_device_context,
           place,
@@ -221,7 +221,7 @@ void EmplaceDeviceContexts(
           "option."));
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       EmplaceDeviceContext<CUDAPinnedDeviceContext>(
           place_to_device_context,
           place,

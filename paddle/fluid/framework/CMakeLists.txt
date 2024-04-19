@@ -213,6 +213,11 @@ elseif(WITH_ROCM)
     data_type_transform
     SRCS data_type_transform.cu
     DEPS tensor)
+elseif(WITH_MUSA)
+  musa_library(
+    data_type_transform
+    SRCS data_type_transform.cu
+    DEPS tensor)    
 elseif(WITH_XPU)
   cc_library(
     data_type_transform
@@ -461,7 +466,7 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(NOT WITH_ROCM)
+    if(WITH_GPU)
       add_custom_target(
         fleet_executor_proto_init ALL
         DEPENDS fleet_proto_init fleet_executor_desc_py_proto

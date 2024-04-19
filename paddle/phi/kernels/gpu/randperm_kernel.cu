@@ -13,12 +13,17 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/randperm_kernel.h"
-
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#include "cub/cub.cuh"
+#endif
 #ifdef __NVCC__
 #include <curand_kernel.h>
 
 #include "cub/cub.cuh"
 #endif
+
+
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 
@@ -71,11 +76,11 @@ __global__ void SwapRepeatKernel(keyT* key_out_data,
   curand_init(seed, idx, offset, &state);
   for (int i = repeat_size - 1; i > 0; i--) {
     uint32_t r = curand(&state) % (i + 1);
-#elif __HIPCC__
-  hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, offset, &state);
+#elif defined(__MUSACC__)
+  murandStatePhilox4_32_10_t state;
+  murand_init(seed, idx, offset, &state);
   for (int i = repeat_size - 1; i > 0; i--) {
-    uint32_t r = hiprand(&state) % (i + 1);
+    uint32_t r = murand(&state) % (i + 1);
 #endif
     if (r != i) {
       dataT tmp = out_data[idx + i];

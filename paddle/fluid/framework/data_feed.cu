@@ -2982,7 +2982,7 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
 }
 
 int multi_node_sync_sample(int flag,
-                           const ncclRedOp_t &op,
+                           const mcclRedOp_t &op,
                            const paddle::platform::Place &place,
                            const int gpu_id,
                            phi::DenseTensor *multi_node_sync_stat_ptr) {
@@ -2998,8 +2998,8 @@ int multi_node_sync_sample(int flag,
   int *stat_ptr = multi_node_sync_stat_ptr->data<int>();
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
   auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      &stat_ptr[flag], &stat_ptr[3], 1, ncclInt, op, comm->comm(), stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
+      &stat_ptr[flag], &stat_ptr[3], 1, mcclInt, op, comm->comm(), stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                              &stat_ptr[3],
                                              sizeof(int),
@@ -3011,7 +3011,7 @@ int multi_node_sync_sample(int flag,
 }
 
 int get_multi_node_global_flag(int local_flag,
-                               const ncclRedOp_t &op,
+                               const mcclRedOp_t &op,
                                const paddle::platform::Place &place,
                                const int gpu_id,
                                cudaStream_t stream) {
@@ -3025,10 +3025,10 @@ int get_multi_node_global_flag(int local_flag,
       send_buff_ptr, &local_flag, sizeof(int), cudaMemcpyHostToDevice, stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(&send_buff_ptr[0],
                                                               &send_buff_ptr[1],
                                                               1,
-                                                              ncclInt,
+                                                              mcclInt,
                                                               op,
                                                               comm->comm(),
                                                               stream));
@@ -3177,7 +3177,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     // to decide whether to continue sampling
     if (FLAGS_enable_graph_multi_node_sampling) {
       switch_command = multi_node_sync_sample(
-          switch_flag, ncclProd, place, conf.gpuid, multi_node_sync_stat_ptr);
+          switch_flag, mcclProd, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node sample sync"
               << " switch_flag:" << switch_flag << "," << switch_command;
       if (switch_command) {
@@ -3187,7 +3187,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
       }
 
       sample_command = multi_node_sync_sample(
-          sample_flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
+          sample_flag, mcclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node sample sync"
               << " sample_flag:" << sample_flag << "," << sample_command;
       if (sample_command == EVENT_FINISH_EPOCH) {
@@ -3280,7 +3280,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     if (FLAGS_enable_graph_multi_node_sampling) {
       int flag = *jump_rows_ptr > 0 ? 1 : 0;
       int command = multi_node_sync_sample(
-          flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
+          flag, mcclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
       VLOG(2) << "gpuid:" << conf.gpuid << " multi node step sync"
               << " step:" << step << " step_sample:" << flag << "," << command;
       if (command <= 0) {
@@ -3326,7 +3326,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         // Step synchronization for multi-step sampling in multi node
         int flag = sample_res.total_sample_size > 0 ? 1 : 0;
         int command = multi_node_sync_sample(
-            flag, ncclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
+            flag, mcclMax, place, conf.gpuid, multi_node_sync_stat_ptr);
         VLOG(2) << "gpuid:" << conf.gpuid << " multi node step sync"
                 << " step:" << step << " step_sample:" << flag << ","
                 << command;
@@ -3846,7 +3846,7 @@ void GraphDataGenerator::DoWalkandSage() {
     } else {
       if (conf_.sage_mode) {
         global_train_flag_ = get_multi_node_global_flag(
-            local_train_flag, ncclProd, place_, conf_.gpuid, sample_stream_);
+            local_train_flag, mcclProd, place_, conf_.gpuid, sample_stream_);
         VLOG(1) << "gpu_id: " << conf_.gpuid
                 << ", local_train_flag: " << local_train_flag
                 << ", global_train_flag: " << global_train_flag_;
@@ -4010,7 +4010,7 @@ void GraphDataGenerator::DoSageForTrain() {
       // check whether reach sage pass end
       if (conf_.is_multi_node) {
         int res = multi_node_sync_sample(sage_pass_end,
-                                         ncclProd,
+                                         mcclProd,
                                          place_,
                                          conf_.gpuid,
                                          &multi_node_sync_stat_);
@@ -4165,7 +4165,7 @@ void GraphDataGenerator::DoSageForInfer() {
       int local_pass_end = total_instance == 0;
       if (conf_.is_multi_node) {
         global_pass_end = get_multi_node_global_flag(
-            local_pass_end, ncclProd, place_, conf_.gpuid, sample_stream_);
+            local_pass_end, mcclProd, place_, conf_.gpuid, sample_stream_);
       } else {
         global_pass_end = local_pass_end;
       }
@@ -4261,11 +4261,11 @@ int dynamic_adjust_total_row_for_infer(int local_reach_end,
                   stream);
   cudaStreamSynchronize(stream);
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(&send_buff_ptr[0],
                                                               &send_buff_ptr[1],
                                                               1,
-                                                              ncclInt,
-                                                              ncclProd,
+                                                              mcclInt,
+                                                              mcclProd,
                                                               comm->comm(),
                                                               stream));
   int global_reach_end = 0;
@@ -4356,7 +4356,7 @@ bool FillInferBuf(
           global_infer_node_type_start[infer_cursor] + conf.buf_size >=
           device_key_size;
       int global_reach_end = get_multi_node_global_flag(
-          local_reach_end, ncclProd, place, conf.gpuid, stream);
+          local_reach_end, mcclProd, place, conf.gpuid, stream);
       int remain = device_key_size - global_infer_node_type_start[infer_cursor];
       if (global_reach_end) {
         *total_row_ptr = remain;
@@ -5005,11 +5005,11 @@ int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
   cudaStreamSynchronize(sample_stream_);
   auto comm =
       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(&send_buff_ptr[0],
                                                               &send_buff_ptr[1],
                                                               1,
-                                                              ncclInt,
-                                                              ncclMax,
+                                                              mcclInt,
+                                                              mcclMax,
                                                               comm->comm(),
                                                               sample_stream_));
   int thread_max_batch_num = 0;

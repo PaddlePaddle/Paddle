@@ -34,7 +34,7 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
 #if defined(PADDLE_WITH_DNNL)
         || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
         || arg_type == std::type_index(typeid(const GPUContext&))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         || arg_type == std::type_index(typeid(const XPUContext&))

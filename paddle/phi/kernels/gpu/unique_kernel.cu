@@ -136,7 +136,7 @@ UniqueFlattendCUDATensor(const Context& context,
                                                              context.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(context.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(context.stream());
+  const auto& exec_policy = thrust::musa::par.on(context.stream());
 #endif
 
   thrust::sequence(exec_policy, indices_data, indices_data + num_input);
@@ -172,6 +172,8 @@ UniqueFlattendCUDATensor(const Context& context,
                                 not_equal);
 #ifdef PADDLE_WITH_HIP
     hipMemset(inv_loc_data_ptr, 0, sizeof(IndexT));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemsetAsync(inv_loc_data_ptr, 0, sizeof(IndexT), context.stream());
 #else
     thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
     inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
@@ -269,7 +271,7 @@ UniqueFlattendCUDATensor(const Context& context,
                                                              context.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(context.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(context.stream());
+  const auto& exec_policy = thrust::musa::par.on(context.stream());
 #endif
   thrust::sequence(exec_policy, indices_data, indices_data + num_input);
   thrust::sort(exec_policy,
@@ -359,7 +361,7 @@ static void ComputeUniqueDims(const Context& context,
                                                              context.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(context.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(context.stream());
+  const auto& exec_policy = thrust::musa::par.on(context.stream());
 #endif
   // 1. inverse indices: 'inverse'
   inverse->Resize(common::make_ddim({row}));
@@ -465,7 +467,7 @@ static void UniqueDimsCUDATensor(const Context& context,
                                                              context.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(context.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(context.stream());
+  const auto& exec_policy = thrust::musa::par.on(context.stream());
 #endif
   thrust::sequence(exec_policy, sorted_indices_data, sorted_indices_data + row);
   thrust::sort(exec_policy,

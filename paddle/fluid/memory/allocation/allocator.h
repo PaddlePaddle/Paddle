@@ -26,9 +26,9 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-#ifdef PADDLE_WITH_NCCL
-#include <nccl.h>
-#include "paddle/fluid/platform/dynload/nccl.h"
+#ifdef PADDLE_WITH_MCCL
+#include <mccl.h>
+#include "paddle/fluid/platform/dynload/mccl.h"
 #endif
 
 PHI_DECLARE_string(allocator_strategy);
@@ -144,22 +144,22 @@ using DecoratedAllocationPtr =
 
 template <typename T>
 static T&& FillValue(T&& allocation) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MUSA)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
       if (FLAGS_alloc_fill_value >= 0) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
         if (platform::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
+          PADDLE_ENFORCE_GPU_SUCCESS(musaMemset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
         } else {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
       }
     }
   }

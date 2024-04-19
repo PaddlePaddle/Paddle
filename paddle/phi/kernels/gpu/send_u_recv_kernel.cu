@@ -124,6 +124,8 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemsetAsync(p_dst_count, 0, input_size * sizeof(int), ctx.stream());
 #else
     cudaMemsetAsync(p_dst_count, 0, input_size * sizeof(int), ctx.stream());
 #endif

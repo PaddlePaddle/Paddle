@@ -1,0 +1,13 @@
+diff --git a/unsupported/Eigen/CXX11/Tensor b/unsupported/Eigen/CXX11/Tensor
+index d73c6008d..73c02cc50 100644
+--- a/unsupported/Eigen/CXX11/Tensor
++++ b/unsupported/Eigen/CXX11/Tensor
+@@ -57,6 +57,8 @@
+   #include <iostream>
+   #if defined(EIGEN_USE_HIP)
+     #include <hip/hip_runtime.h>
++  #elif defined(EIGEN_USE_MUSA)
++    #include <musa_runtime.h>
+   #else
+     #include <cuda_runtime.h>
+   #endif

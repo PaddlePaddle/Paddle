@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #endif
 
@@ -234,7 +234,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::vector<HookFunc> output_hookfuncs_;
   std::vector<HookFunc> input_hookfuncs_;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
 #endif
   size_t last_calculate_instr_id_;

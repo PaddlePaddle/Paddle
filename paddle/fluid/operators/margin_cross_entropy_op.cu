@@ -16,6 +16,8 @@
 #ifdef PADDLE_WITH_HIP
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
 #include <cub/cub.cuh>
 #endif
@@ -36,7 +38,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -72,7 +74,7 @@ void GetClassInterval(const gpuStream_t& stream,
     return;
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   DenseTensor num_classes_per_device;
   phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
@@ -123,15 +125,15 @@ void GetClassInterval(const gpuStream_t& stream,
     if (comm_ctx) {
       comm_ctx->AllReduce(&num_classes_per_device,
                           num_classes_per_device,
-                          ncclSum,
+                          mcclSum,
                           calcu_stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclAllReduce(
           num_classes_per_device_ptr,
           num_classes_per_device_ptr,
           num_classes_per_device.numel(),
           phi::ToNCCLDataType(num_classes_per_device.dtype()),
-          ncclSum,
+          mcclSum,
           comm->comm(),
           calcu_stream));
     }
@@ -270,7 +272,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                               DenseTensor* loss) {
   const auto& place = dev_ctx.GetPlace();  // old code
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   paddle::platform::NCCLComm* comm = nullptr;
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
@@ -405,7 +407,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
           phi::kps::IdentityFunctor<T>(),
           {1});
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;
@@ -419,14 +421,14 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       task->Wait();
     } else {
       if (comm_ctx) {
-        comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
+        comm_ctx->AllReduce(&logits_max, logits_max, mcclMax, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclAllReduce(logits_max_buff,
+            phi::dynload::mcclAllReduce(logits_max_buff,
                                         logits_max_buff,
                                         logits_max.numel(),
                                         phi::ToNCCLDataType(logits_max.dtype()),
-                                        ncclMax,
+                                        mcclMax,
                                         comm->comm(),
                                         stream));
       }
@@ -450,7 +452,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       phi::kps::ExpFunctor<T>(),
       {1});
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;
@@ -464,14 +466,14 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       task->Wait();
     } else {
       if (comm_ctx) {
-        comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
+        comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, mcclSum, stream);
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclAllReduce(
             sum_exp_logits_buff,
             sum_exp_logits_buff,
             sum_exp_logits.numel(),
             phi::ToNCCLDataType(sum_exp_logits.dtype()),
-            ncclSum,
+            mcclSum,
             comm->comm(),
             stream));
       }
@@ -512,7 +514,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                                                    class_interval.data<int>());
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;
@@ -526,14 +528,14 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       task->Wait();
     } else {
       if (comm_ctx) {
-        comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
+        comm_ctx->AllReduce(loss, *loss, mcclSum, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclAllReduce(loss_ptr,
+            phi::dynload::mcclAllReduce(loss_ptr,
                                         loss_ptr,
                                         loss->numel(),
                                         phi::ToNCCLDataType(loss->dtype()),
-                                        ncclSum,
+                                        mcclSum,
                                         comm->comm(),
                                         stream));
       }

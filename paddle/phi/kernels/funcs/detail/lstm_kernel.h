@@ -59,7 +59,7 @@ class lstm {
     *state_atv = activation(*state, active_state);
     *output = (*value_og) * (*state_atv);
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM FWD
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group LSTM FWD
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else
@@ -163,7 +163,7 @@ class lstm {
     *checkFGrad = (*grad_fg) * (*prev_state);
     *checkOGrad = (*grad_og) * (*state);
   }
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM BWD
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group LSTM BWD
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else

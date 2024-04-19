@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -28,7 +28,7 @@ void ReduceScatterKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int nranks,
                          DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   gpuStream_t stream = dev_ctx.stream();
   auto comm_context =
       static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
@@ -50,7 +50,7 @@ void ReduceScatterKernel(const Context& dev_ctx,
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  comm_context->ReduceScatter(out, x, ncclSum, stream);
+  comm_context->ReduceScatter(out, x, mcclSum, stream);
 #else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));

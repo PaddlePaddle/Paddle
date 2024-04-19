@@ -18,6 +18,12 @@
 #include <cuda.h>
 #include <curand_kernel.h>
 #endif
+
+#ifdef PADDLE_WITH_CUDA
+#include <muda.h>
+#include <murand_kernel.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
@@ -94,7 +100,7 @@ __device__ __forceinline__ T warp_shfl_xor_upper_tri(T value,
                                                      int laneMask,
                                                      int width,
                                                      unsigned int mask = MASK) {
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(__MUSACC__)
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else
   return __shfl_xor(value, laneMask, width);

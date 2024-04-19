@@ -166,8 +166,8 @@ class HeterComm {
                         size_t len,
                         Sgd& sgd);  // NOLINT
 
-  void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
-                              const std::vector<ncclComm_t>& inter_comms,
+  void set_nccl_comm_and_size(const std::vector<mcclComm_t>& inner_comms,
+                              const std::vector<mcclComm_t>& inter_comms,
                               int comm_size,
                               int rank_id) {
     nccl_inner_comms_ = inner_comms;
@@ -791,8 +791,8 @@ class HeterComm {
 
 #if defined(PADDLE_WITH_CUDA)
   GpuRDMAChecker* rdma_checker_ = nullptr;
-  std::vector<ncclComm_t> nccl_inner_comms_;
-  std::vector<ncclComm_t> nccl_inter_comms_;
+  std::vector<mcclComm_t> nccl_inner_comms_;
+  std::vector<mcclComm_t> nccl_inter_comms_;
   int multi_mf_dim_{8};
   int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;

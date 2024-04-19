@@ -23,7 +23,7 @@
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 class NCCLCommImpl : public NCCLComm {
  public:
   void set_ring_id(int ring_id) { ring_id_ = ring_id; }
@@ -37,8 +37,8 @@ class NCCLCommImpl : public NCCLComm {
 
   int device_id() const override { return dev_ctx_->GetPlace().device; }
 
-  void set_comm(ncclComm_t comm) { comm_ = comm; }
-  ncclComm_t comm() const override { return comm_; }
+  void set_comm(mcclComm_t  comm) { comm_ = comm; }
+  mcclComm_t  comm() const override { return comm_; }
 
   gpuStream_t stream() const override { return dev_ctx_->stream(); }
 
@@ -64,7 +64,7 @@ class NCCLCommImpl : public NCCLComm {
   int ring_id_;
   int nranks_;
   int rank_;
-  ncclComm_t comm_;
+  mcclComm_t comm_;
   std::unique_ptr<phi::GPUContext> dev_ctx_;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
@@ -80,7 +80,7 @@ NCCLCommContext& NCCLCommContext::Instance() {
 }
 
 NCCLComm* NCCLCommContext::CreateComm(
-    ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
+    mcclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id,
                           platform::errors::InvalidArgument(
                               "The nccl unique id should not be null."));
@@ -106,10 +106,10 @@ NCCLComm* NCCLCommContext::CreateComm(
       platform::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
-  ncclComm_t comm = nullptr;
+  mcclComm_t  comm = nullptr;
   SetDeviceId(dev_id);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
+      platform::dynload::mcclCommInitRank(&comm, nranks, *nccl_id, rank));
 
   auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
 
@@ -133,8 +133,8 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
                                         dev_ids.size()));
 
   const int kDevices = dev_ids.size();
-  ncclComm_t comms[kDevices];
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
+  mcclComm_t comms[kDevices];
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclCommInitAll(
       comms, dev_ids.size(), dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
@@ -156,7 +156,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
 void NCCLCommContext::CreateNCCLCommMultiTrainer(
     const std::vector<int>& dev_ids,
-    ncclUniqueId* nccl_id,
+    mcclUniqueId* nccl_id,
     int ntrainers,
     int train_id,
     int ring_id) {
@@ -169,20 +169,22 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
-  ncclComm_t comms[kDevices];
+  mcclComm_t comms[kDevices];
   {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::mcclGroupStart());
     for (int i = 0; i < kDevices; i++) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaSetDevice(i)); 
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(i));
 #endif
-      platform::dynload::ncclCommInitRank(
+      platform::dynload::mcclCommInitRank(
           comms + i, kDevices * ntrainers, *nccl_id, train_id * kDevices + i);
       VLOG(1) << "ncclCommInitRank: " << i;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::mcclGroupEnd());
     VLOG(1) << "nccl group end seccessss";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
@@ -208,7 +210,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 }
 
 NCCLComm* NCCLCommContext::AssignNCCLComm(
-    ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
+    mcclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<phi::GPUContext> dev_ctx(
       new phi::GPUContext(CUDAPlace(dev_id)));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()

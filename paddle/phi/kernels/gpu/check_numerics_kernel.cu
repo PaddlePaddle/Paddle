@@ -399,6 +399,12 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
                                                 ctx.stream()));
+#elif defined(__MUSACC__)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(gpu_str_ptr,
+                                                iter->first.c_str(),
+                                                op_var.length() + 1,
+                                                musaMemcpyHostToDevice,
+                                                ctx.stream()));                                                
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),

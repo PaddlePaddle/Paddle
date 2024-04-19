@@ -64,7 +64,7 @@ struct GeluGradFunctor {
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA) &&                       \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
       auto x_data = x.data();
       auto dx_data = dx.data();
       auto dout_data = dout.data();

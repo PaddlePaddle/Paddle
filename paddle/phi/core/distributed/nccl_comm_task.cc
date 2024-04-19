@@ -33,7 +33,7 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            int64_t numel,
                            bool sync_op,
                            bool use_calc_stream,
-                           ncclComm_t nccl_comm,
+                           mcclComm_t nccl_comm,
                            gpuStream_t stream,
                            CommType comm_type,
                            int64_t timeout)
@@ -62,6 +62,8 @@ void NCCLCommTask::StartRecord() {
   if (!start_event_created_) {
 #ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&nccl_start_event_, cuda_event_flags_));
+#elif defined(PADDLE_WITH_MUSA)
+    MUSA_CHECK(musaEventCreateWithFlags(&nccl_start_event_, musa_event_flags_));
 #else  // PADDLE_WITH_HIP
     HIP_CHECK(hipEventCreateWithFlags(&nccl_start_event_, hip_event_flags_));
 #endif
@@ -69,6 +71,8 @@ void NCCLCommTask::StartRecord() {
   }
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_start_event_, nccl_stream_));
+#elif defined(PADDLE_WITH_MUSA)
+  MUSA_CHECK(musaEventRecord(nccl_start_event_, nccl_stream_));
 #else  // PADDLE_WITH_HIP
   HIP_CHECK(hipEventRecord(nccl_start_event_, nccl_stream_));
 #endif
@@ -78,6 +82,8 @@ void NCCLCommTask::EndRecord() {
   if (!end_event_created_) {
 #ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&nccl_end_event_, cuda_event_flags_));
+#elif defined(PADDLE_WITH_MUSA)
+    MUSA_CHECK(musaEventCreateWithFlags(&nccl_end_event_, musa_event_flags_));
 #else  // PADDLE_WITH_HIP
     HIP_CHECK(hipEventCreateWithFlags(&nccl_end_event_, hip_event_flags_));
 #endif
@@ -85,6 +91,8 @@ void NCCLCommTask::EndRecord() {
   }
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_end_event_, nccl_stream_));
+#elif defined(PADDLE_WITH_MUSA)
+  MUSA_CHECK(musaEventRecord(nccl_end_event_, nccl_stream_));
 #else  // PADDLE_WITH_HIP
   HIP_CHECK(hipEventRecord(nccl_end_event_, nccl_stream_));
 #endif
@@ -100,6 +108,19 @@ void NCCLCommTask::ClearRecord() {
   if (end_event_created_) {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     CUDA_CHECK(cudaEventDestroy(nccl_end_event_));
+    end_event_created_ = false;
+  }
+}
+#elif defined(PADDLE_WITH_MUSA)
+void NCCLCommTask::ClearRecord() {
+  if (start_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    MUSA_CHECK(musaEventDestroy(nccl_start_event_));
+    start_event_created_ = false;
+  }
+  if (end_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    MUSA_CHECK(musaEventDestroy(nccl_end_event_));
     end_event_created_ = false;
   }
 }
@@ -129,6 +150,16 @@ bool NCCLCommTask::CudaEventQuery(gpuEvent_t event) {
     // ignore and clear the error if not ready
     CUDA_CHECK(cudaGetLastError());
   }
+#elif defined(PADDLE_WITH_MUSA)
+  musaError_t ret = musaEventQuery(event);
+  if (ret == musaSuccess) {
+    return true;
+  } else if (ret != musaErrorNotReady) {
+    MUSA_CHECK(ret);
+  } else {
+    // ignore and clear the error if not ready
+    MUSA_CHECK(musaGetLastError());
+  }  
 #else  // PADDLE_WITH_HIP
   hipError_t ret = hipEventQuery(event);
   if (ret == hipSuccess) {
@@ -143,7 +174,7 @@ bool NCCLCommTask::CudaEventQuery(gpuEvent_t event) {
   return false;
 }
 
-std::string GetNCCLErrorDetail(ncclResult_t result) {
+std::string GetNCCLErrorDetail(mcclResult_t result) {
   std::string detail;
   std::string last_error;
 #ifdef ENABLE_NCCL_GET_LAST_ERROR
@@ -151,10 +182,10 @@ std::string GetNCCLErrorDetail(ncclResult_t result) {
       ", Last error: " + std::string(phi::dynload::ncclGetLastError(NULL));
 #endif
   switch (result) {
-    case ncclUnhandledCudaError:
+    case mcclUnhandledCudaError:
       detail = "ncclUnhandledCudaError: Call to CUDA function failed.";
       break;
-    case ncclSystemError:
+    case mcclSystemError:
       detail =
           "ncclSystemError: System call (e.g. socket, malloc) or external "
           "library call failed or device error. ";
@@ -164,13 +195,13 @@ std::string GetNCCLErrorDetail(ncclResult_t result) {
       detail += "It can be also caused by unexpected exit of a remote peer.";
 #endif
       break;
-    case ncclInternalError:
+    case mcclInternalError:
       detail = "ncclInternalError: Internal check failed.";
       break;
-    case ncclInvalidArgument:
+    case mcclInvalidArgument:
       detail = "ncclInvalidArgument: Invalid value for an argument.";
       break;
-    case ncclInvalidUsage:
+    case mcclInvalidUsage:
       detail =
           "ncclInvalidUsage: This usually reflects invalid usage of NCCL "
           "library.";
@@ -194,10 +225,10 @@ std::string NCCLCommTask::GetCommErrors() {
     return comm_error_;
   }
 
-  ncclResult_t nccl_async_error;
-  NCCL_CHECK(
-      phi::dynload::ncclCommGetAsyncError(nccl_comm_, &nccl_async_error));
-  if (nccl_async_error != ncclSuccess) {
+  mcclResult_t nccl_async_error;
+  MCCL_CHECK(
+      phi::dynload::mcclCommGetAsyncError(nccl_comm_, &nccl_async_error));
+  if (nccl_async_error != mcclSuccess) {
     comm_error_ =
         "\n\t Find nccl comm error: " + GetNCCLErrorDetail(nccl_async_error);
   }
@@ -241,7 +272,7 @@ void NCCLCommTask::AbortComm() {
   if (aborted_) {
     return;
   }
-  NCCL_CHECK(phi::dynload::ncclCommAbort(nccl_comm_));
+  MCCL_CHECK(phi::dynload::mcclCommAbort(nccl_comm_));
 
   aborted_ = true;
   nccl_comm_ = nullptr;

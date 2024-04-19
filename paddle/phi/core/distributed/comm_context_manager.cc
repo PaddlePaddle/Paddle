@@ -29,7 +29,7 @@
 #include "paddle/phi/core/distributed/store/gloo_store.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -49,13 +49,13 @@ namespace distributed {
 int CommContextManager::device_id = -1;
 
 void CommContextManager::SetDeviceId(int dev_id) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   phi::backends::gpu::SetDeviceId(dev_id);
   CommContextManager::device_id = dev_id;
 #endif
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
@@ -67,16 +67,16 @@ void CommContextManager::CreateNCCLCommContext(
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
-  ncclUniqueId nccl_id;
+  mcclUniqueId nccl_id;
   if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclGetUniqueId(&nccl_id));
   }
 
   std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
   if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
-        reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
+        reinterpret_cast<uint8_t*>(&nccl_id) + MCCL_UNIQUE_ID_BYTES);
     store->set(unique_key, nccl_id_wrapper);
   } else {
     const auto& nccl_id_wrapper = store->get(unique_key);
@@ -231,8 +231,8 @@ CommContext* CommContextManager::Get(const std::string& unique_comm_key) const {
   return id_to_comm_context_.at(unique_comm_key).get();
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-int CommContextManager::GetRingId(const ncclComm_t& comm) const {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+int CommContextManager::GetRingId(const mcclComm_t& comm) const {
   for (auto iter = id_to_comm_context_.begin();
        iter != id_to_comm_context_.end();
        ++iter) {

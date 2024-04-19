@@ -74,6 +74,7 @@ env_dict={
     'APPLE':'@APPLE@',
     'externalError_INCLUDE_DIR':'@externalError_INCLUDE_DIR@',
     'WITH_ROCM':'@WITH_ROCM@',
+    'WITH_MUSA':'@WITH_MUSA@',
     'ORIGIN':'@ORIGIN@',
     'WIN32':'@WIN32@',
     'JIT_RELEASE_WHL':'@JIT_RELEASE_WHL@',

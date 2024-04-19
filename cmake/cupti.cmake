@@ -1,4 +1,4 @@
-if(NOT WITH_GPU AND NOT WITH_ROCM)
+if(NOT WITH_GPU AND NOT WITH_ROCM AND NOT WITH_MUSA)
   return()
 endif()
 
@@ -6,6 +6,10 @@ if(WITH_ROCM)
   set(CUPTI_ROOT
       "${ROCM_PATH}/cuda/extras/CUPTI"
       CACHE PATH "CUPTI ROOT")
+elseif(WITH_MUSA)
+  set(CUPTI_ROOT
+      "/usr/local/musa"
+      CACHE PATH "CUPTI ROOT")      
 else()
   set(CUPTI_ROOT
       "/usr"

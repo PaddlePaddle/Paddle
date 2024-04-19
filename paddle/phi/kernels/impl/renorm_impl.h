@@ -17,11 +17,11 @@
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #else
 #include <hipcub/hipcub.hpp>
@@ -150,7 +150,7 @@ void RenormGradFunc(const phi::CPUContext& ctx UNUSED,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
   return pow(base, exponent);
 }

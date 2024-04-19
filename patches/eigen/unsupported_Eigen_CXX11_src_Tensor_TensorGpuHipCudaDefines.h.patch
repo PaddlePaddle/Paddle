@@ -1,0 +1,40 @@
+diff --git a/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h b/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h
+index cb53ce298..19dc119a9 100644
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h
+@@ -52,6 +52,35 @@
+ #define gpuDeviceSynchronize hipDeviceSynchronize
+ #define gpuMemcpy hipMemcpy
+ 
++#elif defined(EIGEN_USE_MUSA)
++#define gpuStream_t musaStream_t
++#define gpuDeviceProp_t musaDeviceProp
++#define gpuError_t musaError_t
++#define gpuSuccess musaSuccess
++#define gpuErrorNotReady musaErrorNotReady
++#define gpuGetDeviceCount musaGetDeviceCount
++#define gpuGetLastError musaGetLastError
++#define gpuPeekAtLastError musaPeekAtLastError
++#define gpuGetErrorName musaGetErrorName
++#define gpuGetErrorString musaGetErrorString
++#define gpuGetDeviceProperties musaGetDeviceProperties
++#define gpuStreamDefault musaStreamDefault
++#define gpuGetDevice musaGetDevice
++#define gpuSetDevice musaSetDevice
++#define gpuMalloc musaMalloc
++#define gpuFree musaFree
++#define gpuMemsetAsync musaMemsetAsync
++#define gpuMemcpyAsync musaMemcpyAsync
++#define gpuMemcpyDeviceToDevice musaMemcpyDeviceToDevice
++#define gpuMemcpyDeviceToHost musaMemcpyDeviceToHost
++#define gpuMemcpyHostToDevice musaMemcpyHostToDevice
++#define gpuStreamQuery musaStreamQuery
++#define gpuSharedMemConfig musaSharedMemConfig
++#define gpuDeviceSetSharedMemConfig musaDeviceSetSharedMemConfig
++#define gpuStreamSynchronize musaStreamSynchronize
++#define gpuDeviceSynchronize musaDeviceSynchronize
++#define gpuMemcpy musaMemcpy
++
+ #else
+ 
+ #define gpuStream_t cudaStream_t

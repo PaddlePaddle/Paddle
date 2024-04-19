@@ -37,7 +37,7 @@ def start_local_trainers(
     )
 
     current_env = copy.copy(os.environ.copy())
-    # paddle broadcast ncclUniqueId use socket, and
+    # paddle broadcast mcclUniqueId use socket, and
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.

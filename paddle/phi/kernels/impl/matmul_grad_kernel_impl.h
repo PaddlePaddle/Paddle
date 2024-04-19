@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
@@ -54,7 +54,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
 template <typename T>
 struct ReduceSumForMatmulGrad<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,

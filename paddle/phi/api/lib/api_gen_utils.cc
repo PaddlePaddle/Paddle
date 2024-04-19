@@ -385,7 +385,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
       delete from;
       return;
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     if (gpu_ctx) {
       PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
@@ -437,7 +437,7 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                          }));
       return;
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     if (gpu_ctx) {
       PD_VISIT_ALL_TYPES(to->dtype(), "StridedCopyKernel", ([&] {
@@ -489,7 +489,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
         delete from[i];
         continue;
       }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
       if (gpu_ctx) {
         PD_VISIT_ALL_TYPES(to[i]->dtype(), "StridedCopyKernel", ([&] {

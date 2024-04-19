@@ -40,7 +40,7 @@ void SerializationLogger::OpenFile() {
   node_trees_proto_ = new NodeTreesProto();
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void SerializationLogger::LogDeviceProperty(
     const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
   for (const auto& item : device_property_map) {

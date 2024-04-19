@@ -21,15 +21,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace phi {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
-    NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_MCCL)|| (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL))
 template <typename Context>
 void send_shape_info(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -42,7 +41,7 @@ void send_shape_info(const Context& dev_ctx,
                         "NCCLComm and Stream should be provided if use NCCL "
                         "to send the shape info."));
   paddle::DataType shape_dtype = paddle::DataType::INT32;
-  ncclDataType_t nccl_dtype = ncclInt;
+  mcclDataType_t nccl_dtype = mcclInt;
   auto dims = x.dims();
   int shape_size = dims.size();
 
@@ -124,8 +123,8 @@ void PSendKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int peer,
                  bool dynamic_shape) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_RCCL)
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
   if (dynamic_shape) {
@@ -144,8 +143,8 @@ template <typename T, typename Context>
 void PSendArrayKernel(const Context& dev_ctx,
                       const TensorArray& x_array,
                       int peer) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_RCCL) 
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
@@ -153,7 +152,7 @@ void PSendArrayKernel(const Context& dev_ctx,
     VLOG(3) << "LodTensorArray: idx(" << idx << ")";
     auto x = x_array.at(idx);
     int numel = x.numel();
-    ncclDataType_t dtype = ToNCCLDataType(x.type());
+    mcclDataType_t dtype = ToNCCLDataType(x.type());
     comm_ctx->Send(x, x.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " send "
             << common::product(x.dims()) << " to " << peer;

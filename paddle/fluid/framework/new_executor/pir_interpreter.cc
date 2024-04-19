@@ -64,7 +64,7 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -857,7 +857,7 @@ void PirInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
 }
 
 void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
@@ -876,7 +876,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       reinterpret_cast<const phi::GPUContext&>(instr->DeviceContext()).stream();
 // TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
 // To support all the operators for communicating in the future.
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (instr->Name() == "pd_op.send_v2") {
     ::pir::Operation* op = instr->Operation();
     if (op->HasAttribute("use_calc_stream") &&
@@ -998,7 +998,7 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   RecordStreamForGC(instr);
 #endif
 
@@ -1619,7 +1619,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
       if (FLAGS_benchmark) {
         instr_node->DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
         PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
         VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
                 << "): context wait and get last error";

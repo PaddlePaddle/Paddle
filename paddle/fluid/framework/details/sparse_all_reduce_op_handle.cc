@@ -196,7 +196,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto comm = nccl_ctx.comm_;
 
     int encode_size = 2 * k * sizeof(int);
-    // dgc use ncclAllGather to get all the encoded data
+    // dgc use mcclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
     void *gather_buff = gathers[i]->data();
@@ -207,10 +207,10 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
 
     all_gather_calls.emplace_back([=] {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(in_tensor_buf,
+          platform::dynload::mcclAllGather(in_tensor_buf,
                                            gather_buff,
                                            2 * k,
-                                           static_cast<ncclDataType_t>(dtype),
+                                           static_cast<mcclDataType_t>(dtype),
                                            comm,
                                            stream));
     });

@@ -23,6 +23,10 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#endif
+
 #include <string>
 
 #include "paddle/fluid/platform/cuda_device_guard.h"

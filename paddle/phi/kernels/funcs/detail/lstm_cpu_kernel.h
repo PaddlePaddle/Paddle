@@ -36,7 +36,7 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
-#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM CPU
+#if !defined(__NVCC__) && !defined(__HIPCC___)  && !defined(__MUSACC___)  // @{ Group LSTM CPU
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op,

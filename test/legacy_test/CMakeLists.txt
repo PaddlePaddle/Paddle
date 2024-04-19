@@ -213,7 +213,7 @@ elseif(WITH_GPU)
   endif()
 endif()
 
-if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
+if((NOT WITH_NCCL) AND (NOT WITH_RCCL) AND (NOT WITH_MCCL))
   list(REMOVE_ITEM TEST_OPS test_imperative_group)
 endif()
 

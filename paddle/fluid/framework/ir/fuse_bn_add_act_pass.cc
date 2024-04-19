@@ -25,8 +25,8 @@ namespace framework {
 namespace ir {
 
 void FuseBatchNormAddActPass::ApplyImpl(ir::Graph *graph) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 4, 1)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || CUDNN_VERSION_MIN(7, 4, 1)
   // forward
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAddAct(graph, act_types);

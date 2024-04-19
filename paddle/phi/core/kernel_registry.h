@@ -1199,7 +1199,7 @@ struct KernelRegistrar {
                                             meta_kernel_fn,        \
                                             BACKEND_LIST_EXCEPT_CUSTOM)
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #define _DEVICE GPU,
 #elif defined(PADDLE_WITH_XPU)
 #define _DEVICE XPU,

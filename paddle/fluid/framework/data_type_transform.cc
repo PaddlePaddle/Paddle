@@ -101,7 +101,7 @@ struct CastDataType {
             in_end,
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     } else if (platform::is_gpu_place(in_.place())) {
       phi::Transform<phi::GPUContext> trans;
       auto* context = static_cast<const phi::GPUContext*>(ctx_);

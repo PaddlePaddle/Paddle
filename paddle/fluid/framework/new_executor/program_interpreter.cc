@@ -32,7 +32,7 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -92,7 +92,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   PrepareForCUDAGraphCapture();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
 #endif
 }
@@ -659,7 +659,7 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time = 0, end_time = 0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   start_time = calculate_stream_timer_->StartTime();
   end_time = calculate_stream_timer_->EndTime();
 #endif
@@ -701,7 +701,7 @@ void ProgramInterpreter::Convert(
 #endif
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     vec_instruction_.back().UpdataRecordStreamForGcInfo();
 #endif
   }
@@ -973,7 +973,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
         1,
         platform::EventRole::kInnerOp);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     if (is_in_op_profiling_mode_) {
       platform::GpuDeviceSync();
     }
@@ -1009,7 +1009,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       OperatorDistAttr* op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
       platform::Timer op_timer;
       op_timer.Start();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
       platform::GpuDeviceSync();
 #endif
       op_timer.Pause();
@@ -1040,7 +1040,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     VLOG(4) << "Operator(" << op->Type()  // NOLINT
             << "): context wait and get last error";
@@ -1105,7 +1105,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     if (enable_job_schedule_profiler_) {
       if (!calculate_stream_timer_->IsStarted() && op->Type() != "feed" &&
           !interpreter::IsCommunicationOp(instr_node)) {
@@ -1124,7 +1124,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     }
 
     instr_node.RecordEvent(place_);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     if (enable_job_schedule_profiler_) {
       if (instr_node.Id() == last_calculate_instr_id_ &&
           calculate_stream_timer_->IsStarted()) {
@@ -1320,7 +1320,7 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 }
 
 void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
@@ -1428,7 +1428,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 void ProgramInterpreter::CheckGC(const Instruction& instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (instr.need_record_stream_for_gc_) {
     RecordStreamForGC(instr);
   }

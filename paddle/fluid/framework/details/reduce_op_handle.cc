@@ -182,7 +182,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
@@ -210,12 +210,12 @@ void ReduceOpHandle::RunImpl() {
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
-              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
+              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclReduce(
                   buffer,
                   recvbuffer,
                   numel,
-                  static_cast<ncclDataType_t>(type),
-                  ncclSum,
+                  static_cast<mcclDataType_t>(type),
+                  mcclSum,
                   root_id,
                   nccl_ctx.comm_,
                   nccl_ctx.stream()));

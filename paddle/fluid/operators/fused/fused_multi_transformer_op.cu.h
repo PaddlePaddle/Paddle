@@ -19,7 +19,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_fp16.h>
+#include <musa_fp16.h>
 #include <float.h>
 
 #include <cub/cub.cuh>
@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -61,7 +61,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int count,
                       const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
 
   if (map->has(ring_id)) {
@@ -117,10 +117,10 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
       VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
     }
     if (comm_ctx) {
-      comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+      comm_ctx->AllReduce(&tensor, tensor, mcclSum, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
+          sendbuff, recvbuff, count, dtype, mcclSum, comm->comm(), stream));
     }
   }
 #else

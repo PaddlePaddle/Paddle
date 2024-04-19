@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -29,7 +29,7 @@ template <typename T, typename DeviceContext>
 class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
@@ -50,11 +50,11 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       // NOTE(liyurui): This will be removed after moving this operator to phi.
       int numel = x->numel();
-      ncclDataType_t dtype =
+      mcclDataType_t dtype =
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (root == comm->rank()) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
             reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
             numel,
             dtype,
@@ -71,7 +71,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
               static_cast<phi::DenseTensor*>(out));
         }
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
             out->data<T>(), numel, dtype, root, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
                 << common::product(out->dims());
@@ -100,8 +100,8 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           int64_t,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-#endif
+// #endif
                           plat::float16) {
 }

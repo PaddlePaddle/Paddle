@@ -28,10 +28,10 @@
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 // In order to apply hierarchical communication with NCCL, we need
 // a communication ring contains NCCL communicators associated to a global
-// ncclUniqueId. E.g. for a hierarchical case,
+// mcclUniqueId. E.g. for a hierarchical case,
 //
 //    11 - 12   21 - 22
 //     |    |    |    |
@@ -55,7 +55,7 @@ class NCCLComm {
   virtual int nranks() const = 0;
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
-  virtual ncclComm_t comm() const = 0;
+  virtual mcclComm_t comm() const = 0;
   virtual gpuStream_t stream() const = 0;
   virtual gpuEvent_t compute_event() const = 0;
   virtual gpuEvent_t comm_event() const = 0;
@@ -69,12 +69,12 @@ class NCCLCommContext {
   static NCCLCommContext& Instance();
 
   NCCLComm* CreateComm(
-      ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id = 0);
+      mcclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id = 0);
 
   void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
   void CreateNCCLCommMultiTrainer(const std::vector<int>& dev_ids,
-                                  ncclUniqueId* nccl_id,
+                                  mcclUniqueId* nccl_id,
                                   int nranks,
                                   int rank,
                                   int ring_id);
@@ -82,7 +82,7 @@ class NCCLCommContext {
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
   NCCLComm* AssignNCCLComm(
-      ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
+      mcclComm_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   NCCLComm* Get(int ring_id) const {
@@ -99,7 +99,7 @@ class NCCLCommContext {
     return comm_map_.at(ring_id).begin()->second.get();
   }
 
-  int GetRingId(ncclComm_t comm) const {
+  int GetRingId(mcclComm_t comm) const {
     for (const auto& pair : comm_map_) {
       for (const auto& p : pair.second) {
         if (p.second.get()->comm() == comm) {

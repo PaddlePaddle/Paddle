@@ -48,7 +48,7 @@ PD_DECLARE_bool(benchmark);
 PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 PHI_DECLARE_bool(enable_pir_in_executor);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -121,7 +121,7 @@ class InterpreterBaseImpl {
 inline void SetDeviceId(const platform::Place& place) {
   // TODO(zhiqiu): reduce the cost
   if (platform::is_gpu_place(place)) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
     PADDLE_THROW(platform::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
         "reinstall Paddle with CUDA support.",

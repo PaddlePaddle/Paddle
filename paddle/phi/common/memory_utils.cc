@@ -69,7 +69,7 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
                                                               dev_id);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void GpuMemoryUsage(size_t* available, size_t* total) {
   return MemoryUtils::Instance().GpuMemoryUsage(available, total);
 }
@@ -90,8 +90,8 @@ void EmplaceDeviceContexts(
       stream_priority);
 }
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
 const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
   return MemoryUtils::Instance().GetAllocator(device_id, stream);
 }

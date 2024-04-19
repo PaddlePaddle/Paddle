@@ -89,7 +89,7 @@ __global__ void InplaceAddReluKernel(const int N, const T* bias, T* data) {
 
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     T temp;
-#if defined(__HIPCC__) || __CUDA_ARCH__ >= 350
+#if defined(__HIPCC__)  || defined(__MUSACC__) || __CUDA_ARCH__ >= 350
     temp = __ldg(data + offset + i) + __ldg(bias + i);
 #else
     temp = data[offset + i] + bias[i];
@@ -192,7 +192,7 @@ __global__ void InplaceAddReluKernel(const int N,
   int offset = blockIdx.x * N;
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     half temp;
-#if defined(__HIPCC__) || __CUDA_ARCH__ >= 350
+#if defined(__HIPCC__)  || defined(__MUSACC__) || __CUDA_ARCH__ >= 350
     temp = __hadd(__ldg(data + offset + i), __ldg(bias + i));
 #else
     temp = __hadd(data[offset + i], bias[i]);
@@ -373,7 +373,7 @@ template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 template <typename DeviceContext, typename T>
 void FCInt8Functor<DeviceContext, T>::operator()(
     const DeviceContext& context,

@@ -309,6 +309,20 @@ PD_REGISTER_KERNEL(coalesce_tensor,
 }
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_KERNEL(coalesce_tensor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CoalesceTensorKernel,
+                   phi::dtype::float16,
+                   int,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif
+
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(coalesce_tensor,
                    XPU,

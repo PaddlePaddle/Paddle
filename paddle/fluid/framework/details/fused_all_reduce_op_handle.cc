@@ -32,7 +32,7 @@ typedef std::vector<
     std::vector<std::pair<std::string, const phi::DenseTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
@@ -61,11 +61,13 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 #endif
 
 FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif
@@ -80,7 +82,7 @@ void FusedAllReduceOpHandle::RunImpl() {
       Name(), platform::TracerEventType::Communication, 1);
   VLOG(4) << this->DebugString();
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event && start_event_ == nullptr) {
     VLOG(10) << "FLAGS_allreduce_record_one_event=true";
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
@@ -103,6 +105,9 @@ void FusedAllReduceOpHandle::RunImpl() {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(event, hipEventDisableTiming));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaEventCreateWithFlags(event, musaEventDisableTiming));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(event, cudaEventDisableTiming));
@@ -126,6 +131,10 @@ void FusedAllReduceOpHandle::RunImpl() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(start_event_, compute_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(nccl_stream, start_event_, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(start_event_, compute_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaStreamWaitEvent(nccl_stream, start_event_, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event_, compute_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -185,12 +194,16 @@ void FusedAllReduceOpHandle::RunImpl() {
     FusedAllReduceFunc(in_var_handles, out_var_handles);
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamWaitEvent(compute_stream, end_event_, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(end_event_, nccl_stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaStreamWaitEvent(compute_stream, end_event_, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end_event_, nccl_stream));
     PADDLE_ENFORCE_GPU_SUCCESS(

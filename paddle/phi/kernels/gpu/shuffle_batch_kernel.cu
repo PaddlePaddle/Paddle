@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 
 #ifndef _MSC_VER
 #include <thrust/device_ptr.h>
@@ -77,7 +77,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
                                                              dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+  const auto& exec_policy = thrust::musa::par.on(dev_ctx.stream());
 #endif
   thrust::random::default_random_engine engine(seed_int);
   thrust::counting_iterator<int64_t> cnt_iter(0);

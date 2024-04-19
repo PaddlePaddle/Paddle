@@ -28,7 +28,7 @@ limitations under the License. */
 
 namespace phi {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 bool AllowTF32Cublas();
@@ -47,7 +47,7 @@ struct DefaultDeviceContextType<phi::CPUPlace> {
   using TYPE = phi::CPUContext;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 template <>
 struct DefaultDeviceContextType<phi::GPUPlace> {
   using TYPE = phi::GPUContext;

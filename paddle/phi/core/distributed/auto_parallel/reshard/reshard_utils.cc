@@ -101,7 +101,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
           store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
 #endif
     } else {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       if (phi::GPUContext::classof(&dev_ctx)) {
         CommContextManager::CreateNCCLCommContext(
             store, unique_comm_key, rank, world_size);
@@ -164,7 +164,7 @@ bool NeedComputationClipForPP(
 }
 
 Place GetDefaultPlace() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
   }

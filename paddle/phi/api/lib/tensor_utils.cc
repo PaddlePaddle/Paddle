@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #else
-#include <hip/hip_runtime.h>
+#include <musa_runtime.h>
 #endif
 #endif
 
@@ -33,26 +33,26 @@ namespace paddle {
 PD_REGISTER_API(from_blob)
 
 phi::Place GetPlaceFromPtr(void* data) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10000
-  cudaPointerAttributes attr;
-  cudaError_t status = cudaPointerGetAttributes(&attr, data);
-  if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+// #ifdef PADDLE_WITH_CUDA
+// #if CUDA_VERSION >= 10000
+  musaPointerAttributes attr;
+  musaError_t status = musaPointerGetAttributes(&attr, data);
+  if (status == musaSuccess && attr.type == musaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
-#else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
-                                 "supported when CUDA version >= 10.0."));
-#endif
-#else
-  hipPointerAttribute_t attr;
-  hipError_t status = hipPointerGetAttributes(&attr, data);
-  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
-    return phi::GPUPlace(attr.device);
-  }
-#endif
+// #else
+//   PADDLE_THROW(
+//       phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
+//                                  "supported when CUDA version >= 10.0."));
+// #endif
+// #else
+//   hipPointerAttribute_t attr;
+//   hipError_t status = hipPointerGetAttributes(&attr, data);
+//   if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
+//     return phi::GPUPlace(attr.device);
+//   }
+// #endif
 #endif
   return phi::CPUPlace();
 }

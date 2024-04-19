@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/utils.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -33,12 +33,12 @@ template <typename T, typename DeviceContext>
 class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int send_numel = x->numel();
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
@@ -114,7 +114,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       comm_ctx->GroupEnd();
       VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupStart());
       for (auto i = 0; i < nranks; ++i) {
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
             send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
@@ -122,7 +122,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
             recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
         offset += send_numel;
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupEnd());
       VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 #else

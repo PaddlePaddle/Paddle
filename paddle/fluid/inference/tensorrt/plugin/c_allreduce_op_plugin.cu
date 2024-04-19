@@ -19,7 +19,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/utils.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
@@ -30,13 +30,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 #if defined(PADDLE_WITH_NCCL)
-inline ncclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
+inline mcclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
   if (type == nvinfer1::DataType::kFLOAT) {
-    return ncclFloat;
+    return mcclFloat;
   } else if (type == nvinfer1::DataType::kHALF) {
-    return ncclFloat16;
+    return mcclFloat16;
   } else if (type == nvinfer1::DataType::kINT8) {
-    return ncclInt8;
+    return mcclInt8;
   } else if (type == nvinfer1::DataType::kINT32) {
     return ncclInt32;
   } else {
@@ -159,23 +159,23 @@ int CAllReducePluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
   void* sendbuff = const_cast<void*>(inputs[0]);
   void* recvbuff = outputs[0];
-  ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
-  ncclRedOp_t nccl_red_type = ncclSum;
+  mcclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
+  mcclRedOp_t nccl_red_type = mcclSum;
   switch (red_type_) {
     case kRedSum:
-      nccl_red_type = ncclSum;
+      nccl_red_type = mcclSum;
       break;
 
     case kRedMax:
-      nccl_red_type = ncclMax;
+      nccl_red_type = mcclMax;
       break;
 
     case kRedMin:
-      nccl_red_type = ncclMin;
+      nccl_red_type = mcclMin;
       break;
 
     case kRedProd:
-      nccl_red_type = ncclProd;
+      nccl_red_type = mcclProd;
       break;
 
     default:
@@ -202,9 +202,9 @@ int CAllReducePluginDynamic::enqueue(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
     auto stream = comm_ctx->GetStream();
-    ncclRedOp_t nccl_red_type = ncclSum;
+    mcclRedOp_t nccl_red_type = mcclSum;
     // comm_ctx->AllReduce(&inputs[0], inputs[0], nccl_red_type, stream);
-    phi::dynload::ncclAllReduce(sendbuff,
+    phi::dynload::mcclAllReduce(sendbuff,
                                 recvbuff,
                                 numel,
                                 dtype,
@@ -215,7 +215,7 @@ int CAllReducePluginDynamic::enqueue(
   } else {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
     cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(sendbuff,
                                                                 recvbuff,
                                                                 numel,
                                                                 dtype,

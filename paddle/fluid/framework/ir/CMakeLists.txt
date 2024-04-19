@@ -3,7 +3,7 @@ add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
 if(NOT APPLE
    AND NOT WIN32
-   AND (WITH_GPU OR WITH_ROCM))
+   AND (WITH_GPU OR WITH_ROCM OR WITH_MUSA))
   add_subdirectory(fusion_group)
 endif()
 
@@ -169,7 +169,7 @@ if(WITH_TENSORRT)
   pass_library(trt_remove_amp_strategy_op_pass inference)
 endif()
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   pass_library(cudnn_placement_pass base DEPS placement_pass_base)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -493,7 +493,7 @@ cc_test(
   SRCS relu6_fuse_pass_test.cc
   DEPS relu6_fuse_pass)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
     SRCS embedding_eltwise_layernorm_fuse_pass_tester.cc
@@ -543,7 +543,7 @@ if(WITH_MKLDNN)
       device_context
       phi
       common)
-  if(WITH_GPU OR WITH_ROCM)
+  if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()
   cc_test(

@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -306,7 +306,7 @@ class Instruction {
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
   // record stream for gc
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   bool need_record_stream_for_gc_ = false;
   gpuStream_t stream_{nullptr};
   void UpdataRecordStreamForGcInfo();
