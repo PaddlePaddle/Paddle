@@ -86,7 +86,19 @@ class ClipAndFakeQuantFunctor {
                   const DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  phi::DenseTensor *out);
+                  DenseTensor *out);
+};
+
+template <typename Context, typename T>
+struct FindMovingAverageAbsMaxFunctor {
+  void operator()(const Context &ctx,
+                  const DenseTensor &in_accum,
+                  const DenseTensor &in_state,
+                  const T *cur_scale,
+                  const float rate,
+                  DenseTensor *out_state,
+                  DenseTensor *out_accum,
+                  DenseTensor *out_scale);
 };
 
 }  // namespace funcs
