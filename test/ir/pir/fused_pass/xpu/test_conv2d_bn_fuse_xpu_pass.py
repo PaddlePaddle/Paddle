@@ -74,13 +74,7 @@ class TestConv2dBnPassXPUPattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_xpu():
             self.places.append(paddle.device.XPUPlace(0))
-            self.pass_attr_list = [
-                {
-                    'conv2d_bn_fuse_xpu_pass': {
-                        "xpu_device_id": self.places[0].get_device_id()
-                    }
-                }
-            ]
+            self.pass_attr_list = [{'conv2d_bn_xpu_fuse_pass': {}}]
             self.valid_op_map = {
                 "pd_op.conv2d_xpu": 1,
                 "pd_op.batch_norm": 0,

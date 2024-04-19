@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/pir/transforms/xpu/conv2d_bn_fuse_xpu_pass.h"
+#include "paddle/fluid/pir/transforms/xpu/conv2d_bn_xpu_fuse_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -167,7 +167,8 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
                {{"axis", res.VectorInt64Attr(std::vector<int64_t>{})},
                 {"keepdim", res.BoolAttr(false)}});
     res.Tensor("filter_max") = max_op1(res.Tensor("filter"));
-    const auto &expand = res.Op("pd_op.expand", {{"shape", expand_1_shape}});
+    const auto &expand =
+        res.Op(paddle::dialect::ExpandOp::name(), {{"shape", expand_1_shape}});
     res.Tensor("res_filter_max") = expand(res.Tensor("filter_max"));
 
     const auto &conv2d_xpu =
@@ -202,12 +203,11 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
 class Conv2dBnFuseXpuPass : public pir::PatternRewritePass {
  public:
   Conv2dBnFuseXpuPass()
-      : pir::PatternRewritePass("conv2d_bn_fuse_xpu_pass", 2) {}
+      : pir::PatternRewritePass("conv2d_bn_xpu_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    auto xpu_device_id = Has("xpu_device_id") ? Get<int>("xpu_device_id") : 0;
-    auto max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(xpu_device_id);
+    auto max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     bool bn_inplace = true;
     ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(
         context, max_ptr_size, bn_inplace));
@@ -226,4 +226,4 @@ std::unique_ptr<Pass> CreateConv2dBnFuseXpuPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_bn_fuse_xpu_pass, Conv2dBnFuseXpuPass);
+REGISTER_IR_PASS(conv2d_bn_xpu_fuse_pass, Conv2dBnFuseXpuPass);

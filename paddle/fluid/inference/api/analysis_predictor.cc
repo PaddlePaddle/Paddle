@@ -961,13 +961,9 @@ bool AnalysisPredictor::PrepareExecutor() {
       } else if (config_.use_xpu()) {
         // xpu
         if (!config_.custom_pass_only_) {
-          for (const auto &xpu_pass_name : kPirXpuPasses) {
-            auto xpu_pass = pir::PassRegistry::Instance().Get(xpu_pass_name);
-            if (xpu_pass_name == "conv2d_bn_fuse_xpu_pass") {
-              auto xpu_device_id = config_.xpu_device_id();
-              xpu_pass->SetNotOwned("xpu_device_id", &xpu_device_id);
-            }
-            pass_pm.AddPass(std::move(xpu_pass));
+          for (const auto &xpu_pass : kPirXpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
           }
         }
 #endif
