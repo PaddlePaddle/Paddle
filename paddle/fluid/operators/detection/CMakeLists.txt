@@ -34,8 +34,6 @@ detection_library(density_prior_box_op SRCS density_prior_box_op.cc
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
-detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
-                  polygon_box_transform_op.cu)
 detection_library(generate_proposal_labels_op SRCS
                   generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS phi common)

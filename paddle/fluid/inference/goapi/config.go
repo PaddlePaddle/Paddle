@@ -505,44 +505,6 @@ func (config *Config) TensorrtDlaEnabled() bool {
 }
 
 ///
-/// \brief Turn on the usage of Lite sub-graph engine.
-///
-/// \param precision Precion used in Lite sub-graph engine.
-/// \param zeroCopy Set the zero copy mode.
-/// \param passesFilter Set the passes used in Lite sub-graph engine.
-/// \param opsFilter Operators not supported by Lite.
-///
-func (config *Config) EnableLiteEngine(precision Precision, zeroCopy bool, passesFilter []string, opsFilter []string) {
-	passesFilterNum := uint(len(passesFilter))
-	var passesFilterBuf = make([]*C.char, passesFilterNum+1)
-	for i, _ := range passesFilter {
-		char := C.CString(passesFilter[i])
-		defer C.free(unsafe.Pointer(char))
-		passesFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
-	}
-
-	opsFilterNum := uint(len(opsFilter))
-	var opsFilterBuf = make([]*C.char, passesFilterNum+1)
-	for i, _ := range opsFilter {
-		char := C.CString(opsFilter[i])
-		defer C.free(unsafe.Pointer(char))
-		opsFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
-	}
-
-	C.PD_ConfigEnableLiteEngine(config.c, C.int32_t(precision), cvtGoBoolToPD(zeroCopy), C.size_t(passesFilterNum), (**C.char)(unsafe.Pointer(&passesFilterBuf[0])), C.size_t(opsFilterNum), (**C.char)(unsafe.Pointer(&opsFilterBuf[0])))
-}
-
-///
-/// \brief A boolean state indicating whether the Lite sub-graph engine is
-/// used.
-///
-/// \return bool whether the Lite sub-graph engine is used.
-///
-func (config *Config) LiteEngineEnabled() bool {
-	return cvtPDBoolToGo(C.PD_ConfigLiteEngineEnabled(config.c))
-}
-
-///
 /// \brief Control whether to debug IR graph analysis phase.
 /// This will generate DOT files for visualizing the computation graph after
 /// each analysis pass applied.

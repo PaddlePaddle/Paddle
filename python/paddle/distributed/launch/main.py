@@ -653,9 +653,11 @@ def launch():
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )
 
-            # generate script args of task
+            # generate the script arguments and launch configuration JSON/YAML for the task.
+            cur_cfg["log_dir_name"] = log_dir
             new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
             ctx.args.training_script_args = new_args
+            cur_cfg.pop("log_dir_name")
 
             # launch task
             ctx.logger.info(
@@ -963,6 +965,32 @@ def launch():
 
             if tuner_cfg['metric_cfg']['name'] not in cur_cfg:
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+
+            path = f"auto_tuner/mem/{job_id}/{ip}"
+            if nnodes > 1:
+                while not client.put(
+                    path, str(cur_cfg["max_mem_usage"]).encode('latin-1')
+                ):
+                    time.sleep(1)
+                result = list(client.get_prefix(f"auto_tuner/mem/{job_id}"))
+                size = len(result)
+                while size != nnodes:
+                    time.sleep(1)
+                    result = list(
+                        client.get_prefix(f"auto_tuner/mem/{job_id}/")
+                    )
+                    size = len(result)
+                mem_allnodes = [i[0].decode() for i in result]
+
+                for mem in mem_allnodes:
+                    if mem is None:
+                        continue
+                    if mem == "OOM":
+                        cur_cfg["max_mem_usage"] = mem
+                        break
+                    cur_cfg["max_mem_usage"] = max(
+                        int(mem), int(cur_cfg["max_mem_usage"])
+                    )
 
             # if need accurate peak memory
             if os.environ.get("FLAGS_log_memory_stats", False):

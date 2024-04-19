@@ -25,8 +25,6 @@
     data_type: x
   inplace : (x -> out)
   backward : add_grad
-  data_transform :
-    support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 # this add_n is only for ops_api_gen.py and onednn
@@ -107,6 +105,7 @@
     param : [x]
   inplace : (output -> out)
   backward : assign_out__grad
+  traits : pir::SideEffectTrait
 
 - op : assign_pos
   args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
