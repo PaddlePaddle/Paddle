@@ -271,12 +271,9 @@ BuildStaticReduceConfig(
         /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
-    int64_t reduce_block = 2048;
     int64_t warp_num = 8;
-    int64_t reduce_inner_num =
-        int64_t(std::ceil(base_info->reduce_numel * 1.0 / 256.0));
     int64_t spatial_inner_num = 1;
-    int64_t tree_reduce_num = reduce_block / reduce_inner_num;
+    int64_t tree_reduce_num = warp_num * 32;
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
                            /* rb_lower_bound = */ 2049,
