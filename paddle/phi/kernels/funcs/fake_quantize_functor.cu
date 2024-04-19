@@ -109,7 +109,7 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
 
   phi::DenseTensor max;
   max.Resize(common::make_ddim({grid}));
-  T *max_data = dev_ctx.template Alloc<T>(&max);
+  T *max_data = ctx.template Alloc<T>(&max);
   FindAbsMaxKernel<T>
       <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
   FindAbsMaxKernel<T>
@@ -129,7 +129,7 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
 
   const T *in_data = in.data<T>();
   const T *scale_data = scale.data<T>();
-  T *out_data = dev_ctx.template Alloc<T>(out);
+  T *out_data = ctx.template Alloc<T>(out);
 
   ClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
       in_data, scale_data, bin_cnt, round_type, num, out_data);
