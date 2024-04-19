@@ -19,6 +19,8 @@ if(WITH_GPU)
     set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS
                                                           "RUN_TYPE=CINN")
   endforeach()
+  set_tests_properties(test_llama_inference PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_llama_forward PROPERTIES TIMEOUT 120)
 
   add_test(
     NAME test_llama_postprocess_cinn

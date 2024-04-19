@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ArangeNet(paddle.nn.Layer):
@@ -110,7 +114,7 @@ class EmptyOpInferSymbolicShapeTest(TestBase):
     def test_eval_symbolic(self):
         net = EmptyNet()
 
-        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        x_spec = InputSpec(shape=[None, None, None], dtype='int32')
         input_spec = [x_spec]
         net = apply_to_static(net, False, input_spec)
         net.eval()

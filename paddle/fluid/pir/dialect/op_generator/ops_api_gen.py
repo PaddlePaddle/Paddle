@@ -119,6 +119,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'dequantize_linear',
     'dequantize_linear_',
     'coalesce_tensor_',
+    'send_v2',
+    'recv_v2',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -141,9 +143,12 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_softmax_with_cross_entropy',
     'c_split',
     'decayed_adagrad',
+    'distributed_fused_lamb',
+    'distributed_fused_lamb_',
     'distributed_push_sparse',
     'distributed_lookup_table',
     'dgc_momentum',
+    'dgc',
     'dpsgd',
     'embedding_grad_sparse',
     'ftrl',
@@ -163,11 +168,9 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_sum',
     'random_routing',
     'rank_attention',
-    'recv_v2',
     'rnn_',
     'row_conv',
     'seed',
-    'send_v2',
     'shadow_feed',
     'shadow_feed_tensors',
     'shuffle_batch',

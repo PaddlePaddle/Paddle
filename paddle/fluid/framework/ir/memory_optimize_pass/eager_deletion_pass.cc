@@ -305,13 +305,6 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto recurrent_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
   recurrent_op_eager_deletion_pass->Apply(graph);
-
-#ifdef PADDLE_WITH_CINN
-  auto share_varinfo_into_cinn_pass =
-      ir::PassRegistry::Instance().Get("share_varinfo_into_cinn_pass");
-  share_varinfo_into_cinn_pass->SetNotOwned(kMemOptVarInfoMapList, &var_infos);
-  share_varinfo_into_cinn_pass->Apply(graph);
-#endif
 }
 
 }  // namespace ir
@@ -328,6 +321,3 @@ USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(pylayer_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
-#ifdef PADDLE_WITH_CINN
-USE_PASS(share_varinfo_into_cinn_pass);
-#endif

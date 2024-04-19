@@ -43,7 +43,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(place),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "wait_compute op can run on gpu place only for now, but got %s",
             place.DebugString()));
 
@@ -62,7 +62,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -94,7 +94,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
 #endif
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

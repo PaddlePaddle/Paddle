@@ -108,6 +108,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 
@@ -120,7 +121,7 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -475,7 +476,7 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_ && !config_.use_lite_) {
+  if (config_.use_xpu_) {
     private_context_ = true;
     if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
@@ -488,6 +489,8 @@ bool AnalysisPredictor::Init(
     InitDeviceContexts();
   }
 #endif
+
+  TryShrinkMemory();
 
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
@@ -507,46 +510,15 @@ void AnalysisPredictor::InitPlace() {
     }
 #endif
   } else if (config_.use_xpu()) {
-    if (config_.lite_engine_enabled()) {
-#ifdef LITE_SUBGRAPH_WITH_XPU
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of Host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      place_ = paddle::platform::CPUPlace();
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use an XPU lite engine, but Paddle was not compiled "
-          "with it."));
-#endif  // LITE_SUBGRAPH_WITH_XPU
-    } else {
 #ifdef PADDLE_WITH_XPU
-      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
-      place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+    phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
+    place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use XPU forward propagation (inference without lite "
-          "engine), but Paddle was not compiled "
-          "with WITH_XPU."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use XPU forward propagation (inference without lite "
+        "engine), but Paddle was not compiled "
+        "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
-    }
-  } else if (config_.NNAdapter().use_nnadapter) {
-    if (config_.lite_engine_enabled()) {
-      place_ = paddle::platform::CPUPlace();
-#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
-      PADDLE_THROW(
-          platform::errors::Unavailable("You tried to use an NNAdapter lite "
-                                        "engine, but Paddle was not compiled "
-                                        "with it."));
-#endif  // LITE_SUBGRAPH_WITH_NNADAPTER
-    } else {
-      PADDLE_THROW(
-          platform::errors::Unavailable("You tried to use NNadapter forward "
-                                        "propagation (inference without lite "
-                                        "engine), but Paddle was not compiled "
-                                        "with LITE_WITH_NNADAPTER."));
-    }
   } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
     place_ = paddle::platform::IPUPlace();
@@ -618,6 +590,9 @@ void AnalysisPredictor::ClearExtraParams() {
           op_desc->SetAttr("shape_range_info_path",
                            config_.shape_range_info_path_);
         }
+      }
+      if (op_desc->HasAttr("predictor_id")) {
+        op_desc->SetAttr("predictor_id", predictor_id_);
       }
     }
   }
@@ -785,6 +760,14 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
+#ifdef PADDLE_WITH_TENSORRT
+    if (config_.tensorrt_engine_enabled()) {
+      inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+          predictor_id_;
+      VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+              << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+    }
+#endif
     if (config_.use_optimized_model_) {
       LoadParameters();
       ClearExtraParams();
@@ -897,36 +880,35 @@ bool AnalysisPredictor::PrepareExecutor() {
       };
 
 #ifdef PADDLE_WITH_CINN
+      auto CreatePassMgr = [&] {
+        pir::IrContext *ctx = pir::IrContext::Instance();
+        ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+        ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+        auto pass_manager = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        if (!config_.glog_info_disabled()) {
+          pass_manager->EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          pass_manager->EnableIRPrinting(
+              std::make_unique<pir::PassManager::IRPrinterOption>(
+                  ir_printing_conditions, ir_printing_conditions));
+        }
+        return pass_manager;
+      };
+
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
 
-        auto shape_pm = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
-        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
-        VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
-        shape_pm->Run(pir_program_.get());
+        cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
+                                                    CreatePassMgr);
       }
 
       if (config_.cinn_enabled()) {
         VLOG(4) << "[CINN] Begin ApplyCinnPass";
-        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), [&] {
-          pir::IrContext *ctx = pir::IrContext::Instance();
-          ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-          ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-          auto pass_manager = std::make_shared<::pir::PassManager>(
-              ::pir::IrContext::Instance(), 2);
-          if (!config_.glog_info_disabled()) {
-            pass_manager->EnablePrintStatistics();
-          }
-          if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting(
-                std::make_unique<pir::PassManager::IRPrinterOption>(
-                    ir_printing_conditions, ir_printing_conditions));
-          }
-          return pass_manager;
-        });
+        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
       }
 #endif
 
@@ -1001,7 +983,10 @@ bool AnalysisPredictor::PrepareExecutor() {
       constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                          sub_scope_);
       basic_pass_pm.AddPass(std::move(constant_folding_pass));
-      basic_pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
+      dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                              sub_scope_);
+      basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
       basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
       if (!config_.glog_info_disabled()) {
         basic_pass_pm.EnablePrintStatistics();
@@ -1796,39 +1781,6 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_->SetUseXpu(config_.use_xpu_);
-  if (config_.lite_engine_enabled()) {
-    argument_->SetCpuMathLibraryNumThreads(
-        config_.cpu_math_library_num_threads());
-    argument_->SetLitePrecisionMode(static_cast<int>(
-        paddle::ConvertPrecision(config_.lite_precision_mode_)));
-    argument_->SetLitePassesFilter(config_.lite_passes_filter_);
-    argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
-    argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
-    argument_->SetUseOpenCL(config_.use_opencl_);
-    // NNAdapter related
-    argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
-    argument_->SetNNAdapterDeviceNames(
-        config_.NNAdapter().nnadapter_device_names);
-    argument_->SetNNAdapterContextProperties(
-        config_.NNAdapter().nnadapter_context_properties);
-    argument_->SetNNAdapterModelCacheDir(
-        config_.NNAdapter().nnadapter_model_cache_dir);
-    argument_->SetNNAdapterSubgraphPartitionConfigBuffer(
-        config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
-    argument_->SetNNAdapterSubgraphPartitionConfigPath(
-        config_.NNAdapter().nnadapter_subgraph_partition_config_path);
-    std::vector<std::string> buffer_keys;
-    std::vector<std::vector<char>> buffer_vals;
-    for (auto const &it : config_.NNAdapter().nnadapter_model_cache_buffers) {
-      buffer_keys.emplace_back(it.first);
-      buffer_vals.emplace_back(it.second);
-    }
-    argument_->SetNNAdapterModelCacheToken(buffer_keys);
-    argument_->SetNNAdapterModelCacheBuffer(buffer_vals);
-    LOG(INFO) << "Lite subgraph engine is enabled";
-  }
 
 #ifdef PADDLE_WITH_IPU
   argument_->SetUseIpu(config_.use_ipu());
@@ -1918,8 +1870,6 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.quant_post_dynamic_weight_precision);
   argument_->SetXpuQuantPostDynamicOpTypes(
       config_.xpu_config_.quant_post_dynamic_op_types);
-  argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
-  argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
@@ -2011,14 +1961,6 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
-#ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
-    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
-        predictor_id_;
-    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
-            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
-  }
-#endif
   Analyzer().Run(argument_.get());
   PADDLE_ENFORCE_EQ(
       argument_->scope_valid(),
@@ -2385,17 +2327,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    if (config_.lite_engine_enabled()) {
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      res->SetPlace(PaddlePlace::kCPU);
-    } else {
-      auto xpu_place = place_;
-      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-    }
+    auto xpu_place = place_;
+    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,
@@ -2436,17 +2369,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
-    if (config_.lite_engine_enabled()) {
-      // Currently, Paddle-Lite's XPU user interface only supports the transfer
-      // of host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
-      res->SetPlace(PaddlePlace::kCPU);
-    } else {
-      auto xpu_place = place_;
-      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
-    }
+    auto xpu_place = place_;
+    res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     res->SetPlace(PaddlePlace::kCUSTOM,
@@ -2498,7 +2422,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #ifdef PADDLE_WITH_XPU
   InferXPUContext *infer_xpu_ctx = nullptr;
-  if (config_.use_xpu_ && !config_.use_lite_) {
+  if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
         paddle::platform::errors::Fatal(
@@ -2529,7 +2453,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "after run");
 
 #ifdef PADDLE_WITH_XPU
-  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
     infer_xpu_ctx->L3CacheAutotune();
   }
 #endif
@@ -3050,14 +2974,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   x->Init(scope_, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
-#endif
-#ifdef PADDLE_WITH_LITE
-#ifdef LITE_SUBGRAPH_WITH_XPU
-  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_,
-                                config_.xpu_config_.stream);
-#else
-  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_, nullptr);
-#endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);
 }

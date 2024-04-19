@@ -68,7 +68,7 @@ inline void CheckIsDimsMatch(const framework::DDim first,
       return;
     }
   }
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(phi::errors::InvalidArgument(
       "The shape of tensor assigned value must match the shape "
       "of target shape: %d, but now shape is %d.",
       second.to_str(),

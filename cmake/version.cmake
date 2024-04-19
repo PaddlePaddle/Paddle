@@ -96,7 +96,7 @@ function(version version_file)
     "Paddle version: ${PADDLE_VERSION}\n"
     "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
     "WITH_MKL: ${WITH_MKL}\n"
-    "WITH_MKLDNN: ${WITH_MKLDNN}\n"
+    "WITH_ONEDNN: ${WITH_ONEDNN}\n"
     "WITH_GPU: ${WITH_GPU}\n"
     "WITH_ROCM: ${WITH_ROCM}\n"
     "WITH_IPU: ${WITH_IPU}\n")
@@ -121,9 +121,5 @@ function(version version_file)
       "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
       "TensorRT version: v${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}.${TENSORRT_PATCH_VERSION}.${TENSORRT_BUILD_VERSION}\n"
     )
-  endif()
-  if(WITH_LITE)
-    file(APPEND ${version_file} "WITH_LITE: ${WITH_LITE}\n"
-                                "LITE_GIT_TAG: ${LITE_GIT_TAG}\n")
   endif()
 endfunction()
