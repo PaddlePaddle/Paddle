@@ -799,6 +799,13 @@ void matmul_grad(const Tensor& x,
   for (size_t i = 0; i < out_grad.shape().size(); i++) {
     printf("shape:%d\n", out_grad.shape()[i]);
   }
+  auto unsqueeze_out_grad = out_grad;
+  if (out_grad.shape().size() < y.shape().size()) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad.shape().size() - 1});
+  }
+  if (out_grad.shape().size() < x.shape().size()) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad.shape().size()});
+  }
   auto temp_x_unsqueeze = x;
   if (x.shape().size() == 1) {
     temp_x_unsqueeze = unsqueeze<T>(x, {0});
@@ -815,14 +822,6 @@ void matmul_grad(const Tensor& x,
   for (size_t i = 0; i < temp_y_unsqueeze.shape().size(); i++) {
     printf("shape:%d\n", temp_y_unsqueeze.shape()[i]);
   }
-  auto unsqueeze_out_grad = out_grad;
-  if (out_grad.shape().size() == 0) {
-    unsqueeze_out_grad = full<T>({1, 1}, 1.0, x.dtype());
-  } else if (out_grad.shape().size() == 1) {
-    auto out_axis = x.shape().size() > y.shape().size() ? 1 : 0;
-    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_axis});
-  }
-
   printf("unsqueeze_out_grad\n");
   for (size_t i = 0; i < unsqueeze_out_grad.shape().size(); i++) {
     printf("shape:%d\n", unsqueeze_out_grad.shape()[i]);
@@ -830,15 +829,87 @@ void matmul_grad(const Tensor& x,
 
   if (x_grad) {
     auto x_grad_mm =
-        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, true);
-    auto x_grad_out = reshape<T>(x_grad_mm, x.shape());
-    set_output<T>(x_grad_out, x_grad);
+        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
+    printf("x_grad_mm\n");
+    for (size_t i = 0; i < x_grad_mm.shape().size(); i++) {
+      printf("shape:%d\n", x_grad_mm.shape()[i]);
+    }
+    auto x_grad_trans = x_grad_mm;
+    if (transpose_x) {
+      std::vector<int> reverse_perm;
+      for (int i = 0; i < x_grad_trans.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    }
+    printf("x_grad_trans\n");
+    for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
+      printf("shape:%d\n", x_grad_trans.shape()[i]);
+    }
+    if (x_grad_trans.dims() != x.dims()) {
+      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+          x_grad_trans.dims(), temp_x_unsqueeze.dims());
+      auto temp_vec = common::vectorize(x_reduce_dim);
+      printf("x_vec\n");
+      for (int i = 0; i < temp_vec.size(); i++) {
+        printf("shape:%d\n", temp_vec[i]);
+      }
+      auto dx_reduce_res = sum<T>(
+          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+      printf("dx_reduce_res\n");
+      for (size_t i = 0; i < dx_reduce_res.shape().size(); i++) {
+        printf("shape:%d\n", dx_reduce_res.shape()[i]);
+      }
+      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+      set_output<T>(x_grad_out, x_grad);
+    } else {
+      auto x_grad_out = x_grad_trans;
+      set_output<T>(x_grad_out, x_grad);
+    }
   }
   if (y_grad) {
     auto y_grad_mm =
-        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, true, false);
-    auto y_grad_out = reshape<T>(y_grad_mm, y.shape());
-    set_output<T>(y_grad_out, y_grad);
+        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
+    printf("y_grad_mm\n");
+    for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
+      printf("shape:%d\n", y_grad_mm.shape()[i]);
+    }
+    auto y_grad_trans = y_grad_mm;
+    if (transpose_y) {
+      std::vector<int> reverse_perm;
+      for (int i = 0; i < y_grad_mm.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    }
+    printf("y_grad_trans\n");
+    for (size_t i = 0; i < y_grad_trans.shape().size(); i++) {
+      printf("shape:%d\n", y_grad_trans.shape()[i]);
+    }
+    if (y_grad_trans.dims() != y.dims()) {
+      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+          y_grad_trans.dims(), temp_y_unsqueeze.dims());
+      auto temp_vec = common::vectorize(y_reduce_dim);
+      printf("y_vec\n");
+      for (int i = 0; i < temp_vec.size(); i++) {
+        printf("shape:%d\n", temp_vec[i]);
+      }
+      auto dy_reduce_res = sum<T>(
+          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+      printf("dy_reduce_res\n");
+      for (size_t i = 0; i < dy_reduce_res.shape().size(); i++) {
+        printf("shape:%d\n", dy_reduce_res.shape()[i]);
+      }
+      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+      set_output<T>(y_grad_out, y_grad);
+    } else {
+      auto y_grad_out = y_grad_trans;
+      set_output<T>(y_grad_out, y_grad);
+    }
   }
 }
 

@@ -28,10 +28,10 @@ dtype = "float32"
 #             [3.0, 4.0],
 #             [5.0, 6.0]])
 
-x = np.random.rand(
+x = np.random.rand(1, 1, 5, 1)
+y = np.random.rand(
     5,
 )
-y = np.random.rand(5, 3)
 
 # 定义矩阵X和Y
 X = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
@@ -40,7 +40,7 @@ Y = paddle.to_tensor(y, dtype='float32', stop_gradient=False)
 # 定义一个简单的计算图：Z = X * Y
 print(X)
 print(Y)
-Z = paddle.matmul(X, Y)
+Z = paddle.matmul(X, Y, transpose_x=True)
 print(Z)
 
 # # 创建一个用于保存梯度的tensor，并设置requires_grad=True来开启梯度计算
@@ -58,6 +58,44 @@ print("梯度相对于X:")
 print(grad_X)
 print("梯度相对于Y:")
 print(grad_Y)
+
+x1 = x.copy()
+y1 = y.copy()
+X1 = paddle.to_tensor(x1, dtype='float32', stop_gradient=False)
+Y1 = paddle.to_tensor(y1, dtype='float32', stop_gradient=False)
+z1 = np.ones((Z.shape), dtype="float32")
+Z1 = paddle.to_tensor(z1, dtype='float32', stop_gradient=False)
+
+if len(Z1.shape) < len(Y1.shape):
+    Z1 = paddle.unsqueeze(Z1, axis=len(Z1.shape) - 1)
+if len(Z1.shape) < len(X1.shape):
+    Z1 = paddle.unsqueeze(Z1, axis=len(Z1.shape))
+if len(X1.shape) < 2:
+    X1 = paddle.unsqueeze(X1, axis=0)
+if len(Y1.shape) < 2:
+    Y1 = paddle.unsqueeze(Y1, axis=1)
+
+
+print(X1)
+print(Y1)
+print(Z1)
+
+check_grad_x = paddle.matmul(Z1, Y1, transpose_y=True)
+# print(check_grad_x)
+reduce_dim = [0, 1, 2]
+check_grad_x = paddle.sum(check_grad_x, reduce_dim)
+# check_grad_x = paddle.transpose(check_grad_x, [0, 1, 3, 2])
+print(check_grad_x)
+
+
+# check_grad_y = paddle.matmul(X1, Z1, transpose_x=False)
+
+# check_grad_y = paddle.transpose(check_grad_y, [0, 1, 3, 2])
+# print(check_grad_y)
+# Y1_slice = paddle.slice(Y1, axes=[0, 1, 2, 3], starts=[0, 0, 0, 0], ends=[1, 1, 5, 2])
+# print(Y1_slice)
+# print(check_grad_x)
+
 
 # z1 = np.mat([1, 1, 1, 1])
 
