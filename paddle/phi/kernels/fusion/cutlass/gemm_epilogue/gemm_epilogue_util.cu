@@ -102,10 +102,10 @@ __global__ void naive_gemm_epilogue_kernel(const T *input,
 template <typename T>
 float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams &params,
                              OpType op_type) {
-  const T *input = reinterpret_cast<const T *> params.input;
-  const T *weight = reinterpret_cast<const T *> params.weight;
-  const T *bias = reinterpret_cast<const T *> params.bias;
-  T *output_cutlass_D = reinterpret_cast<T *> arams.output;
+  const T *input = reinterpret_cast<const T *>(params.input);
+  const T *weight = reinterpret_cast<const T *>(params.weight);
+  const T *bias = reinterpret_cast<const T *>(params.bias);
+  T *output_cutlass_D = reinterpret_cast<T *>(params.output);
   int M = params.m, N = params.n, K = params.k;
   int lda = params.lda, ldb = params.ldb, ldd = params.ldd;
   float leaky_alpha = params.leaky_alpha;
