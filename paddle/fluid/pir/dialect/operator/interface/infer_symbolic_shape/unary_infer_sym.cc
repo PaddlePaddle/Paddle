@@ -341,7 +341,8 @@ bool NonzeroOpInferSymbolicShape(
           "Input(x) should have number of dimension at least 1."));
 
   std::string sym_name = shape_analysis->GetNextSymName();
-  std::vector<symbol::DimExpr> out_shape{sym_name, x_shape.size()};
+  std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
+                                         symbol::DimExpr{x_shape.size()}};
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
