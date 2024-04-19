@@ -787,18 +787,21 @@ void matmul_grad(const Tensor& x,
                  Tensor* x_grad,
                  Tensor* y_grad) {
   auto unsqueeze_out_grad = out_grad;
-  if (out_grad.shape().size() < y.shape().size()) {
-    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad.shape().size() - 1});
+  size_t out_grad_rank = out_grad.shape().size();
+  size_t x_rank = x.shape().size();
+  size_t y_rank = y.shape().size();
+  if (out_grad_rank < y_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad_rank - 1});
   }
-  if (out_grad.shape().size() < x.shape().size()) {
-    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad.shape().size()});
+  if (out_grad_rank < x_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad_rank});
   }
   auto temp_x_unsqueeze = x;
-  if (x.shape().size() == 1) {
+  if (x_rank == 1) {
     temp_x_unsqueeze = unsqueeze<T>(x, {0});
   }
   auto temp_y_unsqueeze = y;
-  if (y.shape().size() == 1) {
+  if (y_rank == 1) {
     temp_y_unsqueeze = unsqueeze<T>(y, {1});
   }
 
@@ -818,7 +821,6 @@ void matmul_grad(const Tensor& x,
     if (x_grad_trans.dims() != x.dims()) {
       phi::DDim x_reduce_dim = get_reduce_dims_from_out(
           x_grad_trans.dims(), temp_x_unsqueeze.dims());
-      auto temp_vec = common::vectorize(x_reduce_dim);
       auto dx_reduce_res = sum<T>(
           x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
       auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
@@ -844,7 +846,6 @@ void matmul_grad(const Tensor& x,
     if (y_grad_trans.dims() != y.dims()) {
       phi::DDim y_reduce_dim = get_reduce_dims_from_out(
           y_grad_trans.dims(), temp_y_unsqueeze.dims());
-      auto temp_vec = common::vectorize(y_reduce_dim);
       auto dy_reduce_res = sum<T>(
           y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
       auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
