@@ -424,6 +424,13 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestSpecuDecodingAttnRoPE(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
