@@ -49,8 +49,6 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-PD_DECLARE_bool(cinn_new_cluster_op_method);
-
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -59,23 +57,16 @@ namespace {
 
 using cinn::hlir::framework::pir::ScheduleInfoNode;
 
-std::unordered_set<pir::Value> GetInnerGeneValue(
-    const std::vector<pir::Operation*>& op_list) {
-  std::unordered_set<pir::Value> inner_values;
-
-  for (auto op : op_list) {
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      inner_values.insert(op->result(i));
-    }
-  }
-
-  return inner_values;
-}
-
 std::unordered_set<::pir::Value> GetListOutsideInput(
     const std::vector<::pir::Operation*>& ops) {
   std::unordered_set<pir::Value> outside_ops;
-  auto block_inner_output = GetInnerGeneValue(ops);
+  std::unordered_set<pir::Value> block_inner_output;
+
+  for (auto op : ops) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      block_inner_output.insert(op->result(i));
+    }
+  }
 
   for (const auto& op : ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -253,8 +244,7 @@ std::vector<pir::Type> BuildOutType(
   return new_fusion_op;
 }
 
-std::vector<GroupClusterNode> NewOpMergeWithOp(
-    cinn::dialect::GroupOp group_op) {
+std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   std::function<cinn::fusion::FrontendContent(pir::Operation*)> func =
       [](pir::Operation* op) { return cinn::fusion::FrontendContent(op); };
   const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
@@ -285,12 +275,6 @@ std::vector<GroupClusterNode> NewOpMergeWithOp(
   }
   VLOG(4) << "Finished Creating Cluster Nodes!";
   return output_cluster_nodes;
-}
-
-std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
-  if (FLAGS_cinn_new_cluster_op_method) {
-    return NewOpMergeWithOp(group_op);
-  }
 }
 
 std::vector<::pir::Operation*> SortByOriginalOrderAndUniq(
