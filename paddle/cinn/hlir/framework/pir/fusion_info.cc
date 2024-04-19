@@ -14,7 +14,9 @@
 
 #include "paddle/cinn/hlir/framework/pir/fusion_info.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
+PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
@@ -46,10 +48,12 @@ std::ostream& operator<<(std::ostream& os, const ValueInfo& value_info) {
 
 OperationInfo::OperationInfo(const ::pir::Operation& op) {
   name_ = op.name();
+  input_infos_.reserve(op.num_operands());
   for (const auto value : op.operands_source()) {
     if (!value || !value.type()) continue;
     input_infos_.emplace_back(value);
   }
+  output_infos_.reserve(op.num_results());
   for (const auto value : op.results()) {
     if (!value || !value.type()) continue;
     output_infos_.emplace_back(value);
@@ -58,6 +62,7 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
   const auto& attributes = op.attributes();
   std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
+  attr_infos_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
     if (!attr_value || attr_name == kOpCallStack) continue;
     attr_infos_.emplace_back(attr_name, attr_value);
@@ -85,9 +90,53 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
+std::size_t FusionOpInfo::hash() const {
+  std::size_t seed = op_info_.hash();
+  for (const auto& [value_index, op_info_hash] : inner_deps_) {
+    hash_combine(seed, value_index);
+    hash_combine(seed, op_info_hash);
+  }
+  return seed;
+}
+
+std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
+  os << info.op_info_ << ", inner_deps:{";
+  for (const auto& [value_index, op_info_hash] : info.inner_deps_) {
+    os << " (" << value_index << ", " << op_info_hash << ")";
+  }
+  os << "}";
+  return os;
+}
+
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
-  for (const auto* op : TopologySort(group)) {
-    op_infos_.emplace_back(*op);
+  std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
+  unique_fn_name_ = group.FuncName();
+
+  const auto GetInnerUpstreamOps =
+      [&](const ::pir::Operation* op) -> decltype(auto) {
+    std::unordered_map<size_t, size_t> upstream_ops_index_hash;
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      const auto value = op->operand_source(i);
+      if (!value || !value.defining_op()) continue;
+      const auto* defining_op = value.defining_op();
+      if (op_mapper.count(defining_op) == 0) continue;
+      PADDLE_ENFORCE_LT(op_mapper[defining_op],
+                        this->op_infos_.size(),
+                        ::common::errors::OutOfRange(
+                            "Required op_mapper[defining_op] < "
+                            "op_infos_.size(), but received index %d",
+                            op_mapper[defining_op]));
+      upstream_ops_index_hash.emplace(
+          i, this->op_infos_[op_mapper[defining_op]].hash());
+    }
+    return upstream_ops_index_hash;
+  };
+
+  const auto sorted_ops = TopologySort(group);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    const auto& op = sorted_ops[i];
+    op_infos_.emplace_back(*op, GetInnerUpstreamOps(op));
+    op_mapper.insert({op, i});
   }
 }
 
@@ -97,6 +146,7 @@ std::size_t FusionInfo::hash() const {
   }
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
+  if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
   return seed;
 }
 
@@ -104,6 +154,8 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   os << "FusionInfo - " << fusion_info.hash();
   if (VLOG_IS_ON(5)) {
     os << "{\n";
+    if (!FLAGS_enable_cinn_compile_cache)
+      os << "fn_name: " << fusion_info.unique_fn_name_;
     for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";
     os << "}\n";
   }

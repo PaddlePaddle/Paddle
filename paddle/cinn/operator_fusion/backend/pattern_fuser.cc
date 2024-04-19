@@ -185,7 +185,7 @@ struct FusionOpGetter {
 // tmp transform for reduce_tree and reduce_tree_trivial.
 std::vector<FusionOp> GetFusionOpFromPattern(
     const StmtPattern<BackendStage>& pattern) {
-  return std::visit(FusionOpGetter(), pattern);
+  return std::visit(FusionOpGetter(), pattern.variant());
 }
 
 struct FusionOp2Expr {

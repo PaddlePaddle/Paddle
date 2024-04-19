@@ -93,6 +93,7 @@ class CompilationCache {
   const CacheValue& Get(const CacheKey& key) const;
   void Insert(const CacheKey& key, const CacheValue& value);
   void Clear();
+  size_t Size() const { return cache_.size(); }
 
   pir::CINNKernelInfo GetKernelInfo(const CacheKey& key) const;
 
