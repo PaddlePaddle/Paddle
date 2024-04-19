@@ -192,6 +192,36 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
   return os;
 }
 
+void OpLoweringGroup::mut_int_args_map(std::vector<cinn::ir::Tensor> *group_func_arg_tensors,std::vector<cinn::ir::Argument> *group_func_args) {
+    
+   int num_tensor_args = static_cast<int>(group_func_args->size());
+  int non_tensor_arg_idx = group_func_args->size();
+  std::unordered_set<std::string> int_args_set; 
+  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+       tensor_arg_idx++) {
+    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
+    int tensor_dim_size = tensor_dim.size();
+    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+         tensor_arg_dim_idx++) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
+        const std::string symbol_name =
+            tensor_dim[tensor_arg_dim_idx]->ToString();
+        if (int_args_set.count(symbol_name) != 0) {
+          continue;
+        }
+        int_args_set.insert(symbol_name);
+        group_func_args->emplace_back(
+            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
+        int_args_map_[non_tensor_arg_idx++] = {tensor_arg_idx,
+                                                           tensor_arg_dim_idx};
+        VLOG(4) << "device kernel func's " << symbol_name << " is from "
+                << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
+      }
+    }
+  }
+
+  }
+
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir

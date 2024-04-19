@@ -804,33 +804,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
   }
 
-  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
-  // update args for dynamic dim
-  int num_tensor_args = static_cast<int>(group_func_args->size());
-  int non_tensor_arg_idx = group_func_args->size();
-  std::unordered_set<std::string> int_args_set;
-  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
-       tensor_arg_idx++) {
-    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
-    int tensor_dim_size = tensor_dim.size();
-    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
-         tensor_arg_dim_idx++) {
-      if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
-        const std::string symbol_name =
-            tensor_dim[tensor_arg_dim_idx]->ToString();
-        if (int_args_set.count(symbol_name) != 0) {
-          continue;
-        }
-        int_args_set.insert(symbol_name);
-        group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
-        group->mut_int_args_map()[non_tensor_arg_idx++] = {tensor_arg_idx,
-                                                           tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << symbol_name << " is from "
-                << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
-      }
-    }
-  }
+  group->mut_int_args_map(group_func_arg_tensors,group_func_args);
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());

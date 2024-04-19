@@ -22,6 +22,9 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/dim.h"
+#include "paddle/cinn/ir/tensor.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/operation.h"
@@ -157,9 +160,7 @@ class OpLoweringGroup {
     return this->int_args_map_;
   }
 
-  std::map<int, CINNKernelInfo::ArgDimIdx>& mut_int_args_map() {
-    return this->int_args_map_;
-  }
+  void mut_int_args_map(std::vector<cinn::ir::Tensor> *group_func_arg_tensors,std::vector<cinn::ir::Argument> *group_func_args);
 
  private:
   using alignment_schedule_info_t = std::unordered_map<
