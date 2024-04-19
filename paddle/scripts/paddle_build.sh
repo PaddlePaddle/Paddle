@@ -3841,7 +3841,9 @@ function run_setup(){
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
-    python -m pip install github PyGithub
+    pip uninstall PyGithub
+    pip install github
+    pip install PyGithub
     python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
     if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
          WITH_CPP_TEST=OFF
