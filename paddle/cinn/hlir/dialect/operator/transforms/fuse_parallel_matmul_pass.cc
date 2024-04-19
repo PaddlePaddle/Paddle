@@ -55,15 +55,8 @@ class MergeParallelMatmulPattern
 
     auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
                                 const std::vector<std::int64_t>& b) {
-      if (a.size() != b.size()) {
-        return false;
-      }
-      for (int i = 0; i < a.size() - 1; ++i) {
-        if (a[i] != b[i]) {
-          return false;
-        }
-      }
-      return true;
+      return std::vector<std::int64_t>(a.begin(), a.end() - 1) ==
+             std::vector<std::int64_t>(b.begin(), b.end() - 1);
     };
 
     auto input_x = matmul_op.operand_source(0);
