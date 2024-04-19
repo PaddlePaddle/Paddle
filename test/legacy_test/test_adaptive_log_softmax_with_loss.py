@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import nn
+import paddle.optimizer as optim
 from paddle.base import Program
 from paddle.nn import functional as F
 
@@ -103,12 +104,6 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             out, asfm.log_prob(x).argmax(axis=1)
         )
-
-    # def test_static(self):
-    #     paddle.enable_static()
-    #     for place in self.place:
-    #         self._test_log_probs_static(place)
-    #         self._test_correct_static(place)
 
     def _test_log_probs_static(self, place):
         paddle.enable_static()
@@ -259,6 +254,41 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             x = paddle.randn((128, 16))
             y = paddle.randint(low=21, high=200, shape=[128])
             asfm(x, y)
+
+    def test_output(self):
+        n_classes = 1000
+        in_features = 128
+        cutoffs = [200, 500, 900]
+
+        x = paddle.randn([32, in_features])
+        labels = paddle.randint(0, n_classes, [32])
+
+        model = nn.AdaptiveLogSoftmaxWithLoss(in_features, n_classes, cutoffs)
+
+        optimizer = optim.Adam(parameters=model.parameters(), learning_rate=0.001)
+
+        for epoch in range(10):
+            output, loss = model(x, labels)
+    
+
+            optimizer.clear_grad()
+            loss.backward()
+            optimizer.step()
+
+        with paddle.no_grad():
+            log_probs = model.log_prob(x)
+    
+            predictions = model.predict(x)
+
+        tail_weights_before_training = [proj[0].numpy().copy() for proj in model.tail_weights]
+
+        with paddle.no_grad():
+            output, loss = model(x, labels)
+
+        tail_weights_after_training = [proj[0].numpy() for proj in model.tail_weights]
+
+        for before, after in zip(tail_weights_before_training, tail_weights_after_training):
+            assert not np.any(before != after)
 
     def test_cluster(self):
         asfm = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 15], div_value=2.0)
