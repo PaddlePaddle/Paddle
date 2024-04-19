@@ -778,9 +778,9 @@ def _program_for_vpp(
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
-def _get_backward_op_type(block, op, idx):
+def _get_backward_op_type(block, cur_op, idx):
     # deal the ops pattern: [reshape2, reshape2, matmul_v2, reshape2, elementwise_add]
-    def is_reshape_matmul_pattern(op, idx, ops, ops_len):
+    def is_reshape_matmul_pattern(cur_op, idx, ops, ops_len):
         ops_pattern = [
             "reshape2",
             "reshape2",
@@ -788,7 +788,7 @@ def _get_backward_op_type(block, op, idx):
             "reshape2",
             "elementwise_add",
         ]
-        if op.type == "reshape2":
+        if cur_op.type == "reshape2":
             if idx + 4 < ops_len:
                 ops_names = []
                 for i in range(idx, idx + 5):
@@ -802,15 +802,16 @@ def _get_backward_op_type(block, op, idx):
                         var = block._find_var_recursive(name)
                         if not var.is_parameter:
                             return False
+                    ops_names.append(ops[i].type)
                 if ops_names == ops_pattern:
                     return True
         return False
 
-    # For the op doesn't have output such as 'send_v2', it should be backward_b.
-    if len(op.output_arg_names) == 0:
+    # For the cur_op doesn't have output such as 'send_v2', it should be backward_b.
+    if len(cur_op.output_arg_names) == 0:
         return ["backward_b"]
 
-    if is_reshape_matmul_pattern(op, idx, block.ops, len(block.ops)):
+    if is_reshape_matmul_pattern(cur_op, idx, block.ops, len(block.ops)):
         return [
             "backward_w",
             "backward_w",
@@ -818,7 +819,7 @@ def _get_backward_op_type(block, op, idx):
             "backward_w",
             "backward_w",
         ]
-    for name in op.output_arg_names:
+    for name in cur_op.output_arg_names:
         name = name.split("@")[0]
         if not block._find_var_recursive(name):
             return ["backward_b"]
