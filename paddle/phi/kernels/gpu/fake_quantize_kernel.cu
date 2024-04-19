@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/fake_quantize_abs_max_kernel_impl.h"
+#include "paddle/phi/kernels/impl/fake_quantize_kernel_impl.h"
 
 PD_REGISTER_KERNEL(fake_quantize_abs_max,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::FakeQuantizeAbsMaxKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}

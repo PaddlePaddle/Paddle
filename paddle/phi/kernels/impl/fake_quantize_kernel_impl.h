@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/fake_quantize_abs_max_kernel.h"
+#include "paddle/phi/kernels/fake_quantize_kernel.h"
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
