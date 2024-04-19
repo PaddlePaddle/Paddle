@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/operators/cvm_op.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
