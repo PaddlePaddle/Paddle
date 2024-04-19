@@ -21,7 +21,7 @@ from test_block_multihead_attention import RopeEmbedding
 
 import paddle
 from paddle.framework import core
-from paddle.incubate.nn.functional.speculative_decoding_multihead_attention import (
+from paddle.incubate.nn.functional import (
     speculative_decoding_multihead_attention,
 )
 
