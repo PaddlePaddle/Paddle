@@ -324,10 +324,23 @@ EOF
     fi
 }
 
+function clean_build_files() {
+    clean_files=("paddle/fluid/pybind/libpaddle.so" "paddle/phi/libphi.so" "third_party/flashattn/src/extern_flashattn-build/libflashattn.so" "third_party/install/flashattn/lib/libflashattn.so")
+
+    for file in "${clean_files[@]}"; do
+      file=`echo "{$PADDLE_ROOT}/build/${file}"`
+      if [ -f "$file" ]; then
+          rm -rf "$file"
+      fi
+    done
+}
+
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
+    # clean build files
+    clean_build_files
 }
 
 function cmake_gen_in_current_dir() {
