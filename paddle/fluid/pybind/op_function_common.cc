@@ -870,6 +870,7 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
   void** vh = inst->simple_layout ? inst->simple_value_holder
                                   : &inst->nonsimple.values_and_holders[0];
 
+  ::pybind11::handle(obj).inc_ref();
   // ::pir::Program* program = reinterpret_cast<::pir::Program*>(vh[0]);
   std::shared_ptr<::pir::Program> program =
       reinterpret_cast<std::shared_ptr<::pir::Program>&>(vh[0]);
