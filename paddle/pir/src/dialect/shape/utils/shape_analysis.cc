@@ -324,8 +324,8 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
-  static std::shared_ptr<ShapeAnalysisManager> instance;
-  return *instance;
+  static ShapeAnalysisManager instance;
+  return instance;
 }
 
 ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
