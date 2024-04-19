@@ -14,16 +14,28 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/fake_quantize_abs_max_kernel.h"
+#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
-void FakeQuantizeAbsMaxKernel(const Context& dev_ctx,
-                              const DenseTensor& x,
+void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
+                              const DenseTensor &x,
                               int bit_length,
                               int round_type,
-                              DenseTensor* out,
-                              DenseTensor* out_scale);
+                              DenseTensor *out,
+                              DenseTensor *out_scale) {
+  T *out_s = dev_ctx.template Alloc<T>(out_scale);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+  const T *in_data = x.data<T>();
+  phi::funcs::FindAbsMaxFunctor<Context, T> find_abs_max_functor;
+  find_abs_max_functor(dev_ctx, in_data, x.numel(), out_s);
 
+  phi::funcs::ClipAndFakeQuantFunctor<Context, T> clip_and_fake_quant_functor;
+  clip_and_fake_quant_functor(dev_ctx, x, *out_scale, bin_cnt, round_type, out);
+}
+
+}  // namespace fusion
 }  // namespace phi

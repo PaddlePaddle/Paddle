@@ -107,7 +107,7 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
   int grid = (block - 1 + num) / block;
   grid = (grid > block) ? block : grid;
 
-  phi::DenseTensor max;
+  DenseTensor max;
   max.Resize(common::make_ddim({grid}));
   T *max_data = ctx.template Alloc<T>(&max);
   FindAbsMaxKernel<T>
@@ -122,7 +122,7 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
                                                      const DenseTensor &scale,
                                                      const int bin_cnt,
                                                      const int round_type,
-                                                     phi::DenseTensor *out) {
+                                                     DenseTensor *out) {
   int num = in.numel();
   int block = 1024;
   int grid = (block - 1 + num) / block;

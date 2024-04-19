@@ -31,7 +31,7 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
                                                      const DenseTensor &scale,
                                                      const int bin_cnt,
                                                      const int round_type,
-                                                     phi::DenseTensor *out) {
+                                                     DenseTensor *out) {
   T s = scale.data<T>()[0];
   T inv_s = inverse(s);
   phi::Transform<Context> trans;

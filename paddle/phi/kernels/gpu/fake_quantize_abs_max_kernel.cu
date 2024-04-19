@@ -12,32 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fake_quantize_abs_max_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
-                              const DenseTensor &x,
-                              int bit_length,
-                              int round_type,
-                              DenseTensor *out,
-                              DenseTensor *out_scale) {
-  T *out_s = dev_ctx.template Alloc<T>(out_scale);
-  int bin_cnt = std::pow(2, bit_length - 1) - 1;
-  const T *in_data = x.data<T>();
-  phi::funcs::FindAbsMaxFunctor<Context, T> find_abs_max_functor;
-  find_abs_max_functor(dev_ctx, in_data, x.numel(), out_s);
-
-  phi::funcs::ClipAndFakeQuantFunctor<Context, T> clip_and_fake_quant_functor;
-  clip_and_fake_quant_functor(dev_ctx, x, *out_scale, bin_cnt, round_type, out);
-}
-
-}  // namespace phi
+#include "paddle/phi/kernels/impl/fake_quantize_abs_max_kernel_impl.h"
 
 PD_REGISTER_KERNEL(fake_quantize_abs_max,
                    GPU,

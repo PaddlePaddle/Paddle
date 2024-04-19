@@ -86,7 +86,7 @@ class ClipAndFakeQuantFunctor {
                   const DenseTensor &scale,
                   const int bin_cnt,
                   const int round_type,
-                  phi::DenseTensor *out);
+                  DenseTensor *out);
 };
 
 }  // namespace funcs
