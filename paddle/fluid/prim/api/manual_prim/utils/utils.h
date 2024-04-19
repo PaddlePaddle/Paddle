@@ -78,39 +78,6 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
   return common::make_ddim(result);
 }
 
-// These method don't need to be specified
-static phi::DDim get_reduce_dims_from_matmul(const phi::DDim& dout_dims,
-                                             const phi::DDim& in_dims) {
-  int bat = dout_dims.size() - in_dims.size();
-  std::vector<int64_t> result(bat);
-  std::iota(result.begin(), result.end(), 0);
-
-  for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1) {
-      if (dout_dims[i + bat] > 1) {
-        // no need to reduce when dout_dims[i + bat] == 1 though in_dims[i] == 1
-        result.push_back(i + bat);
-      }
-    } else {
-      PADDLE_ENFORCE_EQ(
-          in_dims[i],
-          dout_dims[i + bat],
-          platform::errors::InvalidArgument(
-              "ReduceDims dimension mismatch. Operands could "
-              "not be broadcast together with the shape of X = [%s] and "
-              "the shape of Y = [%s]. X.shape[%d](%d) is not equal to "
-              "Y.shape[%d](%d).",
-              dout_dims,
-              in_dims,
-              i + bat,
-              dout_dims[i + bat],
-              i,
-              in_dims[i]));
-    }
-  }
-  return common::make_ddim(result);
-}
-
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
                                  const phi::DDim& y_dims) {
   /*
