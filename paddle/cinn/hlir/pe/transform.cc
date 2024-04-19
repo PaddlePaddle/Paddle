@@ -1067,21 +1067,21 @@ ir::Tensor Slice(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape.as_int32());
   }
+  const auto UpdateNegAxis = [rank = A->shape.size()](const int axis) -> int {
+    if (axis < 0) {
+      PADDLE_ENFORCE_GE(axis + rank,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The axis of slice is out of range"));
+      return axis + rank;
+    }
+    return axis;
+  };
   std::vector<int> axes;
   std::transform(const_axes.begin(),
                  const_axes.end(),
                  std::back_inserter(axes),
-                 [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
-                 });
+                 UpdateNegAxis);
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
     if (new_starts[i] < -input_shape[axes[i]]) {
@@ -1141,21 +1141,21 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  starts.end(),
                  std::back_inserter(new_starts),
                  [](const int start) { return ir::Expr(start); });
+  const auto UpdateNegAxis = [rank = A->shape.size()](const int axis) -> int {
+    if (axis < 0) {
+      PADDLE_ENFORCE_GE(axis + rank,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The axis of slice is out of range"));
+      return axis + rank;
+    }
+    return axis;
+  };
   std::vector<int> axes;
   std::transform(const_axes.begin(),
                  const_axes.end(),
                  std::back_inserter(axes),
-                 [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
-                 });
+                 UpdateNegAxis);
 
   for (int i = 0; i < axes.size(); i++) {
     if (input_shape[axes[i]].is_constant()) {
