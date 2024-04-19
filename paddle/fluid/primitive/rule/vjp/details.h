@@ -790,11 +790,13 @@ void matmul_grad(const Tensor& x,
   size_t out_grad_rank = out_grad.shape().size();
   size_t x_rank = x.shape().size();
   size_t y_rank = y.shape().size();
+  int temp_rank_y = out_grad_rank - 1;
+  int temp_rank_x = out_grad_rank;
   if (out_grad_rank < y_rank) {
-    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad_rank - 1});
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_y});
   }
   if (out_grad_rank < x_rank) {
-    unsqueeze_out_grad = unsqueeze<T>(out_grad, {out_grad_rank});
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_x});
   }
   auto temp_x_unsqueeze = x;
   if (x_rank == 1) {
