@@ -324,8 +324,8 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
-  static ShapeAnalysisManager instance;
-  return instance;
+  static std::shared_ptr<ShapeAnalysisManager> instance;
+  return *instance;
 }
 
 ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
@@ -334,11 +334,11 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   if (it == tables_.end()) {
     it = tables_
              .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis())
+                      std::make_shared<ShapeConstraintIRAnalysis>())
              .first;
   }
 
-  return it->second;
+  return *it->second;
 }
 
 }  // namespace pir

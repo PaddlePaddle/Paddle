@@ -24,7 +24,7 @@ namespace cinn::fusion {
 struct ValueDim {
   pir::Value v_;
   size_t idx_;
-  pir::ShapeConstraintIRAnalysis shape_analysis_;
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
     // Just get a related op to get the shape analysis. It can be value's
     // upstream op (defining op) or downstream op (user op).
@@ -41,8 +41,9 @@ struct ValueDim {
                             "Value is an input value, it should have a use."));
       return v.first_use().owner();
     };
-    shape_analysis_ = pir::ShapeAnalysisManager::Instance().Get(
-        get_related_op_from_value(v)->GetParentProgram());
+    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
+                          .Get(get_related_op_from_value(v)->GetParentProgram())
+                          .shared_from_this();
   }
   ValueDim() = default;
   ValueDim(const ValueDim& v) = default;
@@ -51,11 +52,11 @@ struct ValueDim {
   }
 
   symbol::DimExpr GetSymbolicDim() const {
-    return shape_analysis_.GetProductDimExpr(v_, {static_cast<int>(idx_)});
+    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
-    return shape_analysis_.IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
+    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
   }
 
   std::string DebugStr() const {
@@ -68,7 +69,7 @@ struct ValueDim {
   }
 
   const pir::ShapeConstraintIRAnalysis& shape_analysis() const {
-    return shape_analysis_;
+    return *shape_analysis_.lock();
   }
 };
 
