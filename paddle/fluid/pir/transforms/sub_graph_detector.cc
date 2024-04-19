@@ -484,6 +484,21 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
+std::vector<pir::Value> AnalysisExternalInputs(
+    const GroupOpsVec& group_ops) {  // NOLINT
+  std::unordered_set<::pir::Value> group_inputs;
+  // count all op's input Value
+  for (auto op : group_ops) {
+    for (auto& value : op->operands_source()) {
+      if (!value || !value.type() || std::find(group_ops.begin(), group_ops.end(), value.defining_op()) != group_ops.end())
+        continue;
+      // if the input value owner op is not in OpSet, it's the group's input
+      group_inputs.insert(value);
+    }
+  }
+  return std::vector<pir::Value>(group_inputs.begin(), group_inputs.end());
+}
+
 namespace {
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
@@ -538,18 +553,24 @@ struct IncrementalOrder {
 std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     const pir::Operation* position_op,
     const pir::Block* block,
-    const pir::Operation* op,
+    pir::Operation* op,
     std::unordered_set<pir::Operation*>* visited_ops) {
   std::unordered_set<pir::Operation*> ops;
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
-    for (auto& op : *block) {
-      if (src_op == &op) return true;
+    for (auto& item : *block) {
+      if (src_op == &item) return true;
     }
     return false;
   };
-
-  for (auto value : op->operands_source()) {
+  std::vector<pir::Value> op_inputs;
+  if(op->isa<cinn::dialect::GroupOp>()) {
+    auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
+    op_inputs = AnalysisExternalInputs(group_op.GetOperators());
+  } else {
+    op_inputs = op->operands_source();
+  }
+  for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
     if (visited_ops->count(defining_op)) continue;
@@ -580,7 +601,7 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
   }();
 
   for (auto& op : moved_ops) {
-    VLOG(5) << "Move " << op->name() << " before " << insert_point_op->name();
+    VLOG(5) << "Move " << op->id()<< " "<<op->name() << " before " << insert_point_op->id() << " " << insert_point_op->name();
     op->MoveTo(block, insert_point_op->operator Block::Iterator());
   }
 }
