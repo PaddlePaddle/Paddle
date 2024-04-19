@@ -113,11 +113,6 @@ inline void hash_combine(std::size_t &seed,  // NOLINT
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-std::size_t HashIntArgsMap(
-    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
-std::ostream &operator<<(
-    std::ostream &os,
-    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
 std::vector<const ::pir::Operation *> TopologySort(
     const OpLoweringGroup &group);
 

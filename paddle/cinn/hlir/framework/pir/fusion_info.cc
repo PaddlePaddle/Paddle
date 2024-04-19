@@ -181,27 +181,6 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   return os;
 }
 
-std::size_t HashIntArgsMap(
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  std::size_t seed = 2153;
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    hash_combine(seed, input_idx);
-    hash_combine(seed, dim_idx.arg_idx);
-    hash_combine(seed, dim_idx.dim_idx);
-  }
-  return seed;
-}
-std::ostream& operator<<(
-    std::ostream& os,
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  os << "int_args_map: {\n";
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    os << "input_idx: " << input_idx << ":[ " << dim_idx.arg_idx << ", "
-       << dim_idx.dim_idx << " ]\n";
-  }
-  os << "}\n";
-}
-
 std::vector<const ::pir::Operation*> TopologySort(
     const OpLoweringGroup& group) {
   // NOTE(Aurelius84): Use simplest one-by-one order temporaly.
