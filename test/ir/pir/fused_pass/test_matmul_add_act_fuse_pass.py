@@ -173,7 +173,7 @@ class TestMatmulAddActPattern(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = True      # option
+        use_cutlass = False      # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
             acts = ["pd_op.relu", "pd_op.gelu"]
