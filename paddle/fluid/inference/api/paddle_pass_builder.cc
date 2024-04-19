@@ -631,7 +631,8 @@ const std::vector<std::string> kPirMkldnnPasses{
     "matmul_activation_fuse_pass",
     "conv_elementwise_add_onednn_fuse_pass",
     "conv_activation_onednn_fuse_pass",
-    "conv_concat_activation_onednn_fuse_pass"};
+    "conv_concat_activation_onednn_fuse_pass",
+    "elementwise_act_onednn_fuse_pass"};
 
 const std::vector<std::string> kPirCpuPasses{};
 
