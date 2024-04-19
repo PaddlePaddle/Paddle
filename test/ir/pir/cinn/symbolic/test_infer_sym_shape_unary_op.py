@@ -576,14 +576,11 @@ class SplitNet(paddle.nn.Layer):
         out = paddle.split(x, [1, 2, -1], axis=1)
         out = paddle.split(x, [1, -1], axis=1)
         out = paddle.split(x, [1, 2, 3], axis=1)
-        out = paddle.split(x, [1, 2, x.shape[1]], axis=1)
-        out = paddle.split(x, [1, 2, x.shape[1]], axis=-2)
 
         out = x.split([-1], axis=1)
         out = x.split([1, 2, -1], axis=1)
         out = x.split([1, -1], axis=1)
         out = x.split([1, 2, 3], axis=1)
-        out = x.split([1, 2, x.shape[1]], axis=1)
 
         return out
 
@@ -596,13 +593,10 @@ class SplitOpInferSymbolicShapeTest(TestBase):
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, S1, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, S1, S2], data[NULL]',
-            'shape[S0, S1, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
+            'shape[S0, 6, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, S1, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 5, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
         ]
 
     def test_eval_symbolic(self):

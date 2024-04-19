@@ -93,7 +93,7 @@ class TestFusedGemm_epilogueAdd(unittest.TestCase):
 
                 pm = paddle.pir.PassManager()
                 pm.add_pass(
-                    'fused_gemm_epilogue_pass'
+                    'fused_gemm_epilogue_pass', {}
                 )  # apply pass to eliminate dead code
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]

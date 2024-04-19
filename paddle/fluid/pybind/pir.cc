@@ -44,7 +44,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/passes.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -63,6 +62,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -71,6 +71,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
@@ -1714,6 +1715,9 @@ void BindUtils(pybind11::module *m) {
   });
   m->def("set_insertion_point",
          [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_after", [](Operation *op) {
+    ApiBuilder::Instance().SetInsertionPointAfter(op);
+  });
   m->def("set_insertion_point_to_block_end", [](Block *block) {
     ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
   });
@@ -1872,27 +1876,47 @@ void BindUtils(pybind11::module *m) {
     cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
   });
+
+  m->def("cinn_compilation_cache_size", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    return cinn::hlir::framework::CompilationCache::Instance().Size();
+#endif
+  });
 }
 
 namespace {
 
+#ifdef PADDLE_WITH_CINN
+std::shared_ptr<pir::PassManager> CreatePassManager() {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+  if (FLAGS_print_ir) {
+    pass_manager->EnableIRPrinting();
+  }
+  return pass_manager;
+}
+#endif
+
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
-  cinn::dialect::ir::ApplyCinnPass(&program, [] {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
-    if (FLAGS_print_ir) {
-      pass_manager->EnableIRPrinting();
-    }
-    return pass_manager;
-  });
+  cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void CheckInferSymbolicIfNeed(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  cinn::dialect::ir::CheckInferSymbolicIfNeed(&program, CreatePassManager);
+#else
+  // Do nothing.
 #endif
 }
 
@@ -1911,6 +1935,7 @@ void InferSymbolicShapePass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
@@ -1941,8 +1966,26 @@ void BindPassManager(pybind11::module *m) {
            }),
            py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
+           [](PassManager &self,
+              const std::string &pass_name,
+              const std::unordered_map<std::string, py::object> attrs = {}) {
+             auto pass = pir::PassRegistry::Instance().Get(pass_name);
+             for (const auto &attr : attrs) {
+               if (py::isinstance<py::str>(attr.second)) {
+                 pass->Set(attr.first,
+                           new std::string(attr.second.cast<std::string>()));
+               } else if (py::isinstance<py::bool_>(attr.second)) {
+                 pass->Set(attr.first, new bool(attr.second.cast<bool>()));
+               } else if (py::isinstance<py::int_>(attr.second)) {
+                 pass->Set(attr.first, new int(attr.second.cast<int>()));
+               } else if (py::isinstance<py::float_>(attr.second)) {
+                 pass->Set(attr.first, new float(attr.second.cast<float>()));
+               } else {
+                 PADDLE_THROW(phi::errors::InvalidArgument(
+                     "The pass attr is not supported this type."));
+               }
+             }
+             self.AddPass(std::move(pass));
            })
       .def("passes",
            [](PassManager &self) {

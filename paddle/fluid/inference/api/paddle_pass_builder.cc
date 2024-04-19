@@ -173,12 +173,6 @@ const std::vector<std::string> kDlnneSubgraphPasses({
     "dlnne_subgraph_pass",           //
 });
 
-const std::vector<std::string> kLiteSubgraphPasses({
-#ifdef PADDLE_WITH_LITE
-    "lite_subgraph_pass",
-#endif
-});
-
 // TODO(inference): Most of the existing pass fusion operators do not
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
@@ -228,7 +222,6 @@ const std::vector<std::string> kCINNCompilerPasses{
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "gpu_cpu_map_matmul_to_mul_pass",
-    "build_cinn_pass",
 };
 
 const std::vector<std::string> CpuBasicPasses{
@@ -614,7 +607,8 @@ const std::vector<std::string> kPirGpuPasses{
     "fc_elementwise_layernorm_fuse_pass",
     "matmul_scale_fuse_pass",
     "matmul_transpose_fuse_pass",
-    "transpose_flatten_concat_fuse_pass"};
+    "transpose_flatten_concat_fuse_pass",
+    "remove_redundant_transpose_pass"};
 
 const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "map_op_to_another_pass",

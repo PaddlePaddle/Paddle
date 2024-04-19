@@ -26,10 +26,6 @@ if(TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if(WITH_LITE)
-  add_subdirectory(lite)
-endif()
-
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)

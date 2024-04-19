@@ -386,7 +386,7 @@
     data_type : dtype
 
 - op : group_norm_silu_xpu
-  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  args : (Tensor x, Tensor scale, Tensor bias, int groups = -1, float epsilon = 1e-5)
   output : Tensor(out)
   infer_meta :
     func : GroupNormalizeSiluXPUInferMeta

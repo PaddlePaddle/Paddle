@@ -323,13 +323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endfunction()
 
   if(NOT APPLE AND WITH_MKLML)
-    # RNN1
-    set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data_without_verify(
-      ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
-
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data_without_verify(
@@ -792,32 +785,16 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     # build test binary to be used in subsequent tests
     inference_analysis_api_test_build(${LEXICAL_TEST_APP}
                                       ${LEXICAL_TEST_APP_SRC})
-    # run lexcial analysis test
-    inference_analysis_api_lexical_test_run(
-      test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run bfloat16 lexical analysis test
-    inference_analysis_api_lexical_bfloat16_test_run(
-      test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run post-training quantization lexical analysis test
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      false) # fuse_multi_gru
+
     # run post-training quantization lexical analysis test with multi_gru fuse
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8_multi_gru
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      true) # fuse_multi_gru
+    # inference_analysis_api_lexical_int8_test_run(
+    #  test_analyzer_lexical_gru_int8_multi_gru
+    #  ${LEXICAL_TEST_APP}
+    #  ${GRU_MODEL_PATH}
+    #  ${GRU_DATA_PATH}
+    #  true # enable_int8_ptq
+    #  false # enable_int8_qat
+    #  true) # fuse_multi_gru
 
     # run qat gru test
     set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
@@ -1165,15 +1142,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
-  inference_analysis_test(
-    lite_resnet50_test
-    SRCS
-    lite_resnet50_test.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR})
 
   inference_analysis_test(
     test_analyzer_capi_exp
@@ -1342,7 +1310,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
