@@ -905,8 +905,9 @@ class GatherOpPattern
         auto axis_gen_op = op.operand_source(2).defining_op();
         PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
                           true,
-                          "Not Supported: The gather operator for CINN only "
-                          "supports constant value");
+                          ::phi::errors::InvalidArgument(
+                              "Not Supported: The gather operator for CINN "
+                              "only supports constant value"));
         auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
         axis = static_cast<int>(full_op.attribute("value")
                                     .dyn_cast<::pir::FloatAttribute>()
