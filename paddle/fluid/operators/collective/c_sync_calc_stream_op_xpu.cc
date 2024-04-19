@@ -25,4 +25,5 @@ PD_REGISTER_STRUCT_KERNEL(c_sync_calc_stream,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::bfloat16,
+                          phi::dtype::float16) {}

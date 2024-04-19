@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -30,10 +30,10 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+        phi::errors::PreconditionNotMet("It must use CUDAPlace."));
     PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
     // input x
@@ -230,10 +230,10 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+        phi::errors::PreconditionNotMet("It must use CUDAPlace."));
     PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
     const phi::DenseTensor *y_grad =
@@ -420,10 +420,10 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 PD_REGISTER_STRUCT_KERNEL(
-    resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, plat::float16) {}
+    resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitGradKernel,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 #endif

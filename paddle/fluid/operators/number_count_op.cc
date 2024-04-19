@@ -35,7 +35,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(number_dtype,
                       framework::proto::VarType::INT64,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dtype of the number_dtype should be int64"));
     return phi::KernelKey(number_dtype, ctx.GetPlace());
   }

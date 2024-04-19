@@ -15,6 +15,12 @@
 import paddle
 
 from .process_group import new_process_group
+from .reshard_funcs.base_reshard_func import (
+    choose_reshard_func,
+)
+from .reshard_funcs.reshard_func_register import register_reshard_funcs
+
+register_reshard_funcs()
 
 
 def apply_partition_pass(program):
@@ -38,7 +44,7 @@ def apply_partition_pass(program):
     return new_program
 
 
-def apply_reshard_pass(program):
+def apply_reshard_pass_deprecated(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
@@ -78,5 +84,22 @@ def apply_reshard_pass(program):
                 reduced_value.set_type(op.result(0).type())
                 op.result(0).replace_all_uses_with(reduced_value)
                 new_program.global_block().remove_op(op)
+
+    return new_program
+
+
+def apply_reshard_pass(program):
+    new_program = program.clone()
+    with paddle.base.program_guard(new_program):
+        for op in new_program.global_block().ops:
+            if op.name() == 'dist_op.reshard':
+                op_dist_attr = op.attrs()["op_dist_attr"]
+                src_dist_attr = op_dist_attr.operand_dist_attr(0)
+                dst_dist_attr = op_dist_attr.result_dist_attr(0)
+
+                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                reshard_func.reshard(
+                    new_program, op, src_dist_attr, dst_dist_attr
+                )
 
     return new_program
