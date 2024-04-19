@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
@@ -27,6 +29,8 @@ from paddle.nn import (
     Layer,
     functional as F,
 )
+
+from .log_util import logger
 
 ####################################################
 #                                                  #
@@ -197,7 +201,7 @@ def register_sequence_parallel_allreduce_hooks(
 
     params = []
     for p in model.parameters():
-        if is_sequence_parallel_parameter(p):
+        if is_sequence_parallel_parameter(p) and not p.stop_gradient:
             params.append(p)
 
     if fuse_sequence_parallel_allreduce:
@@ -228,6 +232,9 @@ def is_fused_linear_param_grad_add_supported():
         return hasattr(paddle._C_ops, 'fused_linear_param_grad_add')
     else:
         return False
+
+
+_raise_cuda_env_unset_warning_for_sp = True
 
 
 class SPInnerOverlapLinear(paddle.autograd.PyLayer):
@@ -284,6 +291,17 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
+        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
+        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            global _raise_cuda_env_unset_warning_for_sp
+            if _raise_cuda_env_unset_warning_for_sp:
+                logger.warning(
+                    "You set mp_async_allreduce=True, but you forget to set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+            _raise_cuda_env_unset_warning_for_sp = False
+            tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
@@ -349,6 +367,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, None, None
                 else:
+                    # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
                     (
                         dw,
                         dbias,
@@ -474,14 +493,25 @@ class ColumnSequenceParallelLinear(Layer):
 
     def forward(self, x):
         # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
-        return SPInnerOverlapLinear.apply(
-            x,
-            self.weight,
-            self.bias,
-            self.fuse_matmul_bias,
-            self.mp_fused_linear_param_grad_add,
-            self.model_parallel_group,
-        )
+        # reuse mp_async_allreduce to do sequence parallelism overlap
+        if self.mp_async_allreduce:
+            output = SPInnerOverlapLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.fuse_matmul_bias,
+                self.mp_fused_linear_param_grad_add,
+                self.model_parallel_group,
+            )
+        else:
+            if self.is_mp:
+                input_parallel = AllGatherOp.apply(x)
+            else:
+                input_parallel = x
+            output = self.linear(
+                input_parallel, self.weight, self.bias, name=self._name
+            )
+        return output
 
 
 class MPScale(PyLayer):

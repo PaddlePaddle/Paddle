@@ -18,12 +18,11 @@ import logging
 import os
 import sys
 
-from cinn.common import is_compiled_with_cuda
-from cinn.framework import Scope
-from cinn.frontend import PaddleModelConvertor
-
 import paddle
 from paddle.base.layer_helper import LayerHelper
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.framework import Scope
+from paddle.cinn.frontend import PaddleModelConvertor
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")

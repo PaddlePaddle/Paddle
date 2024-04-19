@@ -38,7 +38,7 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -87,7 +87,7 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();

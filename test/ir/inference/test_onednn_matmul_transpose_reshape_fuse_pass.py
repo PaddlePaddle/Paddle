@@ -114,7 +114,7 @@ class TestOneDNNMatmulTransposeReshapeFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=['matmul_transpose_reshape_mkldnn_fuse_pass']
+            quant=False, passes=['matmul_transpose_reshape_onednn_fuse_pass']
         )
 
 

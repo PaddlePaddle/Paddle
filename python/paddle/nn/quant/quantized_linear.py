@@ -18,7 +18,6 @@ from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device.cuda import get_device_capability
 from paddle.framework import (
     LayerHelper,
-    in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
 
@@ -75,8 +74,7 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently group_size only support -1/64/128. but got {group_size} "
-
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.weight_quantize(x, algo, arch, group_size)
     else:
         type = "weight_quantize"
@@ -129,7 +127,7 @@ def weight_dequantize(
         out_dtype, 'out_dtype', ['float16', 'bfloat16'], 'weight_dequantize'
     )
     out_dtype = convert_np_dtype_to_dtype_(out_dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.weight_dequantize(x, scale, algo, out_dtype, group_size)
     else:
         type = "weight_dequantize"
@@ -200,7 +198,7 @@ def weight_only_linear(
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.weight_only_linear(
             x, weight, bias, weight_scale, weight_dtype, arch, group_size
         )
@@ -327,7 +325,7 @@ def apply_per_channel_scale(x, scales):
             >>> out = apply_per_channel_scale(x, scales)
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.apply_per_channel_scale(x, scales)
     else:
         type = "apply_per_channel_scale"

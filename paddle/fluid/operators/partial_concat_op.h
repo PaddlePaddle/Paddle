@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
@@ -28,7 +28,7 @@ static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
       start_index >= -size && start_index < size,
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The start_index is expected to be in range of [%d, %d), but got %d",
           -size,
           size,
@@ -47,13 +47,13 @@ class PartialConcatKernel : public framework::OpKernel<T> {
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
 
     auto input_dim = ins[0]->dims();
     PADDLE_ENFORCE_EQ(input_dim.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Only supports 2-D array with batch size in the 1st "
                           "dimension and data in the 2nd."));
     auto in_size = input_dim[1];
@@ -94,7 +94,7 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
     // all parameters
     auto batch_size = ins[0]->dims()[0];

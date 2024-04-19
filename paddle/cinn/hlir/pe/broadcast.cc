@@ -400,10 +400,7 @@ Tensor BroadcastTo(const Tensor& A,
           } else if (MathEqual(a_shape_i, out_shape[idx])) {
             broadcast_indice.push_back(indice[idx]);
           } else {
-            std::stringstream ss;
-            ss << "fail to broad cast input shape " << a_shape_i
-               << " to output shape " << out_shape[idx];
-            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+            broadcast_indice.push_back(indice[idx] % a_shape_i);
           }
         }
         return A(broadcast_indice);

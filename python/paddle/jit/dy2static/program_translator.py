@@ -1424,50 +1424,6 @@ class InplaceMap:
         return ckp
 
 
-class FallbackProgramLayer:
-    __slots__ = [
-        '_instance',
-        '_dy_func',
-        'training',
-        '_cuda_graph_capture_mode',
-        '_cuda_graph_pool_id',
-        '_debug_name',
-    ]
-
-    def __init__(self, instance, dy_func):
-        self._instance = instance
-        self._dy_func = dy_func
-
-    def __call__(self, inputs):
-        return self._dy_func(*inputs)
-
-    def __getattr__(self, key):
-        if key not in self.__slots__:
-            raise RuntimeError(
-                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
-            )
-        elif key in ['training']:
-            if self._instance is not None:
-                return getattr(self._instance, key)
-            return
-
-        return super().__getattr__(key)
-
-    def __setattr__(self, key, value):
-        if key not in self.__slots__:
-            raise RuntimeError(
-                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
-            )
-        elif key in ['training']:
-            if self._instance is not None:
-                return setattr(self._instance, key, value)
-            return
-
-        return super().__setattr__(key, value)
-
-
 class PirPrimHooker(PirPartialProgramLayerHook):
     def __init__(self, original_program, backend):
         self.backend = backend
@@ -1559,8 +1515,6 @@ class ProgramCache:
     Wrapper class for the program functions defined by dygraph function.
     """
 
-    dy2static_error_file = "to_static.error"
-
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
@@ -1572,43 +1526,22 @@ class ProgramCache:
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
 
-        # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
-        enable_fallback = enable_prim
-        try:
-            if use_pir_api():
-                concrete_program = ConcreteProgram.pir_from_func_spec(
-                    func_spec=cache_key.function_spec,
-                    input_spec=cache_key.input_args_with_spec,
-                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
-                    class_instance=cache_key.class_instance,
-                    **cache_key.kwargs,
-                )
-            else:
-                concrete_program = ConcreteProgram.from_func_spec(
-                    func_spec=cache_key.function_spec,
-                    input_spec=cache_key.input_args_with_spec,
-                    input_kwargs_spec=cache_key.input_kwargs_with_spec,
-                    class_instance=cache_key.class_instance,
-                    **cache_key.kwargs,
-                )
-        except Exception as e:
-            if enable_fallback:
-                warnings.warn(
-                    "Exception is thrown while applying @paddle.jit.to_static. It will fallback into dygraph mode for training.\n"
-                    "1. You can check `to_static.error` file in current workspace directory for detail.\n"
-                    "2. In fallback mode, you can only do training, can't call paddle.jit.save(). Please modify model code according `to_static.error` firstly"
-                )
-                # TODO(xiongkun) change different file name to avoid overwrite.
-                with open(self.dy2static_error_file, "w") as fp:
-                    fp.write(str(e))
-
-                fallback_layer = FallbackProgramLayer(
-                    cache_key.class_instance,
-                    cache_key.function_spec.dygraph_function,
-                )
-                return fallback_layer, fallback_layer
-            else:
-                raise
+        if use_pir_api():
+            concrete_program = ConcreteProgram.pir_from_func_spec(
+                func_spec=cache_key.function_spec,
+                input_spec=cache_key.input_args_with_spec,
+                input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                class_instance=cache_key.class_instance,
+                **cache_key.kwargs,
+            )
+        else:
+            concrete_program = ConcreteProgram.from_func_spec(
+                func_spec=cache_key.function_spec,
+                input_spec=cache_key.input_args_with_spec,
+                input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                class_instance=cache_key.class_instance,
+                **cache_key.kwargs,
+            )
 
         backend = cache_key.kwargs['backend']
         if (

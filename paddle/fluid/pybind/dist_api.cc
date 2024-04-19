@@ -17,6 +17,8 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/dist_to_dense_pass.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pybind/dist_api.h"
 #include "paddle/fluid/pybind/dist_static_op_function.h"
 #include "paddle/phi/core/enforce.h"
@@ -105,6 +107,32 @@ void BindDistOpsAPI(pybind11::module *module) {
   }
 }
 
+TensorDistAttribute CreateTensorDistAttribute(
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<int64_t> &dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType> &partial_status = {}) {
+  return TensorDistAttribute::get(
+      pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
+}
+
+OperationDistAttribute CreateOperationDistAttribute(
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<TensorDistAttribute> &operand_dist_attrs,
+    const std::vector<TensorDistAttribute> &result_dist_attrs) {
+  return OperationDistAttribute::get(
+      pir::IrContext::Instance(), mesh, operand_dist_attrs, result_dist_attrs);
+}
+
+void BindDistUtils(pybind11::module *m) {
+  m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
+  m->def("create_op_dist_attribute", CreateOperationDistAttribute);
+}
+
+void BindDistPassAPI(pybind11::module *module) {
+  module->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+  module->def("apply_dist2dense_pass", paddle::dialect::DistToDensePass);
+}
+
 void BindOpsFunction(py::module *m) {
   m->def("reshard_v2",
          [](const pir::Value &x, const TensorDistAttribute &dist_attr) {
@@ -116,6 +144,8 @@ void BindDistApi(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindOperationDistAttribute(&ir_module);
   BindTensorDistAttribute(&ir_module);
+  BindDistUtils(&ir_module);
+  BindDistPassAPI(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindDistOpsAPI(&ops_modules);
   BindOpsFunction(&ops_modules);

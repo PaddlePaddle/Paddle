@@ -32,7 +32,7 @@ struct CheckLabelValue {
     PADDLE_ENFORCE_EQ(
         val == static_cast<T>(0) || val == static_cast<T>(1),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(label) value of modified_huber_loss_op expected to be 0 "
             "or 1, but got %ld. Please check label value.",
             val));
