@@ -113,7 +113,6 @@ Split the tensor evenly according to its rank.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_split,
                   ops::CSplitOp,

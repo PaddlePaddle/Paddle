@@ -577,7 +577,6 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           XPU,

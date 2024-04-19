@@ -16,8 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/partial_concat_op.h"
 #include "paddle/phi/common/float16.h"
 
-namespace plat = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
