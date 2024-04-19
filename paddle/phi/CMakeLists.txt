@@ -104,6 +104,8 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+set(PHI_KERNEL_GPU_SRCS ${kernels_gpu_srcs})
+
 if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
       SHARED
@@ -196,6 +198,27 @@ endif()
 set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Library" FORCE)
+
+if(WITH_GPU OR WITH_ROCM)
+  if(WITH_GPU)
+    nv_library(
+      phi_kernel_gpu ${PHI_BUILD_TYPE}
+      SRCS ${PHI_KERNEL_GPU_SRCS}
+      DEPS ${PHI_DEPS})
+  elseif(WITH_ROCM)
+    hip_library(
+      phi_kernel_gpu ${PHI_BUILD_TYPE}
+      SRCS ${PHI_KERNEL_GPU_SRCS}
+      DEPS ${PHI_DEPS})
+  endif()
+
+  target_link_libraries(phi phi_kernel_gpu)
+
+  string(REPLACE "phi" "phi_kernel_gpu" PHI_KERNEL_GPU_NAME ${PHI_NAME})
+  set(PHI_KERNEL_GPU_LIB
+      "${CMAKE_CURRENT_BINARY_DIR}/${PHI_KERNEL_GPU_NAME}"
+      CACHE FILEPATH "PHI Kernel GPU Library" FORCE)
+endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
   target_include_directories(phi PRIVATE ${MKL_INCLUDE})

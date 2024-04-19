@@ -1033,6 +1033,8 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+        if env_dict.get("PHI_KERNEL_GPU_LIB"):
+            shutil.copy(env_dict.get("PHI_KERNEL_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
