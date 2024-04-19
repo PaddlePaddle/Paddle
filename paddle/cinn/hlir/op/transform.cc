@@ -1325,7 +1325,6 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
-  VLOG(-1) << "axis value is " << axis;
 
   std::vector<Expr> output_shape = ToCinnExprs(output_shapes[0]);
 
