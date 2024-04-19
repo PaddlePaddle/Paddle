@@ -800,7 +800,12 @@ class SqueezeOpPattern
     auto axis_full_op = op->operand_source(1)
                             .defining_op()
                             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    if (axis_full_op) {
+
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    if (axis_full_op && !is_dyshape) {
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
@@ -847,7 +852,11 @@ class UnsqueezeOpPattern
     auto axis_full_op = op->operand_source(1)
                             .defining_op()
                             ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    if (axis_full_op) {
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    if (axis_full_op && !is_dyshape) {
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
