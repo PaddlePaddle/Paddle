@@ -276,10 +276,10 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
             f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
 
-        if job_type == "backward":
+        if job_type in ["backward", "backward_w"]:
             assert (
                 len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -770,6 +770,143 @@ def _program_for_vpp(
 
             if fetch_block:
                 _create_program(src_block, fetch_block, fetch_op)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
+
+
+def _get_backward_op_type(block, op):
+    # For the op doesn't have output such as 'send_v2', it should be backward_b.
+    if len(op.output_arg_names) == 0:
+        return "backward_b"
+    for name in op.output_arg_names:
+        name = name.split("@")[0]
+        if not block._find_var_recursive(name):
+            return "backward_b"
+        var = block._find_var_recursive(name)
+        if not var.is_parameter:
+            return "backward_b"
+
+    return "backward_w"
+
+
+def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program)
+
+    oprole_type = {
+        0: "forward",
+        1: "backward",
+        2: "backward_b",
+        3: 'backward_w',
+        4: "optimizer",
+    }
+
+    def _split_ops(block):
+        # split the program based on the op_role
+        type_to_ops = OrderedDict()
+        for type in oprole_type.values():
+            type_to_ops[type] = []
+        type_to_ops["fetch"] = []
+
+        for op in block.ops:
+            if _is_fetch_op(op):
+                type_to_ops["fetch"].append(op)
+            elif is_forward_op(op):
+                type_to_ops["forward"].append(op)
+            elif is_backward_op(op):
+                type = _get_backward_op_type(block, op)
+                type_to_ops[type].append(op)
+                type_to_ops["backward"].append(op)
+            elif is_optimize_op(op):
+                type_to_ops["optimizer"].append(op)
+            else:
+                raise ValueError(
+                    "The op role: "
+                    + str(op.attr('op_role'))
+                    + " isn't one of Forward, Backward or Optimizer."
+                )
+        return type_to_ops
+
+    type_to_program = OrderedDict()
+    for type in oprole_type.values():
+        type_to_program[type] = Program()
+
+    for idx, src_block in enumerate(program.blocks):
+        type_to_ops = _split_ops(src_block)
+        fwd_ops, bwd_ops, bwd_b_ops, bwd_w_ops, opt_ops, fetch_ops = (
+            type_to_ops["forward"],
+            type_to_ops["backward"],
+            type_to_ops["backward_b"],
+            type_to_ops["backward_w"],
+            type_to_ops["optimizer"],
+            type_to_ops["fetch"],
+        )
+        if idx == 0:
+            fwd_block = type_to_program["forward"].block(0)
+            _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block = type_to_program["backward"].block(0)
+            _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            bwd_block_b = type_to_program["backward_b"].block(0)
+            _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            bwd_block_w = type_to_program["backward_w"].block(0)
+            _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            opt_block = type_to_program["optimizer"].block(0)
+            _add_ops_into_block(src_block, opt_block, opt_ops)
+        else:
+            if len(fwd_ops):
+                fwd_block = type_to_program["forward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_ops):
+                bwd_block = type_to_program["backward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            if len(bwd_b_ops):
+                bwd_block_b = type_to_program["backward_b"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_b._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            if len(bwd_w_ops):
+                bwd_block_w = type_to_program["backward_w"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_w._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            if len(opt_ops):
+                opt_block = type_to_program["optimizer"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in fetch_ops:
+            in_name = fetch_op.input_arg_names[0]
+            dst_block = None
+            for block in [fwd_block, bwd_block_b, bwd_block_w, opt_block]:
+                if block._find_var_recursive(in_name):
+                    dst_block = block
+                    break
+            if dst_block:
+                _create_program(src_block, dst_block, fetch_op)
 
     for prog in type_to_program.values():
         prog._sync_with_cpp()
