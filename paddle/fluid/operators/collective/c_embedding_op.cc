@@ -176,7 +176,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(c_embedding,
                   ops::CEmbeddingOp,
                   ops::CEmbeddingOpMaker,

@@ -17,9 +17,9 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
@@ -111,7 +111,7 @@ struct ClipAndFakeQuantFunctor<phi::CPUContext, T> {
             in.data<T>() + in.numel(),
             out->mutable_data<T>(ctx.GetPlace()),
             phi::ClipFunctor<T>(-s, s));
-      auto out_e = framework::EigenVector<T>::Flatten(*out);
+      auto out_e = phi::EigenVector<T>::Flatten(*out);
       out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
     }
   }
@@ -137,7 +137,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
             in.data<T>() + in.numel(),
             out->mutable_data<T>(ctx.GetPlace()),
             QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-      auto out_e = framework::EigenVector<T>::Flatten(*out);
+      auto out_e = phi::EigenVector<T>::Flatten(*out);
       out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
     } else {
       trans(ctx,
@@ -145,7 +145,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
             in.data<T>() + in.numel(),
             out->mutable_data<T>(ctx.GetPlace()),
             phi::ClipFunctor<T>(-s, s));
-      auto out_e = framework::EigenVector<T>::Flatten(*out);
+      auto out_e = phi::EigenVector<T>::Flatten(*out);
       out_e.device(*ctx.eigen_device()) =
           (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
     }
@@ -202,7 +202,7 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
           T s = scale_data[i];
           T inv_s = inverse(s);
           phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
-          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+          auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
           out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
         }
       }
@@ -281,7 +281,7 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
       for (int i = 0; i < channel; i++) {
         T s = scale_data[i];
         phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+        auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
         if (round_type == 0) {
           out_e.device(*ctx.eigen_device()) =
               out_e * s / static_cast<T>(bin_cnt);
