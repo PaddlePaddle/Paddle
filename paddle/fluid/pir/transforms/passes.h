@@ -60,4 +60,5 @@ USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
 #ifdef PADDLE_WITH_XPU
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(group_norm_silu_xpu_fuse_pass);
+USE_PIR_PASS(reshape_xpu_fuse_pass);
 #endif
