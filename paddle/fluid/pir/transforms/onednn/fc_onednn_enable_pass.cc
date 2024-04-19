@@ -25,25 +25,15 @@
 namespace {
 
 class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
- private:
-  std::string fc_name_;
-  std::string fused_fc_name_;
-  uint32_t benefit_;
-
  public:
-  FcOneDNNEnablePattern(const std::string &fc_name,
-                        const std::string &fused_fc_name,
-                        uint32_t benefit)
-      : fc_name_(fc_name), fused_fc_name_(fused_fc_name), benefit_(benefit) {}
+  FcOneDNNEnablePattern() {}
 
   std::string name() const override { return "FcOneDNNEnablePattern"; }
-
-  uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
-    const auto &fc = pat.Op(fc_name_,
+    const auto &fc = pat.Op(paddle::dialect::FcOp::name(),
                             {{"in_num_col_dims", pat.Attr("in_num_col_dims")},
                              {"activation_type", pat.Attr("activation_type")},
                              {"padding_weights", pat.Attr("padding_weights")}});
@@ -76,7 +66,6 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
         {"in_num_col_dims", pat.Attr("in_num_col_dims")},
         {"activation_type", pat.Attr("activation_type")},
         {"padding_weights", pat.Attr("padding_weights")},
-        {"ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE", res.BoolAttr(true)},
         {"use_quantizer", res.BoolAttr(false)},
         {"mkldnn_data_type", res.StrAttr("float32")},
         {"scale_in", res.Float32Attr(1.0f)},
@@ -89,7 +78,8 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
         {"fused_output_scale", res.Float32Attr(1.0f)},
         {"fused_reshape2_shape", res.VectorInt32Attr({})}};
 
-    const auto &fused_fc = res.Op(fused_fc_name_, fused_attrs);
+    const auto &fused_fc =
+        res.Op(paddle::onednn::dialect::FcOp::name(), fused_attrs);
 
     fused_fc({&res.Tensor("input"), &res.Tensor("weight"), &res.Tensor("bias")},
              {&res.Tensor("Out")});
@@ -102,11 +92,7 @@ class FcOneDNNEnablePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<FcOneDNNEnablePattern>(
-        context,
-        paddle::dialect::FcOp::name(),
-        paddle::onednn::dialect::FcOp::name(),
-        1));
+    ps.Add(paddle::drr::Create<FcOneDNNEnablePattern>(context));
     return ps;
   }
 };
