@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import enum
+import os
 
-from gemm_epilogue_common import(
-    CommonGemmEpilogueFunction,
-    CommonCutlassGemmEpilogueKernelDeclare,
+from gemm_epilogue_common import (
     CommonCutlassGemmEpilogueKernelArguments,
+    CommonCutlassGemmEpilogueKernelDeclare,
     CommonCutlassGemmEpilogueKernelExecute,
+    CommonGemmEpilogueFunction,
     CommonTail,
-    GenerateFunctionForPhi
+    GenerateFunctionForPhi,
 )
 from util import SubstituteTemplate, TileDesc, parse_args, write_kernel_to_file
 
-import os
 build_dir = os.path.abspath(os.path.dirname(__file__)) + '/build/'
 
 mutex_include = '''#include <mutex>'''
@@ -49,7 +49,9 @@ dict_for_declare_part = {
 }
 
 fba_kernel = (
-    SubstituteTemplate(CommonCutlassGemmEpilogueKernelDeclare, dict_for_declare_part) 
+    SubstituteTemplate(
+        CommonCutlassGemmEpilogueKernelDeclare, dict_for_declare_part
+    )
     + CommonCutlassGemmEpilogueKernelArguments
     + CommonCutlassGemmEpilogueKernelExecute
 )
@@ -57,6 +59,7 @@ fba_kernel = (
 fba_kernel_leaky_alpha = fba_kernel.replace(
     "{1.f, 1.f}", "{1.f, 1.f, params.leaky_alpha}"
 )
+
 
 # these three acts are not supported by pass now and are commented out to prevent the lib.so too large.
 class FbaAct(enum.Enum):
@@ -66,6 +69,7 @@ class FbaAct(enum.Enum):
     # LeakyRelu = 4
     # Sigmoid = 5
     # Silu = 6
+
 
 SupportedAct = [
     FbaAct.Identity,
@@ -110,7 +114,11 @@ CamelName = {
 #     (cutlass::layout::RowMajor, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor),
 # ]
 layouts = [
-    ('cutlass::layout::RowMajor', 'cutlass::layout::RowMajor', 'cutlass::layout::RowMajor')
+    (
+        'cutlass::layout::RowMajor',
+        'cutlass::layout::RowMajor',
+        'cutlass::layout::RowMajor',
+    )
 ]
 
 swizzling_functors = [
@@ -121,9 +129,10 @@ swizzling_functors = [
 ]
 
 # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
-split_k_factors = ["1","2" ,"4"]    #,"8","16"]
+split_k_factors = ["1", "2", "4"]  # ,"8","16"]
 
 alignments = [8]
+
 
 def generate_sm75_1688():
     kernel_dict = {
@@ -150,9 +159,7 @@ def generate_sm75_1688():
     sm75_code = ""
     for epi_func in SupportedAct:
         op_dict = {}
-        op_dict["func_name"] = (
-            UnderScoreName[epi_func].lower() + "_sm75_fp16"
-        )
+        op_dict["func_name"] = UnderScoreName[epi_func].lower() + "_sm75_fp16"
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
 
         all_kernel_names = ""
@@ -170,32 +177,57 @@ def generate_sm75_1688():
                     kernel_dict["layout_c"] = layout[2]
                     for math_inst in math_instructions:
                         tiles = [
-                            TileDesc("256, 128, 32", 2, "64, 64, 32", math_inst),
-                            TileDesc("128, 256, 32", 2, "64, 64, 32", math_inst),
-                            TileDesc("128, 128, 32", 2, "64, 64, 32", math_inst),
-                            TileDesc(" 64, 256, 32", 2, "64, 64, 32", math_inst),
-                            TileDesc("256,  64, 32", 2, "64, 64, 32", math_inst),
-                            TileDesc(" 64, 128, 32", 2, "32, 64, 32", math_inst),
-                            TileDesc("128,  64, 32", 2, "64, 32, 32", math_inst),
-                            TileDesc(" 64,  64, 32", 2, "32, 32, 32", math_inst),
-                            TileDesc(" 64, 128, 64", 2, "64, 64, 32", math_inst),
+                            TileDesc(
+                                "256, 128, 32", 2, "64, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                "128, 256, 32", 2, "64, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                "128, 128, 32", 2, "64, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                " 64, 256, 32", 2, "64, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                "256,  64, 32", 2, "64, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                " 64, 128, 32", 2, "32, 64, 32", math_inst
+                            ),
+                            TileDesc(
+                                "128,  64, 32", 2, "64, 32, 32", math_inst
+                            ),
+                            TileDesc(
+                                " 64,  64, 32", 2, "32, 32, 32", math_inst
+                            ),
+                            TileDesc(
+                                " 64, 128, 64", 2, "64, 64, 32", math_inst
+                            ),
                         ]
                         for tile in tiles:
                             kernel_dict["Tshape"] = tile.Tshape
                             kernel_dict["Wshape"] = tile.Wshape
                             kernel_dict["Ishape"] = tile.math_inst[0]
                             kernel_dict["element_accum"] = tile.math_inst[3]
-                            kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
+                            kernel_dict["kernel_func_name"] = (
+                                op_dict["func_name"] + "_" + str(suffix)
+                            )
                             suffix += 1
-                            
+
                             fba_kernel_ = fba_kernel
                             # if epi_func in [FbaAct.LeakyRelu]:
                             #     fba_kernel_ = fba_kernel_leaky_alpha
                             kernel_str = (
-                                fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
+                                fba_header
+                                + SubstituteTemplate(fba_kernel_, kernel_dict)
+                                + CommonTail
                             )
                             file_name = (
-                                build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
+                                build_dir
+                                + "generated_tmp/"
+                                + kernel_dict["kernel_func_name"]
+                                + ".cu"
                             )
                             write_kernel_to_file(kernel_str, file_name)
 
@@ -213,9 +245,9 @@ def generate_sm75_1688():
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
         sm75_code += SubstituteTemplate(CommonGemmEpilogueFunction, op_dict)
-    return sm75_code     
-    
-    
+    return sm75_code
+
+
 def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
     all_kernel_names = ""
     all_kernel_declares = ""
@@ -223,7 +255,7 @@ def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
     kernel_dict["split_k_factor"] = "1"
     kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
     suffix += 1
-    
+
     fba_kernel_ = fba_kernel
     # if epi_func in [FbaAct.LeakyRelu]:
     #     fba_kernel_ = fba_kernel_leaky_alpha
@@ -235,9 +267,7 @@ def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
     )
     write_kernel_to_file(kernel_str, file_name)
 
-    all_kernel_names += (
-        kernel_dict["kernel_func_name"] + ", \n"
-    )
+    all_kernel_names += kernel_dict["kernel_func_name"] + ", \n"
     all_kernel_declares += (
         "cutlass::Status "
         + kernel_dict["kernel_func_name"]
@@ -254,23 +284,28 @@ def sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func):
         kernel_dict["swizzling_functor"] = swizzling_functor
         for split_k_fac in split_k_factors:
             kernel_dict["split_k_factor"] = split_k_fac
-            kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
+            kernel_dict["kernel_func_name"] = (
+                op_dict["func_name"] + "_" + str(suffix)
+            )
             suffix += 1
-            
+
             fba_kernel_ = fba_kernel
             # if epi_func in [FbaAct.LeakyRelu]:
             #     fba_kernel_ = fba_kernel_leaky_alpha
             kernel_str = (
-                fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
+                fba_header
+                + SubstituteTemplate(fba_kernel_, kernel_dict)
+                + CommonTail
             )
             file_name = (
-                build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
+                build_dir
+                + "generated_tmp/"
+                + kernel_dict["kernel_func_name"]
+                + ".cu"
             )
             write_kernel_to_file(kernel_str, file_name)
 
-            all_kernel_names += (
-                kernel_dict["kernel_func_name"] + ", \n"
-            )
+            all_kernel_names += kernel_dict["kernel_func_name"] + ", \n"
             all_kernel_declares += (
                 "cutlass::Status "
                 + kernel_dict["kernel_func_name"]
@@ -297,15 +332,14 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     kernel_dict["align_a"] = "8"
     kernel_dict["align_b"] = "8"
 
-    math_instructions = [
-        ("16,8,16", cutlass_dtype, cutlass_dtype, "float")
-    ]
+    math_instructions = [("16,8,16", cutlass_dtype, cutlass_dtype, "float")]
 
     sm80_code = ""
     for epi_func in SupportedAct:
         op_dict = {}
         op_dict["func_name"] = (
-            UnderScoreName[epi_func].lower() + "_sm80_"
+            UnderScoreName[epi_func].lower()
+            + "_sm80_"
             + ("fp16" if "half" in cutlass_dtype else "bf16")
         )
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
@@ -353,17 +387,23 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                         kernel_dict["Ishape"] = tile.math_inst[0]
                         kernel_dict["stages"] = str(tile.stages)
                         kernel_dict["element_accum"] = tile.math_inst[3]
-                        all_kernel_names_universal, all_kernel_declares_universal, suffix = sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func)
+                        (
+                            all_kernel_names_universal,
+                            all_kernel_declares_universal,
+                            suffix,
+                        ) = sm80_16816_forUniversal(
+                            op_dict, kernel_dict, suffix, epi_func
+                        )
                         # all_kernel_names_streamk, all_kernel_declares_streamk, suffix = sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func)
                         all_kernel_declares += all_kernel_declares_universal
                         # all_kernel_declares += all_kernel_declares_streamk
-                        all_kernel_names += all_kernel_names_universal  
-                        # all_kernel_names += all_kernel_names_streamk     
+                        all_kernel_names += all_kernel_names_universal
+                        # all_kernel_names += all_kernel_names_streamk
         # Generate op code
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
         sm80_code += SubstituteTemplate(CommonGemmEpilogueFunction, op_dict)
-    return sm80_code                
+    return sm80_code
 
 
 if __name__ == "__main__":

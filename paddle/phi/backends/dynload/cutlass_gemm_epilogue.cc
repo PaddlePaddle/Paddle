@@ -20,7 +20,7 @@ namespace phi {
 namespace dynload {
 
 extern std::once_flag cutlass_dso_flag;
-void *cutlass_gemm_epilogue_dso_handle;
+void* cutlass_gemm_epilogue_dso_handle;
 
 void* GetCutlassGemmEpilogueHandle() {
   std::string dso_name = "libCutlassGemmEpilogue.so";
@@ -40,7 +40,8 @@ void* GetCutlassGemmEpilogueHandle() {
             "libCutlassGemmEpilogue.so is needed, "
             "but libCutlassGemmEpilogue.so is not found.\n"
             "  Suggestions:\n"
-            "  1. Refer paddle/phi/kernels/fusion/cutlass/gemm_epilogue/README.md, "
+            "  1. Refer "
+            "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/README.md, "
             "and compile this library.\n"
             "  2. Configure environment variables as "
             "follows:\n"

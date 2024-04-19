@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "cuda_fp16.h"
-#include "cuda_bf16.h"
 #include <map>
 #include <vector>
 

@@ -52,10 +52,10 @@ CommonCutlassGemmEpilogueKernelArguments = '''
     // Only available in RRR format
     int64_t batch_stride_C = problem_size.n();
     if(!params.isVec_bias)     { batch_stride_C = problem_size.mn().product(); }
-    long lda = (long)params.lda;   
+    long lda = (long)params.lda;
     long ldb = (long)params.ldb;
     long ldc_bias = 0;
-    if(!params.isVec_bias)     { ldc_bias = (long)params.ldd; } 
+    if(!params.isVec_bias)     { ldc_bias = (long)params.ldd; }
     long ldd = (long)params.ldd;
 
     typename DeviceKernalName::Arguments arguments{
@@ -133,14 +133,12 @@ void ${func_name}(GemmEpilogueAllParams params) {
 '''
 
 
-
 CommonTail = '''
 
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
 '''
-
 
 
 CommonWrapperForPhi = """
@@ -156,6 +154,7 @@ CommonDispatchTemp = '''
     }
 '''
 
+
 def convert_c_data_type(dtype):
     if dtype == "fp16":
         return "GemmEpilogueDataType::fp16"
@@ -164,7 +163,8 @@ def convert_c_data_type(dtype):
 
 
 def GenerateFunctionForPhi(
-    sm_versions_and_types, support_epi_funcs, underscore_names, camel_names):
+    sm_versions_and_types, support_epi_funcs, underscore_names, camel_names
+):
     generated_code = ""
     for epi_fun in support_epi_funcs:
         dispatch_body = ""
@@ -173,7 +173,11 @@ def GenerateFunctionForPhi(
             sm_dicts["sm_code"] = sm_version
             sm_dicts["data_type"] = convert_c_data_type(data_type)
             sm_dicts["op_name_with_sm"] = (
-                underscore_names[epi_fun].lower() + "_sm" + sm_version + "_" + data_type
+                underscore_names[epi_fun].lower()
+                + "_sm"
+                + sm_version
+                + "_"
+                + data_type
             )
             dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
         op_dicts = {}

@@ -24,14 +24,14 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
-#define CUTLASS_CHECK(status)                                                                    \
-  {                                                                                              \
-    cutlass::Status error = status;                                                              \
-    if (error != cutlass::Status::kSuccess) {                                                    \
-      std::cerr << "Got cutlass error: " << cutlassGetStatusString(error) << " at: " << __LINE__ \
-                << std::endl;                                                                    \
-      exit(EXIT_FAILURE);                                                                        \
-    }                                                                                            \
+#define CUTLASS_CHECK(status)                                             \
+  {                                                                       \
+    cutlass::Status error = status;                                       \
+    if (error != cutlass::Status::kSuccess) {                             \
+      std::cerr << "Got cutlass error: " << cutlassGetStatusString(error) \
+                << " at: " << __LINE__ << std::endl;                      \
+      exit(EXIT_FAILURE);                                                 \
+    }                                                                     \
   }
 
 #define CUDA_CHECK(status)                                              \
@@ -53,15 +53,18 @@ typedef enum {
   // MATMUL_ADD_SIGMOID,
 } OpType;
 
-// gemm_epilogue_diff_gpu calculate diff of cutlass output and baseline output, you can
-// use them to debug. return value is the max diff between cutlass and baseline.
+// gemm_epilogue_diff_gpu calculate diff of cutlass output and baseline output,
+// you can use them to debug. return value is the max diff between cutlass and
+// baseline.
 template <typename T>
-float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams& params, OpType op_type);
+float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams& params,
+                             OpType op_type);
 
 std::string OpType2String(OpType op_type);
 
 int ProfileToGetBestConfig(
-    const std::vector<std::function<cutlass::Status(GemmEpilogueAllParams)>>& all_func,
+    const std::vector<std::function<cutlass::Status(GemmEpilogueAllParams)>>&
+        all_func,
     const GemmEpilogueAllParams& params,
     OpType op_type);
 

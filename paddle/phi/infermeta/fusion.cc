@@ -3617,12 +3617,13 @@ void FCInferMeta(const MetaTensor& input,
           in_dims));
 
   std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};
-  PADDLE_ENFORCE_EQ(support_acts.count(activation_type),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The attribute activation_type of fc is expected "
-                        "to be one of [\"\", \"relu\", \"gelu\"], but received %s.",
-                        activation_type.c_str()));
+  PADDLE_ENFORCE_EQ(
+      support_acts.count(activation_type),
+      1,
+      phi::errors::InvalidArgument(
+          "The attribute activation_type of fc is expected "
+          "to be one of [\"\", \"relu\", \"gelu\"], but received %s.",
+          activation_type.c_str()));
 
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(

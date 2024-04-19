@@ -15,15 +15,17 @@ if(NOT DEFINED COMPUTE_CAPABILITY)
 endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/tools/util/include")
+include_directories(
+  "${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/tools/util/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
                         "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp")
 
 execute_process(
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_generator.py
-          --cuda_arch ${COMPUTE_CAPABILITY}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_generator.py
+    --cuda_arch ${COMPUTE_CAPABILITY}
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 find_package(CUDA)
@@ -34,6 +36,7 @@ set(CUDA_NVCC_FLAGS
 set(CMAKE_BUILD_TYPE "Release")
 file(GLOB all_cutlass_gemm_epilogue_cu
      "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
-list(APPEND all_cutlass_gemm_epilogue_cu "${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_util.cu")
+list(APPEND all_cutlass_gemm_epilogue_cu
+     "${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_util.cu")
 
 cuda_add_library(CutlassGemmEpilogue SHARED ${all_cutlass_gemm_epilogue_cu})

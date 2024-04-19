@@ -31,23 +31,28 @@ typedef void (*func)(phi::fusion::cutlass_internal::GemmEpilogueAllParams);
 
 template <typename T, typename Context>
 void GemmEpilogueKernel(const Context& dev_ctx,
-              const DenseTensor& input,
-              const DenseTensor& w,
-              const paddle::optional<DenseTensor>& bias,
-              const int in_num_col_dims,
-              const std::string& activation_type,
-              const bool padding_weights,
-              DenseTensor* out) {
-  if(!bias){
-    PADDLE_THROW(phi::errors::InvalidArgument("Bias is needed!!!"));
+                        const DenseTensor& input,
+                        const DenseTensor& w,
+                        const paddle::optional<DenseTensor>& bias,
+                        const int in_num_col_dims,
+                        const std::string& activation_type,
+                        const bool padding_weights,
+                        DenseTensor* out) {
+  if (!bias) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "In gemm_epilogue kernel, bias should be provided."));
     return;
   }
-  PADDLE_ENFORCE_EQ(padding_weights, false,
-                    phi::errors::PermissionDenied("Weight padding in gemm_epilogue can not be used in GPU scope."));
+  PADDLE_ENFORCE_EQ(
+      padding_weights,
+      false,
+      phi::errors::PermissionDenied(
+          "Weight padding in gemm_epilogue can not be used in GPU scope."));
 
   auto weight_dims = w.dims();
   CHECK_EQ(weight_dims.size() == 2UL, true);
-  // gemm_epilogue_out should be reshape when run since can not get lod in infershape
+  // gemm_epilogue_out should be reshape when run since can not get lod in
+  // infershape
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
@@ -59,13 +64,14 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   auto bias_dims = bias->dims();
   // This Op supports two types of bias elementwiseAdd.
-  // For an output of dimension [M,N], a bias is either a vector of length N or also a matrix of dimension [M,N].
-  // isVec_bias is used to distinguish whether bias is a vector or not
+  // For an output of dimension [M,N], a bias is either a vector of length N or
+  // also a matrix of dimension [M,N]. isVec_bias is used to distinguish whether
+  // bias is a vector or not
   bool isVec_bias = true;
-  if(bias_dims.size()>2 || (bias_dims.size()==2 && bias_dims[0] != 1)){
+  if (bias_dims.size() > 2 || (bias_dims.size() == 2 && bias_dims[0] != 1)) {
     isVec_bias = false;
   }
-  
+
   int M = common::product(out_dims) / weight_dims[1];
   const int K = weight_dims[0];
   const int N = weight_dims[1];
@@ -106,17 +112,21 @@ void GemmEpilogueKernel(const Context& dev_ctx,
     }
   };
   auto gemm_epilogue_dtype = get_gemm_epilogue_dtype(input.dtype());
-  if ((gemm_epilogue_dtype != GemmEpilogueDataType::fp16) && (gemm_epilogue_dtype != GemmEpilogueDataType::bf16)) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Gemm_epilogue kernel only supports fp16 and bf16, input dtype error!"));
+  if ((gemm_epilogue_dtype != GemmEpilogueDataType::fp16) &&
+      (gemm_epilogue_dtype != GemmEpilogueDataType::bf16)) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Gemm_epilogue kernel only supports fp16 "
+                                     "and bf16, input dtype error!"));
     return;
   }
 
   auto cutlass_dispatch_sm_version = [&](int device_sm_version) -> int {
     if (device_sm_version < 80) {
-      PADDLE_ENFORCE_GE(device_sm_version, 80,
-          phi::errors::PreconditionNotMet(
-              "Gemm_epilogue only supports sm >= 80, but got %d.", device_sm_version));
+      PADDLE_ENFORCE_GE(device_sm_version,
+                        80,
+                        phi::errors::PreconditionNotMet(
+                            "Gemm_epilogue only supports sm >= 80, but got %d.",
+                            device_sm_version));
     } else if (device_sm_version > 80) {
       return 80;
     } else {
@@ -124,14 +134,15 @@ void GemmEpilogueKernel(const Context& dev_ctx,
     }
   };
 
-  void * workspace = nullptr; 
-  size_t workspace_size_bytes = ((M-1+16)/16) * ((N-1+64)/64) * sizeof(int);
+  void* workspace = nullptr;
+  size_t workspace_size_bytes =
+      ((M - 1 + 16) / 16) * ((N - 1 + 64) / 64) * sizeof(int);
   phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
-        dev_ctx.GetPlace(),
-        workspace_size_bytes,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  
+      dev_ctx.GetPlace(),
+      workspace_size_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   workspace = tmp_ptr->ptr();
-  
+
   GemmEpilogueAllParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
       reinterpret_cast<const void*>(w.data<T>()),
@@ -140,14 +151,14 @@ void GemmEpilogueKernel(const Context& dev_ctx,
       M,
       N,
       K,
-      lda, 
+      lda,
       ldb,
       ldd,
       dev_ctx.stream(),
       gemm_epilogue_dtype,
       isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
-      0.01,       // for leaky_relu
+      0.01,  // for leaky_relu
       workspace,
   };
 
@@ -156,27 +167,27 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   CHECK_EQ(dlhandler == NULL, false);
   if (activation_type == "identity" || activation_type == "") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAdd"));
-  }
-  else if (activation_type == "relu") {
+  } else if (activation_type == "relu") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddRelu"));
-  }  
-  else if (activation_type == "gelu"){
+  } else if (activation_type == "gelu") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddGelu"));
-  } 
-  /// these three acts are not supported by pass now and are commented out to prevent the lib.so too large.
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Cutlass does not support this activation_type: %s.",
+        activation_type.c_str()));
+  }
+  /// these three acts are not supported by pass now and are commented out to
+  /// prevent the lib.so too large.
   // else if (activation_type == "leaky_relu") {
   //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
-  // } 
+  // }
   // else if (activation_type == "sigmoid") {
   //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
-  // } 
+  // }
   // else if (activation_type == "swish") {
   //   gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
-  // } 
-  else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Cutlass does not support this activation_type: %s.", activation_type.c_str()));
-  }
+  // }
+
   gemm_epilogue_func(params);
 }
 
