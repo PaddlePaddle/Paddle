@@ -478,6 +478,15 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
+bool IscloseOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool TakeAlongAxisOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // input
@@ -544,3 +553,7 @@ bool TopPSamplingOpInferSymbolicShape(
 }
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::IscloseOpInferSymbolicShape;
+}
