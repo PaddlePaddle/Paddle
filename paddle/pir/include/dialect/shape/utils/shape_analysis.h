@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <mutex>
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
@@ -105,7 +104,6 @@ class IR_API ShapeConstraintIRAnalysis {
   using DimExprSubstitutionPattern =
       std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
   DimExprSubstitutionPattern substitution_pattern_;
-  static std::mutex mutex_;
 };
 
 class IR_API ShapeAnalysisManager {

@@ -29,8 +29,6 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-std::mutex ShapeConstraintIRAnalysis::mutex_;
-
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
@@ -49,13 +47,9 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 }
 
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
-  std::lock_guard<std::mutex> guard(mutex_);
-  if (HasShapeOrDataForValue(val)) {
-    return;
-  }
   std::unordered_set<Operation*> subgraph_ops;
   std::vector<Operation*> start_ops;
-  const auto& GetNextVisitOpForBuild =
+  const auto& VisitNotInferedInputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
         for (auto& operand : op->operands_source()) {
           if (operand.impl() && !HasShapeOrDataForValue(operand)) {
@@ -64,7 +58,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
         }
       };
 
-  ::common::BfsWalker<Operation*> build_subgraph_walker(GetNextVisitOpForBuild);
+  ::common::BfsWalker<Operation*> build_subgraph_walker(VisitNotInferedInputOp);
   build_subgraph_walker(val.defining_op(), [&](Operation* op) {
     subgraph_ops.insert(op);
     bool has_prev_op = false;
@@ -78,7 +72,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     }
   });
 
-  const auto& GetPrevVisitOpForInfer =
+  const auto& VisitSubgraphInputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
         for (auto& operand : op->operands_source()) {
           if (operand.impl() && subgraph_ops.count(operand.defining_op())) {
@@ -86,7 +80,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
           }
         }
       };
-  const auto& GetNextVisitOpForInfer =
+  const auto& VisitSubgraphOutputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           for (auto iter = op->result(i).use_begin();
@@ -98,8 +92,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
           }
         }
       };
-  ::common::TopoWalker<Operation*> topo_infer_walker(GetPrevVisitOpForInfer,
-                                                     GetNextVisitOpForInfer);
+  ::common::TopoWalker<Operation*> topo_infer_walker(VisitSubgraphInputOp,
+                                                     VisitSubgraphOutputOp);
 
   topo_infer_walker(start_ops.begin(), start_ops.end(), [&](Operation* op) {
     auto infer_symbolic_shape_interface =
