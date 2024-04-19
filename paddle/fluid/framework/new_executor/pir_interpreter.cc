@@ -1199,7 +1199,9 @@ void PirInterpreter::CalculateLastLiveOps() {
     for (auto& item : ins_and_outs) {
       for (auto var_id : item.second) {
         // skip no_need_buffer input vars
-        if (ins.count(item.first) && instr->NoNeedBuffer().count(item.first)) {
+        if ((ins.count(item.first) &&
+             instr->NoNeedBuffer().count(item.first)) ||
+            instr->Name() == "builtin_combine_instruction") {
           continue;
         }
         gc_check_vars.insert(var_id);
