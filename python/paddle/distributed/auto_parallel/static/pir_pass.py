@@ -14,7 +14,6 @@
 
 import paddle
 
-from .process_group import new_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
@@ -27,7 +26,9 @@ def apply_partition_pass(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
-            # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+            assert len(op.operands()) == len(
+                op.dist_attr.operand_dist_attrs()
+            ), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr.operand_dist_attrs()
             ):
@@ -44,60 +45,24 @@ def apply_partition_pass(program):
     return new_program
 
 
-def apply_reshard_pass_deprecated(program):
-    new_program = program.clone()
-    with paddle.static.program_guard(new_program):
-        for op in new_program.global_block().ops:
-            # TODO(ywt): add common reshard rules
-            # only support 1-D partial to replicated now
-            if op.name() == 'dist_op.reshard':
-                process_mesh = op.operand(0).source().dist_attr().process_mesh
-                assert (
-                    len(process_mesh.shape) == 1
-                ), f'only support 1-D mesh now, but the op is: {op}'
-                assert op.operand(0).source().dist_attr().partial_dims == {
-                    0
-                }, f'only support partial input on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.result(0).dist_attr().partial_dims == set()
-                ), f'only support un-partial output on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.result(0).dist_attr().dims_mapping
-                    == op.operand(0).source().dist_attr().dims_mapping
-                ), f'only support the same dims maping on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.dist_attr.operand_dist_attr(0).partial_status[0]
-                    == paddle.distributed.ReduceType.kRedSum
-                ), f'only support partial sum now, but the op is: {op}'
-                assert (
-                    op.operand(0).source().has_one_use()
-                ), f'only support use count of 1 for reshard input, but the op is: {op}'
-                assert op.result(
-                    0
-                ).has_one_use(), f'only support use count of 1 for reshard output, but the op is: {op}'
-
-                paddle.pir.set_insertion_point(op)
-                group = new_process_group(process_mesh.process_ids)
-                reduced_value = paddle._pir_ops.c_allreduce_sum_(
-                    op.operand(0).source(), group.id, False, False
-                )
-                reduced_value.set_type(op.result(0).type())
-                op.result(0).replace_all_uses_with(reduced_value)
-                new_program.global_block().remove_op(op)
-
-    return new_program
-
-
 def apply_reshard_pass(program):
     new_program = program.clone()
     with paddle.base.program_guard(new_program):
         for op in new_program.global_block().ops:
             if op.name() == 'dist_op.reshard':
+                var = op.operand(0)
                 op_dist_attr = op.attrs()["op_dist_attr"]
                 src_dist_attr = op_dist_attr.operand_dist_attr(0)
                 dst_dist_attr = op_dist_attr.result_dist_attr(0)
+                assert (
+                    var.source().dist_attr() == src_dist_attr
+                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
 
                 reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                assert (
+                    reshard_func is not None
+                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+
                 reshard_func.reshard(
                     new_program, op, src_dist_attr, dst_dist_attr
                 )
