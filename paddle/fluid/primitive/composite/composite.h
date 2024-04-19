@@ -280,6 +280,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
     run_var_ = run_var * momentum + batch_var * (1. - momentum);
+    assign_out_<T>(run_mean_, run_mean);
+    assign_out_<T>(run_var_, run_var);
   } else {
     batch_mean = full<T>(run_mean.shape(), 0, run_mean.dtype());
     auto batch_var = full<T>(run_var.shape(), 0, run_var.dtype());
