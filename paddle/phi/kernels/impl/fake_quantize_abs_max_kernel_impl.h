@@ -18,7 +18,6 @@
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
-namespace fusion {
 
 template <typename T, typename Context>
 void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
@@ -37,5 +36,4 @@ void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
   clip_and_fake_quant_functor(dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
-}  // namespace fusion
 }  // namespace phi
