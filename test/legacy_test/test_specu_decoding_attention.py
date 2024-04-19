@@ -21,7 +21,7 @@ from test_block_multihead_attention import RopeEmbedding
 
 import paddle
 from paddle.framework import core
-from paddle.incubate.nn.functional import (
+from paddle.incubate.nn.functional.speculative_decoding_multihead_attention import (
     speculative_decoding_multihead_attention,
 )
 
@@ -268,7 +268,6 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         out_ = remove_padding(
             self.seq_lens_this_time, self.cu_seqlens_q, out_, self.token_num
         )
-
         out, qkv_out, _, _ = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
@@ -376,7 +375,9 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             .reshape([self.token_num_decoder_phase, -1])
         )
 
+        # Because we use flash-attn in decoder phase, so we put the whole key and value into flash-attn.
         self.cu_seqlens_k[1] += self.token_num
+        max_dec_len_this_time = self.seq_len + self.token_num_decoder_phase
         (
             out,
             qkv_out,
@@ -397,11 +398,9 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             None,  # attn_mask
             None,  # qkv_bias
             0,  # max_enc_len_this_time
-            self.seq_len
-            + self.token_num_decoder_phase,  # max_dec_len_this_time
+            max_dec_len_this_time,  # max_dec_len_this_time
             self.token_num,  # num_tokens_in_cache,
             self.max_dec_len,  # max_seq_len,
-            True,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
@@ -582,7 +581,6 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             0,  # max_dec_len_this_time
             0,  # num_tokens_in_cache
             self.max_dec_len,  # max_seq_len,
-            False,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
@@ -678,7 +676,7 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             .reshape([self.token_num_decoder_phase, -1])
         )
         self.cu_seqlens_k[1] += self.token_num
-
+        max_dec_len_this_time = self.seq_len + self.token_num_decoder_phase
         (
             out,
             qkv_out,
@@ -699,11 +697,9 @@ class TestSpecuDecodingAttnRoPE(unittest.TestCase):
             None,  # attn_mask
             None,  # qkv_bias
             0,  # max_enc_len_this_time
-            self.seq_len
-            + self.token_num_decoder_phase,  # max_dec_len_this_time
+            max_dec_len_this_time,  # max_dec_len_this_time
             self.token_num,  # num_tokens_in_cache,
             self.max_dec_len,  # max_seq_len,
-            True,  # is_decoder
             False,  # use_neox_rotary_style
         )
 
