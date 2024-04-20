@@ -230,6 +230,12 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaTensor* out_scale);
 
+void FakeQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                           int bit_length,
+                                           int round_type,
+                                           MetaTensor* out,
+                                           MetaTensor* out_scale);
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,

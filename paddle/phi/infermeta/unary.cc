@@ -1303,6 +1303,22 @@ void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FakeQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                           int bit_length,
+                                           int round_type,
+                                           MetaTensor* out,
+                                           MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
+}
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,

@@ -27,15 +27,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
-struct ClipAndFakeQuantDequantFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  int round_type,
-                  phi::DenseTensor *out);
-};
 
 template <typename DeviceContext, typename T>
 struct FindRangeAbsMaxFunctor {
@@ -88,52 +79,6 @@ struct FindMovingAverageAbsMaxFunctor {
                   phi::DenseTensor *out_state,
                   phi::DenseTensor *out_accum,
                   phi::DenseTensor *out_scale);
-};
-
-template <typename DeviceContext, typename T>
-class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    T *out_s = out_scale->mutable_data<T>(context.GetPlace());
-
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    const T *in_data = in->data<T>();
-    phi::funcs::FindAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in_data, in->numel(), out_s);
-    RunClipFunctor(dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
-  }
-
-  virtual ~FakeAbsMaxKernelBase() = default;
-
- protected:
-  virtual void RunClipFunctor(const DeviceContext &dev_ctx,
-                              const phi::DenseTensor &in,
-                              const phi::DenseTensor &scale,
-                              int bin_cnt,
-                              int round_type,
-                              phi::DenseTensor *out) const = 0;
-};
-
-template <typename T, typename DeviceContext>
-class FakeQuantizeDequantizeAbsMaxKernel
-    : public FakeAbsMaxKernelBase<DeviceContext, T> {
- protected:
-  void RunClipFunctor(const DeviceContext &dev_ctx,
-                      const phi::DenseTensor &in,
-                      const phi::DenseTensor &scale,
-                      int bin_cnt,
-                      int round_type,
-                      phi::DenseTensor *out) const override {
-    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, bin_cnt, round_type, out);
-  }
 };
 
 template <typename T, typename DeviceContext>
@@ -323,7 +268,7 @@ class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
                       int bin_cnt,
                       int round_type,
                       phi::DenseTensor *out) const override {
-    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
+    phi::funcs::ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, in_scale, bin_cnt, round_type, out);
   }
 };

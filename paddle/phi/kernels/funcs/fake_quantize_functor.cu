@@ -116,6 +116,42 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
       <<<1, block, 1024 * sizeof(T), ctx.stream()>>>(max_data, grid, out);
 }
 
+template <typename T>
+__global__ void ClipAndQuantDequantKernel(const T *in,
+                                          const T *scale,
+                                          const int bin_cnt,
+                                          const int round_type,
+                                          const int n,
+                                          T *out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int tid = threadIdx.x;
+
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
+
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+    if (round_type == 0) {
+      x = bin_cnt_t * inv_s * x;
+      x = phi::funcs::roundWithTiesToEven(x);
+      ComputeDataType max_bound = bin_cnt_t;
+      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>((x * s) / bin_cnt_t);
+    } else {
+      x = x > s ? s : x;
+      x = x < -s ? -s : x;
+      x = bin_cnt_t * inv_s * x;
+      x = round(x);
+      out[i] = static_cast<T>((x * s) / bin_cnt_t);
+    }
+  }
+}
+
 template <typename Context, typename T>
 void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
                                                      const DenseTensor &in,
@@ -135,10 +171,32 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
       in_data, scale_data, bin_cnt, round_type, num, out_data);
 }
 
+template <typename Context, typename T>
+void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in,
+    const DenseTensor &scale,
+    const int bin_cnt,
+    int round_type,
+    DenseTensor *out) {
+  int num = in.numel();
+  int block = 1024;
+  int grid = (block - 1 + num) / block;
+
+  const T *in_data = in.data<T>();
+  const T *scale_data = scale.data<T>();
+  T *out_data = ctx.template Alloc<T>(out);
+
+  ClipAndQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+      in_data, scale_data, bin_cnt, round_type, num, out_data);
+}
+
 template class FindAbsMaxFunctor<GPUContext, float16>;
 template class FindAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantFunctor<GPUContext, float>;
+template class ClipAndFakeQuantDequantFunctor<GPUContext, float16>;
+template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi
