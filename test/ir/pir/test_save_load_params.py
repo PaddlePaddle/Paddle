@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.optimizer import Adam
 from paddle.pir_utils import IrGuard
 
@@ -30,6 +29,11 @@ IMAGE_SIZE = 784
 class TestSimpleParamSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -54,40 +58,27 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     opt_dict.update({name: get_tensor(name)})
         return param_dict, opt_dict
 
-    def test_params1(self):
+    def test_params_python(self):
         with IrGuard():
             main_program = paddle.static.Program()
             with paddle.static.program_guard(
                 main_program, paddle.static.Program()
             ):
                 x = paddle.static.data(
-                    'x', shape=[-1, 16], dtype='float32', lod_level=1
+                    name="static_x", shape=[None, IMAGE_SIZE], dtype='float32'
                 )
-
-                linear = paddle.nn.Linear(
-                    in_features=x.shape[-1],
-                    out_features=16,
-                    weight_attr=paddle.nn.initializer.UniformInitializer(
-                        low=-0.5,
-                        high=0.5,
-                        seed=10,
-                        diag_num=16,
-                        diag_step=16,
-                        diag_val=1.0,
-                    ),
-                )
-                y = linear(x)
-
-                place = base.CPUPlace()
-                x_tensor = base.create_lod_tensor(
-                    np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-                )
-                exe = base.Executor(place)
+                z = paddle.static.nn.fc(x, 10)
+                z = paddle.static.nn.fc(z, 10, bias_attr=False)
+                loss = paddle.mean(z)
+                opt = Adam(learning_rate=1e-3)
+                opt.minimize(loss)
+                exe = paddle.static.Executor(self.place)
                 exe.run(paddle.static.default_startup_program())
-                ret = exe.run(
+                fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
+                exe.run(
                     main_program,
-                    feed={'x': x_tensor},
-                    fetch_list=[y],
+                    feed={'static_x': fake_inputs},
+                    fetch_list=[loss],
                 )
                 scope = paddle.static.global_scope()
                 params = main_program.global_block().all_parameters()
@@ -98,23 +89,23 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     param_dict.update({name: scope.var(name).get_tensor()})
 
                 path = os.path.join(self.temp_dir.name, "save_pickle")
-                paddle.static.io.save_pir(main_program, path)
+                paddle.static.io.save(main_program, path)
 
                 # change the value of parameters
                 for v in params:
                     name = v.get_defining_op().attrs()["parameter_name"]
                     tensor = scope.var(name).get_tensor()
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
+                    tensor.set(np.zeros_like(np.array(tensor)), self.place)
 
                 # load parameters
-                paddle.static.io.load_pir(main_program, path)
+                paddle.static.io.load(main_program, path)
                 for v in params:
                     if v.get_defining_op().name() == "builtin.parameter":
                         name = v.get_defining_op().attrs()["parameter_name"]
                         t = scope.find_var(name).get_tensor()
                         np.testing.assert_array_equal(t, param_dict[name])
 
-    def test_params2(self):
+    def test_params_cpp(self):
         with IrGuard():
             prog = paddle.static.Program()
             with paddle.static.program_guard(prog):
@@ -126,8 +117,7 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 loss = paddle.mean(z)
                 opt = Adam(learning_rate=1e-3)
                 opt.minimize(loss)
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
+                exe = paddle.static.Executor(self.place)
                 exe.run(paddle.static.default_startup_program())
                 fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
                 exe.run(prog, feed={'static_x': fake_inputs}, fetch_list=[loss])
@@ -135,11 +125,13 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 param_dict, opt_dict = self.get_params(prog)
                 # test save_func and load_func
                 save_dir = os.path.join(self.temp_dir.name, "save_params")
+
                 for k, v in param_dict.items():
                     path = os.path.join(save_dir, k, '.pdparams')
-                    paddle.base.core.save_func(v, k, path, True, False)
+                    # test fp16
+                    paddle.base.core.save_func(v, k, path, True, True)
                     tensor = param_dict[k]
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
+                    tensor.set(np.zeros_like(np.array(tensor)), self.place)
                     paddle.base.core.load_func(path, -1, [], False, tensor)
                     np.testing.assert_array_equal(tensor, v)
 
@@ -147,7 +139,7 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     path = os.path.join(save_dir, k, '.pdopt')
                     paddle.base.core.save_func(v, k, path, True, False)
                     tensor = opt_dict[k]
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
+                    tensor.set(np.zeros_like(np.array(tensor)), self.place)
                     paddle.base.core.load_func(path, -1, [], False, tensor)
                     np.testing.assert_array_equal(tensor, v)
 
@@ -162,7 +154,7 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 )
                 param_new = []
                 for tensor in param_vec:
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
+                    tensor.set(np.zeros_like(np.array(tensor)), self.place)
                     param_new.append(tensor)
                 paddle.base.core.load_combine_func(
                     path, list(param_dict.keys()), param_new, False
@@ -171,6 +163,14 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 # save to memory
                 paddle.base.core.save_combine_func(
                     param_vec, list(param_dict.keys()), path, True, False, True
+                )
+                # save as fp16
+                paddle.base.core.save_combine_func(
+                    param_vec, list(param_dict.keys()), path, True, True, False
+                )
+                # load as fp16
+                paddle.base.core.load_combine_func(
+                    path, list(param_dict.keys()), param_new, True
                 )
 
                 # test save_vars
@@ -184,13 +184,15 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 save_dirname = os.path.dirname(params_path)
                 params_filename = os.path.basename(params_path)
                 # test combine
-                paddle.static.io.save_vars_pir(
+                paddle.static.io.save_vars(
+                    executor=exe,
                     dirname=save_dirname,
                     main_program=prog,
                     filename=params_filename,
                 )
                 # test sepearate
-                paddle.static.io.save_vars_pir(
+                paddle.static.io.save_vars(
+                    executor=exe,
                     dirname=save_dirname,
                     main_program=prog,
                 )
@@ -198,13 +200,15 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 load_dirname = os.path.dirname(params_path)
                 load_filename = os.path.basename(params_path)
                 # test combine
-                paddle.static.io.load_vars_pir(
+                paddle.static.io.load_vars(
+                    executor=exe,
                     dirname=load_dirname,
                     main_program=prog,
                     filename=load_filename,
                 )
                 # test sepearate
-                paddle.static.io.load_vars_pir(
+                paddle.static.io.load_vars(
+                    executor=exe,
                     dirname=load_dirname,
                     main_program=prog,
                 )

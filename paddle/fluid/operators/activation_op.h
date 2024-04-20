@@ -26,19 +26,19 @@ limitations under the License. */
 
 #include <type_traits>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::To32BitIndex;
+using phi::To32BitIndex;
 
 using ActBwdOpFwdDeps = phi::funcs::ActBwdOpFwdDeps;
 
@@ -171,9 +171,9 @@ class ActivationKernel
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "Activation"));
-    auto out = framework::EigenVector<T>::Flatten(
+    auto out = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
@@ -206,13 +206,13 @@ class ActivationGradKernel
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto dout = framework::EigenVector<T>::Flatten(
+    auto dout = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
-    auto out = framework::EigenVector<T>::Flatten(
+    auto out = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
-    auto dx = framework::EigenVector<T>::Flatten(
+    auto dx = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
@@ -354,12 +354,12 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
                   phi::DenseTensor* dOut,
                   phi::DenseTensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
+    auto ddx = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "AbsGradGrad"));
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
+      auto ddout = phi::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "AbsGradGrad"));
       ddout.device(*d) = ddx * x.sign();
     }

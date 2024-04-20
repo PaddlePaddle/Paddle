@@ -44,7 +44,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/passes.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -63,6 +62,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -287,6 +287,24 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self) {
             pir::IrMapping mapper;
             return self->Clone(mapper);
+          },
+          return_value_policy::reference)
+      .def(
+          "clone",
+          [](std::shared_ptr<Program> self, pir::IrMapping &mapper) {
+            return self->Clone(mapper);
+          },
+          return_value_policy::reference)
+      .def(
+          "list_vars",
+          [](std::shared_ptr<Program> self) {
+            std::vector<pir::Value> vars;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                vars.push_back(var);
+              }
+            }
+            return vars;
           },
           return_value_policy::reference)
       .def(
@@ -1715,6 +1733,9 @@ void BindUtils(pybind11::module *m) {
   });
   m->def("set_insertion_point",
          [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_after", [](Operation *op) {
+    ApiBuilder::Instance().SetInsertionPointAfter(op);
+  });
   m->def("set_insertion_point_to_block_end", [](Block *block) {
     ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
   });
@@ -1871,6 +1892,14 @@ void BindUtils(pybind11::module *m) {
     pybind11::gil_scoped_release release;
     VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
     cinn::hlir::framework::CompilationCache::Instance().Clear();
+#endif
+  });
+
+  m->def("cinn_compilation_cache_size", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
 }
