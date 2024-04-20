@@ -798,10 +798,12 @@ void matmul_grad(const Tensor& x,
   if (out_grad_rank < x_rank) {
     unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_x});
   }
+
   auto temp_x_unsqueeze = x;
   if (x_rank == 1) {
     temp_x_unsqueeze = unsqueeze<T>(x, {0});
   }
+
   auto temp_y_unsqueeze = y;
   if (y_rank == 1) {
     temp_y_unsqueeze = unsqueeze<T>(y, {1});
@@ -811,6 +813,7 @@ void matmul_grad(const Tensor& x,
     auto x_grad_mm =
         matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
     auto x_grad_trans = x_grad_mm;
+
     if (transpose_x) {
       std::vector<int> reverse_perm;
       for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
@@ -820,6 +823,7 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
     }
+
     if (x_grad_trans.dims() != x.dims()) {
       phi::DDim x_reduce_dim = get_reduce_dims_from_out(
           x_grad_trans.dims(), temp_x_unsqueeze.dims());
@@ -832,10 +836,12 @@ void matmul_grad(const Tensor& x,
       set_output<T>(x_grad_out, x_grad);
     }
   }
+
   if (y_grad) {
     auto y_grad_mm =
         matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
     auto y_grad_trans = y_grad_mm;
+
     if (transpose_y) {
       std::vector<int> reverse_perm;
       for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
@@ -845,6 +851,7 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
     }
+
     if (y_grad_trans.dims() != y.dims()) {
       phi::DDim y_reduce_dim = get_reduce_dims_from_out(
           y_grad_trans.dims(), temp_y_unsqueeze.dims());
