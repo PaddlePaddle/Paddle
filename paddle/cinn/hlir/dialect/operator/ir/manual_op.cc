@@ -24,10 +24,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
@@ -102,6 +102,8 @@ void GroupOp::VerifySig() {}
 void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   printer.PrintOpResult(op);
   os << " = " << name();
   printer.PrintOpOperands(op);
@@ -111,6 +113,11 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   for (auto& sub_op : GetOperators()) {
     os << "\n  ";
     printer.PrintOperation(sub_op);
+    for (const auto& v : sub_op->results()) {
+      if (shape_analysis.HasShapeOrDataForValue(v)) {
+        os << " #<" << shape_analysis.GetShapeOrDataForValue(v) << "># ";
+      }
+    }
   }
   os << " \n }";
 }

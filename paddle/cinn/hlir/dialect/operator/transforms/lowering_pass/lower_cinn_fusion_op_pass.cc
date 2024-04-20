@@ -68,11 +68,11 @@ pir::Operation* ProcessDyShapeGroup(
       auto dim_info = base_type.dims();
       if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
         auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
-        for (size_t k = 0; k < shape.size(); ++k) {
-          if (shape[k].isa<int64_t>()) {
-            dim_info[k] = shape[k].Get<int64_t>();
-          }
-        }
+        // for (size_t k = 0; k < shape.size(); ++k) {
+        //   if (shape[k].isa<int64_t>()) {
+        //     dim_info[k] = shape[k].Get<int64_t>();
+        //   }
+        // }
       }
       auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
                                                   base_type.dtype(),

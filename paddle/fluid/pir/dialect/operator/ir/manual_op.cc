@@ -4002,7 +4002,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4059,7 +4059,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4151,6 +4151,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
 
   symbol::ShapeOrDataDimExprs output_data_shape{
       symbol::TensorShapeOrDataDimExprs(shape, output_data)};
+  VLOG(0) << "###### x_data " << x_data;
+  VLOG(0) << "###### y_data " << y_data;
+  VLOG(0) << "###### output_data " << output_data_shape;
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }

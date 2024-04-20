@@ -60,6 +60,12 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
   const auto& out_shape = shape_analysis.GetShapeOrDataForValue(op->result(0));
 
+  VLOG(0) << "###### op : " << op->name() << " id: " << op->id();
+  VLOG(0) << "###### x_shape : " << x_shape << " type: " << x.type();
+  VLOG(0) << "###### y_shape : " << y_shape << " type: " << y.type();
+  VLOG(0) << "###### out_shape : " << out_shape
+          << " type: " << op->result(0).type();
+
   if (x_shape == y_shape) {
     return false;
   }

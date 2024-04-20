@@ -277,6 +277,7 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
         int64_t local_dim_expr_id = 0;
         for (auto input_tensor : input_tensors) {
           const auto& shape_or_data = ShapeOrDataDimExprs4Value(input_tensor);
+          VLOG(0) << "###### shape_or_data : " << shape_or_data;
           for (const auto& dim_expr : shape_or_data.shape()) {
             if (!dim_expr.isa<int64_t>() && dim_expr_map.count(dim_expr) == 0) {
               dim_expr_map[dim_expr] =
@@ -306,6 +307,7 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
     }
     return has_complex_dim_expr;
   }();
+  VLOG(0) << "###### has_complex_dim_expr : " << has_complex_dim_expr;
   pir::ShapeConstraintIRAnalysis shape_analysis;
   if (has_complex_dim_expr) {
     UpdateLocalShapeAnalysis(input_tensors,
