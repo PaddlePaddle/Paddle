@@ -31,6 +31,7 @@ void FakeQuantizeRangeAbsMaxKernel(const Context &dev_ctx,
                                    DenseTensor *out,
                                    DenseTensor *out_scale,
                                    DenseTensor *out_scales) {
+  dev_ctx.template Alloc<T>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
   // testing
@@ -41,7 +42,9 @@ void FakeQuantizeRangeAbsMaxKernel(const Context &dev_ctx,
   }
 
   // training
-  phi::DenseTensor cur_scale;
+  dev_ctx.template Alloc<T>(out_scale);
+
+  DenseTensor cur_scale;
   cur_scale.Resize({1});
   T *cur_scale_data = dev_ctx.template Alloc<T>(&cur_scale);
   phi::funcs::FindAbsMaxFunctor<Context, T>()(
