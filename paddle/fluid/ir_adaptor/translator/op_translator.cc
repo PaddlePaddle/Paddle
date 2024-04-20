@@ -514,17 +514,19 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
         mutable_attributes->count(info.name) != 0) {
       if (!op_desc.HasAttr(legacy_input_name) &&
           op_desc.HasAttr(legacy_input_name, true)) {
-        framework::Attribute legacy_attr = op_desc.GetAttr(info.name, true);
+        framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_input_name, true);
         VarDesc* var = paddle::get<VarDesc*>(legacy_attr);
-        PADDLE_ENFORCE_NOT_NULL(var,
-                                platform::errors::PreconditionNotMet(
-                                    "legacy_attr is not VarDesc*."));
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::PreconditionNotMet(
+                "The type of legacy_attr is not VarDesc*."));
         PADDLE_ENFORCE_GE(
             param_map->count(var->Name()),
-            0,
+            1,
             platform::errors::PreconditionNotMet(
-                "VarDesc* is not defined by the previous Operation."));
-        auto value = param_map->at(var->Name()).value;
+                "The VarDesc has not been defined by a previous Operation."));
+        auto valeue = param_map->at(var->Name()).value;
         op_inputs.push_back(value);
         continue;
       }
