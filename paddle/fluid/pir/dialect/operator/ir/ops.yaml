@@ -425,6 +425,17 @@
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
 
+- op : data_norm
+  backward : data_norm_grad
+  args : (Tensor x, Tensor batch_size, Tensor batch_sum, Tensor batch_square_sum, Tensor scale_w, Tensor bias, float epsilon=1e-4, int slot_dim=-1,  float summary_decay_rate=0.9999999, bool enable_scale_and_shift=false, str data_layout="NCHW", bool sync_stats=false)
+  output : Tensor(y), Tensor(means), Tensor(scales)
+  infer_meta :
+    func : DataNormInferMeta
+  kernel :
+    func : data_norm
+    data_type : x
+  optional : scale_w, bias
+
 - op : decayed_adagrad
   args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
   output : Tensor(param_out), Tensor(moment_out)

@@ -140,6 +140,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reducescatter',
     'c_softmax_with_cross_entropy',
     'c_split',
+    'data_norm',
     'decayed_adagrad',
     'distributed_fused_lamb',
     'distributed_fused_lamb_',
