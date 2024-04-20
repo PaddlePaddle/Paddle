@@ -119,7 +119,6 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'dequantize_linear',
     'dequantize_linear_',
     'coalesce_tensor_',
-    'gemm_epilogue',
     'send_v2',
     'recv_v2',
 ]
