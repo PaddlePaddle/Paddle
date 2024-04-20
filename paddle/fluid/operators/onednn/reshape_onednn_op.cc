@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/flatten_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
