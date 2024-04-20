@@ -18,7 +18,6 @@ from legacy_test.test_collective_base import (
 )
 
 import paddle
-from paddle import base
 from paddle.base import core
 
 paddle.enable_static()
@@ -30,7 +29,7 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
-        with base.program_guard(main_prog, startup_program):
+        with paddle.static.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
