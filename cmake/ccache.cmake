@@ -28,6 +28,8 @@ if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
 
     set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE_PATH})
     set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE_PATH})
+    # (Note:zhouwei25) sccache for cuda compiler has bug so that it can't be hit
+    # refer to https://github.com/mozilla/sccache/issues/1017, so we fix it
     set(CMAKE_CUDA_COMPILER_LAUNCHER ${SCCACHE_PATH})
   endif()
 endif()
