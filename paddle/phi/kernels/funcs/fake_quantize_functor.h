@@ -90,7 +90,7 @@ class ClipAndFakeQuantFunctor {
 };
 
 template <typename Context, typename T>
-struct FindMovingAverageAbsMaxFunctor {
+class FindMovingAverageAbsMaxFunctor {
   void operator()(const Context &ctx,
                   const DenseTensor &in_accum,
                   const DenseTensor &in_state,

@@ -81,7 +81,7 @@ void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
 
 template class FindAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantFunctor<CPUContext, float>;
-template struct FindMovingAverageAbsMaxFunctor<CPUContext, float>;
+template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi
