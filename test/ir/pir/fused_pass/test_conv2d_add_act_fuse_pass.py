@@ -72,7 +72,7 @@ class TestConv2dAddActFusePattern(PassTest):
                 act_op = paddle.nn.ReLU()
                 out = act_op(paddle.add(conv2d(x), y))
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_add_act_fuse_pass']
+                self.pass_attr_list = [{'conv2d_add_act_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                 }
@@ -152,7 +152,7 @@ class TestConv2dAdd2ActFusePattern(PassTest):
                     paddle.add(residual_data, paddle.add(conv2d(x), y))
                 )
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_add_act_fuse_pass']
+                self.pass_attr_list = [{'conv2d_add_act_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                     "residual_data": np.random.random((3, 32, 28, 28)).astype(

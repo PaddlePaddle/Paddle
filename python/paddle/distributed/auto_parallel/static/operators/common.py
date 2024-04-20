@@ -363,6 +363,14 @@ def is_parameter_related(varname, block, dist_context=None):
         var = serial_program.global_block()._find_var_recursive(varname)
         if var is None:
             return False
+    # NOTE(liym27): when Y_var is not a parameter, but Y_var is resharded by a parameter.
+    elif "reshard_api" in varname:
+        for op in block.ops:
+            if op.type == "assign" and varname in op.output("Out"):
+                in_varname = op.input("X")[0]
+                var = block._find_var_recursive(in_varname)
+                if var is not None and var.is_parameter:
+                    return True
     return var.is_parameter
 
 

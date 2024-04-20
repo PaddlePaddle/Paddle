@@ -418,7 +418,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
 #if CUDNN_VERSION >= 8000
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(
     resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
