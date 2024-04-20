@@ -105,7 +105,6 @@ AllGather the tensors on different trainers and concat them along the last dimen
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_concat,
                   ops::CConcatOp,

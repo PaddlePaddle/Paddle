@@ -89,7 +89,7 @@ PD_REGISTER_STRUCT_KERNEL(load_combine,
                           ops::LoadCombineOpKernel,
                           float,
                           double,
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
                           int,
                           int8_t,
                           int64_t) {}

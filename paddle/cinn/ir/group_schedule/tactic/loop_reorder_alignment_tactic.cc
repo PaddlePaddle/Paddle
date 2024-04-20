@@ -37,8 +37,6 @@ class LoopReorderAlignmentTactic final : public ScheduleTactic {
 
   void UpdateBaseRank(ir::IRSchedule* sch, const std::string& block_id);
 
-  void DoBroadcastLoop(ir::IRSchedule* sch, const std::string& block_id);
-
   void DoReorder(ir::IRSchedule* sch, const std::string& block_id);
 
  private:
@@ -57,8 +55,6 @@ void LoopReorderAlignmentTactic::Init(ScheduleContext* context) {
 
 void LoopReorderAlignmentTactic::Apply(ir::IRSchedule* sch,
                                        const std::string& block_id) {
-  DoBroadcastLoop(sch, block_id);
-
   if (!ir::IsReduceInitTensorName(block_id)) {
     UpdateBaseRank(sch, block_id);
   }
@@ -114,58 +110,6 @@ std::vector<int32_t> LoopReorderAlignmentTactic::GetNewOrder() {
   }
 
   return new_order;
-}
-
-void LoopReorderAlignmentTactic::DoBroadcastLoop(ir::IRSchedule* sch,
-                                                 const std::string& block_id) {
-  const auto HasBroadcastInfo = [&](const std::string& block_id) {
-    return context_->config.base_info->broadcast_info.count(block_id) > 0;
-  };
-  const auto HasBroadcastToElementwiseInfo = [&](const std::string& block_id) {
-    return context_->config.base_info->broadcast_to_elementwise.count(
-               block_id) > 0;
-  };
-  const auto IsFullBroadcast = [&](const std::string& block_id) {
-    return context_->config.base_info->broadcast_info[block_id].full_broadcast;
-  };
-  const auto IsSplitFirst = [&](const std::string& block_id) {
-    return context_->config.base_info->broadcast_info[block_id].split_first;
-  };
-
-  if (HasBroadcastInfo(block_id)) {
-    if (IsFullBroadcast(block_id)) {
-      std::vector<int32_t> vec_out_split(
-          context_->config.base_info->broadcast_info[block_id]
-              .output_shape.size(),
-          1);
-
-      auto loops = sch->GetLoops(block_id);
-      sch->Split(loops[0], vec_out_split);
-      loops = sch->GetLoops(block_id);
-    } else if (IsSplitFirst(block_id)) {
-      for (auto& info :
-           context_->config.base_info->broadcast_info[block_id].split_info) {
-        auto axis = info.first;
-        auto split_res = info.second;
-
-        auto loops = sch->GetLoops(block_id);
-        sch->Split(loops[axis], split_res);
-        loops = sch->GetLoops(block_id);
-      }
-    } else {
-      // Do nothing
-    }
-
-    sch->Broadcast(block_id,
-                   context_->config.base_info->broadcast_info[block_id]);
-  }
-
-  if (HasBroadcastToElementwiseInfo(block_id)) {
-    sch->BroadcastToElementwise(
-        block_id,
-        context_->config.base_info->broadcast_to_elementwise[block_id]
-            .broadcast_axes);
-  }
 }
 
 void LoopReorderAlignmentTactic::DoReorder(ir::IRSchedule* sch,

@@ -245,6 +245,6 @@ PD_REGISTER_STRUCT_KERNEL(fetch_v2,
                           uint8_t,
                           bool,
                           phi::dtype::float16,
-                          plat::bfloat16,
-                          plat::complex<float>,
-                          plat::complex<double>) {}
+                          phi::dtype::bfloat16,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}
