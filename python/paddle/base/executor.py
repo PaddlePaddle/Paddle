@@ -1089,7 +1089,7 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p)
+                pm.add_pass(p, {})
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)

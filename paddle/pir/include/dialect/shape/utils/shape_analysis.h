@@ -35,12 +35,12 @@ class IR_API ShapeConstraintIRAnalysis {
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
+  void InferShapeOrDataForValue(Value val);
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
-
-  symbol::DimExprBuilder DimExprBuilder();
 
   void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
@@ -60,7 +60,7 @@ class IR_API ShapeConstraintIRAnalysis {
   void PrintShapeOrDatas() const;
 
   // Returns true if the two value have the same symbolic shape.
-  bool IsShapeEqual(Value lhs, Value rhs) const;
+  bool IsShapeEqual(Value lhs, Value rhs);
 
   // Suppose:
   //    lhs_dim_idxs = {ld0, ld1, ...}
@@ -71,25 +71,21 @@ class IR_API ShapeConstraintIRAnalysis {
   bool IsProductEqual(Value lhs,
                       const std::vector<int>& lhs_dim_idxs,
                       Value rhs,
-                      const std::vector<int>& rhs_dim_idxs) const;
+                      const std::vector<int>& rhs_dim_idxs);
 
   // Returns true if:
   //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
   //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
-  bool IsProductEqual(Value lhs,
-                      int lhs_from,
-                      int lhs_to,
-                      Value rhs,
-                      int rhs_from,
-                      int rhs_to) const;
+  bool IsProductEqual(
+      Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to);
 
   // Returns true if the two value have the same number elements.
-  bool IsSameNumel(Value lhs, Value rhs) const;
+  bool IsSameNumel(Value lhs, Value rhs);
 
-  pir::PrintHooks PrintHook() const;
+  pir::PrintHooks PrintHook();
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
-                                    const std::vector<int>& lhs_dim_idxs) const;
+                                    const std::vector<int>& lhs_dim_idxs);
 
  private:
   void SubstituteDimExpr(const symbol::DimExpr& origin,
@@ -103,9 +99,11 @@ class IR_API ShapeConstraintIRAnalysis {
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
 
-  std::vector<symbol::DimExprConstraint> constraints_;
-
   symbol::ConstraintsManager constraints_manager_;
+
+  using DimExprSubstitutionPattern =
+      std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+  DimExprSubstitutionPattern substitution_pattern_;
 };
 
 class IR_API ShapeAnalysisManager {

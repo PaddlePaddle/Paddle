@@ -15,9 +15,8 @@ cc_library(
        graph
        build_strategy
        device_context
-       parallel_executor
        cinnapi)
 
-set(CINN_OP_DEPS parallel_executor string_helper variable_helper cinnapi
-                 cinn_op_helper cinn_launch_context)
+set(CINN_OP_DEPS string_helper variable_helper cinnapi cinn_op_helper
+                 cinn_launch_context)
 register_operators(DEPS ${CINN_OP_DEPS})
