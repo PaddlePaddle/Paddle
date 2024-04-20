@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fake_quantize_abs_max_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fake_quantize_kernel.h"
+#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
 
@@ -37,9 +37,3 @@ void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(fake_quantize_abs_max,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FakeQuantizeAbsMaxKernel,
-                   float) {}
