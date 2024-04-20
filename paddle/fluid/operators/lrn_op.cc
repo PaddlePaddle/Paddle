@@ -135,14 +135,14 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
-    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
+    auto x_g_e = phi::EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
-    auto e_x = framework::EigenTensor<T, 4>::From(x);
-    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
-    auto e_out = framework::EigenTensor<T, 4>::From(out);
-    auto e_out_g = framework::EigenTensor<T, 4>::From(out_g);
-    auto e_mid = framework::EigenTensor<T, 4>::From(mid);
+    auto e_x = phi::EigenTensor<T, 4>::From(x);
+    auto e_x_g = phi::EigenTensor<T, 4>::From(*x_g);
+    auto e_out = phi::EigenTensor<T, 4>::From(out);
+    auto e_out_g = phi::EigenTensor<T, 4>::From(out_g);
+    auto e_mid = phi::EigenTensor<T, 4>::From(mid);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;

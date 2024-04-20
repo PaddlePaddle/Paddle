@@ -288,7 +288,7 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
 }
 
 bool IsShapeComputeOp(const ::pir::Operation& op) {
-  const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+  auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
       op.GetParent()->parent_program());
   if (op.num_operands() == 0) {
     return false;

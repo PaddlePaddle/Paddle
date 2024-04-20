@@ -137,10 +137,8 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    const auto& int_args_map =
-        compilation_results_[i]->GetBackendResource()->GetIntArgsMap();
     VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info << ", int_args_map: " << int_args_map;
+            << fusion_info;
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }

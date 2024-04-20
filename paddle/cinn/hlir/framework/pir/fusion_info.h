@@ -15,6 +15,7 @@
 #pragma once
 #include <ostream>
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace cinn::hlir::framework::pir {
 
@@ -90,6 +91,7 @@ class FusionInfo {
 
  private:
   std::vector<FusionOpInfo> op_infos_;
+  std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
   std::size_t cached_hash_value_{0};
 
   // Used to make same subgraphs have unique FusionInfo while
@@ -111,11 +113,6 @@ inline void hash_combine(std::size_t &seed,  // NOLINT
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-std::size_t HashIntArgsMap(
-    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
-std::ostream &operator<<(
-    std::ostream &os,
-    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
 std::vector<const ::pir::Operation *> TopologySort(
     const OpLoweringGroup &group);
 
