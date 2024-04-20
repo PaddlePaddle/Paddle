@@ -227,7 +227,7 @@ def get_group(id=0):
 
 
 def _sync_calc_stream(tensor):
-    if framework.in_dynamic_mode():
+    if framework.in_dynamic_or_pir_mode():
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
     else:
         op_type = 'c_sync_calc_stream'
@@ -240,7 +240,7 @@ def _sync_calc_stream(tensor):
 
 
 def _sync_comm_stream(tensor, ring_id=0):
-    if framework.in_dynamic_mode():
+    if framework.in_dynamic_or_pir_mode():
         return paddle._legacy_C_ops.c_sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
         )

@@ -17,6 +17,7 @@ import unittest
 from legacy_test.test_collective_base import TestDistBase
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -25,6 +26,7 @@ class TestCWaitOp(TestDistBase):
     def _setup_config(self):
         pass
 
+    @test_with_pir_api
     def test_allreduce_wait(self):
         self.check_with_place(
             "collective_allreduce_op_wait.py", "allreduce", check_error_log=True
