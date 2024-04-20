@@ -40,8 +40,7 @@ template class variant<paddle::blank,
                        std::vector<paddle::experimental::Scalar>,
                        ::pir::Block*,
                        std::vector<::pir::Value>,
-                       ::pir::Program*,
-                       ProgramDesc*>;
+                       std::shared_ptr<::pir::Program>>;
 }  // namespace paddle
 REGISTER_LOG_SIMPLY_STR(paddle::framework::AttributeMap);
 REGISTER_LOG_SIMPLY_STR(paddle::framework::Attribute);

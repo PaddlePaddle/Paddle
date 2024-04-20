@@ -467,10 +467,10 @@ inline void PirRunProgramAPI(
   auto param_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
 
-  auto *forward_program =
-      PADDLE_GET_CONST(::pir::Program *, attrs.at("forward_program"));
-  auto *backward_program =
-      PADDLE_GET_CONST(::pir::Program *, attrs.at("backward_program"));
+  auto forward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                          attrs.at("forward_program"));
+  auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                           attrs.at("backward_program"));
 
   ::pir::Block *forward_global_block = forward_program->block();
 
@@ -511,7 +511,7 @@ inline void PirRunProgramAPI(
         forward_global_block, params, param_values, global_inner_scope);
     // Step 2. create new interpretercore
     auto passed_kernel_program =
-        paddle::framework::ApplyIrPass(forward_program, place);
+        paddle::framework::ApplyIrPass(forward_program.get(), place);
     if (FLAGS_print_ir) {
       std::ostringstream print_stream;
       print_stream << "LoweredProgram( AfterPass ) is :\n";
@@ -1063,11 +1063,11 @@ inline void PirRunProgramGradAPI(
   auto testkey = PADDLE_GET_CONST(std::string, attrs.at("testkey"));
 
   std::cout << "backward_program get start" << std::endl;
-  auto *backward_program =
-      PADDLE_GET_CONST(::pir::Program *, attrs.at("backward_program"));
+  auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                           attrs.at("backward_program"));
 
-  auto *forward_program =
-      PADDLE_GET_CONST(::pir::Program *, attrs.at("forward_program"));
+  auto forward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                          attrs.at("forward_program"));
 
   VLOG(0) << "[PirRunProgramGradAPI] testkey: " << testkey;
   VLOG(0) << "[PirRunProgramGradAPI] backward_program addr: "
@@ -1083,6 +1083,10 @@ inline void PirRunProgramGradAPI(
   VLOG(0) << pb->num_ops();
   VLOG(0) << pb->empty();
   std::cout << "backward_program block get end" << std::endl;
+  std::ostringstream print_stream;
+  print_stream << "backward_program is :\n";
+  backward_program->Print(print_stream);
+  std::cout << print_stream.str() << std::endl;
 
   // share x, param, middles, output_grads, out into scope.
   VLOG(1) << "out_grad start";
@@ -1129,7 +1133,7 @@ inline void PirRunProgramGradAPI(
     VLOG(2) << "No interpretercore cache, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
     auto passed_kernel_program =
-        paddle::framework::ApplyIrPass(backward_program, place);
+        paddle::framework::ApplyIrPass(backward_program.get(), place);
     if (FLAGS_print_ir) {
       std::ostringstream print_stream;
       print_stream << "LoweredProgram( AfterPass | Backward ) is :\n";

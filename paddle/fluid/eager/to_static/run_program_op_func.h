@@ -317,11 +317,11 @@ inline void pir_run_program_ad_func(
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
-    auto* backward_program =
-        PADDLE_GET_CONST(::pir::Program*, attrs.at("backward_program"));
+    auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                             attrs.at("backward_program"));
 
-    auto* forward_program =
-        PADDLE_GET_CONST(::pir::Program*, attrs.at("forward_program"));
+    auto forward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                            attrs.at("forward_program"));
 
     auto testkey = PADDLE_GET_CONST(std::string, attrs.at("testkey"));
 

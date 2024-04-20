@@ -865,22 +865,13 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   VLOG(1) << "After Process pir::Program*";
-  ::pybind11::detail::instance* inst =
-      (::pybind11::detail::instance*)obj;  // NOLINT
-  void** vh = inst->simple_layout ? inst->simple_value_holder
-                                  : &inst->nonsimple.values_and_holders[0];
-
-  ::pybind11::handle(obj).inc_ref();
-  // ::pir::Program* program = reinterpret_cast<::pir::Program*>(vh[0]);
-  std::shared_ptr<::pir::Program> program =
-      reinterpret_cast<std::shared_ptr<::pir::Program>&>(vh[0]);
-  // TODO(gouzil): 试一下pybind11能不能使用智能指针作为参数
-  // pir::IrMapping mapper;
-  attrs[key] = program.get();
-  // attrs[key] = program.get();
-  // attrs[key] = program->Clone(mapper);
-  // attrs[key] = reinterpret_cast<::pir::Program*>(vh[0]);
-  //  attrs[key] = vh[0];
+  const std::shared_ptr<::pir::Program> program =
+      ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
+  VLOG(1) << "[CastPyArg2AttrIRProgram] program use count: "
+          << program.use_count();
+  attrs[key] = program;
+  VLOG(1) << "[CastPyArg2AttrIRProgram] program use count: "
+          << program.use_count();
 }
 
 void CastPyArg2AttrValues(PyObject* obj,
