@@ -231,14 +231,13 @@ void RecvV2InferMeta(const int ring_id,
       errors::InvalidArgument(
           "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
 
-  PADDLE_ENFORCE_GE(out_shape.size(),
-                    1,
-                    errors::InvalidArgument(
-                        "The size of the output shape must be greater than 0 "
-                        "but the value given is %d.",
-                        out_shape.size()));
-
   if (!dynamic_shape) {
+    PADDLE_ENFORCE_GE(out_shape.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          out_shape.size()));
     for (size_t i = 0; i < out_shape.size(); ++i) {
       PADDLE_ENFORCE_GE(out_shape[i],
                         1,

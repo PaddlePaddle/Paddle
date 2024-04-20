@@ -14,7 +14,6 @@
 
 import contextlib
 import copy
-import inspect
 import weakref
 
 import paddle
@@ -524,23 +523,16 @@ def recompute(function, *args, **kwargs):
 
         return static_auto_recompute(function)(*args, **kwargs)
 
+    if kwargs and use_reentrant:
+        raise ValueError(
+            "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
+        )
+
     if framework._dygraph_tracer()._has_grad:
-        check_args = list(args)
-        check_args.extend(list(kwargs.values()))
-        check_recompute_necessary(check_args)
+        check_recompute_necessary(args)
 
     if use_reentrant:
-        input_args = args
-        # rearrange `position-args + keyword-args` into `position-args`
-        if isinstance(function, paddle.nn.Layer):
-            dyfunc_sig = inspect.signature(function.forward)
-        else:
-            dyfunc_sig = inspect.signature(function)
-
-        bound_args = dyfunc_sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        input_args = list(bound_args.arguments.values())
-        return RecomputeFunction.apply(function, preserve, *input_args)
+        return RecomputeFunction.apply(function, preserve, *args)
     else:
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)
 
