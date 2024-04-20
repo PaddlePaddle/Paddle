@@ -148,6 +148,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out_dims = GetOutputShape(axes, x_dims, true);
   }
 
+  /*
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
                            framework::DDim& x_dims,            // NOLINT
                            framework::DDim& out_dims) const {  // NOLINT
@@ -157,6 +158,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out_dims = common::make_ddim(
         Flatten2Kernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
   }
+  */
 
  protected:
   static framework::DDim ValidateShape(const std::vector<int>& shape,
