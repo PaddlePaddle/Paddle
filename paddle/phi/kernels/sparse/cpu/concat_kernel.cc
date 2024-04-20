@@ -50,14 +50,28 @@ static void check_cat_sparse_dims(SparseCooTensor const* t,
                     t->dense_dim());
 }
 
+template <typename T>
+void ConcatInferMeta(const std::vector<const SparseTensorMeta*>& x,
+                     const Scalar& axis_scalar,
+                     T* out) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The size of input meta vector should be greater"
+                        "than 0."));
+
+  SparseTensorMeta out_meta;
+  out_meta.dtype = x.at(0)->dtype;
+  out_meta.layout = x.at(0)->layout;
+  out->set_meta(out_meta);
+}
+
 template <typename T, typename Context>
 void ConcatCooKernel(const Context& dev_ctx,
                      const std::vector<const SparseCooTensor*>& x,
                      const Scalar& axis_scalar,
                      SparseCooTensor* out) {
-  std::vector<MetaTensor> meta_x;
-  meta_x.reserve(x.size());
-  std::vector<const MetaTensor*> meta_x_ptr;
+  std::vector<const SparseTensorMeta*> meta_x_ptr;
   meta_x_ptr.reserve(x.size());
   std::vector<DenseTensor> indices;
   std::vector<DenseTensor> values;
@@ -79,9 +93,8 @@ void ConcatCooKernel(const Context& dev_ctx,
     x_dims.push_back(t->dims());
     pos++;
   }
-
-  MetaTensor meta_out(out);
-  ConcatInferMeta(meta_x_ptr, axis, &meta_out);
+  // 把这个方法放到其他的地方
+  ConcatInferMeta(meta_x_ptr, axis, out);
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
 
   if (axis < sparse_dim) {
@@ -168,7 +181,7 @@ void ConcatCsrKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, x[0], dev_ctx.GetPlace(), false, out);
     return;
   }
-  std::vector<const MetaTensor*> meta_x_ptr;
+  std::vector<const SparseTensorMeta*> meta_x_ptr;
 
   std::vector<phi::DDim> x_dims;
   x_dims.reserve(num_split);
@@ -187,8 +200,9 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
   std::vector<int64_t> out_crows_dims_vec(1, 0);
   std::vector<int64_t> crows_numel;
-  std::vector<int64_t*> crows_data_vec;
-
+  std::vector<const int64_t*> crows_data_vec;
+  std::vector<const T*> values_data_vec;
+  std::vector<const int64_t*> cols_data_vec;
   for (const auto* t : x) {
     meta_x_ptr.emplace_back(&t->meta());
     x_dims.emplace_back(t->dims());
@@ -196,10 +210,12 @@ void ConcatCsrKernel(const Context& dev_ctx,
     out_value_dims_vec[0] += t->values().numel();
     crows_numel.push_back(t->crows().numel());
     crows_data_vec.push_back(t->crows().data<int64_t>());
+    values_data_vec.push_back(t->values().data<T>());
+    cols_data_vec.push_back(t->cols().data<int64_t>());
   }
 
-  MetaTensor meta_out(out);
-  ConcatInferMeta(meta_x_ptr, axis, &meta_out);
+  // 把这个方法放到其他的地方
+  ConcatInferMeta(meta_x_ptr, axis, out);
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   int x_dim = x_dims[0].size();
   // now csr only support 2-d and 3-d size
@@ -211,20 +227,39 @@ void ConcatCsrKernel(const Context& dev_ctx,
       values.reserve(num_split);
       for (int64_t i = 0; i != num_split; i++) {
         out_crows_dims_vec[0] += crows_numel[i];
-        cols.emplace_back(t->cols());
-        values.emplace_back(t->values());
+        // cols.emplace_back(t->cols());
+        // values.emplace_back(t->values());
       }
       // 减掉额外的0
       out_crows_dims_vec[0] -= x.size() - 1;
 
-      funcs::ConcatFunctor<Context, T> concat_functor;
-      out_values->Resize(common::make_ddim(out_value_dims_vec));
-      concat_functor(dev_ctx, values, static_cast<int>(0), &out_values);
-      // cols的形状与value一致
-      out_cols->Resize(common::make_ddim(out_value_dims_vec));
-      concat_functor(dev_ctx, cols, static_cast<int>(0), &out_cols);
+      // funcs::ConcatFunctor<Context, T> concat_functor;
+      out_values.Resize(common::make_ddim(out_value_dims_vec));
+      // concat_functor(dev_ctx, values, static_cast<int>(0), &out_values);
+      // 替换掉方便编写的方法
+      auto* out_values_date = out_values.data<T>();
+      int64_t values_offset = 0;
+      for (int64_t i = 0; i != num_split; i++) {
+        int nnz = x[i]->nnz();
+        std::memcpy(out_values_date + values_offset,
+                    values_data_vec[i],
+                    x[i]->nnz() * sizeof(T));
+        values_offset += nnz;
+      }
 
-      out_crows->Resize(common::make_ddim(out_crows_dims_vec));
+      // cols的形状与value一致
+      out_cols.Resize(common::make_ddim(out_value_dims_vec));
+      // concat_functor(dev_ctx, cols, static_cast<int>(0), &out_cols);
+      auto* out_cols_date = out_cols.data<T>();
+      int64_t cols_offset = 0;
+      for (int64_t i = 0; i != num_split; i++) {
+        int nnz = x[i]->nnz();
+        std::memcpy(
+            out_cols_date + cols_offset, cols_data_vec[i], nnz * sizeof(T));
+        cols_offset += nnz;
+      }
+
+      out_crows.Resize(common::make_ddim(out_crows_dims_vec));
       auto* out_crows_data = out_crows.data<int64_t>();
       int64_t crow_index = 0;
       // rows_in_slice 保存的是每一个crows的和,方便concat的计算 多给1条方便优化
@@ -248,17 +283,13 @@ void ConcatCsrKernel(const Context& dev_ctx,
       }
       out->SetMember(out_crows, out_cols, out_values, out_dims);
     } else {  // axis == 1
-      out_values->Resize(common::make_ddim(out_value_dims_vec));
-      out_cols->Resize(common::make_ddim(out_value_dims_vec));
+      out_values.Resize(common::make_ddim(out_value_dims_vec));
+      out_cols.Resize(common::make_ddim(out_value_dims_vec));
       // num_split >= 2
       // 先获取最长的crows长度 方便作为基准
 
-      std::vector<T*> values_data_vec;
-      std::vector<int64_t*> cols_data_vec;
       int64_t max_crow_numel = 0;
       for (int64_t i = 0; i != num_split; i++) {
-        values_data_vec.push_back(values[i].data<T>());
-        cols_data_vec.push_back(clos[i].data<int64_t>());
         if (crows_numel[i] > max_crow_numel) {
           max_crow_numel = crows_numel[i];
         }
@@ -269,11 +300,11 @@ void ConcatCsrKernel(const Context& dev_ctx,
         return;
       }
       out_crows_dims_vec[0] = max_crow_numel;
-      out_crows->Resize(common::make_ddim(out_crows_dims_vec));
+      out_crows.Resize(common::make_ddim(out_crows_dims_vec));
 
-      out_cols_data = out_cols.data<int64_t>();
-      out_values_data = out_values.data<T>();
-      out_crows_data = out_crows.data<int64_t>();
+      auto* out_cols_data = out_cols.data<int64_t>();
+      auto* out_values_data = out_values.data<T>();
+      auto* out_crows_data = out_crows.data<int64_t>();
 
       for (int i = 0; i < max_crow_numel; ++i) {
         out_crows_data[i] = 0;
@@ -284,6 +315,7 @@ void ConcatCsrKernel(const Context& dev_ctx,
       for (int64_t j = 1; j <= max_crow_numel; j++) {
         for (int64_t i = 0; i != num_split; i++) {
           now_cols_offset = 0;
+          auto* crows_data = x[i]->crows().data<int64_t>();
           // 判断条件 貌似可以拿出去
           if (j <= crows_numel[i]) {
             for (int64_t k = 0; crows_data[j] - crows_data[j - 1]; k++) {
@@ -303,6 +335,30 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
   } else {
     // 参考transpose_kernel.c的方法?? ndim==3的情况
+
+    if (axis == 0) {
+      std::vector<DenseTensor> crows;
+      std::vector<DenseTensor> values;
+      std::vector<DenseTensor> cols;
+
+      for (size_t i = 0; i != num_split; i++) {
+        out_crows_dims_vec[0] += crows_numel[i];
+        crows.emplace_back(x[i]->crows());
+        values.emplace_back(x[i]->values());
+        cols.emplace_back(x[i]->cols());
+      }
+
+      funcs::ConcatFunctor<Context, T> concat_functor;
+      out_values.Resize(common::make_ddim(out_value_dims_vec));
+      concat_functor(dev_ctx, values, static_cast<int>(0), &out_values);
+      // cols的形状与value一致
+      out_cols.Resize(common::make_ddim(out_value_dims_vec));
+      concat_functor(dev_ctx, cols, static_cast<int>(0), &out_cols);
+
+      out_crows.Resize(common::make_ddim(out_crows_dims_vec));
+      concat_functor(dev_ctx, crows, static_cast<int>(0), &out_crows);
+      out->SetMember(out_crows, out_cols, out_values, out_dims);
+    }
   }
 }
 }  // namespace sparse
