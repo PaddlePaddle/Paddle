@@ -297,11 +297,6 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
 
-        if micro_batch_id == 0:
-            print(
-                f"job_id: {job_id}, job_type: {job_type}, skip_gc_vars: {skip_gc_vars}"
-            )
-
     return type_to_program
 
 
