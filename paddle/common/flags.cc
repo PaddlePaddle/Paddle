@@ -1027,17 +1027,16 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
 
 /*
  * CINN related FLAG
@@ -1247,6 +1246,17 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
  * Example:
  */
 PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+/**
+ * CINN training related FLAG
+ * Name: FLAGS_disable_dyshape_in_train
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
+                         false,
+                         "Whether disable dyshape in training.");
 
 /**
  * Conv Search cache max number related FLAG

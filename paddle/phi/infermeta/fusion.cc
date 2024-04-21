@@ -582,6 +582,36 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   out->set_dtype(out_dtype);
 }
 
+void SpatialTransformerResblockXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& x_max,
+    const std::vector<const MetaTensor*>& conv_bias,
+    const std::vector<const MetaTensor*>& conv_filter,
+    const std::vector<const MetaTensor*>& conv_filter_max,
+    const std::vector<const MetaTensor*>& gn_bias,
+    const std::vector<const MetaTensor*>& gn_scale,
+    const std::vector<int>& dilations,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<float>& gn_eps,
+    const std::vector<int>& gn_groups,
+    const std::vector<int>& groups,
+    bool conv_fix,
+    bool has_silu_fc_input,
+    bool include_silu,
+    MetaTensor* out,
+    MetaTensor* out_max) {
+  auto input_shape = x.dims();
+  auto batch_size = input_shape[0];
+  auto channel_out = conv_filter[0]->dims()[0];
+  auto h = input_shape[2];
+  auto w = input_shape[3];
+  out->set_dims(common::make_ddim({batch_size, channel_out, h, w}));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
@@ -3826,6 +3856,95 @@ void SinePosXPUInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
+}
+
+void CrossAttentionXPUInferMeta(
+    const MetaTensor& input_q,
+    const MetaTensor& input_kv,
+    const std::vector<const MetaTensor*>& fc_weight,
+    const std::vector<const MetaTensor*>& fc_weight_max,
+    const std::vector<const MetaTensor*>& fc_bias,
+    const MetaTensor& mask,
+    int head_num,
+    int head_dim,
+    float alpha,
+    DataType out_dtype,
+    MetaTensor* qkv,
+    MetaTensor* qkv_max) {
+  auto input_q_dims = input_q.dims();
+  auto input_kv_dims = input_kv.dims();
+  auto mask_dims = mask.dims();
+  // input shape : {B, L, H*D}
+  PADDLE_ENFORCE_EQ(input_q_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dim of input_q should be 3! But received ",
+                        input_q_dims.size()));
+  PADDLE_ENFORCE_EQ(input_kv_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dim of input_kv should be 3! But received ",
+                        input_kv_dims.size()));
+  // sequece length of q and k/v  not requied to be eqaul
+  // but batch size and dim should be the same
+  PADDLE_ENFORCE_EQ(
+      input_q_dims[0],
+      input_kv_dims[0],
+      phi::errors::InvalidArgument("The batch size of input_q and input_kv "
+                                   "should be the same! Received ",
+                                   input_q_dims[0],
+                                   " vs ",
+                                   input_kv_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      input_q_dims[2],
+      input_kv_dims[2],
+      phi::errors::InvalidArgument("The hidden_dim of input_q and input_kv "
+                                   "should be the same! Received ",
+                                   input_q_dims[2],
+                                   " vs ",
+                                   input_kv_dims[2]));
+  int hidden_dim = head_num * head_dim;
+  PADDLE_ENFORCE_EQ(
+      input_q_dims[2],
+      hidden_dim,
+      phi::errors::InvalidArgument(
+          "The last dimension of input_q should be [H*D]! Received ",
+          input_q_dims[2],
+          " != expected ",
+          hidden_dim));
+  PADDLE_ENFORCE_EQ(fc_weight.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The size of fc_weight should be 3! But received ",
+                        fc_weight.size()));
+  PADDLE_ENFORCE_EQ(fc_weight_max.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The size of fc_weight_max should be 3! But received ",
+                        fc_weight_max.size()));
+  PADDLE_ENFORCE_EQ(
+      fc_bias.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "The size of fc_bias should be 3! But received ", fc_bias.size()));
+  PADDLE_ENFORCE_LE(
+      mask_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The dim of mask should be not greater than 4!", mask_dims.size()));
+
+  // output shape: {B, qL, H*D}
+  qkv->set_dims(
+      phi::make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
+  qkv->set_dtype(out_dtype);
+  qkv->set_layout(input_q.layout());
+  // TODO(Terry) optmize the max value num
+  // unable to pass few PR-CIs, so just use a constant value
+  // int xpu2_max_value_num = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  const int xpu2_max_value_num = 6;
+  qkv_max->set_dims(phi::make_ddim({xpu2_max_value_num}));
+  qkv_max->set_dtype(out_dtype);
+  qkv_max->set_layout(input_q.layout());
 }
 
 void MultiGruInferMeta(

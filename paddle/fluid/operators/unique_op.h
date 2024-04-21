@@ -55,7 +55,7 @@ struct UniqueOpFunctor {
     PADDLE_ENFORCE_LT(
         in_->numel(),
         pow(2, 31),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The num of Input(X) elements should be less then INT_MAX, "
             "but received num is %d.",
             in_->numel()));
@@ -84,7 +84,7 @@ struct UniqueOpFunctor {
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(index_type_match,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
                             paddle::framework::DataTypeToString(index_type),
@@ -406,7 +406,7 @@ class UniqueKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LE(
           x->numel(),
           INT_MAX,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of elements in Input(X) should be less than or "
               "equal to INT_MAX, but received num is %d. Please set `dtype` to "
               "int64.",

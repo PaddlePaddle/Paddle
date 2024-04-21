@@ -64,7 +64,7 @@ class TestConv2dAddFusePass(PassTest):
                 )
                 out = paddle.add(conv2d(x), bias)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_add_fuse_pass']
+                self.pass_attr_list = [{'conv2d_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                 }

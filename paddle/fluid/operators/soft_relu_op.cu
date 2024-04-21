@@ -39,13 +39,13 @@ PD_REGISTER_STRUCT_KERNEL(soft_relu,
                           ops::SoftReluCudaKernel,
                           float,
                           double,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::SoftReluGradCudaKernel,
                           float,
                           double,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

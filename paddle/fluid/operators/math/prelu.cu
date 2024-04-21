@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/prelu.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -135,18 +135,18 @@ void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 }
 
 template class PreluChannelWiseDirectCUDAFunctor<float>;
-template class PreluChannelWiseDirectCUDAFunctor<platform::float16>;
-template class PreluChannelWiseDirectCUDAFunctor<platform::bfloat16>;
+template class PreluChannelWiseDirectCUDAFunctor<phi::dtype::float16>;
+template class PreluChannelWiseDirectCUDAFunctor<phi::dtype::bfloat16>;
 template class PreluChannelWiseDirectCUDAFunctor<double>;
 
 template class PreluElementWiseDirectCUDAFunctor<float>;
-template class PreluElementWiseDirectCUDAFunctor<platform::float16>;
-template class PreluElementWiseDirectCUDAFunctor<platform::bfloat16>;
+template class PreluElementWiseDirectCUDAFunctor<phi::dtype::float16>;
+template class PreluElementWiseDirectCUDAFunctor<phi::dtype::bfloat16>;
 template class PreluElementWiseDirectCUDAFunctor<double>;
 
 template class PreluScalarDirectCUDAFunctor<float>;
-template class PreluScalarDirectCUDAFunctor<platform::float16>;
-template class PreluScalarDirectCUDAFunctor<platform::bfloat16>;
+template class PreluScalarDirectCUDAFunctor<phi::dtype::float16>;
+template class PreluScalarDirectCUDAFunctor<phi::dtype::bfloat16>;
 template class PreluScalarDirectCUDAFunctor<double>;
 
 }  // namespace math
