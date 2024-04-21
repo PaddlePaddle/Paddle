@@ -488,7 +488,7 @@ void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
                            const std::string& ctrlabel_name,
                            int padding_id,
                            bool scale_sparse_grad,
-                           const std::string& input_names,
+                           const std::vector<std::string>& input_names,
                            bool is_distributed,
                            std::vector<MetaTensor*> out);
 
