@@ -26,8 +26,8 @@ namespace cub = hipcub;
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);

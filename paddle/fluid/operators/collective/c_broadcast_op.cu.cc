@@ -80,7 +80,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -90,7 +90,6 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           GPU,
@@ -101,7 +100,7 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

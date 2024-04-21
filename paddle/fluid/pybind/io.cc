@@ -123,6 +123,15 @@ void BindIO(pybind11::module *m) {
     paddle::framework::LoadTensor(path, &tensor_load);
     return tensor_load;
   });
+
+  m->def("save_func", &pir::SaveFunction);
+
+  m->def("save_combine_func", &pir::SaveCombineFunction);
+
+  m->def("load_func", &pir::LoadFunction);
+
+  m->def("load_combine_func", &pir::LoadCombineFunction);
+
   m->def("serialize_pir_program",
          &pir::WriteModule,
          py::arg("program"),

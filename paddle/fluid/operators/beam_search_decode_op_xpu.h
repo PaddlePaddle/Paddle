@@ -45,7 +45,7 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   PADDLE_ENFORCE_EQ(
       r,
       xpu::Error_t::SUCCESS,
-      platform::errors::External("Execute function SetMeta failed by [%d]", r));
+      phi::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
     T* dstData =
@@ -75,8 +75,7 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
   if (srcTensor.dtype() == phi::DataType::FLOAT32)
     r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::FLOAT16)
-    r = CopyTensorByXPU<paddle::platform::float16>(
-        srcTensor, dstTensor, flag, place);
+    r = CopyTensorByXPU<phi::dtype::float16>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::FLOAT64)
     r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::INT32)
@@ -88,7 +87,7 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 
   PADDLE_ENFORCE_EQ(r,
                     xpu::Error_t::SUCCESS,
-                    platform::errors::External(
+                    phi::errors::External(
                         "Execute function CopyTensorByXPU failed by [%d]", r));
 
   return xpu::Error_t::SUCCESS;
@@ -117,7 +116,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              platform::errors::External(
+              phi::errors::External(
                   "Execute function CopyTensorByXPU failed by [%d]", r));
         }
 
@@ -135,7 +134,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              platform::errors::External(
+              phi::errors::External(
                   "Execute function CopyTensorByType failed by [%d]", r));
         }
 
@@ -148,7 +147,7 @@ struct BeamSearchDecodeXPUFunctor {
   template <typename T>
   void apply_xpu() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
