@@ -534,11 +534,6 @@ if(WITH_DGC)
   list(APPEND third_party_deps extern_dgc)
 endif()
 
-if(WITH_LITE)
-  message(STATUS "Compile Paddle with Lite Engine.")
-  include(external/lite)
-endif()
-
 if(WITH_CRYPTO)
   include(external/cryptopp) # download, build, install cryptopp
   list(APPEND third_party_deps extern_cryptopp)

@@ -70,7 +70,9 @@ class TestRmsNormFusePattern(PassTest):
                                 x = paddle.rsqrt(variance + 1e-6) * x
                                 out = x * w
                                 out = paddle.assign(out)
-                                self.pass_list = ['add_norm_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'add_norm_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"
@@ -153,7 +155,9 @@ class TestRmsNormFusePattern_FP16(TestRmsNormFusePattern):
                                 )
                                 out = x_2 * w
                                 out = paddle.assign(out)
-                                self.pass_list = ['add_norm_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'add_norm_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         paddle.get_default_dtype()
@@ -242,7 +246,9 @@ class TestAddRmsNormFusePatternWithResidual(TestRmsNormFusePattern):
                                 matmul_out = paddle.matmul(mul_out, w1)
                                 out = paddle.add(add_out_1, matmul_out)
                                 out = paddle.assign(out)
-                                self.pass_list = ['add_norm_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'add_norm_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"
@@ -321,7 +327,9 @@ class TestAddLayerNormFusePattern(TestRmsNormFusePattern):
                                 matmul_out = paddle.matmul(layer_norm_out, w1)
                                 out = paddle.add(add_out_1, matmul_out)
                                 out = paddle.assign(out)
-                                self.pass_list = ['add_norm_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'add_norm_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"

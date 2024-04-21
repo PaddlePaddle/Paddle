@@ -171,5 +171,4 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    bool,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

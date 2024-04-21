@@ -21,7 +21,6 @@ DEFINE_C_ALLREDUCE_CUDA_KERNEL(CAllReduceAvg, kRedAvg)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_avg,
                           GPU,
@@ -31,5 +30,5 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_avg,
                           double,
                           int,
                           int64_t,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

@@ -43,7 +43,7 @@ class Unpool2dMaxFunctor<phi::CPUContext, T> {
           PADDLE_ENFORCE_LT(
               index,
               output_feasize,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "index should less than output tensor height * output tensor "
                   "width. Expected %ld < %ld, but got "
                   "%ld >= %ld. Please check input value.",
@@ -88,7 +88,7 @@ class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
           PADDLE_ENFORCE_LT(
               index,
               output_feasize,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "index should less than output tensor height * output tensor "
                   "width. Expected %ld < %ld, but got "
                   "%ld >= %ld. Please check input value.",
@@ -134,7 +134,7 @@ class Unpool3dMaxFunctor<phi::CPUContext, T> {
           PADDLE_ENFORCE_LT(
               index,
               output_feasize,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "index should less than output tensor depth * output tensor "
                   "height "
                   "* output tensor width. Expected %ld < %ld, but got "
@@ -182,7 +182,7 @@ class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
           PADDLE_ENFORCE_LT(
               index,
               output_feasize,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "index should less than output tensor depth * output tensor "
                   "height "
                   "* output tensor width. Expected %ld < %ld, but got "
