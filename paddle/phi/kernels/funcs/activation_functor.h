@@ -3091,11 +3091,6 @@ struct RsqrtGradGradFunctor<ComplexType<T>>
                   const DenseTensor* ddX,
                   DenseTensor* dOut,
                   DenseTensor* ddOut) const {
-    std::cout << "there\n";
-    // auto dx_data = dX->data<ComplexType<T>>()[0];
-    // auto ddx_data = ddX->data<ComplexType<T>>()[0];
-    // std::cout<<"dx_data:"<<dx_data<<std::endl;
-    // std::cout<<"ddx_data:"<<ddx_data<<std::endl;
     auto* d = dev.eigen_device();
     auto ddx = EigenVector<ComplexType<T>>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "RsqrtGradGrad"));
