@@ -1254,6 +1254,11 @@ class TestTanhshrink(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(10, 20, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(10, 20, self.shape)
+                + 1j * np.random.uniform(10, 20, self.shape)
+            ).astype(self.dtype)
         out = ref_tanhshrink(x)
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
@@ -1277,6 +1282,17 @@ class TestTanhshrink_ZeroDim(TestTanhshrink):
     def init_shape(self):
         self.shape = []
 
+
+class TestTanhshrinkComplex64(TestActivation):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    
+
+class TestTanhshrinkComplex128(TestActivation):
+    def init_dtype(self):
+        self.dtype = np.complex128
+    
 
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
