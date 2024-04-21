@@ -6836,3 +6836,31 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         )
 
         return output
+
+def block_diag(*inputs, name=None):
+    def to_col_block(arys, i, a):
+        return [
+            a if idx == i else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            for idx, ary in enumerate(arys)
+        ]
+
+    def to_2d(ary):
+        if not isinstance(ary, paddle.Tensor):
+            raise TypeError(
+                f"For 'block_diag', each element of 'inputs' must be a tensor, but got {type(ary)}"
+            )
+        if ary.ndim == 0:
+            return ary.unsqueeze(axis=0).unsqueeze(axis=0)
+        if ary.ndim == 1:
+            return ary.unsqueeze(axis=0)
+        if ary.ndim == 2:
+            return ary
+        raise ValueError(
+            "For 'block_diag', the dimension of each elements in 'inputs' must be 0, 1, or 2, but got "
+            f"{ary.ndim}"
+        )
+
+    arys = [to_2d(ary) for ary in inputs]
+    
+    matrix = [paddle.concat(to_col_block(arys, idx, ary), axis=0) for idx, ary in enumerate(arys)]
+    return paddle.concat(matrix, axis=1)

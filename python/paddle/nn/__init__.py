@@ -72,6 +72,11 @@ from .layer.common import (
     ZeroPad2D,
 )
 
+from .layer.padding import (
+    ZeroPad1D,
+    ZeroPad3D,
+)
+
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 from .layer.container import LayerDict, LayerList, ParameterList, Sequential
@@ -298,4 +303,6 @@ __all__ = [
     'Unflatten',
     'FractionalMaxPool2D',
     'FractionalMaxPool3D',
+    'ZeroPad1D',
+    'ZeroPad3D',
 ]

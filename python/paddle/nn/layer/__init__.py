@@ -109,6 +109,11 @@ from .pooling import (  # noqa: F401
     MaxUnPool2D,
     MaxUnPool3D,
 )
+
+from .padding import (  # noqa: F401
+    ZeroPad1D,
+    ZeroPad3D,
+)
 from .vision import ChannelShuffle, PixelShuffle, PixelUnshuffle  # noqa: F401
 
 __all__ = []
