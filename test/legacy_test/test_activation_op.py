@@ -1287,12 +1287,11 @@ class TestTanhshrinkComplex64(TestActivation):
     def init_dtype(self):
         self.dtype = np.complex64
 
-    
 
 class TestTanhshrinkComplex128(TestActivation):
     def init_dtype(self):
         self.dtype = np.complex128
-    
+
 
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink

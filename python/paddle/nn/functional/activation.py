@@ -1533,7 +1533,17 @@ def tanhshrink(x, name=None):
         return _C_ops.tanh_shrink(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64', 'complex64', 'complex128'], 'tanhshrink'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'tanhshrink',
         )
         helper = LayerHelper('tanh_shrink', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)

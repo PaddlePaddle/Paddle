@@ -1917,7 +1917,8 @@ struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct TanhShrinkGradFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct TanhShrinkGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device,
             typename X,
             typename Out,
@@ -4403,13 +4404,13 @@ struct CudaTanhShrinkGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaTanhShrinkGradFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
-
+struct CudaTanhShrinkGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   // dx = dout * tanh(x)^2
-  __device__ __forceinline__ ComplexType<T> operator()(const ComplexType<T> arg_dout,
-                                          const ComplexType<T> arg_x) const {
-
-    return static_cast<ComplexType<T>>(arg_dout * conj(tanh(arg_x) * tanh(arg_x)));
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(arg_dout *
+                                       conj(tanh(arg_x) * tanh(arg_x)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
