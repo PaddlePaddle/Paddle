@@ -2775,6 +2775,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   for (size_t i = 0; i < n_ids; ++i) {
     out[i]->set_dims(outs_dims[i]);
     out[i]->share_lod(*ids[i], i);
+    out[i]->set_dtype(w.dtype());
   }
 }
 
