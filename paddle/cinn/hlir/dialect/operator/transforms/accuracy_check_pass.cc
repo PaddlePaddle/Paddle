@@ -62,7 +62,7 @@ class AddAccuracyCheckPattern
               i);
         }
       } else if (op->dialect()->name() == "cinn_op") {
-        throw std::runtime_error("not support yet");
+        PADDLE_THROW(phi::errors::Unimplemented("not support cinn ops yet"));
       } else {
         for (size_t i = 0; i < op->num_operands(); ++i) {
           if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
@@ -90,23 +90,6 @@ class AccuarcyCheckPass : public pir::Pass {
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
-
-  // void Run(pir::Operation* op) override {
-  //   pir::GreedyRewriteConfig cfg;
-  //   cfg.use_top_down_traversal = true;
-  //   cfg.max_iterations = 1;
-  //   for (uint32_t i = 0; i < op->num_regions(); ++i) {
-  //     for (auto& block : op->region(i)) {
-  //       for (auto& op : block) {
-
-  //           auto [_, num_rewrites] =
-  //               pir::ApplyPatternsGreedily(&op, patterns_, cfg);
-  //           AddStatistics(num_rewrites);
-
-  //       }
-  //     }
-  //   }
-  // }
 
   void Run(pir::Operation* op) override {
     int64_t num_ops{0};
