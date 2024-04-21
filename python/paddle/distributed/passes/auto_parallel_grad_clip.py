@@ -339,12 +339,6 @@ class ClipGradByGlobalNormPass(PassBase):
         )
         self._remove_no_need_ops_vars(block)
 
-        # print("===== main_program after global_norm_clip pass =====")
-        # with open("main_program_after_global_norm_clip.txt", "w") as f:
-        #     f.write(str(main_program))
-        # print(main_program)
-        # print("\n\n")
-
     def _remove_no_need_ops_vars(self, block):
         removed_op_out_type = [
             'squared_l2_norm',

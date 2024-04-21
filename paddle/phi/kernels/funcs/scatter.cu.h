@@ -35,8 +35,6 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
-    // printf("i:%lld scatter_i:%lld output_count:%lld\n", i, scatter_i,
-    // output_count);
 
     PADDLE_ENFORCE(
         scatter_i >= 0 && scatter_i < output_count,

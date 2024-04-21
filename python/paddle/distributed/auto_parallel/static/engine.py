@@ -769,10 +769,6 @@ class Engine:
             self.concrete_program = self.program_helper.concrete_program
             serial_main_prog = self.program_helper.main_program
             serial_startup_prog = self.program_helper.startup_program
-            # print("engine.py:682, self.concrete_program: ")
-            # print(self.concrete_program)
-            # print("engine.py:684, serial_main_prog: ")
-            # print(serial_main_prog)
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
@@ -1017,8 +1013,6 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
-            print("===== init_comm all_process_groups =====")
-            print(all_process_groups)
 
             if self._strategy.auto_mode == "full_random":
                 auto_utils.initialize_pg_in_full_mode(

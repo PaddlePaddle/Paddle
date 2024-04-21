@@ -62,7 +62,7 @@ __skip_dims_mapping_op__ = [
 ]
 
 _skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
-_max_propagation_step = 20
+_max_propagation_step = 500
 
 
 def log_program(dist_context, name=""):
@@ -230,8 +230,6 @@ def _update_op_dims_mapping_and_distoperatorimpl(
     if dist_op.serial_op.type == "assign":
         # input_arg_names = dist_op.serial_op.desc.input_arg_names()
         output_arg_names = dist_op.serial_op.desc.output_arg_names()
-        # print("===== assign op =====")
-        # print(output_arg_names)
         if "dtensor_from_local_api" in output_arg_names[0]:
             dist_op_container = get_distributed_operator_impl_container(
                 "dtensor_from_local_list"
@@ -250,12 +248,6 @@ def _update_op_dims_mapping_and_distoperatorimpl(
         f"Update Op [{dist_op.serial_op.type}] using DistOpContainer [{dist_op_container.type}]."
     )
 
-    # if dist_op.serial_op.type == "reduce_sum":
-    #     print("===== reduce_sum op =====")
-    #     print("dist_op:", dist_op, " container:", dist_op_container)
-    # if dist_op.serial_op.type == "reduce_mean":
-    #     print("===== reduce_mean op =====")
-    #     print("dist_op:", dist_op, " container:", dist_op_container)
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specific distopimpls
@@ -1095,8 +1087,6 @@ class Completer:
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
 
-        print("====== main_program after completion ======")
-        log_program(self._dist_context, "final")
         self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
@@ -1856,14 +1846,7 @@ class Completer:
                 ref_dist_attr = vars[fwd_var_name].dist_attr
                 ref_dims_mapping = ref_dist_attr.dims_mapping
                 ref_process_mesh = ref_dist_attr.process_mesh
-                # print(
-                #     "grad_op:",
-                #     grad_op,
-                #     "ref_dims_mapping:",
-                #     ref_dims_mapping,
-                #     "ref_process_mesh:",
-                #     ref_process_mesh,
-                # )
+
                 output_var = vars[output_name]
                 set_var_dist_attr(
                     self._dist_context,
@@ -2132,7 +2115,6 @@ class Completer:
 
         for idx in range(first_backward_op_idx, len(ops)):
             grad_op = ops[idx]
-            # print("grad_op:", grad_op)
             # complete the initial grad loss op
             if idx == first_backward_op_idx:
                 assert grad_op.type == "fill_constant"
