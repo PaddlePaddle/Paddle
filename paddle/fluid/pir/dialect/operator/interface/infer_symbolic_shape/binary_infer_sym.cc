@@ -204,10 +204,20 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() +
-      " 's InferSymbolicShape interface is NOT implemented "
-      "now because of the lack of necessary information."));
+  std::vector<int> target_shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  const std::vector<symbol::DimExpr> &output_dims = [&] {
+    std::vector<symbol::DimExpr> output_dims;
+    output_dims.reserve(target_shape.size());
+    for (int shape : target_shape) {
+      output_dims.push_back(shape);
+    }
+    return output_dims;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_dims));
+
   return true;
 }
 

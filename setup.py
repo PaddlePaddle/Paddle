@@ -1160,13 +1160,13 @@ def get_package_data_and_package_dir():
             # The reason is that all thirdparty libraries in the same directory,
             # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
             command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
-                "MKLDNN_SHARED_LIB"
+                "ONEDNN_SHARED_LIB"
             )
             if os.system(command) != 0:
                 raise Exception(
                     "patch libdnnl.so failed, command: %s" % command
                 )
-        shutil.copy(env_dict.get("MKLDNN_SHARED_LIB"), libs_path)
+        shutil.copy(env_dict.get("ONEDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
             package_data['paddle.libs'] += ['libdnnl.so.3']
         else:
@@ -1422,7 +1422,7 @@ def get_headers():
 
     if env_dict.get("WITH_ONEDNN") == 'ON':
         headers += list(
-            find_files('*', env_dict.get("MKLDNN_INSTALL_DIR") + '/include')
+            find_files('*', env_dict.get("ONEDNN_INSTALL_DIR") + '/include')
         )  # mkldnn
 
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':

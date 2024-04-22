@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -223,7 +223,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       const T *d_output = d_output_t->data<T>();
       T *d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
-      auto t = framework::EigenVector<T>::Flatten(*d_table_t);
+      auto t = phi::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
 #ifdef PADDLE_WITH_HIP

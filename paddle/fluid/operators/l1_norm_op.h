@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
@@ -29,8 +29,8 @@ class L1NormKernel : public framework::OpKernel<T> {
     phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto out = framework::EigenScalar<T>::From(*Out);
+    auto x = phi::EigenVector<T>::Flatten(*X);
+    auto out = phi::EigenScalar<T>::From(*Out);
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
@@ -56,9 +56,9 @@ class L1NormGradKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(context.GetPlace());
 
-    auto x_eigen = framework::EigenVector<T>::Flatten(*x);
-    auto d_out_eigen = framework::EigenVector<T>::Flatten(*d_out);
-    auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
+    auto x_eigen = phi::EigenVector<T>::Flatten(*x);
+    auto d_out_eigen = phi::EigenVector<T>::Flatten(*d_out);
+    auto dx_eigen = phi::EigenVector<T>::Flatten(*dx);
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
