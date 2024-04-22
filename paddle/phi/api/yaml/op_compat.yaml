@@ -1892,6 +1892,15 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : l1_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : l1_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
 - op : label_smooth
   inputs :
     {label : X, prior_dist : PriorDist}
