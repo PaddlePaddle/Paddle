@@ -5140,12 +5140,53 @@ def ormqr(input, tau, other, left=True, transpose=False):
         assert (
             input.shape[0] == other.shape[0] and input.shape[0] == tau.shape[0]
         ), "The input and tau and other parameters should have the same batch"
+    m, n = input.shape[-2:]
 
-    Q = householder_product(input, tau)
+    def _ormqr_Q(input, tau):
+        k = tau.shape[-1]
+        Q = paddle.eye(m).astype(input.dtype)
+        for i in range(min(k, n)):
+            w = input[i:, i]
+            if in_dynamic_mode():
+                w[0] = 1
+            else:
+                w = paddle.static.setitem(w, 0, 1)
+            w = w.reshape([-1, 1])
+            if in_dynamic_mode():
+                if input.dtype in [paddle.complex128, paddle.complex64]:
+                    Q[:, i:] = Q[:, i:] - (
+                        Q[:, i:] @ w @ paddle.conj(w).T * tau[i]
+                    )
+                else:
+                    Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+            else:
+                Q = paddle.static.setitem(
+                    Q,
+                    (slice(None), slice(i, None)),
+                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    if input.dtype in [paddle.complex128, paddle.complex64]
+                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                )
+        return Q[:, :n]
+
     if len(input.shape) == 2:
+        Q = _ormqr_Q(input, tau)
         Q = Q.T if transpose else Q
     else:
+        org_input_shape = input.shape
+        org_tau_shape = tau.shape
+        input = input.reshape((-1, org_input_shape[-2], org_input_shape[-1]))
+        tau = tau.reshape((-1, org_tau_shape[-1]))
+        n_batch = input.shape[0]
+        Q = paddle.zeros([n_batch, m, n], dtype=input.dtype)
+        for i in range(n_batch):
+            if in_dynamic_mode():
+                Q[i] = _ormqr_Q(input[i], tau[i])
+            else:
+                Q = paddle.static.setitem(Q, i, _ormqr_Q(input[i], tau[i]))
+        Q = Q.reshape(org_input_shape)
         Q = paddle.transpose(Q, [0, 2, 1]) if transpose else Q
+
     result = matmul(Q, other) if left else matmul(other, Q)
 
     return result
