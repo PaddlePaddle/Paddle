@@ -307,6 +307,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     # output type is same as x, bias type is same as x
     dtypes = [x.dtype, qweight.dtype, x.dtype, scales.dtype, x.dtype]
     address_hint = get_pointer_hint(dtypes)
+    assert x.dtype == paddle.float16, "weight_only_int8 now only support float16 as input x"
 
     x_list = [M, N, K, K, 1, stride_bk, stride_bn, N, 1]
     value_hint = get_value_hint(x_list)
