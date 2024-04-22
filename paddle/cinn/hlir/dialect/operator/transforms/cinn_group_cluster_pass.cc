@@ -846,7 +846,7 @@ std::vector<GroupClusterNode> NewOpMergeWithOp(
       cluster_result.end(),
       std::back_inserter(result),
       [](const cinn::fusion::PatternNodePtr<cinn::fusion::FrontendStage> node) {
-        return cinn::fusion::GetOpsInPattern(node->stmt_pattern_);
+        return cinn::fusion::GetOpsInPattern(node->stmt_pattern());
       });
 
   // Each stmts corresponds to each fusion op(cluster node).

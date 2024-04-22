@@ -85,25 +85,6 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
       std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
                             fusion_group_info.reduce_var_name.end());
 
-  for (auto& op : group->output_ops()) {
-    group_info->direct_output_var_names.insert(ValueName(op->result(0)));
-    // collect all output tensor.
-    if (op->name() == "cinn_op.yield_store") {
-      auto input_var_name = ValueName(op->operand_source(0));
-      if (group_info->broadcast_info.count(input_var_name)) {
-        auto base_info = group_info->broadcast_info[input_var_name];
-        base_info.with_constrain = true;
-        group_info->broadcast_info[ValueName(op->result(0))] = base_info;
-      }
-    }
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      group_info->direct_output_var_names.insert(ValueName(opresult));
-    }
-  }
-
   for (auto& val : group->output_values()) {
     group_info->direct_output_var_names.insert(ValueName(val));
   }
