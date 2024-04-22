@@ -132,7 +132,7 @@ if(WITH_GPU)
   else()
     message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
   endif()
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"${SIMD_FLAG}\"")
 
   # Include cuda and cudnn
   include_directories(${CUDNN_INCLUDE_DIR})

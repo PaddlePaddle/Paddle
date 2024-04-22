@@ -24,6 +24,7 @@ else()
       CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
 include_directories(${ROCM_PATH}/include)
@@ -68,7 +69,7 @@ find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
-  include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  # include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
   message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
 endmacro()
 
