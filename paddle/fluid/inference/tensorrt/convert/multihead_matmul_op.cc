@@ -660,7 +660,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           plugin_collection->nbFields = static_cast<int>(fields.size());
           plugin_collection->fields = fields.data();
           auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
-                                              plugin_collection);
+                                              plugin_collection.get());
           plugin_collection.reset();
           // set inputs
           std::vector<nvinfer1::ITensor*> plugin_inputs;
