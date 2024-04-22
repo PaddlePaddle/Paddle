@@ -16,12 +16,12 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
@@ -237,7 +237,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
         ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
-    auto t = framework::EigenVector<T>::Flatten(predicted_logits);
+    auto t = phi::EigenVector<T>::Flatten(predicted_logits);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const int64_t start_index = rank * D;
@@ -404,7 +404,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
         ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
-    auto t = framework::EigenVector<T>::Flatten(predicted_logits);
+    auto t = phi::EigenVector<T>::Flatten(predicted_logits);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const int64_t start_index = rank * D;

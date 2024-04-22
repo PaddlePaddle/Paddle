@@ -101,7 +101,7 @@ static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {
   std::vector<std::pair<size_t, size_t>> res;
-  const auto* shape_analysis =
+  auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
@@ -262,7 +262,7 @@ template <typename T>
 class RelativeJudgePolicy final : public Policy<T> {
  public:
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
-                      const pir::ShapeConstraintIRAnalysis* shape_analysis)
+                      pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
     VLOG(4) << "[relative_judge_policy] Start AnalysisIndexExprRelation.";
     index_expr_map_ = AnalysisIndexExprRelation(ops);

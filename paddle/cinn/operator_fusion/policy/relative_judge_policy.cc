@@ -259,7 +259,7 @@ symbol::DimExpr GetProductDimExprForValueDims(
   for (const auto& dim : dims) {
     dim_idx.emplace_back(dim.idx_);
   }
-  const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
       dims[0].v_.defining_op()->GetParentProgram());
   return shape_analysis.GetProductDimExpr(dims[0].v_, dim_idx);
 }

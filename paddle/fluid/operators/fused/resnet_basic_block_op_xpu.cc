@@ -993,7 +993,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(resnet_basic_block,
                           XPU,
                           ALL_LAYOUT,

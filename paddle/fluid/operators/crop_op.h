@@ -16,8 +16,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
@@ -28,7 +28,7 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
