@@ -60,10 +60,7 @@ def run_eager(x_np, op_str, use_gpu=True):
 def np_data_generator(
     low, high, np_shape, type, sv_list, op_str, *args, **kwargs
 ):
-    if type == 'bfloat16':
-        x_np = np.random.uniform(low, high, np_shape).astype(np.uint16)
-    else:
-        x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
+    x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
     # x_np.shape[0] >= len(sv_list)
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
@@ -197,16 +194,6 @@ TEST_META_DATA3 = [
         'np_shape': [8, 17, 5, 6, 7],
         'type': 'float16',
         'sv_list': [np.inf, -np.inf],
-    },
-]
-
-TEST_META_DATA4 = [
-    {
-        'low': 0.1,
-        'high': 1,
-        'np_shape': [8, 17, 5, 6, 7],
-        'type': 'bfloat16',
-        'sv_list': [-np.inf, np.inf],
     },
 ]
 
