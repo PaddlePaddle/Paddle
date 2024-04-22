@@ -38,9 +38,11 @@ class SameStatusReshardFunction(ReshardFunction):
         src_mesh = src_dist_attr.process_mesh
         dst_mesh = dst_dist_attr.process_mesh
 
-        all_process_ids = sorted(
+        all_process_ids = list(
             set(src_mesh.process_ids) | set(dst_mesh.process_ids)
         )
+        all_process_ids = sorted(all_process_ids)
+
         cur_global_rank = paddle.distributed.get_rank()
         comm_group = new_process_group(all_process_ids)
         paddle.pir.set_insertion_point(op)
