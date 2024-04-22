@@ -1193,22 +1193,6 @@ std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
   return inplace_chains;
 }
 
-std::optional<pir::Value> FindInplaceSource(
-    const std::vector<std::vector<pir::Value>> inplace_chains,
-    pir::Value value) {
-  if (value.impl() == nullptr) {
-    return std::nullopt;
-  }
-  for (auto &chain : inplace_chains) {
-    for (auto &v : chain) {
-      if (v == value) {
-        return chain[0];
-      }
-    }
-  }
-  return std::nullopt;
-}
-
 std::optional<std::vector<pir::Value>> FindInplaceChain(
     const std::vector<std::vector<pir::Value>> inplace_chains,
     const pir::Value &value) {
@@ -1224,6 +1208,17 @@ std::optional<std::vector<pir::Value>> FindInplaceChain(
     }
   }
   return std::nullopt;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  const auto &chain = FindInplaceChain(inplace_chains, value);
+  if (chain.has_value()) {
+    return chain.value()[0];
+  } else {
+    return std::nullopt;
+  }
 }
 
 std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
