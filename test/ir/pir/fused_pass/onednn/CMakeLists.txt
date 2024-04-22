@@ -9,7 +9,8 @@ if((NOT WITH_MKLML)
         AND AVX512F_FOUND
         AND AVX512F_FLAG)
       ))
-  list(REMOVE_ITEM TEST_INTERP_CASES test_self_attention_fuse_pass)
+  set(SELF_ATTENTION_TEST_CASES test_self_attention_fuse_pass)
+  list(REMOVE_ITEM TEST_INTERP_CASES ${SELF_ATTENTION_TEST_CASES})
 endif()
 
 foreach(target ${TEST_INTERP_CASES})
