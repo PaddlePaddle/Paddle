@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,18 +21,6 @@
 
 const float atol_v = 1e-5;
 const float rtol_v = 1e-5;
-
-// template <typename T>
-// bool allclose( T a, T b)
-// {
-
-//      T left = (a > b ? a - b : b - a);
-//       T right = atol_v + (b > 0 ? rtol_v * b : (-rtol_v) * b);
-//       T diff = (left > right ? left - right : right - left);
-//      bool val = a == b || left <= right || diff <= 1e-10;
-
-//      return val;
-// }
 
 bool allclose(float a, float b) {
   float left = (a > b ? a - b : b - a);
@@ -65,17 +53,19 @@ void AccuracyCheckKernel(const Context& ctx,
   bool check_result = true;
 
   auto x_numel = x.numel();
-  for (size_t i = 0; i < x_numel; ++i) {
+  for (int64_t i = 0; i < x_numel; ++i) {
     if (!allclose(x_cpu.data<T>()[i], y_cpu.data<T>()[i])) {
       check_result = false;
       break;
     }
   }
 
-  if (!check_result) {
-    std::cerr << "result of  " << fn_name << "\t" << res_index << std::endl;
-    throw std::runtime_error("check failed");
-  }
+  PADDLE_ENFORCE_EQ(check_result,
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Accuracy check failed, kernel name %s, res index %d",
+                        fn_name,
+                        res_index));
 }
 
 }  // namespace phi
