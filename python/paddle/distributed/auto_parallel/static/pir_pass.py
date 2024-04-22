@@ -88,7 +88,8 @@ def apply_reshard_pass(program):
                 src_dist_attr = op_dist_attr.operand_dist_attr(0)
                 dst_dist_attr = op_dist_attr.result_dist_attr(0)
                 assert (
-                    var.source().dist_attr() == src_dist_attr
+                    paddle.pir.is_fake_value(var.source())
+                    or var.source().dist_attr() == src_dist_attr
                 ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
 
                 reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
