@@ -60,10 +60,7 @@ def run_eager(x_np, op_str, use_gpu=True):
 def np_data_generator(
     low, high, np_shape, type, sv_list, op_str, *args, **kwargs
 ):
-    if type == 'bfloat16':
-        x_np = np.random.uniform(low, high, np_shape).astype(np.uint16)
-    else:
-        x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
+    x_np = np.random.uniform(low, high, np_shape).astype(getattr(np, type))
     # x_np.shape[0] >= len(sv_list)
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
@@ -200,16 +197,6 @@ TEST_META_DATA3 = [
     },
 ]
 
-TEST_META_DATA4 = [
-    {
-        'low': 0.1,
-        'high': 1,
-        'np_shape': [8, 17, 5, 6, 7],
-        'type': 'bfloat16',
-        'sv_list': [-np.inf, np.inf],
-    },
-]
-
 
 def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
     for meta_data in data_set:
@@ -231,6 +218,18 @@ def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
             test_case.assertTrue((static_result == result_np).all())
 
         test_static_or_pir_mode()
+
+
+def test_bf16(test_case, op_str):
+    x_np = np.array([float('inf'), -float('inf'), 2.0, 3.0])
+    result_np = getattr(np, op_str)(x_np)
+
+    place = paddle.CUDAPlace(0)
+    paddle.disable_static(place)
+    x = paddle.to_tensor(x_np, dtype='bfloat16')
+    dygraph_result = getattr(paddle, op_str)(x).numpy()
+
+    test_case.assertTrue((dygraph_result == result_np).all())
 
 
 class TestCPUNormal(unittest.TestCase):
@@ -293,10 +292,10 @@ class TestCUDAFP16(unittest.TestCase):
 )
 class TestCUDABFP16(unittest.TestCase):
     def test_posinf(self):
-        test(self, 'isposinf', True, data_set=TEST_META_DATA4)
+        test_bf16(self, 'isposinf')
 
     def test_neginf(self):
-        test(self, 'isneginf', True, data_set=TEST_META_DATA4)
+        test_bf16(self, 'isneginf')
 
 
 class TestError(unittest.TestCase):
