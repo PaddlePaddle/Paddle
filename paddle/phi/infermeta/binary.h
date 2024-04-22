@@ -528,10 +528,6 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 
 );
 
-void ReduceAsInferMeta(const MetaTensor& x,
-                       const MetaTensor& target,
-                       MetaTensor* out);
-
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);
