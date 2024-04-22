@@ -115,7 +115,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
                                      {{"perm", pat.Attr("perm_2")}});
     pat.Tensor("transpose_2_out") = transpose_2(pat.Tensor("matmul_0_out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto input_shape = pir::GetShapeFromValue(match_ctx.Tensor("input"));
       auto transpose_0_outshape =
           pir::GetShapeFromValue(match_ctx.Tensor("transpose_0_out"));
@@ -128,7 +128,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
       return true;
     });
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       bool result_x = match_ctx.Attr<bool>("transpose_x_0");
       bool result_y = match_ctx.Attr<bool>("transpose_y_0");
       if (result_x || result_y) {
