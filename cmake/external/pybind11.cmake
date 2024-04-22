@@ -22,8 +22,6 @@ set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
 include_directories(${PYBIND_INCLUDE_DIR})
 
-set(PYBIND_PATCH_COMMAND "")
-
 ExternalProject_Add(
   extern_pybind
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -35,7 +33,6 @@ ExternalProject_Add(
   # third-party library version changes cannot be incorporated.
   # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
   UPDATE_COMMAND ""
-  PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   # I intentionally preserved an extern_pybind/include/pybind11 directory
   # to site-packages, so that you could discern that you intended to
