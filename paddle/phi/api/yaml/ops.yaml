@@ -2606,6 +2606,7 @@
     func : sigmoid
   inplace : (x -> out)
   backward : sigmoid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
