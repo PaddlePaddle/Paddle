@@ -3332,12 +3332,10 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
 
 def row_conv(input, future_context_size, param_attr=None, act=None):
-    """
+    r"""
     :api_attr: Static Graph
 
-    :strong:`Row-convolution operator`
-
-    The row convolution is called lookahead convolution.  This operator was
+    The row convolution is called lookahead convolution. It was
     introduced in the following paper for DeepSpeech2:
     http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
 
@@ -3347,46 +3345,41 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
     and low-latency setting. The lookahead convolution incorporates information
     from future subsequences in a computationally efficient manner to improve
-    unidirectional recurrent neural networks. The row convolution operator is
+    unidirectional recurrent neural networks. The row convolution is
     different from the 1D sequence convolution, and is computed as follows:
 
-    Given an input sequence $X$ of length $t$ and input dimension $D$,
-    and a filter ($W$) of size $context \times D$,
+    Given an input sequence :math:`X` of length :math:`t` and input dimension :math:`D`,
+    and a filter (:math:`W`) of size :math:`context \times D`,
     the output sequence is convolved as:
 
-    $$
-    out_{i} = \\sum_{j=i}^{i + context - 1} X_{j} \\cdot W_{j-i}
-    $$
+    :math:`out_{i} = \sum_{j=i}^{i + context - 1} X_{j} \cdot W_{j-i}`
+
 
     In the above equation:
 
-    * $Out_{i}$: The i-th row of output variable with shape [1, D].
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
 
-    * $context$: Future context size.
+    * :math:`context`: Future context size.
 
-    * $X_{j}$: The j-th row of input variable with shape [1, D].
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
 
-    * $W_{j-i}$: The (j-i)-th row of parameters with shape [1, D].
+    * :math`W_{j-i}`: The (j-i)-th row of parameters with shape [1, D].
 
     More details about row_conv please refer to
     the design document
     https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
     Args:
-        input (Variable): the input(X) is a LodTensor or tensor, LodTensor(X) supports
-            variable time-length input sequences. The underlying tensor
-            in this phi::DenseTensor is a matrix with shape (T x N), where T
-            is the total time steps in this mini-batch and N is the input
-            data dimension. the shape of Tensor input(X) has shape
+        input (Tensor): The input is a Tensor, the shape of Tensor input has shape
             (B x T x N), B is batch size.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc.
-        act (str): Non-linear activation to be applied to output variable.
+        act (str): Non-linear activation to be applied to output Tensor.
 
     Returns:
-        The output(Out) is a LodTensor or Tensor, which has same type and same shape as X.
+        Tensor: The output is a Tensor, which has same type and same shape as input.
 
     Examples:
 

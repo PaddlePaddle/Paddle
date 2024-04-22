@@ -35,35 +35,29 @@ __all__ = []
 
 
 def clip_by_norm(x, max_norm, name=None):
-    """
-    ClipByNorm Operator.
+    r"""
 
-    This operator limits the L2 norm of the input $X$ within $max\\_norm$.
-    If the L2 norm of $X$ is less than or equal to $max\\_norm$, $Out$ will be
-    the same as $X$. If the L2 norm of $X$ is greater than $max\\_norm$, $X$ will
-    be linearly scaled to make the L2 norm of $Out$ equal to $max\\_norm$, as
+    Limits the L2 norm of the input :math:`x` within :math:`max\_norm`.
+    If the L2 norm of :math:`x` is less than or equal to :math:`max\_norm`, :math:`out` will be
+    the same as :math:`x`. If the L2 norm of :math:`x` is greater than :math:`max\_norm`, :math:`x` will
+    be linearly scaled to make the L2 norm of :math:`out` equal to :math:`max\_norm`, as
     shown in the following formula:
 
-    $$
-    Out = \\frac{max\\_norm * X}{norm(X)},
-    $$
+    :math:`out = \frac{max\_norm * x}{norm(x)}`
 
-    where $norm(X)$ represents the L2 norm of $X$.
+    where :math:`norm(x)` represents the L2 norm of :math:`x`.
 
     Args:
-        x(Variable): (Tensor) The input of clip_by_norm op and data type is float32.
+        x(Tensor): The input of clip_by_norm and data type is float32.
             The number of dimensions must be between [1, 9].
-        max_norm(float): (float) The maximum norm value.
+        max_norm(float): The maximum norm value.
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
 
     Returns:
-        Tensor:
-
-        out(Variable): (Tensor) The output of clip_by_norm op with shape as input(X)
+        Tensor: The output of clip_by_norm with shape as input.
             The data type is float32.
-
 
     Examples:
 
@@ -110,14 +104,14 @@ def clip_by_norm(x, max_norm, name=None):
 
 def merge_selected_rows(x, name=None):
     """
-    TODO: Documentation of merge_selected_rows op.
+    Merge by adding duplicated rows in the input SelectedRows object.
 
     Args:
-        x(Variable): (Tensor), input 0 of merge_selected_rows op.
+        x(Tensor): The input selected rows to be merge.
         name(basestring|None): Name of the output.
 
     Returns:
-        out(Variable): (Tensor), output 0 of merge_selected_rows op.
+        Tensor, merged output.
 
     Examples:
 
