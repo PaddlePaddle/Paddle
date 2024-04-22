@@ -15,8 +15,6 @@
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
-#include "paddle/common/enforce.h"
-
 namespace cinn::hlir::framework {
 
 namespace pir {

@@ -458,7 +458,8 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train

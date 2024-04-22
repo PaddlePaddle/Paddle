@@ -27,6 +27,7 @@
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -425,8 +426,9 @@ ir::Tensor Concat(const ir::Tensor& A,
 ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
                   int axis,
                   const std::string& name) {
+  // input size 1 is valid for Concat
   int input_size = input_tensors.size();
-  CHECK_GE(input_size, 2U) << "Concat should have at least 2 input tensors";
+  CHECK_GE(input_size, 1U) << "Concat should have at least 1 input tensors";
   std::vector<Expr> output_shape = input_tensors[0]->shape;
   int input_dim = output_shape.size();
   CHECK(axis >= -input_dim && axis < input_dim)
@@ -1055,9 +1057,20 @@ ir::Tensor Transpose(const ir::Tensor& input,
       output_name);
 }
 
+int UpdateNegAxis(int axis, int rank) {
+  if (axis < 0) {
+    PADDLE_ENFORCE_GE(
+        axis + rank,
+        0,
+        ::common::errors::InvalidArgument("The axis of slice is out of range"));
+    return axis + rank;
+  }
+  return axis;
+}
+
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
-                 const std::vector<int>& axes,
+                 const std::vector<int>& const_axes,
                  const std::vector<int>& strides,
                  const std::vector<int>& decrease_axis,
                  const std::vector<Expr>& output_shape,
@@ -1066,6 +1079,13 @@ ir::Tensor Slice(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape.as_int32());
   }
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   return UpdateNegAxis(axis, rank);
+                 });
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
     if (new_starts[i] < -input_shape[axes[i]]) {
@@ -1110,7 +1130,7 @@ ir::Tensor Slice(const ir::Tensor& A,
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
                          const std::vector<int>& starts,
-                         const std::vector<int>& axes,
+                         const std::vector<int>& const_axes,
                          const std::vector<int>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
@@ -1125,6 +1145,13 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  starts.end(),
                  std::back_inserter(new_starts),
                  [](const int start) { return ir::Expr(start); });
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   return UpdateNegAxis(axis, rank);
+                 });
 
   for (int i = 0; i < axes.size(); i++) {
     if (input_shape[axes[i]].is_constant()) {
