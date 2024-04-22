@@ -13,9 +13,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {

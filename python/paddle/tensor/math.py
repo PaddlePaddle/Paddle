@@ -1546,6 +1546,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             [
                 'bool',
                 'uint16',
+                'int8',
+                'uint8',
                 'float16',
                 'float32',
                 'float64',
@@ -1572,6 +1574,81 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             inputs={'X': x},
             outputs={'Out': out},
             attrs=attrs,
+        )
+        return out
+
+
+def reduce_as(x, target, name=None):
+    """
+    Computes the sum of tensor elements make the shape of its result equal to the shape of target.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int32 or int64.
+
+    Returns:
+        Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor target, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8]])
+            >>> x
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 3, 4],
+             [5, 6, 7, 8]])
+            >>> target = paddle.to_tensor([1, 2, 3, 4])
+            >>> target
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [1, 2, 3, 4])
+            >>> res = paddle.reduce_as(x, target)
+            >>> res
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [6 , 8 , 10, 12])
+    """
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.reduce_as(x, target)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'reduce_as',
+        )
+        check_variable_and_dtype(
+            target,
+            'target',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'reduce_as',
+        )
+
+        helper = LayerHelper('reduce_as', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_as',
+            inputs={'x': x, 'target': target},
+            outputs={'out': out},
         )
         return out
 
@@ -4400,7 +4477,7 @@ def isinf(x, name=None):
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4428,8 +4505,11 @@ def isinf(x, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
+                'uint8',
                 'uint16',
             ],
             'isinf',
@@ -7624,7 +7704,7 @@ def signbit(x, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , True , False])
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
     check_variable_and_dtype(
@@ -7643,7 +7723,9 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()), dtype=x.dtype)
+    ones = [1.0] * math.prod(x.shape)
+    ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
+    neg_zero_x = paddle.copysign(ones, x)
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out

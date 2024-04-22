@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/flatten_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
     flatten2,

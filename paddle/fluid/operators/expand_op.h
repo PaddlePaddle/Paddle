@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 8
 
@@ -81,13 +81,13 @@ inline std::vector<int> get_expand_times(
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::To32BitIndex;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
+using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
@@ -97,14 +97,14 @@ class ExpandKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank,
         MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED,
@@ -146,7 +146,7 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto expand_times = get_expand_times(context);
     PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
                       expand_times.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of elements (%d) of 'expand_times' for "
                           "Op(expand) must be equal to the number "
                           "of dimensions (%d) of the input.",
@@ -172,10 +172,10 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, y, x, bcast_dims);
     }
   }
@@ -222,7 +222,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_GE(dims,
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input "
                             "'Out@GRAD' for Op(expand_grad)"
                             " must be greater than or equal to 1, but "
@@ -230,7 +230,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                             dims));
       PADDLE_ENFORCE_LE(dims,
                         MAX_RANK_SUPPORTED,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
@@ -262,7 +262,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
           ExpandBackward<8>(context, reshape_dims_vec, reduce_dims_vec);
           break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Only support tensor with rank being between 1 and %d. But "
               "received tensor's rank = %d.",
               MAX_RANK_SUPPORTED,
@@ -280,14 +280,14 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     size_t reduce_size = reduce_dims_vec.size();
     PADDLE_ENFORCE_EQ(reshape_size,
                       reshape_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reshape dimensions (%d).",
                           reshape_size,
                           reshape_dims_vec.size()));
     PADDLE_ENFORCE_EQ(reduce_size,
                       reduce_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reduce dimensions (%d).",
                           reduce_size,
@@ -307,8 +307,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, x_grad, out_grad, reduce_dims, reshape_dims);
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
+        Eval(place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

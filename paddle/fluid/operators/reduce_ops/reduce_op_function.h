@@ -15,8 +15,8 @@
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -26,15 +26,15 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+using EigenScalar = phi::EigenScalar<T, MajorType, IndexType>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext,
           typename T,

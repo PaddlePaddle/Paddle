@@ -59,7 +59,7 @@ struct ArrayToLoDFunctor {
       Apply(static_cast<phi::GPUContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with CUDA."));
+          phi::errors::Unavailable("Paddle is not compiled with CUDA."));
 #endif
     }
   }
@@ -101,7 +101,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     // dim
     PADDLE_ENFORCE_EQ(x.empty(),
                       false,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
@@ -116,7 +116,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       PADDLE_ENFORCE_EQ(
           ins_i_dims,
           ins_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The dimension of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current dimension is %d, and the previous dimension is %d.",
@@ -126,7 +126,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       PADDLE_ENFORCE_EQ(
           x[i].place(),
           place,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The place class of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current place is %d, and the previous place is %d.",
@@ -136,7 +136,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       PADDLE_ENFORCE_EQ(
           x[i].dtype(),
           data_type,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The date type of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
               "The current data type is %d, and the previous data type is %d.",
@@ -172,7 +172,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
       PADDLE_ENFORCE_LE(table_items[idx].length,
                         x.size(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The RankTable items length should less than or "
                             "equal to Input(X) size,"
                             "but receive TankTable items length is %d , longer "
@@ -194,7 +194,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         PADDLE_ENFORCE_GE(
             end_offset,
             start_offset,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The lod data start offset should smaller or equal to the end "
                 "offset,"
                 "but the start offset is %d, larger than end offset %d.",
@@ -243,11 +243,11 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"),
         true,
-        platform::errors::NotFound("Input(X) of BmmOp should not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("RankTable"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(RankTable) of BmmOp should not be null."));
+        phi::errors::NotFound("Input(X) of BmmOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("RankTable"),
+        true,
+        phi::errors::NotFound("Input(RankTable) of BmmOp should not be null."));
     // For compile-time, the first dim of input X and output Out should be -1.
     // For runtime, the first dim of output Out should be the sum of all
     // elements's first dim in input X. The output's dims will be re-computed in

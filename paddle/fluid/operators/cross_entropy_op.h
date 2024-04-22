@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -180,7 +180,7 @@ struct HardLabelCrossEntropyForwardFunctor {
     auto label = label_[idx];
     if (label != ignore_index_) {
       // don't update to PADDLE_ENFORCE_GE and PADDLE_ENFORCE_LT cause
-      // can't use platform::errors::InvalidArgument in HOSTDEVICE
+      // can't use phi::errors::InvalidArgument in HOSTDEVICE
       PADDLE_ENFORCE(label >= 0 && label < feature_size_,
                      "Variable value (label) of "
                      "OP(fluid.layers.cross_entropy) expected >= 0 "

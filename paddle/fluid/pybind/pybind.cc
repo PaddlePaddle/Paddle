@@ -191,6 +191,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
@@ -408,6 +409,10 @@ bool SupportsInt8() {
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
           phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
 #endif
+}
+
+bool SupportsAvx512F() {
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f);
 }
 
 bool SupportsVNNI() {
@@ -2251,6 +2256,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
+  m.def("supports_avx512f", SupportsAvx512F);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
@@ -2538,7 +2544,7 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
-  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
       .def_property_readonly(
@@ -3151,6 +3157,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CINN)
   BindTest(&m);
+  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

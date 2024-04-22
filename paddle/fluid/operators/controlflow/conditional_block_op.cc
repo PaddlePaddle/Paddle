@@ -73,7 +73,7 @@ class ConditionalBlockOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
 
@@ -139,7 +139,7 @@ class ConditionalBlockInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(context->HasInputs(ConditionalOp::kCondition),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "conditional_block_op must have condition input."));
   }
 };
@@ -180,14 +180,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Input(ConditionalOp::kScope));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       PADDLE_ENFORCE_GT(
           scopes.size(),
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Expect Scope variable contains at least 1 scope, but got: %d",
               scopes.size()));
       framework::Scope &cur_scope = *(scopes[0]);
@@ -272,7 +272,7 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInputs(ConditionalOp::kCondition),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Condition must be set in conditional_block_grad_op."));
     if (context->HasInputs(ConditionalOp::kInputs) &&
         context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
@@ -294,7 +294,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
         ctx->OutputSize(framework::GradVarName(ConditionalOp::kInputs));
     PADDLE_ENFORCE_EQ(input_size,
                       output_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "input_size and output_size should be equal for "
                           "conditional_block_grad_op."));
     for (size_t i = 0; i < output_size; ++i) {

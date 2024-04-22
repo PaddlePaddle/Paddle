@@ -1,7 +1,7 @@
 # This file is designed for C++ operators, which manages the
 # generated code for dynamic mode and static mode. If you want
 # to add the new operator configuration, make sure an operator's
-# Python API, dynamic graph API, and static graph Opertaor parameters
+# Python API, dynamic graph API, and static graph Operator parameters
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
@@ -59,6 +59,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
@@ -71,6 +72,7 @@
     data_type : param
   optional : master_param, skip_update, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adamax_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
@@ -82,6 +84,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (inf_norm -> inf_norm_out), (master_param ->master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : adamw_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, float lr_ratio = 1.0f, float coeff = 0.01f, bool with_decay = false, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
@@ -94,6 +97,7 @@
     data_type : param
   optional : master_param, skip_update, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
@@ -221,6 +225,7 @@
     support_trans_dtype : learning_rate, n
   optional : master_param, master_param_out
   inplace : (param -> param_out), (d -> d_out), (y -> y_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : asin
   args : (Tensor x)
@@ -1528,6 +1533,7 @@
   kernel :
     func : isfinite {dense -> dense},
            isfinite_sr {selected_rows -> selected_rows}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isinf
   args : (Tensor x)
@@ -1602,6 +1608,7 @@
     data_type : param
   optional : master_param, skip_update, beta1_pow_out, beta2_pow_out, master_param_outs
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
+  traits : pir::SideEffectTrait
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
@@ -1958,6 +1965,7 @@
     data_type : param
   optional: master_param, master_param_out
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : merged_momentum_
   args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -1969,6 +1977,7 @@
     data_type : param
   optional: master_param, master_param_out
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : meshgrid
   args : (Tensor[] inputs)
@@ -1979,6 +1988,7 @@
     func : meshgrid
     data_type : inputs
   backward : meshgrid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
@@ -2000,6 +2010,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : multi_dot
   args : (Tensor[] x)
@@ -2111,6 +2122,7 @@
   kernel :
     func : nonzero
     data_type: condition
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
@@ -2287,6 +2299,16 @@
   inplace : (x -> out)
   backward : reciprocal_grad
 
+- op : reduce_as
+  args : (Tensor x, Tensor target)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceAsInferMeta
+  kernel :
+    func : reduce_as
+    data_type : x
+  backward : reduce_as_grad
+
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
   output : Tensor(reindex_src), Tensor(reindex_dst), Tensor(out_nodes)
@@ -2318,6 +2340,7 @@
   kernel :
     func : relu6
   backward : relu6_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
@@ -2363,6 +2386,7 @@
     data_type : param
   optional : mean_grad, master_param, master_param_outs
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out), (master_param->master_param_outs)
+  traits : pir::SideEffectTrait
 
 - op : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false)
@@ -2421,6 +2445,7 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (prev -> prev_out), (learning_rate -> learning_rate_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : rsqrt
   args : (Tensor x)
@@ -2550,6 +2575,7 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : shape
   args : (Tensor input)
@@ -2559,7 +2585,7 @@
   kernel :
     func : shape {dense -> dense},
            shape_sr {selected_rows -> dense}
-  data_transform:
+  data_transform :
     skip_transform : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2620,7 +2646,7 @@
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : sin_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2781,10 +2807,10 @@
 - op : swiglu
   args : (Tensor x, Tensor y)
   output : Tensor(out)
-  infer_meta:
-     func: SwiGLUInferMeta
-     spmd_rule: SwiGLUInferSpmd
-  kernel:
+  infer_meta :
+     func : SwiGLUInferMeta
+     spmd_rule : SwiGLUInferSpmd
+  kernel :
      func : swiglu
   optional : y
   backward: swiglu_grad
@@ -2808,7 +2834,7 @@
     func : UnchangedInferMeta
   kernel :
     func : tan
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : tan_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -3057,9 +3083,9 @@
     func : WarpctcInferMeta
   kernel :
     func : warpctc
-    data_type: logits
-  optional: logits_length, labels_length
-  intermediate: warpctcgrad
+    data_type : logits
+  optional : logits_length, labels_length
+  intermediate : warpctcgrad
   backward : warpctc_grad
 
 - op : warprnnt
@@ -3069,8 +3095,8 @@
     func : WarprnntInferMeta
   kernel :
     func : warprnnt
-    data_type: input
-  intermediate: warprnntgrad
+    data_type : input
+  intermediate : warprnntgrad
   backward : warprnnt_grad
 
 - op : weight_dequantize
@@ -3090,8 +3116,8 @@
   kernel :
     func : weight_only_linear
     data_type : x
-  optional: bias
-  backward: weight_only_linear_grad
+  optional : bias
+  backward : weight_only_linear_grad
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
@@ -3100,7 +3126,8 @@
     func : WeightQuantizeInferMeta
   kernel :
     func : weight_quantize
-    data_type: x
+    data_type : x
+    backend : x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
@@ -3119,7 +3146,7 @@
     spmd_rule: WhereInferSpmd
   kernel :
     func : where
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : where_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
