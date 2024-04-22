@@ -29,8 +29,6 @@ class Conv2dBiasPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-
-    std::cout << "===> lkk - 0" << std::endl;
     const auto &conv2d =
         pat.Op(paddle::dialect::Conv2dOp::name(),
                {{"strides", pat.Attr("strides")},
@@ -40,18 +38,13 @@ class Conv2dBiasPattern : public paddle::drr::DrrPatternBase {
                 {"groups", pat.Attr("groups")},
                 {"data_format", pat.Attr("data_format")}});
 
-    std::cout << "===> lkk -1" << std::endl;
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
-    std::cout << "===> lkk -2" << std::endl;
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
-
-    std::cout << "===> lkk -3" << std::endl;
     add({&pat.Tensor("conv2d_out"), &pat.Tensor("bias")},
         {&pat.Tensor("add_out")});
 
-    std::cout << "===> lkk -4" << std::endl;
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
         return false;
@@ -66,15 +59,12 @@ class Conv2dBiasPattern : public paddle::drr::DrrPatternBase {
       return false;
     });
 
-    std::cout << "===> lkk -" << __LINE__ << std::endl;
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &add_bias_outshape = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           std::vector<int64_t> add_bias_shape =
               pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-          std::cout << "===> lkk:" << add_bias_shape[1] << std::endl;
-          // return {0, add_bias_shape[1]};
           return {add_bias_shape[1]};
         });
     const auto &add_bias_inshape = res.ComputeAttr(
@@ -84,12 +74,9 @@ class Conv2dBiasPattern : public paddle::drr::DrrPatternBase {
           return add_bias_shape;
         });
 
-    std::cout << "===> lkk -" << __LINE__ << std::endl;
     const auto &reshape_op = res.Op(paddle::dialect::ReshapeOp::name(),
                                     {{"shape", add_bias_outshape}});
     res.Tensor("out_bias") = reshape_op(res.Tensor("bias"));
-
-    std::cout << "===> lkk -" << __LINE__ << std::endl;
 
     const auto &add_xpu = res.Op(paddle::dialect::AddOp::name());
     add_xpu({&res.Tensor("conv2d_out"), &res.Tensor("out_bias")},
