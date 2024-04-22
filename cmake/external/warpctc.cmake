@@ -51,10 +51,9 @@ endif()
 
 if(WITH_ROCM)
   set(WARPCTC_PATHCH_ROCM_COMMAND
-  patch -p1 <
-  ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch &&
-  patch -p1 <
-  ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch)
+      patch -p1 <
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
+      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch)
 endif()
 
 set(WARPCTC_INCLUDE_DIR
@@ -109,9 +108,9 @@ ExternalProject_Add(
   PREFIX ${WARPCTC_PREFIX_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND
-    COMMAND ${WARPCTC_PATCH_COMMAND}
-    COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
-    COMMAND ${WARPCTC_PATHCH_ROCM_COMMAND}
+  COMMAND ${WARPCTC_PATCH_COMMAND}
+  COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
+  COMMAND ${WARPCTC_PATHCH_ROCM_COMMAND}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
