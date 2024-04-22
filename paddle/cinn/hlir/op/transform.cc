@@ -1685,10 +1685,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
     strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
-  if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
-    decrease_axis =
-        absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
-  }
 
   CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
@@ -1736,8 +1732,10 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         CHECK(arg_pack[1].is_string());
         std::string tensor_name = arg_pack[1].operator std::string();
 
+        auto starts_expr = ToCinnExprs(starts);
+        auto strides_expr = ToCinnExprs(strides);
         auto out = pe::SliceSymbolic(
-            A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
+            A, starts_expr, axes, strides_expr, output_shape, tensor_name);
         LOG(INFO) << "out: " << out;
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
