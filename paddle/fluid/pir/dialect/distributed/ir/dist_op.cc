@@ -280,9 +280,7 @@ void ReshardOp::VerifySig() {
 
 ProcessMeshAttribute MergeMeshes(const ProcessMeshAttribute& mesh1,
                                  const ProcessMeshAttribute& mesh2) {
-  VLOG(0) << "MergeMeshes MergeMeshes MergeMeshes";
   if (mesh1 == mesh2) return mesh1;
-  VLOG(0) << "MergeMeshes conbime conbime";
   // Combine the two ids
   std::vector<int64_t> merged_ids;
   std::vector<int64_t> ids1 = mesh1.process_ids();
@@ -308,8 +306,6 @@ void ReshardOp::Build(pir::Builder& builder,
                       pir::OperationArgument& argument,
                       pir::Value input,
                       TensorDistAttribute tensor_dist_attr) {
-  VLOG(0) << "Start build ReshardOp";
-
   paddle::dialect::DistDenseTensorType input_tensor_type;
   if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
     input_tensor_type =
