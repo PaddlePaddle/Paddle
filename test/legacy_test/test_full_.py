@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import struct
 import unittest
 
 import numpy as np
@@ -22,15 +21,8 @@ from paddle import _C_ops
 from paddle.base import core
 
 
-def convert_float_to_uint16(x):
-    output = struct.unpack('<I', struct.pack('<f', x))[0] >> 16
-    output = np.uint16(output)
-
-    return output
-
-
-def test_cuda_api(data, np_data, value):
-    _C_ops.full_(data, data.shape, float(value), data.dtype, core.CUDAPlace(0))
+def test_api_with_place(data, np_data, value, place):
+    _C_ops.full_(data, data.shape, float(value), data.dtype, place)
     assert np.array_equal(data, np_data)
 
 
@@ -39,24 +31,14 @@ class TestFP16Full_(unittest.TestCase):
         self.type = 'float16'
         self.shape = [30, 10, 2]
         self.value = 1.1
+        self.with_gpu = True if paddle.device.is_compiled_with_cuda() else False
 
-    def test_cuda_api(self):
-        if paddle.device.is_compiled_with_cuda():
-            data = paddle.rand(self.shape, dtype=self.type)
-            np_data = np.full(self.shape, self.value, dtype=self.type)
-            test_cuda_api(data, np_data, self.value)
-        else:
-            pass
-
-    def test_cpu_api(self):
+    def test_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
-        _C_ops.full_(
-            data, data.shape, float(self.value), data.dtype, core.CPUPlace()
-        )
-
-        assert np.array_equal(
-            data, np.full(self.shape, self.value, dtype=self.type)
-        )
+        np_data = np.full(self.shape, self.value, dtype=self.type)
+        test_api_with_place(data, np_data, self.value, core.CPUPlace())
+        if self.with_gpu:
+            test_api_with_place(data, np_data, self.value, core.CUDAPlace(0))
 
 
 class TestFP32Full_(unittest.TestCase):
@@ -64,24 +46,14 @@ class TestFP32Full_(unittest.TestCase):
         self.type = 'float32'
         self.shape = [30, 10, 2]
         self.value = 1.1
+        self.with_gpu = True if paddle.device.is_compiled_with_cuda() else False
 
-    def test_cuda_api(self):
-        if paddle.device.is_compiled_with_cuda():
-            data = paddle.rand(self.shape, dtype=self.type)
-            np_data = np.full(self.shape, self.value, dtype=self.type)
-            test_cuda_api(data, np_data, self.value)
-        else:
-            pass
-
-    def test_cpu_api(self):
+    def test_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
-        _C_ops.full_(
-            data, data.shape, float(self.value), data.dtype, core.CPUPlace()
-        )
-
-        assert np.array_equal(
-            data, np.full(self.shape, self.value, dtype=self.type)
-        )
+        np_data = np.full(self.shape, self.value, dtype=self.type)
+        test_api_with_place(data, np_data, self.value, core.CPUPlace())
+        if self.with_gpu:
+            test_api_with_place(data, np_data, self.value, core.CUDAPlace(0))
 
 
 class TestFP64Full_(unittest.TestCase):
@@ -89,52 +61,14 @@ class TestFP64Full_(unittest.TestCase):
         self.type = 'float64'
         self.shape = [30, 10, 2]
         self.value = 1.1
+        self.with_gpu = True if paddle.device.is_compiled_with_cuda() else False
 
-    def test_cuda_api(self):
-        if paddle.device.is_compiled_with_cuda():
-            data = paddle.rand(self.shape, dtype=self.type)
-            np_data = np.full(self.shape, self.value, dtype=self.type)
-            test_cuda_api(data, np_data, self.value)
-        else:
-            pass
-
-    def test_cpu_api(self):
+    def test_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
-        _C_ops.full_(
-            data, data.shape, float(self.value), data.dtype, core.CPUPlace()
-        )
-
-        assert np.array_equal(
-            data, np.full(self.shape, self.value, dtype=self.type)
-        )
-
-
-# class TestBF16Full_(unittest.TestCase):
-#     def setUp(self):
-#         self.type = 'bfloat16'
-#         self.shape = [10, 2]
-#         self.value = 1.1
-
-#     def test_cuda_api(self):
-#         if paddle.device.is_compiled_with_cuda():
-#             data = paddle.rand(self.shape, dtype=self.type)
-#             np_data = np.full(
-#                 self.shape, convert_float_to_uint16(self.value), dtype='uint16'
-#             )
-#             test_cuda_api(data, np_data, self.value)
-#         else:
-#             pass
-
-#     def test_cpu_api(self):
-#         data = paddle.rand(self.shape, dtype=self.type)
-#         _C_ops.full_(data, data.shape, self.value, data.dtype, core.CPUPlace())
-
-#         assert np.array_equal(
-#             data,
-#             np.full(
-#                 self.shape, convert_float_to_uint16(self.value), dtype='uint16'
-#             ),
-#         )
+        np_data = np.full(self.shape, self.value, dtype=self.type)
+        test_api_with_place(data, np_data, self.value, core.CPUPlace())
+        if self.with_gpu:
+            test_api_with_place(data, np_data, self.value, core.CUDAPlace(0))
 
 
 if __name__ == "__main__":
