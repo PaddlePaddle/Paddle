@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #endif
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/string_array.h"

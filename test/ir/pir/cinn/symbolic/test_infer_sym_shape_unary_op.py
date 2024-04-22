@@ -443,6 +443,48 @@ class MaxMinOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class NonzeroNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out_nonzero = paddle.nonzero(x)
+        return out_nonzero
+
+
+class NonzeroOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        # pdb.set_trace()
+
+        for _ in range(np.random.randint(1, 10)):
+            self.cases[0][np.random.randint(0, 3)][np.random.randint(0, 4)][
+                np.random.randint(0, 5)
+            ] = 0
+
+        self.expected = [
+            'shape[S3, 3], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = NonzeroNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            check_infer_results(net, input_spec, 'pd_op.nonzero', self.expected)
+
+        return True
+
+
 class PutAlongAxisNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
