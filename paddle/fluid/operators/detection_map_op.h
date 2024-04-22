@@ -19,8 +19,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -187,8 +187,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
                 std::vector<std::map<int, std::vector<Box>>>* gt_boxes,
                 std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
                     detect_boxes) const {
-    auto labels = framework::EigenTensor<T, 2>::From(input_label);
-    auto detect = framework::EigenTensor<T, 2>::From(input_detect);
+    auto labels = phi::EigenTensor<T, 2>::From(input_label);
+    auto detect = phi::EigenTensor<T, 2>::From(input_detect);
 
     auto& label_lod = input_label.lod();
     auto& detect_lod = input_detect.lod();

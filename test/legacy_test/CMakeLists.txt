@@ -1054,3 +1054,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_pit_tests_properties()
+
+set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)

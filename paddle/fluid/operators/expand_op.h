@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 8
@@ -81,13 +81,13 @@ inline std::vector<int> get_expand_times(
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::To32BitIndex;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
+using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {

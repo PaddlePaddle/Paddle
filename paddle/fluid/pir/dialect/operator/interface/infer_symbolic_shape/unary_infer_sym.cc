@@ -328,6 +328,29 @@ bool MinOpInferSymbolicShape(pir::Operation *op,
   return MaxOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool NonzeroOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
+
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(x) should have number of dimension at least 1."));
+
+  std::string sym_name = shape_analysis->GetNextSymName();
+  std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
+                                         symbol::DimExpr{rank}};
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // input(0): Tensor x
@@ -463,6 +486,10 @@ bool ReshapeOpInferSymbolicShape(
           op->result(0),
           symbol::TensorShapeOrDataDimExprs(shape_data,
                                             x_dim_expr.data().value()));
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(1),
+          CreateShapeOrDataForXShape(
+              shape_analysis->GetShapeOrDataForValue(op->operand_source(0))));
       return true;
     }
   }
