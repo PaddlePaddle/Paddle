@@ -526,7 +526,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
             1,
             platform::errors::PreconditionNotMet(
                 "The VarDesc has not been defined by a previous Operation."));
-        auto valeue = param_map->at(var->Name()).value;
+        auto value = param_map->at(var->Name()).value;
         op_inputs.push_back(value);
         continue;
       }
