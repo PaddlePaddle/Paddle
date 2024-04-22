@@ -72,29 +72,6 @@ __global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
 }
 
 template <typename T>
-struct FindAbsMaxFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &ctx,
-                  const T *in,
-                  const int num,
-                  T *out) {
-    int block = 1024;
-    int grid = (block - 1 + num) / block;
-    grid = (grid > block) ? block : grid;
-
-    phi::DenseTensor max;
-    T *max_data =
-        max.mutable_data<T>(common::make_ddim({grid}), ctx.GetPlace());
-    FindAbsMaxKernel<T>
-        <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
-    FindAbsMaxKernel<T>
-        <<<1, block, 1024 * sizeof(T), ctx.stream()>>>(max_data, grid, out);
-  }
-};
-
-template struct FindAbsMaxFunctor<phi::GPUContext, float>;
-template struct FindAbsMaxFunctor<phi::GPUContext, phi::dtype::float16>;
-
-template <typename T>
 __global__ void FindChannelAbsMaxKernelQuantAxis0(const T *in,
                                                   const int n,
                                                   const int c,
@@ -230,14 +207,14 @@ __global__ void ClipAndQuantKernel(const T *in,
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = inverse(s);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -265,14 +242,14 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = inverse(s);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -287,29 +264,6 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
     }
   }
 }
-
-template <typename T>
-struct ClipAndFakeQuantFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  const int round_type,
-                  phi::DenseTensor *out) {
-    int num = in.numel();
-    int block = 1024;
-    int grid = (block - 1 + num) / block;
-
-    const T *in_data = in.data<T>();
-    const T *scale_data = scale.data<T>();
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    ClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
-        in_data, scale_data, bin_cnt, round_type, num, out_data);
-  }
-};
-
-template struct ClipAndFakeQuantFunctor<phi::GPUContext, float>;
 
 template <typename T>
 struct ClipAndFakeQuantDequantFunctor<phi::GPUContext, T> {
@@ -350,14 +304,14 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T *in,
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[blockIdx.x]);
-  ComputeDataType inv_s = inverse(s);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in_c[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -388,11 +342,11 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType s =
         static_cast<ComputeDataType>(scale[(i / quant_stride) % nScale]);
-    ComputeDataType inv_s = inverse(s);
+    ComputeDataType inv_s = phi::funcs::inverse(s);
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -534,7 +488,7 @@ struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
                    sizeof(int),
                    ctx.stream());
       ctx.Wait();
-      FindAbsMaxFunctor<phi::GPUContext, T>()(
+      phi::funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
           ctx, scale_arr, len, out_scale_data);
     }
   }
@@ -599,11 +553,11 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(const T *in,
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     T s = scale[(i / wh_size) % cout];
-    T inv_s = inverse(s);
+    T inv_s = phi::funcs::inverse(s);
     T x = in[i];
     if (round_type == 0) {
       x = bin_cnt * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       T max_bound = bin_cnt;
       T min_bound = -bin_cnt - static_cast<T>(1);
       x = x > max_bound ? max_bound : x;
@@ -632,11 +586,11 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     T s = scale[(i / wh_size) % cout];
-    T inv_s = inverse(s);
+    T inv_s = phi::funcs::inverse(s);
     T x = in[i];
     if (round_type == 0) {
       x = bin_cnt * inv_s * x;
-      x = roundWithTiesToEven(x);
+      x = phi::funcs::roundWithTiesToEven(x);
       T max_bound = bin_cnt;
       T min_bound = -bin_cnt - static_cast<T>(1);
       x = x > max_bound ? max_bound : x;
