@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <sstream>
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -172,4 +172,15 @@ IR_API ShapeOrDataDimExprs SubstituteShapeOrData(
 
 IR_API std::ostream& operator<<(std::ostream&,
                                 const ShapeOrDataDimExprs& dim_expr);
+
 }  // namespace symbol
+namespace std {
+template <>
+struct hash<symbol::ShapeOrDataDimExprs> {
+  std::size_t operator()(const symbol::ShapeOrDataDimExprs& obj) const {
+    std::ostringstream os;
+    os << obj;
+    return std::hash<std::string>()(os.str());
+  }
+};
+}  // namespace std

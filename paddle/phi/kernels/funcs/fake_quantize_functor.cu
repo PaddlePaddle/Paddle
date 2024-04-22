@@ -173,7 +173,6 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
 
 template <typename Context, typename T>
 void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
-    const Context &ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
     const int bin_cnt,
@@ -192,8 +191,6 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
 }
 
 template class FindAbsMaxFunctor<GPUContext, float16>;
-template class FindAbsMaxFunctor<GPUContext, float>;
-template class ClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantFunctor<GPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
