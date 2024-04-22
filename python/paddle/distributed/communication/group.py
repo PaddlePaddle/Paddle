@@ -316,7 +316,7 @@ def barrier(group=None):
     if group is not None and not group.is_member():
         return
 
-    if framework.in_dynamic_mode():
+    if framework.in_dynamic_or_pir_mode():
         group = _get_global_group() if group is None else group
         place = framework._current_expected_place()
         if isinstance(place, framework.CPUPlace):
@@ -330,7 +330,7 @@ def barrier(group=None):
     ring_id = 0 if group is None else group.id
 
     barrier_tensor = paddle.full([1], 1, dtype="int32")
-    if framework.in_dynamic_mode():
+    if framework.in_dynamic_or_pir_mode():
         return paddle._legacy_C_ops.barrier(
             barrier_tensor, barrier_tensor, 'ring_id', ring_id
         )
