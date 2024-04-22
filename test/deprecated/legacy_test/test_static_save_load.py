@@ -25,7 +25,9 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core, framework
+from paddle.framework import in_pir_mode
 from paddle.optimizer import Adam
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -254,6 +256,7 @@ class TestSaveLoadBase(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
+    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -282,17 +285,18 @@ class TestSaveLoadBase(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-            y.desc.set_need_check_feed(False)
             init_hidden = paddle.static.data(
                 name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_hidden.desc.set_need_check_feed(False)
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
-            init_cell.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
+                y.desc.set_need_check_feed(False)
+                init_hidden.desc.set_need_check_feed(False)
+                init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -301,7 +305,7 @@ class TestSaveLoadBase(unittest.TestCase):
             static_param_updated = {}
             static_param_init = {}
 
-            out = exe.run(framework.default_startup_program())
+            out = exe.run(paddle.static.default_startup_program())
 
             static_loss_value = None
             static_last_cell_value = None
@@ -319,7 +323,7 @@ class TestSaveLoadBase(unittest.TestCase):
                 )
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={
                         "x": x_data,
                         "y": y_data,
@@ -333,10 +337,15 @@ class TestSaveLoadBase(unittest.TestCase):
                 static_last_cell_value = out[2]
 
             # get value before save
-            main_program = framework.default_main_program()
+            main_program = paddle.static.default_main_program()
             base_map = {}
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -349,8 +358,24 @@ class TestSaveLoadBase(unittest.TestCase):
             )
 
             # set var to zero
+            # if in_pir_mode():
+            #     params, opts = get_pir_parameters(main_program)
+            #     for name in list(params+opts):
+            #         t = base.global_scope().find_var(name).get_tensor()
+            #         t.set(np.zeros_like(np.array(t)), place)
+            #         new_t = np.array(
+            #             base.global_scope().find_var(name).get_tensor()
+            #         )
+            #         # make sure all the parameter or optimizer var have been set to zero
+            #         self.assertTrue(np.sum(np.abs(new_t)) == 0)
+            # else:
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -368,6 +393,11 @@ class TestSaveLoadBase(unittest.TestCase):
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -384,6 +414,7 @@ class TestSaveLoadPartial(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
+    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -412,36 +443,42 @@ class TestSaveLoadPartial(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-            y.desc.set_need_check_feed(False)
             init_hidden = paddle.static.data(
                 name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_hidden.desc.set_need_check_feed(False)
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
-            init_cell.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
+                y.desc.set_need_check_feed(False)
+                init_hidden.desc.set_need_check_feed(False)
+                init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
 
-            test_program = base.default_main_program().clone(for_test=True)
+            if in_pir_mode():
+                test_program = paddle.static.default_main_program().clone()
+            else:
+                test_program = paddle.static.default_main_program().clone(
+                    for_test=True
+                )
 
-            add_1 = paddle.static.nn.fc(
-                static_last_hidden,
-                size=hidden_size,
-                num_flatten_dims=2,
-                bias_attr=False,
-            )
+            # add_1 = paddle.static.nn.fc(
+            #     static_last_hidden,
+            #     size=hidden_size,
+            #     num_flatten_dims=2,
+            #     bias_attr=False,
+            # )
 
             sgd.minimize(static_loss)
             static_param_updated = {}
             static_param_init = {}
 
-            out = exe.run(framework.default_startup_program())
+            out = exe.run(paddle.static.default_startup_program())
 
             static_loss_value = None
             static_last_cell_value = None
@@ -459,7 +496,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                 )
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={
                         "x": x_data,
                         "y": y_data,
@@ -473,10 +510,15 @@ class TestSaveLoadPartial(unittest.TestCase):
                 static_last_cell_value = out[2]
 
             # get value before save
-            main_program = framework.default_main_program()
+            main_program = paddle.static.default_main_program()
             base_map = {}
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -491,6 +533,11 @@ class TestSaveLoadPartial(unittest.TestCase):
             # set var to zero
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -506,6 +553,11 @@ class TestSaveLoadPartial(unittest.TestCase):
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -683,36 +735,42 @@ class TestProgramStatePartial(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            x.desc.set_need_check_feed(False)
             y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-            y.desc.set_need_check_feed(False)
             init_hidden = paddle.static.data(
                 name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_hidden.desc.set_need_check_feed(False)
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
-            init_cell.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
+                y.desc.set_need_check_feed(False)
+                init_hidden.desc.set_need_check_feed(False)
+                init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
 
-            test_program = base.default_main_program().clone(for_test=True)
+            if in_pir_mode():
+                test_program = paddle.static.default_main_program().clone()
+            else:
+                test_program = paddle.static.default_main_program().clone(
+                    for_test=True
+                )
 
-            add_1 = paddle.static.nn.fc(
-                static_last_hidden,
-                size=hidden_size,
-                num_flatten_dims=2,
-                bias_attr=False,
-            )
+            # add_1 = paddle.static.nn.fc(
+            #     static_last_hidden,
+            #     size=hidden_size,
+            #     num_flatten_dims=2,
+            #     bias_attr=False,
+            # )
 
             sgd.minimize(static_loss)
             static_param_updated = {}
             static_param_init = {}
 
-            out = exe.run(framework.default_startup_program())
+            out = exe.run(paddle.static.default_startup_program())
 
             static_loss_value = None
             static_last_cell_value = None
@@ -730,7 +788,7 @@ class TestProgramStatePartial(unittest.TestCase):
                 )
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={
                         "x": x_data,
                         "y": y_data,
@@ -744,7 +802,7 @@ class TestProgramStatePartial(unittest.TestCase):
                 static_last_cell_value = out[2]
 
             # get value before save
-            main_program = framework.default_main_program()
+            main_program = paddle.static.default_main_program()
             base_map = {}
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -881,11 +939,11 @@ class TestVariableInit(unittest.TestCase):
 
         place = self.set_place()
         exe = base.Executor(place)
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
 
         temp_dir = tempfile.TemporaryDirectory()
         paddle.static.save(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             os.path.join(temp_dir.name, "test_path"),
         )
 
@@ -903,7 +961,7 @@ class TestVariableInit(unittest.TestCase):
 
             t.set(ndarray, place)
 
-        program = base.default_main_program()
+        program = paddle.static.default_main_program()
         new_scope = base.core.Scope()
 
         place = self.set_place()

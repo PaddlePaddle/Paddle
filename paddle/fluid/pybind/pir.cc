@@ -816,7 +816,7 @@ pir::Value apply(Value self, py::object func) {
       name,                                                                   \
       [](Value self) {                                                        \
         auto bool_data = self.attribute<BoolAttribute>(name);                 \
-        return !bool_data || bool_data.data();                                \
+        return bool_data && bool_data.data();                                 \
       },                                                                      \
       [](Value self, bool bool_data) {                                        \
         self.set_attribute(                                                   \
