@@ -25,15 +25,46 @@ struct DimUsage {
   pir::Value v_;
   size_t idx_;
   size_t usage_idx_;  // value is used by which op
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
+
   DimUsage(const pir::Value& v, const size_t idx, const size_t usage_idx)
-      : v_(v), idx_(idx), usage_idx_(usage_idx) {}
+      : v_(v), idx_(idx), usage_idx_(usage_idx) {
+    const auto get_related_op_from_value =
+        [](const pir::Value& v) -> pir::Operation* {
+      if (v.defining_op() != nullptr) {
+        return v.defining_op();
+      }
+      // For inputs of the program, the defining_op is nullptr, we use it's user
+      // as the related op.
+      PADDLE_ENFORCE_EQ(v.use_empty(),
+                        false,
+                        phi::errors::PreconditionNotMet(
+                            "Value is an input value, it should have a use."));
+      return v.first_use().owner();
+    };
+    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
+                          .Get(get_related_op_from_value(v)->GetParentProgram())
+                          .shared_from_this();
+  }
   DimUsage(const DimUsage& v) = default;
   bool operator==(const DimUsage& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_) && (usage_idx_ == v.usage_idx_);
   }
 
-  size_t GetNumericValue() const {
-    return v_.type().dyn_cast<pir::DenseTensorType>().dims().at(idx_);
+  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
+    auto shape_analysis_ptr = shape_analysis_.lock();
+    PADDLE_ENFORCE_NOT_NULL(
+        shape_analysis_ptr,
+        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
+    return *shape_analysis_ptr;
+  }
+
+  symbol::DimExpr GetSymbolicDim() const {
+    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
+  }
+
+  bool SymbolicEqualTo(const DimUsage& other) const {
+    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
   }
 
   std::string DebugStr() const {

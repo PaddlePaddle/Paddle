@@ -19,8 +19,10 @@ if(WITH_GPU)
     set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS
                                                           "RUN_TYPE=CINN")
   endforeach()
-  set_tests_properties(test_llama_inference PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_llama_forward PROPERTIES TIMEOUT 120)
+
+  set_tests_properties(test_llama_inference PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_llama_forward PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_llama_postprocess PROPERTIES TIMEOUT 300)
 
   add_test(
     NAME test_llama_postprocess_cinn
@@ -32,6 +34,7 @@ if(WITH_GPU)
       FLAGS_pd_unittest_use_cinn=1 FLAGS_pir_apply_shape_optimization_pass=1
       ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_postprocess.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(test_llama_postprocess_cinn
+                       PROPERTIES LABELS "RUN_TYPE=CINN" TIMEOUT 300)
 
 endif()

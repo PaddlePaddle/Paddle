@@ -18,6 +18,7 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
@@ -25,7 +26,7 @@ template <typename T>
 class RelativeJudgePolicy final : public Policy<T> {
  public:
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
-                      const pir::ShapeConstraintIRAnalysis* shape_analysis)
+                      pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
     VLOG(4) << "[relative_judge_policy] Start AnalysisIndexExprRelation.";
     index_expr_map_ = AnalysisIndexExprRelation(ops);

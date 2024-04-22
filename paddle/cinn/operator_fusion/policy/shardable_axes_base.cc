@@ -146,7 +146,7 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
 }
 
 ShardableAxesSignature CreateSignatureForBroadcast(
-    pir::Operation* op, const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
   ShardableAxesSignature result = ShardableAxesSignature();
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
@@ -214,7 +214,7 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
 
 ShardableAxesInfoManager::ShardableAxesInfoManager(
     const std::vector<pir::Operation*>& ops,
-    const pir::ShapeConstraintIRAnalysis* shape_analysis)
+    pir::ShapeConstraintIRAnalysis* shape_analysis)
     : ops_(ops), shape_analysis_(shape_analysis) {
   for (const auto& op : ops) {
     if (op->name() == "cf.yield") continue;
