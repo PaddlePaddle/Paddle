@@ -30,8 +30,6 @@ class CompilationContextMapper {
     Construct(target, groups);
   }
   std::vector<GroupCompilationContext>& UniqueCompilationContexts() {
-    for(GroupCompilationContext group_compilation_context : group_compilation_contexts_)
-      VLOG(0)<<"DEBUG(BUILD): " << "group_compilation_contexts_ = " << group_compilation_context.PrintPredicate2Funcs()<<std::endl;
     return group_compilation_contexts_;
   }
   std::vector<std::shared_ptr<pir::CompilationResult>>&
