@@ -328,7 +328,7 @@ function clean_build_files() {
     clean_files=("paddle/fluid/pybind/libpaddle.so" "paddle/phi/libphi.so" "third_party/flashattn/src/extern_flashattn-build/libflashattn.so" "third_party/install/flashattn/lib/libflashattn.so")
 
     for file in "${clean_files[@]}"; do
-      file=`echo "i${PADDLE_ROOT}/build/${file}"`
+      file=`echo "${PADDLE_ROOT}/build/${file}"`
       if [ -f "$file" ]; then
           rm -rf "$file"
       fi
