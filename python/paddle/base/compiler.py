@@ -342,18 +342,6 @@ class CompiledProgram:
 
         if self._is_inference:
             self._executor = self._compile_inference()
-        else:
-            self._places = [self._place]
-
-            if isinstance(self._place, core.CUDAPlace):
-                use_device = DeviceType.CUDA
-            elif isinstance(self._place, core.XPUPlace):
-                use_device = DeviceType.XPU
-            else:
-                use_device = DeviceType.CPU
-            self._executor = self._compile_data_parallel(
-                use_device=use_device, scope=self._scope, places=self._places
-            )
         return self
 
     def _get_places(self, place, place_list):
