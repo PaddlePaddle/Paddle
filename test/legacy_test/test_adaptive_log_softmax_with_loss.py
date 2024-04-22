@@ -60,7 +60,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             self.place.append('gpu')
         self.log_np = np.random.randn(4, 8).astype('float32')
         self.predict_np = np.abs(np.random.randn(64, 8).astype('float32'))
-    
+
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.place:
