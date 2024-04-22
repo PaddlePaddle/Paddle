@@ -30,19 +30,30 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from paddle.tensor.layer_function_generator import templatedoc
 
 __all__ = []
 
 
-@templatedoc()
 def clip_by_norm(x, max_norm, name=None):
     """
-    ${comment}
+    ClipByNorm Operator.
+
+    This operator limits the L2 norm of the input $X$ within $max\\_norm$.
+    If the L2 norm of $X$ is less than or equal to $max\\_norm$, $Out$ will be
+    the same as $X$. If the L2 norm of $X$ is greater than $max\\_norm$, $X$ will
+    be linearly scaled to make the L2 norm of $Out$ equal to $max\\_norm$, as
+    shown in the following formula:
+
+    $$
+    Out = \\frac{max\\_norm * X}{norm(X)},
+    $$
+
+    where $norm(X)$ represents the L2 norm of $X$.
 
     Args:
-        x(${x_type}): ${x_comment}
-        max_norm(${max_norm_type}): ${max_norm_comment}
+        x(Variable): (Tensor) The input of clip_by_norm op and data type is float32.
+            The number of dimensions must be between [1, 9].
+        max_norm(float): (float) The maximum norm value.
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -50,7 +61,8 @@ def clip_by_norm(x, max_norm, name=None):
     Returns:
         Tensor:
 
-        out(${out_type}): ${out_comment}
+        out(Variable): (Tensor) The output of clip_by_norm op with shape as input(X)
+            The data type is float32.
 
 
     Examples:
@@ -96,17 +108,16 @@ def clip_by_norm(x, max_norm, name=None):
     return out
 
 
-@templatedoc()
 def merge_selected_rows(x, name=None):
     """
-    ${comment}
+    TODO: Documentation of merge_selected_rows op.
 
     Args:
-        x(${x_type}): ${x_comment}
+        x(Variable): (Tensor), input 0 of merge_selected_rows op.
         name(basestring|None): Name of the output.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        out(Variable): (Tensor), output 0 of merge_selected_rows op.
 
     Examples:
 
@@ -135,7 +146,6 @@ def merge_selected_rows(x, name=None):
     return out
 
 
-@templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
     Get tensor data from input with SelectedRows type, and outputs a Tensor.
