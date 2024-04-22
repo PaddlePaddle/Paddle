@@ -261,7 +261,7 @@ bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
 
   auto res =
       ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
-      IsProductSmallerOrEqual(upstream_non_reduce_dims, downstream_free_dims);
+      IsProductSmallerOrEqual(downstream_free_dims, upstream_non_reduce_dims);
 
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
