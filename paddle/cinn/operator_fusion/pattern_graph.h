@@ -334,9 +334,9 @@ struct HorizontalFusionConstrain {
       return false;
     }
     const auto& lhs_pattern =
-        lhs->stmt_pattern().template Get<HorizontalFusionPattern>();
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
     const auto& rhs_pattern =
-        rhs->stmt_pattern().template Get<HorizontalFusionPattern>();
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
 
     return graph.topo_manager().CanFuse(lhs, rhs) &&
            PatternDimMatch(lhs_pattern.patterns_.back(),
