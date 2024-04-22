@@ -41,6 +41,7 @@ class TestPullBoxSparseOpTranslator(
             outputs={"Out": [out]},
             attrs=attrs,
         )
+        return out
 
     def test_translator(self):
         self.check()
