@@ -588,8 +588,11 @@ void BatchNormGradFunctor(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 #ifdef PADDLE_WITH_HIP
-  auto compute_format =
-      data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
+  auto compute_format = data_layout == DataLayout::kNHWC
+                            ? (FLAGS_cudnn_batchnorm_spatial_persistent == true
+                                   ? DataLayout::kNCHW
+                                   : DataLayout::kNHWC)
+                            : DataLayout::kNCHW;
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // HIP do not support compute format of NHWC
@@ -769,13 +772,11 @@ void BatchNormGradFunctor(const Context &ctx,
                   data_desc_,
                   transformed_d_y.template data<T>(),
                   data_desc_,
-                  transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
+                  ctx.template Alloc<T>(&transformed_d_x),
                   bn_param_desc_,
-                  scale->template data<BatchNormParamType<T>>(),
-                  d_scale->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
-                  d_bias->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
+                  new_scale.template data<BatchNormParamType<T>>(),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                  ctx.template Alloc<BatchNormParamType<T>>(d_bias),
                   epsilon,
                   saved_mean_data,
                   saved_var_data));
@@ -796,46 +797,20 @@ void BatchNormGradFunctor(const Context &ctx,
                   ctx.template Alloc<BatchNormParamType<T>>(d_bias));
         }
       } else {
-        if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::miopenBatchNormalizationBackward(
-                  ctx.cudnn_handle(),
-                  mode_,
-                  CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(),
-                  CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(),
-                  data_desc_,
-                  transformed_x.template data<T>(),
-                  data_desc_,
-                  transformed_d_y.template data<T>(),
-                  data_desc_,
-                  transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
-                  bn_param_desc_,
-                  scale->template data<BatchNormParamType<T>>(),
-                  d_scale->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
-                  d_bias->template mutable_data<BatchNormParamType<T>>(
-                      ctx.GetPlace()),
-                  epsilon,
-                  saved_mean_data,
-                  saved_var_data));
-        } else {
-          BNBackward<T, block, DataLayout::kNHWC>
-              <<<grid2, block, 0, ctx.stream()>>>(
-                  transformed_d_y.template data<T>(),
-                  transformed_x.template data<T>(),
-                  new_scale.template data<BatchNormParamType<T>>(),
-                  saved_mean_data,
-                  saved_var_data,
-                  C,
-                  N,
-                  H * W * D,
-                  epsilon,
-                  transformed_d_x.template data<T>(),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_bias));
-        }
+        BNBackward<T, block, DataLayout::kNHWC>
+            <<<grid2, block, 0, ctx.stream()>>>(
+                transformed_d_y.template data<T>(),
+                transformed_x.template data<T>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                saved_mean_data,
+                saved_var_data,
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                transformed_d_x.template data<T>(),
+                ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                ctx.template Alloc<BatchNormParamType<T>>(d_bias));
       }
 
 #else

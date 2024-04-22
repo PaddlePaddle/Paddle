@@ -571,8 +571,11 @@ void BatchNormKernel(const Context &ctx,
   }
 
 #ifdef PADDLE_WITH_HIP
-  auto compute_format =
-      data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
+  auto compute_format = data_layout == DataLayout::kNHWC
+                            ? (FLAGS_cudnn_batchnorm_spatial_persistent == true
+                                   ? DataLayout::kNCHW
+                                   : DataLayout::kNHWC)
+                            : DataLayout::kNCHW;
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // HIP do not support compute format of NHWC
@@ -753,13 +756,12 @@ void BatchNormKernel(const Context &ctx,
                 data_desc_,
                 static_cast<const void *>(transformed_x.template data<T>()),
                 data_desc_,
-                static_cast<void *>(
-                    transformed_y.template mutable_data<T>(ctx.GetPlace())),
+                static_cast<void *>(ctx.template Alloc<T>(&transformed_y)),
                 bn_param_desc_,
                 const_cast<void *>(static_cast<const void *>(
-                    scale->template data<BatchNormParamType<T>>())),
+                    new_scale.template data<BatchNormParamType<T>>())),
                 const_cast<void *>(static_cast<const void *>(
-                    bias->template data<BatchNormParamType<T>>())),
+                    new_bias.template data<BatchNormParamType<T>>())),
                 const_cast<void *>(static_cast<const void *>(
                     est_mean->template data<BatchNormParamType<T>>())),
                 const_cast<void *>(static_cast<const void *>(
@@ -780,44 +782,18 @@ void BatchNormKernel(const Context &ctx,
                 transformed_y.template data<T>());
       }
     } else {
-      if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::miopenBatchNormalizationForwardInference(
-                handle,
-                mode_,
-                const_cast<void *>(
-                    static_cast<const void *>(CudnnDataType<T>::kOne())),
-                const_cast<void *>(
-                    static_cast<const void *>(CudnnDataType<T>::kZero())),
-                data_desc_,
-                static_cast<const void *>(transformed_x.template data<T>()),
-                data_desc_,
-                static_cast<void *>(
-                    transformed_y.template mutable_data<T>(ctx.GetPlace())),
-                bn_param_desc_,
-                const_cast<void *>(static_cast<const void *>(
-                    scale->template data<BatchNormParamType<T>>())),
-                const_cast<void *>(static_cast<const void *>(
-                    bias->template data<BatchNormParamType<T>>())),
-                const_cast<void *>(static_cast<const void *>(
-                    est_mean->template data<BatchNormParamType<T>>())),
-                const_cast<void *>(static_cast<const void *>(
-                    est_var->template data<BatchNormParamType<T>>())),
-                epsilon));
-      } else {
-        BNForwardInference<T, DataLayout::kNHWC>
-            <<<grid_size, block_size, 0, ctx.stream()>>>(
-                transformed_x.template data<T>(),
-                est_mean->template data<BatchNormParamType<T>>(),
-                est_var->template data<BatchNormParamType<T>>(),
-                new_scale.template data<BatchNormParamType<T>>(),
-                new_bias.template data<BatchNormParamType<T>>(),
-                C,
-                N,
-                H * W * D,
-                epsilon,
-                transformed_y.template data<T>());
-      }
+      BNForwardInference<T, DataLayout::kNHWC>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              new_scale.template data<BatchNormParamType<T>>(),
+              new_bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              transformed_y.template data<T>());
     }
 
 #else
@@ -960,25 +936,22 @@ void BatchNormKernel(const Context &ctx,
                   data_desc_,
                   static_cast<const void *>(transformed_x.template data<T>()),
                   data_desc_,
-                  static_cast<void *>(
-                      transformed_y.template mutable_data<T>(ctx.GetPlace())),
+                  static_cast<void *>(ctx.template Alloc<T>(&transformed_y)),
                   bn_param_desc_,
                   const_cast<void *>(static_cast<const void *>(
-                      scale->template data<BatchNormParamType<T>>())),
+                      new_scale.template data<BatchNormParamType<T>>())),
                   const_cast<void *>(static_cast<const void *>(
-                      bias->template data<BatchNormParamType<T>>())),
+                      new_bias.template data<BatchNormParamType<T>>())),
                   this_factor,
                   static_cast<void *>(
-                      mean_out->template mutable_data<BatchNormParamType<T>>(
-                          ctx.GetPlace())),
-                  static_cast<void *>(variance_out->template mutable_data<
-                                      BatchNormParamType<T>>(ctx.GetPlace())),
+                      ctx.template Alloc<BatchNormParamType<T>>(mean_out)),
+                  static_cast<void *>(
+                      ctx.template Alloc<BatchNormParamType<T>>(variance_out)),
                   epsilon,
                   static_cast<void *>(
-                      saved_mean->template mutable_data<BatchNormParamType<T>>(
-                          ctx.GetPlace())),
-                  static_cast<void *>(saved_variance->template mutable_data<
-                                      BatchNormParamType<T>>(ctx.GetPlace()))));
+                      ctx.template Alloc<BatchNormParamType<T>>(saved_mean)),
+                  static_cast<void *>(ctx.template Alloc<BatchNormParamType<T>>(
+                      saved_variance))));
         } else {
           BNForwardTraining<T, block, DataLayout::kNCHW>
               <<<grid, block, 0, ctx.stream()>>>(
@@ -997,54 +970,21 @@ void BatchNormKernel(const Context &ctx,
                   saved_variance->template data<BatchNormParamType<T>>());
         }
       } else {
-        if (FLAGS_cudnn_batchnorm_spatial_persistent == true) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::miopenBatchNormalizationForwardTraining(
-                  handle,
-                  mode_,
-                  const_cast<void *>(
-                      static_cast<const void *>(CudnnDataType<T>::kOne())),
-                  const_cast<void *>(
-                      static_cast<const void *>(CudnnDataType<T>::kZero())),
-                  data_desc_,
-                  static_cast<const void *>(transformed_x.template data<T>()),
-                  data_desc_,
-                  static_cast<void *>(
-                      transformed_y.template mutable_data<T>(ctx.GetPlace())),
-                  bn_param_desc_,
-                  const_cast<void *>(static_cast<const void *>(
-                      scale->template data<BatchNormParamType<T>>())),
-                  const_cast<void *>(static_cast<const void *>(
-                      bias->template data<BatchNormParamType<T>>())),
-                  this_factor,
-                  static_cast<void *>(
-                      mean_out->template mutable_data<BatchNormParamType<T>>(
-                          ctx.GetPlace())),
-                  static_cast<void *>(variance_out->template mutable_data<
-                                      BatchNormParamType<T>>(ctx.GetPlace())),
-                  epsilon,
-                  static_cast<void *>(
-                      saved_mean->template mutable_data<BatchNormParamType<T>>(
-                          ctx.GetPlace())),
-                  static_cast<void *>(saved_variance->template mutable_data<
-                                      BatchNormParamType<T>>(ctx.GetPlace()))));
-        } else {
-          BNForwardTraining<T, block, DataLayout::kNHWC>
-              <<<grid, block, 0, ctx.stream()>>>(
-                  transformed_x.template data<T>(),
-                  new_scale.template data<BatchNormParamType<T>>(),
-                  new_bias.template data<BatchNormParamType<T>>(),
-                  C,
-                  N,
-                  H * W * D,
-                  epsilon,
-                  this_factor,
-                  transformed_y.template data<T>(),
-                  mean_out->template data<BatchNormParamType<T>>(),
-                  variance_out->template data<BatchNormParamType<T>>(),
-                  saved_mean->template data<BatchNormParamType<T>>(),
-                  saved_variance->template data<BatchNormParamType<T>>());
-        }
+        BNForwardTraining<T, block, DataLayout::kNHWC>
+            <<<grid, block, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                new_scale.template data<BatchNormParamType<T>>(),
+                new_bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                this_factor,
+                transformed_y.template data<T>(),
+                mean_out->template data<BatchNormParamType<T>>(),
+                variance_out->template data<BatchNormParamType<T>>(),
+                saved_mean->template data<BatchNormParamType<T>>(),
+                saved_variance->template data<BatchNormParamType<T>>());
       }
 
 #else
