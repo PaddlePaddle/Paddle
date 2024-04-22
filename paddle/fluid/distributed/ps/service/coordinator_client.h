@@ -81,7 +81,7 @@ class CoordinatorServiceHandle {
     lck.unlock();
     VLOG(0) << "last_round_total_fl_clients_num: "
             << last_round_total_fl_clients_num
-            << ", has recved fl client num: " << _fl_clients_count.load();
+            << ", has received fl client num: " << _fl_clients_count.load();
     return;
   }
 
@@ -102,7 +102,7 @@ class CoordinatorServiceHandle {
         timeline.Pause();
         query_wait_time += timeline.ElapsedSec();
       }
-      // LOG(WARNNING) << "fl-ps > query_wait_time exceed!";
+      // LOG(WARNING) << "fl-ps > query_wait_time exceed!";
       return true;
     };
 

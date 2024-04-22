@@ -57,6 +57,12 @@ class ParseKernelKeyInterface
 // Register the ParseKernelKeyInterface for unique op.
 KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op);
 
+KernelKeyTuple SaveCombineOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple NopOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple Nop_OpParseKernelKey(pir::Operation *op);
+
 }  // namespace dialect
 }  // namespace paddle
 

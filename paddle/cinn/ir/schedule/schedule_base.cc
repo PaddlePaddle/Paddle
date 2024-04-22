@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/schedule/schedule_base.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 namespace cinn {
 namespace ir {

@@ -1036,6 +1036,10 @@ class PADDLE_API OpMetaInfo {
   // format: PD_INFER_SPMD_RULE(...)
   OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
 
+  bool IsGradOp() const;
+
+  bool IsDoubleGradOp() const;
+
 #ifdef PADDLE_WITH_TENSORRT
   // format: PD_TRT_INFER_SHAPE(...)
   OpMetaInfo& SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func);

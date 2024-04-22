@@ -165,7 +165,7 @@ class XPUTestArgsortOp_LargeN(XPUOpTestWrapper):
                 2,
                 8732,
                 1,
-            ]  # test for 8192 < n <= 10240 + nees_transpose
+            ]  # test for 8192 < n <= 10240 + need_transpose
             self.axis = 1
 
     class TestArgsortOpCase4(TestArgsortOpCase1):
@@ -174,7 +174,7 @@ class XPUTestArgsortOp_LargeN(XPUOpTestWrapper):
                 2,
                 10241,
                 1,
-            ]  # test for 10240 < n <= 16384 + nees_transpose
+            ]  # test for 10240 < n <= 16384 + need_transpose
             self.axis = 1
 
 

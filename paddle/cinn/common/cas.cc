@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -854,7 +854,7 @@ void CasSimplifyMutator::UnfoldBound(Expr* lower_bound,
     AddBaseAndSimplify(lower_bound, var);
     AddBaseAndSimplify(upper_bound, var);
   } else {
-    LOG(FATAL) << "can't get the bound";
+    PADDLE_THROW(phi::errors::InvalidArgument("can't get the bound"));
   }
 }
 

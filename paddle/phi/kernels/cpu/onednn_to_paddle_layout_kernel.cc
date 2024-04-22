@@ -64,6 +64,11 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
   VLOG(4) << "src_layout: " << src_layout << ", tmp_layout: " << tmp_layout;
 
   if (src_layout != DataLayout::ONEDNN || !x.storage_properties_initialized()) {
+    if (!x.IsInitialized()) {
+      out->Resize(x.dims());
+      out->set_layout(tmp_layout);
+      return;
+    }
     out->ShareDataWith(x);
     out->ShareInplaceVersionCounterWith(x);
     out->set_layout(static_cast<DataLayout>(tmp_layout));

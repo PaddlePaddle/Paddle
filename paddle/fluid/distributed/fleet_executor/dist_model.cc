@@ -215,7 +215,7 @@ bool DistModel::Init() {
 }
 
 bool DistModel::PreparePlace() {
-  if (config_.place == "GPU") {
+  if (config_.place == "GPU") {  // NOLINT
     place_ = paddle::platform::CUDAPlace(config_.device_id);
   } else if (config_.place == "CPU") {
     place_ = paddle::platform::CPUPlace();

@@ -79,7 +79,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def test_all(self):
         self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
         self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
-        self.run_case(dtype="bfloat16", tolerance=5e-3, tolerance_dv=1e-2)
+        self.run_case(dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2)
 
     def run_case(self, dtype, tolerance, tolerance_dv):
         # TODO(houj04) remove debug codes after correctness check

@@ -80,7 +80,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
                                         anchor_generator_inputs.size(),
                                         *anchor_generator_plugin);
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         anchor_generator_layer, "anchor_generator", output_names, test_mode);
   }
 };

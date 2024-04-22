@@ -126,7 +126,7 @@ class FillConstantFoldingPass : public ProgramPass {
       if (!fill_constant_map.count(key)) {
         VLOG(4) << "The fill_constant, whose output is Var ["
                 << instr->outputs[0]->id
-                << "], cannot remove because it is the first fill_costant ! ";
+                << "], cannot remove because it is the first fill_constant ! ";
         // retain the first fill constant op node
         fill_constant_map.emplace(key, &instr->outputs[0]);
         continue;

@@ -72,7 +72,7 @@ class FlipOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "flip", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "flip", {output_name}, test_mode);
   }
 };
 

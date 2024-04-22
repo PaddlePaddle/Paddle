@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else

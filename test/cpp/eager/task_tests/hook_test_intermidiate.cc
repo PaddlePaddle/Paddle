@@ -324,7 +324,3 @@ TEST(Hook_intermidiate, Matmul_v2) {
 
 TEST(Hook_intermidiate, BackwardFinal) { test_backward_final_hooks(); }
 }  // namespace egr
-
-USE_OP_ITSELF(sigmoid);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(matmul_v2);

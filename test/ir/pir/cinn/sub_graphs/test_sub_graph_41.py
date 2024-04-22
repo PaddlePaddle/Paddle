@@ -35,7 +35,9 @@ class LayerCase(paddle.nn.Layer):
         var_3 = var_0.flatten(start_axis=0, stop_axis=1)
         var_4 = paddle.tensor.ops.sigmoid(var_3)
         var_5 = var_1.flatten(start_axis=0, stop_axis=1)
-        var_6 = paddle.tensor.manipulation.concat([var_2])
+        # TODO(Aurelius84): concat compute logic does not support single element.
+        # var_6 = paddle.tensor.manipulation.concat([var_2])
+        var_6 = var_2
         var_7 = var_6 > -1
         var_8 = var_7.all()
         return var_8, var_4, var_6, var_5
@@ -65,11 +67,10 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)

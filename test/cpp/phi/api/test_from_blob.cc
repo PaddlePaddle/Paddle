@@ -84,8 +84,8 @@ using phi::memory_utils::Copy;
 TEST(GetPlaceFromPtr, GPU) {
   using paddle::GetPlaceFromPtr;
 
-  float cpu_data[6];
-  auto cpu_data_place = GetPlaceFromPtr(cpu_data);
+  std::array<float, 6> cpu_data;
+  auto cpu_data_place = GetPlaceFromPtr(cpu_data.data());
   ASSERT_EQ(cpu_data_place, phi::CPUPlace());
   std::cout << "cpu_data_place: " << cpu_data_place << std::endl;
 
@@ -109,7 +109,7 @@ TEST(GetPlaceFromPtr, GPU) {
 
 TEST(from_blob, GPU) {
   // 1. create data
-  float cpu_data[6] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
+  std::array<float, 6> cpu_data = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
   phi::GPUPlace gpu0(0);
   phi::Allocator* allocator = paddle::GetAllocator(gpu0);
   auto gpu_allocation = allocator->Allocate(sizeof(cpu_data));
@@ -119,7 +119,7 @@ TEST(from_blob, GPU) {
   Copy(gpu0,
        gpu_data,
        phi::CPUPlace(),
-       cpu_data,
+       cpu_data.data(),
        sizeof(cpu_data),
        ctx->stream());
 
@@ -137,9 +137,9 @@ TEST(from_blob, GPU) {
 
   // 3.2 check tensor values
   auto* gpu_tensor_data = gpu_tensor.template data<float>();
-  float gpu_tensor_data_cpu[6];
+  std::array<float, 6> gpu_tensor_data_cpu;
   Copy(phi::CPUPlace(),
-       gpu_tensor_data_cpu,
+       gpu_tensor_data_cpu.data(),
        gpu0,
        gpu_tensor_data,
        sizeof(cpu_data),
@@ -155,9 +155,9 @@ TEST(from_blob, GPU) {
   // 3.4 test other API
   auto gpu_tensor_pow = paddle::experimental::pow(gpu_tensor, 2);
   auto* gpu_tensor_pow_data = gpu_tensor_pow.template data<float>();
-  float gpu_tensor_pow_data_cpu[6];
+  std::array<float, 6> gpu_tensor_pow_data_cpu;
   Copy(phi::CPUPlace(),
-       gpu_tensor_pow_data_cpu,
+       gpu_tensor_pow_data_cpu.data(),
        gpu0,
        gpu_tensor_pow_data,
        sizeof(cpu_data),

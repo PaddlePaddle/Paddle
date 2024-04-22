@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
+#include "paddle/common/enforce.h"
 #include "paddle/pir/src/core/value_impl.h"
 
 namespace {
@@ -27,9 +30,9 @@ void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(first_use) + offset);
-  VLOG(10) << "The index of this value is " << offset
-           << ". Offset and set first use: " << first_use << " -> "
-           << first_use_offseted_by_kind_ << ".";
+  VLOG(10) << "The index of this value is: " << offset
+           << ". The address of this value is: " << this
+           << ". This value first use is: " << first_use << ".";
 }
 
 std::string ValueImpl::PrintUdChain() {
@@ -48,16 +51,17 @@ std::string ValueImpl::PrintUdChain() {
   return result.str();
 }
 ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
-  if (kind > BLOCK_ARG_IDX) {
-    LOG(FATAL) << "The kind of value_impl(" << kind
-               << "), is bigger than BLOCK_ARG_IDX(7)";
-  }
+  PADDLE_ENFORCE_LE(
+      kind,
+      BLOCK_ARG_IDX,
+      common::errors::PreconditionNotMet(
+          "The kind of value_impl[%u] must not bigger than BLOCK_ARG_IDX(7)",
+          kind));
   type_ = type;
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(nullptr) + kind);
   VLOG(10) << "Construct a ValueImpl whose's kind is " << kind
-           << ". The offset first_use address is: "
-           << first_use_offseted_by_kind_;
+           << ". The value_impl address is: " << this;
 }
 
 }  // namespace detail

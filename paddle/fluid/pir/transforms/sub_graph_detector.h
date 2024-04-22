@@ -51,7 +51,7 @@ class SubgraphDetector {
   void DoSubGraphFusion();
 
   bool FuseSubGraph(SubGraphPtr subgraph_ptr);
-  // check exist depency.
+  // check exist dependency.
   bool IsDependency(const SubGraphPtr& producer_g,
                     const SubGraphPtr& consumer,
                     const std::unordered_set<SubGraphPtr>& consumers);
@@ -71,6 +71,7 @@ class SubgraphDetector {
 };
 
 std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
+std::vector<pir::Value> AnalysisExternalInputs(const GroupOpsVec& group_ops);
 void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
 
 }  // namespace pir

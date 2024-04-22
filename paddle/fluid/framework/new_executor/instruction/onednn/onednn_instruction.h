@@ -75,6 +75,8 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
   std::map<std::string, phi::Attribute> ctx_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
+  std::string kernel_name_;
+  phi::KernelKey kernel_key_;
 };
 }  // namespace framework
 }  // namespace paddle

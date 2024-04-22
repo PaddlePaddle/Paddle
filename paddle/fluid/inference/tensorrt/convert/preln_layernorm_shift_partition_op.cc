@@ -76,10 +76,10 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.emplace_back(op_desc.Output("Out_0").front());
     output_names.emplace_back(op_desc.Output("Out_1").front());
-    RreplenishLayerAndOutput(layernorm_layer,
-                             "preln_layernorm_shift_partition",
-                             output_names,
-                             test_mode);
+    ReplenishLayerAndOutput(layernorm_layer,
+                            "preln_layernorm_shift_partition",
+                            output_names,
+                            test_mode);
   }
 };
 

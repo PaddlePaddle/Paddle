@@ -68,7 +68,7 @@ class BackWardOpDepsPass : public ir::Pass {
       AddDep(graph, opt_handles[i - 1], opt_handles[i]);
     }
 
-    VLOG(10) << "add deps between backward and optimze:";
+    VLOG(10) << "add deps between backward and optimize:";
     AddDep(graph,
            backward_op_handles[backward_op_handles.size() - 1],
            opt_handles[0]);

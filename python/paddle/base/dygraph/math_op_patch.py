@@ -87,7 +87,7 @@ def monkey_patch_math_tensor():
                 >>> print("new tensor's dtype is: {}".format(new_tensor.dtype))
                 new tensor's dtype is: paddle.float32
         """
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(self, dtype)
 
@@ -105,8 +105,7 @@ def monkey_patch_math_tensor():
         assert (
             numel == 1
         ), "only one element variable can be converted to float."
-        tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        assert var._is_initialized(), "variable's tensor is not initialized"
         if var.dtype == core.VarDesc.VarType.BF16:
             var = var.astype('float32')
         return float(np.array(var))
@@ -114,8 +113,7 @@ def monkey_patch_math_tensor():
     def _long_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to long."
-        tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        assert var._is_initialized(), "variable's tensor is not initialized"
         if var.dtype == core.VarDesc.VarType.BF16:
             var = var.astype('float32')
         return int(np.array(var))
@@ -123,8 +121,7 @@ def monkey_patch_math_tensor():
     def _int_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to int."
-        tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        assert var._is_initialized(), "variable's tensor is not initialized"
         if var.dtype == core.VarDesc.VarType.BF16:
             var = var.astype('float32')
         return int(np.array(var))
@@ -143,8 +140,7 @@ def monkey_patch_math_tensor():
         assert (
             numel == 1
         ), "only one element variable can be converted to python index."
-        tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        assert var._is_initialized(), "variable's tensor is not initialized"
         if var.dtype == core.VarDesc.VarType.BF16:
             var = var.astype('float32')
         return int(np.array(var))

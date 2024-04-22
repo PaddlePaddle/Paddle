@@ -19,6 +19,18 @@
 
 namespace phi {
 
+bool SliceCheckIfOneDNNSupport(const KernelContext* ctx) {
+  auto x = ctx->InputAt<phi::DenseTensor>(0);
+  auto vec_dims = common::vectorize(x.dims());
+  bool all_zero_dims = std::all_of(
+      vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
+
+  if (!all_zero_dims && x.mem_desc().get_inner_nblks() == 0) {
+    return true;
+  }
+  return false;
+}
+
 template <typename T, typename Context>
 void SliceKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -69,7 +81,7 @@ void SliceKernel(const Context& dev_ctx,
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       out,
       slice_dims,
-      funcs::GetPlainOneDNNFormat(x_vec_dims.size()),
+      funcs::GetPlainOneDNNFormat(static_cast<int>(x_vec_dims.size())),
       dev_ctx.GetPlace());
 
   auto reorder_p =
@@ -106,4 +118,6 @@ PD_REGISTER_KERNEL(slice,
                    float,
                    int8_t,
                    uint8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::SliceCheckIfOneDNNSupport;
+}

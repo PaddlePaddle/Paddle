@@ -43,7 +43,7 @@ Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
       std::static_pointer_cast<LazyTensor>(shape.impl())->value();
   pir::Value value_res = paddle::dialect::full(
       std::vector<int64_t>{}, value.to<float>(), dtype, place);
-  auto op_res = paddle::dialect::full_with_tensor(shape_res, value_res, dtype);
+  auto op_res = paddle::dialect::full_with_tensor(value_res, shape_res, dtype);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
 }
@@ -64,6 +64,24 @@ Tensor expand_with_tensor<LazyTensor>(const Tensor& x, const Tensor& shape) {
   pir::Value shape_res =
       std::static_pointer_cast<LazyTensor>(shape.impl())->value();
   auto op_res = paddle::dialect::expand(x_res, shape_res);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  return out;
+}
+
+template <>
+Tensor arange_with_tensor<LazyTensor>(const Tensor& start,
+                                      const Tensor& end,
+                                      const Tensor& step,
+                                      DataType dtype,
+                                      Place place) {
+  pir::Value start_val =
+      std::static_pointer_cast<LazyTensor>(start.impl())->value();
+  pir::Value end_val =
+      std::static_pointer_cast<LazyTensor>(end.impl())->value();
+  pir::Value step_val =
+      std::static_pointer_cast<LazyTensor>(step.impl())->value();
+  auto op_res =
+      paddle::dialect::arange(start_val, end_val, step_val, dtype, place);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
 }

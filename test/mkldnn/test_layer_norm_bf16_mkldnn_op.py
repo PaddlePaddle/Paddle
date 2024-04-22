@@ -23,6 +23,7 @@ from test_layer_norm_mkldnn_op import (
     TestLayerNormMKLDNNOp,
     _reference_layer_norm_naive,
 )
+from utils import pir_executor_guard
 
 from paddle import base, enable_static
 from paddle.base import core
@@ -133,9 +134,10 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_is_test(self):
-        self.check_forward(
-            shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True
-        )
+        with pir_executor_guard():
+            self.check_forward(
+                shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True
+            )
 
     # TODO (jczaja): Enable those to test when enabling training using bf16
     def test_check_forward_with_scale_and_bias(self):

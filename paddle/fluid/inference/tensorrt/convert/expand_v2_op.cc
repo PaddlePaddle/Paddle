@@ -113,7 +113,7 @@ class ExpandOpConverter : public OpConverter {
     layer->setInput(2, *sizes_tensor);
     layer->setInput(3, *strides_tensor);
 
-    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
 
  protected:

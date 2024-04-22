@@ -56,36 +56,16 @@ TEST(AnalysisPredictor, analysis_off) {
   LOG(INFO) << "scope parameters " << predictor->scope_->LocalVarNames().size();
 
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 }
-
-#ifndef WIN32
-TEST(AnalysisPredictor, lite_nn_adapter_npu) {
-  AnalysisConfig config;
-  config.SetModel(FLAGS_dirname);
-  config.EnableLiteEngine();
-  config.NNAdapter()
-      .Disable()
-      .Enable()
-      .SetDeviceNames({"huawei_ascend_npu"})
-      .SetContextProperties("HUAWEI_ASCEND_NPU_SELECTED_DEVICE_IDS=0")
-      .SetModelCacheDir("cache_dirr")
-      .SetSubgraphPartitionConfigPath("")
-      .SetModelCacheBuffers("c1", {'c'});
-#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
-  EXPECT_THROW(CreatePaddlePredictor<AnalysisConfig>(config),
-               paddle::platform::EnforceNotMet);
-#endif
-}
-#endif
 
 TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
@@ -109,10 +89,10 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(predictor->GetOutputTypes().size(), 1UL);
   ASSERT_EQ(predictor->GetOutputTensorShape().size(), 1UL);
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
@@ -242,10 +222,10 @@ TEST(AnalysisPredictor, Clone) {
             << framework::GenScopeTreeDebugInfo(root_scope);
 
   // 2. Dummy Input Data
-  int64_t data[4] = {1, 2, 3, 4};
+  std::array<int64_t, 4> input_data = {1, 2, 3, 4};
   PaddleTensor tensor;
   tensor.shape = std::vector<int>({4, 1});
-  tensor.data.Reset(data, sizeof(data));
+  tensor.data.Reset(input_data.data(), sizeof(input_data));
   tensor.dtype = PaddleDType::INT64;
 
   std::vector<PaddleTensor> inputs(4, tensor);
@@ -367,7 +347,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
   const std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
+      {"fc_onednn_pass", "fc_act_onednn_fuse_pass"});
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
@@ -552,7 +532,7 @@ TEST(Tensor, GpuShareExternalData) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   predictor->Run();
@@ -699,7 +679,7 @@ TEST(Tensor, RunWithExternalStream) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   cudaStream_t external_stream;

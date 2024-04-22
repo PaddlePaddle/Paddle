@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 
 COMMON_DECLARE_bool(use_pinned_memory);
+COMMON_DECLARE_bool(custom_device_mem_record);
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -208,7 +209,8 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size > usable) {
     LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
                  << " MB pinned memory."
-                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+                 << ", available " << usable / 1024.0 / 1024.0
+                 << " MB";  // NOLINT
     return nullptr;
   }
 
@@ -297,6 +299,11 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
     VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
+    if (FLAGS_custom_device_mem_record) {
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      platform::RecordMemEvent(
+          p, place, size, platform::TracerMemEventType::ReservedAllocate);
+    }
   } else {
     size_t avail, total;
 
@@ -331,6 +338,11 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
   auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
+  if (FLAGS_custom_device_mem_record) {
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+    platform::RecordMemEvent(
+        p, place, size, platform::TracerMemEventType::ReservedFree);
+  }
 }
 
 bool CustomAllocator::UseGpu() const { return true; }

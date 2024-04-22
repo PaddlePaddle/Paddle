@@ -46,10 +46,6 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
   for (auto* op : this->output_ops) {
     new_group->output_ops.insert(ops_mapper.at(op));
   }
-  for (const auto& output_value : this->output_values) {
-    new_group->output_values.push_back(output_value);
-  }
-
   return new_group;
 }
 

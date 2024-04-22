@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#include "paddle/fluid/framework/ir/onednn/onednn_pass_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -421,7 +421,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
-          conv->Op()->Type() == "depthwise_conv2d") {
+          conv->Op()->Type() == "depthwise_conv2d" ||
+          conv->Op()->Type() == "conv2d_transpose") {
         ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
@@ -776,6 +777,48 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
 ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose_bias"))
       .AddInput("Input")
       .IsTensor()
       .End()

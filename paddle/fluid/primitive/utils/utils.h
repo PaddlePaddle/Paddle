@@ -138,7 +138,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
     result.push_back(i);
   }
   for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1 && dout_dims[i] != 1) {
+    if (in_dims[i] == 1 && dout_dims[i + bat] != 1) {
       result.push_back(i + bat);
     } else {
       PADDLE_ENFORCE_EQ(
@@ -174,6 +174,14 @@ std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
+  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
     return true;
   } else {
     return false;

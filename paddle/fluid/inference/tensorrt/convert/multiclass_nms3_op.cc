@@ -163,11 +163,11 @@ class MultiClassNMS3OpConverter : public OpConverter {
         nvinfer1::Weights{
             nvinfer1::DataType::kINT32, static_cast<void*>(index.data()), 1});
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         batch_nms_layer, "multiclass_nms3", {rois_num_name}, test_mode);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         nms_concat_layer, "multiclass_nms3", {output_name}, test_mode);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         constant_layer, "multiclass_nms3", {index_name}, test_mode);
   }
 };

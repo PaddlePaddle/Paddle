@@ -582,7 +582,7 @@ PHI_DEFINE_EXPORTED_uint64(
     "specified by FLAGS_reallocate_gpu_memory_in_mb until the gpu has "
     "no memory left for the additional trunk. Note: if you set this "
     "flag, the memory size set by "
-    "FLAGS_fraction_of_gpu_memory_to_use will be overrided by this "
+    "FLAGS_fraction_of_gpu_memory_to_use will be overridden by this "
     "flag. If you don't set this flag, PaddlePaddle will use "
     "FLAGS_fraction_of_gpu_memory_to_use to allocate gpu memory");
 
@@ -629,6 +629,10 @@ PHI_DEFINE_EXPORTED_uint64(
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");
 
+PHI_DEFINE_EXPORTED_bool(custom_device_mem_record,
+                         false,
+                         "Enable mem record event on custom device");
+
 #endif
 
 /**
@@ -670,7 +674,7 @@ PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * Value Range: int, default=2
  * Example:
  * Note: Used to debug. Determine the call stack to print when error or
- * exeception happens.
+ * exception happens.
  * If FLAGS_call_stack_level == 0, only the error message summary will be shown.
  * If FLAGS_call_stack_level == 1, the python stack and  error message summary
  * will be shown.
@@ -686,7 +690,7 @@ static const int32_t kDefaultCallStackLevel = 1;
 PHI_DEFINE_EXPORTED_int32(
     call_stack_level,
     kDefaultCallStackLevel,
-    "Determine the call stack to print when error or exeception happens."
+    "Determine the call stack to print when error or exception happens."
     // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
     // "If FLAGS_call_stack_level == 0, only the error message summary will be "
     // "shown. "
@@ -737,13 +741,13 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_on
+ * Name: tracer_onednn_ops_on
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
@@ -761,13 +765,13 @@ PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_off
+ * Name: tracer_onednn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "",
                            "List of OneDNN operation types to be turned off");
 
@@ -852,13 +856,13 @@ PHI_DEFINE_EXPORTED_bool(
  * Since Version: 2.2.0
  * Value Range: bool, default=false
  * Example:
- * Note: Control whether load graph node and edge with multi threads parallely
+ * Note: Control whether load graph node and edge with multi threads parallelly
  *       If it is not set, load graph data with one thread
  */
 PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                          false,
                          "It controls whether load graph node and edge with "
-                         "mutli threads parallely.");
+                         "multi threads parallelly.");
 
 /**
  * Distributed related FLAG
@@ -878,7 +882,7 @@ PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
  * Since Version: 2.5.0
  * Value Range: double, default=1.0
  * Example:
- * Note: Control whether load graph node and edge with multi threads parallely
+ * Note: Control whether load graph node and edge with multi threads parallelly
  *       If it is not set, load graph data with one thread
  */
 PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
@@ -891,13 +895,13 @@ PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
  * Since Version: 2.2.0
  * Value Range: bool, default=false
  * Example:
- * Note: Control whether load graph node and edge with multi threads parallely
+ * Note: Control whether load graph node and edge with multi threads parallelly
  *       If it is not set, load graph data with one thread
  */
 PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
                          false,
                          "It controls whether load graph node and edge with "
-                         "mutli threads parallely.");
+                         "multi threads parallelly.");
 
 /**
  * Distributed related FLAG
@@ -1023,17 +1027,16 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
 
 /*
  * CINN related FLAG
@@ -1245,6 +1248,17 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
 PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * CINN training related FLAG
+ * Name: FLAGS_disable_dyshape_in_train
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
+                         false,
+                         "Whether disable dyshape in training.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1346,6 +1360,19 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          "Use shm cache in mmap_allocator.");
 
 /**
+ * mmap_allocator related FLAG
+ * Name: dataloader_use_file_descriptor
+ * Since Version: 2.6.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: . If True, mmap_allocator will use file descripor to open shared memory
+ * operation.
+ */
+PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
+                         false,
+                         "Use file descriptor in mmap_allocator.");
+
+/**
  * Tensor operants related FLAG
  * Name: tensor_operants_mode
  * Since Version: 2.5.0
@@ -1367,7 +1394,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR
+ * Note: If True, executor will use new IR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
@@ -1380,7 +1407,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If Ture, program will be translated to pir program
+ * Note: If True, program will be translated to pir program
  * and then run in executor for dy2st mode.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
@@ -1393,7 +1420,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, New IR API will be used in Python
+ * Note: If True, New IR API will be used in Python
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
@@ -1403,7 +1430,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR and run in beta version by for trace
+ * Note: If True, executor will use new IR and run in beta version by for trace
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
@@ -1416,7 +1443,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If Ture, will apply inplace pass to new IR.
+ * Note: If True, will apply inplace pass to new IR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
@@ -1428,7 +1455,7 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "It controls the ir inplace kernel subset do not use.");
 /**
- * Specify the directory of saving PIR sugraph from @to_static
+ * Specify the directory of saving PIR subgraph from @to_static
  * Name: pir_subgraph_saving_dir
  * Since Version: 2.6.0
  * Value Range: str, default=""
@@ -1438,7 +1465,7 @@ PHI_DEFINE_EXPORTED_string(
 PHI_DEFINE_EXPORTED_string(
     pir_subgraph_saving_dir,
     "",
-    "Specify the directory of saving PIR sugraph from @to_static.");
+    "Specify the directory of saving PIR subgraph from @to_static.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1464,11 +1491,19 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
-                         "Whether to skip decomping op with dynamic shape.");
+                         "Whether to skip decomposing op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
                          "that only the primitive operator is present.");
+
+// PIR and prim related FLAG
+// Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
+// `relu` and `mean` two ops in decompsition.
+PHI_DEFINE_EXPORTED_string(
+    prim_forward_blacklist,
+    "",
+    "It controls the forward blacklist ops not to be decomposed.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
@@ -1514,7 +1549,7 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           -1,
                           "Whether to fill fixed value after allocation. "
-                          "This is usefull for debugging.");
+                          "This is useful for debugging.");
 
 /**
  * Apply shape optimization pass to new IR FLAG
@@ -1522,7 +1557,7 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to new IR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
@@ -1577,7 +1612,7 @@ PHI_DEFINE_EXPORTED_string(lapack_dir,
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, will apply check_infer_symbolic pass.
+ * Note: If True, will apply check_infer_symbolic pass.
  */
 PHI_DEFINE_EXPORTED_bool(
     check_infer_symbolic,

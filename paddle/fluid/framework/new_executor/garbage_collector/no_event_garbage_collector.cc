@@ -49,9 +49,10 @@ void InterpreterCoreNoEventGarbageCollector::Add(
 
   if (var->IsType<phi::DenseTensor>()) {
     Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder(), ctx);
-  } else if (var->IsType<
-                 operators::reader::
-                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+  } else if (
+      var->IsType<
+          operators::reader::
+              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<LoDRankTable>()) {

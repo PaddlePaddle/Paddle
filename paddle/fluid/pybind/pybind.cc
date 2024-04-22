@@ -78,7 +78,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
@@ -134,6 +135,10 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/dist_api.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -145,7 +150,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -185,6 +190,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
@@ -223,6 +229,9 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
+#ifdef PADDLE_WITH_DISTRIBUTE
+DECLARE_FILE_SYMBOLS(dist_dialect);
+#endif
 DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
@@ -395,6 +404,10 @@ bool SupportsInt8() {
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
           phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
 #endif
+}
+
+bool SupportsAvx512F() {
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f);
 }
 
 bool SupportsVNNI() {
@@ -971,12 +984,12 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
-                        place, static_cast<cudaStreamCaptureMode>(mode));
+                        place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
@@ -1240,7 +1253,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             if (self.IsType<String>()) {
+             if (self.IsType<String>()) {  // NOLINT
                return py::bytes(*(self.GetMutable<String>()));
              } else {
                return py::bytes(
@@ -1801,7 +1814,7 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_device_type because you have installed"
+              "Cannot use get_all_device_type because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
@@ -1815,8 +1828,8 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_custom_device_type because you have installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "Cannot use get_all_custom_device_type because you have "
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
@@ -1829,7 +1842,7 @@ All parameter, weight, gradient are variables in Paddle.
     devices = phi::DeviceManager::GetAllDeviceList();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_available_device because you have installed"
+              "Cannot use get_available_device because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install"
               "CustomDevice version "
@@ -1844,8 +1857,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
@@ -1863,8 +1875,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_custom_device_count because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
               "install"
               "CustomDevice version "
@@ -2147,12 +2158,19 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
+  m.def("supports_avx512f", SupportsAvx512F);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_set_warmup", [](bool warmup) {
+#if defined(PADDLE_WITH_CUDA)
+    paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
+        .SetWarmup(warmup);
+#endif
   });
   m.def("_test_enforce_gpu_success", []() {
 #if defined(PADDLE_WITH_CUDA)
@@ -2229,7 +2247,7 @@ All parameter, weight, gradient are variables in Paddle.
            const std::string &var_name,
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
-          if (data_is_lod_tensor(var)) {
+          if (data_is_lod_tensor(var)) {  // NOLINT
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
@@ -2428,7 +2446,7 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
-  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
       .def_property_readonly(
@@ -3041,11 +3059,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CINN)
   BindTest(&m);
+  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindDistApi(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle

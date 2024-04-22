@@ -15,10 +15,12 @@
 #pragma once
 
 #include "paddle/pir/include/core/cast_utils.h"
+#include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_id.h"
 
 constexpr char kAttrStopGradients[] = "stop_gradient";
-constexpr char kAttrIsPersistable[] = "is_persistable";
+constexpr char kAttrIsPersistable[] = "persistable";
+constexpr char kAttrOpDistAttr[] = "op_dist_attr";
 
 namespace pir {
 class AttributeStorage;
@@ -87,6 +89,8 @@ class IR_API Attribute {
     return pir::dyn_cast<U>(*this);
   }
 
+  std::size_t hash() const { return std::hash<const void *>()(storage_); }
+
  protected:
   const Storage *storage_{nullptr};
 };
@@ -97,8 +101,6 @@ IR_API std::ostream &operator<<(std::ostream &os, Attribute attr);
 namespace std {
 template <>
 struct hash<pir::Attribute> {
-  std::size_t operator()(const pir::Attribute &obj) const {
-    return std::hash<const void *>()(obj);
-  }
+  std::size_t operator()(const pir::Attribute &obj) const { return obj.hash(); }
 };
 }  // namespace std

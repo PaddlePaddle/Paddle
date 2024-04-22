@@ -46,9 +46,12 @@ class CinnBufferAllocHelper {
   template <typename T>
   T* mutable_data(const Target& target) {
     if (target_ != cinn::common::UnkTarget()) {
-      CHECK_EQ(target, target_)
-          << "Cannot alloc twice, the memory had alloced at " << target_
-          << "! Please check.";
+      PADDLE_ENFORCE_EQ(
+          target,
+          target_,
+          phi::errors::AlreadyExists(
+              "Cannot alloc twice, the memory had alloced at %d! Please check.",
+              target_));
       return reinterpret_cast<T*>(buffer_->memory);
     }
 
@@ -59,12 +62,15 @@ class CinnBufferAllocHelper {
 #ifdef CINN_WITH_CUDA
       cudaMalloc(&buffer_->memory, buffer_->num_elements() * sizeof(T));
 #else
-      LOG(FATAL) << "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
-                    "Please check.";
+      PADDLE_THROW(phi::errors::Fatal(
+          "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
+          "Please check."));
 #endif
     } else {
-      LOG(FATAL) << "Only support nvgpu and cpu, but here " << target
-                 << "! Please check.";
+      std::stringstream ss;
+      ss << "Only support nvgpu and cpu, but here " << target
+         << "! Please check.";
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));
     }
 
     return reinterpret_cast<T*>(buffer_->memory);
@@ -73,7 +79,7 @@ class CinnBufferAllocHelper {
   template <typename T>
   const T* data() {
     if (target_ == cinn::common::UnkTarget()) {
-      LOG(FATAL) << "No memory had alloced! Please check.";
+      PADDLE_THROW(phi::errors::Fatal("No memory had alloced! Please check."));
     }
     return reinterpret_cast<const T*>(buffer_->memory);
   }
@@ -88,12 +94,15 @@ class CinnBufferAllocHelper {
 #ifdef CINN_WITH_CUDA
         cudaFree(buffer_->memory);
 #else
-        LOG(FATAL) << "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
-                      "Please check.";
+        PADDLE_THROW(phi::errors::Fatal(
+            "NVGPU Target only support on flag CINN_WITH_CUDA ON! "
+            "Please check."));
 #endif
       } else {
-        LOG(FATAL) << "Only support nvgpu and cpu, but here " << target_
-                   << "! Please check.";
+        std::stringstream ss;
+        ss << "Only support nvgpu and cpu, but here " << target_
+           << "! Please check.";
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       }
       delete buffer_;
     }
@@ -121,8 +130,8 @@ void SetInputValue(T* input,
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(input, input_h, num * sizeof(T), cudaMemcpyHostToDevice);
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }
@@ -132,7 +141,7 @@ TEST(CinnAssertTrue, test_true) {
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
-  // set inpute value true
+  // set input value true
   bool input_h = true;
   auto* input = x.mutable_data<bool>(target);
 
@@ -170,7 +179,7 @@ TEST(CinnAssertTrue, test_false_only_warning) {
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
-  // set inpute value false
+  // set input value false
   bool input_h = false;
   auto* input = x.mutable_data<bool>(target);
 
@@ -233,8 +242,8 @@ TEST(CustomCallGaussianRandom, test_target_nvgpu) {
       VLOG(6) << output_data[i];
     }
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }
@@ -269,8 +278,8 @@ TEST(CustomCallUniformRandom, test_target_nvgpu) {
       VLOG(6) << output_data[i];
     }
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   }
 }

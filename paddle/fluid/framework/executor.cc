@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -99,7 +99,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc,
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-  if (ancestor_scope != scope) {
+  if (ancestor_scope != scope) {  // NOLINT
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
         continue;
@@ -609,7 +609,7 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   }
 #else
   LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+      << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
 }  // namespace framework

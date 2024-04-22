@@ -35,11 +35,11 @@ class SplitOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) of SplitOp should not be null."));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Outputs(Out) of SplitOp should not be empty."));
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
     int num = static_cast<int>(ctx->Attrs().Get<int>("num"));
@@ -86,13 +86,13 @@ class SplitOp : public framework::OperatorWithKernel {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
         sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
       }
-      sections_final = std::move(phi::IntArray(sections_from_tensor));
+      sections_final = phi::IntArray(sections_from_tensor);
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
-      sections_final = std::move(phi::IntArray(std::vector<int>(
-          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1)));
+      sections_final = phi::IntArray(std::vector<int>(
+          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1));
       sections_final.SetFromTensor(true);
     } else {
-      sections_final = std::move(phi::IntArray(sections));
+      sections_final = phi::IntArray(sections);
     }
     if (!sections.empty()) {
       if (ctx->IsRuntime()) {
@@ -218,11 +218,11 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
 
     if (tensor_axis.is_initialized() || tensor_sections.is_initialized()) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "We don't support dynamic index or sections from tensor for split "
           "composite grad for now. "));
     } else {
-      VLOG(6) << "Runing split_grad composite func";
+      VLOG(6) << "Running split_grad composite func";
       prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
       this->RecoverOutputName(input_grad, dx_name);
     }

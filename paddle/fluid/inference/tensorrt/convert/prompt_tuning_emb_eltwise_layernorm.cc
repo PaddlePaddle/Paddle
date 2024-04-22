@@ -159,14 +159,14 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     engine_->DeleteITensor("pos_id", engine_->GetITensor("pos_id"));
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(plugin_layer,
-                             "PromptTuningEmbLayerNormVarlenPluginDynamicV1",
-                             {output_name,
-                              std::string("qkv_plugin_mask"),
-                              std::string("max_seqlen_tensor"),
-                              std::string("mask_id"),
-                              std::string("pos_id")},
-                             test_mode);
+    ReplenishLayerAndOutput(plugin_layer,
+                            "PromptTuningEmbLayerNormVarlenPluginDynamicV1",
+                            {output_name,
+                             std::string("qkv_plugin_mask"),
+                             std::string("max_seqlen_tensor"),
+                             std::string("mask_id"),
+                             std::string("pos_id")},
+                            test_mode);
   }
 };
 

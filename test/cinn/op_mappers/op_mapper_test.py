@@ -18,12 +18,11 @@ import logging
 import os
 import sys
 
-from cinn.common import is_compiled_with_cuda
-from cinn.framework import Scope
-from cinn.frontend import PaddleModelConvertor
-
 import paddle
 from paddle.base.layer_helper import LayerHelper
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.framework import Scope
+from paddle.cinn.frontend import PaddleModelConvertor
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
@@ -127,7 +126,7 @@ class OpMapperTest(OpTest):
         self.skip_outputs = self.skip_check_outputs()
         # dict of inplace var
         self.inplace_outputs = self.set_inplace_outputs()
-        # collect some important infomation
+        # collect some important information
         self.input_arg_map = self.__get_arguments_map(self.inputs)
         self.fetch_targets = []
         self.skip_check_list = []
@@ -169,7 +168,7 @@ class OpMapperTest(OpTest):
                 msg=f"The shape of input {var.name} in feed_data is error",
             )
             self.assertEqual(
-                self.paddleddtype2nptype(var.dtype),
+                self.paddledtype2nptype(var.dtype),
                 str(self.feed_data[name].dtype),
                 msg=f"The dtype of input {var.name} in feed_data is error",
             )
@@ -178,9 +177,7 @@ class OpMapperTest(OpTest):
             self.assertNotIn(
                 out_name,
                 self.output_dtypes,
-                msg="The {} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"".format(
-                    out_name
-                ),
+                msg=f"The {out_name} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"",
             )
             self.assertIn(
                 in_name,
@@ -219,12 +216,7 @@ class OpMapperTest(OpTest):
             if self.fetch_targets[i].name not in self.skip_check_list:
                 check_outputs.append(results[i])
                 logger.debug(
-                    msg="{}, shape={}, dtype={}:\n{}".format(
-                        self.fetch_targets[i].name,
-                        results[i].shape,
-                        str(results[i].dtype),
-                        results[i],
-                    )
+                    msg=f"{self.fetch_targets[i].name}, shape={results[i].shape}, dtype={str(results[i].dtype)}:\n{results[i]}"
                 )
 
         return check_outputs
@@ -312,7 +304,7 @@ class OpMapperTest(OpTest):
 
         for var_name, var in self.input_arg_map.items():
             convertor.create_input(
-                dtype=self.paddleddtype2nptype(var.dtype),
+                dtype=self.paddledtype2nptype(var.dtype),
                 shape=var.shape,
                 name=var_name,
             )
@@ -411,7 +403,7 @@ class OpMapperTest(OpTest):
         return vars
 
     @staticmethod
-    def paddleddtype2nptype(dtype):
+    def paddledtype2nptype(dtype):
         switch_map = {
             paddle.float16: "float16",
             paddle.float32: "float32",

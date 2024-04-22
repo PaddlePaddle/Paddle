@@ -184,8 +184,8 @@ std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
     const cinn::common::CINNValuePack &arg_pack,
     const std::vector<int> &output_shape,
     const cinn::common::Target &target) {
-  if (target.arch == Target::Arch::X86) {
-    CINN_NOT_IMPLEMENTED
+  if (!std::holds_alternative<common::NVGPUArch>(target.arch)) {
+    CINN_NOT_IMPLEMENTED;
   }
   std::vector<Expr> vec_ast;
   for (int i = 0; i < arg_pack.size(); i++) {
@@ -200,7 +200,7 @@ std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
   ir_sch.MergeExprs();
   // Generally, there are 2 ScheduleBlocks in the lowered function,
   // the first is for reduce_init and the second is the real compute block,
-  // here we use loops of the first block to Bind GPU index in top spatial axies
+  // here we use loops of the first block to Bind GPU index in top spatial axes
   auto init_block = ir_sch.GetAllBlocks().front();
   VLOG(3) << "Matmul lowered expr:\n" << ir_sch.GetModule().GetExprs().front();
 
@@ -611,7 +611,7 @@ void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
   }
 
   // bind block and thread for reduce.
-  // as outer loop range should be eqaul, get loop size.
+  // as outer loop range should be equal, get loop size.
   auto b_loop = ir::GetLoopExtent(ir_sch.GetLoops(out->name)[0]);
   // reduce_tmp_out
   {
@@ -784,7 +784,8 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       }
       return loop_var_count;
     }
-    LOG(FATAL) << "Can't find var in tensor indeces!";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Can't find var in tensor indexes!"));
   };
   auto loop_var_count = get_loop_index(ir_sch.GetLoops(reduce_out->name).back(),
                                        ir_sch.GetBlock(reduce_out->name));

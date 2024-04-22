@@ -30,6 +30,8 @@
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace lang {
 namespace detail {
@@ -106,7 +108,7 @@ Expr LowerGroup(const poly::ScheduleGroup& group,
   // poly::IslAstNodeToCinnExpr(ast, &e);
   poly::IslAstNodeToCinnExpr(ast, gen.domain(), &e);
   // now we get a workable expression, but the statement are something like
-  // `B(((16 * po0) + po1), po2)`, we need to transform this to some realworld
+  // `B(((16 * po0) + po1), po2)`, we need to transform this to some real world
   // statement in CINN.
 
   VLOG(1) << "ast to expr: \n" << e << std::endl;
@@ -584,7 +586,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
           for (auto& i : tensor_args_) {
             LOG(INFO) << i->name;
           }
-          LOG(FATAL) << "Fatal Error!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Fatal Error!"));
         }
         Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
       }
@@ -716,7 +718,13 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
   std::unordered_map<std::string, std::vector<Expr>> resized_buffer_cache;
 
   for (auto& group : schedule->groups) {
-    CHECK_GT(group.nodes.size(), 0) << "group is empty";
+    PADDLE_ENFORCE_GT(
+        group.nodes.size(),
+        0,
+        phi::errors::InvalidArgument(
+            "Group is empty"
+            "Expected size of group is larger than 0, but receive %d. ",
+            group.nodes.size()));
     bool all_temp_tensor = true;
     for (auto& node : group.nodes) {
       if (!tensor_map.count(node->id())) {

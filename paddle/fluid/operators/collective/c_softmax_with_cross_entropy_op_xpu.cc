@@ -15,17 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
@@ -83,8 +83,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const auto& logits_dims = logits->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
     framework::TensorCopy(
@@ -151,8 +151,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         N,
         0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
     if (label_type == framework::proto::VarType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
@@ -224,7 +224,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
-    int dims[4] = {N, D, N, 1};
+    int64_t dims[4] = {N, D, N, 1};
     ret = xpu::broadcast_div<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -278,7 +278,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -289,7 +289,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -313,8 +313,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const auto& logits_dims = logits->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
     framework::TensorCopy(
@@ -390,8 +390,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
         N,
         0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
     if (label_type == framework::proto::VarType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
@@ -485,7 +485,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     }
 
     {
-      int dims[4] = {N, D, N, 1};
+      int64_t dims[4] = {N, D, N, 1};
       ret = xpu::broadcast_div<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -540,11 +540,11 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
     }
     const auto softmax_dims = softmax->dims();
     const int axis = softmax_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, softmax_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, softmax_dims);
 
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     int ret = 0;
@@ -577,7 +577,6 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           XPU,

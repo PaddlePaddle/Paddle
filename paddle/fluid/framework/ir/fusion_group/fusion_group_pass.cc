@@ -37,7 +37,7 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
     // if (!phi::GPUDeviceCode::IsAvailable()) {
     //   LOG(WARNING)
     //       << "Disable fusion_group because CUDA Driver or NVRTC is not
-    //       avaiable.";
+    //       available.";
     //   return 0;
     // }
 

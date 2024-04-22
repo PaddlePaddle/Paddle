@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/block_argument.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation_utils.h"
@@ -19,8 +21,11 @@
 
 #include "paddle/common/enforce.h"
 
-#define CHECK_NULL_IMPL(func_name) \
-  IR_ENFORCE(impl_, "impl_ is null when called BlockArgument:" #func_name)
+#define CHECK_NULL_IMPL(func_name)  \
+  PADDLE_ENFORCE_NOT_NULL(          \
+      impl_,                        \
+      phi::errors::InvalidArgument( \
+          "impl_ is null when called BlockArgument:" #func_name))
 
 #define IMPL_ static_cast<detail::BlockArgumentImpl *>(impl_)
 
@@ -50,7 +55,15 @@ class BlockArgumentImpl : public ValueImpl {
 
  private:
   BlockArgumentImpl(Type type, Block *owner, uint32_t index)
-      : ValueImpl(type, BLOCK_ARG_IDX), owner_(owner), index_(index) {}
+      : ValueImpl(type, BLOCK_ARG_IDX),
+        owner_(owner),
+        index_(index),
+        is_kwarg_(false) {}
+  BlockArgumentImpl(Type type, Block *owner, const std::string &keyword)
+      : ValueImpl(type, BLOCK_ARG_IDX),
+        owner_(owner),
+        is_kwarg_(true),
+        keyword_(keyword) {}
 
   ~BlockArgumentImpl();
   // access construction and owner
@@ -58,12 +71,24 @@ class BlockArgumentImpl : public ValueImpl {
 
   AttributeMap attributes_;
   Block *owner_;
-  uint32_t index_;
+  uint32_t index_ = 0xFFFFFFFF;
+  bool is_kwarg_;
+  std::string keyword_ = "uninitialized_keyword";
 };
 
 BlockArgumentImpl::~BlockArgumentImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block argument that is still in use.";
+    if (is_kwarg_) {
+      PADDLE_FATAL(
+          "Destroyed a keyword block argument that is still in use. The key is "
+          ": %s",
+          keyword_);
+    } else {
+      PADDLE_FATAL(
+          "Destroyed a position block argument that is still in use. The index "
+          "is : %u",
+          index_);
+    }
   }
 }
 
@@ -85,6 +110,16 @@ uint32_t BlockArgument::index() const {
   return IMPL_->index_;
 }
 
+const std::string &BlockArgument::keyword() const {
+  CHECK_NULL_IMPL(keyword);
+  return IMPL_->keyword_;
+}
+
+bool BlockArgument::is_kwarg() const {
+  CHECK_NULL_IMPL(is_kwarg);
+  return IMPL_->is_kwarg_;
+}
+
 const AttributeMap &BlockArgument::attributes() const {
   CHECK_NULL_IMPL(attributes_);
   return IMPL_->attributes_;
@@ -100,6 +135,12 @@ void BlockArgument::set_attribute(const std::string &key, Attribute value) {
 
 BlockArgument BlockArgument::Create(Type type, Block *owner, uint32_t index) {
   return new detail::BlockArgumentImpl(type, owner, index);
+}
+
+BlockArgument BlockArgument::Create(Type type,
+                                    Block *owner,
+                                    const std::string &keyword) {
+  return new detail::BlockArgumentImpl(type, owner, keyword);
 }
 /// Destroy the argument.
 void BlockArgument::Destroy() {

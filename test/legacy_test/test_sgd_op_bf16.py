@@ -286,7 +286,7 @@ class TestSGDOpBF16API(unittest.TestCase):
         out_dtype = np.uint16 if bf16 else np.float32
         lookup_table_grad = np.zeros(self.w_shape, dtype=out_dtype)
 
-        # indexes may dupplicate
+        # indexes may duplicate
         if bf16:
             for i, idx in enumerate(data):
                 idxv = idx[0]

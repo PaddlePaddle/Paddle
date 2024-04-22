@@ -144,7 +144,6 @@ _OP_WITHOUT_KERNEL_SET = {
     'heter_listen_and_serv',
     'c_wait_comm',
     'c_wait_compute',
-    'copy_cross_scope',
 }
 
 
@@ -346,7 +345,6 @@ class ProgramConfig:
 
 def create_fake_model(program_config):
     '''Create a Paddle model(in memory) according to the given config.'''
-    paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
     program_config = copy.deepcopy(program_config)
     program_config._cast()
     paddle.enable_static()

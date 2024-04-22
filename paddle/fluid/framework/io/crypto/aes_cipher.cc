@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 
 #include <cryptopp/aes.h>
@@ -78,7 +65,7 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     return iv_ + ciphertext;
   }
@@ -109,7 +96,7 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
 
   return plaintext;
@@ -137,7 +124,7 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     ciphertext = iv_.append(ciphertext);
   }
@@ -168,7 +155,7 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
   PADDLE_ENFORCE_EQ(
       m_filter->GetLastResult(),

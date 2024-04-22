@@ -112,7 +112,7 @@ class Poisson(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of poisson distribuion.
+        """Mean of poisson distribution.
 
         Returns:
             Tensor: mean value.

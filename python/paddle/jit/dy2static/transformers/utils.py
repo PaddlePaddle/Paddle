@@ -499,7 +499,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
         def post_func():
             """NOTE: why we need merge w_vars and push_pop_vars here ?
-            because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
+            because we do ifelse_transformer after loop_transformer. Loops will changed into functions. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             control_flow_function_def = [
                 WHILE_BODY_PREFIX,

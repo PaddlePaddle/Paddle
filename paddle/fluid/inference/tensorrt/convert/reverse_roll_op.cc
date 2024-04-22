@@ -68,7 +68,7 @@ class ReverseRollOpConverter : public OpConverter {
           "ReverseROll TRT Plugin should run in dynamic shape."));
     }
     auto output_name = op_desc.Output("Out").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         reverse_roll_layer, "reverse_roll", {output_name}, test_mode);
   }
 };

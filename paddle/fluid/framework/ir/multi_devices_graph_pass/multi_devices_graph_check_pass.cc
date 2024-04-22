@@ -19,14 +19,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class SSAGraghBuilderWithChecker : public ir::Pass {
+class SSAGraphBuilderWithChecker : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
     PADDLE_ENFORCE_EQ(
         IsValidGraph(graph),
         true,
         platform::errors::InvalidArgument(
-            "In SSAGraghBuilderWithChecker, invalid Graph input."));
+            "In SSAGraphBuilderWithChecker, invalid Graph input."));
   }
 
   bool IsValidGraph(const ir::Graph *graph) const {
@@ -99,6 +99,6 @@ class SSAGraghBuilderWithChecker : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(multi_devices_check_pass,
-              paddle::framework::ir::SSAGraghBuilderWithChecker)
+              paddle::framework::ir::SSAGraphBuilderWithChecker)
     .RequireGraphAttr(paddle::framework::details::kGraphVars)
     .RequireGraphAttr(paddle::framework::details::kGraphDepVars);

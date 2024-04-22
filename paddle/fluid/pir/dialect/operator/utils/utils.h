@@ -136,6 +136,8 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const pir::Attribute& attr);
 
+paddle::any TransAttrToAny(const pir::Attribute& attr);
+
 bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
@@ -164,6 +166,14 @@ phi::DataType GetValueDataType(const pir::Value& value);
 
 std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
                                      bool* is_from_tensor);
+
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap();
+
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap();
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
+
+const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
 
 }  // namespace dialect
 }  // namespace paddle

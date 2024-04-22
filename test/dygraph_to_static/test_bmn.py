@@ -27,9 +27,7 @@ from dygraph_to_static_utils import (
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import base
 from paddle.base import ParamAttr
-from paddle.base.dygraph import to_variable
 from paddle.base.framework import unique_name
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -220,7 +218,7 @@ class BMN(paddle.nn.Layer):
             self.num_sample,
             self.num_sample_perbin,
         )
-        self.sample_mask = base.dygraph.base.to_variable(sample_mask)
+        self.sample_mask = paddle.to_tensor(sample_mask)
         self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = paddle.nn.Conv3D(
@@ -604,10 +602,10 @@ def val_bmn(model, args):
         gt_start = np.array([item[2] for item in data]).astype(DATATYPE)
         gt_end = np.array([item[3] for item in data]).astype(DATATYPE)
 
-        x_data = to_variable(video_feat)
-        gt_iou_map = to_variable(gt_iou_map)
-        gt_start = to_variable(gt_start)
-        gt_end = to_variable(gt_end)
+        x_data = paddle.to_tensor(video_feat)
+        gt_iou_map = paddle.to_tensor(gt_iou_map)
+        gt_start = paddle.to_tensor(gt_start)
+        gt_end = paddle.to_tensor(gt_end)
         gt_iou_map.stop_gradient = True
         gt_start.stop_gradient = True
         gt_end.stop_gradient = True
@@ -679,10 +677,10 @@ class TestTrain(Dy2StTestBase):
                         DATATYPE
                     )
 
-                    x_data = to_variable(video_feat)
-                    gt_iou_map = to_variable(gt_iou_map)
-                    gt_start = to_variable(gt_start)
-                    gt_end = to_variable(gt_end)
+                    x_data = paddle.to_tensor(video_feat)
+                    gt_iou_map = paddle.to_tensor(gt_iou_map)
+                    gt_start = paddle.to_tensor(gt_start)
+                    gt_end = paddle.to_tensor(gt_end)
                     gt_iou_map.stop_gradient = True
                     gt_start.stop_gradient = True
                     gt_end.stop_gradient = True
@@ -743,10 +741,7 @@ class TestTrain(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
+            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
             atol=1e-8,
         )
 
@@ -759,10 +754,7 @@ class TestTrain(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
+            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
             atol=1e-8,
         )
 
@@ -790,30 +782,21 @@ class TestTrain(Dy2StTestBase):
                     st_res,
                     dy_res,
                     rtol=1e-05,
-                    err_msg='dygraph_res: {},\n static_res: {}'.format(
-                        dy_res[~np.isclose(st_res, dy_res)],
-                        st_res[~np.isclose(st_res, dy_res)],
-                    ),
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     dy_jit_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                        st_res[~np.isclose(st_res, dy_jit_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     predictor_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        predictor_res[~np.isclose(st_res, predictor_res)],
-                        st_res[~np.isclose(st_res, predictor_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
                     atol=1e-8,
                 )
             break
@@ -826,7 +809,7 @@ class TestTrain(Dy2StTestBase):
             bmn.set_dict(model_dict)
             bmn.eval()
 
-            x = to_variable(data)
+            x = paddle.to_tensor(data)
             pred_res = bmn(x)
             pred_res = [var.numpy() for var in pred_res]
 
@@ -857,7 +840,7 @@ class TestTrain(Dy2StTestBase):
         bmn = paddle.jit.load(self.model_save_prefix)
         bmn.eval()
 
-        x = to_variable(data)
+        x = paddle.to_tensor(data)
         pred_res = bmn(x)
         pred_res = [var.numpy() for var in pred_res]
 

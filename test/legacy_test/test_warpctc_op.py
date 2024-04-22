@@ -17,6 +17,8 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 
 import paddle
@@ -110,7 +112,7 @@ class CTCForward:
         required_times = labels_a_sequence.shape[0]
         old_label = -1
         for i in range(labels_a_sequence.shape[0]):
-            # two contingous labels with the same value
+            # two contiguous labels with the same value
             if labels_a_sequence[i, 0] == old_label:
                 required_times = required_times + 1
             old_label = labels_a_sequence[i, 0]

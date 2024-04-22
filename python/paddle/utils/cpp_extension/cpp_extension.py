@@ -207,9 +207,7 @@ def setup(**attr):
         ext_modules = [ext_modules]
     assert (
         len(ext_modules) == 1
-    ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
-        len(ext_modules)
-    )
+    ), f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
     # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -488,7 +486,7 @@ class BuildExtension(build_ext):
                         cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=True
+                    cflags, self.compiler.compiler_type, use_std17=True
                 )
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
@@ -589,7 +587,7 @@ class BuildExtension(build_ext):
             finally:
                 self.compiler.spawn = original_spawn
 
-        def object_filenames_with_cuda(origina_func, build_directory):
+        def object_filenames_with_cuda(original_func, build_directory):
             """
             Decorated the function to add customized naming mechanism.
             Originally, both .cc/.cu will have .o object output that will
@@ -598,7 +596,7 @@ class BuildExtension(build_ext):
 
             def wrapper(source_filenames, strip_dir=0, output_dir=''):
                 try:
-                    objects = origina_func(
+                    objects = original_func(
                         source_filenames, strip_dir, output_dir
                     )
                     for i, source in enumerate(source_filenames):
@@ -618,7 +616,7 @@ class BuildExtension(build_ext):
                     # ensure to use abspath
                     objects = [os.path.abspath(obj) for obj in objects]
                 finally:
-                    self.compiler.object_filenames = origina_func
+                    self.compiler.object_filenames = original_func
 
                 return objects
 
@@ -910,9 +908,7 @@ def load(
     ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
-    ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
-        extra_cuda_cflags
-    )
+    ), f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(

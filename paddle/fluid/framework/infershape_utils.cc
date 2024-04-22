@@ -559,16 +559,15 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   for (auto& in_name : input_names) {
     if (ctx->HasInputs(in_name)) {
-      auto input_var = std::move(ctx->GetInputVarPtrs(in_name));
+      auto input_var = ctx->GetInputVarPtrs(in_name);
       if (input_var.size() == 1) {
         infer_meta_context.EmplaceBackInput(
-            std::move(CompatMetaTensor(input_var[0], ctx->IsRuntime())));
+            CompatMetaTensor(input_var[0], ctx->IsRuntime()));
       } else {
         paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
             inputs;
         for (const auto& in : input_var) {
-          inputs.emplace_back(
-              std::move(CompatMetaTensor(in, ctx->IsRuntime())));
+          inputs.emplace_back(CompatMetaTensor(in, ctx->IsRuntime()));
         }
         infer_meta_context.EmplaceBackInputs(std::move(inputs));
       }
@@ -576,8 +575,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       // Note: Because the input of InferMetaFn is const MetaTensor&,
       // so when we prepare input MetaTensor by InferMetaContext->InputAt(),
       // we need to return a const reference of empty MetaTensor
-      infer_meta_context.EmplaceBackInput(
-          std::move(CompatMetaTensor(ctx->IsRuntime())));
+      infer_meta_context.EmplaceBackInput(CompatMetaTensor(ctx->IsRuntime()));
     }
   }
 
@@ -631,7 +629,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   attr_name));
           }
         } else if (ctx->HasInput(attr_name)) {
-          auto infershape_input = std::move(ctx->GetInputVarPtrs(attr_name));
+          auto infershape_input = ctx->GetInputVarPtrs(attr_name);
           if (infershape_input.size() == 1) {
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
@@ -658,13 +656,13 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
-            case framework::proto::AttrType::INTS:
-              infer_meta_context.EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
+            case framework::proto::AttrType::INTS:  // NOLINT
+              infer_meta_context.EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr)));
               break;
             case framework::proto::AttrType::LONGS:
-              infer_meta_context.EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr))));
+              infer_meta_context.EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr)));
               break;
             case framework::proto::AttrType::INT:
               infer_meta_context.EmplaceBackAttr(
@@ -677,7 +675,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   attr_name));
           }
         } else if (ctx->HasInputs(attr_name) || ctx->HasInput(attr_name)) {
-          auto infershape_inputs = std::move(ctx->GetInputVarPtrs(attr_name));
+          auto infershape_inputs = ctx->GetInputVarPtrs(attr_name);
           if (ctx->IsRuntime()) {
             // If is in runtime, we will get tensor's value for IntArray
             // and push it into attrs
@@ -688,10 +686,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             }
             if (infershape_inputs.size() != 1) {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(framework::MakePhiIntArrayFromVarList(vars)));
+                  framework::MakePhiIntArrayFromVarList(vars));
             } else {
               infer_meta_context.EmplaceBackAttr(
-                  std::move(framework::MakePhiIntArrayFromVar(*vars[0])));
+                  framework::MakePhiIntArrayFromVar(*vars[0]));
             }
           } else {
             // If is not in runtime, we will set default value(-1) for IntArray
@@ -836,7 +834,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                       attr_names[i]));
               }
               break;
-            case phi::AttributeType::FLOAT32S:
+            case phi::AttributeType::FLOAT32S:  // NOLINT
               infer_meta_context.EmplaceBackAttr(
                   PADDLE_GET_CONST(std::vector<float>, attr));
               break;
@@ -859,7 +857,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   attr_names[i]));
           }
         } else {
-          // do nothing, skip currnet attr
+          // do nothing, skip current attr
         }
     }
   }
@@ -868,32 +866,29 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   for (auto& out_name : output_names) {
     if (ctx->HasOutputs(out_name, true)) {
-      auto output_var = std::move(ctx->GetOutputVarPtrs(out_name));
+      auto output_var = ctx->GetOutputVarPtrs(out_name);
       if (output_var.size() == 1) {
         infer_meta_context.EmplaceBackOutput(
-            std::move(CompatMetaTensor(output_var[0], ctx->IsRuntime())));
+            CompatMetaTensor(output_var[0], ctx->IsRuntime()));
       } else {
         paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
             outputs;
         for (const auto& out : output_var) {
           if (ctx->IsRuntime()) {
             if (PADDLE_GET_CONST(Variable*, out)) {
-              outputs.emplace_back(
-                  std::move(CompatMetaTensor(out, ctx->IsRuntime())));
+              outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
               continue;
             }
           } else if (PADDLE_GET_CONST(VarDesc*, out)) {
-            outputs.emplace_back(
-                std::move(CompatMetaTensor(out, ctx->IsRuntime())));
+            outputs.emplace_back(CompatMetaTensor(out, ctx->IsRuntime()));
             continue;
           }
-          outputs.emplace_back(std::move(CompatMetaTensor(ctx->IsRuntime())));
+          outputs.emplace_back(CompatMetaTensor(ctx->IsRuntime()));
         }
         infer_meta_context.EmplaceBackOutputs(std::move(outputs));
       }
     } else {
-      infer_meta_context.EmplaceBackOutput(
-          std::move(CompatMetaTensor(ctx->IsRuntime())));
+      infer_meta_context.EmplaceBackOutput(CompatMetaTensor(ctx->IsRuntime()));
     }
   }
 

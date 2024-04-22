@@ -115,7 +115,7 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetPinnedAllocator() const;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
    * @brief Set the CUDA graph Allocator object.
    *
@@ -152,9 +152,9 @@ class PADDLE_API DeviceContext {
                       bool fake_alloc = false) const;
 
   template <typename T>
-  T* Alloc(TensorBase* tensor,
-           size_t requested_size = 0,
-           bool pinned = false) const;
+  TEST_API T* Alloc(TensorBase* tensor,
+                    size_t requested_size = 0,
+                    bool pinned = false) const;
 
   /**
    * @brief Allocate host memory for tensor.

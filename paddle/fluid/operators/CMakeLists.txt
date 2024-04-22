@@ -19,12 +19,10 @@ add_subdirectory(controlflow)
 add_subdirectory(detection)
 add_subdirectory(elementwise)
 add_subdirectory(fused)
-add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(string)
-add_subdirectory(prim_ops)
 
 
 if(WITH_DISTRIBUTE)
@@ -34,8 +32,6 @@ endif()
 if (WITH_PSCORE)
     add_subdirectory(pscore)
 endif()
-
-add_subdirectory(amp)
 
 add_subdirectory(reader)
 
@@ -49,10 +45,6 @@ endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)
-endif()
-
-if (WITH_LITE)
-    add_subdirectory(lite)
 endif()
 
 if(WITH_CINN)
@@ -79,7 +71,6 @@ endif()
 SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} match_matrix_tensor_op)
-    SET(OP_MKL_DEPS ${OP_MKL_DEPS} var_conv_2d_op)
 endif()
 if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
@@ -104,10 +95,6 @@ op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
     register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})
-endif()
-
-if (WITH_MKLDNN)
-    register_mkldnn_kernel(layer_norm_op SRCS layer_norm_mkldnn_op.cc DEPS ${OP_HEADER_DEPS})
 endif()
 
 if (WITH_GPU OR WITH_ROCM)

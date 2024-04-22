@@ -25,12 +25,14 @@
 namespace cinn {
 namespace optim {
 
-void LowerIntrin(Expr *e, Target target) {
-  if (target.arch == Target::Arch::X86) {
-    codegen::RegisterCpuIntrinRule();
-  } else {
-    return;
-  }
+template <typename T>
+void LowerIntrinImpl(const T &, const Target &target, Expr *e) {
+  // Do nothing.
+}
+
+void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
+  codegen::RegisterCpuIntrinRule();
+
   struct Mutator : ir::IRMutator<Expr *> {
     Target target;
 
@@ -69,10 +71,10 @@ void LowerIntrin(Expr *e, Target target) {
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
       CHECK(node);
-      LowerCpuintrinsicOp(node, expr);
+      LowerCpuIntrinsicOp(node, expr);
     }
 
-    void LowerCpuintrinsicOp(ir::Call *op, Expr *expr) {
+    void LowerCpuIntrinsicOp(ir::Call *op, Expr *expr) {
       auto *node = expr->As<ir::Call>();
       if (kIntrinsicCalls.count(node->name)) {
         CHECK(!node->name.empty());
@@ -97,6 +99,16 @@ void LowerIntrin(Expr *e, Target target) {
 
   Mutator m(target);
   m(e);
+}
+
+void LowerIntrinByArch(Expr *e, const Target &target) {
+  return std::visit(
+      [&](const auto &impl) { return LowerIntrinImpl(impl, target, e); },
+      target.arch.variant());
+}
+
+void LowerIntrin(Expr *e, Target target) {
+  return LowerIntrinByArch(e, target);
 }
 
 }  // namespace optim

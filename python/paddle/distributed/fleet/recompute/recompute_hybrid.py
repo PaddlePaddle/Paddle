@@ -22,7 +22,7 @@ from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
     detach_variable,
-    swith_rng_state_tracker,
+    switch_rng_state_tracker,
 )
 
 __all__ = []
@@ -38,9 +38,7 @@ def _split_activation(tensor, mp_group):
     assert tensor_numel != 0, "can't recompute zero element"
     assert (
         tensor_numel % mp_degree == 0
-    ), "The capacity of the activation ({}) cannot be divisible by mp_degree({})".format(
-        tensor_numel, mp_degree
-    )
+    ), f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
 
     # use inplace operation to save memory
     data = tensor.flatten_()
@@ -198,7 +196,7 @@ class _HPRecomputeFunction(PyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with swith_rng_state_tracker(
+            with switch_rng_state_tracker(
                 ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
             ):
                 if ctx.is_fw_autocast:

@@ -103,7 +103,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
             - 1: sync_calc
             - 2: reduce_sum_sharding (allreduce --> reduce)
             - 3: sync_comm
-            - 4: allreuce_sum_dp (dp_grads)
+            - 4: allreduce_sum_dp (dp_grads)
             - 5: sync_comm (dp_grads)
             - 6: op that use Var (dp_grads & sum)
 
@@ -215,9 +215,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                             f"after allreduce the Var: {input_name}"
                         )
                     raise ValueError(
-                        "The reduce output grad [{}] should NOT be be used in Non-root rank.".format(
-                            input_name
-                        )
+                        f"The reduce output grad [{input_name}] should NOT be be used in Non-root rank."
                     )
                 if input_name in dp_grads_status:
                     if dp_ring_id == -1:

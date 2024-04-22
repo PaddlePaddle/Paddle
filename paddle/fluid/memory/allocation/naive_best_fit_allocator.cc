@@ -23,9 +23,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -298,7 +298,7 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    platform::CUDADeviceGuard(place.device);
+    platform::CUDADeviceGuard guard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
@@ -459,6 +459,9 @@ class BuddyAllocatorList {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
+      VLOG(10) << "Init BuddyAllocator on " << place
+               << " with GetExtraPaddingSize "
+               << phi::DeviceManager::GetExtraPaddingSize(place);
       allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),

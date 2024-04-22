@@ -33,8 +33,8 @@ class CVMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
-            "Input(X)'s rank should be 2, but got %d", x_dims.size()));
+        phi::errors::InvalidArgument("Input(X)'s rank should be 2, but got %d",
+                                     x_dims.size()));
 
     if (ctx->Attrs().Get<bool>("use_cvm")) {
       ctx->SetOutputDim("Y", {x_dims[0], x_dims[1]});
@@ -77,23 +77,23 @@ class CVMGradientOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 2, but got %d", x_dims.size()));
+        phi::errors::InvalidArgument("Expect Input(X)'s rank == 2, but got %d",
+                                     x_dims.size()));
     PADDLE_ENFORCE_EQ(
         dy_dims.size(),
         2,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 2, but got %d", dy_dims.size()));
+        phi::errors::InvalidArgument("Expect Input(X)'s rank == 2, but got %d",
+                                     dy_dims.size()));
     PADDLE_ENFORCE_EQ(
         cvm_dims.size(),
         2,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 2, but got %d", cvm_dims.size()));
+        phi::errors::InvalidArgument("Expect Input(X)'s rank == 2, but got %d",
+                                     cvm_dims.size()));
 
     PADDLE_ENFORCE_EQ(
         x_dims[0],
         dy_dims[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The 1st dimension of Input(X) and Input(Y@Grad) should "
             "be equal, X is %d, Y@Grad is %d",
             x_dims[0],
@@ -102,7 +102,7 @@ class CVMGradientOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         cvm_dims[1],
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "When Attr(soft_label) == false, the 2nd dimension of "
             "Input(CVM) should be 2, but got %d cvm_dims[1]"));
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -127,7 +127,7 @@ class CVMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
              "[N x D],"
-             " where N is the batch size and D is the emebdding dim. ");
+             " where N is the batch size and D is the embedding dim. ");
     AddInput("CVM",
              "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
              "size, 2 is show and click.");

@@ -363,6 +363,20 @@ OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   return *this;
 }
 
+bool OpMetaInfo::IsDoubleGradOp() const {
+  if (name_.find("_grad_grad") != name_.npos) {
+    return true;
+  }
+  return false;
+}
+
+bool OpMetaInfo::IsGradOp() const {
+  if (!IsDoubleGradOp() && name_.find("_grad") != name_.npos) {
+    return true;
+  }
+  return false;
+}
+
 #ifdef PADDLE_WITH_TENSORRT
 OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func) {
   trt_infer_shape_fn_ = std::forward<TrtGetOutputDimsFunc>(func);
@@ -596,8 +610,8 @@ extern "C" {
 
 #ifndef _WIN32
 // C-API to get global OpMetaInfoMap.
-paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
-  return paddle::OpMetaInfoMap::Instance();
+paddle::OpMetaInfoMap* PD_GetOpMetaInfoMap() {
+  return &paddle::OpMetaInfoMap::Instance();
 }
 #endif
 

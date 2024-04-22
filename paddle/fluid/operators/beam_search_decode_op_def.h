@@ -27,7 +27,7 @@ using LoDTensorArray = framework::LoDTensorArray;
 
 // all the lod have 2 levels.
 // The first is source level, the second is sentence level.
-// source level describe how many prefixes (branchs) for each source sentence
+// source level describe how many prefixes (branches) for each source sentence
 // (beam). sentence level describe how these candidates belong to the prefixes.
 const size_t kSourceLevel = 0;
 const size_t kSentenceLevel = 1;
@@ -90,7 +90,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   PADDLE_ENFORCE_NE(
       src_num,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "src_num is the sequence number of the first decoding step"
           ", indicating by Input(Ids)[0].lod[0].size."
           "src_num has wrong value."
@@ -162,12 +162,12 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
   PADDLE_ENFORCE_NE(
       step_ids.empty(),
       true,
-      platform::errors::InvalidArgument("Input(Ids) should not be empty."
-                                        "But the Input(Ids) is empty."));
+      phi::errors::InvalidArgument("Input(Ids) should not be empty."
+                                   "But the Input(Ids) is empty."));
   PADDLE_ENFORCE_EQ(
       step_ids.size(),
       step_scores.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of Input(Ids) and Input(Scores) should be "
           "the same. But the size of Input(Ids) and Input(Scores) "
           "are not equal."));

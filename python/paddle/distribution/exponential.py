@@ -83,7 +83,7 @@ class Exponential(exponential_family.ExponentialFamily):
 
     @property
     def mean(self):
-        """Mean of exponential distribuion.
+        """Mean of exponential distribution.
 
         Returns:
             Tensor: mean value.
@@ -134,7 +134,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return -paddle.log(uniform) / self.rate
 
     def prob(self, value):
-        r"""Probability density funciotn evaluated at value.
+        r"""Probability density function evaluated at value.
 
         .. math::
 

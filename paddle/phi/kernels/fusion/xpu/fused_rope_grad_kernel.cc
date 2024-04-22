@@ -28,10 +28,11 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
+                         bool time_major,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   if (dout_q.numel() <= 0) {
     return;
   }
@@ -47,8 +48,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t sin_cos_len = batch_size * seq_len * head_dim;
-  auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
-  auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
+  auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+  auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
 
   if (sin.get_ptr() && cos.get_ptr()) {
     PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
@@ -60,9 +61,9 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                           cos.get_ptr()->dims()));
   }
 
-  XPUGetSinCosData<XPUT, Context>(
+  XPUGetSinCosData<XPUType, Context>(
       dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
-  XPUGetSinCosData<XPUT, Context>(
+  XPUGetSinCosData<XPUType, Context>(
       dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
 
   if (use_neox_rotary_style) {
@@ -71,39 +72,58 @@ void FusedRopeGradKernel(const Context& dev_ctx,
         phi::errors::Unimplemented("XPU do not support rotary_embedding_grad "
                                    "with use_neox_rotary_style set."));
   } else {
-    auto* dq_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(dq));
-    XPUFusedRotaryHalf<XPUT, Context>(
-        dev_ctx,
-        reinterpret_cast<const XPUT*>(dout_q.data<T>()),
-        sin_data,
-        cos_data,
-        dq_data,
-        batch_size,
-        seq_len,
-        num_heads,
-        head_dim,
-        true);
-
-    if (dout_k.get_ptr()) {
-      auto* dk_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(dk));
-      XPUFusedRotaryHalf<XPUT, Context>(
-          dev_ctx,
-          reinterpret_cast<const XPUT*>(dout_k->data<T>()),
+    if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && dout_k) {
+      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
+      auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
+      int ret = xpu::rotary_no_freqs_qk_embedding_v2_grad<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
+          reinterpret_cast<const XPUType*>(dout_k->data<T>()),
           sin_data,
           cos_data,
+          dq_data,
           dk_data,
+          {batch_size, seq_len, num_heads, head_dim},
+          {batch_size, seq_len, 1, head_dim},
+          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
+          {seq_len * head_dim, head_dim, head_dim, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2_grad");
+    } else {
+      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
+      XPUFusedRotaryHalf<XPUType, Context>(
+          dev_ctx,
+          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
+          sin_data,
+          cos_data,
+          dq_data,
           batch_size,
           seq_len,
           num_heads,
           head_dim,
           true);
+
+      if (dout_k.get_ptr()) {
+        auto* dk_data =
+            reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
+        XPUFusedRotaryHalf<XPUType, Context>(
+            dev_ctx,
+            reinterpret_cast<const XPUType*>(dout_k->data<T>()),
+            sin_data,
+            cos_data,
+            dk_data,
+            batch_size,
+            seq_len,
+            num_heads,
+            head_dim,
+            true);
+      }
     }
 
     if (dout_v.get_ptr()) {
-      auto* dv_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(dv));
-      XPUFusedRotaryHalf<XPUT, Context>(
+      auto* dv_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dv));
+      XPUFusedRotaryHalf<XPUType, Context>(
           dev_ctx,
-          reinterpret_cast<const XPUT*>(dout_v->data<T>()),
+          reinterpret_cast<const XPUType*>(dout_v->data<T>()),
           sin_data,
           cos_data,
           dv_data,

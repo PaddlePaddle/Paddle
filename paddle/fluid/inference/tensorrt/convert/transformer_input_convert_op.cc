@@ -51,10 +51,10 @@ class TransformerInputConvert : public OpConverter {
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(&input, input_num, plugin);
 
-    RreplenishLayerAndOutput(layer,
-                             "transformer_input_convert",
-                             {pos_id_name, max_seqlen_name},
-                             test_mode);
+    ReplenishLayerAndOutput(layer,
+                            "transformer_input_convert",
+                            {pos_id_name, max_seqlen_name},
+                            test_mode);
   }
 };
 

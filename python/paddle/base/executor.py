@@ -268,9 +268,7 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                    var.name, var_dtype_format, feed_dtype_format
-                )
+                f'The data type of fed Variable {var.name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
             )
     return True
 
@@ -318,9 +316,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                name, var_dtype_format, feed_dtype_format
-            )
+            f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
 
@@ -739,7 +735,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise TypeError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
                     "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
@@ -1093,7 +1089,7 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p)
+                pm.add_pass(p, {})
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
@@ -1455,9 +1451,7 @@ class Executor:
             elif isinstance(item, tuple):
                 if not isinstance(item[0], (list, tuple)):
                     raise TypeError(
-                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".format(
-                            index, index, index, type(item[0]).__name__
-                        )
+                        f"Requires fetch_list[{index}][0] shall be one of (list, tuple) when type(fetch_list[{index}]) is `tuple`, but received fetch_list[{index}][0]'s type is `{type(item[0]).__name__}`."
                     )
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
@@ -1675,7 +1669,7 @@ class Executor:
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
-                :code:`use_prune` will be overrided to True, and the program will be pruned.
+                :code:`use_prune` will be overridden to True, and the program will be pruned.
 
         Returns:
 
@@ -1880,7 +1874,7 @@ class Executor:
         if scope is None:
             scope = global_scope()
 
-        # use_prune can be overrided by putting optimize_ops in fetch_list
+        # use_prune can be overridden by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
         _origin_program = program
         fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
@@ -2142,8 +2136,8 @@ class Executor:
 
         assert is_tuple_list(fetch_list), (
             "Currently , The fetch_list type only should be list or tuple, \n"
-            "but the input type is {}. For more information please refer to \n"
-            "the executor.run(...).".format(type(fetch_list))
+            f"but the input type is {type(fetch_list)}. For more information please refer to \n"
+            "the executor.run(...)."
         )
 
         res = []
@@ -2158,9 +2152,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
-                        i, type(var).__name__
-                    )
+                    f"Require fetch_list[{i}] 's type shall be one of (Value, str), but received {type(var).__name__}."
                 )
 
         return res

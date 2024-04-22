@@ -104,7 +104,7 @@ void IndexPutKernel(const Context& dev_ctx,
     return;
   }
 
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto out_data = dev_ctx.template Alloc<T>(out);
   auto bd_dims = funcs::BroadCastTensorsDims(int_indices_v);
   DenseTensor res_indices(DataType::INT64);
@@ -133,15 +133,15 @@ void IndexPutKernel(const Context& dev_ctx,
     value_data = value_bd.data<T>();
   }
 
-  int r =
-      xpu::index_put<XPUT, int64_t>(dev_ctx.x_context(),
-                                    reinterpret_cast<const XPUT*>(x.data<T>()),
-                                    reinterpret_cast<const XPUT*>(value_data),
-                                    res_indices.data<int64_t>(),
-                                    reinterpret_cast<XPUT*>(out_data),
-                                    x_shape,
-                                    index_shape,
-                                    accumulate);
+  int r = xpu::index_put<XPUType, int64_t>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(x.data<T>()),
+      reinterpret_cast<const XPUType*>(value_data),
+      res_indices.data<int64_t>(),
+      reinterpret_cast<XPUType*>(out_data),
+      x_shape,
+      index_shape,
+      accumulate);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_put");
   if (dev_ctx.x_context()->xpu_stream) {
     dev_ctx.Wait();

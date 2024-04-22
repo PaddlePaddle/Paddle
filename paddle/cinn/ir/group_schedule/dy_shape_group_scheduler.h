@@ -28,8 +28,9 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   DynamicShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const cinn::common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {
+      const cinn::common::Target& target,
+      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info)
+      : GroupScheduler(ir_sch, output_tensor_names, target, group_info) {
     Init();
   }
 

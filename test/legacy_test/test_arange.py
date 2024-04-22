@@ -59,7 +59,7 @@ class TestFloatArangeOp(TestArangeOp):
         self.case = (0, 5, 1)
 
 
-class TestFloa16ArangeOp(TestArangeOp):
+class TestFloat16ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.float16
         self.python_api = paddle.arange

@@ -134,8 +134,8 @@ class GLU(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input: Tensor which the size of the given aixs is even.
-        - output: Tensor which the size of the given aixs is halved.
+        - input: Tensor which the size of the given axis is even.
+        - output: Tensor which the size of the given axis is halved.
 
     Examples:
         .. code-block:: python
@@ -502,13 +502,7 @@ class PReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
-            self._num_parameters,
-            self._data_format,
-            self._init,
-            self._dtype,
-            name_str,
-        )
+        return f'num_parameters={self._num_parameters}, data_format={self._data_format}, init={self._init}, dtype={self._dtype}{name_str}'
 
 
 class RReLU(Layer):
@@ -597,9 +591,7 @@ class RReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
-            self._lower, self._upper, self.training, self._dtype, name_str
-        )
+        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{name_str}'
 
 
 class ReLU(Layer):
@@ -799,7 +791,7 @@ class LeakyReLU(Layer):
 
 class Sigmoid(Layer):
     r"""
-    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
+    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calculate the `sigmoid` of input x.
 
     .. math::
 
@@ -842,8 +834,8 @@ class Sigmoid(Layer):
 
 class Hardsigmoid(Layer):
     r"""
-    ``Hardsigmoid`` Activiation Layers, Construct a callable object of
-    the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
+    ``Hardsigmoid`` Activation Layers, Construct a callable object of
+    the ``Hardsigmoid`` class. This layer calculate the `hardsigmoid` of input x.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.

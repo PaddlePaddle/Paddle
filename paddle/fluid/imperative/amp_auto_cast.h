@@ -45,7 +45,7 @@ class Tracer;
 // Singleton implementation with C++ 11
 class AmpOperators {
  public:
-  ~AmpOperators();
+  ~AmpOperators() = default;
   AmpOperators(const AmpOperators& o) = delete;
   const AmpOperators& operator=(const AmpOperators& o) = delete;
 

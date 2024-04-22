@@ -275,7 +275,7 @@ void PD_EnableDlnne(
     int max_batch_size,
     bool use_static_batch,
     std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::unordered_set<std::string> disable_nodes_by_outputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
     PD_ACPrecision precision_mode) {
@@ -287,7 +287,7 @@ void PD_EnableDlnne(
                              max_batch_size,
                              use_static_batch,
                              weight_share_mode,
-                             disable_nodes_by_ouputs,
+                             disable_nodes_by_outputs,
                              dlnne_input_shape_dict,
                              use_calib_mode,
                              precision_mode);

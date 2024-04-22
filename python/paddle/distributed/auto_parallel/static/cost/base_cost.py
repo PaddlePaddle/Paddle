@@ -784,7 +784,7 @@ class CommOpCost(OpCost):
             shape = None
             if self.op is not None:
                 vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
+                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
                 try:
                     var_name = self.op.input("X")[0]
                 except:
@@ -873,9 +873,7 @@ class CompOpCost(OpCost):
         if cls.OP_TYPE != "COMP":
             if cls.OP_TYPE in NON_COMP_TYPE:
                 raise TypeError(
-                    "Please Check op type not in {}, but got {}.".format(
-                        NON_COMP_TYPE, cls.OP_TYPE
-                    )
+                    f"Please Check op type not in {NON_COMP_TYPE}, but got {cls.OP_TYPE}."
                 )
 
     def calc_flops(self):

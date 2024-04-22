@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distributed.communication import stream
 from paddle.distributed.communication.reduce import ReduceOp
 from paddle.distributed.communication.stream.reduce_scatter import (
@@ -30,7 +31,7 @@ def reduce_scatter(
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         tensor_list (List[Tensor]]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD|ReduceOp.AVG, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
 
@@ -61,6 +62,22 @@ def reduce_scatter(
             >>> # [8, 10] (2 GPUs, out for rank 1)
 
     """
+    # AVG is only supported when nccl >= 2.10
+    if op == ReduceOp.AVG and paddle.base.core.nccl_version() < 21000:
+        group = (
+            paddle.distributed.collective._get_global_group()
+            if group is None
+            else group
+        )
+        tensor.scale_(1.0 / group.nranks)
+        return stream.reduce_scatter(
+            tensor,
+            tensor_list,
+            op=ReduceOp.SUM,
+            group=group,
+            sync_op=sync_op,
+            use_calc_stream=False,
+        )
     return stream.reduce_scatter(
         tensor,
         tensor_list,

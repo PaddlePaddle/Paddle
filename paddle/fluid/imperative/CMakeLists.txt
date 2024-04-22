@@ -52,7 +52,6 @@ cc_library(
        variable_helper
        op_registry
        var_helper)
-add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
@@ -73,7 +72,6 @@ cc_library(
   SRCS tracer.cc
   DEPS layer
        engine
-       program_desc_tracer
        amp
        denormal
        garbage_collector
@@ -81,7 +79,8 @@ cc_library(
        layout_autotune
        ops_extra_info
        phi
-       common)
+       common
+       global_utils)
 cc_library(
   basic_engine
   SRCS basic_engine.cc

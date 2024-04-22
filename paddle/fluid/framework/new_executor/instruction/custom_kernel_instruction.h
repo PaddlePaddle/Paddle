@@ -25,29 +25,6 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-
-void CheckDefaultInferShapeDtype(paddle::InferShapeFunc infershape_func,
-                                 paddle::InferDtypeFunc inferdtype_func,
-                                 const paddle::OpMetaInfo& custom_op_meta);
-
-std::vector<std::vector<int64_t>> RunInferShape(
-    paddle::InferShapeFunc infershape_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs);
-
-std::vector<DataType> RunInferDtype(
-    paddle::InferDtypeFunc inferdtype_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<DataType>& input_dtypes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<DataType>>& vec_input_dtypes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs);
-
 class CustomKernelInstruction : public InstructionBase {
  public:
   CustomKernelInstruction(size_t id,

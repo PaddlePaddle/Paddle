@@ -66,7 +66,7 @@ class GridSamplerOpConverter : public OpConverter {
     layer->setSampleMode(sampleMode);
     layer->setAlignCorners(align_corners);
 
-    RreplenishLayerAndOutput(layer, "grid_sampler", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "grid_sampler", {output_name}, test_mode);
 #else
     VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5.1";
 #endif

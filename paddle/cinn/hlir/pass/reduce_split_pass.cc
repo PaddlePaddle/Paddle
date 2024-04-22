@@ -71,7 +71,7 @@ uint32_t NextPowerOf2(uint32_t n) {
 
 class ReduceSplitPass {
  public:
-  // Find the reduce op with nwhc format and large shape, split it into two ops
+  // Find the reduce op with NWHC format and large shape, split it into two ops
   static int Apply(framework::Graph* graph) {
     int MAX_NUM_THREADS = cinn::common::DefaultNVGPUTarget().max_num_threads();
     constexpr int MAX_ITER_PER_THREAD = 32;  // empirical value

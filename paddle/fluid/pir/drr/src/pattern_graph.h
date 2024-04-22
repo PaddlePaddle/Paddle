@@ -57,7 +57,7 @@ class PatternGraph {
   }
 
   const std::unordered_map<std::string, std::shared_ptr<Tensor>>&
-  id2owend_tensor() const {
+  id2owned_tensor() const {
     return id2owned_tensor_;
   }
 
@@ -72,8 +72,6 @@ std::ostream& operator<<(std::ostream& os, const PatternGraph& pattern_graph);
 
 class SourcePatternGraph : public PatternGraph {
  public:
-  OpCall* AnchorNode() const;
-
   std::unordered_set<const OpCall*> OutputNodes() const;
 
  private:

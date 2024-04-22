@@ -106,7 +106,7 @@ class GradOpDescMakerBase {
             "BUG from operator developer:"
             " for input argument with a list of variables, "
             " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
+            " the correspondence between a variable and its gradient"
             " ambiguous."));
 
     std::vector<std::string> dropped_ret_val;

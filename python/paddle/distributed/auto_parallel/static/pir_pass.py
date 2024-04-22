@@ -1,0 +1,70 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import paddle
+
+from .reshard_funcs.base_reshard_func import (
+    choose_reshard_func,
+)
+from .reshard_funcs.reshard_func_register import register_reshard_funcs
+
+register_reshard_funcs()
+
+
+def apply_partition_pass(program):
+    new_program = program.clone()
+    with paddle.static.program_guard(new_program):
+        for op in new_program.global_block().ops:
+            assert len(op.operands()) == len(
+                op.dist_attr.operand_dist_attrs()
+            ), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+            for var, operand_dist_attr in zip(
+                op.operands(), op.dist_attr.operand_dist_attrs()
+            ):
+                if (
+                    var.source().is_dist_dense_tensor_type()
+                    and var.source().dist_attr() != operand_dist_attr
+                ):
+                    paddle.pir.set_insertion_point(op)
+                    # insert reshard
+                    reshard_var = paddle._pir_ops.reshard_v2(
+                        var.source(), operand_dist_attr
+                    )
+                    var.set_source(reshard_var)
+    return new_program
+
+
+def apply_reshard_pass(program):
+    new_program = program.clone()
+    with paddle.base.program_guard(new_program):
+        for op in new_program.global_block().ops:
+            if op.name() == 'dist_op.reshard':
+                var = op.operand(0)
+                op_dist_attr = op.attrs()["op_dist_attr"]
+                src_dist_attr = op_dist_attr.operand_dist_attr(0)
+                dst_dist_attr = op_dist_attr.result_dist_attr(0)
+                assert (
+                    var.source().dist_attr() == src_dist_attr
+                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
+
+                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                assert (
+                    reshard_func is not None
+                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+
+                reshard_func.reshard(
+                    new_program, op, src_dist_attr, dst_dist_attr
+                )
+
+    return new_program

@@ -90,7 +90,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
   for (auto& item : buffer_updated_tensor) {
     auto* cur_n = uf_map[item.first];
     for (auto& other : stages[item.second]->meta.tensors_to_share_buffer_with) {
-      // we might intialize the buffer in args.
+      // we might initialize the buffer in args.
       auto* other_n = uf_map[other];
       if (!other_n) continue;
 

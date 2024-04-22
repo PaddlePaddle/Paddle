@@ -60,9 +60,9 @@ void PReluGradKernel(const Context& dev_ctx,
     }
   }
 
-  // mode = 0: channel_nchw, slope_shape = {c}, default. meanwhile, xhsape = {n,
+  // mode = 0: channel_nchw, slope_shape = {c}, default. meanwhile, xshape = {n,
   // c, h, w}
-  // mode = 1, channel_nhwc, slope_shape = {c}, meanwhile, xhsape = {n, h, w, c}
+  // mode = 1, channel_nhwc, slope_shape = {c}, meanwhile, xshape = {n, h, w, c}
   // mode = 2, elementwise, slope_shape = {c*h*w}
   // mode = 3, single slope, slope_shape = {1}
 

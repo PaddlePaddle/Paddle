@@ -38,7 +38,7 @@ void ModeKernel(const Context& dev_ctx,
                       errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
   }
-  // calcluate the real axis
+  // calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
   auto out_dims = out->dims();

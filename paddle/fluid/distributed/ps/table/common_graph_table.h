@@ -43,8 +43,8 @@
 #include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"

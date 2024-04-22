@@ -36,7 +36,8 @@ struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
     VLOG(3) << "Processing Call node " << *op;
     if (statement_ != node->name) return;
 
-    Expr expr_candidate = ir::ir_utils::IRCopy(candidate_);
+    Expr expr_candidate =
+        ir::ir_utils::IRCopy(candidate_, /* copy_buffer_node = */ false);
     VLOG(3) << "Original candidate expr: " << candidate_;
     VLOG(3) << "Copied candidate expr: " << expr_candidate;
 
@@ -62,7 +63,7 @@ void ReplaceIslCallWithExpr(Expr *e,
                             const Expr &candidate,
                             const std::map<std::string, Expr> &axis_map) {
   VLOG(3) << "ReplaceCallWithExpr, original expression: " << candidate;
-  Expr copied = ir::ir_utils::IRCopy(candidate);
+  Expr copied = ir::ir_utils::IRCopy(candidate, /* copy_buffer_node = */ false);
   // update the axis in the copied expression.
 
   // we treat the Store node as the normal statement, the others like Call node

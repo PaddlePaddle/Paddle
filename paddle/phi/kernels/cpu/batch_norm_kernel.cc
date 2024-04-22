@@ -159,7 +159,7 @@ void BatchNormKernel(const Context& ctx,
 
   // use SavedMean and SavedVariance to do normalize
   Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
-  if (global_stats) {
+  if (global_stats) {  // NOLINT
     ConstEigenVectorArrayMap<T> var_arr(variance.data<T>(), C);
     inv_std = (var_arr + epsilon).sqrt().inverse();
   } else {
@@ -178,7 +178,7 @@ void BatchNormKernel(const Context& ctx,
   auto* Bias = bias.get_ptr();
   Eigen::Array<T, Eigen::Dynamic, 1> new_scale(C);
   Eigen::Array<T, Eigen::Dynamic, 1> new_bias(C);
-  if (Scale && Bias) {
+  if (Scale && Bias) {  // NOLINT
     ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
     new_scale = inv_std * scale_arr;

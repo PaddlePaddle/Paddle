@@ -57,7 +57,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // with the special '1' to set its dim mapping to -1.
   out_axes[axis] = '1';
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
@@ -154,7 +154,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   std::string out_axes(x_axes);
   out_axes[axis] = 'k';
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   for (int i = 0; i < nouts; i++) {

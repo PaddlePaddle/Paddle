@@ -19,7 +19,8 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
@@ -312,9 +313,8 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope *scope,
     const int64_t &place_hash_key) {
-  auto &interpretercore_info_cache =
-      framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+  auto &cache = framework::InterpreterCoreInfoCache::Instance();
+  if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(platform::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
@@ -328,7 +328,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, program_desc.Block(0), scope, execution_config));
 
-  auto &cached_value = interpretercore_info_cache.GetMutable(
+  auto &cached_value = cache.GetMutable(
       program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
   cached_value.core_ = core;
   return core;
@@ -341,9 +341,8 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope *scope,
     const int64_t &place_hash_key) {
-  auto &interpretercore_info_cache =
-      framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+  auto &cache = framework::InterpreterCoreInfoCache::Instance();
+  if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(platform::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
@@ -357,7 +356,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, {}, ir_program->block(), scope, execution_config));
 
-  auto &cached_value = interpretercore_info_cache.GetMutable(
+  auto &cached_value = cache.GetMutable(
       program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
@@ -384,6 +383,28 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   }
 
   return ir_res;
+}
+
+std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
+    std::unique_ptr<::pir::Program> program,
+    const pir::Block *block,
+    const phi::Place &place,
+    const paddle::framework::Scope *scope) {
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  auto pass = ::pir::CreateRemoveShadowFeedPass();
+  pass->SetNotOwned("top_block", block);
+  pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  pass->SetNotOwned(pir::Pass::kParamScopeAttr, scope);
+  pm.AddPass(std::move(pass));
+  pm.Run(program.get());
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR After RemoveShadowFeedPass -------------------"
+              << std::endl;
+    std::cout << *program << std::endl;
+  }
+
+  return program;
 }
 
 std::unique_ptr<::pir::Program> ConstructForwardIrProgram(

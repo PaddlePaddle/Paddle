@@ -242,7 +242,7 @@ function(cinn_merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
 
-    # Generate dummy staic lib
+    # Generate dummy static lib
     file(WRITE ${target_SRCS}
          "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"

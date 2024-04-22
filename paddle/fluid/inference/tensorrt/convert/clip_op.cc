@@ -39,7 +39,7 @@ class ClipOpConverter : public OpConverter {
     layer->setBeta(max);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "clip", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "clip", {output_name}, test_mode);
 #else
     PADDLE_THROW(
         platform::errors::Fatal("clip TRT converter is only supported on TRT "

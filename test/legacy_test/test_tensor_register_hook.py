@@ -589,7 +589,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             x._register_backward_hook(global_void_hook)
 
 
-class TestRegsiterBackwardFinalHook(unittest.TestCase):
+class TestRegisterBackwardFinalHook(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
         if paddle.is_compiled_with_cuda():

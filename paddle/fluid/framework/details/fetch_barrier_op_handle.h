@@ -39,7 +39,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// **NOTE**: fetch_barrier op is special it outputs all recved variables on
+// **NOTE**: fetch_barrier op is special it outputs all received variables on
 // all places if there are multiple places, must init with
 // multiple dev_ctxes_ !!!!
 

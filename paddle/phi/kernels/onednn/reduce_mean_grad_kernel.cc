@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/reduce_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -59,4 +60,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    ONEDNN,
                    phi::MeanGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
+}

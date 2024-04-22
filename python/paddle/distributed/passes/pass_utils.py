@@ -26,6 +26,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     use_new_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -275,10 +276,10 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
             f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
 
-        if job_type == "backward":
+        if job_type in ["backward", "backward_w"]:
             assert (
                 len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -302,6 +303,13 @@ def shadow_var_between_sub_programs(sub_programs):
         for op in block.ops:
             for input_arg_name in op.input_arg_names:
                 if var_can_be_deleted(input_arg_name, block):
+                    # NOTE(zhangbo): In pir, transpose_grad op has only one input, Xshape is no longer the input.
+                    if (
+                        op.type == 'transpose2_grad'
+                        and "XShape" in op.input_names
+                    ):
+                        if input_arg_name in op.input("XShape"):
+                            continue
                     input_arg_names.add(input_arg_name)
                     # NOTE(Ruibiao): When translating these codes to pir, we can simplely set
                     # `shadow_arg_names=input_arg_names-output_arg_names` since the program
@@ -770,6 +778,143 @@ def _program_for_vpp(
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
+def _get_backward_op_type(block, op):
+    # For the op doesn't have output such as 'send_v2', it should be backward_b.
+    if len(op.output_arg_names) == 0:
+        return "backward_b"
+    for name in op.output_arg_names:
+        name = name.split("@")[0]
+        if not block._find_var_recursive(name):
+            return "backward_b"
+        var = block._find_var_recursive(name)
+        if not var.is_parameter:
+            return "backward_b"
+
+    return "backward_w"
+
+
+def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program)
+
+    oprole_type = {
+        0: "forward",
+        1: "backward",
+        2: "backward_b",
+        3: 'backward_w',
+        4: "optimizer",
+    }
+
+    def _split_ops(block):
+        # split the program based on the op_role
+        type_to_ops = OrderedDict()
+        for type in oprole_type.values():
+            type_to_ops[type] = []
+        type_to_ops["fetch"] = []
+
+        for op in block.ops:
+            if _is_fetch_op(op):
+                type_to_ops["fetch"].append(op)
+            elif is_forward_op(op):
+                type_to_ops["forward"].append(op)
+            elif is_backward_op(op):
+                type = _get_backward_op_type(block, op)
+                type_to_ops[type].append(op)
+                type_to_ops["backward"].append(op)
+            elif is_optimize_op(op):
+                type_to_ops["optimizer"].append(op)
+            else:
+                raise ValueError(
+                    "The op role: "
+                    + str(op.attr('op_role'))
+                    + " isn't one of Forward, Backward or Optimizer."
+                )
+        return type_to_ops
+
+    type_to_program = OrderedDict()
+    for type in oprole_type.values():
+        type_to_program[type] = Program()
+
+    for idx, src_block in enumerate(program.blocks):
+        type_to_ops = _split_ops(src_block)
+        fwd_ops, bwd_ops, bwd_b_ops, bwd_w_ops, opt_ops, fetch_ops = (
+            type_to_ops["forward"],
+            type_to_ops["backward"],
+            type_to_ops["backward_b"],
+            type_to_ops["backward_w"],
+            type_to_ops["optimizer"],
+            type_to_ops["fetch"],
+        )
+        if idx == 0:
+            fwd_block = type_to_program["forward"].block(0)
+            _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block = type_to_program["backward"].block(0)
+            _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            bwd_block_b = type_to_program["backward_b"].block(0)
+            _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            bwd_block_w = type_to_program["backward_w"].block(0)
+            _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            opt_block = type_to_program["optimizer"].block(0)
+            _add_ops_into_block(src_block, opt_block, opt_ops)
+        else:
+            if len(fwd_ops):
+                fwd_block = type_to_program["forward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_ops):
+                bwd_block = type_to_program["backward"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            if len(bwd_b_ops):
+                bwd_block_b = type_to_program["backward_b"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_b._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_b, bwd_b_ops)
+
+            if len(bwd_w_ops):
+                bwd_block_w = type_to_program["backward_w"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block_w._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block_w, bwd_w_ops)
+
+            if len(opt_ops):
+                opt_block = type_to_program["optimizer"]._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in fetch_ops:
+            in_name = fetch_op.input_arg_names[0]
+            dst_block = None
+            for block in [fwd_block, bwd_block_b, bwd_block_w, opt_block]:
+                if block._find_var_recursive(in_name):
+                    dst_block = block
+                    break
+            if dst_block:
+                _create_program(src_block, dst_block, fetch_op)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
+
+
 def _add_event_dependency(recorder_op, waiter_op):
     '''
     Add the extra event dependency of the two operators.
@@ -785,3 +930,179 @@ def _add_event_dependency(recorder_op, waiter_op):
     if recorder_op.dist_attr.event_to_record not in waiter_wait_list:
         waiter_wait_list.append(recorder_op.dist_attr.event_to_record)
         waiter_op.dist_attr.events_to_wait = waiter_wait_list
+
+
+def _insert_reshape_op(
+    block,
+    index,
+    x,
+    shape,
+    op_role,
+    chunk_id,
+    dist_context,
+    out=None,
+    op_namescope="/",
+):
+    var_x = block.var(x[0])
+    x_dist_attr = dist_context.get_tensor_dist_attr_for_program(var_x)
+
+    if out is None:
+        out = block.create_var(
+            name=f"{x[0]}@reshape.out",
+            dtype=var_x.dtype,
+            persistable=False,
+        )
+        dist_context.set_tensor_dist_attr_for_program(out, x_dist_attr)
+
+    x_shape = block.create_var(name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype)
+    dist_context.set_tensor_dist_attr_for_program(x_shape, x_dist_attr)
+
+    reshape_op = block._insert_op_without_sync(
+        index=index,
+        type="reshape2",
+        inputs={"X": x},
+        outputs={"Out": out, "XShape": x_shape},
+        attrs={
+            "shape": shape,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+        reshape_op,
+        process_mesh=x_dist_attr.process_mesh,
+        ref_mapping=x_dist_attr.dims_mapping,
+        ctx=dist_context,
+        chunk_id=chunk_id,
+    )
+
+    return out
+
+
+def split_matmul_grad_to_matmul(
+    block, matmul_grad_id, dist_context, op_namescope="/"
+):
+    ops = block.ops
+    matmul_grad_op = ops[matmul_grad_id]
+
+    tran_x = matmul_grad_op.attr("trans_x")
+    assert (
+        not tran_x
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_x == True is not supported for spliting matmul_grad to matmul"
+    tran_y = matmul_grad_op.attr("trans_y")
+    assert (
+        not tran_y
+    ), f"matmul_grad(id={matmul_grad_id}) with tran_y == True is not supported for spliting matmul_grad to matmul"
+
+    x = matmul_grad_op.input("X")
+    y = matmul_grad_op.input("Y")
+    out_grad = matmul_grad_op.input("Out@GRAD")
+    x_grad = matmul_grad_op.output("X@GRAD")
+    y_grad = matmul_grad_op.output("Y@GRAD")
+    op_role = matmul_grad_op.attr("op_role")
+
+    var_x = block.var(x[0])
+    var_out_grad = block.var(out_grad[0])
+    var_y_grad = block.var(y_grad[0])
+
+    x_dims = var_x.shape
+    out_grad_dims = var_out_grad.shape
+    y_grad_dims = var_y_grad.shape
+
+    assert len(x_dims) == len(
+        out_grad_dims
+    ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+    if len(x_dims) > 2:
+        assert (
+            x_dims[0:2] == out_grad_dims[0:2]
+        ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+    new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
+    new_out_grad_dims = [out_grad_dims[0] * out_grad_dims[1]] + list(
+        out_grad_dims[2:]
+    )
+
+    # NOTE(Ruibiao): Why insert reshape op here?
+    # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
+    # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
+    # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
+    chunk_id = dist_context.get_op_dist_attr_for_program(
+        matmul_grad_op
+    ).chunk_id
+    new_x = _insert_reshape_op(
+        block,
+        matmul_grad_id + 1,
+        x,
+        new_x_dims,
+        op_role,
+        chunk_id=chunk_id,
+        dist_context=dist_context,
+        op_namescope=op_namescope,
+    )
+    new_out_grad = _insert_reshape_op(
+        block,
+        matmul_grad_id + 2,
+        out_grad,
+        new_out_grad_dims,
+        op_role,
+        chunk_id=chunk_id,
+        dist_context=dist_context,
+        op_namescope=op_namescope,
+    )
+    new_y_grad = block.create_var(
+        name=f"{y_grad[0]}@reshape.out",
+        dtype=var_y_grad.dtype,
+        persistable=False,
+    )
+
+    dist_context.set_tensor_dist_attr_for_program(
+        new_y_grad,
+        dist_context.get_tensor_dist_attr_for_program(var_y_grad),
+    )
+
+    matmul_grad_dist_attr = dist_context.get_op_dist_attr_for_program(
+        matmul_grad_op
+    )
+
+    matmul_op = block._insert_op_without_sync(
+        index=matmul_grad_id + 3,
+        type="matmul_v2",
+        inputs={"X": new_x, "Y": new_out_grad},
+        outputs={"Out": new_y_grad},
+        attrs={
+            "trans_x": True,
+            "trans_y": False,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
+    _insert_reshape_op(
+        block,
+        matmul_grad_id + 4,
+        [new_y_grad.name],
+        y_grad_dims,
+        op_role,
+        chunk_id=chunk_id,
+        dist_context=dist_context,
+        out=y_grad,
+        op_namescope=op_namescope,
+    )
+
+    matmul_op = block._insert_op_without_sync(
+        index=matmul_grad_id + 1,
+        type="matmul_v2",
+        inputs={"X": out_grad, "Y": y},
+        outputs={"Out": x_grad},
+        attrs={
+            "trans_x": False,
+            "trans_y": True,
+            "op_role": op_role,
+            'op_namescope': op_namescope,
+        },
+    )
+
+    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
+
+    block._remove_op(matmul_grad_id, sync=False)

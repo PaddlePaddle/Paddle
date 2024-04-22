@@ -110,9 +110,7 @@ class RecomputeState(ProgramStats):
         for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
-            ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
-                i, len(segments)
-            )
+            ), f"the no_recompute_segments idx [{i}] should be lower the number of segment [{len(segments)}]"
             segments.pop(i)
 
         return segments
@@ -293,7 +291,7 @@ class RecomputePass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def get_ops_per_device(self, ops, all_ops_process_meshs, sr=0):
+    def get_ops_per_device(self, ops, all_ops_process_meshes, sr=0):
         """
         Get ops and op_names of each process mesh excluding ops within the first "sr" chunks
         """
@@ -302,7 +300,7 @@ class RecomputePass(PassBase):
             if is_recompute_op(op) or is_recompute_exclude_op(op):
                 op._set_attr("op_namescope", "")
 
-        all_process_meshes_count = len(all_ops_process_meshs)
+        all_process_meshes_count = len(all_ops_process_meshes)
         ops_of_stages = [[] for _ in range(all_process_meshes_count)]
         op_names_of_stages = [[] for _ in range(all_process_meshes_count)]
         pushed_ops_count = 0
@@ -321,16 +319,14 @@ class RecomputePass(PassBase):
             if chunk_id // all_process_meshes_count < sr:
                 continue
 
-            for id, process_mesh in enumerate(all_ops_process_meshs):
+            for id, process_mesh in enumerate(all_ops_process_meshes):
                 if op.dist_attr.process_mesh == process_mesh:
                     pushed_ops_count += 1
                     ops_of_stages[id].append(op)
                     op_names_of_stages[id].append(op.type)
         assert (
             len(ops) == reset_ops_count + pushed_ops_count
-        ), "The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {} while length of ops is {}".format(
-            reset_ops_count + pushed_ops_count, len(ops)
-        )
+        ), f"The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {reset_ops_count + pushed_ops_count} while length of ops is {len(ops)}"
         return ops_of_stages, op_names_of_stages
 
     def _apply_single_impl(self, main_program, startup_program, context):
@@ -346,15 +342,15 @@ class RecomputePass(PassBase):
         op_path = _find_op_path(main_program, loss, no_grad_set)
 
         # 1. mark exclude ops for refined-recompute according to ops-patterns(mainly linear and flash_attn)
-        # 1.1 get all process_meshs in op_path
-        all_ops_process_meshs = []
+        # 1.1 get all process_meshes in op_path
+        all_ops_process_meshes = []
         for op in op_path:
-            if op.dist_attr.process_mesh not in all_ops_process_meshs:
-                all_ops_process_meshs.append(op.dist_attr.process_mesh)
+            if op.dist_attr.process_mesh not in all_ops_process_meshes:
+                all_ops_process_meshes.append(op.dist_attr.process_mesh)
 
         # 1.2 get ops_devices and op_names_devices
         ops_devices, op_names_devices = self.get_ops_per_device(
-            op_path, all_ops_process_meshs, self._sr
+            op_path, all_ops_process_meshes, self._sr
         )
         all_ops_len = len(op_path)
         all_exclude_ops_ids = [[] for _ in op_names_devices]
@@ -416,18 +412,10 @@ class RecomputePass(PassBase):
         for i, (idx1, idx2) in enumerate(segments):
             logger.debug(f"recompute segment[{i + 1}/{len(segments)}]")
             logger.debug(
-                "segment start op: [{}]: [{}] [{}]".format(
-                    rc_state.ops[idx1].type,
-                    rc_state.ops[idx1].input_arg_names,
-                    rc_state.ops[idx1].output_arg_names,
-                )
+                f"segment start op: [{rc_state.ops[idx1].type}]: [{rc_state.ops[idx1].input_arg_names}] [{rc_state.ops[idx1].output_arg_names}]"
             )
             logger.debug(
-                "segment end op: [{}]: [{}] [{}]".format(
-                    rc_state.ops[idx2 - 1].type,
-                    rc_state.ops[idx2 - 1].input_arg_names,
-                    rc_state.ops[idx2 - 1].output_arg_names,
-                )
+                f"segment end op: [{rc_state.ops[idx2 - 1].type}]: [{rc_state.ops[idx2 - 1].input_arg_names}] [{rc_state.ops[idx2 - 1].output_arg_names}]"
             )
 
         # 4. get vars that should be hold in memory
@@ -439,10 +427,8 @@ class RecomputePass(PassBase):
             )
         cross_vars = set(vars_should_be_hold) - set(rc_state.checkpoints)
         logger.debug(
-            "found [{}] vars which cross recompute segment: [{}],"
-            "better checkpoints might be set to reduce those vars".format(
-                len(cross_vars), cross_vars
-            )
+            f"found [{len(cross_vars)}] vars which cross recompute segment: [{cross_vars}],"
+            "better checkpoints might be set to reduce those vars"
         )
         vars_should_be_hold.extend(rc_state.reserved_vars)
         vars_should_be_hold.extend(rc_state.get_input_nodes())

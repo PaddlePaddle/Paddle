@@ -21,12 +21,12 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
-from cinn.frontend import PaddleModelConvertor
-from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
 
 import paddle
+from paddle.cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from paddle.cinn.frontend import PaddleModelConvertor
+from paddle.cinn.runtime import seed as cinn_seed
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="paddle_model_convertor")
@@ -103,9 +103,7 @@ class TestPaddleModel(OpMapperTest):
         self.params_filename = args.params_filename
 
         logger.info(
-            "Run Model From \"{}\", which model filename is \"{}\", and parameter filename is \"{}\"".format(
-                self.model_dir, self.model_filename, self.params_filename
-            )
+            f"Run Model From \"{self.model_dir}\", which model filename is \"{self.model_filename}\", and parameter filename is \"{self.params_filename}\""
         )
 
         self.load_paddle_program()
@@ -132,7 +130,7 @@ class TestPaddleModel(OpMapperTest):
                 msg="Repeat feed name: " + self.feed_names[i],
             )
 
-            dtype = self.paddleddtype2nptype(self.feed_dtypes[i])
+            dtype = self.paddledtype2nptype(self.feed_dtypes[i])
             # random int type data should not limited to [0, 1]
             high = 1 if ("int" not in dtype) else self.feed_shapes[i][0]
 
@@ -204,7 +202,7 @@ class TestPaddleModel(OpMapperTest):
         convertor = PaddleModelConvertor(target)
         for i in range(len(self.feed_names)):
             convertor.create_input(
-                dtype=self.paddleddtype2nptype(self.feed_dtypes[i]),
+                dtype=self.paddledtype2nptype(self.feed_dtypes[i]),
                 shape=self.feed_data[self.feed_names[i]].shape,
                 name=self.feed_names[i],
             )

@@ -282,7 +282,7 @@ TEST(float16, compound_on_gpu) {
   TestDivAssign(6, 2, 3);
 }
 
-TEST(float16, comparision_on_gpu) {
+TEST(float16, comparison_on_gpu) {
   TestEqual(1, 1, true);
   TestEqual(1, 2, false);
   TestNotEqual(2, 3, true);

@@ -829,7 +829,7 @@ void DeformableConvPlugin::configurePlugin(
     const bool* input_is_broadcast,
     const bool* output_is_broadcast,
     nvinfer1::PluginFormat float_format,
-    int max_batct_size) TRT_NOEXCEPT {
+    int max_batch_size) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       3,

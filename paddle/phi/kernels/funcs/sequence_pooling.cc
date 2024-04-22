@@ -417,7 +417,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
-      if (pooltype == "AVERAGE") {
+      if (pooltype == "AVERAGE") {  // NOLINT
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /

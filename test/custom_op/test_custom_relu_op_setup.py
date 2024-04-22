@@ -54,7 +54,7 @@ def custom_relu_static(
             x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
             out = func(x) if use_func else paddle.nn.functional.relu(x)
-            # static.append_backward(out)
+            static.append_backward(out)
 
             exe = paddle.static.Executor()
             exe.run(paddle.static.default_startup_program())

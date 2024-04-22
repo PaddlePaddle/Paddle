@@ -445,7 +445,7 @@ static auto GenerateRandomShapes(size_t n, uint64_t low, uint64_t high) {
   std::uniform_int_distribution<uint64_t> dist(low, high);
   std::vector<std::vector<int64_t>> shapes(n);
   for (size_t i = 0; i < n; ++i) {
-    shapes[i].push_back(dist(engine));
+    shapes[i].push_back(static_cast<int64_t>(dist(engine)));
   }
   return shapes;
 }

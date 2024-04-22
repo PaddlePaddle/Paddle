@@ -39,7 +39,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
       true,
       phi::errors::InvalidArgument(
           "The size of input's dimensions should be less equal than 5",
-          "and the dimension of D should be eaual to 1",
+          "and the dimension of D should be equal to 1",
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 

@@ -29,6 +29,9 @@ paddle_test(test_mkldnn_pool_adaptive_op SRCS test_mkldnn_pool_adaptive_op.cc)
 
 paddle_test(test_mkldnn_squeeze SRCS test_mkldnn_squeeze.cc)
 
+paddle_test(test_mkldnn_conv2d_transpose_bias SRCS
+            test_mkldnn_conv2d_transpose_bias.cc)
+
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.

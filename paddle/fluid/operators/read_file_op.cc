@@ -46,7 +46,7 @@ class ReadFileOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 This operator read a file.
 )DOC");
-    AddAttr<std::string>("filename", "Path of the file to be readed.")
+    AddAttr<std::string>("filename", "Path of the file to be read.")
         .SetDefault({});
   }
 };

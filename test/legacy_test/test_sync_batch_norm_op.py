@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-test for sync bachnorm op.
+test for sync batchnorm op.
 for both FP64 and FP16 input.
 """
 

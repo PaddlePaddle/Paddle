@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <cstdint>
 #include <ostream>
 
@@ -130,7 +131,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   if (op_info) {
     try {
       op_info.VerifySig(op);
-    } catch (const pir::IrNotMetException &e) {
+    } catch (const common::enforce::EnforceNotMet &e) {
       op->Destroy();
       throw e;
     }
@@ -198,10 +199,19 @@ void Operation::Destroy() {
     }
   }
 
-  // 3. Deconstruct Operation.
+  // 3. Deconstruct Properties.
+  for (auto &value_property : value_properties_) {
+    for (auto &property_map : value_property) {
+      if (property_map.second.second) {
+        property_map.second.second((property_map.second.first));
+      }
+    }
+  }
+
+  // 4. Deconstruct Operation.
   this->~Operation();
 
-  // 4. Deconstruct OpOperand.
+  // 5. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
     detail::OpOperandImpl *op_operand_impl = operand(idx).impl_;
     if (op_operand_impl) {
@@ -209,7 +219,7 @@ void Operation::Destroy() {
     }
   }
 
-  // 5. Deconstruct BlockOperand.
+  // 6. Deconstruct BlockOperand.
   for (size_t idx = 0; idx < num_successors_; idx++) {
     detail::BlockOperandImpl *block_operand_impl = block_operands_ + idx;
     if (block_operand_impl) {
@@ -217,7 +227,7 @@ void Operation::Destroy() {
     }
   }
 
-  // 5. Free memory.
+  // 7. Free memory.
   size_t result_mem_size =
       num_results_ > OUTLINE_RESULT_IDX
           ? sizeof(detail::OpOutlineResultImpl) *
@@ -263,7 +273,7 @@ std::vector<Value> Operation::results() const {
 ///
 /// \brief op input related public interfaces
 ///
-std::vector<OpOperand> Operation::operands() {
+std::vector<OpOperand> Operation::operands() const {
   std::vector<OpOperand> res;
   for (uint32_t i = 0; i < num_operands(); ++i) {
     res.push_back(operand(i));
@@ -287,14 +297,20 @@ std::vector<Value> Operation::operands_source() const {
 /// \brief op successor related public interfaces
 ///
 BlockOperand Operation::block_operand(uint32_t index) const {
-  IR_ENFORCE(index < num_successors_, "Invalid block_operand index");
+  PADDLE_ENFORCE_LT(
+      index,
+      num_successors_,
+      phi::errors::InvalidArgument("Invalid block_operand index"));
   return block_operands_ + index;
 }
 Block *Operation::successor(uint32_t index) const {
   return block_operand(index).source();
 }
 void Operation::set_successor(Block *block, unsigned index) {
-  IR_ENFORCE(index < num_operands_, "Invalid block_operand index");
+  PADDLE_ENFORCE_LT(
+      index,
+      num_operands_,
+      phi::errors::InvalidArgument("Invalid block_operand index"));
   (block_operands_ + index)->set_source(block);
 }
 
@@ -302,11 +318,15 @@ void Operation::set_successor(Block *block, unsigned index) {
 /// \brief region related public interfaces implementation
 ///
 Region &Operation::region(unsigned index) {
-  IR_ENFORCE(index < num_regions_, "invalid region index");
+  PADDLE_ENFORCE_LT(index,
+                    num_regions_,
+                    phi::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 const Region &Operation::region(unsigned index) const {
-  IR_ENFORCE(index < num_regions_, "invalid region index");
+  PADDLE_ENFORCE_LT(index,
+                    num_regions_,
+                    phi::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 
@@ -333,7 +353,8 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
 }
 
 void Operation::MoveTo(Block *block, Block::Iterator position) {
-  IR_ENFORCE(parent_, "Operation does not have parent");
+  PADDLE_ENFORCE_NOT_NULL(
+      parent_, phi::errors::InvalidArgument("Operation does not have parent"));
   Operation *op = parent_->Take(this);
   block->insert(position, op);
 }
@@ -357,8 +378,10 @@ bool Operation::use_empty() {
 }
 
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
-  IR_ENFORCE(num_results_ == values.size(),
-             "the num of result should be the same.");
+  PADDLE_ENFORCE_EQ(
+      num_results_,
+      values.size(),
+      phi::errors::InvalidArgument("the num of result should be the same."));
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
   }
@@ -371,9 +394,13 @@ void Operation::Verify() {
 }
 
 int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
-  if (index >= num_results_) {
-    LOG(FATAL) << "index exceeds OP op result range.";
-  }
+  PADDLE_ENFORCE_LT(
+      index,
+      num_results_,
+      common::errors::PreconditionNotMet(
+          "The op result index [%u] must less than results size[%u].",
+          index,
+          num_results_));
   if (index < OUTLINE_RESULT_IDX) {
     return -static_cast<int32_t>((index + 1u) * sizeof(OpInlineResultImpl));
   }
@@ -383,11 +410,37 @@ int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
 }
 
 int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
-  if (index >= num_operands_) {
-    LOG(FATAL) << "index exceeds OP op operand range.";
-  }
+  PADDLE_ENFORCE_LT(
+      index,
+      num_operands_,
+      common::errors::PreconditionNotMet(
+          "The op operand index [%u] must less than operands size[%u].",
+          index,
+          num_operands_));
   return static_cast<int32_t>(index * sizeof(OpOperandImpl) +
                               sizeof(Operation));
+}
+
+void Operation::set_value_property(const std::string &key,
+                                   const Property &value,
+                                   size_t index) {
+  if (value_properties_.size() < index + 1) {
+    value_properties_.resize(index + 1);
+  }
+  auto &property_map = value_properties_[index];
+  if (property_map.count(key)) {
+    property_map[key].second(property_map[key].first);
+  }
+  property_map[key] = value;
+}
+
+void *Operation::value_property(const std::string &key, size_t index) const {
+  if (value_properties_.size() < (index + 1)) {
+    return nullptr;
+  }
+  auto &property_map = value_properties_[index];
+  auto iter = property_map.find(key);
+  return iter == property_map.end() ? nullptr : iter->second.first;
 }
 
 #define COMPONENT_IMPL(component_lower, component_upper)                   \

@@ -6,7 +6,7 @@
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, sofint16_tare
+// Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
@@ -47,6 +47,7 @@ void MultiEncoderXPUKernel(
     const std::vector<const DenseTensor*>& ln_scale,
     const std::vector<const DenseTensor*>& ln_bias,
     const std::vector<const DenseTensor*>& smooth_scale_weight,
+    const std::vector<const DenseTensor*>& roformer_embedding,
     const paddle::optional<DenseTensor>& mask,
     const paddle::optional<DenseTensor>& seq_lod,
     const paddle::optional<DenseTensor>& max_seq_len,
@@ -60,6 +61,7 @@ void MultiEncoderXPUKernel(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    int max_pos_len,
     const std::vector<float>& softmax_max_value,
     const std::vector<std::string>& quant_types,
     DenseTensor* out,
@@ -112,27 +114,26 @@ void MultiEncoderXPUKernel(
                                               xpu::QuantType::NOT_QUANT);
   if (enable_int8) {
     for (size_t i = 0; i < quant_types.size(); i++) {
-      set_quant_types[i] = xpu::QuantType::QUANT_INT8;
+      if (quant_types[i] == "enable_int8") {
+        set_quant_types[i] = xpu::QuantType::QUANT_INT8;
+      }
     }
   }
   std::vector<const float*> fc_input_max_data;
   std::vector<const int16_t*> fc_weight_data_int16_t;
-  std::vector<const int8_t*> fc_weight_data_int8_t;
   std::vector<const XPUTypeFP16*> fc_weight_data_XPUTypeFP16;
   std::vector<const float*> fc_weight_max_data;
   std::vector<const float*> fc_bias_data;
   for (size_t i = 0; i < fc_weight.size(); i++) {
-    if (!enable_int8) {
-      if (local_quant) {
-        fc_weight_data_XPUTypeFP16.push_back(
-            reinterpret_cast<const XPUTypeFP16*>(fc_weight[i]->data()));
-      } else {
-        fc_weight_data_int16_t.push_back(
-            reinterpret_cast<const int16_t*>(fc_weight[i]->data()));
-      }
+    if (!enable_int8 && local_quant) {
+      fc_weight_data_XPUTypeFP16.push_back(
+          reinterpret_cast<const XPUTypeFP16*>(fc_weight[i]->data()));
     } else {
-      fc_weight_data_int8_t.push_back(
-          reinterpret_cast<const int8_t*>(fc_weight[i]->data()));
+      // Int8 weight also convert to int16_t* for temperary storage.
+      // The kenerl dytpe of int8 is choosen by quant_type in
+      // xpu::transformer_encoder
+      fc_weight_data_int16_t.push_back(
+          reinterpret_cast<const int16_t*>(fc_weight[i]->data()));
     }
     fc_weight_max_data.push_back(fc_weight_max[i]->data<float>());
     fc_bias_data.push_back(fc_bias[i]->data<float>());
@@ -141,8 +142,6 @@ void MultiEncoderXPUKernel(
       fc_weight_data_int16_t.push_back(nullptr);
       fc_weight_data_XPUTypeFP16.push_back(nullptr);
       fc_weight_data_XPUTypeFP16.push_back(nullptr);
-      fc_weight_data_int8_t.push_back(nullptr);
-      fc_weight_data_int8_t.push_back(nullptr);
       fc_weight_max_data.push_back(nullptr);
       fc_weight_max_data.push_back(nullptr);
       fc_bias_data.push_back(nullptr);
@@ -150,7 +149,6 @@ void MultiEncoderXPUKernel(
     }
   }
 
-  std::vector<float> test_data(6, 0);
   for (size_t i = 0; i < fc_input_max.size(); i++) {
     fc_input_max_data.push_back(fc_input_max[i]->data<float>());
   }
@@ -199,16 +197,24 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    if (!enable_int8) {
-      if (local_quant) {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
-      } else {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
       }
-    } else {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
     }
-
+    if (!enable_int8 && local_quant) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
+    } else {
+      // The kenerl dytpe of int8 is choosen by quant_type in
+      // xpu::transformer_encoder This template args, int16_t, is only for skip
+      // quant fc
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    }
   } else if (mask_data) {
     auto mask_dims = mask.get_ptr()->dims();
     std::vector<int> mask_shape(mask_dims.Get(),
@@ -242,14 +248,20 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    if (!enable_int8) {
-      if (local_quant) {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
-      } else {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
       }
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
+    }
+    if (!enable_int8 && local_quant) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
     } else {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
     }
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
@@ -288,14 +300,20 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    if (!enable_int8) {
-      if (local_quant) {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
-      } else {
-        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
       }
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
+    }
+    if (!enable_int8 && local_quant) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
     } else {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
     }
   }
 
@@ -319,6 +337,6 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->InputAt(9).SetBackend(phi::Backend::CPU);
   kernel->InputAt(10).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(11).SetBackend(phi::Backend::CPU);
 }

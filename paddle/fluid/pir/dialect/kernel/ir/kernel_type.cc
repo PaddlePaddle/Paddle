@@ -17,6 +17,10 @@
 namespace paddle {
 namespace dialect {
 
+pir::Type AllocatedDenseTensorType::prim_type() {
+  return storage()->dense_tensor_type_;
+}
+
 const phi::Place& AllocatedDenseTensorType::place() const {
   return storage()->place_;
 }
@@ -41,6 +45,10 @@ size_t AllocatedDenseTensorType::offset() const {
   return storage()->dense_tensor_type_.offset();
 }
 
+pir::Type AllocatedSelectedRowsType::prim_type() {
+  return storage()->selected_rows_type_;
+}
+
 const phi::Place& AllocatedSelectedRowsType::place() const {
   return storage()->place_;
 }
@@ -63,6 +71,10 @@ const phi::LoD& AllocatedSelectedRowsType::lod() const {
 
 size_t AllocatedSelectedRowsType::offset() const {
   return storage()->selected_rows_type_.offset();
+}
+
+pir::Type AllocatedDenseTensorArrayType::prim_type() {
+  return storage()->dense_tensor_array_type_;
 }
 
 const phi::Place& AllocatedDenseTensorArrayType::place() const {

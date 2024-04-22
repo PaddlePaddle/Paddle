@@ -27,6 +27,7 @@ from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle.pir_utils import test_with_pir_api
 
 seed = 42
 
@@ -999,19 +1000,20 @@ class TestFusedMultiTransformerOp(OpTest):
         }
         if self.has_pre_cache:
             out = exe.run(
-                paddle.base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out[0].name],
+                fetch_list=[final_out[0]],
             )
         else:
             out = exe.run(
-                paddle.base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out.name],
+                fetch_list=[final_out],
             )
         paddle.disable_static()
         return out
 
+    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         if self.has_cache_kv and not self.gen_cache_kv and self.remove_padding:
             final_out_ref = self.GetVariableDecoderBaselineOut()
@@ -1393,6 +1395,7 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             initializer=paddle.nn.initializer.Constant(0.0)
         )
 
+    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         self.has_pre_cache = True
         self.remove_padding = False

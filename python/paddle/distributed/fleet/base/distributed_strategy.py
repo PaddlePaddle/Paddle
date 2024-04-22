@@ -263,45 +263,6 @@ class DistributedStrategy:
             )
 
     @property
-    def execution_strategy(self):
-        """
-        Configure ExecutionStrategy for DistributedStrategy
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-                >>> exe_strategy = paddle.static.ExecutionStrategy()
-                >>> exe_strategy.num_threads = 10
-                >>> exe_strategy.num_iteration_per_drop_scope = 10
-                >>> exe_strategy.num_iteration_per_run = 10
-
-                >>> strategy = paddle.distributed.fleet.DistributedStrategy()
-                >>> strategy.execution_strategy = exe_strategy
-
-        """
-        execution_strategy = paddle.static.ExecutionStrategy()
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                execution_strategy,
-                f.name,
-                getattr(self.strategy.execution_strategy, f.name),
-            )
-        return execution_strategy
-
-    @execution_strategy.setter
-    @is_strict_auto
-    def execution_strategy(self, strategy):
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                self.strategy.execution_strategy,
-                f.name,
-                getattr(strategy, f.name),
-            )
-
-    @property
     def build_strategy(self):
         """
 
@@ -413,9 +374,7 @@ class DistributedStrategy:
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @property
@@ -529,9 +488,7 @@ class DistributedStrategy:
             self.strategy.adam_d2sum = flag
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @trainer_desc_configs.setter
@@ -1498,7 +1455,7 @@ class DistributedStrategy:
             This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
             Only enable when sharding_segment_strategy = segment_broadcast_MB. Default is 32.0 .
 
-            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation.
+            segment_anchors(list): list of anchors used to segment the program, which allows a finer control of program segmentation.
             this strategy is experimental by now. Only enable when sharding_segment_strategy = segment_anchors.
 
             sharding_degree(int, optional): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.
@@ -2660,7 +2617,7 @@ class DistributedStrategy:
 
         env_draws = line + "\n"
         for f in fields:
-            if "build_strategy" in f.name or "execution_strategy" in f.name:
+            if "build_strategy" in f.name:
                 continue
             if "_configs" in f.name:
                 continue
@@ -2736,15 +2693,5 @@ class DistributedStrategy:
             )
         build_strategy_str += border + "\n"
 
-        execution_strategy_str = h1_format.format("Execution Strategy")
-        execution_strategy_str += line + "\n"
-
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            execution_strategy_str += h2_format.format(
-                f.name, str(getattr(self.strategy.execution_strategy, f.name))
-            )
-        execution_strategy_str += border + "\n"
-
-        result_res += build_strategy_str + execution_strategy_str
+        result_res += build_strategy_str
         return result_res

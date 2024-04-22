@@ -36,7 +36,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(x_dims.size()),
         expand_times.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of elements (%d) of 'expand_times' for "
             "Op(expand) must be equal to the number of dimensions "
             "(%d) of the input.",
@@ -44,10 +44,11 @@ class ExpandOp : public framework::OperatorWithKernel {
             static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
         x_dims.size(),
-        6,
-        platform::errors::InvalidArgument(
+        MAX_RANK_SUPPORTED,
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
-            "must not be greater than 6, but the value received is %d.",
+            "must not be greater than %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED,
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
@@ -58,7 +59,7 @@ class ExpandOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GT(
             expand_times[i],
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The %uth element of 'expand_times' for Op(expand) must be "
                 "greater than 0, but the value given is %d.",
                 i,
@@ -98,7 +99,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+             "(Tensor, default Tensor<float>). A tensor with rank in [1, 8]."
              "X is the input to be expanded.");
     AddInput("ExpandTimes",
              "(Tensor<int>), optional). If provided, expand according to "
@@ -106,13 +107,13 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
              "expand_times_tensor and expand_times.")
         .AsDispensable();
     AddInput("expand_times_tensor",
-             "(Tensor Tensor<int>), epxand times for X."
+             "(Tensor Tensor<int>), expand times for X."
              "It has a higher priority than expand_times, but a lower priority "
              "than ExpandTimes")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+              "(Tensor, default Tensor<float>). A tensor with rank in [1, 8]."
               "The rank of Output(Out) have the same with Input(X). "
               "After expanding, size of each dimension of Output(Out) is equal "
               "to size of the corresponding dimension of Input(X) multiplying "
@@ -123,7 +124,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
-should be in [1, 6]. Please note that size of 'expand_times' must be the same
+should be in [1, 8]. Please note that size of 'expand_times' must be the same
 with X's rank. Following is a using case:
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
         [
@@ -163,9 +164,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[0],
           out_dims[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dimension size (%d) of Input(Out@GRAD) should be "
-              "equal to the crroresponding dimension size (%d) of Input(X)",
+              "equal to the corresponding dimension size (%d) of Input(X)",
               out_dims[0],
               x_dims[0]));
       start_pos = 1u;
@@ -179,9 +180,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_EQ(
               x_dims[i] * expand_times[i],
               out_dims[i],
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
-                  "equal to the multiplication of the crroresponding dimension "
+                  "equal to the multiplication of the corresponding dimension "
                   "sizes of Input(X) (%d) and expand_times (%d).",
                   i,
                   out_dims[i],
@@ -284,19 +285,18 @@ REGISTER_OP_CPU_KERNEL(expand_grad,
                        ops::ExpandGradKernel<phi::CPUContext, int>,
                        ops::ExpandGradKernel<phi::CPUContext, int64_t>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand,
-    ops::ExpandKernel<phi::GPUContext, float>,
-    ops::ExpandKernel<phi::GPUContext, double>,
-    ops::ExpandKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::ExpandKernel<phi::GPUContext, int>,
-    ops::ExpandKernel<phi::GPUContext, int64_t>,
-    ops::ExpandKernel<phi::GPUContext, bool>);
+REGISTER_OP_CUDA_KERNEL(expand,
+                        ops::ExpandKernel<phi::GPUContext, float>,
+                        ops::ExpandKernel<phi::GPUContext, double>,
+                        ops::ExpandKernel<phi::GPUContext, phi::dtype::float16>,
+                        ops::ExpandKernel<phi::GPUContext, int>,
+                        ops::ExpandKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandKernel<phi::GPUContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
     ops::ExpandGradKernel<phi::GPUContext, float>,
     ops::ExpandGradKernel<phi::GPUContext, double>,
-    ops::ExpandGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandGradKernel<phi::GPUContext, phi::dtype::float16>,
     ops::ExpandGradKernel<phi::GPUContext, int>,
     ops::ExpandGradKernel<phi::GPUContext, int64_t>);
 #endif

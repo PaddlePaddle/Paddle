@@ -78,9 +78,7 @@ class TestCacheProgram(Dy2StTestBase):
                     prev_out_numpy,
                     cur_out_numpy,
                     rtol=1e-05,
-                    err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
-                        prev_out_numpy, cur_out_numpy
-                    ),
+                    err_msg=f'Output in previous batch is {prev_out_numpy}\n Output in current batch is \n{cur_out_numpy}',
                 )
                 self.assertEqual(prev_ops, cur_ops)
 
@@ -172,6 +170,7 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
         self.assertEqual(ret.numpy(), 30)

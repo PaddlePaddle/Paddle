@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -251,9 +251,12 @@ class TestBF16Case5(TestClipBF16Op):
 
 
 class TestClipOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
@@ -424,12 +427,16 @@ class TestClipAPI(unittest.TestCase):
         np.testing.assert_allclose(out2.numpy(), egr_out2.numpy(), rtol=1e-05)
         np.testing.assert_allclose(out3.numpy(), egr_out3.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
-        x2 = paddle.static.data(name='x2', shape=[1], dtype="int8")
-        self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
-        self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x1 = paddle.static.data(name='x1', shape=[1], dtype="int16")
+            x2 = paddle.static.data(name='x2', shape=[1], dtype="int8")
+            self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
+            self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
         paddle.disable_static()
 
 

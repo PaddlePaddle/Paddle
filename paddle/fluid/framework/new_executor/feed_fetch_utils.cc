@@ -115,6 +115,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
         &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
     if (src.IsInitialized()) {
       TensorCopy(src, platform::CPUPlace(), dst);
+      dst->set_lod(src.lod());
     } else {
       VLOG(6) << "Found " << var_name
               << " is not initialized and skip TensorCopy.";

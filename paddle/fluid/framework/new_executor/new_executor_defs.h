@@ -40,9 +40,13 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
+class InstructionBase;
+class ValueExecutionInfo;
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+using PirHookFunc =
+    std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
 using SchedulingPriority = int64_t;
 
@@ -82,7 +86,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;
@@ -348,7 +352,7 @@ static constexpr char kFetchVarName[] = "fetch";
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
-// be decreased by one dynamiclly after the execution of an op (in last ops
+// be decreased by one dynamically after the execution of an op (in last ops
 // list). var_ is the related variable
 
 // The dynamic_ref_ is initialized to static_ref_ first, and is decreased to 1
@@ -379,7 +383,7 @@ class VarRefInfo {
 
 // static_dep_ is the numer of dependencies (ops that must run before it) of
 // each op which is calculated to statically. static_dep_  is the runtime
-// version dep which will be decreased by one dynamiclly after the execution of
+// version dep which will be decreased by one dynamically after the execution of
 // one dependency op.
 
 // The dynamic_dep_ is initialized to static_dep_ first, and is decreased to 1

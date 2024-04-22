@@ -35,12 +35,14 @@ limitations under the License. */
 
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
+COMMON_DECLARE_bool(enable_pir_api);
+
 namespace paddle {
 namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
-PyDoc_STRVAR(tensor_name__doc__,
+PyDoc_STRVAR(tensor_name__doc__,  // NOLINT
              R"DOC(name
 
 Tensor's name.
@@ -75,7 +77,7 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_type__doc__,
+PyDoc_STRVAR(tensor_type__doc__,  // NOLINT
              R"DOC(type
 
 Tensor's type.
@@ -165,7 +167,7 @@ int tensor_properties_set_name(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_stop_gradient__doc__,
+PyDoc_STRVAR(tensor_stop_gradient__doc__,  // NOLINT
              R"DOC(stop_gradient
 
 Tensor's stop_gradient.
@@ -195,7 +197,7 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_data__doc__,
+PyDoc_STRVAR(tensor_data__doc__,  // NOLINT
              R"DOC(data
 
 Tensor's self.
@@ -258,7 +260,7 @@ int tensor_properties_set_data(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_grad__doc__,
+PyDoc_STRVAR(tensor_grad__doc__,  // NOLINT
              R"DOC(grad
 
 Tensor's grad Tensor.
@@ -356,7 +358,7 @@ int tensor_properties_set_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_persistable__doc__,
+PyDoc_STRVAR(tensor_persistable__doc__,  // NOLINT
              R"DOC(persistable
 
 Tensor's persistable.
@@ -395,7 +397,7 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_process_mesh__doc__,
+PyDoc_STRVAR(tensor_process_mesh__doc__,  // NOLINT
              R"DOC(process_mesh
 
 Get process_mesh property from shard tensor.
@@ -441,7 +443,7 @@ PyObject* tensor_properties_get_process_mesh(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_placements__doc__,
+PyDoc_STRVAR(tensor_placements__doc__,  // NOLINT
              R"DOC(placements
 
 Get placements property from shard tensor.
@@ -487,7 +489,7 @@ PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_num_shard__doc__,
+PyDoc_STRVAR(tensor_num_shard__doc__,  // NOLINT
              R"DOC(num_shard
 
 Tensor's num_shard.
@@ -553,7 +555,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_shape__doc__,
+PyDoc_STRVAR(tensor_shape__doc__,  // NOLINT
              R"DOC(shape
 
 Tensor's shape.
@@ -640,7 +642,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_strides__doc__,
+PyDoc_STRVAR(tensor_strides__doc__,  // NOLINT
              R"DOC(strides
 
 Tensor's strides.
@@ -679,7 +681,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_offset__doc__,
+PyDoc_STRVAR(tensor_offset__doc__,  // NOLINT
              R"DOC(offset
 
 The address of the first element relative to the offset of the video memory.
@@ -726,7 +728,7 @@ PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_layout__doc__,
+PyDoc_STRVAR(tensor_layout__doc__,  // NOLINT
              R"DOC(layout
 
 Tensor's memory layout.
@@ -761,7 +763,7 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_place__doc__,
+PyDoc_STRVAR(tensor_place__doc__,  // NOLINT
              R"DOC(place
 
 The device Tensor's memory locate.
@@ -828,7 +830,7 @@ PyObject* tensor_properties_get_placements_str(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_dtype__doc__,
+PyDoc_STRVAR(tensor_dtype__doc__,  // NOLINT
              R"DOC(dtype
 
 Tensor's data type.
@@ -847,25 +849,47 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined()) {
-    // be same to old dygraph
-    return ToPyObject(framework::proto::VarType::FP32);
-  }
-  if (egr::IsVariableCompatTensor(self->tensor)) {
-    auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
-        self->tensor.impl().get());
-    if (var_tensor->IsType<paddle::framework::Vocab>()) {
-      return ToPyObject(framework::proto::VarType::RAW);
-    } else if (var_tensor->IsType<paddle::framework::Strings>()) {
-      return ToPyObject(framework::proto::VarType::STRING);
+  if (FLAGS_enable_pir_api) {
+    if (!self->tensor.defined()) {
+      // be same to old dygraph
+      return ToPyObject(phi::DataType::FLOAT32);
+    }
+    if (egr::IsVariableCompatTensor(self->tensor)) {
+      auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+          self->tensor.impl().get());
+      if (var_tensor->IsType<paddle::framework::Vocab>()) {
+        return ToPyObject(phi::DataType::UNDEFINED);
+      } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+        return ToPyObject(phi::DataType::PSTRING);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Unavailable(
+            "VariableCompatTensor only support get shape from Vocab or "
+            "Strings."));
+      }
     } else {
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "VariableCompatTensor only support get shape from Vocab or "
-          "Strings."));
+      return ToPyObject(self->tensor.type());
     }
   } else {
-    return ToPyObject(
-        paddle::framework::TransToProtoVarType(self->tensor.type()));
+    if (!self->tensor.defined()) {
+      // be same to old dygraph
+      return ToPyObject(framework::proto::VarType::FP32);
+    }
+    if (egr::IsVariableCompatTensor(self->tensor)) {
+      auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
+          self->tensor.impl().get());
+      if (var_tensor->IsType<paddle::framework::Vocab>()) {
+        return ToPyObject(framework::proto::VarType::RAW);
+      } else if (var_tensor->IsType<paddle::framework::Strings>()) {
+        return ToPyObject(framework::proto::VarType::STRING);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Unavailable(
+            "VariableCompatTensor only support get shape from Vocab or "
+            "Strings."));
+      }
+    } else {
+      return ToPyObject(
+          paddle::framework::TransToProtoVarType(self->tensor.type()));
+    }
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

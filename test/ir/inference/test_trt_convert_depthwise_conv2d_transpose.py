@@ -87,13 +87,12 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         ):
             dics = [
                 {
-                    "data_fromat": data_format,
+                    "data_format": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
                     "paddings": paddings,
                     "strides": strides,
-                    "data_format": data_format,
                     "output_size": [],
                     "output_padding": [],
                 }

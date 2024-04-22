@@ -32,7 +32,9 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False)
+            self.check_output(
+                check_dygraph=False, check_pir_onednn=self.check_pir_onednn
+            )
 
     def setUp(self):
         self.op_type = "fusion_gru"
@@ -57,7 +59,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         N = len(self.lod[0])
 
         # fp32 X input for reference implementation and
-        # corressponding bf16 data as input to GRU oneDNN bf16 kernel
+        # corresponding bf16 data as input to GRU oneDNN bf16 kernel
         x_fp32 = np.random.rand(T, self.M).astype('float32')
         x_bf16 = convert_float_to_uint16(x_fp32)
 

@@ -78,7 +78,7 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
   for (auto &addresses : allocator_addresses) {
     std::sort(addresses.begin(), addresses.end());
     ASSERT_EQ(std::adjacent_find(
-                  addresses.begin(), addresses.end(), std::equal_to<void *>()),
+                  addresses.begin(), addresses.end(), std::equal_to<>()),
               addresses.end());
   }
 

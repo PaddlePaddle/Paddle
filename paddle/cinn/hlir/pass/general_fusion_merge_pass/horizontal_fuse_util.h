@@ -29,7 +29,7 @@ template <typename FusePassCtxT>
 struct HorizontalFuseUtil {
   using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
 
-  static bool DetectFusabilityByKind(FusePassCtxT* ctx,
+  static bool DetectFusibilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
     const KindKeyT kind_pair(src.kind(), dst.kind());

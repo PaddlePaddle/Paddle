@@ -71,7 +71,7 @@ struct ThrustAllocator {
     place_ = place;
     stream_ = stream;
   }
-  ~ThrustAllocator() { VLOG(2) << "destory allocator"; }
+  ~ThrustAllocator() { VLOG(2) << "destroy allocator"; }
   char* allocate(std::ptrdiff_t num_bytes) {
     VLOG(2) << "allocate " << num_bytes << " bytes";
     auto storage = memory::AllocShared(

@@ -105,7 +105,7 @@ class DeformableConvOpConverter : public OpConverter {
       std::vector<std::string> output_names;
       output_names.push_back(op_desc.Output("Output").front());
 
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           deformable_conv_layer, "deformable_conv", output_names, test_mode);
     } else {
       auto* deformable_conv_plugin = new plugin::DeformableConvPluginDynamic(
@@ -133,7 +133,7 @@ class DeformableConvOpConverter : public OpConverter {
       std::vector<std::string> output_names;
       output_names.push_back(op_desc.Output("Output").front());
 
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           deformable_conv_layer, "deformable_conv", output_names, test_mode);
     }
   }

@@ -236,7 +236,7 @@ class TestAdadeltaV2Group(TestAdadeltaV2):
         adam.clear_gradients()
 
 
-class TestAdadeltaOpMultiPrecison(unittest.TestCase):
+class TestAdadeltaOpMultiPrecision(unittest.TestCase):
     def _test_adadelta_op_dygraph_place_amp(self, place, use_amp=False):
         import paddle
 

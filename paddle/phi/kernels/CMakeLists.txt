@@ -42,6 +42,7 @@ file(
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
 endif()
 
 if(NOT WITH_DGC)
@@ -54,36 +55,6 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
 endif()
 
 if(WITH_CUTLASS)
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated_tmp"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
-  set(generated_tmp_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp
-  )
-  set(generated_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated)
-  file(GLOB con2d_generated_files ${generated_tmp_dir}/*.cu)
-
-  if(EXISTS ${generated_dir})
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                              "${gen_file}" "${now_file}")
-    endforeach()
-    message("copy if different ${generated_dir}")
-  else()
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
-                              "${now_file}")
-    endforeach()
-    message("copy ${generated_dir}")
-  endif()
-
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
@@ -204,8 +175,6 @@ if(WITH_CUTLASS)
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/conv2d/generated/*.cu"
-    "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
@@ -241,7 +210,6 @@ if(WITH_ROCM)
     "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
-    "gpu/multiclass_nms3_kernel.cu"
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
@@ -270,7 +238,7 @@ set(cc_search_pattern
     "stride/*.cc"
     "fusion/cpu/*.cc")
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
                         "fusion/onednn/*.cc")
 endif()
@@ -293,7 +261,9 @@ if(NOT
     AND AVX512F_FOUND
     AND AVX512F_FLAG
     AND WITH_MKL))
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
 endif()
 
 file(

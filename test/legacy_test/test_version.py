@@ -30,10 +30,10 @@ class VersionTest(unittest.TestCase):
     def test_check_output(self):
         # check commit format
         self.assertTrue(re.match(self._commit_regex, base_version.commit))
-        self.assertTrue(isinstance(base_version.istaged, bool))
+        self.assertTrue(isinstance(base_version.is_tagged, bool))
 
         # check version format
-        if base_version.istaged:
+        if base_version.is_tagged:
             self.assertTrue(re.match(self._major_regex, base_version.major))
             self.assertTrue(re.match(self._minor_regex, base_version.minor))
             self.assertTrue(re.match(self._patch_regex, base_version.patch))

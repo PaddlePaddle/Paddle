@@ -370,7 +370,7 @@ class Pool2dOpConverter : public OpConverter {
       layer = pool_layer;
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
   }
 };
 

@@ -46,7 +46,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Config* PD_ConfigCreate();
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigDestroy(__pd_take PD_Config* pd_config);
 ///
-/// \brief Set the combined model with two specific pathes for program and
+/// \brief Set the combined model with two specific paths for program and
 /// parameters.
 ///
 /// \param[in] pd_config config
@@ -169,7 +169,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONNXRuntime(
 PADDLE_CAPI_EXPORT extern void PD_ConfigDisableONNXRuntime(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether the ONNXRutnime is turned on.
+/// \brief A boolean state telling whether the ONNXRuntime is turned on.
 ///
 /// \return Whether the ONNXRuntime is turned on.
 ///
@@ -238,11 +238,11 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGpuDeviceId(
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Turn on custome device.
+/// \brief Turn on custom device.
 ///
 /// \param[in] pd_config config
 /// \param[in] device_type device type
-/// \param[in] device_id device_id the custome device card to use.
+/// \param[in] device_id device_id the custom device card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
     __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
@@ -306,13 +306,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigCudnnEnabled(
 /// If turned off, the AnalysisConfig will act just like a NativeConfig.
 ///
 /// \param[in] pd_config config
-/// \param[in] x Whether the ir graph optimization is actived.
+/// \param[in] x Whether the ir graph optimization is activated.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrOptim(
     __pd_keep PD_Config* pd_config, PD_Bool x);
 ///
 /// \brief A boolean state telling whether the ir graph optimization is
-/// actived.
+/// activated.
 ///
 /// \param[in] pd_config config
 /// \return Whether to use ir graph optimization.
@@ -321,7 +321,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Turn on the TensorRT engine.
-/// The TensorRT engine will accelerate some subgraphes in the original Fluid
+/// The TensorRT engine will accelerate some subgraphs in the original Fluid
 /// computation graph. In some models such as resnet50, GoogleNet and so on,
 /// it gains significant performance acceleration.
 ///
@@ -330,7 +330,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 /// workspace.
 /// \param[in] max_batch_size The maximum batch size of this prediction task,
 /// better set as small as possible for less performance loss.
-/// \param[in] min_subgrpah_size The minimum TensorRT subgraph size needed, if a
+/// \param[in] min_subgraph_size The minimum TensorRT subgraph size needed, if a
 /// subgraph is smaller than this, it will not be transferred to TensorRT
 /// engine.
 /// \param[in] precision The precision used in TensorRT.
@@ -487,35 +487,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtDla(
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDlaEnabled(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Turn on the usage of Lite sub-graph engine.
-///
-/// \param[in] pd_config config
-/// \param[in] precision Precion used in Lite sub-graph engine.
-/// \param[in] zero_copy whether use zero copy.
-/// \param[in] passes_filter_num The number of passes used in Lite sub-graph
-/// engine.
-/// \param[in] passes_filter The name of passes used in Lite sub-graph engine.
-/// \param[in] ops_filter_num The number of operators not supported by Lite.
-/// \param[in] ops_filter The name of operators not supported by Lite.
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableLiteEngine(
-    __pd_keep PD_Config* pd_config,
-    PD_PrecisionType precision,
-    PD_Bool zero_copy,
-    size_t passes_filter_num,
-    const char** passes_filter,
-    size_t ops_filter_num,
-    const char** ops_filter);
-///
-/// \brief A boolean state indicating whether the Lite sub-graph engine is
-/// used.
-///
-/// \param[in] pd_config config
-/// \return Whether the Lite sub-graph engine is used.
-///
-PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigLiteEngineEnabled(
-    __pd_keep PD_Config* pd_config);
-///
 /// \brief Control whether to debug IR graph analysis phase.
 /// This will generate DOT files for visualizing the computation graph after
 /// each analysis pass applied.
@@ -526,14 +497,14 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigLiteEngineEnabled(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrDebug(
     __pd_keep PD_Config* pd_config, PD_Bool x);
 ///
-/// \brief Turn on MKLDNN.
+/// \brief Turn on OneDNN.
 ///
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Set the cache capacity of different input shapes for MKLDNN.
+/// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
 /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
@@ -544,10 +515,10 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
     __pd_keep PD_Config* pd_config, int32_t capacity);
 ///
-/// \brief A boolean state telling whether to use the MKLDNN.
+/// \brief A boolean state telling whether to use the OneDNN.
 ///
 /// \param[in] pd_config config
-/// \return Whether to use the MKLDNN.
+/// \return Whether to use the OneDNN.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnEnabled(
     __pd_keep PD_Config* pd_config);
@@ -570,7 +541,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetCpuMathLibraryNumThreads(
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGetCpuMathLibraryNumThreads(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Specify the operator type list to use MKLDNN acceleration.
+/// \brief Specify the operator type list to use OneDNN acceleration.
 ///
 /// \param[in] pd_config config
 /// \param[in] ops_num The number of operator type list.
@@ -579,32 +550,32 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGetCpuMathLibraryNumThreads(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnOp(
     __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
 ///
-/// \brief Turn on MKLDNN quantization.
+/// \brief Turn on OneDNN quantization.
 ///
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnQuantizer(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether the MKLDNN quantization is enabled.
+/// \brief A boolean state telling whether the OneDNN quantization is enabled.
 ///
 /// \param[in] pd_config config
-/// \return Whether the MKLDNN quantization is enabled.
+/// \return Whether the OneDNN quantization is enabled.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnQuantizerEnabled(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Turn on MKLDNN bfloat16.
+/// \brief Turn on OneDNN bfloat16.
 ///
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnBfloat16(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+/// \brief A boolean state telling whether to use the OneDNN Bfloat16.
 ///
 /// \param[in] pd_config config
-/// \return Whether to use the MKLDNN Bfloat16.
+/// \return Whether to use the OneDNN Bfloat16.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(
     __pd_keep PD_Config* pd_config);
@@ -617,17 +588,17 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetBfloat16Op(
     __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
 ///
-/// \brief Turn on MKLDNN int8.
+/// \brief Turn on OneDNN int8.
 ///
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnInt8(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether to use the MKLDNN int8.
+/// \brief A boolean state telling whether to use the OneDNN int8.
 ///
 /// \param[in] pd_config config
-/// \return Whether to use the MKLDNN int8.
+/// \return Whether to use the OneDNN int8.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnInt8Enabled(
     __pd_keep PD_Config* pd_config);

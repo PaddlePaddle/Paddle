@@ -83,6 +83,9 @@ def train_mlp(
     accumulate_grad=False,
     use_main_grad=False,
     test_scaler=False,
+    sharding_use_reduce_avg=False,
+    comm_overlap=False,
+    tensor_fusion=False,
 ):
     scaler = None
     scale_loss = 1024
@@ -120,6 +123,13 @@ def train_mlp(
             "sharding_degree": 2,
         }
         strategy.hybrid_configs = hybrid_configs
+        strategy.hybrid_configs[
+            "sharding_configs"
+        ].use_reduce_avg = sharding_use_reduce_avg
+        strategy.hybrid_configs["sharding_configs"].comm_overlap = comm_overlap
+        strategy.hybrid_configs[
+            "sharding_configs"
+        ].tensor_fusion = tensor_fusion
 
     fleet.init(is_collective=True, strategy=strategy)
     model = fleet.distributed_model(model)
@@ -250,6 +260,39 @@ def test_stage1_fp16():
             o1_losses_grad_acc[i], dtype='float32'
         ).detach()
         np.testing.assert_array_equal(o2_loss_grad_acc, o1_loss_grad_acc)
+
+    # nccl reduce_avg test
+    mlp7 = MLP()
+    mlp8 = MLP()
+    mlp7.set_state_dict(state_dict)
+    mlp8.set_state_dict(state_dict)
+    losses_reduce_avg = train_mlp(
+        mlp7,
+        sharding_stage=1,
+        use_pure_fp16=True,
+        use_main_grad=True,
+        sharding_use_reduce_avg=True,
+    )
+    losses_reduce_avg_commoverlap = train_mlp(
+        mlp8,
+        sharding_stage=1,
+        use_pure_fp16=True,
+        use_main_grad=True,
+        sharding_use_reduce_avg=True,
+        comm_overlap=True,
+        tensor_fusion=True,
+    )
+    for i in range(len(o2_losses)):
+        loss_reduce_avg = paddle.cast(
+            losses_reduce_avg[i], dtype='float32'
+        ).detach()
+        loss_reduce_avg_commoverlap = paddle.cast(
+            losses_reduce_avg_commoverlap[i], dtype='float32'
+        ).detach()
+        loss = paddle.cast(o2_losses[i], dtype='float32').detach()
+
+        np.testing.assert_array_equal(loss_reduce_avg, loss)
+        np.testing.assert_array_equal(loss_reduce_avg_commoverlap, loss)
 
     return
 

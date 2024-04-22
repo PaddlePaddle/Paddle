@@ -148,7 +148,7 @@ def grid_sample(
     indexing the 5th dimension (in width dimension) of input data x, y is
     indexing the 4th dimension (in height dimension) and z is indexing the
     3rd dimension (in depth dimension) finally results is the bilinear
-    interpolation or nearest value of 8 nearest cornerpoints. The output
+    interpolation or nearest value of 8 nearest corner points. The output
     tensor shape will be [N, C, D, H, W].
 
 
@@ -269,9 +269,7 @@ def grid_sample(
         )
     if padding_mode not in _padding_modes:
         raise ValueError(
-            "The padding mode of grid sample function should be in {}, but got: {}".format(
-                _padding_modes, padding_mode
-            )
+            f"The padding mode of grid sample function should be in {_padding_modes}, but got: {padding_mode}"
         )
 
     if not isinstance(align_corners, bool):

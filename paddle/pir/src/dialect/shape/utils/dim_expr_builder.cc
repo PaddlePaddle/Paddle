@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/common/enforce.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol {
 
@@ -44,15 +45,15 @@ DimExpr DimExprBuilder::Div(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Max(const DimExpr& lhs, const DimExpr& rhs) {
-  return MaxDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(MaxDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
-  return MinDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(MinDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return BroadcastDimExpr{List<DimExpr>{lhs, rhs}};
+  return SimplifyDimExpr(BroadcastDimExpr{List<DimExpr>{lhs, rhs}});
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(
@@ -63,31 +64,6 @@ std::vector<DimExpr> DimExprBuilder::ConstShape(
     ret.emplace_back(dim);
   }
   return ret;
-}
-
-void DimExprBuilder::CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
-}
-
-void DimExprBuilder::CstrBroadcastable(const std::vector<DimExpr>& lhs,
-                                       const std::vector<DimExpr>& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
-}
-
-void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
-  constraints_->emplace_back(Equal<DimExpr>(lhs, rhs));
-}
-
-void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
-                            const std::vector<DimExpr>& rhs) {
-  IR_ENFORCE(lhs.size() == rhs.size(),
-             "Please make sure input sizes are equal, "
-             "lhs.size() = %d, rhs.size() = %d.",
-             lhs.size(),
-             rhs.size());
-  for (std::size_t i = 0; i < lhs.size(); ++i) {
-    CstrEq(lhs.at(i), rhs.at(i));
-  }
 }
 
 std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
@@ -105,18 +81,17 @@ std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
 
 std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
     const std::vector<DimExpr> dim_exprs, int index) {
-  IR_ENFORCE(index > 0 && index < static_cast<int>(dim_exprs.size()),
-             "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
-             "your inputs.",
-             index,
-             dim_exprs.size());
+  PADDLE_ENFORCE_EQ(
+      index > 0 && index < static_cast<int>(dim_exprs.size()),
+      true,
+      phi::errors::InvalidArgument(
+          "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
+          "your inputs.",
+          index,
+          dim_exprs.size()));
   std::vector<DimExpr> lhs(dim_exprs.begin(), dim_exprs.begin() + index);
   std::vector<DimExpr> rhs(dim_exprs.begin() + index, dim_exprs.end());
   return std::make_pair(lhs, rhs);
-}
-
-const std::vector<DimExprConstraint>& DimExprBuilder::constraints() const {
-  return *constraints_;
 }
 
 }  // namespace symbol

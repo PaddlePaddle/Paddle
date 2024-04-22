@@ -75,7 +75,7 @@ def build_map_unpack_with_call(
     return z["a"] + 1
 
 
-class TestExecutor(TestCaseBase):
+class TestBuildUnpack(TestCaseBase):
     def test_simple(self):
         a = paddle.to_tensor(1)
         b = paddle.to_tensor(2)

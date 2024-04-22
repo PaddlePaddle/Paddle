@@ -162,7 +162,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not consumed exceed 10 miniutes";
+        VLOG(0) << "vars not consumed exceed 10 minutes";
         break;
       }
       */
@@ -182,7 +182,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not produced exceed 10 miniutes";
+        VLOG(0) << "vars not produced exceed 10 minutes";
         break;
       }
       */
@@ -524,7 +524,7 @@ class HeterService : public PsService {
     peer_endpoints_ = peer_endpoints;
   }
 
-  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+  void SetFanIn(const int& fan_in) { fan_in_ = fan_in; }
 
   void ForceExit() {
     VLOG(3) << "heter service force exit";
@@ -626,7 +626,7 @@ class HeterServer {
     service_.SetPeerEndPoints(peer_endpoints);
   }
 
-  void SetFanin(const int& fan_in);
+  void SetFanIn(const int& fan_in);
 
   void SetServiceHandler(
       std::shared_ptr<SendAndRecvVariableHandler> request_handler) {

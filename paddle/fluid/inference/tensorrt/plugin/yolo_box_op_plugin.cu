@@ -421,7 +421,7 @@ void YoloBoxPlugin::configurePlugin(const nvinfer1::Dims* input_dims,
                                     const bool* input_is_broadcast,
                                     const bool* output_is_broadcast,
                                     nvinfer1::PluginFormat float_format,
-                                    int max_batct_size) TRT_NOEXCEPT {}
+                                    int max_batch_size) TRT_NOEXCEPT {}
 
 nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const TRT_NOEXCEPT {
   return new YoloBoxPlugin(data_type_,

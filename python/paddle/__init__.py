@@ -73,7 +73,7 @@ Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet
 import paddle.text
-import paddle.vision  # noqa: F401
+import paddle.vision
 from paddle import (  # noqa: F401
     amp,
     audio,
@@ -278,6 +278,7 @@ from .tensor.manipulation import (
     expand,
     expand_as,
     flatten,
+    flatten_,
     flip,
     flip as reverse,
     gather,
@@ -474,6 +475,7 @@ from .tensor.math import (  # noqa: F401
     prod,
     rad2deg,
     reciprocal,
+    reduce_as,
     remainder,
     remainder_,
     renorm,
@@ -565,7 +567,11 @@ if is_compiled_with_cuda():
     import os
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if (
+        platform.system() == 'Linux'
+        and platform.machine() == 'x86_64'
+        and paddle.version.with_pip_cuda_libraries == 'ON'
+    ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
@@ -842,6 +848,7 @@ __all__ = [
     'ones',
     'not_equal',
     'sum',
+    'reduce_as',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -877,6 +884,7 @@ __all__ = [
     'set_printoptions',
     'std',
     'flatten',
+    'flatten_',
     'asin',
     'multiply',
     'multiply_',

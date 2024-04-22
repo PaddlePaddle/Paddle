@@ -442,7 +442,7 @@ Placements ParsePlacementsArgs(
   Placements placements;
   const std::string& placements_key = "placements";
 
-  if (kw_order_map[placements_key] <= args_num) {
+  if (kw_order_map[placements_key] <= args_num) {  // NOLINT
     placements = CastPyArg2VectorOfPlacement(
         PyTuple_GET_ITEM(args, kw_order_map[placements_key] - 1),
         kw_order_map[placements_key] - 1);

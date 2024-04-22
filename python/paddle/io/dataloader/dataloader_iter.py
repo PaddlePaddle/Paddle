@@ -704,10 +704,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if len(failed_workers) > 0:
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
-                    raise RuntimeError(
+                    logging.warning(
                         f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
                         f"pids: {pids}"
                     )
+                    return
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
                 if isinstance(e, (IOError, queue.Empty)):

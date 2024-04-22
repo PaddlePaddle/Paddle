@@ -76,7 +76,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     layer->setInput(1, *Add1DConstantLayer(value_vec, name + "alpha", true));
     layer->setInput(2, *Add1DConstantLayer(beta_vec, name + "beta", false));
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "fill_constant_batch_size_like", {output_name}, test_mode);
 #endif
   }

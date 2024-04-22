@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 from os.path import dirname
+
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_enable_dynamic'] = 'true'
 
 import numpy as np
 
@@ -53,8 +58,15 @@ class TestIfSubgraph(unittest.TestCase):
         self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        utils.check_jit_kernel_number(static_fn, 3)
+        utils.check_jit_kernel_structure(
+            static_fn,
+            {
+                'if_0': {utils.JIT_KERNEL_NAME: 1},
+                'else_0': {},
+                utils.JIT_KERNEL_NAME: 2,
+            },
+        )
 
     def eval(self, use_cinn):
         net = IfSubgraph()
@@ -70,11 +82,10 @@ class TestIfSubgraph(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

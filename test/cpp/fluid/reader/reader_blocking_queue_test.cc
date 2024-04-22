@@ -117,12 +117,12 @@ void CheckIsUnorderedSame(const std::vector<std::vector<size_t>>& v1,
                           const std::vector<std::vector<size_t>>& v2) {
   std::set<size_t> s1;
   std::set<size_t> s2;
-  for (auto vec : v1) {
+  for (auto const& vec : v1) {
     for (size_t elem : vec) {
       s1.insert(elem);
     }
   }
-  for (auto vec : v2) {
+  for (auto const& vec : v2) {
     for (size_t elem : vec) {
       s2.insert(elem);
     }

@@ -132,9 +132,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._forward_remain_anchors = []
         else:
             raise NotImplementedError(
-                "the sharding segment strategy [{}] is not implemented".format(
-                    str(segment_strategy)
-                )
+                f"the sharding segment strategy [{str(segment_strategy)}] is not implemented"
             )
         self._sharding_segment_strategy = segment_strategy
 
@@ -168,20 +166,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             )
             assert (
                 global_world_size == mp_degree * sharding_degree * dp_degree
-            ), "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
-                global_world_size, mp_degree, sharding_degree, dp_degree
-            )
+            ), f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], dp_degree [{dp_degree}]."
         else:
             assert (
                 global_world_size
                 == mp_degree * sharding_degree * pp_degree * dp_degree
-            ), "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
-                global_world_size,
-                mp_degree,
-                sharding_degree,
-                pp_degree,
-                dp_degree,
-            )
+            ), f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], pp_degree [{pp_degree}], dp_degree [{dp_degree}]."
 
         # FIXME (JZ-LIANG) deprecated hybrid_dp
         if sharding_configs["hybrid_dp"]:
@@ -217,7 +207,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # pipeline: communication across nodes, and therefore should insert in update segment,
         #           conduct just once per global step.
         dp_mode = None
-        # dp here is the pure dp as the outest parallelism
+        # dp here is the pure dp as the outermost parallelism
         if self.hybrid_dp:
             if self.pp_degree > 1:
                 dp_mode = "pp_hybrid_dp"
@@ -598,8 +588,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         rings = [self.mp_ring_id, self.pp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
-        gradientclip_helper = GradientClipHelper(None)
-        gradientclip_helper.sync_global_norm(
+        gradient_clip_helper = GradientClipHelper(None)
+        gradient_clip_helper.sync_global_norm(
             main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank
         )
 
@@ -962,9 +952,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 var2broadcast_time, key=var2broadcast_time.get, reverse=True
             ):
                 logger.info(
-                    "Sharding broadcast: [{}] times [{}]".format(
-                        var2broadcast_time[varname], varname
-                    )
+                    f"Sharding broadcast: [{var2broadcast_time[varname]}] times [{varname}]"
                 )
             for idx_ in range(len(self._segments)):
                 logger.info(f"segment [{idx_}] :")
@@ -996,8 +984,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         4. prune optimizer op + param + gradient
 
         """
-        weightdecay_helper = WeightDecayHelper()
-        weightdecay_helper.prune_weight_decay(block, shard)
+        weight_decay_helper = WeightDecayHelper()
+        weight_decay_helper.prune_weight_decay(block, shard)
 
         # FIXME(wangxi): mp should prune duplicated param_grads
         # NOTE (JZ-LIANG) the sync of FoundInfinite should among one entire Model Parallelism
@@ -1006,8 +994,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         FP16Utils.prune_fp16(block, shard, self._reduced_grads_to_param, rings)
 
         # clipbyglobalnorm should only use the Model parallelism group (mp-sharding-pp)
-        gradientclip_helper = GradientClipHelper(None)
-        gradientclip_helper.prune_gradient_clip(block, shard, rings)
+        gradient_clip_helper = GradientClipHelper(None)
+        gradient_clip_helper.prune_gradient_clip(block, shard, rings)
 
         # build prog deps
         reduced_grads = []
@@ -1476,24 +1464,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         )
         assert (
             self.global_word_size % self.mp_degree == 0
-        ), "global_word_size: {} should be divisible to the mp_degree: {}".format(
-            self.global_word_size, self.mp_degree
-        )
+        ), f"global_word_size: {self.global_word_size} should be divisible to the mp_degree: {self.mp_degree}"
         assert (
             self.global_word_size % self.sharding_degree == 0
-        ), "global_word_size: {} should be divisible to the sharding_degree: {}".format(
-            self.global_word_size, self.sharding_degree
-        )
+        ), f"global_word_size: {self.global_word_size} should be divisible to the sharding_degree: {self.sharding_degree}"
         assert (
             self.global_word_size % self.pp_degree == 0
-        ), "global_word_size: {} should be divisible to the pp_degree: {}".format(
-            self.global_word_size, self.pp_degree
-        )
+        ), f"global_word_size: {self.global_word_size} should be divisible to the pp_degree: {self.pp_degree}"
         assert (
             self.global_word_size % self.dp_degree == 0
-        ), "global_word_size: {} should be divisible to the dp_degree: {}".format(
-            self.global_word_size, self.dp_degree
-        )
+        ), f"global_word_size: {self.global_word_size} should be divisible to the dp_degree: {self.dp_degree}"
 
         # mp group
         if self.mp_degree > 1:
@@ -1508,9 +1488,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             assert self.current_endpoint in self.mp_group_endpoints
             assert (
                 len(self.mp_group_endpoints) == self.mp_degree
-            ), "num of mp worker in group is [{}], but mp group size is [{}]".format(
-                len(self.mp_group_endpoints), self.mp_degree
-            )
+            ), f"num of mp worker in group is [{len(self.mp_group_endpoints)}], but mp group size is [{self.mp_degree}]"
         else:
             self.mp_degree = 1
             self.mp_ring_id = -1
@@ -1600,12 +1578,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             assert (
                 self.global_word_size
                 == self.mp_degree * self.sharding_degree * self.dp_degree
-            ), "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
-                self.global_word_size,
-                self.mp_degree,
-                self.sharding_degree,
-                self.dp_degree,
-            )
+            ), f"global work size [{self.global_word_size}], mp_degree [{self.mp_degree}], sharding_degree [{self.sharding_degree}], dp_degree [{self.dp_degree}]."
             local_pp_degree = 1
         else:
             assert (
@@ -1614,13 +1587,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 * self.sharding_degree
                 * self.pp_degree
                 * self.dp_degree
-            ), "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
-                self.mp_degree,
-                self.sharding_degree,
-                self.pp_degree,
-                self.dp_degree,
-                self.global_word_size,
-            )
+            ), f"mp_degree: [{self.mp_degree}], sharding_degree: [{self.sharding_degree}], pp_degree: [{self.pp_degree}], dp_degree: [{self.dp_degree}]; BUT global nrank: [{self.global_word_size}]"
 
         if self.dp_degree > 1:
             self.dp_ring_id = 2
@@ -1645,7 +1612,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # global group
         # use for gen_nccl_comm_sync, amp check nan inf, clip by global norm
-        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be devided by dp_degree
+        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be divided by dp_degree
         self.global_ring_id = 3
 
         logger.info(f"global word size: {self.global_word_size}")
@@ -1727,7 +1694,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _initialization_broadcast(self):
         """
-        this funtion is to ensure the initialization between dp group to be
+        this function is to ensure the initialization between dp group to be
         identical when hybrid-dp is used, and the initialization of
         not distributed param between mp group to be identical.
         """
@@ -1788,9 +1755,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable_grad_name = grad_name + '@GradientMerge'
             assert (
                 grad_name not in self._grad2merged_grad
-            ), "grad [{}] already in grad2merged_grad, maybe you meet sharing weight case !".format(
-                grad_name
-            )
+            ), f"grad [{grad_name}] already in grad2merged_grad, maybe you meet sharing weight case !"
             self._grad2merged_grad[grad_name] = persistable_grad_name
             grad_var = main_block.var(grad_name)
             # create var

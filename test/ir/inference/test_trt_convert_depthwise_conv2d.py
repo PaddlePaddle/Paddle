@@ -84,7 +84,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
                     "groups": groups,
                     "padding_algorithm": padding_algorithm,
                     "dilations": dilations,
-                    "data_fromat": data_format,
+                    "data_format": data_format,
                 }
             ]
 

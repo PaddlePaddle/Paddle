@@ -248,7 +248,7 @@ DDim DDim::reshape(std::vector<int>& shape) const {
   if (it != shape.end()) {
     int index = static_cast<int>(std::distance(shape.begin(), it));
     int reshape_out_product =
-        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
+        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<>());
     shape[index] = static_cast<int>(product(in_dims)) / reshape_out_product;
   }
 

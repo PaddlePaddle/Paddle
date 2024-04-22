@@ -72,7 +72,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator+(int a_value, const ExprWrapper& b) {
-    return a_value + b;
+    return b + a_value;
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, const ExprWrapper& b) {
@@ -259,7 +259,7 @@ inline const nvinfer1::IDimensionExpr* CalcOutputSize(
   return output_size;
 }
 
-nvinfer1::DimsExprs UnflodInferMeta(
+nvinfer1::DimsExprs UnfoldInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
@@ -879,7 +879,7 @@ nvinfer1::DimsExprs SolveInferMeta(
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnfoldInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);

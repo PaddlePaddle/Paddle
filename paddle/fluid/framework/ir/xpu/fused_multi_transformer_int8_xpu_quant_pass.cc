@@ -525,7 +525,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         id++;
       }
     };
-    // genereate input node
+    // generate input node
     attr2weight(
         "qkv_in_scale", &(input_max_nodes_vec[0]), &(input_max_names_vec[0]));
     attr2weight("out_linear_in_scale",

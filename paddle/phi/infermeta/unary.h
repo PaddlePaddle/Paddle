@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace phi {
 
-class MetaConfig;
+struct MetaConfig;
 
 // Common InferMeta Functions for unary operators, The format like:
 //
@@ -137,6 +137,10 @@ void CropInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
+void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,
@@ -219,6 +223,12 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale);
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
@@ -328,7 +338,7 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
-void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out);
+void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
@@ -392,6 +402,7 @@ void MultinomialInferMeta(const MetaTensor& x,
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
+                        const std::string& mode,
                         MetaTensor* out,
                         MetaTensor* median_index);
 
@@ -433,6 +444,20 @@ void Pad3dInferMeta(const MetaTensor& x,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
+
+void PartialAllgatherInferMeta(const MetaTensor& x,
+                               int nranks,
+                               int rank,
+                               int ring_id,
+                               bool use_calc_stream,
+                               MetaTensor* out);
+
+void PartialSendInferMeta(const MetaTensor& x,
+                          int ring_id,
+                          int peer,
+                          bool use_calc_stream,
+                          int num,
+                          int id);
 
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
@@ -488,6 +513,11 @@ void Pool2DInferMeta(const MetaTensor& x,
 void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
+
+void PushDenseInferMeta(const std::vector<const MetaTensor*>& ids,
+                        int table_id,
+                        float scale_data_norm,
+                        const std::vector<std::string>& input_names);
 
 void SendV2InferMeta(const int peer, const int ring_id);
 
@@ -686,6 +716,18 @@ void SumRawInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
+                            int start_index,
+                            int length,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
+void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int start_index,
+                         int length,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
                   MetaTensor* u,
@@ -746,6 +788,8 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
+void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
+                              std::vector<MetaTensor*> outs);
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
 void UnchangedInferMetaCheckAxis(const MetaTensor& x,

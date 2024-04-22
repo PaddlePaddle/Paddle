@@ -73,7 +73,7 @@ void TopkKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // calcluate the real axis
+  // calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
@@ -117,7 +117,7 @@ void TopkKernel(const Context& dev_ctx,
                                   out,
                                   indices,
                                   largest)) {
-        // Successed, return.
+        // Succeed, return.
         return;
       } else {
         VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
@@ -255,7 +255,7 @@ void TopkKernel(const Context& dev_ctx,
     int ndims = trans.size();
     funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, *input, &trans_input, trans);
-    // third step, calcluate the topk
+    // third step, calculate the topk
     // allocate the tmp cuda memory for the tmp result
     DenseTensor trans_ind;
     DenseTensor trans_out;

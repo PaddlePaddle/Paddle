@@ -1247,8 +1247,8 @@ def concat(x, axis=0, name=None):
     doesn't have any axis.
 
     Args:
-        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
-            float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
+        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
+            float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
@@ -1319,13 +1319,17 @@ def concat(x, axis=0, name=None):
                     [
                         'bool',
                         'float16',
+                        'bfloat16',
                         'float32',
                         'float64',
+                        'int16',
                         'int32',
                         'int64',
                         'int8',
                         'unit8',
                         'uint16',
+                        'complex64',
+                        'complex128',
                     ],
                     'concat',
                 )
@@ -1651,9 +1655,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
     if not (axes[0] != axes[1] and abs(axes[0] - axes[1]) != input_total_dims):
         raise ValueError(
-            "expected rotation axes to be different, but got axis0 = {}, and axis1 = {}".format(
-                axes[0], axes[1]
-            )
+            f"expected rotation axes to be different, but got axis0 = {axes[0]}, and axis1 = {axes[1]}"
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
@@ -1905,9 +1907,7 @@ def roll(x, shifts, axis=None, name=None):
         for i in range(len(axis)):
             if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
                 raise ValueError(
-                    "axis is out of range, it should be in range [{}, {}), but received {}".format(
-                        -len_origin_shape, len_origin_shape, axis
-                    )
+                    f"axis is out of range, it should be in range [{-len_origin_shape}, {len_origin_shape}), but received {axis}"
                 )
     else:
         axis = []
@@ -2508,6 +2508,12 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         input_shape = input.shape
+
+        if not isinstance(num_or_sections, (int, list, tuple)):
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                "received %s." % (type(num_or_sections))
+            )
         if isinstance(num_or_sections, int):
             assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
@@ -3529,7 +3535,7 @@ def gather(x, index, axis=None, name=None):
 
     Args:
         x (Tensor): The source input tensor with rank>=1. Supported data type is
-            int32, int64, float32, float64 and uint8 (only for CPU),
+            int32, int64, float32, float64, complex64, complex128 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=0 or rank=1. Data type is int32 or int64.
         axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
@@ -3571,6 +3577,8 @@ def gather(x, index, axis=None, name=None):
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'gather',
         )
@@ -3607,7 +3615,7 @@ def unbind(input, axis=0):
 
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
+        axis (int32|int64, optional): A 0-D Tensor with shape [] and type is ``int32|int64``. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Tensor), The list of segmented Tensor variables.
@@ -4170,7 +4178,7 @@ def broadcast_to(x, shape, name=None):
 
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4201,7 +4209,7 @@ def expand(x, shape, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 0.
 
     Args:
-        x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4238,7 +4246,7 @@ def expand(x, shape, name=None):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
-            TypeError("Shape only supports OpResult, or list, or tuple.")
+            raise TypeError("Shape only supports Value, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -4265,6 +4273,7 @@ def expand(x, shape, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint8',
                 'uint16',
             ],
             'expand',
@@ -5818,17 +5827,13 @@ def take_along_axis(arr, indices, axis, broadcast=True):
         for i in range(len(arr.shape)):
             if i != axis and arr.shape[i] < indices.shape[i]:
                 raise RuntimeError(
-                    "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {}".format(
-                        i, indices.shape, arr.shape, axis
-                    )
+                    f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )
 
         axis_max_size = arr.shape[axis]
         if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
-                "one of element of indices is out of bounds for dimension {} with size {}".format(
-                    axis, axis_max_size
-                )
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
             )
     if in_dynamic_or_pir_mode():
         return _C_ops.take_along_axis(arr, indices, axis)
@@ -5968,9 +5973,7 @@ def put_along_axis(
                     i != axis and arr.shape[i] < indices.shape[i]
                 ) or indices.shape[i] > values.shape[i]:
                     raise RuntimeError(
-                        "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {} and to be smaller size than values {}".format(
-                            i, indices.shape, arr.shape, axis, values.shape
-                        )
+                        f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis} and to be smaller size than values {values.shape}"
                     )
         else:
             values = paddle.to_tensor(values).astype(arr.dtype)
@@ -5982,16 +5985,12 @@ def put_along_axis(
         axis_max_size = arr.shape[axis]
         if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
-                "one of element of indices is out of bounds for dimension {} with size {}".format(
-                    axis, axis_max_size
-                )
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
             )
     if in_dynamic_or_pir_mode():
         if convert_dtype(indices.dtype) not in ['int32', 'int64']:
             raise TypeError(
-                "The data type of indices should be one of ['int32', 'int64'], but got {}".format(
-                    str(convert_dtype(indices.dtype))
-                )
+                f"The data type of indices should be one of ['int32', 'int64'], but got {str(convert_dtype(indices.dtype))}"
             )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self
@@ -6318,9 +6317,7 @@ def unflatten(x, axis, shape, name=None):
         )
     else:
         raise TypeError(
-            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
-                type(shape)
-            )
+            f"The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {type(shape)}"
         )
     x = x.reshape(new_shape)
     return x
@@ -6748,7 +6745,7 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         axes (list|tuple) : the dimensions to insert the value.
         starts (list|tuple) : the start indices of where to insert.
         ends (list|tuple) : the stop indices of where to insert.
-        strids (list|tuple) : the steps for each insert.
+        strides (list|tuple) : the steps for each insert.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:

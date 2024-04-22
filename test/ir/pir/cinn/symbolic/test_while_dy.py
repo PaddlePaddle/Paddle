@@ -32,11 +32,15 @@ class WhileExpSub(nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        loop_count = 0
-        while x.sum() > 0 and loop_count < 1:
-            y = paddle.exp(x)
-            x = y - x
+        loop_count = paddle.full([1], 0)
+        while x.sum() > paddle.full([1], 0) and loop_count < paddle.full(
+            [1], 1
+        ):
+            x = paddle.exp(x) - x
             loop_count += 1
+        x = paddle.exp(x)
+
+        return x
 
 
 class TestWhile(unittest.TestCase):
@@ -61,17 +65,14 @@ class TestWhile(unittest.TestCase):
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
-        if use_cinn:
-            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

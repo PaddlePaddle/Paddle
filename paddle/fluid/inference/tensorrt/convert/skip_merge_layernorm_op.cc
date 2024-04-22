@@ -80,10 +80,10 @@ class SkipMergeLayernormOpConverter : public OpConverter {
           "mode."));
     }
     auto output_name = op_desc.Output("Out").front();
-    RreplenishLayerAndOutput(skip_merge_layernorm_layer,
-                             "skip_merge_layernorm",
-                             {output_name},
-                             test_mode);
+    ReplenishLayerAndOutput(skip_merge_layernorm_layer,
+                            "skip_merge_layernorm",
+                            {output_name},
+                            test_mode);
   }
 };
 

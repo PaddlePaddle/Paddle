@@ -27,11 +27,16 @@ namespace py = pybind11;
 
 namespace cinn::pybind {
 
+using cinn::common::Arch;
+using cinn::common::ARMArch;
 using cinn::common::bfloat16;
 using cinn::common::CINNValue;
 using cinn::common::float16;
+using cinn::common::NVGPUArch;
 using cinn::common::Target;
 using cinn::common::Type;
+using cinn::common::UnknownArch;
+using cinn::common::X86Arch;
 using utils::GetStreamCnt;
 using utils::StringFormat;
 
@@ -44,14 +49,26 @@ void BindCinnValue(py::module *);
 void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 
 void BindTarget(py::module *m) {
+  py::class_<Arch>(*m, "Arch")
+      .def("IsX86Arch",
+           [](const common::Arch &arch) {
+             return std::holds_alternative<common::X86Arch>(arch);
+           })
+      .def("IsNVGPUArch", [](const common::Arch &arch) {
+        return std::holds_alternative<common::NVGPUArch>(arch);
+      });
+
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
       .def_readwrite("arch", &Target::arch)
+      .def_static("X86Arch", []() -> common::Arch { return common::X86Arch{}; })
+      .def_static("NVGPUArch",
+                  []() -> common::Arch { return common::NVGPUArch{}; })
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
       .def(py::init<Target::OS,
-                    Target::Arch,
+                    Arch,
                     Target::Bit,
                     const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)
@@ -70,12 +87,6 @@ void BindTarget(py::module *m) {
   os.value("Unk", Target::OS::Unk)
       .value("Linux", Target::OS::Linux)
       .value("Windows", Target::OS::Windows);
-
-  py::enum_<Target::Arch> arch(target, "Arch");
-  arch.value("Unk", Target::Arch::Unk)
-      .value("X86", Target::Arch::X86)
-      .value("ARM", Target::Arch::ARM)
-      .value("NVGPU", Target::Arch::NVGPU);
 
   py::enum_<Target::Bit> bit(target, "Bit");
   bit.value("Unk", Target::Bit::Unk)
@@ -217,7 +228,7 @@ void BindShared(py::module *m) {
       .def("val", &cinn::common::RefCount::val);
 }
 
-// TODO(wanghaipeng03) using true_type or false_type as tag disptcher losses
+// TODO(wanghaipeng03) using true_type or false_type as tag dispatcher losses
 // semantic context
 template <typename T1, typename T2, typename F>
 inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::true_type) {

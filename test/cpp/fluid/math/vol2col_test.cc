@@ -187,8 +187,8 @@ void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   float* input_ptr =
       input_tmp.mutable_data<float>({1, input_depth, input_height, input_width},
                                     paddle::platform::CPUPlace());
-  float arr[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-  memcpy(input_ptr, arr, 12 * sizeof(float));
+  std::array<float, 12> arr = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+  memcpy(input_ptr, arr.data(), 12 * sizeof(float));
 
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
@@ -207,7 +207,8 @@ void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   phi::funcs::Vol2ColFunctor<phi::GPUContext, float> vol2col;
   vol2col(*context, input, dilations, strides, paddings, &output);
 
-  float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
+  std::array<float, 16> vol_2_col = {
+      0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
@@ -222,7 +223,7 @@ void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   }
 
   // Col2Vol test
-  float col_2_vol[] = {0, 2, 2, 3, 8, 5, 6, 14, 8, 9, 20, 11};
+  std::array<float, 12> col_2_vol = {0, 2, 2, 3, 8, 5, 6, 14, 8, 9, 20, 11};
   memset(input_ptr, 0, 12 * sizeof(float));
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;

@@ -231,7 +231,7 @@ class NameVisitor(gast.NodeVisitor):
     def visit_FunctionDef(self, node):
         # NOTE: We skip to visit names of get_args and set_args, because they contains
         # nonlocal statement such as 'nonlocal x, self' where 'self' should not be
-        # parsed as returned value in contron flow.
+        # parsed as returned value in control flow.
         if (
             GET_ARGS_FUNC_PREFIX in node.name
             or SET_ARGS_FUNC_PREFIX in node.name
@@ -343,7 +343,7 @@ def transform_if_else(node, root):
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
 
     # TODO(dev): Need a better way to deal this.
-    # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
+    # LoopTransformer will create some special vars, which is not visible by users. so we can sure it's safe to remove them.
     filter_names = [
         ARGS_NAME,
         FOR_ITER_INDEX_PREFIX,
