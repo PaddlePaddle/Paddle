@@ -2680,7 +2680,7 @@
 
 - op : pull_sparse_v2
   inputs :
-    { ids : Ids, W : w}
+    { ids : Ids, w : W}
   outputs :
     out : Out
   extra :

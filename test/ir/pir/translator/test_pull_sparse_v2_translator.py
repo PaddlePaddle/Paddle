@@ -21,7 +21,7 @@ from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestPullGpupsSparseOpTranslator(
+class TestPullSparseV2OpTranslator(
     test_op_translator.TestOpWithBackwardTranslator
 ):
     def setUp(self):
@@ -43,6 +43,7 @@ class TestPullGpupsSparseOpTranslator(
             inputs={"Ids": [ids], "W": [w]},
             outputs={"Out": [out]},
         )
+        return out
 
     def test_translator(self):
         self.check()
