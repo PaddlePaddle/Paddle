@@ -5140,7 +5140,7 @@ def ormqr(input, tau, other, left=True, transpose=False):
         assert (
             input.shape[0] == other.shape[0] and input.shape[0] == tau.shape[0]
         ), "The input and tau and other parameters should have the same batch"
-    
+
     Q = householder_product(input, tau)
     if len(input.shape) == 2:
         Q = Q.T if transpose else Q
