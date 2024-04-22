@@ -138,7 +138,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_layer->setName(("ManyEmbLayerNormVarlenPluginDynamicV1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
-      plugin_ptr.reset;
+      plugin_ptr.reset();
       if (enable_int8) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
