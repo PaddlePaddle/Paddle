@@ -216,10 +216,11 @@ void ReshardOp::VerifySig() {
         1u,
         common::errors::PreconditionNotMet(
             "The size %d of inputs must be equal to 1.", input_size));
-    PADDLE_ENFORCE_EQ((*this)
-                          ->operand_source(0)
-                          .type()
-                          .isa<paddle::dialect::DistDenseTensorType>(),
+    PADDLE_ENFORCE_EQ(!(*this)->operand_source(0) ||
+                          (*this)  // reshard allow NULL TYPE as input
+                              ->operand_source(0)
+                              .type()
+                              .isa<paddle::dialect::DistDenseTensorType>(),
                       true,
                       common::errors::PreconditionNotMet(
                           "Type validation failed for the 0th input."));
@@ -243,7 +244,13 @@ void ReshardOp::VerifySig() {
         common::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
-        (*this)->result(0).type().isa<paddle::dialect::DistDenseTensorType>(),
+        !(*this)->result(0) ||
+            (*this)
+                ->result(0)
+                .type()
+                .isa<paddle::dialect::DistDenseTensorType>(),  // reshard allow
+                                                               // NULL TYPE as
+                                                               // output
         true,
         common::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
