@@ -64,43 +64,33 @@ class ComputeAttribute {
   AttrComputeFunc attr_compute_func_;
 };
 
-using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
-
-class TensorShape {
- public:
-  explicit TensorShape(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-
-  const std::string& tensor_name() const { return tensor_name_; }
-
- private:
-  std::string tensor_name_;
-};
-
-class TensorDataType {
- public:
-  explicit TensorDataType(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-
-  const std::string& tensor_name() const { return tensor_name_; }
-
- private:
-  std::string tensor_name_;
-};
-
 using ConstraintFunction = std::function<bool(const MatchContext&)>;
 class Constraint {
  public:
-  explicit Constraint(const ConstraintFunction& constrain_fn)
-      : IsContextMatchConstraint_(constrain_fn) {}
+  explicit Constraint(const ConstraintFunction& constraint_fn)
+      : is_meet_constraint_(constraint_fn) {}
   bool operator()(const MatchContext& match_context) const {
-    return IsContextMatchConstraint_(match_context);
+    return is_meet_constraint_(match_context);
   }
 
  private:
-  ConstraintFunction IsContextMatchConstraint_;
+  ConstraintFunction is_meet_constraint_;
 };
 
+using PostProcessFunction = std::function<void(const MatchContext&)>;
+class PostProcess {
+ public:
+  explicit PostProcess(const PostProcessFunction& post_process_fn)
+      : post_process_after_match_(post_process_fn) {}
+  void operator()(const MatchContext& match_context) const {
+    return post_process_after_match_(match_context);
+  }
+
+ private:
+  PostProcessFunction post_process_after_match_;
+};
+
+using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
 class TEST_API DrrPatternContext {
  public:
   DrrPatternContext();
@@ -113,6 +103,8 @@ class TEST_API DrrPatternContext {
   }
 
   std::vector<Constraint> constraints() const;
+
+  std::vector<PostProcess> post_processes() const;
 
   std::shared_ptr<ResultPatternGraph> result_pattern_graph() const {
     return result_pattern_graph_;
@@ -134,12 +126,13 @@ class TEST_API DrrPatternContext {
           {});
   drr::Tensor& ResultTensorPattern(const std::string& name);
 
-  void RequireEqual(const TensorShape& first, const TensorShape& second);
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
-  void RequireNativeCall(const ConstraintFunction& custom_fn);
+  void AddConstraint(const ConstraintFunction& constraint_fn);
+
+  void AddPostProcess(const PostProcessFunction& post_process_fn);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
+  std::vector<PostProcess> post_processes_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
@@ -188,10 +181,6 @@ class TEST_API Tensor {
   static const char RESULT_OUTPUT_NONE_TENSOR_NAME[];
   static const char SOURCE_INPUT_NONE_TENSOR_NAME[];
   static const char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
-
-  TensorShape shape() const { return TensorShape(name()); }
-
-  TensorDataType dtype() const { return TensorDataType(name()); }
 
   bool is_none() const {
     return name_ == RESULT_INPUT_NONE_TENSOR_NAME ||
@@ -368,11 +357,9 @@ class TEST_API SourcePattern {
 
   Attribute Attr(const std::string& attr_name) const;
 
-  void RequireEqual(const TensorShape& first, const TensorShape& second);
+  void AddConstraint(const ConstraintFunction& constraint_fn);
 
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
-
-  void RequireNativeCall(const ConstraintFunction& custom_fn);
+  void AddPostProcess(const PostProcessFunction& post_process_fn);
 
   // Same as a ResultPattern::InputNoneTensor
   drr::Tensor& InputNoneTensor();
