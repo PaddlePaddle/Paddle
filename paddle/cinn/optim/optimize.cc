@@ -66,7 +66,7 @@ Expr Optimize(Expr e,
     RemoveGpuForloopsAxis(&copied);
   }
   CudaSyncThreadsDropIfThenElse(&copied);
-  // TransBufferWithDynamicShape(&copied);
+  // CudaTransBufferWithDynamicShape(&copied);
 #endif
 
   SimplifyBlocks(&copied);

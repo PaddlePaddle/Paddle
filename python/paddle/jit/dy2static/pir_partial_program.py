@@ -29,9 +29,12 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
+from .logging_utils import TranslatorLogger
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard, cinn_is_enabled
 
 __all__ = []
+
+prog_logger = TranslatorLogger()
 
 
 class NestSequence:
@@ -283,10 +286,27 @@ class RunnableProgram:
         """
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
+
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program before PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program before PIR PASS ********\n{origin_bwd} ",
+        )
         # NOTE(dev): Add this line to trigger program_name_attr logic
         program_name_attr = self.program_name_attr
         self.forward_program, self.backward_program = pass_fn(
             origin_fwd, origin_bwd
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program after PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program after PIR PASS ********\n{origin_bwd} ",
         )
 
     # cached property can ensure program is splited only once.
@@ -438,7 +458,8 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train

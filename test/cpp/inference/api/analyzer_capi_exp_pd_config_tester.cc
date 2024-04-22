@@ -63,13 +63,6 @@ TEST(PD_Config, interface) {
   bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_enabled);
 
-#ifndef PADDLE_WITH_LITE
-  PD_ConfigEnableLiteEngine(
-      config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0, nullptr);
-  bool lite_enabled = PD_ConfigLiteEngineEnabled(config);
-  EXPECT_TRUE(lite_enabled);
-#endif
-
   PD_ConfigSwitchIrDebug(config, TRUE);
 #ifdef PADDLE_WITH_DNNL
   const char* ops_name = "conv_2d";

@@ -184,8 +184,8 @@ std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
     const cinn::common::CINNValuePack &arg_pack,
     const std::vector<int> &output_shape,
     const cinn::common::Target &target) {
-  if (target.arch == Target::Arch::X86) {
-    CINN_NOT_IMPLEMENTED
+  if (!std::holds_alternative<common::NVGPUArch>(target.arch)) {
+    CINN_NOT_IMPLEMENTED;
   }
   std::vector<Expr> vec_ast;
   for (int i = 0; i < arg_pack.size(); i++) {

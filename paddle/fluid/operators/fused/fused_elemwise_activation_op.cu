@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_elemwise_activation_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation,
                           GPU,
