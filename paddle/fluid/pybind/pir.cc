@@ -1099,13 +1099,24 @@ std::list<Operation *>::const_iterator list_offset(const Block *block,
   return it;
 }
 
-template <class F>
-void range_block_do(const Block *block, std::vector<int> range, F fn) {
+template <typename F, typename S>
+void range_block_do(const Block *block,
+                    std::vector<int> range,
+                    F fn,
+                    S skip_fn) {
   for (auto it = list_offset(block, range[0]);
        it != list_offset(block, range[1]);
        ++it) {
+    if (skip_fn(*it)) {
+      continue;
+    }
     fn(*it);
   }
+}
+
+template <typename F>
+void range_block_do(const Block *block, std::vector<int> range, F fn) {
+  range_block_do(block, range, fn, [](Operation *op) { return false; });
 }
 
 template <typename K, typename V>
@@ -1461,7 +1472,9 @@ SplitedResult SplitForwardBackward(
       [&forward_mapper, &forward_program, &clone_options](Operation *op) {
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
-      });
+      },
+      // Skip the ShadowOutputOp.
+      /*skip_fn=*/[](Operation *op) { return op->isa<pir::ShadowOutputOp>(); });
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construct.
@@ -1500,30 +1513,8 @@ SplitedResult SplitForwardBackward(
             forward_params.end()) {
       return;
     }
-    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
-    // calling SplitForwardBackward multi-times.
     std::string shadow_output_name =
         std::string("output_") + std::to_string(counter);
-    std::unordered_set<pir::Value> inserted_value;
-    for (auto it = forward_program->block()->rbegin();
-         it != forward_program->block()->rend();
-         ++it) {
-      if (it->isa<pir::ShadowOutputOp>()) {
-        auto out_name =
-            it->attribute<pir::StrAttribute>("output_name").AsString();
-        if (out_name == shadow_output_name) {
-          VLOG(4) << out_name
-                  << " has been inserted ShadowOutputOp, skip it now.";
-          return;
-        }
-
-        inserted_value.insert(it->operand_source(0));
-      }
-    }
-
-    if (inserted_value.count(forward_value_map[v])) {
-      return;
-    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
         {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
