@@ -453,14 +453,8 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC
-    test_affine_channel_op
-    test_fill_zeros_like2_op
-    test_gather_nd_op
-    test_lod_reset_op
-    test_lookup_table_op
-    test_scatter_op
-    test_slice_op)
+set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_lod_reset_op
+                     test_lookup_table_op test_scatter_op test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})

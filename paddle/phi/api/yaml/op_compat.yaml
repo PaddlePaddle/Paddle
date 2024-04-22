@@ -1099,8 +1099,11 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
   extra :

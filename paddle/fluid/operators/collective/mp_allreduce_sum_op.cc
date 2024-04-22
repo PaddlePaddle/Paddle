@@ -79,7 +79,6 @@ DEFINE_C_ALLREDUCE_CPU_KERNEL(MpAllReduceSum, kRedSum);
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumOp,
