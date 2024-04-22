@@ -99,8 +99,8 @@ struct cpu_gather_scatter_functor {
     }
     int64_t select_dim_size = index_dims[dim];
     // index matrix has different shape with self matrix or src matrix.
-    int self_select_dim_size = self_dims[dim];
-    int src_select_dim_size = src_dims[dim];
+    int64_t self_select_dim_size = self_dims[dim];
+    int64_t src_select_dim_size = src_dims[dim];
     int64_t outer_dim_size_self = 1;
     int64_t outer_dim_size_src = 1;
     int64_t inner_dim_size = 1;

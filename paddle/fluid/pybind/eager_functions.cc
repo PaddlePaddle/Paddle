@@ -1382,7 +1382,7 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"_get_custom_operator_inplace_map",
      (PyCFunction)(void (*)(
-         void))eager_api__get_custom_operator_inplace_reverse_idx,
+         ))eager_api__get_custom_operator_inplace_reverse_idx,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_run_custom_op",

@@ -413,8 +413,11 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
     }
 
     if (argv.size() < 2 || argv[0] != '-') {
-      LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv + "\", " +
-                           arg_format_help);
+      std::string error_msg = "invalid commandline argument: \"";
+      error_msg += argv;
+      error_msg += "\", ";
+      error_msg += arg_format_help;
+      LOG_FLAG_FATAL_ERROR(error_msg);
     }
 
     // parse arg name and value
@@ -425,8 +428,11 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
       // the argv format is "--name" or "--name value"
       name = argv.substr(hyphen_num);
       if (name.empty()) {
-        LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv +
-                             "\", " + arg_format_help);
+        std::string error_msg = "invalid commandline argument: \"";
+        error_msg += argv;
+        error_msg += "\", ";
+        error_msg += arg_format_help;
+        LOG_FLAG_FATAL_ERROR(error_msg);
       }
 
       // print help message
@@ -437,16 +443,21 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
 
       // get the value from next argv.
       if (++i == argv_num) {
-        LOG_FLAG_FATAL_ERROR("expected value of flag \"" + name +
-                             "\" but found none.");
+        std::string error_msg = "expected value of flag \"";
+        error_msg += name;
+        error_msg += "\" but found none.";
+        LOG_FLAG_FATAL_ERROR(error_msg);
       } else {
         value = argvs[i];
       }
     } else {
       // the argv format is "--name=value"
       if (split_pos == hyphen_num || split_pos == argv.size() - 1) {
-        LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv +
-                             "\", " + arg_format_help);
+        std::string error_msg = "invalid commandline argument: \"";
+        error_msg += argv;
+        error_msg += "\", ";
+        error_msg += arg_format_help;
+        LOG_FLAG_FATAL_ERROR(error_msg);
       }
       name = argv.substr(hyphen_num, split_pos - hyphen_num);
       value = argv.substr(split_pos + 1);
@@ -468,8 +479,10 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
         if (value.back() == '"') {
           value.pop_back();
         } else {
-          LOG_FLAG_FATAL_ERROR("unexperted end of flag \"" + name +
-                               "\" value while looking for matching `\"'");
+          std::string error_msg = "unexperted end of flag \"";
+          error_msg += name;
+          error_msg += "\" value while looking for matching `\"'";
+          LOG_FLAG_FATAL_ERROR(error_msg);
         }
       }
     }
