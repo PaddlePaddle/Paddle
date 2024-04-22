@@ -7736,7 +7736,7 @@ def isposinf(x, name=None):
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
-        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The output Tensor. Each element of output indicates whether the input element is positive infinity or not.
@@ -7783,7 +7783,7 @@ def isneginf(x, name=None):
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
-        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The output Tensor. Each element of output indicates whether the input element is negative infinity or not.
@@ -7830,7 +7830,7 @@ def isreal(x, name=None):
 
     Args:
         x (Tensor): The input Tensor.
-        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The output Tensor. Each element of output indicates whether the input element is a real number or not.
