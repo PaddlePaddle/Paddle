@@ -35,7 +35,7 @@ class TestBlockDiagError(unittest.TestCase):
             B = paddle.to_tensor([[[5, 6], [7, 8]]])
             C = paddle.to_tensor([[[9, 10], [11, 12]]])
             with paddle.static.program_guard(base.Program()):
-                out = block_diag(A, B ,C)
+                out = paddle.block_diag(A, B ,C)
         
         self.assertRaises(ValueError, test_dime_error)
 
