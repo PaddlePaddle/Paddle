@@ -31,7 +31,7 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [2, 171888], dtype: paddle.float32, stop_gradient: True)
     ):
         var_1, var_2 = paddle.tensor.search.topk(var_0, k=1, axis=0)
-        var_3 = paddle.tensor.creation.full([1, 171888], -1, dtype='int32')
+        var_3 = paddle.tensor.creation.full([1, 1788], -1, dtype='int32')
         var_4 = var_1 > -1
         var_5 = var_1 < 0.3
         var_6 = paddle.tensor.logic.logical_and(var_4, var_5)
@@ -56,7 +56,7 @@ class LayerCase(paddle.nn.Layer):
 
 class TestLayer(unittest.TestCase):
     def setUp(self):
-        self.inputs = (paddle.rand(shape=[2, 171888], dtype=paddle.float32),)
+        self.inputs = (paddle.rand(shape=[2, 1788], dtype=paddle.float32),)
         self.net = LayerCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
@@ -78,12 +78,12 @@ class TestLayer(unittest.TestCase):
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

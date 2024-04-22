@@ -53,7 +53,7 @@ class TestMatmulAddFusePattern(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.add(matmul_out, residual)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_elementwise_add_fuse_pass']
+                self.pass_attr_list = [{'matmul_elementwise_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -108,7 +108,7 @@ class TestMatmulAddFusePatternCase2(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.add(matmul_out, residual)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_elementwise_add_fuse_pass']
+                self.pass_attr_list = [{'matmul_elementwise_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -163,7 +163,7 @@ class TestMatmulAddFusePatternCase3(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.add(residual, matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_elementwise_add_fuse_pass']
+                self.pass_attr_list = [{'matmul_elementwise_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -218,7 +218,7 @@ class TestMatmulAddFusePatternCase4(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.add(residual, matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_elementwise_add_fuse_pass']
+                self.pass_attr_list = [{'matmul_elementwise_add_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),

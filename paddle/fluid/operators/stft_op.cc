@@ -36,20 +36,20 @@ class StftOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_rank,
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) of StftOp should be a tensor with shape [N, T], "
             "but got rank %s.",
             x_rank));
     PADDLE_ENFORCE_GT(
         hop_length,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Attribute(hop_length) should be greater than 0, but got %s.",
             hop_length));
     PADDLE_ENFORCE_EQ(
         window_size,
         n_fft,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Window) of StftOp should be equal with n_fft %s, "
             "but got %s.",
             n_fft,
@@ -60,7 +60,7 @@ class StftOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_LE(n_fft,
                       seq_length,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Attribute(frame_length) should be less equal than "
                           "sequence length, but got (%s) > (%s).",
                           n_fft,

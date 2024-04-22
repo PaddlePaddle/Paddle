@@ -122,7 +122,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// TODO(YuanRisheng): The layout of mkldnn kernel should be MKLDNN, we should
+// TODO(YuanRisheng): The layout of onednn kernel should be OneDNN, we should
 // support specifying the exact layout when the kernel is registered
 PD_REGISTER_KERNEL(
     log_softmax, CPU, ALL_LAYOUT, phi::LogSoftmaxKernel, float, double) {}

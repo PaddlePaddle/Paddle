@@ -102,6 +102,7 @@ from .pipeline_scheduler_pass import (  # noqa: F401
     Pipeline1F1BPass,
     PipelineEager1F1BPass,
     PipelineVirtualPipelinePass,
+    PipelineZeroBubblePipelinePass,
     apply_pass,
 )
 from .ps_trainer_pass import (  # noqa: F401

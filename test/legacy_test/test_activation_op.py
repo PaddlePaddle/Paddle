@@ -1624,7 +1624,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
 
@@ -1667,7 +1667,7 @@ class TestSqrt(TestActivation, TestParameter):
 class TestSqrtPrimFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1718,7 +1718,7 @@ class TestSqrt_ZeroDim(TestSqrt):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1767,7 +1767,7 @@ class TestSqrtBF16(OpTest):
 class TestSqrtComp(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1811,7 +1811,7 @@ class TestSqrtComp(TestActivation, TestParameter):
 class TestSqrtCompFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1863,6 +1863,7 @@ class TestRsqrt(TestActivation):
         self.op_type = "rsqrt"
         self.python_api = paddle.rsqrt
         self.public_python_api = paddle.rsqrt
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
@@ -1894,7 +1895,9 @@ class TestRsqrt(TestActivation):
             ['X'],
             'Out',
             max_relative_error=0.0005,
+            check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -3678,6 +3681,8 @@ class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
         self.python_api = paddle.reciprocal
+        self.public_python_api = paddle.reciprocal
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
 
@@ -3716,7 +3721,9 @@ class TestReciprocal(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -3724,10 +3731,22 @@ class TestReciprocal_Complex64(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
 
 class TestReciprocal_Complex128(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
