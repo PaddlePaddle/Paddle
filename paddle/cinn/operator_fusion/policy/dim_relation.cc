@@ -100,7 +100,7 @@ static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {
   std::vector<std::pair<size_t, size_t>> res;
-  const auto* shape_analysis =
+  auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
