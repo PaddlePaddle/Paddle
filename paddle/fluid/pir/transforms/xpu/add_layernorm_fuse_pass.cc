@@ -41,7 +41,7 @@ class AddLayernormPattern : public paddle::drr::DrrPatternBase {
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       std::vector<int64_t> x_shape =
           pir::GetShapeFromValue(match_ctx.Tensor("x"));
       std::vector<int64_t> y_shape =
