@@ -219,6 +219,10 @@ class RunnableProgram:
             in_out_values[0], list
         ), "in_out_values must be tuple with len == 3"
         self.program = program
+        print("program", program)
+
+        paddle.base.libpaddle.pir.remove_no_need_shadow_output(self.program)
+
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])

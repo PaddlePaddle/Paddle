@@ -1388,6 +1388,29 @@ int AppendShadowOutputs(Program *forward_program,
   return counter;
 }
 
+std::shared_ptr<Program> RemoveNoNeedShadowOutput(const Program &program) {
+  pir::IrMapping mapper;
+  auto cloned_program = program.Clone(mapper);
+
+  std::set<std::string> grad_out;
+  std::set<std::string> remove_op_name;
+
+  for (auto it = cloned_program->block()->begin();
+       it != cloned_program->block()->end();
+       ++it) {
+    if (it->isa<::pir::ShadowOutputOp>()) {
+      auto fetch_name = it->attribute("output_name")
+                            .dyn_cast<::pir::StrAttribute>()
+                            .AsString();
+
+      std::cerr << "fetch name " << fetch_name << std::endl;
+
+      if () }
+  }
+
+  return cloned_program;
+}
+
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -1704,6 +1727,7 @@ void BindUtils(pybind11::module *m) {
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
+  m->def("remove_no_need_shadow_output", RemoveNoNeedShadowOutput);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
