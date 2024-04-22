@@ -42,7 +42,6 @@ struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
-extern const std::vector<std::string> kLiteSubgraphPasses;
 
 AnalysisConfig::AnalysisConfig() {
   // NOTE(liuyuanle): Why put the following code here?
@@ -181,7 +180,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                const std::string &transformer_encoder_precision,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
-#if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+#if defined(PADDLE_WITH_XPU)
   LOG_FIRST_N(WARNING, 1)
       << "Parameters in EnableXpu/enable_xpu is deprecated since version "
          "2.6.1, and will be removed in version 3.0! Please use "
@@ -200,13 +199,11 @@ void AnalysisConfig::EnableXpu(int l3_size,
   }
   xpu_config_.transformer_encoder_adaptive_seqlen =
       transformer_encoder_adaptive_seqlen;
-  xpu_lite_l3_locked_ = l3_locked;
-  xpu_lite_enable_multi_stream_ = enable_multi_stream;
   Update();
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use XPU inference, please compile with option 'WITH_XPU' or "
-      "'WITH_LITE & LITE_WITH_XPU' first."));
+      "'LITE_WITH_XPU' first."));
 #endif
 }
 
@@ -523,23 +520,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(optim_input_shape_);
   CP_MEMBER(disable_trt_plugin_fp16_);
 
-  CP_MEMBER(use_lite_);
-  CP_MEMBER(lite_precision_mode_);
-  CP_MEMBER(lite_passes_filter_);
-  CP_MEMBER(lite_ops_filter_);
-  CP_MEMBER(lite_zero_copy_);
-
   // XPU related.
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_config_);
-  CP_MEMBER(xpu_lite_l3_locked_);
-  CP_MEMBER(xpu_lite_enable_multi_stream_);
-
-  // Lite OpenCL Related
-  CP_MEMBER(use_opencl_);
-
-  // NPU related.
-  CP_MEMBER(nnadapter_config_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -1101,23 +1084,8 @@ void AnalysisConfig::Update() {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
-  if (use_lite_) {
-#ifndef PADDLE_WITH_LITE
-    LOG(WARNING) << "You tried to enable the lite subgraph "
-                    "but did not have the option -DWITH_LITE compiled.";
-#endif
-    pass_builder()->ClearPasses();
-    for (const auto &pass : kLiteSubgraphPasses) {
-      if (std::find(lite_passes_filter_.begin(),
-                    lite_passes_filter_.end(),
-                    pass) == lite_passes_filter_.end()) {
-        pass_builder()->AppendPass(pass);
-      }
-    }
-  }
-
   if (use_xpu_) {
-#if (defined LITE_SUBGRAPH_WITH_XPU) || (defined PADDLE_WITH_XPU)
+#if (defined PADDLE_WITH_XPU)
     PADDLE_ENFORCE_EQ(use_gpu_,
                       false,
                       platform::errors::Unavailable(
@@ -1217,7 +1185,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
 
-  ss << use_lite_;
   ss << use_xpu_;
   ss << xpu_config_.device_id;
   ss << xpu_config_.l3_size;
@@ -1239,8 +1206,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.quant_post_dynamic_activation_method;
   ss << xpu_config_.quant_post_dynamic_weight_precision;
   for (auto const &type : xpu_config_.quant_post_dynamic_op_types) ss << type;
-  ss << xpu_lite_l3_locked_;
-  ss << xpu_lite_enable_multi_stream_;
 
   ss << thread_local_stream_;
 
@@ -1342,24 +1307,6 @@ void AnalysisConfig::EnableProfile() {
 
 void AnalysisConfig::DisableGlogInfo() {
   with_glog_info_ = false;
-  Update();
-}
-
-void AnalysisConfig::EnableLiteEngine(
-    Precision precision_mode,
-    bool zero_copy,
-    const std::vector<std::string> &passes_filter,
-    const std::vector<std::string> &ops_filter) {
-  use_lite_ = true;
-  lite_precision_mode_ = precision_mode;
-  lite_passes_filter_ = passes_filter;
-  lite_ops_filter_ = ops_filter;
-  lite_zero_copy_ = zero_copy;
-  Update();
-}
-
-void AnalysisConfig::EnableOpenCL() {
-  use_opencl_ = true;
   Update();
 }
 
@@ -1527,10 +1474,6 @@ std::string AnalysisConfig::Summary() {
   }
   os.InsetDivider();
 
-  if (use_lite_) {
-    os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
-  }
-
   // cinn compiler
   os.InsertRow({"use_cinn_compiler", use_cinn_ ? "true" : "false"});
 
@@ -1548,64 +1491,6 @@ std::string AnalysisConfig::Summary() {
                 collect_shape_range_info_ ? shape_range_info_path_ : "false"});
 
   return os.PrintTable();
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
-    const std::vector<std::string> &names) {
-  nnadapter_device_names = names;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
-    const std::string &properties) {
-  nnadapter_context_properties = properties;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
-    const std::string &dir) {
-  nnadapter_model_cache_dir = dir;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
-    const std::string &model_cache_token,
-    const std::vector<char> &model_cache_buffer) {
-  PADDLE_ENFORCE_EQ(model_cache_token.empty(),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_token should not be empty."));
-  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_buffer should not be empty."));
-  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_token has already been set."));
-
-  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
-    const std::string &path) {
-  nnadapter_subgraph_partition_config_path = path;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
-    const std::string &buffer) {
-  nnadapter_subgraph_partition_config_buffer = buffer;
-  return *this;
-}
-LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {
-  use_nnadapter = true;
-  return *this;
-}
-LiteNNAdapterConfig &LiteNNAdapterConfig::Disable() {
-  use_nnadapter = false;
-  return *this;
 }
 
 void AnalysisConfig::CollectShapeRangeInfo(

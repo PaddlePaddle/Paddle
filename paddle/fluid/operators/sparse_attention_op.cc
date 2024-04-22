@@ -99,15 +99,15 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(dims_q.size(),
                       static_cast<size_t>(4),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Dimension in query' shapes should be 4."));
-    PADDLE_ENFORCE_EQ(dims_k.size(),
-                      static_cast<size_t>(4),
-                      platform::errors::InvalidArgument(
-                          "Dimension in key' shapes should be 4."));
+    PADDLE_ENFORCE_EQ(
+        dims_k.size(),
+        static_cast<size_t>(4),
+        phi::errors::InvalidArgument("Dimension in key' shapes should be 4."));
     PADDLE_ENFORCE_EQ(dims_v.size(),
                       static_cast<size_t>(4),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Dimension in value' shapes should be 4."));
 
     auto batch_size = dims_q[0];

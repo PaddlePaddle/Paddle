@@ -70,7 +70,7 @@ struct LoDTensorToArrayFunctor {
       Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with CUDA."));
+          phi::errors::Unavailable("Paddle is not compiled with CUDA."));
 #endif
     }
   }
@@ -126,11 +126,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         rank_level,
         x.lod().size(),
-        platform::errors::InvalidArgument("Input should be a phi::DenseTensor, "
-                                          "and its lod_level should be at "
-                                          "least %d, but given is %d.",
-                                          rank_level + 1,
-                                          x.lod().size()));
+        phi::errors::InvalidArgument("Input should be a phi::DenseTensor, "
+                                     "and its lod_level should be at "
+                                     "least %d, but given is %d.",
+                                     rank_level + 1,
+                                     x.lod().size()));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -215,18 +215,18 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(X) of LoDTensorToArrayOp should not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasInput("RankTable"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(RankTable) of LoDTensorToArrayOp should not be null."));
 
     PADDLE_ENFORCE_EQ(
         context->HasOutput("Out"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(Out) of LoDTensorToArrayOp should not be null."));
 
     auto x_dim = context->GetInputDim("X");
