@@ -68,7 +68,7 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
                      std::unordered_map<std::string, pir::Attribute>>
       result;
   for (size_t i = 0; i < group_list.size(); ++i) {
-      std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+    std::unordered_map<std::string, ::pir::Attribute> op_attrs{
         {cinn::dialect::JitKernelOp::kAttrName,
          cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
                                                      fn_ptr_res[i])},
