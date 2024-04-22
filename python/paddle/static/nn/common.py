@@ -3363,7 +3363,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
 
-    * :math`W_{j-i}`: The (j-i)-th row of parameters with shape [1, D].
+    * :math:`W_{j-i}`: The (j-i)-th row of parameters with shape [1, D].
 
     More details about row_conv please refer to
     the design document
