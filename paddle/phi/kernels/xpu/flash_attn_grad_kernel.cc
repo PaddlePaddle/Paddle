@@ -90,6 +90,8 @@ void FlashAttnGradKernel(const Context& ctx,
   api::VectorParam<int> kvlod{
       kvlod_vec.data(), static_cast<int64_t>(kvlod_vec.size()), nullptr};
 
+  // get seed offset
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
   // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
   // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
@@ -104,28 +106,28 @@ void FlashAttnGradKernel(const Context& ctx,
   // dv_maxptr = nullptr, const float* do_maxptr = nullptr);
   int r = baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>(
       ctx.x_context(),
-      dout_data,                    // dout
-      q_data,                       // q
-      k_data,                       // k
-      v_data,                       // v
-      out_data,                     // out
-      softmax_lse_data,             // softmax_lse
-      dq_data,                      // dq
-      dk_data,                      // dk
-      dv_data,                      // dv
-      qlod,                         // lod_seqlens_q
-      kvlod,                        // lod_seqlens_k
-      seqlen_q,                     // max_seqlen_q
-      seqlen_k,                     // max_seqlen_k
-      num_heads,                    // head_num
-      num_heads_k,                  // head_num_k
-      head_size,                    // head_dim
-      1.0f / std::sqrt(head_size),  // softmax_scale
-      dropout,                      // p_dropout
-      0x45678901,                   // seed
-      causal,                       // is_causal
-      nullptr,                      // attn_mask
-      bias_data                     // bias
+      dout_data,                                   // dout
+      q_data,                                      // q
+      k_data,                                      // k
+      v_data,                                      // v
+      out_data,                                    // out
+      softmax_lse_data,                            // softmax_lse
+      dq_data,                                     // dq
+      dk_data,                                     // dk
+      dv_data,                                     // dv
+      qlod,                                        // lod_seqlens_q
+      kvlod,                                       // lod_seqlens_k
+      seqlen_q,                                    // max_seqlen_q
+      seqlen_k,                                    // max_seqlen_k
+      num_heads,                                   // head_num
+      num_heads_k,                                 // head_num_k
+      head_size,                                   // head_dim
+      1.0f / std::sqrt(head_size),                 // softmax_scale
+      dropout,                                     // p_dropout
+      static_cast<uint64_t>(seed_offset_data[0]),  // seed
+      causal,                                      // is_causal
+      nullptr,                                     // attn_mask
+      bias_data                                    // bias
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
 #else
