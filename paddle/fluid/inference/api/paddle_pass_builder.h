@@ -341,9 +341,6 @@ PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
 /// \brief List of dlnne subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
-/// \brief List of lite subgraph passes.
-PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
-
 /// \brief List of cinn compiler passes.
 PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 
