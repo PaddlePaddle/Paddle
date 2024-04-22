@@ -1506,11 +1506,9 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    // Skip the value that already in forward_inputs or forward_params.
-    if (std::find(forward_inputs.begin(), forward_inputs.end(), v) !=
-            forward_inputs.end() ||
-        std::find(forward_params.begin(), forward_params.end(), v) !=
-            forward_params.end()) {
+    // Skip the value that already in forward_params.
+    if (std::find(forward_params.begin(), forward_params.end(), v) !=
+        forward_params.end()) {
       return;
     }
     std::string shadow_output_name =
