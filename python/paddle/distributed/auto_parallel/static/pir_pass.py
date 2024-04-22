@@ -131,6 +131,9 @@ def apply_reshard_pass(program):
                 dst_dist_attr = op_dist_attr.result_dist_attr(0)
 
                 reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                assert (
+                    reshard_func is not None
+                ), f"Could not find reshard func for src {src_dist_attr}, dst {dst_dist_attr}"
                 reshard_func.reshard(
                     new_program, op, src_dist_attr, dst_dist_attr
                 )
