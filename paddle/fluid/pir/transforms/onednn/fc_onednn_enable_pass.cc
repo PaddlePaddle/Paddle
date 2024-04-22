@@ -41,7 +41,7 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
     fc({&pat.Tensor("input"), &pat.Tensor("weight"), &pat.Tensor("bias")},
        {&pat.Tensor("Out")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto input_shape = pir::GetShapeFromValue(match_ctx.Tensor("input"));
       auto input_dims = input_shape.size();
       bool support_dims = (input_dims >= 2 || input_shape.size() <= 4);
@@ -54,7 +54,7 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
       return true;
     });
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto act_type = match_ctx.Attr<std::string>("activation_type");
       if (!(act_type == "" || act_type == "relu")) return false;
       return true;
