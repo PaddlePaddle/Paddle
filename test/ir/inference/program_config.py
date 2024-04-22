@@ -144,7 +144,6 @@ _OP_WITHOUT_KERNEL_SET = {
     'heter_listen_and_serv',
     'c_wait_comm',
     'c_wait_compute',
-    'copy_cross_scope',
 }
 
 
@@ -414,9 +413,7 @@ def create_fake_model(program_config):
             proto = OpProtoHolder.instance().get_op_proto(op_config.type)
             if op_config.type == "fill_constant":
                 print(
-                    "=======================================,{},{}".format(
-                        op_config.attrs, proto
-                    )
+                    f"=======================================,{op_config.attrs},{proto}"
                 )
 
             canonicalized_attrs = framework.canonicalize_attrs(
@@ -441,9 +438,7 @@ def create_fake_model(program_config):
             else:
                 if op_config.type == "fill_constant":
                     print(
-                        "zyt==============op_config.type={},_set_attr=name={},values={},type={}".format(
-                            op_config.type, name, values, type(values)
-                        )
+                        f"zyt==============op_config.type={op_config.type},_set_attr=name={name},values={values},type={type(values)}"
                     )
                 op_desc._set_attr(name, values)
         for name, values in op_config.outputs.items():

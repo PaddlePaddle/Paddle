@@ -194,4 +194,4 @@ PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,
                           ops::CPUUniformRandomKernel,
                           float,
                           double,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}

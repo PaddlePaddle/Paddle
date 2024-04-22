@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
@@ -102,9 +102,9 @@ struct sgd_dense_param_kernel<phi::dtype::bfloat16,
     const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
     param_out->mutable_data<phi::dtype::bfloat16>(ctx.GetPlace());
 
-    auto p = framework::EigenVector<phi::dtype::bfloat16>::Flatten(*param);
-    auto g = framework::EigenVector<phi::dtype::bfloat16>::Flatten(*grad);
-    auto o = framework::EigenVector<phi::dtype::bfloat16>::Flatten(*param_out);
+    auto p = phi::EigenVector<phi::dtype::bfloat16>::Flatten(*param);
+    auto g = phi::EigenVector<phi::dtype::bfloat16>::Flatten(*grad);
+    auto o = phi::EigenVector<phi::dtype::bfloat16>::Flatten(*param_out);
     const auto *lr = learning_rate->data<phi::dtype::bfloat16>();
 
     o = p - lr[0] * g;

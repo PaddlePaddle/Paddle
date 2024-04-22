@@ -101,7 +101,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         callstack_recorder.Record();
         paddle::dialect::{api_name}({args});
         callstack_recorder.AttachToOps();
-        return nullptr;
+        Py_RETURN_NONE;
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
         return nullptr;
