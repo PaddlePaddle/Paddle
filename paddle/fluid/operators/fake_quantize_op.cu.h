@@ -208,12 +208,14 @@ __global__ void ClipAndQuantKernel(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
   ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
+      x = phi::funcs::roundWithTiesToEven(x);
       x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
@@ -243,12 +245,14 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
   ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
+      x = phi::funcs::roundWithTiesToEven(x);
       x = phi::funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);

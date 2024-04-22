@@ -1057,6 +1057,17 @@ ir::Tensor Transpose(const ir::Tensor& input,
       output_name);
 }
 
+int UpdateNegAxis(int axis, int rank) {
+  if (axis < 0) {
+    PADDLE_ENFORCE_GE(
+        axis + rank,
+        0,
+        ::common::errors::InvalidArgument("The axis of slice is out of range"));
+    return axis + rank;
+  }
+  return axis;
+}
+
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
                  const std::vector<int>& const_axes,
@@ -1073,15 +1084,7 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const_axes.end(),
                  std::back_inserter(axes),
                  [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
+                   return UpdateNegAxis(axis, rank);
                  });
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
@@ -1147,15 +1150,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  const_axes.end(),
                  std::back_inserter(axes),
                  [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
+                   return UpdateNegAxis(axis, rank);
                  });
 
   for (int i = 0; i < axes.size(); i++) {

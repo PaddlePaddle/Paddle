@@ -402,11 +402,11 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   if (it == tables_.end()) {
     it = tables_
              .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis())
+                      std::make_shared<ShapeConstraintIRAnalysis>())
              .first;
   }
 
-  return it->second;
+  return *it->second;
 }
 
 }  // namespace pir
