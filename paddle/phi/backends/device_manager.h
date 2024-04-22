@@ -23,9 +23,9 @@
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 class Device final {

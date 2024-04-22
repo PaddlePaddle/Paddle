@@ -74,6 +74,11 @@ PD_DEFINE_bool(group_schedule_tiling_first,
                BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
                "Whether to enable new group scheduler tiling first strategy.");
 
+PD_DEFINE_bool(cinn_new_cluster_op_method,
+               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", true),
+               "Whether to enable newly developed clustering method of group "
+               "op for cinn.");
+
 PD_DEFINE_bool(support_reduce_stride_read,
                BoolFromEnv("FLAGS_support_reduce_stride_read", false),
                "Whether to enable new group scheduler tiling first strategy.");
@@ -137,7 +142,7 @@ PD_DEFINE_bool(cinn_use_dense_merge_pass,
 
 PD_DEFINE_bool(
     nvrtc_compile_to_cubin,
-    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", false),
+    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", true),
     "Whether nvrtc compile cuda source into cubin instead of ptx (only "
     "works after cuda-11.1).");
 
@@ -338,17 +343,38 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
+void CheckCompileOptionImpl(cinn::common::UnknownArch) {
+  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+}
+
+void CheckCompileOptionImpl(cinn::common::X86Arch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::ARMArch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
+#if defined(CINN_WITH_CUDNN)
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support NVGPU, please try to "
+      "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOption(cinn::common::Arch arch) {
+  return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
+                    arch.variant());
+}
+
 cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
-  if (!IsCompiledWithCUDA() &&
-      target.arch == cinn::common::Target::Arch::NVGPU) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "Current CINN version does not support NVGPU, please try to "
-        "recompile with -DWITH_CUDA."));
-  } else {
-    target_ = target;
-  }
+  CheckCompileOption(target.arch);
+  target_ = target;
 }
 
 cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }

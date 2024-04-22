@@ -38,6 +38,7 @@ if(WITH_CINN)
       ${target}
       ENVS
       GLOG_v=1
+      FLAGS_group_schedule_tiling_first=true
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
@@ -46,9 +47,6 @@ if(WITH_CINN)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=CINN")
   endforeach()
 endif()
-
-set(TEST_PRIM_TRANS_PIR_CASES test_custom_vjp_trait test_decomp_op
-                              test_decompose_op test_vjp_prim)
 
 foreach(target ${TEST_PRIM_TRANS_PIR_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1

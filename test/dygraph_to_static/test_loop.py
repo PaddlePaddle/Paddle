@@ -282,16 +282,12 @@ class TestNameVisitor(Dy2StTestBase):
                 self.assertEqual(
                     loop_var_names,
                     self.loop_var_names[i],
-                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".format(
-                        loop_var_names, self.loop_var_names[i]
-                    ),
+                    msg=f"loop_var_names : {loop_var_names}, \nexpected loop_var_names : {self.loop_var_names[i]}",
                 )
                 self.assertEqual(
                     create_var_names,
                     self.create_var_names[i],
-                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".format(
-                        i, create_var_names, self.create_var_names[i]
-                    ),
+                    msg=f"i = {i}\ncreate_var_names : {create_var_names}, \nexpected create_var_names : {self.create_var_names[i]}",
                 )
                 i += 1
 

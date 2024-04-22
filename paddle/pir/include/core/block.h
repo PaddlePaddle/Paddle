@@ -61,6 +61,7 @@ class IR_API Block {
   ConstReverseIterator rend() const { return ops_.rend(); }
   ReverseIterator rbegin() { return ops_.rbegin(); }
   ReverseIterator rend() { return ops_.rend(); }
+  const OpListType &ops() const { return ops_; }
 
   Operation &back() { return *ops_.back(); }
   Operation &front() { return *ops_.front(); }

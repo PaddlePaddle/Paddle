@@ -38,7 +38,7 @@ inline void UpdatePaddingAndDilation(
   symbol::DimExpr one{1};
   symbol::DimExpr two{2};
   if (padding_algorithm == "SAME") {
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < data_dims.size(); ++i) {
       symbol::DimExpr out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       symbol::DimExpr pad_sum = builder.Max(
@@ -150,6 +150,11 @@ bool Conv2dOpInferSymbolicShape(
   return true;
 }
 
+bool Conv3dOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return Conv2dOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto x_shape_or_data =
@@ -199,8 +204,20 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  std::vector<int> target_shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  const std::vector<symbol::DimExpr> &output_dims = [&] {
+    std::vector<symbol::DimExpr> output_dims;
+    output_dims.reserve(target_shape.size());
+    for (int shape : target_shape) {
+      output_dims.push_back(shape);
+    }
+    return output_dims;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_dims));
+
   return true;
 }
 
@@ -349,8 +366,16 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
 
 bool MaskedSelectOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        shape_analysis->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+  // TODO(fty1777): Add constrains between the shapes of x and mask
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;
 }
 
@@ -411,9 +436,10 @@ bool MatmulOpInferSymbolicShape(
   } else if (ndims_x < ndims_y) {
     out_dims.assign(y_dims.begin(), y_dims.end() - 2);
   } else {
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+      shape_analysis->AddBroadcastableCstr(x_dims[i], y_dims[i]);
     }
   }
 
@@ -435,21 +461,17 @@ bool MatmulOpInferSymbolicShape(
 
   if ((ndims_x == ndims_y) && ndims_x >= 2) {
     if (transpose_x_attr == false && transpose_y_attr == false) {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
-                                              y_dims[ndims_x - 2]);
+      shape_analysis->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 2]);
     } else if (transpose_x_attr == false && transpose_y_attr == true) {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
-                                              y_dims[ndims_x - 1]);
+      shape_analysis->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 1]);
     } else if (transpose_x_attr == true && transpose_y_attr == false) {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
-                                              y_dims[ndims_x - 2]);
+      shape_analysis->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 2]);
     } else {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
-                                              y_dims[ndims_x - 1]);
+      shape_analysis->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 1]);
     }
 
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+      shape_analysis->AddEqualCstr(x_dims[i], y_dims[i]);
     }
   }
   return true;
@@ -457,8 +479,12 @@ bool MatmulOpInferSymbolicShape(
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  // TODO(fty1777): Add constrains between the shapes of `sorted_sequence` and
+  // `values`
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   return true;
 }
 

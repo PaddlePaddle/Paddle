@@ -45,8 +45,8 @@ class DistDenseTensorType
   const LoD& lod() const { return dense_tensor_type().lod(); }
   size_t offset() const { return dense_tensor_type().offset(); }
 
-  Type prim_type() { return dense_tensor_type(); }
-  Type local_type() const;
+  pir::DenseTensorType prim_type() { return dense_tensor_type(); }
+  pir::DenseTensorType local_type() const;
 
   ProcessMeshAttribute process_mesh_attr() const {
     return tensor_dist_attr().process_mesh_attr();
@@ -61,6 +61,13 @@ class DistDenseTensorType
     return tensor_dist_attr().partial_status();
   }
 
+  DistDenseTensorType CopyWithNewMesh(ProcessMeshAttribute mesh) {
+    return get(ir_context(),
+               dense_tensor_type(),
+               tensor_dist_attr().CopyWithNewMesh(mesh),
+               local_ddim());
+  }
+
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr,
@@ -68,9 +75,20 @@ class DistDenseTensorType
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr) {
+    if (!dense_tensor_type) return nullptr;
     auto local_ddim =
         InferLocalDDim(dense_tensor_type.dims(), tensor_dist_attr);
     return get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
+  }
+
+  // return the replicated dist dense tensor type.
+  static DistDenseTensorType get(pir::IrContext* ctx,
+                                 pir::DenseTensorType dense_tensor_type,
+                                 ProcessMeshAttribute process_mesh_attr) {
+    auto& ddim = dense_tensor_type.dims();
+    auto attr = TensorDistAttribute::get(
+        ctx, process_mesh_attr, std::vector<int64_t>(ddim.size(), -1));
+    return get(ctx, dense_tensor_type, attr, ddim);
   }
 };
 

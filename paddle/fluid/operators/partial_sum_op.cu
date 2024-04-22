@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/partial_sum_op.h"
-#include "paddle/fluid/platform/float16.h"
-
-namespace plat = paddle::platform;
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -80,7 +78,7 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in_vars[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // GPUPlace only now
     auto start_index = ctx.Attr<int>("start_index");
@@ -156,7 +154,7 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
     if (length == -1) {
@@ -168,7 +166,7 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
         *ctx.template device_context<phi::GPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
-      auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
+      auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
       dxt.device(place) = dxt.constant(static_cast<T>(0));
     }
 

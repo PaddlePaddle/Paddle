@@ -17,8 +17,10 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -751,6 +753,139 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class FullWithTensorOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullWithTensorOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FullWithTensorOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::FullWithTensorOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto value = op->operand_source(0);
+    auto shape = op->operand_source(1);
+
+    if (paddle::dialect::TransToPhiDataType(
+            value.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype()) != op.attribute("dtype")
+                                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                 .data()) {
+      value = rewriter
+                  .Build<paddle::dialect::CastOp>(
+                      value,
+                      op.attribute("dtype")
+                          .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                          .data())
+                  .result(0);
+    }
+
+    auto out =
+        rewriter.Build<paddle::dialect::ExpandOp>(value, shape).result(0);
+
+    rewriter.ReplaceAllUsesWith(op.result(0), out);
+
+    rewriter.EraseOp(op);
+
+    return true;
+  }
+};
+
+class SqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SqueezeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SqueezeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_full_op = op->operand_source(1)
+                            .defining_op()
+                            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    if (axis_full_op && !is_dyshape) {
+      auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
+      std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
+
+      auto in_shape = phi::vectorize(
+          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+
+      std::vector<int> output_shape;
+
+      for (size_t i = 0; i < in_shape.size(); ++i) {
+        if (!axis_set.count(i)) {
+          output_shape.push_back(in_shape[i]);
+        } else {
+          PADDLE_ENFORCE_EQ(
+              in_shape[i],
+              1,
+              phi::errors::PreconditionNotMet(
+                  "sequeze dim MUST be 1, but recive axis [%d] is [%d]",
+                  i,
+                  in_shape[i]));
+        }
+      }
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+          op->operand_source(0), output_shape);
+
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+
+    return false;
+  }
+};
+
+class UnsqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::UnsqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::UnsqueezeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::UnsqueezeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto axis_full_op = op->operand_source(1)
+                            .defining_op()
+                            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    if (axis_full_op && !is_dyshape) {
+      auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
+      std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
+
+      auto in_shape = phi::vectorize(
+          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+
+      std::vector<int> output_shape;
+
+      for (size_t i = 0; i < in_shape.size(); ++i) {
+        output_shape.push_back(in_shape[i]);
+        if (axis_set.count(i)) {
+          output_shape.push_back(1);
+        }
+      }
+
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+          op->operand_source(0), output_shape);
+
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+
+    return false;
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass()
     : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
@@ -765,10 +900,17 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);
+  ps.Add<ConcatOpPattern>(context);
+  ps.Add<SliceOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
+  // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
+  ps.Add<FullWithTensorOpPattern>(context);
+  ps.Add<RefreshCombineOpPattern>(context);
+  ps.Add<SqueezeOpPattern>(context);
+  ps.Add<UnsqueezeOpPattern>(context);
 
   return ps;
 }

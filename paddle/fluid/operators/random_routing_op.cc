@@ -37,17 +37,17 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(prob_dims[0],
                       topk_val_dims[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
     PADDLE_ENFORCE_EQ(topk_idx_dims[1],
                       topk_val_dims[1],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
     PADDLE_ENFORCE_EQ(topk_idx_dims[0],
                       topk_val_dims[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of ScatterNdAddOp should not be null."));
 
     ctx->SetOutputDim("Out", topk_idx_dims);
@@ -62,7 +62,7 @@ class RandomRoutingOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "TopK_Idx");
     PADDLE_ENFORCE_EQ(topk_idx_dtype,
                       framework::proto::VarType::INT64,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dtype of the topk_idx_dtype should be int64"));
 
     const auto& topk_value_type =
