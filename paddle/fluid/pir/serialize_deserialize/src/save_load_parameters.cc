@@ -9,14 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pir/serialize_deserialize/include/save_load_parameters.h"
-
 #include <cstdint>
 #include <fstream>
 #include <numeric>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
@@ -157,7 +156,7 @@ void LoadFunction(const std::string& file_path,
                           "seek with tensor must great than or equal to 0"));
     paddle::framework::DeserializeFromStream(fin, out, *dev_ctx, seek, shape);
   } else {
-    paddle::framework::DeserializeFromStream(fin, out);
+    paddle::framework::DeserializeFromStream(fin, out, *dev_ctx);
   }
 
   auto in_dtype = out->dtype();
@@ -189,7 +188,7 @@ void LoadCombineFunction(const std::string& file_path,
   const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)));
   for (size_t i = 0; i < names.size(); i++) {
     auto tensor = out->at(i);
-    paddle::framework::DeserializeFromStream(fin, tensor);
+    paddle::framework::DeserializeFromStream(fin, tensor, *dev_ctx);
 
     auto in_dtype = tensor->dtype();
     auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;

@@ -17,12 +17,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/common/hostdevice.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
