@@ -1108,9 +1108,10 @@
 
 - op : fake_quantize_abs_max
   inputs :
-    {x : X}
+    x : X
   outputs :
-    {out : Out, out_scale : OutScale}
+    out : Out
+    out_scale : OutScale
   extra :
     attrs : [int round_type = 1]
 
