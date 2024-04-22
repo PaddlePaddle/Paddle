@@ -100,10 +100,8 @@ class MultiClassNMSOpConverter : public OpConverter {
         {"clipBoxes", &clip_boxes, nvinfer1::PluginFieldType::kINT32, 1},
     };
 
-    nvinfer1::PluginFieldCollection* plugin_collections =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collections) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collections(
+        new nvinfer1::PluginFieldCollection);
     plugin_collections->nbFields = static_cast<int>(fields.size());
     plugin_collections->fields = fields.data();
 
@@ -113,9 +111,9 @@ class MultiClassNMSOpConverter : public OpConverter {
     }
     auto creator =
         GetPluginRegistry()->getPluginCreator(nms_plugin_name.c_str(), "1");
-    auto batch_nms_plugin =
-        creator->createPlugin(nms_plugin_name.c_str(), plugin_collections);
-    free(plugin_collections);
+    auto batch_nms_plugin = creator->createPlugin(nms_plugin_name.c_str(),
+                                                  plugin_collections.get());
+    plugin_collections.reset();
 
     auto batch_nms_layer = engine_->network()->addPluginV2(
         batch_nms_inputs.data(), batch_nms_inputs.size(), *batch_nms_plugin);
