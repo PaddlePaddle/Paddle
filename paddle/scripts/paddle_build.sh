@@ -777,7 +777,7 @@ function run_linux_cpu_test_pir() {
     export FLAGS_enable_pir_api=1
     # disable deprecated test in pir
     deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
-    run_linux_cpu_test()
+    run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
 }
 
 function run_linux_cpu_test() {
