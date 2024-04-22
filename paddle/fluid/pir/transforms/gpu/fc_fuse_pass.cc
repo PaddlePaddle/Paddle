@@ -36,7 +36,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     matmul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("matmul_out")});
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
@@ -95,7 +95,7 @@ class FcWithReluPattern : public paddle::drr::DrrPatternBase {
     relu({&pat.Tensor("fc_out")}, {&pat.Tensor("relu_out")});
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("activation_type").empty();
     });
 

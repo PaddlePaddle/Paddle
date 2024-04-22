@@ -1549,6 +1549,33 @@ def read_memory_log(path, file) -> Tuple[float, bool]:
     return max(memory_used), False
 
 
+def read_completed(path):
+    """
+    check if training is completed
+    return:
+        True: completed
+        False: not completed
+    """
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            target_file = path + "/" + file
+            if not os.path.exists(target_file):
+                return False
+            with open(target_file, "r") as f:
+                # read file
+                re_completed_pattern = r"Training completed."
+                lines = f.readlines()
+                for line in lines:
+                    completed = re.findall(
+                        re_completed_pattern, line, re.IGNORECASE
+                    )
+                    if completed:
+                        return True
+    return False
+
+
 def read_log(
     path,
     metric_file="workerlog.0",

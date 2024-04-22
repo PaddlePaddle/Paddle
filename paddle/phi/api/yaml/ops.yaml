@@ -976,6 +976,15 @@
   backward : expm1_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : fake_quantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeQuantizeAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_abs_max
+    data_type : x
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
