@@ -3379,6 +3379,14 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : tdm_sampler
   inputs:
     {x : X, travel : Travel, layer : Layer}
