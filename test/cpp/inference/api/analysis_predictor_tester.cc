@@ -67,26 +67,6 @@ TEST(AnalysisPredictor, analysis_off) {
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 }
 
-#ifndef WIN32
-TEST(AnalysisPredictor, lite_nn_adapter_npu) {
-  AnalysisConfig config;
-  config.SetModel(FLAGS_dirname);
-  config.EnableLiteEngine();
-  config.NNAdapter()
-      .Disable()
-      .Enable()
-      .SetDeviceNames({"huawei_ascend_npu"})
-      .SetContextProperties("HUAWEI_ASCEND_NPU_SELECTED_DEVICE_IDS=0")
-      .SetModelCacheDir("cache_dirr")
-      .SetSubgraphPartitionConfigPath("")
-      .SetModelCacheBuffers("c1", {'c'});
-#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
-  EXPECT_THROW(CreatePaddlePredictor<AnalysisConfig>(config),
-               paddle::platform::EnforceNotMet);
-#endif
-}
-#endif
-
 TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
@@ -367,7 +347,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
   const std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
+      {"fc_onednn_pass", "fc_act_onednn_fuse_pass"});
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }

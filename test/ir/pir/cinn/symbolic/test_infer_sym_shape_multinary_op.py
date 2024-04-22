@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
+import paddle.nn.functional as F
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ExpandNet(paddle.nn.Layer):
@@ -63,6 +68,105 @@ class ExpandOpInferSymbolicShapeTest(TestBase):
         return out
 
 
+class MeshgridNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        out_x, out_y = paddle.meshgrid(x, y)
+        return out_x, out_y
+
+
+class MeshgridOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.x_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(100),
+            np.random.rand(1000),
+        ]
+        self.y_cases = [
+            np.random.rand(1),
+            np.random.rand(10),
+            np.random.rand(1000),
+            np.random.rand(100),
+        ]
+
+        self.expected = [
+            'shape[S0, S1], data[NULL], shape[S0, S1], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = MeshgridNet()
+
+        for i in range(len(self.x_cases)):
+            x = self.x_cases[i]
+            y = self.y_cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            y_spec = InputSpec(
+                shape=[None for _ in range(len(y.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec, y_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(
+                net, input_spec, 'pd_op.meshgrid', self.expected
+            )
+
+        # TODO(WintersMontagne10335): Add builtin.meshgrid op infer symbolic shape test
+        #                Not added because attribute `sym_shape_str` does not support multi-output op now.
+        #                See also: paddle/fluid/pir/transforms/shape_optimization_pass.cc:144.
+
+
+class LinspaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.linspace(start=0, stop=5, num=10)
+        return out
+
+
+class LinspaceOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[10], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = LinspaceNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.linspace', self.expected)
+        return True
+
+
+class LogspaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.logspace(start=1, stop=5, num=10)
+        return out
+
+
+class LogspaceOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[10], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = LogspaceNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.logspace', self.expected)
+        return True
+
+
 class SliceNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -88,7 +192,7 @@ class SliceOpInferSymbolicShapeTest(TestBase):
             )
 
             input_spec = [x_spec]
-            net = apply_to_static(net, True, input_spec)
+            net = apply_to_static(net, False, input_spec)
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.slice', self.expected)
 
@@ -189,6 +293,38 @@ class TransposeOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class PoissonNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.poisson(x)
+
+        return out
+
+
+class PoissonOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(2, 3, 4)]
+        self.expected = ['shape[S0, S1, S2], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = PoissonNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(net, input_spec, 'pd_op.poisson', self.expected)
+
+        return True
+
+
 class TrilNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -220,6 +356,37 @@ class TrilOpInferSymbolicShapeTest(TestBase):
             check_infer_results(net, input_spec, 'pd_op.tril', self.expected)
 
         return True
+
+
+class InterpolateNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        input_data = paddle.empty(shape=(2, 3, 6, 10))
+        output = F.interpolate(x=input_data, size=[12, 12])
+        return output
+
+
+class InterpolateOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.x = paddle.rand([1, 3], 'float32')
+        self.expected = [
+            'shape[2, 3, 12, 12], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = InterpolateNet()
+        input_spec = [
+            InputSpec(shape=[None, None], dtype='float32'),
+        ]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net, input_spec, 'pd_op.nearest_interp', self.expected
+        )
+        out = net(self.x)
+        return out
 
 
 if __name__ == '__main__':

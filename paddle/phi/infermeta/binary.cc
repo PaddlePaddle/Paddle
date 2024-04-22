@@ -1084,6 +1084,14 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DequantizeLogInferMeta(const MetaTensor& x,
+                            const MetaTensor& dict,
+                            MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
+}
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -1532,7 +1540,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       target_shape.size(),
@@ -3045,6 +3053,20 @@ void SequenceMaskInferMeta(const MetaTensor& x,
 
   y->set_dims(common::make_ddim(dim));
   y->set_dtype(out_dtype);
+}
+
+void ReduceAsInferMeta(const MetaTensor& x,
+                       const MetaTensor& target,
+                       MetaTensor* out) {
+  DataType out_dtype;
+  if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
+    out_dtype = DataType::INT64;
+  } else {
+    out_dtype = x.dtype();
+  }
+  out->set_dtype(out_dtype);
+  out->set_dims(target.dims());
+  out->set_layout(x.layout());
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

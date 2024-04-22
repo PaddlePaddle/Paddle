@@ -524,7 +524,9 @@ packages=['paddle',
           'paddle.distributed.auto_parallel.static.operators',
           'paddle.distributed.auto_parallel.static.tuner',
           'paddle.distributed.auto_parallel.static.cost',
+          'paddle.distributed.auto_parallel.static.reshard_funcs',
           'paddle.distributed.passes',
+          'paddle.distributed.passes.pipeline_scheduler_pass',
           'paddle.distributed.models',
           'paddle.distributed.models.moe',
           'paddle.distributed.transpiler',
@@ -731,16 +733,6 @@ else:
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']
 
-if '${WITH_LITE}' == 'ON':
-    shutil.copy('${LITE_SHARED_LIB}', libs_path)
-    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
-    if '${LITE_WITH_NNADAPTER}' == 'ON':
-        shutil.copy('${LITE_NNADAPTER_LIB}', libs_path)
-        package_data['paddle.libs']+=['libnnadapter' + ext_name]
-        if '${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}' == 'ON':
-            shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
-            package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
-
 if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
     shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
@@ -770,7 +762,7 @@ if '${WITH_PSLIB}' == 'ON':
     package_data['paddle.libs'] += ['libps' + ext_name]
     package_data['paddle.libs'] += ['libjvm' + ext_name]
 
-if '${WITH_MKLDNN}' == 'ON':
+if '${WITH_ONEDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         # only change rpath in Release mode.
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
@@ -779,10 +771,10 @@ if '${WITH_MKLDNN}' == 'ON':
         # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
         # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
-        command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
+        command = "patchelf --set-rpath '$ORIGIN/' ${ONEDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libdnnl.so failed, command: %s" % command)
-    shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    shutil.copy('${ONEDNN_SHARED_LIB}', libs_path)
     if os.name != 'nt':
         package_data['paddle.libs']+=['libdnnl.so.3']
     else:
@@ -911,8 +903,8 @@ jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', '
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
-if '${WITH_MKLDNN}' == 'ON':
-    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
+if '${WITH_ONEDNN}' == 'ON':
+    headers += list(find_files('*', '${ONEDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message

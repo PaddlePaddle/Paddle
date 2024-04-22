@@ -63,46 +63,46 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
     combine_op(combine_in, {&pat.Tensor("combine_out")});
     concat_op({&pat.Tensor("combine_out"), &full_op()},
               {&pat.Tensor("concat_out")});
-    pat.RequireNativeCall(
-        [this](const paddle::drr::MatchContext &match_ctx) -> bool {
-          auto flatten_out_shape_0 =
-              pir::GetShapeFromValue(match_ctx.Tensor("flatten_out_0"));
-          if (flatten_out_shape_0.size() != 2) {
+    pat.AddConstraint([this](
+                          const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto flatten_out_shape_0 =
+          pir::GetShapeFromValue(match_ctx.Tensor("flatten_out_0"));
+      if (flatten_out_shape_0.size() != 2) {
+        return false;
+      }
+      if (this->transpose_flatten_count_ >= 2) {
+        std::vector<int32_t> perm_0 =
+            match_ctx.Attr<std::vector<int32_t>>("perm_0");
+        int flatten_start_0 = match_ctx.Attr<int>("start_axis_0");
+        int flatten_stop_0 = match_ctx.Attr<int>("stop_axis_0");
+        for (size_t i = 1; i < this->transpose_flatten_count_; i++) {
+          auto flatten_out_shape = pir::GetShapeFromValue(
+              match_ctx.Tensor("flatten_out_" + std::to_string(i)));
+          if (flatten_out_shape.size() != 2) {
             return false;
           }
-          if (this->transpose_flatten_count_ >= 2) {
-            std::vector<int32_t> perm_0 =
-                match_ctx.Attr<std::vector<int32_t>>("perm_0");
-            int flatten_start_0 = match_ctx.Attr<int>("start_axis_0");
-            int flatten_stop_0 = match_ctx.Attr<int>("stop_axis_0");
-            for (size_t i = 1; i < this->transpose_flatten_count_; i++) {
-              auto flatten_out_shape = pir::GetShapeFromValue(
-                  match_ctx.Tensor("flatten_out_" + std::to_string(i)));
-              if (flatten_out_shape.size() != 2) {
-                return false;
-              }
-              auto tmp_perm = match_ctx.Attr<std::vector<int32_t>>(
-                  "perm_" + std::to_string(i));
-              auto tmp_flatten_start =
-                  match_ctx.Attr<int>("start_axis_" + std::to_string(i));
-              auto tmp_flatten_stop =
-                  match_ctx.Attr<int>("stop_axis_" + std::to_string(i));
-              if (perm_0.size() != tmp_perm.size()) {
-                return false;
-              }
-              for (size_t j = 0; j < perm_0.size(); j++) {
-                if (perm_0[j] != tmp_perm[j]) {
-                  return false;
-                }
-              }
-              if (flatten_start_0 != tmp_flatten_start ||
-                  flatten_stop_0 != tmp_flatten_stop) {
-                return false;
-              }
+          auto tmp_perm =
+              match_ctx.Attr<std::vector<int32_t>>("perm_" + std::to_string(i));
+          auto tmp_flatten_start =
+              match_ctx.Attr<int>("start_axis_" + std::to_string(i));
+          auto tmp_flatten_stop =
+              match_ctx.Attr<int>("stop_axis_" + std::to_string(i));
+          if (perm_0.size() != tmp_perm.size()) {
+            return false;
+          }
+          for (size_t j = 0; j < perm_0.size(); j++) {
+            if (perm_0[j] != tmp_perm[j]) {
+              return false;
             }
           }
-          return true;
-        });
+          if (flatten_start_0 != tmp_flatten_start ||
+              flatten_stop_0 != tmp_flatten_stop) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &res_trans_axis = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {

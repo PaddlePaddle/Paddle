@@ -65,6 +65,10 @@ TensorDistAttribute TensorDistAttribute::get(
     ProcessMeshAttribute mesh,
     const std::vector<int64_t>& dims_mapping,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
+  PADDLE_ENFORCE_NOT_NULL(mesh,
+                          common::errors::PreconditionNotMet(
+                              "Building tensor_dist_attr through a nullptr "
+                              "mesh attribute is currently not supported."));
   return Base::get(ctx, mesh, dims_mapping, partial_status);
 }
 
@@ -103,13 +107,17 @@ OperationDistAttribute OperationDistAttribute::get(
     const std::vector<TensorDistAttribute>& operand_dist_attrs,
     const std::vector<TensorDistAttribute>& result_dist_attrs) {
   for (const auto& iter : operand_dist_attrs) {
-    PADDLE_ENFORCE_EQ(
-        mesh,
-        iter.process_mesh_attr(),
-        phi::errors::PreconditionNotMet(
-            "operand_dist_attrs element's mesh(%s) not equal to input mesh(%s)",
-            iter.process_mesh_attr(),
-            mesh));
+    // NOTE: The operand dist attr maybe empty while the corresponding input is
+    // optional.
+    if (iter) {
+      PADDLE_ENFORCE_EQ(mesh,
+                        iter.process_mesh_attr(),
+                        common::errors::PreconditionNotMet(
+                            "operand_dist_attrs element's mesh(%s) not equal "
+                            "to input mesh(%s)",
+                            iter.process_mesh_attr(),
+                            mesh));
+    }
   }
   return Base::get(ctx, mesh, operand_dist_attrs, result_dist_attrs);
 }

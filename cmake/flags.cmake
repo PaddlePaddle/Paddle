@@ -167,6 +167,7 @@ if(NOT WIN32)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(COMMON_FLAGS
         ${COMMON_FLAGS}
+        -Wno-error=unknown-warning-option # For some unknown warning options in lower version clang
         -Wno-error=unused-private-field
         -Wno-error=unused-const-variable
         -Wno-error=deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
@@ -211,6 +212,11 @@ if(NOT WIN32)
       -Wno-error=unused-function # Warnings in Numpy Header.
       -Wno-error=array-bounds # Warnings in Eigen::array
   )
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(GPU_COMMON_FLAGS -ccbin=${CMAKE_CXX_COMPILER} ${GPU_COMMON_FLAGS})
+  endif()
+
   if(NOT WITH_NV_JETSON
      AND NOT WITH_ARM
      AND NOT WITH_SW

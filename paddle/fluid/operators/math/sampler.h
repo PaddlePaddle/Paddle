@@ -36,7 +36,7 @@ class Sampler {
     PADDLE_ENFORCE_GT(
         range,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Range should be greater than 0, but received %d.", range));
     if (seed == 0) {
       std::random_device r;

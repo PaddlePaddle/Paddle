@@ -417,14 +417,24 @@ ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
   return ExprTransformer(f);
 }
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
+  return lhs.type().is_bool() || rhs.type().is_bool();
+}
+
 ExprTransformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
                                     const ir::Tensor& tensor,
                                     const std::vector<ir::Expr>& axis_exprs) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     switch (reduce_type) {
       case ir::Reduce::kSum:
+        if (IsReduceBool(tensor(axis_exprs), e)) {
+          return ir::Store::Make(tensor, tensor(axis_exprs) || e, axis_exprs);
+        }
         return ir::Store::Make(tensor, tensor(axis_exprs) + e, axis_exprs);
       case ir::Reduce::kMul:
+        if (IsReduceBool(tensor(axis_exprs), e)) {
+          return ir::Store::Make(tensor, tensor(axis_exprs) && e, axis_exprs);
+        }
         return ir::Store::Make(tensor, tensor(axis_exprs) * e, axis_exprs);
       case ir::Reduce::kMax:
         return ir::Store::Make(
@@ -502,7 +512,7 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
                            const std::vector<OpPatternKind>& op_patterns) {
   if (VLOG_IS_ON(4)) {
     for (const auto& func : op_compute_bodies) {
-      VLOG(4) << "TrivialOpFusion: {FuncBody is} :" << func;
+      VLOG(4) << "FuncBody is :" << func;
     }
     for (const auto& op_ptn : op_patterns) {
       VLOG(4) << "OpPattern is :" << op_ptn;

@@ -375,7 +375,7 @@ class TestColumnStack(BaseTest, BaseCases):
 class TestRowStack(BaseTest, BaseCases):
     def setUp(self):
         self.func_paddle = paddle.row_stack
-        self.func_numpy = np.row_stack
+        self.func_numpy = np.vstack
 
     def test_mix_ndim(self):
         d0 = generate_data([2], count=1, dtype='float64')
@@ -495,7 +495,7 @@ class TestErrorColumnStack(BaseTest, ErrorCases0d1d):
 class TestErrorRowStack(BaseTest, ErrorCases0d1d):
     def setUp(self):
         self.func_paddle = paddle.row_stack
-        self.func_numpy = np.row_stack
+        self.func_numpy = np.vstack
 
 
 if __name__ == '__main__':

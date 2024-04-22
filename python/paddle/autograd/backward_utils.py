@@ -236,8 +236,7 @@ class State:
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
-            shape = item.shape
-            if -1 in shape:
+            if item.initialized() and -1 in item.shape:
                 warnings.warn(
                     f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
                 )
@@ -389,7 +388,6 @@ def remove_op(block, op, state):
     '''
     remove op from block
     '''
-    block.remove_op(op)
     if state.opgrad_to_op[op] != []:
         fwd_op = state.opgrad_to_op[op][0]
         state.op_to_opgrad[fwd_op].remove(op)
@@ -403,6 +401,10 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
+    # NOTE(SigureMo): Ensure access to the op's results before removing it.
+    # Otherwise, the op will be deconstructed and access the num_results
+    # will be undefined behavior, it always cause hanging on the macOS.
+    block.remove_op(op)
 
 
 def while_prune_check(while_tuple_ops):
@@ -440,6 +442,14 @@ def all_stop_gradient_true(block):
     for op in block.ops:
         for value in op.results():
             if value.stop_gradient is False:
+                return False
+    return True
+
+
+def all_input_stop_gradient_true(list_of_list):
+    for list_ in list_of_list:
+        for stop_gradient in list_:
+            if stop_gradient is False:
                 return False
     return True
 
