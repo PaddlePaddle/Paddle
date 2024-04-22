@@ -43,7 +43,9 @@ def clip_by_norm(x, max_norm, name=None):
     be linearly scaled to make the L2 norm of :math:`out` equal to :math:`max\_norm`, as
     shown in the following formula:
 
-    :math:`out = \frac{max\_norm * x}{norm(x)}`
+    .. math::
+
+        out = \frac{max\_norm * x}{norm(x)}
 
     where :math:`norm(x)` represents the L2 norm of :math:`x`.
 

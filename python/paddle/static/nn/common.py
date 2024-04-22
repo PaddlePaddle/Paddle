@@ -3352,7 +3352,9 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     and a filter (:math:`W`) of size :math:`context \times D`,
     the output sequence is convolved as:
 
-    :math:`out_{i} = \sum_{j=i}^{i + context - 1} X_{j} \cdot W_{j-i}`
+    .. math::
+
+        Out_{i} = \sum_{j=i}^{i + context - 1} X_{j} \cdot W_{j-i}
 
 
     In the above equation:
