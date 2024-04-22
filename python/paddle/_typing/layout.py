@@ -21,19 +21,12 @@ DataLayout0D: TypeAlias = Literal["NC"]
 DataLayout1D: TypeAlias = Literal["NCL", "NLC"]
 DataLayout2D: TypeAlias = Literal["NCHW", "NHCW"]
 DataLayout3D: TypeAlias = Literal["NCDHW", "NDHWC"]
-DataLayoutSparseCOO: TypeAlias = Literal["SPARSE_COO"]
-DataLayoutSparseCSR: TypeAlias = Literal["SPARSE_CSR"]
-DataLayoutStrided: TypeAlias = Literal["STRIDED"]
 
-DataLayoutSparse: TypeAlias = Union[DataLayoutSparseCOO, DataLayoutSparseCSR]
 DataLayoutND: TypeAlias = Union[
     DataLayout0D,
     DataLayout1D,
     DataLayout2D,
     DataLayout3D,
-    DataLayoutSparseCSR,
-    DataLayoutSparseCOO,
-    DataLayoutStrided,
 ]
 
 DataLayout1DVariant: TypeAlias = Literal["NCW", "NWC"]

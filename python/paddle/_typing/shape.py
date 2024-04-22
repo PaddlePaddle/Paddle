@@ -19,38 +19,24 @@ from typing_extensions import TypeAlias
 from .. import Tensor
 
 DynamicShapeLike: TypeAlias = Union[
-    Tuple[Optional[int]], list[Optional[int]], Tensor
+    Tuple[Optional[Union[int, Tensor]], ...],
+    list[Optional[Union[int, Tensor]]],
+    Tensor,
 ]
-
-# Note: Do not confrom to predefined naming style in pylint.
-Shape0D: TypeAlias = Tuple[None]
-Shape1D: TypeAlias = Tuple[int]
-Shape2D: TypeAlias = Tuple[int, int]
-Shape3D: TypeAlias = Tuple[int, int, int]
-Shape4D: TypeAlias = Tuple[int, int, int, int]
-Shape5D: TypeAlias = Tuple[int, int, int, int, int]
-Shape6D: TypeAlias = Tuple[int, int, int, int, int, int]
-ShapeND: TypeAlias = Tuple[int, ...]
 
 
 ShapeLike: TypeAlias = Union[
-    Shape0D,
-    Shape1D,
-    Shape2D,
-    Shape3D,
-    Shape4D,
-    Shape5D,
-    Shape6D,
+    Tuple[int, ...],
     List[int],
     Tensor,
 ]
 
 
 # for size parameters, eg, kernel_size, stride ...
-Size1: TypeAlias = Union[int, Shape1D]
-Size2: TypeAlias = Union[int, Shape2D]
-Size3: TypeAlias = Union[int, Shape3D]
-Size4: TypeAlias = Union[int, Shape4D]
-Size5: TypeAlias = Union[int, Shape5D]
-Size6: TypeAlias = Union[int, Shape6D]
-SizeN: TypeAlias = Union[int, ShapeND]
+Size1: TypeAlias = Union[int, Tuple[int]]
+Size2: TypeAlias = Union[int, Tuple[int, int]]
+Size3: TypeAlias = Union[int, Tuple[int, int, int]]
+Size4: TypeAlias = Union[int, Tuple[int, int, int, int]]
+Size5: TypeAlias = Union[int, Tuple[int, int, int, int, int]]
+Size6: TypeAlias = Union[int, Tuple[int, int, int, int, int, int]]
+SizeN: TypeAlias = Union[int, Tuple[int, ...]]

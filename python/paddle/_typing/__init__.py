@@ -45,9 +45,6 @@ from .layout import (
     DataLayout3D as DataLayout3D,
     DataLayoutImage as DataLayoutImage,
     DataLayoutND as DataLayoutND,
-    DataLayoutSparseCOO as DataLayoutSparseCOO,
-    DataLayoutSparseCSR as DataLayoutSparseCSR,
-    DataLayoutStrided as DataLayoutStrided,
 )
 
 # Shape
