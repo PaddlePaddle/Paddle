@@ -258,6 +258,7 @@ from .tensor.logic import (
     not_equal_,  # noqa: F401
 )
 from .tensor.manipulation import (
+    block_diag,
     as_complex,
     as_real,
     as_strided,
@@ -946,6 +947,7 @@ __all__ = [
     'asinh',
     'acosh',
     'atanh',
+    'block_diag',
     'as_complex',
     'as_real',
     'diff',

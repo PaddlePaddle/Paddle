@@ -6838,6 +6838,38 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         return output
 
 def block_diag(*inputs, name=None):
+    """
+    Create a block diagonal matrix from provided tensors.
+
+    Args:
+        *input (Tensor): One or more tensors with 0, 1, or 2 dimensions.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, A ``Tensor``. The data type is same as ``input``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> A = paddle.to_tensor([[0, 1], [1, 0]])
+            >>> B = paddle.to_tensor([[3, 4, 5], [6, 7, 8]])
+            >>> C = paddle.to_tensor(7)
+            >>> D = paddle.to_tensor([1, 2, 3])
+            >>> E = paddle.to_tensor([[4], [5], [6]])
+            >>> out = paddle.block_diag(A, B, C, D, E)
+            >>> print(out)
+            [[0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 3, 4, 5, 0, 0, 0, 0, 0],
+        [0, 0, 6, 7, 8, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 7, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 2, 3, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 4],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 5],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 6]]
+    """
     def to_col_block(arys, i, a):
         return [
             a if idx == i else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)

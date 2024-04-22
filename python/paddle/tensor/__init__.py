@@ -135,6 +135,7 @@ from .logic import (  # noqa: F401
     not_equal_,
 )
 from .manipulation import (  # noqa: F401
+    block_diag,
     as_complex,
     as_real,
     as_strided,
@@ -816,6 +817,7 @@ tensor_method_func = [
     'masked_scatter_',
     "combinations",
     'signbit',
+    'block_diag',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
