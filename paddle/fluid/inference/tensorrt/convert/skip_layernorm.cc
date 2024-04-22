@@ -154,7 +154,7 @@ class SkipLayerNormOpConverter : public OpConverter {
       pluginPtr->fields = fields.data();
 
       auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr.get());
 
       pluginPtr.reset();
 
