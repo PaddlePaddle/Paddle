@@ -37,7 +37,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-#if !defined(__AVX512F__) || !defined(PADDLE_WITH_MKLML) || \
+#if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
     !defined(PADDLE_WITH_DNNL)
     LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";
     return;
