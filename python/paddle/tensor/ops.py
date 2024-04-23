@@ -29,10 +29,6 @@ __deprecated_func_name__ = {
     'logsigmoid': 'log_sigmoid',
 }
 
-__activations_noattr__ = [
-    'tanh_shrink',
-]
-
 __inplace_unary_func__ = [
     'exp_',
     'sqrt_',
