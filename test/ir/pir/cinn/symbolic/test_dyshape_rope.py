@@ -26,17 +26,6 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
-
-
 class RotaryPosEmb(nn.Layer):
     def __init__(self):
         super().__init__()
@@ -114,7 +103,7 @@ class TestRotaryPosEmb(unittest.TestCase):
             InputSpec(shape=[1, None, 1, 96], dtype='float32'),
             InputSpec(shape=[1, None], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
         if use_cinn:

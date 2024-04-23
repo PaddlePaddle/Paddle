@@ -56,7 +56,7 @@ class OpLoweringGroup {
   ::pir::Block* GetParentBlock() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;
-  std::unordered_set<::pir::Value> GetInputOpValues() const;
+  std::vector<::pir::Value> GetInputOpValues() const;
   std::unordered_set<::pir::Value> GetOutputOpValues() const;
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const;

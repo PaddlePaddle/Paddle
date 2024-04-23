@@ -119,12 +119,12 @@ function(copy_part_of_third_party TARGET DST)
     if(WIN32)
       copy(
         ${TARGET}
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+        SRCS ${ONEDNN_INC_DIR} ${ONEDNN_SHARED_LIB} ${ONEDNN_LIB}
         DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
     else()
       copy(
         ${TARGET}
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+        SRCS ${ONEDNN_INC_DIR} ${ONEDNN_SHARED_LIB}
         DSTS ${dst_dir} ${dst_dir}/lib)
       if(WITH_STRIP)
         add_custom_command(

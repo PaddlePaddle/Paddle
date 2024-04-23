@@ -905,7 +905,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -2150,9 +2150,7 @@ def empty(shape, dtype=None, name=None):
                 shape = shape.tolist()
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(
-                        shape, _current_expected_place()
-                    )
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:

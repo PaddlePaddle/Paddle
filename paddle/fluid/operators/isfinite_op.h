@@ -17,11 +17,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"

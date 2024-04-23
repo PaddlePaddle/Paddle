@@ -68,7 +68,7 @@ class ScaleMatmulFusePattern : public paddle::drr::DrrPatternBase {
              {&pat.Tensor("Out")});
     }
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto scale = match_ctx.Attr<float>("scale_");
       auto bias = match_ctx.Attr<float>("bias");
       // conditions align with fluid pass
@@ -191,7 +191,7 @@ class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
              {&pat.Tensor("Out")});
     }
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto matmul_alpha = match_ctx.Attr<float>("matmul_alpha");
       auto scale = match_ctx.Attr<float>("scale_");
       auto bias = match_ctx.Attr<float>("bias");

@@ -25,7 +25,7 @@ using namespace symbol;  // NOLINT
 
 namespace {
 DimExpr CreateExampleDimExpr() {
-  DimExprBuilder dim_expr_builder{nullptr};
+  DimExprBuilder dim_expr_builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant = DimExpr(2);

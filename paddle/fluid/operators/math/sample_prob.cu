@@ -20,11 +20,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 #include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
