@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_as_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

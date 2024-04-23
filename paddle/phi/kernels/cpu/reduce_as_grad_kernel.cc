@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/reduce_as_kernel.h"
 
 #include "paddle/phi/core/device_context.h"
