@@ -46,4 +46,6 @@ PD_REGISTER_KERNEL(reduce_as,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {}
+                   int8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

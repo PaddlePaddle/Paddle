@@ -1626,6 +1626,8 @@ def reduce_as(x, target, name=None):
                 'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
@@ -1643,6 +1645,8 @@ def reduce_as(x, target, name=None):
                 'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
