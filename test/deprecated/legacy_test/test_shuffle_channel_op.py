@@ -20,8 +20,8 @@ from op_test import OpTest
 import paddle
 
 
-def shuffle_channel_wrapper(x, group):
-    return paddle._legacy_C_ops.shuffle_channel(x, group=group)
+def shuffle_channel_wrapper(x, group=1):
+    return paddle._legacy_C_ops.shuffle_channel(x, "group", group)
 
 
 class TestShuffleChannelOp(OpTest):
