@@ -1533,6 +1533,7 @@
   kernel :
     func : isclose
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isfinite
   args : (Tensor x)
