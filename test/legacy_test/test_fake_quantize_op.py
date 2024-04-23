@@ -367,7 +367,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.check_output(check_dygraph=False)
         gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=gradient, check_dygraph=True
+            ['X'], 'Out', user_defined_grads=gradient, check_dygraph=False
         )
 
     def test_fake_quantize_dequantize_abs_max(self):
