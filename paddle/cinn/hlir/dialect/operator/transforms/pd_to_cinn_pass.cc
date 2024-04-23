@@ -886,6 +886,43 @@ class UnsqueezeOpPattern
   }
 };
 
+class GatherOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GatherOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::GatherOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto gather_op = op->dyn_cast<paddle::dialect::GatherOp>();
+    auto x = op.operand_source(0);
+    auto index = op->operand_source(1);
+    const int axis = [&]() -> int {
+      int axis = 0;
+      if (gather_op->attributes().count("index")) {
+        axis =
+            gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
+      } else {
+        auto axis_gen_op = op.operand_source(2).defining_op();
+        PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
+                          true,
+                          ::phi::errors::InvalidArgument(
+                              "Not Supported: The gather operator for CINN "
+                              "only supports constant value"));
+        auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+        axis = static_cast<int>(full_op.attribute("value")
+                                    .dyn_cast<::pir::FloatAttribute>()
+                                    .data());
+        return axis;
+      }
+    }();
+    auto out =
+        rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
+    rewriter.ReplaceAllUsesWith(op->result(0), out);
+    rewriter.EraseOp(op);
+    return true;
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass()
     : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
@@ -911,6 +948,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<RefreshCombineOpPattern>(context);
   ps.Add<SqueezeOpPattern>(context);
   ps.Add<UnsqueezeOpPattern>(context);
+  ps.Add<GatherOpPattern>(context);
 
   return ps;
 }

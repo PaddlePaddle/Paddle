@@ -15,9 +15,12 @@
 # repo: llm_sub_graphs
 # model: chatglm2
 # api:paddle.nn.functional.input.embedding||method:transpose||api:paddle.tensor.creation.ones||api:paddle.tensor.creation.tril||method:astype||api:paddle.tensor.creation.ones||method:astype||method:__and__||api:paddle.tensor.creation.arange||method:__truediv__||method:__rpow__||method:__rtruediv__||api:paddle.tensor.creation.arange||api:paddle.tensor.math.outer||method:astype||api:paddle.tensor.ops.cos||api:paddle.tensor.ops.sin||api:paddle.tensor.manipulation.stack||method:__getitem__||method:transpose
+import os
 import unittest
 
 import numpy as np
+
+os.environ["FLAGS_prim_all"] = "False"
 
 import paddle
 
@@ -101,7 +104,7 @@ class TestLayer(unittest.TestCase):
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=False
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
