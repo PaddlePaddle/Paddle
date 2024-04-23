@@ -29,7 +29,7 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-void ShapeConstraintIRAnalysis::Init() {
+void InferSymbolicShapeContext::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
   constraints_manager_.SetEqualCallbackFunc(
@@ -38,12 +38,124 @@ void ShapeConstraintIRAnalysis::Init() {
       });
 }
 
-const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
+const std::string InferSymbolicShapeContext::GetNextSymName() {
   return "S" + std::to_string(next_sym_idx_++);
 }
 
-bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
+bool InferSymbolicShapeContext::HasShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.count(val) > 0;
+}
+
+const symbol::ShapeOrDataDimExprs&
+InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
+  // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprs
+  if (!val) {
+    static symbol::ShapeOrDataDimExprs empty{
+        symbol::TensorShapeOrDataDimExprs{}};
+    return empty;
+  }
+  if (!HasShapeOrDataForValue(val)) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
+  }
+
+  return value_to_shape_or_data_.at(val);
+}
+
+void InferSymbolicShapeContext::SetShapeOrDataForValue(
+    Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+      symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
+  auto iter = value_to_shape_or_data_.find(val);
+  if (iter == value_to_shape_or_data_.end()) {
+    value_to_shape_or_data_.emplace(val, substituted_shape_or_data);
+  } else {
+    iter->second = substituted_shape_or_data;
+  }
+}
+
+void InferSymbolicShapeContext::AddEqualCstr(const symbol::DimExpr& lhs,
+                                             const symbol::DimExpr& rhs) {
+  constraints_manager_.AddEqCstr(lhs, rhs);
+}
+
+bool InferSymbolicShapeContext::IsEqual(const symbol::DimExpr& lhs,
+                                        const symbol::DimExpr& rhs) const {
+  return constraints_manager_.IsEqual(lhs, rhs);
+}
+
+void InferSymbolicShapeContext::AddGreatThanOneCstr(
+    const symbol::DimExpr& dim_expr) {
+  constraints_manager_.AddGTOneCstr(dim_expr);
+}
+
+bool InferSymbolicShapeContext::IsGreatThanOne(
+    const symbol::DimExpr& dim_expr) const {
+  return constraints_manager_.IsGTOne(dim_expr);
+}
+
+void InferSymbolicShapeContext::AddBroadcastableCstr(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  constraints_manager_.AddBroadcastableCstr(lhs, rhs);
+}
+
+bool InferSymbolicShapeContext::IsBroadcastable(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const {
+  return constraints_manager_.IsBroadcastable(lhs, rhs);
+}
+
+namespace {
+
+bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
+                                  const symbol::DimExpr& rhs) {
+  auto CanSubstitutePredictor = symbol::Overloaded{
+      [](std::int64_t lhs, const auto& rhs) { return true; },
+      [](const std::string& lhs, const std::string& rhs) { return true; },
+      [](const std::string& lhs,
+         const symbol::Broadcast<symbol::DimExpr>& rhs) { return true; },
+      [](const auto& lhs, const auto& rhs) { return false; }};
+  return std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant()) ||
+         std::visit(CanSubstitutePredictor, rhs.variant(), lhs.variant());
+}
+
+}  // namespace
+
+void InferSymbolicShapeContext::SubstituteDimExpr(
+    const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
+  if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
+
+  substitution_pattern_[origin] = substituted;
+  for (auto it = substitution_pattern_.begin();
+       it != substitution_pattern_.end();
+       it++) {
+    if (it->second == origin) it->second = substituted;
+  }
+
+  for (auto it = value_to_shape_or_data_.begin();
+       it != value_to_shape_or_data_.end();
+       it++) {
+    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+        symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
+    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+  }
+}
+
+void InferSymbolicShapeContext::PrintShapeOrDatas() const {
+  LOG(INFO) << "shape analysis : @" << this
+            << " value_to_shape_or_data_ size : "
+            << value_to_shape_or_data_.size();
+  LOG(INFO) << "----------- ShapeOrData for Values ------------";
+  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
+    if (value) {
+      LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+    }
+  }
+}
+
+void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+
+const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
+  return context_.GetNextSymName();
 }
 
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
@@ -52,7 +164,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
   const auto& VisitNotInferedInputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
         for (auto& operand : op->operands_source()) {
-          if (operand.impl() && !HasShapeOrDataForValue(operand)) {
+          if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
             Visit(operand.defining_op());
           }
         }
@@ -63,7 +175,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     subgraph_ops.insert(op);
     bool has_prev_op = false;
     for (auto& operand : op->operands_source()) {
-      if (operand.impl() && !HasShapeOrDataForValue(operand)) {
+      if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
         has_prev_op = true;
       }
     }
@@ -99,9 +211,9 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     auto infer_symbolic_shape_interface =
         op->dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      infer_symbolic_shape_interface.InferSymbolicShape(this);
+      infer_symbolic_shape_interface.InferSymbolicShape(&context_);
       for (auto& result_value : op->results()) {
-        if (result_value && (!HasShapeOrDataForValue(result_value))) {
+        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
           PADDLE_THROW(phi::errors::Fatal(op->name() +
                                           " HAS ERROR on InferSymbolicShape!"));
         }
@@ -122,76 +234,42 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
         symbol::TensorShapeOrDataDimExprs{}};
     return empty;
   }
-  if (!HasShapeOrDataForValue(val)) {
+  if (!context_.HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op
     InferShapeOrDataForValue(val);
   }
 
-  return value_to_shape_or_data_.at(val);
+  return context_.GetShapeOrDataForValue(val);
 }
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-      symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
-  auto iter = value_to_shape_or_data_.find(val);
-  if (iter == value_to_shape_or_data_.end()) {
-    value_to_shape_or_data_.emplace(val, substituted_shape_or_data);
-  } else {
-    iter->second = substituted_shape_or_data;
-  }
-}
-
-void ShapeConstraintIRAnalysis::AddEqualCstr(const symbol::DimExpr& lhs,
-                                             const symbol::DimExpr& rhs) {
-  constraints_manager_.AddEqCstr(lhs, rhs);
+  context_.SetShapeOrDataForValue(val, shape_or_data);
 }
 
 bool ShapeConstraintIRAnalysis::IsEqual(const symbol::DimExpr& lhs,
                                         const symbol::DimExpr& rhs) const {
-  return constraints_manager_.IsEqual(lhs, rhs);
-}
-
-void ShapeConstraintIRAnalysis::AddGreatThanOneCstr(
-    const symbol::DimExpr& dim_expr) {
-  constraints_manager_.AddGTOneCstr(dim_expr);
+  return context_.IsEqual(lhs, rhs);
 }
 
 bool ShapeConstraintIRAnalysis::IsGreatThanOne(
     const symbol::DimExpr& dim_expr) const {
-  return constraints_manager_.IsGTOne(dim_expr);
-}
-
-void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
-    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
-  constraints_manager_.AddBroadcastableCstr(lhs, rhs);
+  return context_.IsGreatThanOne(dim_expr);
 }
 
 bool ShapeConstraintIRAnalysis::IsBroadcastable(
     const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const {
-  return constraints_manager_.IsBroadcastable(lhs, rhs);
+  return context_.IsBroadcastable(lhs, rhs);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
-  LOG(INFO) << "shape analysis : @" << this
-            << " value_to_shape_or_data_ size : "
-            << value_to_shape_or_data_.size();
-  LOG(INFO) << "----------- ShapeOrData for Values ------------";
-  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
-    if (value) {
-      LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
-    }
-  }
+  context_.PrintShapeOrDatas();
 }
 
 // Currently, we only support TensorShapeOrDataDimExprs but not
 // TensorListShapeOrDataDimExprs to compare the shape.
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
-
-  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
-    return false;
-  }
 
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
   auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
@@ -243,11 +321,6 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
       rhs_product *= rhs_type.GetShape()[i];
     }
     return lhs_product == rhs_product;
-  }
-
-  // For dynamic shape
-  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
-    return false;
   }
 
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
@@ -334,49 +407,13 @@ symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
   return symbol::SimplifyDimExpr(product);
 }
 
-namespace {
-
-bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
-                                  const symbol::DimExpr& rhs) {
-  auto CanSubstitutePredictor = symbol::Overloaded{
-      [](std::int64_t lhs, const auto& rhs) { return true; },
-      [](const std::string& lhs, const std::string& rhs) { return true; },
-      [](const std::string& lhs,
-         const symbol::Broadcast<symbol::DimExpr>& rhs) { return true; },
-      [](const auto& lhs, const auto& rhs) { return false; }};
-  return std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant()) ||
-         std::visit(CanSubstitutePredictor, rhs.variant(), lhs.variant());
-}
-
-}  // namespace
-
-void ShapeConstraintIRAnalysis::SubstituteDimExpr(
-    const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
-  if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
-
-  substitution_pattern_[origin] = substituted;
-  for (auto it = substitution_pattern_.begin();
-       it != substitution_pattern_.end();
-       it++) {
-    if (it->second == origin) it->second = substituted;
-  }
-
-  for (auto it = value_to_shape_or_data_.begin();
-       it != value_to_shape_or_data_.end();
-       it++) {
-    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-        symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
-    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
-  }
-}
-
 pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
   pir::PrintHooks print_hook;
   print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
     printer.IrPrinter::PrintOperation(op);
     printer.os << " { ";
     for (uint32_t i = 0; i < op->num_results(); ++i) {
-      if (this->HasShapeOrDataForValue(op->result(i))) {
+      if (context_.HasShapeOrDataForValue(op->result(i))) {
         printer.os << "(" << this->GetShapeOrDataForValue(op->result(i)) << ")";
       } else {
         printer.os << "()";

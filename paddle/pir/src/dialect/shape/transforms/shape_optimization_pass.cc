@@ -120,17 +120,16 @@ void PrintOpInfo(pir::Operation* op) {
   }
 }
 
-void DebugPrintOpInfo(
-    pir::Operation* op,
-    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+void DebugPrintOpInfo(pir::Operation* op,
+                      pir::InferSymbolicShapeContext* infer_context = nullptr) {
   std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
-    if (shape_analysis != nullptr) {
-      auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
+    if (infer_context != nullptr) {
+      auto shape_data = infer_context->GetShapeOrDataForValue(res);
       if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
       print_stream << "shape: [";
 
@@ -167,7 +166,7 @@ void DebugPrintOpInfo(
 
 void CheckInferSymWithInferMeta(
     pir::Operation* op,
-    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+    pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
     std::ostringstream print_stream;
@@ -179,7 +178,7 @@ void CheckInferSymWithInferMeta(
       const std::vector<int64_t>& infer_meta_shape =
           common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
       const std::vector<symbol::DimExpr>& infer_sym_shape =
-          shape_analysis->GetShapeOrDataForValue(res).shape();
+          infer_context->GetShapeOrDataForValue(res).shape();
 
       // Check rank.
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
@@ -231,9 +230,10 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
   shape_analysis.Init();
+  auto infer_context = shape_analysis.GetInferSymbolicShapeContext();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, &shape_analysis);
+      InferSymExprForBlock(block, infer_context);
     }
   }
 }
@@ -290,14 +290,14 @@ symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
 }
 
 void InferSymExprForBlock(const Block& block,
-                          ShapeConstraintIRAnalysis* shape_analysis) {
+                          InferSymbolicShapeContext* infer_context) {
   for (auto& op : block) {
     auto infer_symbolic_shape_interface =
         op.dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
       PrintOpInfo(&op);
       PADDLE_ENFORCE_EQ(
-          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
+          infer_symbolic_shape_interface.InferSymbolicShape(infer_context),
           true,
           "InferSymbolicShape for %s failed.",
           op.name());
@@ -306,7 +306,7 @@ void InferSymExprForBlock(const Block& block,
         // TODO(lanxianghit): deal with the ops which have more than 1
         // ACTUAL results
         pir::shape::SetShapeAttrForOp(
-            &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+            &op, infer_context->GetShapeOrDataForValue(op.result(0)));
       }
     } else {
       const bool all_outs_static_dims = [&] {
@@ -324,7 +324,7 @@ void InferSymExprForBlock(const Block& block,
 
       if (all_outs_static_dims) {
         for (uint32_t i = 0; i < op.num_results(); ++i) {
-          shape_analysis->SetShapeOrDataForValue(
+          infer_context->SetShapeOrDataForValue(
               op.result(i),
               CreateShapeOrDataByDDim(
                   op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
@@ -334,8 +334,8 @@ void InferSymExprForBlock(const Block& block,
             op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
       }
     }
-    DebugPrintOpInfo(&op, shape_analysis);
-    CheckInferSymWithInferMeta(&op, shape_analysis);
+    DebugPrintOpInfo(&op, infer_context);
+    CheckInferSymWithInferMeta(&op, infer_context);
   }
 }
 

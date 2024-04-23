@@ -173,7 +173,7 @@ parse_kernel_key_template = """
 """
 
 infer_symbolic_shape_template = """
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis* shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 """
 
 # =====================================

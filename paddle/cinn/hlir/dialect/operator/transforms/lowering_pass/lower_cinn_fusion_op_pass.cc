@@ -66,12 +66,10 @@ pir::Operation* ProcessDyShapeGroup(
       auto base_type =
           group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
       auto dim_info = base_type.dims();
-      if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
-        auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
-        for (size_t k = 0; k < shape.size(); ++k) {
-          if (shape[k].isa<int64_t>()) {
-            dim_info[k] = shape[k].Get<int64_t>();
-          }
+      auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
+      for (size_t k = 0; k < shape.size(); ++k) {
+        if (shape[k].isa<int64_t>()) {
+          dim_info[k] = shape[k].Get<int64_t>();
         }
       }
       auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
@@ -107,15 +105,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
-      if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
-        shape_analysis.SetShapeOrDataForValue(
-            compiled_op->result(i),
-            shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
-      } else {
-        LOG(WARNING) << "No shape_data for "
-                     << fusion_op.result(i).defining_op()->name() << "_result_"
-                     << i;
-      }
+      shape_analysis.SetShapeOrDataForValue(
+          compiled_op->result(i),
+          shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
     }
     rewriter.EraseOp(fusion_op);
     return true;

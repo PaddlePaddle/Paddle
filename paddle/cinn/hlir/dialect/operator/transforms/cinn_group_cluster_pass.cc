@@ -306,11 +306,9 @@ std::vector<pir::Type> BuildOutType(
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
     for (size_t i = 0; i < op->num_results(); ++i) {
-      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
-        shape_analysis.SetShapeOrDataForValue(
-            new_op->result(i),
-            shape_analysis.GetShapeOrDataForValue(op->result(i)));
-      }
+      shape_analysis.SetShapeOrDataForValue(
+          new_op->result(i),
+          shape_analysis.GetShapeOrDataForValue(op->result(i)));
     }
 
     vec_new_op_list.push_back(new_op);
@@ -552,14 +550,12 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
 
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    if (shape_analysis.HasShapeOrDataForValue(op->operand_source(0))) {
-      auto sym_shape =
-          shape_analysis.GetShapeOrDataForValue(op->operand_source(0)).shape();
-      cluster_node->loop_rangs_expr = sym_shape;
-      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
-        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
-          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
-        }
+    auto sym_shape =
+        shape_analysis.GetShapeOrDataForValue(op->operand_source(0)).shape();
+    cluster_node->loop_rangs_expr = sym_shape;
+    for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+      if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+        cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
       }
     }
 
@@ -577,14 +573,12 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .dims());
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-      auto sym_shape =
-          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
-      cluster_node->loop_rangs_expr = sym_shape;
-      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
-        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
-          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
-        }
+    auto sym_shape =
+        shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+    cluster_node->loop_rangs_expr = sym_shape;
+    for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+      if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+        cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
       }
     }
   } else if (cluster_node->group_kind == cinn::hlir::framework::kInjective) {
@@ -603,14 +597,12 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-        auto shape_info =
-            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
-        cluster_node->loop_rangs_expr = shape_info;
-        for (size_t i = 0; i < shape_info.size(); ++i) {
-          if (shape_info[i].isa<int64_t>()) {
-            output_shape[i] = shape_info[i].Get<int64_t>();
-          }
+      auto shape_info =
+          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      cluster_node->loop_rangs_expr = shape_info;
+      for (size_t i = 0; i < shape_info.size(); ++i) {
+        if (shape_info[i].isa<int64_t>()) {
+          output_shape[i] = shape_info[i].Get<int64_t>();
         }
       }
       return output_shape;
@@ -636,17 +628,15 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
 
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-      auto sym_shape =
-          shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
-      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
-        if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
-          cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
-        }
+    auto sym_shape =
+        shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+    for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+      if (cluster_node->loop_ranges[i] < 0 && sym_shape[i].isa<int64_t>()) {
+        cluster_node->loop_ranges[i] = sym_shape[i].Get<int64_t>();
+      }
 
-        if (sch_node->factor_info[i] < 0 && sym_shape[i].isa<int64_t>()) {
-          sch_node->factor_info[i] = sym_shape[i].Get<int64_t>();
-        }
+      if (sch_node->factor_info[i] < 0 && sym_shape[i].isa<int64_t>()) {
+        sch_node->factor_info[i] = sym_shape[i].Get<int64_t>();
       }
     }
   } else if (op->name() == "cinn_op.generate_shape") {
@@ -1052,11 +1042,9 @@ class CinnGroupClusterPattern
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
-        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
-          shape_analysis.SetShapeOrDataForValue(
-              new_group_op->result(i),
-              shape_analysis.GetShapeOrDataForValue(output_values[i]));
-        }
+        shape_analysis.SetShapeOrDataForValue(
+            new_group_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(output_values[i]));
       }
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
