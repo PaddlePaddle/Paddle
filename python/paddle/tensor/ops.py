@@ -19,7 +19,6 @@ from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 from .layer_function_generator import (
-    add_sample_code,
     generate_activation_fn,
     generate_inplace_fn,
     generate_layer_fn,
@@ -31,15 +30,8 @@ __deprecated_func_name__ = {
 }
 
 __activations_noattr__ = [
-    'silu',
-    'logsigmoid',
     'tanh_shrink',
-    'softplus',
-    'softsign',
-    'tanh',
 ]
-
-__unary_func__ = ['abs']
 
 __inplace_unary_func__ = [
     'exp_',
@@ -76,19 +68,6 @@ globals()['_scale'] = generate_layer_fn('scale')
 
 globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
-for _OP in set(__activations_noattr__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_activation_fn(_OP)
-    globals()[_OP] = _func
-
-for _OP in set(__unary_func__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_activation_fn(_OP)
-    globals()[_OP] = _func
 
 for _OP in set(__inplace_unary_func__):
     _new_OP = _OP
@@ -99,122 +78,214 @@ for _OP in set(__inplace_unary_func__):
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
-add_sample_code(
-    globals()["silu"],
+
+def tanh_shrink(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    TanhShrink Activation Operator.
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    .. math::
 
-        >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-        >>> out = F.silu(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.73105860, 1.76159406, 2.85772228, 3.92805505])
-""",
-)
+        \text{tanhshrink}(x) = x - \tanh(x)
 
-add_sample_code(
-    globals()["logsigmoid"],
+    Args:
+        x (Tensor): Input of TanhShrink operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of TanhShrink operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.tanhshrink(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
+    """
+    return generate_activation_fn('tanh_shrink')(x, name)
+
+
+def softplus(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    Softplus Activation Operator.
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    .. math::
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.log_sigmoid(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.91301525, -0.79813892, -0.64439666, -0.55435526])
-""",
-)
+        softplus(x) = \ln(1 + \exp(x))
 
-add_sample_code(
-    globals()["tanh"],
+    Args:
+        x (Tensor): Input of Softplus operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Softplus operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.softplus(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
+    """
+    return generate_activation_fn('softplus')(x, name)
+
+
+def softsign(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    Softsign Activation Operator.
 
-        >>> import paddle
+    .. math::
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.tanh(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-""",
-)
+        softsign(x) = \frac{x}{1 + |x|}
 
-add_sample_code(
-    globals()["tanh_shrink"],
+    Args:
+        x (Tensor): Input of Softsign operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Softsign operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.softsign(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
+    """
+    return generate_activation_fn('softsign')(x, name)
+
+
+def tanh(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    Tanh Activation Operator.
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    .. math::
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.tanhshrink(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
-""",
-)
+        tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
-add_sample_code(
-    globals()["abs"],
+    Args:
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Tanh operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.tanh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
+    """
+    return generate_activation_fn('tanh')(x, name)
+
+
+def logsigmoid(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    Logsigmoid Activation Operator.
+    Perform elementwise logsigmoid for input `x`.
 
-        >>> import paddle
+    .. math::
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.abs(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.40000001, 0.20000000, 0.10000000, 0.30000001])
-""",
-)
+        logSigmoid(x) = log \frac{1}{1 + e^{-x}}
 
-add_sample_code(
-    globals()["softplus"],
+    Args:
+        x (Tensor): The input tensor of logsigmoid op.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Logsigmoid operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.log_sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.91301525, -0.79813892, -0.64439666, -0.55435526])
+    """
+    return generate_activation_fn('logsigmoid')(x, name)
+
+
+def silu(x, name=None):
     r"""
-Examples:
-    .. code-block:: python
+    Silu Activation Operator.
+    Perform elementwise silu for input `x`.
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    .. math::
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.softplus(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-""",
-)
+        silu(x) = \frac{x}{1 + \mathrm{e}^{-x}}
 
-add_sample_code(
-    globals()["softsign"],
-    r"""
-Examples:
-    .. code-block:: python
+    Args:
+        x (Tensor): The input tensor of silu op.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    Returns:
+        Tensor. Output of Silu operator, a Tensor with shape same as input.
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.softsign(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
-""",
-)
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> out = F.silu(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+    """
+    return generate_activation_fn('silu')(x, name)
+
+
+def abs(x, name=None):
+    """
+    Abs Operator.
+    Perform elementwise abs for input `X`.
+
+    .. math::
+
+        out = |x|
+
+    Args:
+        x (Tensor): The input tensor of abs op.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Abs operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.abs(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40000001, 0.20000000, 0.10000000, 0.30000001])
+    """
+    return generate_activation_fn('abs')(x, name)
 
 
 def acos(x, name=None):

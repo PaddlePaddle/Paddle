@@ -260,7 +260,6 @@ def generate_activation_fn(op_type):
     creates the operator functionality.
 
     """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
         if in_dynamic_or_pir_mode():
@@ -304,28 +303,6 @@ def generate_activation_fn(op_type):
             return output
 
     func.__name__ = op_type
-    if op_type == 'abs':
-        func.__doc__ = r"""
-
-Abs Operator.
-Perform elementwise abs for input `X`.
-
-.. math::
-
-    out = |x|
-
-Args:
-    x (Tensor): The input tensor of abs op.
-    out (Tensor): The output tensor of abs op.
-    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-"""
-    else:
-        func.__doc__ = _generate_doc_string_(
-            op_proto,
-            additional_args_lines=[
-                "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
-            ],
-        )
     return func
 
 
@@ -410,14 +387,3 @@ def templatedoc(op_type=None):
         return func
 
     return __impl__
-
-
-def add_sample_code(func, sample_code):
-    """
-    Append sample code for dynamically generated functions.
-
-    Args:
-       func: The function of the function to be append sample code to.
-       sample_code: sample code session in rst format.
-    """
-    func.__doc__ = func.__doc__ + sample_code
