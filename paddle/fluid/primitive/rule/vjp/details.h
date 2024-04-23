@@ -779,6 +779,94 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void matmul_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out_grad,
+                 bool transpose_x,
+                 bool transpose_y,
+                 Tensor* x_grad,
+                 Tensor* y_grad) {
+  auto unsqueeze_out_grad = out_grad;
+  size_t out_grad_rank = out_grad.shape().size();
+  size_t x_rank = x.shape().size();
+  size_t y_rank = y.shape().size();
+  int temp_rank_y = out_grad_rank - 1;
+  int temp_rank_x = out_grad_rank;
+  if (out_grad_rank < y_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_y});
+  }
+  if (out_grad_rank < x_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_x});
+  }
+
+  auto temp_x_unsqueeze = x;
+  if (x_rank == 1) {
+    temp_x_unsqueeze = unsqueeze<T>(x, {0});
+  }
+
+  auto temp_y_unsqueeze = y;
+  if (y_rank == 1) {
+    temp_y_unsqueeze = unsqueeze<T>(y, {1});
+  }
+
+  if (x_grad) {
+    auto x_grad_mm =
+        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
+    auto x_grad_trans = x_grad_mm;
+
+    if (transpose_x) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    }
+
+    if (x_grad_trans.dims() != x.dims()) {
+      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+          x_grad_trans.dims(), temp_x_unsqueeze.dims());
+      auto dx_reduce_res = sum<T>(
+          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+      set_output<T>(x_grad_out, x_grad);
+    } else {
+      auto x_grad_out = x_grad_trans;
+      set_output<T>(x_grad_out, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_grad_mm =
+        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
+    auto y_grad_trans = y_grad_mm;
+
+    if (transpose_y) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    }
+
+    if (y_grad_trans.dims() != y.dims()) {
+      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+          y_grad_trans.dims(), temp_y_unsqueeze.dims());
+      auto dy_reduce_res = sum<T>(
+          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+      set_output<T>(y_grad_out, y_grad);
+    } else {
+      auto y_grad_out = y_grad_trans;
+      set_output<T>(y_grad_out, y_grad);
+    }
+  }
+}
+
+template <typename T>
 void maximum_grad(const Tensor& x,
                   const Tensor& y,
                   const Tensor& out_grad,
