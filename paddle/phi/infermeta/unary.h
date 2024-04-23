@@ -165,11 +165,6 @@ void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out);
 
-void DeQuantizeInferMeta(const MetaTensor& input,
-                         float scale,
-                         float shift,
-                         MetaTensor* output);
-
 void DeQuantizeXPUInferMeta(const MetaTensor& x,
                             DataType out_dtype,
                             float scale,
@@ -530,14 +525,6 @@ void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,
                  MetaTensor* q,
                  MetaTensor* r);
-
-void QuantizeInferMeta(const MetaTensor& input,
-                       bool is_negative_input,
-                       float scale,
-                       float shift,
-                       const std::string& output_format,
-                       bool bfloat16,
-                       MetaTensor* output);
 
 void QuantizeXPUInferMeta(const MetaTensor& x,
                           DataType out_dtype,
