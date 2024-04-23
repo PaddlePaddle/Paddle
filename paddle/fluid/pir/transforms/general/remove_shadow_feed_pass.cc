@@ -82,6 +82,9 @@ class RemoveShadowFeedPattern
       }
       auto in_name = kwargs_map_.at(in);
       auto *var = scope_->FindVar(in_name);
+      if (!var) {
+        return false;
+      }
       phi::Place var_place;
       if (var->IsType<phi::DenseTensor>()) {
         var_place = GetVarPlace<phi::DenseTensor>(var, place_);
