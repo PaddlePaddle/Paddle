@@ -3846,9 +3846,9 @@ function run_setup(){
     pip install PyGithub
     python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
     if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
-         WITH_CPP_TEST=OFF
+         export WITH_CPP_TEST=OFF
     else
-	 WITH_CPP_TEST=ON
+	 export WITH_CPP_TEST=ON
     fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
@@ -3921,6 +3921,7 @@ EOF
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
+    export WITH_CPP_TEST=${WITH_CPP_TEST:-ON}
 
 
     if [ "$SYSTEM" == "Linux" ];then
