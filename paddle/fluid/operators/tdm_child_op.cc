@@ -119,12 +119,3 @@ REGISTER_OPERATOR(
     ops::TDMChildOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(tdm_child,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::TDMChildKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
