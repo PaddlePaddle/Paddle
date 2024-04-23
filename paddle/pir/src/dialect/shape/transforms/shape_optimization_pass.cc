@@ -183,15 +183,16 @@ void CheckInferSymWithInferMeta(
 
       // Check rank.
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
-        std::ostringstream print_stream;
-        print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << " (op_" << op->id() << ") "
-                     << " carefully! rank of infer_meta_shape is ["
-                     << infer_meta_shape.size()
-                     << "], but rank of infer_sym_shape is ["
-                     << infer_sym_shape.size() << "].";
-        VLOG(vlog_level) << print_stream.str();
-        continue;
+        LOG(ERROR) << "value infer_sym_shape is ["
+                   << shape_analysis->GetShapeOrDataForValue(res)
+                   << "], real shape is [" << res.type() << "].";
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "Error : Check InferSymbolicShape for %s (op_ %d) carefully! rank "
+            "of infer_meta_shape is [%d], but rank of infer_sym_shape is [%d].",
+            op->name(),
+            op->id(),
+            infer_meta_shape.size(),
+            infer_sym_shape.size()));
       }
 
       // Check each dim.
@@ -199,27 +200,31 @@ void CheckInferSymWithInferMeta(
         // Check Static shape should NOT be a symbol.
         if (infer_meta_shape[i] != -1) {
           if (!infer_sym_shape[i].isa<int64_t>()) {
-            std::ostringstream print_stream;
-            print_stream
-                << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") "
-                << " carefully! "
-                << "shape[" << i
-                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            VLOG(vlog_level) << print_stream.str();
-            continue;
+            LOG(ERROR) << "value infer_sym_shape is ["
+                       << shape_analysis->GetShapeOrDataForValue(res)
+                       << "], real shape is [" << res.type() << "].";
+            PADDLE_THROW(common::errors::PreconditionNotMet(
+                "Error : Check InferSymbolicShape for %s (op_ %d) carefully!  "
+                "shape [%d] of infer_sym_shape shoule be int64_t.",
+                op->name(),
+                op->id(),
+                i));
           }
 
           // Check Static shape should be consist.
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
-            std::ostringstream print_stream;
-            print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " (op_" << op->id() << ") "
-                         << " carefully! "
-                         << "infer_sym_shape is [" << infer_meta_shape[i]
-                         << "], but infer_meta_shape is ["
-                         << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << "value infer_sym_shape is ["
+                       << shape_analysis->GetShapeOrDataForValue(res)
+                       << "], real shape is [" << res.type() << "].";
+            PADDLE_THROW(common::errors::PreconditionNotMet(
+                "Error : Check InferSymbolicShape for %s (op_ %d) carefully! "
+                "infer_meta_shape index(%d) is [%d], but infer_sym_shape is "
+                "[%d].",
+                op->name(),
+                op->id(),
+                i,
+                infer_meta_shape[i],
+                infer_sym_shape[i].dyn_cast<int64_t>()));
           }
         }
       }
@@ -249,7 +254,7 @@ class ShapeOptimizationPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 
@@ -330,7 +335,7 @@ void InferSymExprForBlock(const Block& block,
                   op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
       }
     }
