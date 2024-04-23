@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import re
-import string
 import warnings
 from io import StringIO
 
@@ -344,59 +343,6 @@ def autodoc(comment=""):
             )
             + comment
         )
-        return func
-
-    return __impl__
-
-
-def templatedoc(op_type=None):
-    """
-    Decorator of layer function. It will use the docstring from the layer
-    function as the template. The template arguments are:
-    * ${comment}: The operator comment written in CPP.
-    * ${{name}_comment}: The comment of ${name} written with AddAttr, AddOutput,
-        and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
-    * ${{name}_type}: The type of ${name}.
-    Returns:
-        Decorated function.
-    """
-
-    def trim_ending_dot(msg):
-        return msg.rstrip('.')
-
-    def __impl__(func):
-        if op_type is None:
-            op_type_name = func.__name__
-        else:
-            op_type_name = op_type
-        op_proto = OpProtoHolder.instance().get_op_proto(op_type_name)
-        tmpl = string.Template(func.__doc__)
-
-        comment_lines = op_proto.comment.split("\n")
-        comment = ""
-        for line in comment_lines:
-            line = line.strip()
-            if len(line) != 0:
-                comment += escape_math(line)
-                comment += " "
-            elif len(comment) != 0:
-                comment += "\n    \n    "
-
-        args = {"comment": trim_ending_dot(comment)}
-        for each_input in op_proto.inputs:
-            input_name = _convert_(each_input.name)
-            args[f"{input_name}_comment"] = trim_ending_dot(each_input.comment)
-            args[f"{input_name}_type"] = "Variable"
-        for each_attr in op_proto.attrs:
-            input_name = _convert_(each_attr.name)
-            args[f"{input_name}_comment"] = trim_ending_dot(each_attr.comment)
-            args[f"{input_name}_type"] = _type_to_str_(each_attr.type)
-
-        for each_opt in op_proto.outputs:
-            output_name = _convert_(each_opt.name)
-            args[f"{output_name}_comment"] = trim_ending_dot(each_opt.comment)
-            args[f"{output_name}_type"] = "Variable"
-        func.__doc__ = tmpl.substitute(args)
         return func
 
     return __impl__
