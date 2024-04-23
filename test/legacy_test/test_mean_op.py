@@ -609,6 +609,9 @@ class TestMeanTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMeanWithDimTensor(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
