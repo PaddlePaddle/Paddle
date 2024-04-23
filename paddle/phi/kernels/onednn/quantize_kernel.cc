@@ -25,14 +25,14 @@ namespace phi {
 using dnnl::memory;
 
 template <typename T, typename Context>
-class QuantOpKernel(const Context& dev_ctx,
-                    const DenseTensor& input,
-                    bool is_negative_input,
-                    float scale,
-                    float shift,
-                    const std::string& output_format,
-                    bool bfloat16,
-                    DenseTensor* output) {
+void QuantOpKernel(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   bool is_negative_input,
+                   float scale,
+                   float shift,
+                   const std::string& output_format,
+                   bool bfloat16,
+                   DenseTensor* output) {
   const auto quantization_shift = static_cast<int32_t>(shift);
   const bool with_scale = scale != 1.0f;
   const bool with_shift = quantization_shift != 0.0f;
