@@ -58,7 +58,7 @@ class PToRReshardFunction(ReshardFunction):
             paddle.pir.set_insertion_point_after(op)
         group = new_process_group(src_mesh.process_ids)
         reduced_value = paddle._pir_ops.c_allreduce_sum_(
-            op_value, group.id, False, False
+            op_value, group.id, True, False
         )
 
         # set dist type and dist attr
