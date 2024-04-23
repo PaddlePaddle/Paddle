@@ -176,9 +176,9 @@ void DisableActivity() {
 void CUPTIAPI bufferRequested(uint8_t **buffer,
                               size_t *size,
                               size_t *maxNumRecords) {
-  std::vector<uint8_t> buf(kBufSize + kAlignSize);
+  uint8_t *buf = reinterpret_cast<uint8_t *>(malloc(kBufSize + kAlignSize));
   *size = kBufSize;
-  *buffer = ALIGN_BUFFER(buf.data(), kAlignSize);
+  *buffer = ALIGN_BUFFER(buf, kAlignSize);
   *maxNumRecords = 0;
 }
 
