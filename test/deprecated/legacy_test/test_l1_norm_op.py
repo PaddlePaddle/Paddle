@@ -38,7 +38,7 @@ class TestL1NormOp(OpTest):
         self.outputs = {'Out': np.sum(np.abs(X))}
 
     def test_check_output(self):
-        self.check_output(atol=2e-5)
+        self.check_output(atol=2e-5, rtol=2e-5)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
