@@ -96,6 +96,6 @@ class SameStatusReshardFunction(ReshardFunction):
         program.global_block().remove_op(op)
 
         if is_send:
-            return None, None
+            return None
         else:
-            return new_op, dst_dist_attr
+            return new_op

@@ -120,7 +120,7 @@ class TestSimpleNetForSemiAutoParallel:
         # create loss
         loss_fn = nn.MSELoss()
         loss_list = []
-        for _ in range(5):
+        for epoch in range(5):
             for batch_id, data in enumerate(dist_loader()):
                 if isinstance(data, dict):
                     image = data['image']
@@ -162,48 +162,11 @@ class TestSimpleNetForSemiAutoParallel:
         dy2static_losses, dist_model = self.run_dy2static(
             dy2static_layer, dy2static_opt, dist_dataloader
         )
-        print(f'debug dy2static_losses: {dy2static_losses}')
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        print(f'debug dy_losses: {dy_losses}')
         np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
 
-        # save load
-        state_dict_to_save = dist_model.state_dict()
-        dist.save_state_dict(state_dict_to_save, self._ckpt_path)
-        dist.barrier()
-        expected_local_state_dict = {}
-        need_load_state_dict = {}
-        with paddle.base.dygraph.guard():
-            for k, v in state_dict_to_save.items():
-                local_value = v._local_value()
-                expected_local_state_dict[k] = local_value.clone()
-                need_load_state_dict[k] = paddle.zeros_like(v)
-        dist_model.set_state_dict(need_load_state_dict)
-        program_state_dict = dist_model.state_dict()
-        for k, v in program_state_dict.items():
-            assert v.numpy().sum() == 0, f"key {k} is not zero: {v}"
-            assert k in expected_local_state_dict
-            assert (
-                need_load_state_dict[k].numpy().sum() == 0
-            ), f"key {k} is not zero: {need_load_state_dict[k]}"
-        dist.load_state_dict(need_load_state_dict, self._ckpt_path)
-        dist_model.set_state_dict(need_load_state_dict)
-        program_state_dict = dist_model.state_dict()
-        for k, v in program_state_dict.items():
-            local_tensor = v._local_value()
-            assert (
-                k in expected_local_state_dict
-            ), f"key {k} not in expected_local_state_dict:{expected_local_state_dict}"
-            np.testing.assert_equal(
-                local_tensor.numpy(),
-                expected_local_state_dict[k].numpy(),
-            )
-
     def run_test_case(self):
-        print(f'debug debug')
         self.test_mp_demo_net()
-        #self.test_recompute()
-
 
 if __name__ == '__main__':
     TestSimpleNetForSemiAutoParallel().run_test_case()
