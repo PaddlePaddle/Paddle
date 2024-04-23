@@ -778,19 +778,56 @@ def _program_for_vpp(
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
-def _get_backward_op_type(block, op):
-    # For the op doesn't have output such as 'send_v2', it should be backward_b.
-    if len(op.output_arg_names) == 0:
-        return "backward_b"
-    for name in op.output_arg_names:
+def _get_backward_op_type(block, cur_op, idx):
+    # deal the ops pattern: [reshape2, reshape2, matmul_v2, reshape2, elementwise_add]
+    def is_reshape_matmul_pattern(cur_op, idx, ops, ops_len):
+        ops_pattern = [
+            "reshape2",
+            "reshape2",
+            "matmul_v2",
+            "reshape2",
+            "elementwise_add",
+        ]
+        if cur_op.type == "reshape2":
+            if idx + 4 < ops_len:
+                ops_names = []
+                for i in range(idx, idx + 5):
+                    if not is_backward_op(ops[i]):
+                        return False
+                    if ops[i].type == "matmul_v2":
+                        output_arg_names = ops[i].output_arg_names
+                        name = output_arg_names[0].split("@")[0]
+                        if not block._find_var_recursive(name):
+                            return False
+                        var = block._find_var_recursive(name)
+                        if not var.is_parameter:
+                            return False
+                    ops_names.append(ops[i].type)
+                if ops_names == ops_pattern:
+                    return True
+        return False
+
+    # For the cur_op doesn't have output such as 'send_v2', it should be backward_b.
+    if len(cur_op.output_arg_names) == 0:
+        return ["backward_b"]
+
+    if is_reshape_matmul_pattern(cur_op, idx, block.ops, len(block.ops)):
+        return [
+            "backward_w",
+            "backward_w",
+            "backward_w",
+            "backward_w",
+            "backward_w",
+        ]
+    for name in cur_op.output_arg_names:
         name = name.split("@")[0]
         if not block._find_var_recursive(name):
-            return "backward_b"
+            return ["backward_b"]
         var = block._find_var_recursive(name)
         if not var.is_parameter:
-            return "backward_b"
+            return ["backward_b"]
 
-    return "backward_w"
+    return ["backward_w"]
 
 
 def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
@@ -814,15 +851,20 @@ def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
             type_to_ops[type] = []
         type_to_ops["fetch"] = []
 
-        for op in block.ops:
+        dealed_op_idx = 0
+        for idx, op in enumerate(block.ops):
+            if idx < dealed_op_idx:
+                continue
             if _is_fetch_op(op):
                 type_to_ops["fetch"].append(op)
             elif is_forward_op(op):
                 type_to_ops["forward"].append(op)
             elif is_backward_op(op):
-                type = _get_backward_op_type(block, op)
-                type_to_ops[type].append(op)
-                type_to_ops["backward"].append(op)
+                types = _get_backward_op_type(block, op, idx)
+                dealed_op_idx = dealed_op_idx + len(types) - 1
+                for i, type in enumerate(types):
+                    type_to_ops[type].append(block.ops[idx + i])
+                    type_to_ops["backward"].append(block.ops[idx + i])
             elif is_optimize_op(op):
                 type_to_ops["optimizer"].append(op)
             else:
@@ -831,6 +873,7 @@ def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
                     + str(op.attr('op_role'))
                     + " isn't one of Forward, Backward or Optimizer."
                 )
+            dealed_op_idx = dealed_op_idx + 1
         return type_to_ops
 
     type_to_program = OrderedDict()
