@@ -144,11 +144,7 @@ inline std::string OpNameCompatibleMapping(std::string op_name) {
 }
 inline bool isSparseString(const std::string& str) {
   std::regex pattern("^sparse_[a-zA-Z0-9_]+$");
-  if (std::regex_match(str, pattern)) {
-    return true;
-  } else {
-    return false;
-  }
+  return std::regex_match(str, pattern);
 }
 
 inline pir::Operation* InsertCombineOperationForTarget(
@@ -293,21 +289,108 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
-  if (isSparseString(target_op_name)) {
-    target_op_name = OpNameNormalizer::instance()[target_op_name];
-  }
-  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-  if (!op_info) {
-    IR_THROW("Op %d should have corresponding OpInfo %d",
-             op_desc.Type(),
-             target_op_name);
-  }
+  // //判断op_desc是否是单kernel或者多kernel,单kernel和多kernel可以通过map来判断
+  // if(单kernel){
+  //   target_op_name从sparse_xxx变为xxx_sp或者xxx_sp_
+  // }
+
+  // if(多kernel){
+  //   op_desc--->var_desc--->type---->放到空的vector里，判断是否是一种类型还是两种或者混合的，来确定选哪个kernel
+  // }
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    VLOG(6) << "305:" << target_op_name;
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               target_op_name);
+    }
+    return op_info;
+  }
+  if (paddle::dialect::HaveOpToMultiKernelsMap(
+          OpNameCompatibleMapping(op_desc.Type())) &&
+      isSparseString(op_desc.Type())) {
+    std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
+    std::vector<std::string> input_types;
+    std::stringstream ss;
+    for (const auto& pair : inputs) {
+      ss << pair.first << ": " << pair.second << ", ";
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(pair.second[0]);
+      PADDLE_ENFORCE_NE(
+          var_desc,
+          nullptr,
+          phi::errors::InvalidArgument("[Op:%s] Input %s should not be null",
+                                       op_desc.Type(),
+                                       pair.second[0]));
+      // auto& type_translator = TypeTranslator::instance();
+      // auto pir_type = type_translator[var_desc->GetType()](ctx,*var_desc);//
+      // type_translator[var->GetType()](ctx, *var);
+      if (var_desc->GetType() ==
+          paddle::framework::proto::VarType::SPARSE_COO) {
+        input_types.emplace_back("sparse_coo");
+      } else if (var_desc->GetType() ==
+                 paddle::framework::proto::VarType::SPARSE_CSR) {
+        input_types.emplace_back("sparse_csr");
+      } else if (var_desc->GetType() ==
+                 paddle::framework::proto::VarType::LOD_TENSOR) {
+        input_types.emplace_back("dense");
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Op %d only support dense tensor ,sparse_coo and sparse_csr, but "
+            "not %d",
+            op_desc.Type(),
+            var_desc->GetType()));
+      }
+    }
+    target_op_name = OpNameCompatibleMapping(op_desc.Type());
+    VLOG(6) << "344:" << target_op_name;
+    auto sig_infos = paddle::dialect::SparseOpToPdOpsMapping(target_op_name);
+
+    target_op_name = "";
+    for (const auto& sig : sig_infos) {
+      if (input_types.size() != sig.inputs.size()) {
+        continue;
+      }
+      size_t i = 0;
+      for (i = 0; i < input_types.size(); ++i) {
+        if (input_types[i] == "") {
+          continue;
+        }
+        if (input_types[i] != sig.inputs[i]) {
+          break;
+        }
+      }
+      if (i == input_types.size()) {
+        target_op_name = sig.name;
+        break;
+      }
+    }
+    VLOG(6) << "366:" << target_op_name;
+    PADDLE_ENFORCE_EQ(!target_op_name.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Op %d should have corresponding OpInfo %d",
+                          op_desc.Type(),
+                          target_op_name));
+
+    target_op_name = GetPrefix(ctx, op_desc) + target_op_name + "_sp";
+    if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+      target_op_name += "_";
+    }
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d should have corresponding OpInfo %d",
+          op_desc.Type(),
+          target_op_name));
+    }
+
     return op_info;
   }
 
   // for selected rows kernel choose
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   auto* op_info_concept =
       op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
 
@@ -359,14 +442,11 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
 
   target_op_name = OpNameCompatibleMapping(op_desc.Type());
+
   auto sig_infos = paddle::dialect::LegacyOpToPdOpsMapping(target_op_name);
 
   target_op_name = "";
-
   for (const auto& sig : sig_infos) {
-    VLOG(6) << "[need_inputs_sig.size: " << need_inputs_sig.size()
-            << " sig.inputs.size:" << sig.inputs.size()
-            << " sig.name:" << sig.name;
     if (need_inputs_sig.size() != sig.inputs.size()) {
       continue;
     }
@@ -375,7 +455,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       if (need_inputs_sig[i] == "") {
         continue;
       }
-      VLOG(6) << ":" << need_inputs_sig[i] << " " << sig.inputs[i];
       if (need_inputs_sig[i] != sig.inputs[i]) {
         break;
       }

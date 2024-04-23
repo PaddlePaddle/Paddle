@@ -54,7 +54,6 @@ COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
-using framework::ParallelExecutor;
 using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
@@ -133,19 +132,12 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   }
 
   // collect variables name list to be skipped in GC
-  skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
   auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
     // Always consider Input/Output of Graph as skip_gc_vars, because
     // InterpreterCore has no eager_deletion_op to deal with it.
 
     VLOG(4) << "Append a skip_gc_var for InterpreterCore:" << var_name;
     skip_gc_vars_.insert(var_name);
-    // if a var exists at the outer_varinfo map, that means it will be
-    // erased by the following eager_deletion_op of current cinn_launch op
-    if (!outer_varinfo.count(var_name)) {
-      skip_eager_vars_.emplace_back(var_name);
-      VLOG(4) << "Append a skip_gc_var for PE:" << var_name;
-    }
   };
   std::for_each(
       input_var_names.begin(), input_var_names.end(), add_skip_var_fn);
@@ -154,13 +146,11 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   VLOG(4) << string::Sprintf(
       "Distribution of variables in the graph compiled:"
       "input[%lu],internal[%lu],output[%lu],"
-      "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
-      "skip_gc_vars_[%lu]",
+      "outer_eager_deletion[%lu],skip_gc_vars_[%lu]",
       input_var_names.size(),
       internal_var_names_.size(),
       output_var_names.size(),
       outer_varinfo.size(),
-      skip_eager_vars_.size(),
       skip_gc_vars_.size());
 }
 
@@ -481,39 +471,6 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   }
 
   return program_desc;
-}
-
-ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
-                                                  framework::Scope* scope) {
-  if (!parallel_executor_) {
-    framework::details::ExecutionStrategy exec_strategy;
-    exec_strategy.num_threads_ = 1;
-    exec_strategy.use_device_ = platform::Place2DeviceType(place);
-    framework::details::BuildStrategy build_strategy;
-    parallel_executor_ = std::make_unique<ParallelExecutor>(
-        place, scope, exec_strategy, build_strategy, runtime_graph_.get());
-  }
-
-  // update the scope bound to an OpHandle and rebuild temporary variables
-  VLOG(4) << "Reset scope and initialize temporary variables";
-  std::unordered_map<Scope*, Scope*> scope_map = {
-      {parallel_executor_->GetLocalScopes().front(), scope}};
-  parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
-  // instead of using the PrepareVariables function of ParallelExecutor to
-  // initialize all variables, here we only initialize internal variables
-  // because external variables are already included in parent scope.
-  for (auto&& var_name : internal_var_names_) {
-    auto* var = scope->FindVar(var_name);
-    if (var != nullptr) {
-      VLOG(5) << "internal variable:" << var_name
-              << " has been initialized beforehand in global scope, skipped.";
-      continue;
-    }
-    framework::InitializeVariable(scope->Var(var_name),
-                                  framework::proto::VarType::LOD_TENSOR);
-  }
-
-  return parallel_executor_.get();
 }
 
 framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(

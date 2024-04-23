@@ -78,6 +78,8 @@ KernelDialect::KernelDialect(pir::IrContext *context)
 void KernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
                 paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedSparseCooTensorType,
+                paddle::dialect::AllocatedSparseCsrTensorType,
                 paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();

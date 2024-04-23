@@ -177,10 +177,13 @@ def OpNameNormalizerInitialization(
             sparse_ops_items = yaml.safe_load(f)
             for sparse_op in sparse_ops_items:
                 if yaml_file.endswith("sparse_ops.yaml"):
-                    op_name = sparse_op['op'] + '_sp'
+                    op_name = sparse_op['op']
                 else:
-                    op_name = sparse_op['backward_op'] + '_sp'
-                op_name_mappings["sparse_" + op_name] = op_name
+                    op_name = sparse_op['backward_op']
+                if op_name[-1] == "_":
+                    op_name_mappings["sparse_" + op_name] = op_name + 'sp_'
+                else:
+                    op_name_mappings["sparse_" + op_name] = op_name + '_sp'
 
     op_name_normalizer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

@@ -53,7 +53,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_indices,
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sparse_indices,
-                  ops::SparseIndicesOp,
-                  ops::SparseIndicesOpMaker,
-                  ops::SparseIndicesInferShapeFunctor);
+// REGISTER_OPERATOR(sparse_indices,
+//                   ops::SparseIndicesOp,
+//                   ops::SparseIndicesOpMaker,
+//                   ops::SparseIndicesInferShapeFunctor);

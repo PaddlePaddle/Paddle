@@ -17,6 +17,7 @@
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 PD_DECLARE_bool(support_reduce_stride_read);
@@ -125,6 +126,9 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
+  VLOG(6) << "After VariableTypeAssignment on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   Unroll(sch, block_id);
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
@@ -293,13 +297,17 @@ void TileFirstGeneralTactic::Unroll(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::VariableTypeAssignment(
     ir::IRSchedule* sch, const std::string& block_id) {
-  const auto IsOutputTensor = [&](const std::string& tensor_name) {
+  const auto IsOutputTensor = [&](const std::string& tensor_name) -> bool {
     return context_->config.base_info->direct_output_var_names.count(
                tensor_name) > 0;
   };
+  const auto HasConsumers = [&](const ir::Expr& block) -> bool {
+    return !ir::analyzer::GetConsumerSBlocks(block, sch->GetRootBlock(block))
+                .empty();
+  };
 
   auto block = sch->GetBlock(block_id);
-  if (!IsOutputTensor(block_id)) {
+  if (!IsOutputTensor(block_id) && HasConsumers(block)) {
     sch->SetBuffer(block, "local", false);
   }
 

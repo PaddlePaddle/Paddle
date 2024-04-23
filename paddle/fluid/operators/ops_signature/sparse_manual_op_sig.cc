@@ -27,4 +27,5 @@ KernelSignature SparseIndicesOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(sparse_indices, phi::SparseIndicesOpArgumentMapping);
+// PD_REGISTER_ARG_MAPPING_FN(sparse_indices,
+// phi::SparseIndicesOpArgumentMapping);

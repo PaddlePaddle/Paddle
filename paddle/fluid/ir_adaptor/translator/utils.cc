@@ -44,6 +44,10 @@ const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
   return op_to_multi_kernels_map[op_name];
 }
 
+const std::vector<PdOpSig>& SparseOpToPdOpsMapping(std::string op_name) {
+  return sp_op_to_multi_kernels_map[op_name];
+}
+
 #ifdef PADDLE_WITH_DNNL
 bool IsOneDNNOnlyOp(std::string op_name) {
   return paddle::onednn::dialect::onednn_only_op_set.count(op_name);

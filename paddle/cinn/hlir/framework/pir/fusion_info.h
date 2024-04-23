@@ -57,6 +57,21 @@ class OperationInfo {
   std::vector<AttributeInfo> attr_infos_;
 };
 
+class FusionOpInfo {
+ public:
+  FusionOpInfo(const ::pir::Operation &op,
+               const std::unordered_map<size_t, size_t> &deps)
+      : op_info_(op), inner_deps_(deps) {}
+
+  std::size_t hash() const;
+  friend std::ostream &operator<<(std::ostream &os, const FusionOpInfo &info);
+
+ private:
+  OperationInfo op_info_;
+  // oprand_source id : OperationInfo hash
+  std::unordered_map<size_t, size_t> inner_deps_;
+};
+
 class FusionInfo {
   using IntArgsMap = std::map<int, CINNKernelInfo::ArgDimIdx>;
 
@@ -74,13 +89,18 @@ class FusionInfo {
   friend std::ostream &operator<<(std::ostream &os, const FusionInfo &info);
 
  private:
-  std::vector<OperationInfo> op_infos_;
+  std::vector<FusionOpInfo> op_infos_;
   std::size_t cached_hash_value_{0};
+
+  // Used to make same subgraphs have unique FusionInfo while
+  // FLAGS_enable_cinn_compile_cache = false, default empty;
+  std::string unique_fn_name_{""};
 };
 
 std::ostream &operator<<(std::ostream &os, const AttributeInfo &info);
 std::ostream &operator<<(std::ostream &os, const ValueInfo &info);
 std::ostream &operator<<(std::ostream &os, const OperationInfo &info);
+std::ostream &operator<<(std::ostream &os, const FusionOpInfo &info);
 std::ostream &operator<<(std::ostream &os, const FusionInfo &info);
 
 // See boost.hash_combine for details
@@ -114,5 +134,6 @@ namespace std {
 REGISTER_STD_HASH(AttributeInfo);
 REGISTER_STD_HASH(ValueInfo);
 REGISTER_STD_HASH(OperationInfo);
+REGISTER_STD_HASH(FusionOpInfo);
 REGISTER_STD_HASH(FusionInfo)
 }  // namespace std
