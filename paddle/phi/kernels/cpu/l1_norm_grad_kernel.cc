@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/l1_norm_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/l1_norm_kernel.h"
 
-PD_REGISTER_KERNEL(l1_norm, CPU, ALL_LAYOUT, phi::L1NormKernel, float) {}
+PD_REGISTER_KERNEL(
+    l1_norm_grad, CPU, ALL_LAYOUT, phi::L1NormGradKernel, float) {}
