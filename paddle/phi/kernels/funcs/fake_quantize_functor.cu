@@ -192,6 +192,8 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
 }
 
 template class FindAbsMaxFunctor<GPUContext, float16>;
+template class FindAbsMaxFunctor<GPUContext, float>;
+template class ClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantFunctor<GPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
