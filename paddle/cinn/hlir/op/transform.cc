@@ -1791,7 +1791,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   std::vector<Expr> output_shape;
   for (auto &i : output_shapes[0]) {
     output_shape.push_back(i->dim_expr);
-    LOG(INFO) << "output_shape: " << output_shape.back();
     CHECK(output_shape.back().type().valid());
   }
 
@@ -1812,7 +1811,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
 
         auto out = pe::SliceSymbolic(
             A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
-        LOG(INFO) << "out: " << out;
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
       });
