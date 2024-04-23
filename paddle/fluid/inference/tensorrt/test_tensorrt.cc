@@ -104,9 +104,9 @@ nvinfer1::IHostMemory* CreateNetwork() {
   EXPECT_NE(engine, nullptr);
   // Serialize the engine to create a model, then close.
   nvinfer1::IHostMemory* model = engine->serialize();
-  network->destroy();
-  engine->destroy();
-  builder->destroy();
+  delete network;
+  delete engine;
+  delete builder;
   return model;
 }
 
@@ -155,7 +155,7 @@ TEST(TensorrtTest, BasicFunction) {
   nvinfer1::IRuntime* runtime = createInferRuntime(&logger);
   nvinfer1::ICudaEngine* engine =
       runtime->deserializeCudaEngine(model->data(), model->size(), nullptr);
-  model->destroy();
+  delete model;
   nvinfer1::IExecutionContext* context = engine->createExecutionContext();
 
   // Execute the network.
@@ -165,7 +165,7 @@ TEST(TensorrtTest, BasicFunction) {
   EXPECT_EQ(output, input * 2 + 3);
 
   // Destroy the engine.
-  context->destroy();
-  engine->destroy();
-  runtime->destroy();
+  delete context;
+  delete engine;
+  delete runtime;
 }
