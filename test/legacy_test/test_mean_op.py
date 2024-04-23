@@ -609,14 +609,11 @@ class TestMeanTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestMeanWithDimTensor(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.place = paddle.CUDAPlace(0)
+        self.place = paddle.CPUPlace()
 
     def test_mean_with_dim_tesnor(self):
         old_flag = paddle.base.framework.get_flags(
