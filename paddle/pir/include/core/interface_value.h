@@ -56,7 +56,6 @@ class IR_API InterfaceValue {
 };
 
 template <typename Interface, typename Model>
-template <typename Interface, typename Model>
 InterfaceValue InterfaceValue::Get() {
   InterfaceValue val;
   val.type_id_ = TypeId::get<Interface>();
