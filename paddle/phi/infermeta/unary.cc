@@ -776,6 +776,14 @@ void DecodeJpegInferMeta(const MetaTensor& x,
   }
 }
 
+void DeQuantizeInferMeta(const MetaTensor& input,
+                         float scale,
+                         float shift,
+                         MetaTensor* output) {
+  output->share_lod(input);
+  output->set_dims(input.dims());
+}
+
 void DeQuantizeXPUInferMeta(const MetaTensor& x,
                             DataType out_dtype,
                             float scale,
@@ -3448,6 +3456,17 @@ void QrInferMeta(const MetaTensor& x,
   r->share_lod(x);
   q->set_dtype(x.dtype());
   r->set_dtype(x.dtype());
+}
+
+void QuantizeInferMeta(const MetaTensor& input,
+                       bool is_negative_input,
+                       float scale,
+                       float shift,
+                       const std::string& output_format,
+                       bool bfloat16,
+                       MetaTensor* output) {
+  output->share_lod(input);
+  output->set_dims(input.dims());
 }
 
 DDim ReduceInferDim(const MetaTensor& x,

@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/quantize_op.h"
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 using dnnl::memory;
 
@@ -121,9 +121,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
     out->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };
-}  // namespace operators
-}  // namespace paddle
-namespace ops = paddle::operators;
+}  // namespace phi
 
-PD_REGISTER_STRUCT_KERNEL(quantize, OneDNN, ONEDNN, ops::QuantOpKernel, float) {
-}
+PD_REGISTER_KERNEL(quantize, OneDNN, ONEDNN, phi::QuantOpKernel, float) {}
