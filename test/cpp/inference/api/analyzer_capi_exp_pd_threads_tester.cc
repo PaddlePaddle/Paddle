@@ -93,7 +93,7 @@ void threads_run(int thread_num) {
     params[i].out_size = 0;
     params[i].out_data = nullptr;
     params[i].thread_index = i;
-    pthread_create(&(threads[i]), nullptr, run, (params + i));
+    pthread_create(&(threads[i]), nullptr, run, &(params[i]));
   }
   for (int i = 0; i < thread_num; ++i) {
     pthread_join(threads[i], nullptr);
