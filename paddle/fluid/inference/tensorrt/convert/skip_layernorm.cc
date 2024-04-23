@@ -232,7 +232,7 @@ class SkipLayerNormOpConverter : public OpConverter {
                 "layer"));
         layer = plugin_layer;
       } else {
-        std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+        std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
             new nvinfer1::PluginFieldCollection);
         pluginPtr->nbFields = static_cast<int32_t>(fields.size());
         pluginPtr->fields = fields.data();
