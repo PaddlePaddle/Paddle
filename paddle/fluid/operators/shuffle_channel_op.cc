@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
