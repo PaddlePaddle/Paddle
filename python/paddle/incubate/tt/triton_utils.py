@@ -159,7 +159,7 @@ def get_value_hint(x):
     hint = ""
     for ele in x:
         if type(ele) == int:
-            if ele % 16 == 0:
+            if ele % 16 == 0 and ele > 0:
                 hint += "i32:16,"
             elif ele == 1:
                 hint += "i32:1,"
