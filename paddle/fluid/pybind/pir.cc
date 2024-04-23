@@ -1099,13 +1099,24 @@ std::list<Operation *>::const_iterator list_offset(const Block *block,
   return it;
 }
 
-template <class F>
-void range_block_do(const Block *block, std::vector<int> range, F fn) {
+template <typename F, typename S>
+void range_block_do(const Block *block,
+                    std::vector<int> range,
+                    F fn,
+                    S skip_fn) {
   for (auto it = list_offset(block, range[0]);
        it != list_offset(block, range[1]);
        ++it) {
+    if (skip_fn(*it)) {
+      continue;
+    }
     fn(*it);
   }
+}
+
+template <typename F>
+void range_block_do(const Block *block, std::vector<int> range, F fn) {
+  range_block_do(block, range, fn, [](Operation *op) { return false; });
 }
 
 template <typename K, typename V>
@@ -1193,20 +1204,32 @@ std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
   return inplace_chains;
 }
 
-std::optional<pir::Value> FindInplaceSource(
+std::optional<std::vector<pir::Value>> FindInplaceChain(
     const std::vector<std::vector<pir::Value>> inplace_chains,
-    pir::Value value) {
+    const pir::Value &value) {
   if (value.impl() == nullptr) {
     return std::nullopt;
   }
+
   for (auto &chain : inplace_chains) {
     for (auto &v : chain) {
       if (v == value) {
-        return chain[0];
+        return chain;
       }
     }
   }
   return std::nullopt;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  const auto &chain = FindInplaceChain(inplace_chains, value);
+  if (chain.has_value()) {
+    return chain.value()[0];
+  } else {
+    return std::nullopt;
+  }
 }
 
 std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
@@ -1299,8 +1322,10 @@ bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || !value.type();
 }
 
-static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
-                                 std::vector<int> range) {
+static auto GetNoNeedBufferValue(
+    const ::pir::Block *whole_block,
+    std::vector<int> range,
+    const std::vector<std::vector<pir::Value>> &inplace_chains) {
   // filter no need buffer values.
   std::unordered_set<::pir::Value> need_buffer_values;
   std::unordered_set<::pir::Value> no_need_buffer_values;
@@ -1335,16 +1360,29 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
           }
         }
       });
-  range_block_do(whole_block,
-                 range,
-                 [&need_buffer_values,
-                  &no_need_buffer_values](const ::pir::Operation *op) {
-                   for (const auto &operand : op->operands_source()) {
-                     if (need_buffer_values.count(operand) == 0) {
-                       no_need_buffer_values.insert(operand);
-                     }
-                   }
-                 });
+  range_block_do(
+      whole_block,
+      range,
+      [&need_buffer_values, &no_need_buffer_values, &inplace_chains](
+          const ::pir::Operation *op) {
+        for (const auto &operand : op->operands_source()) {
+          const auto &chain = FindInplaceChain(inplace_chains, operand);
+          std::vector<pir::Value> chain_vec;
+          if (!chain.has_value()) {
+            chain_vec = {operand};
+          } else {
+            chain_vec = chain.value();
+          }
+
+          bool all = std::all_of(
+              chain_vec.begin(), chain_vec.end(), [&](const auto &v) {
+                return need_buffer_values.count(v) == 0;
+              });
+          if (all) {
+            no_need_buffer_values.insert(operand);
+          }
+        }
+      });
   return std::vector<::pir::Value>(no_need_buffer_values.begin(),
                                    no_need_buffer_values.end());
 }
@@ -1461,7 +1499,9 @@ SplitedResult SplitForwardBackward(
       [&forward_mapper, &forward_program, &clone_options](Operation *op) {
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
-      });
+      },
+      // Skip the ShadowOutputOp.
+      /*skip_fn=*/[](Operation *op) { return op->isa<pir::ShadowOutputOp>(); });
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construct.
@@ -1493,37 +1533,13 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    // Skip the value that already in forward_inputs or forward_params.
-    if (std::find(forward_inputs.begin(), forward_inputs.end(), v) !=
-            forward_inputs.end() ||
-        std::find(forward_params.begin(), forward_params.end(), v) !=
-            forward_params.end()) {
+    // Skip the value that already in forward_params.
+    if (std::find(forward_params.begin(), forward_params.end(), v) !=
+        forward_params.end()) {
       return;
     }
-    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
-    // calling SplitForwardBackward multi-times.
     std::string shadow_output_name =
         std::string("output_") + std::to_string(counter);
-    std::unordered_set<pir::Value> inserted_value;
-    for (auto it = forward_program->block()->rbegin();
-         it != forward_program->block()->rend();
-         ++it) {
-      if (it->isa<pir::ShadowOutputOp>()) {
-        auto out_name =
-            it->attribute<pir::StrAttribute>("output_name").AsString();
-        if (out_name == shadow_output_name) {
-          VLOG(4) << out_name
-                  << " has been inserted ShadowOutputOp, skip it now.";
-          return;
-        }
-
-        inserted_value.insert(it->operand_source(0));
-      }
-    }
-
-    if (inserted_value.count(forward_value_map[v])) {
-      return;
-    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
         {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
@@ -1652,9 +1668,10 @@ SplitedResult SplitForwardBackward(
   mapping_value(
       forward_outputs_grads, backward_value_map, bo_g);  // write 'bo_g'
   mapping_value(forward_outputs_mutable, backward_value_map, bo);  // write 'bo'
-  mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
-                forward_value_map,
-                no_need_buffer_values);  // write 'no_need_buffers'
+  mapping_value(
+      GetNoNeedBufferValue(program.block(), backward_range, inplace_chains),
+      forward_value_map,
+      no_need_buffer_values);  // write 'no_need_buffers'
 
   std::map<std::string, std::vector<pir::Value>> attr = {
       {"fx", fx},

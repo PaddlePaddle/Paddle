@@ -38,15 +38,14 @@ class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
                 {"data_format", pat.Attr("data_format")}});
     depthwise_conv2d_op({&pat.Tensor("input"), &pat.Tensor("filter")},
                         {&pat.Tensor("depthwise_conv2d_out")});
-    pat.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8100
-          auto groups = match_ctx.Attr<int>("groups");
-          return groups > 1;
+      auto groups = match_ctx.Attr<int>("groups");
+      return groups > 1;
 #else
-          return false;
+      return false;
 #endif
-        });
+    });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &conv2d =
