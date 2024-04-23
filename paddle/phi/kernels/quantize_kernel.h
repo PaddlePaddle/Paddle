@@ -15,17 +15,19 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void QuantOpKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
+                   const DenseTensor& input,
                    bool is_negative_input,
                    float scale,
                    float shift,
                    const std::string& output_format,
                    bool bfloat16,
-                   DenseTensor* out);
+                   DenseTensor* output);
 
 }  // namespace phi

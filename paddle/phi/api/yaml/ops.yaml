@@ -771,6 +771,7 @@
   output : Tensor(output)
   infer_meta :
     func : DeQuantizeInferMeta
+    param : [input]
   kernel :
     func : dequantize
     data_type : input
@@ -2302,6 +2303,7 @@
   output : Tensor(output)
   infer_meta :
     func : QuantizeInferMeta
+    param : [input]
   kernel :
     func : quantize
     data_type : input

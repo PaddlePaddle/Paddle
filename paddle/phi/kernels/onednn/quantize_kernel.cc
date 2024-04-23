@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/quantize_kernel.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -25,19 +26,18 @@ using dnnl::memory;
 
 template <typename T, typename Context>
 class QuantOpKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
+                    const DenseTensor& input,
                     bool is_negative_input,
                     float scale,
                     float shift,
                     const std::string& output_format,
                     bool bfloat16,
-                    DenseTensor* out) {
-  const auto quantization_scale = scale;
+                    DenseTensor* output) {
   const auto quantization_shift = static_cast<int32_t>(shift);
-  const bool with_scale = quantization_scale != 1.0f;
+  const bool with_scale = scale != 1.0f;
   const bool with_shift = quantization_shift != 0.0f;
 
-  PADDLE_ENFORCE_NE(quantization_scale,
+  PADDLE_ENFORCE_NE(scale,
                     0.0f,
                     phi::errors::InvalidArgument(
                         "Quantization scale must be different than 0.0f"));
@@ -47,7 +47,7 @@ class QuantOpKernel(const Context& dev_ctx,
                      "255 and greater or equal to 0, but got %f",
                      quantization_shift));
 
-  auto x_tz = common::vectorize<int64_t>(x.dims());
+  auto x_tz = common::vectorize<int64_t>(input.dims());
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;
 
@@ -59,7 +59,7 @@ class QuantOpKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
   }
 
-  auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
+  auto x_type = phi::funcs::ToOneDNNDataType(input.dtype());
   DataType out_dtype;
 
   if (bfloat16) {
@@ -73,12 +73,12 @@ class QuantOpKernel(const Context& dev_ctx,
   auto out_type = phi::funcs::ToOneDNNDataType(out_dtype);
 
   phi::funcs::ReorderOneDNNHandler reorder_handler(
-      x_tz, x.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
+      x_tz, input.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
-  auto reorder_dst_memory_p =
-      reorder_handler.AcquireDstMemory(out, x->mem_desc(), dev_ctx.GetPlace());
+      input->mem_desc(), phi::funcs::to_void_cast(input->data<T>()));
+  auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+      output, input->mem_desc(), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
@@ -86,13 +86,13 @@ class QuantOpKernel(const Context& dev_ctx,
   auto& astream = phi::OneDNNContext::tls().get_stream();
 
   auto scales_md = dnnl::memory::desc(
-      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::input);
   auto scales_mem =
       dnnl::memory(scales_md,
                    dev_ctx.GetEngine(),
                    phi::funcs::to_void_cast<float>(&quantization_scale));
   auto zero_points_md = dnnl::memory::desc(
-      {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+      {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::input);
   auto zero_points_mem =
       dnnl::memory(zero_points_md,
                    dev_ctx.GetEngine(),
@@ -112,7 +112,7 @@ class QuantOpKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  out->set_mem_desc(reorder_dst_memory_p->get_desc());
+  output->set_mem_desc(reorder_dst_memory_p->get_desc());
 }
 }  // namespace phi
 

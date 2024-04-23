@@ -780,8 +780,9 @@ void DeQuantizeInferMeta(const MetaTensor& input,
                          float scale,
                          float shift,
                          MetaTensor* output) {
-  output->share_lod(input);
   output->set_dims(input.dims());
+  output->set_layout(input.layout());
+  output->share_lod(input);
 }
 
 void DeQuantizeXPUInferMeta(const MetaTensor& x,
