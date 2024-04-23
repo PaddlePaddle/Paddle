@@ -39,7 +39,7 @@ typedef struct RunParameter {
   size_t shape_size;
   float* input_data;
   int32_t out_size;
-  float* out_data;
+  std::vector<float> out_data;
   int32_t thread_index;
 } RunParameter;
 
@@ -62,9 +62,8 @@ void* run(void* thread_param) {
     param->out_size = param->out_size * output_shape->data[index];
   }
   PD_OneDimArrayInt32Destroy(output_shape);
-  std::vector<float> out_data(param->out_size);
-  param->out_data = out_data.data();
-  PD_TensorCopyToCpuFloat(output_tensor, param->out_data);
+  param->out_data.resize(param->out_size);
+  PD_TensorCopyToCpuFloat(output_tensor, param->out_data.data());
   PD_TensorDestroy(output_tensor);
   PD_OneDimArrayCstrDestroy(output_names);
   PD_TensorDestroy(tensor);
@@ -91,7 +90,6 @@ void threads_run(int thread_num) {
     params[i].shape_size = 4;
     params[i].input_data = input.data();
     params[i].out_size = 0;
-    params[i].out_data = nullptr;
     params[i].thread_index = i;
     pthread_create(&(threads[i]), nullptr, run, &(params[i]));
   }
