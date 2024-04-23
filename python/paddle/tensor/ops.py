@@ -894,6 +894,7 @@ def sinh(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def sqrt(x, name=None):
     """
     Sqrt Activation Operator.

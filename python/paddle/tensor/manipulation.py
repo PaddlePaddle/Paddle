@@ -229,6 +229,7 @@ def cast(x, dtype):
         )
         return out
 
+
 @paddle.utils.print_utils.print_args
 def slice(input, axes, starts, ends):
     """
@@ -1606,6 +1607,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@paddle.utils.print_utils.print_args
 def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     """
     Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
@@ -2753,6 +2755,7 @@ def gather(x, index, axis=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def unbind(input, axis=0):
     """
 
@@ -2826,6 +2829,7 @@ def unbind(input, axis=0):
         return outs
 
 
+@paddle.utils.print_utils.print_args
 def scatter(x, index, updates, overwrite=True, name=None):
     """
     **Scatter Layer**
@@ -2930,6 +2934,7 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     return _C_ops.scatter_(x, index, updates, overwrite)
 
 
+@paddle.utils.print_utils.print_args
 def scatter_nd_add(x, index, updates, name=None):
     r"""
 

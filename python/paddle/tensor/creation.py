@@ -1184,6 +1184,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     return out
 
 
+@paddle.utils.print_utils.print_args
 def full(shape, fill_value, dtype=None, name=None):
     """
 
@@ -1453,6 +1454,7 @@ def tril(x, diagonal=0, name=None):
         return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def triu(x, diagonal=0, name=None):
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
@@ -1823,6 +1825,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def empty(shape, dtype=None, name=None):
     """
     Returns a Tensor with uninitialized data which size is same as ``shape``.
@@ -1920,6 +1923,7 @@ def empty(shape, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def empty_like(x, dtype=None, name=None):
     """
     Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
@@ -2011,6 +2015,7 @@ def empty_like(x, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def assign(x, output=None):
     """
 

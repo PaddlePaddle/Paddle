@@ -172,6 +172,7 @@ def log(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Scale operator.
@@ -386,6 +387,7 @@ def multiplex(inputs, index, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@paddle.utils.print_utils.print_args
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
@@ -395,6 +397,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
 
+@paddle.utils.print_utils.print_args
 def pow(x, y, name=None):
     """
     Compute the power of Tensor elements. The equation is:
@@ -612,6 +615,7 @@ def add(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def add_(x, y, name=None):
     """
@@ -1238,6 +1242,7 @@ def fmin(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.
@@ -2270,6 +2275,7 @@ def inverse(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def max(x, axis=None, keepdim=False, name=None):
     """
 
@@ -2838,6 +2844,7 @@ def log10(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def clip(x, min=None, max=None, name=None):
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -3242,6 +3249,7 @@ def kron(x, y, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def cumsum(x, axis=None, dtype=None, name=None):
     """
     The cumulative sum of the elements along a given axis.
@@ -3593,6 +3601,7 @@ def isnan(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     """
     Compute the product of tensor elements over the given axis.
@@ -3870,6 +3879,7 @@ def all(x, axis=None, keepdim=False, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def any(x, axis=None, keepdim=False, name=None):
     """
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
@@ -4660,6 +4670,7 @@ def lcm(x, y, name=None):
     return out
 
 
+@paddle.utils.print_utils.print_args
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.

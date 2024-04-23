@@ -36,6 +36,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@paddle.utils.print_utils.print_args
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -357,6 +358,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             #                  [4., 3., 2., 1.]])
     """
 
+    @paddle.utils.print_utils.print_args
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
@@ -394,7 +396,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 attrs=attrs,
             )
             return out
-
+    
+    @paddle.utils.print_utils.print_args
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
     ):

@@ -300,6 +300,7 @@ def uniform_random_batch_size_like(
     return out
 
 
+@paddle.utils.print_utils.print_args
 def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     """
     Returns a Tensor filled with random values sampled from a Gaussian

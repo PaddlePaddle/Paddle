@@ -432,6 +432,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 
 @templatedoc()
+@paddle.utils.print_utils.print_args
 def equal(x, y, name=None):
     """
 
@@ -581,7 +582,7 @@ def greater_equal(x, y, name=None):
         return out
 
 
-@templatedoc()
+@paddle.utils.print_utils.print_args
 def greater_than(x, y, name=None):
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
@@ -721,6 +722,7 @@ def less_equal(x, y, name=None):
 
 
 @templatedoc()
+@paddle.utils.print_utils.print_args
 def less_than(x, y, name=None):
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
@@ -791,6 +793,7 @@ def less_than(x, y, name=None):
 
 
 @templatedoc()
+@paddle.utils.print_utils.print_args
 def not_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
@@ -934,6 +937,7 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def bitwise_and(x, y, out=None, name=None):
     r"""
 
@@ -1046,6 +1050,7 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
+@paddle.utils.print_utils.print_args
 def bitwise_not(x, out=None, name=None):
     r"""
 

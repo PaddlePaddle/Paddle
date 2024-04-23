@@ -129,6 +129,7 @@ def argsort(x, axis=-1, descending=False, name=None):
         return ids
 
 
+@paddle.utils.print_utils.print_args
 def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
     Computes the indices of the max elements of the input tensor's
@@ -373,6 +374,7 @@ def index_select(x, index, axis=0, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def nonzero(x, as_tuple=False):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`

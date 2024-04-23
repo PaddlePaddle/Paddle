@@ -22,6 +22,7 @@ from ...fluid.layer_helper import LayerHelper
 __all__ = []
 
 
+@paddle.utils.print_utils.print_args
 def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     r"""
 

@@ -221,6 +221,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     return paddle.sqrt(out)
 
 
+@paddle.utils.print_utils.print_args
 def numel(x, name=None):
     """
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static graph mode
