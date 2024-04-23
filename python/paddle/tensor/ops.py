@@ -24,11 +24,6 @@ from .layer_function_generator import (
     generate_layer_fn,
 )
 
-__deprecated_func_name__ = {
-    'tanh_shrink': 'tanhshrink',
-    'logsigmoid': 'log_sigmoid',
-}
-
 __inplace_unary_func__ = [
     'exp_',
     'sqrt_',
@@ -66,209 +61,26 @@ globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 
 for _OP in set(__inplace_unary_func__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
     func = generate_inplace_fn(_OP)
     func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
 
-def tanh_shrink(x, name=None):
-    r"""
-    TanhShrink Activation Operator.
-
-    .. math::
-
-        \text{tanhshrink}(x) = x - \tanh(x)
-
-    Args:
-        x (Tensor): Input of TanhShrink operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of TanhShrink operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = F.tanhshrink(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
-    """
-    return generate_activation_fn('tanh_shrink')(x, name)
-
-
-def softplus(x, name=None):
-    r"""
-    Softplus Activation Operator.
-
-    .. math::
-
-        softplus(x) = \ln(1 + \exp(x))
-
-    Args:
-        x (Tensor): Input of Softplus operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Softplus operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """
-    return generate_activation_fn('softplus')(x, name)
-
-
-def softsign(x, name=None):
-    r"""
-    Softsign Activation Operator.
-
-    .. math::
-
-        softsign(x) = \frac{x}{1 + |x|}
-
-    Args:
-        x (Tensor): Input of Softsign operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Softsign operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.softsign(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
-    """
-    return generate_activation_fn('softsign')(x, name)
-
-
-def tanh(x, name=None):
-    r"""
-    Tanh Activation Operator.
-
-    .. math::
-
-        tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-
-    Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Tanh operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.tanh(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-    """
-    return generate_activation_fn('tanh')(x, name)
-
-
-def logsigmoid(x, name=None):
-    r"""
-    Logsigmoid Activation Operator.
-    Perform elementwise logsigmoid for input `x`.
-
-    .. math::
-
-        logSigmoid(x) = log \frac{1}{1 + e^{-x}}
-
-    Args:
-        x (Tensor): The input tensor of logsigmoid op.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Logsigmoid operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = F.log_sigmoid(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.91301525, -0.79813892, -0.64439666, -0.55435526])
-    """
-    return generate_activation_fn('logsigmoid')(x, name)
-
-
-def silu(x, name=None):
-    r"""
-    Silu Activation Operator.
-    Perform elementwise silu for input `x`.
-
-    .. math::
-
-        silu(x) = \frac{x}{1 + \mathrm{e}^{-x}}
-
-    Args:
-        x (Tensor): The input tensor of silu op.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Silu operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            >>> out = F.silu(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
-    """
-    return generate_activation_fn('silu')(x, name)
-
-
 def abs(x, name=None):
     """
-    Abs Operator.
-    Perform elementwise abs for input `X`.
+    Perform elementwise abs for input `x`.
 
     .. math::
 
         out = |x|
 
     Args:
-        x (Tensor): The input tensor of abs op.
+        x (Tensor): The input Tensor with data type int32, int64, float16, float32 and float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Abs operator, a Tensor with shape same as input.
+        Tensor.A Tensor with the same data type and shape as :math:`x`.
 
     Examples:
         .. code-block:: python
@@ -1240,6 +1052,33 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    r"""
+    The error function.
+    For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
+
+    Equation:
+        ..  math::
+            out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.erf(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
+    """
     if in_dynamic_or_pir_mode():
         return _C_ops.erf(x)
 
@@ -1249,34 +1088,3 @@ def erf(x, name=None):
         if val is not None:
             kwargs[name] = val
     return _erf_(**kwargs)
-
-
-erf.__doc__ = r"""
-:strong:`Erf Operator`
-For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
-
-Equation:
-    ..  math::
-        out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
-
-Args:
-
-    x (Tensor): The input tensor, it's data type should be float32, float64.
-    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-Returns:
-
-    Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
-
-Examples:
-
-    .. code-block:: python
-
-        >>> import paddle
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.erf(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
-"""

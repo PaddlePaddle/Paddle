@@ -302,7 +302,6 @@ def generate_activation_fn(op_type):
             )
             return output
 
-    func.__name__ = op_type
     return func
 
 
