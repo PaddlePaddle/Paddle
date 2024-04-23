@@ -299,9 +299,13 @@ void Flag::SetValueFromString(const std::string& value) {
 void FlagRegistry::RegisterFlag(Flag* flag) {
   auto iter = flags_.find(flag->name_);
   if (iter != flags_.end()) {
-    LOG_FLAG_FATAL_ERROR("flag multiple definition, flag \"" + flag->name_ +
-                         "\" was defined both in " + iter->second->file_ +
-                         " and " + flag->file_);
+    std::string error_msg = "flag multiple definition, flag \"";
+    error_msg += flag->name_;
+    error_msg += "\" was defined both in ";
+    error_msg += iter->second->file_;
+    error_msg += " and ";
+    error_msg += flag->file_;
+    LOG_FLAG_FATAL_ERROR(error_msg);
   } else {
     std::lock_guard<std::mutex> lock(mutex_);
     flags_[flag->name_] = flag;
@@ -522,13 +526,16 @@ T GetFromEnv(const std::string& name, const T& default_val) {
     flag.SetValueFromString(value_str);
     if (!ErrorStream().str().empty()) {
       ErrorStream().str("");
-      LOG_FLAG_FATAL_ERROR("value \"" + value_str +
-                           "\" of environment"
-                           "variable \"" +
-                           name +
-                           "\" is invalid when "
-                           "using GetFromEnv with " +
-                           FlagType2String(type) + " type.");
+      std::string error_msg = "value \"";
+      error_msg += value_str;
+      error_msg += "\" of environment";
+      error_msg += "variable \"";
+      error_msg += name;
+      error_msg += "\" is invalid when ";
+      error_msg += "using GetFromEnv with ";
+      error_msg += FlagType2String(type);
+      error_msg += " type.";
+      LOG_FLAG_FATAL_ERROR(error_msg);
     }
     return value;
   } else {
