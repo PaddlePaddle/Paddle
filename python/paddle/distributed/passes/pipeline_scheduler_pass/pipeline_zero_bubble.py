@@ -14,11 +14,17 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_zero_bubble, split_matmul_grad_to_matmul
+from ..pass_utils import (
+    PipelineMemoryEstimator,
+    _program_for_zero_bubble,
+    _program_for_zero_bubble_vpp,
+    split_matmul_grad_to_matmul,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -28,11 +34,33 @@ OPT = "optimizer"
 logger = get_logger(logging.INFO)
 
 
-@register_pass("pipeline_scheduler_ZBH1")
-class PipelineZeroBubblePipelinePass(PipelinePassBase):
+class PipelineZeroBubbleBase(PipelinePassBase):
     def __init__(self):
         super().__init__()
         self.set_attr("enable_optimizer_post_validation", 0)
+
+    def _split_matmul_grad_ops_to_matmul(self, program, dist_context):
+        for block in program.blocks:
+            matmul_grad_op_idx = []
+            ops = block.ops
+            for i, op_i in enumerate(ops):
+                if (
+                    op_i.type == "matmul_v2_grad"
+                    and not op_i.attr("trans_x")
+                    and not op_i.attr("trans_y")
+                ):
+                    matmul_grad_op_idx.append(i)
+
+            for matmul_grad_id in reversed(matmul_grad_op_idx):
+                split_matmul_grad_to_matmul(
+                    block, matmul_grad_id, dist_context=dist_context
+                )
+
+
+@register_pass("pipeline_scheduler_ZBH1")
+class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
+    def __init__(self):
+        super().__init__()
 
     def _create_job_list(self):
         num_micro_batches = self.get_attr("num_micro_batches")
@@ -108,23 +136,6 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
         job_list.append(opt_job)
         return job_list
 
-    def _split_matmul_grad_ops_to_matmul(self, program, dist_context):
-        for block in program.blocks:
-            matmul_grad_op_idx = []
-            ops = block.ops
-            for i, op_i in enumerate(ops):
-                if (
-                    op_i.type == "matmul_v2_grad"
-                    and not op_i.attr("trans_x")
-                    and not op_i.attr("trans_y")
-                ):
-                    matmul_grad_op_idx.append(i)
-
-            for matmul_grad_id in reversed(matmul_grad_op_idx):
-                split_matmul_grad_to_matmul(
-                    block, matmul_grad_id, dist_context=dist_context
-                )
-
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         self._split_matmul_grad_ops_to_matmul(program, dist_context)
@@ -133,3 +144,73 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
             program, enable_send_recv_overlap
         )
         return types, sub_program_list
+
+
+@register_pass("pipeline_scheduler_ZBVPP")
+class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
+    def __init__(self):
+        super().__init__()
+        self.set_attr("enable_optimizer_post_validation", 0)
+        self.program_mem_usages = []
+        self.program_max_mem_usages = []
+        self.base_memory = []
+
+    def _create_job_list(self):
+        pass
+
+    def _partial_programs(self, program):
+        dist_context = self.get_attr("dist_context")
+        num_model_chunks = self.get_attr("vpp_degree")
+
+        self._split_matmul_grad_ops_to_matmul(program, dist_context)
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        types, sub_program_list = _program_for_zero_bubble_vpp(
+            program, num_model_chunks, enable_send_recv_overlap
+        )
+        self._estimate_program_mem_usagess(
+            types, sub_program_list, dist_context
+        )
+
+        device_num = paddle.distributed.get_world_size()
+        self._get_all_device_base_memory(device_num)
+
+        return types, sub_program_list
+
+    def _estimate_program_mem_usagess(
+        self, types, sub_program_list, dist_context
+    ):
+        type_to_program = dict(zip(types, sub_program_list))
+        memory_estimator = PipelineMemoryEstimator()
+        memory_estimator.set_program_skip_gc_vars(type_to_program, types)
+
+        mem_usages = []
+        max_mem_usages = []
+        for type in types:
+            mem_usage, max_mem_usage = memory_estimator.estimate_memory(
+                type_to_program[type], type, dist_context
+            )
+            mem_usages.append(mem_usage)
+            max_mem_usages.append(max_mem_usage)
+
+        mem_usages = paddle.to_tensor(mem_usages)
+        max_mem_usages = paddle.to_tensor(max_mem_usages)
+
+        # Get memory usage from all devices
+        all_mem_usages = []
+        all_max_usages = []
+        paddle.distributed.all_gather(all_mem_usages, mem_usages)
+        paddle.distributed.all_gather(all_max_usages, max_mem_usages)
+
+        self.program_mem_usages = [{} for _ in range(len(all_mem_usages))]
+        self.program_max_mem_usages = [{} for _ in range(len(all_max_usages))]
+
+        for id in all_mem_usages:
+            for i, type in enumerate(types):
+                self.program_mem_usages[id][type] = all_mem_usages[id][i]
+                self.program_max_mem_usages[id][type] = all_max_usages[id][i]
+
+    def _get_all_device_base_memory(self, device_num):
+        self.base_memory = []
+        for i in range(device_num):
+            mem_allocated = paddle.device.cuda.memory_allocated(i)
+            self.base_memory.append(mem_allocated)
