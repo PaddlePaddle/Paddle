@@ -85,7 +85,9 @@ class TestVitAttentionPattern(PassTest):
                                     matmul_out_3, perm=[0, 2, 1, 3]
                                 )
                                 out = paddle.assign(transpose_out_2)
-                                self.pass_list = ['self_attention_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'self_attention_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "input": np.random.random(
                                         (bs, seq_len, 3, num_heads, head_dim)
