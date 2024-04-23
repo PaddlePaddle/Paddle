@@ -47,42 +47,41 @@ __global__ void ShuffleChannel(const int nthreads,
 }
 
 template <typename T, typename Context>
-void ShuffleChannelOpCUDAKernel(const Context& dev_ctx,
-                                const DenseTensor& x,
-                                int group,
-                                DenseTensor* out) {
-  auto input_dims = x.dims();
+void ShuffleChannelGradOpCUDAKernel(const Context& dev_ctx,
+                                    const DenseTensor& out_grad,
+                                    int group,
+                                    DenseTensor* x_grad) {
+  const auto& input_dims = x_grad->dims();
   auto num = input_dims[0];
   auto channel = input_dims[1];
   auto height = input_dims[2];
   auto weight = input_dims[3];
-
   auto feature_map_size = channel * height * weight;
   auto sp_sz = height * weight;
+
   int group_row = group;
   int group_column = channel / group_row;
-  // count is the product of NCHW same as numel()
-  int count = num * group_column * group_row * sp_sz;
 
-  int blocks = NumBlocks(out->numel());
+  T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  const T* output_grad_data = out_grad.data<T>();
+
+  int blocks = NumBlocks(out_grad.numel());
   int threads = kNumCUDAThreads;
-
-  const T* input_data = x.data<T>();
-  T* output_data = dev_ctx.template Alloc<T>(out);
+  int count = num * group_column * group_row * sp_sz;
 
   ShuffleChannel<T><<<blocks, threads, 0, dev_ctx.stream()>>>(count,
                                                               feature_map_size,
-                                                              output_data,
-                                                              input_data,
+                                                              input_grad_data,
+                                                              output_grad_data,
                                                               group_row,
                                                               group_column,
                                                               sp_sz);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(shuffle_channel,
+PD_REGISTER_KERNEL(shuffle_channel_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ShuffleChannelOpCUDAKernel,
+                   phi::ShuffleChannelGradOpCUDAKernel,
                    float,
                    double) {}
