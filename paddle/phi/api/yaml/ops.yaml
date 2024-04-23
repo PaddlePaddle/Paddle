@@ -2308,6 +2308,7 @@
     func : reciprocal
   inplace : (x -> out)
   backward : reciprocal_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_as
   args : (Tensor x, Tensor target)
