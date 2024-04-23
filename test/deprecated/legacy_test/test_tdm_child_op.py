@@ -57,7 +57,7 @@ def create_tdm_tree():
 
 def api_wrapper(x, tree_info, child_nums, dtype=paddle.int32):
     return paddle._legacy_C_ops.tdm_child(
-        x, tree_info, child_nums=child_nums, dtype=dtype
+        x, tree_info, "child_nums", child_nums, "dtype", dtype
     )
 
 
