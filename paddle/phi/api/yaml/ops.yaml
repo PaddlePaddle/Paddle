@@ -993,7 +993,7 @@
   kernel :
     func : fake_quantize_range_abs_max
     data_type : x
-  optional : iter
+  optional : iter, out_scales
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
