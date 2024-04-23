@@ -432,9 +432,7 @@ def _model_return_data():
         return False
 
 
-# This api is used for check of model output.
-# In some cases, model does not straightly return data which can be used for check.
-# When this flag is set true, required data should be returned in model.
+# This api is used for check whether prim is on
 def _prim_return_log():
     flag = os.getenv("FLAGS_prim_log")
     if flag and flag.lower() in ("1", "true"):
