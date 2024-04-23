@@ -90,6 +90,10 @@ from .norm import (  # noqa: F401
     SpectralNorm,
     SyncBatchNorm,
 )
+from .padding import (  # noqa: F401
+    ZeroPad1D,
+    ZeroPad3D,
+)
 from .pooling import (  # noqa: F401
     AdaptiveAvgPool1D,
     AdaptiveAvgPool2D,
@@ -108,11 +112,6 @@ from .pooling import (  # noqa: F401
     MaxUnPool1D,
     MaxUnPool2D,
     MaxUnPool3D,
-)
-
-from .padding import (  # noqa: F401
-    ZeroPad1D,
-    ZeroPad3D,
 )
 from .vision import ChannelShuffle, PixelShuffle, PixelUnshuffle  # noqa: F401
 

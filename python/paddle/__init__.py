@@ -264,6 +264,7 @@ from .tensor.manipulation import (
     atleast_1d,
     atleast_2d,
     atleast_3d,
+    block_diag,
     broadcast_tensors,
     broadcast_to,
     cast,
@@ -603,6 +604,7 @@ ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
 __all__ = [
+    'block_diag',
     'iinfo',
     'finfo',
     'dtype',

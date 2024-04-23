@@ -6837,3 +6837,66 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
 
         return output
 
+
+def block_diag(*inputs, name=None):
+    """
+    Create a block diagonal matrix from provided tensors.
+
+    Args:
+        *input (Tensor): One or more tensors with 0, 1, or 2 dimensions.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, A ``Tensor``. The data type is same as ``input``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> A = paddle.to_tensor([[4], [3], [2]])
+            >>> B = paddle.to_tensor([7, 6, 5])
+            >>> C = paddle.to_tensor(1)
+            >>> D = paddle.to_tensor([[5, 4, 3], [2, 1, 0]])
+            >>> E = paddle.to_tensor([[8, 7], [7, 8]])
+            >>> out = paddle.block_diag(A, B, C, D, E)
+            >>> print(out)
+            Tensor(shape=[9, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
+                [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
+                [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
+    """
+
+    def to_col_block(arys, i, a):
+        return [
+            a
+            if idx == i
+            else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            for idx, ary in enumerate(arys)
+        ]
+
+    def to_2d(ary):
+        if ary.ndim == 0:
+            return ary.unsqueeze(axis=0).unsqueeze(axis=0)
+        if ary.ndim == 1:
+            return ary.unsqueeze(axis=0)
+        if ary.ndim == 2:
+            return ary
+        raise ValueError(
+            "For 'block_diag', the dimension of each elements in 'inputs' must be 0, 1, or 2, but got "
+            f"{ary.ndim}"
+        )
+
+    arys = [to_2d(ary) for ary in inputs]
+
+    matrix = [
+        paddle.concat(to_col_block(arys, idx, ary), axis=0)
+        for idx, ary in enumerate(arys)
+    ]
+    return paddle.concat(matrix, axis=1)

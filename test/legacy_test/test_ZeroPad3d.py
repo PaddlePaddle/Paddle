@@ -33,8 +33,8 @@ from paddle.nn import ZeroPad3D
 #             x_tensor = to_tensor(x).astype(dtype)
 #             self.assertRaises(TypeError, zeropad3d, x=x_tensor)
 
-class TestZeroPad3DAPI(unittest.TestCase):
 
+class TestZeroPad3DAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [4, 3, 6, 6, 6]
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
@@ -43,7 +43,11 @@ class TestZeroPad3DAPI(unittest.TestCase):
         for dtype in self.support_dtypes:
             pad = 2
             x = np.random.randint(-255, 255, size=self.shape).astype(dtype)
-            expect_res = np.pad(x, [[0, 0], [0, 0], [pad, pad], [pad, pad], [pad, pad]], mode='constant', constant_values=0
+            expect_res = np.pad(
+                x,
+                [[0, 0], [0, 0], [pad, pad], [pad, pad], [pad, pad]],
+                mode='constant',
+                constant_values=0,
             )
 
             x_tensor = to_tensor(x).astype(dtype)
@@ -87,6 +91,7 @@ class TestZeroPad3DAPI(unittest.TestCase):
     #     zeropad3d = ZeroPad3D(padding=pad_tensor)
     #     ret_res = zeropad3d(x_tensor).numpy()
     #     np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+
 
 if __name__ == '__main__':
     unittest.main()
