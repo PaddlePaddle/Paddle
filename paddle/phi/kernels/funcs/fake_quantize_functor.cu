@@ -173,6 +173,7 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
 
 template <typename Context, typename T>
 void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
+    const Context &ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
     const int bin_cnt,
