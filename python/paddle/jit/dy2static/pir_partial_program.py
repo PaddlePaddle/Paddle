@@ -344,11 +344,11 @@ class RunnableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
-        self.deal_inplace_values(self.forward_program)
+        self.deal_inplace_values(self.forward_program, self.backward_program)
         self.deal_inplace_values(self.backward_program)
         return value_program_attr
 
-    def deal_inplace_values(self, program):
+    def deal_inplace_values(self, program, bg=None):
         # deal inplace op and modify program inplacely.
         value2name = self._get_value_name_map_from_program(program)
 
@@ -373,9 +373,23 @@ class RunnableProgram:
             if has_name(ufset.find_root(value)):
                 name_defining_op = self._get_name_defining_op(program, value)
                 if name_defining_op:
-                    paddle.core.pir.reset_shadow_output_name(
-                        name_defining_op, value2name[ufset.find_root(value)]
-                    )
+                    if name_defining_op.name() == 'builtin.shadow_output':
+                        old_name = name_defining_op.attrs()['output_name']
+                        new_name = value2name[ufset.find_root(value)]
+                        paddle.core.pir.reset_shadow_output_name(
+                            name_defining_op, new_name
+                        )
+                        if bg is not None:
+                            block = bg.global_block()
+                            kwargs = block.kwargs()
+                            if old_name in kwargs and new_name not in kwargs:
+                                new_value = block.add_kwarg(
+                                    new_name, kwargs[old_name].type()
+                                )
+                                kwargs[old_name].replace_all_uses_with(
+                                    new_value
+                                )
+                                block.erase_kwarg(old_name)
 
     @cached_property
     def program_name_attr(self):
