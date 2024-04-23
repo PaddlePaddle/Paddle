@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <set>
 #include <memory>
+#include <set>
 #include <type_traits>
 
 #include "paddle/pir/include/core/type_id.h"
@@ -65,7 +65,7 @@ InterfaceValue InterfaceValue::Get() {
       sizeof(typename Interface::Concept) == sizeof(Model),
       "Compared with Concept, Model class shouldn't define new data members");
 
-  void* model_raw = malloc(sizeof(Model));
+  void *model_raw = malloc(sizeof(Model));
   if (model_raw == nullptr) {
     throw("Alloc memory for interface failed.");
   }
