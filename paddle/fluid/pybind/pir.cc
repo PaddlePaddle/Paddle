@@ -823,6 +823,18 @@ pir::Value apply(Value self, py::object func) {
             name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
       })
 
+#define DEF_VALUE_STOP_GRADIENT_PROPERTY(name)                                \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return !bool_data || bool_data.data();                                \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
 #define DEF_VALUE_POINTER_PROPERTY(name)                                     \
   def_property(                                                              \
       name,                                                                  \
@@ -937,7 +949,7 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_STOP_GRADIENT_PROPERTY("stop_gradient")
       .DEF_VALUE_BOOL_PROPERTY("trainable")
       .DEF_VALUE_BOOL_PROPERTY("persistable")
       .DEF_VALUE_BOOL_PROPERTY("need_clip")
