@@ -80,6 +80,7 @@ using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::DistDenseTensorType;
+using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
@@ -1004,12 +1005,24 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
-      .def("dist_attr", [](Value &self) {
-        if (!self.type().isa<DistDenseTensorType>()) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "dist_attr is only for distdense tensor."));
+      .def("is_dist",
+           [](Value self) { return self.type().isa<DistTypeInterface>(); })
+      .def(
+          "dist_attr",
+          [](Value &self) {
+            if (!self.type().isa<DistTypeInterface>()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "dist_attr is only for dist type tensor."));
+            }
+            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
+          })
+      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
+        if (auto dist_type = self.type().dyn_cast<DistTypeInterface>()) {
+          self.set_type(dist_type.CopyWithNewDistAttr(dist_attr));
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "update_dist_attr is only for dist type tensor."));
         }
-        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
       });
 }
 
