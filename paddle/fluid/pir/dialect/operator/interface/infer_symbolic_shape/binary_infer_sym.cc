@@ -204,10 +204,20 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() +
-      " 's InferSymbolicShape interface is NOT implemented "
-      "now because of the lack of necessary information."));
+  std::vector<int> target_shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  const std::vector<symbol::DimExpr> &output_dims = [&] {
+    std::vector<symbol::DimExpr> output_dims;
+    output_dims.reserve(target_shape.size());
+    for (int shape : target_shape) {
+      output_dims.push_back(shape);
+    }
+    return output_dims;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_dims));
+
   return true;
 }
 
@@ -478,6 +488,15 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
+bool IscloseOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool TakeAlongAxisOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // input
@@ -544,3 +563,7 @@ bool TopPSamplingOpInferSymbolicShape(
 }
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::IscloseOpInferSymbolicShape;
+}

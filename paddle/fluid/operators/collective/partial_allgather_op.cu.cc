@@ -147,7 +147,6 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           GPU,
@@ -156,7 +155,7 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,

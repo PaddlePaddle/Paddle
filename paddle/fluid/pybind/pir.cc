@@ -290,6 +290,24 @@ void BindProgram(py::module *m) {
           },
           return_value_policy::reference)
       .def(
+          "clone",
+          [](std::shared_ptr<Program> self, pir::IrMapping &mapper) {
+            return self->Clone(mapper);
+          },
+          return_value_policy::reference)
+      .def(
+          "list_vars",
+          [](std::shared_ptr<Program> self) {
+            std::vector<pir::Value> vars;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                vars.push_back(var);
+              }
+            }
+            return vars;
+          },
+          return_value_policy::reference)
+      .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
           return_value_policy::reference)
@@ -1175,20 +1193,32 @@ std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
   return inplace_chains;
 }
 
-std::optional<pir::Value> FindInplaceSource(
+std::optional<std::vector<pir::Value>> FindInplaceChain(
     const std::vector<std::vector<pir::Value>> inplace_chains,
-    pir::Value value) {
+    const pir::Value &value) {
   if (value.impl() == nullptr) {
     return std::nullopt;
   }
+
   for (auto &chain : inplace_chains) {
     for (auto &v : chain) {
       if (v == value) {
-        return chain[0];
+        return chain;
       }
     }
   }
   return std::nullopt;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  const auto &chain = FindInplaceChain(inplace_chains, value);
+  if (chain.has_value()) {
+    return chain.value()[0];
+  } else {
+    return std::nullopt;
+  }
 }
 
 std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
@@ -1281,8 +1311,10 @@ bool IsFakeValue(const pir::Value &value) {
   return value.impl() == nullptr || !value.type();
 }
 
-static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
-                                 std::vector<int> range) {
+static auto GetNoNeedBufferValue(
+    const ::pir::Block *whole_block,
+    std::vector<int> range,
+    const std::vector<std::vector<pir::Value>> &inplace_chains) {
   // filter no need buffer values.
   std::unordered_set<::pir::Value> need_buffer_values;
   std::unordered_set<::pir::Value> no_need_buffer_values;
@@ -1317,16 +1349,29 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
           }
         }
       });
-  range_block_do(whole_block,
-                 range,
-                 [&need_buffer_values,
-                  &no_need_buffer_values](const ::pir::Operation *op) {
-                   for (const auto &operand : op->operands_source()) {
-                     if (need_buffer_values.count(operand) == 0) {
-                       no_need_buffer_values.insert(operand);
-                     }
-                   }
-                 });
+  range_block_do(
+      whole_block,
+      range,
+      [&need_buffer_values, &no_need_buffer_values, &inplace_chains](
+          const ::pir::Operation *op) {
+        for (const auto &operand : op->operands_source()) {
+          const auto &chain = FindInplaceChain(inplace_chains, operand);
+          std::vector<pir::Value> chain_vec;
+          if (!chain.has_value()) {
+            chain_vec = {operand};
+          } else {
+            chain_vec = chain.value();
+          }
+
+          bool all = std::all_of(
+              chain_vec.begin(), chain_vec.end(), [&](const auto &v) {
+                return need_buffer_values.count(v) == 0;
+              });
+          if (all) {
+            no_need_buffer_values.insert(operand);
+          }
+        }
+      });
   return std::vector<::pir::Value>(no_need_buffer_values.begin(),
                                    no_need_buffer_values.end());
 }
@@ -1690,9 +1735,10 @@ SplitedResult SplitForwardBackward(
   mapping_value(
       forward_outputs_grads, backward_value_map, bo_g);  // write 'bo_g'
   mapping_value(forward_outputs_mutable, backward_value_map, bo);  // write 'bo'
-  mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
-                forward_value_map,
-                no_need_buffer_values);  // write 'no_need_buffers'
+  mapping_value(
+      GetNoNeedBufferValue(program.block(), backward_range, inplace_chains),
+      forward_value_map,
+      no_need_buffer_values);  // write 'no_need_buffers'
 
   std::map<std::string, std::vector<pir::Value>> attr = {
       {"fx", fx},
@@ -1771,6 +1817,9 @@ void BindUtils(pybind11::module *m) {
   });
   m->def("set_insertion_point",
          [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_after", [](Operation *op) {
+    ApiBuilder::Instance().SetInsertionPointAfter(op);
+  });
   m->def("set_insertion_point_to_block_end", [](Block *block) {
     ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
   });

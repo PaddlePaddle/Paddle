@@ -421,6 +421,17 @@ def set_paddle_lib_path():
 set_paddle_lib_path()
 
 
+# This api is used for check of model output.
+# In some cases, model does not straightly return data which can be used for check.
+# When this flag is set true, required data should be returned in model.
+def _model_return_data():
+    flag = os.getenv("FLAGS_model_return_data")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
 # FLAGS_prim_backward: Open or close backward prim strategy
