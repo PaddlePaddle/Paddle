@@ -247,8 +247,7 @@ set(op_dialect_srcs
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file}
-    ${api_source_file}
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
+    ${api_source_file})
 
 if(WITH_ONEDNN)
   set(op_dialect_srcs

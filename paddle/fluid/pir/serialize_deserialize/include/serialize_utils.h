@@ -248,6 +248,9 @@ Json writeType(const pir::Type& type) {
     content.push_back(type_.offset());
     type_json[DATA] = content;
     return type_json;
+  } else if (!type) {
+    type_json[ID] = NULL_TYPE;
+    return type_json;
   } else {
     PADDLE_ENFORCE(
         false, phi::errors::InvalidArgument("Unknown Type when write type"));

@@ -71,6 +71,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
   }
+  VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
   return ctx_mapper.RecoverKernelInfos();
@@ -115,8 +116,11 @@ CompilationContextMapper::RecoverKernelInfos() {
 
   std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
   for (size_t i = 0; i < fusion_infos_.size(); ++i) {
-    kernel_infos[i] =
-        CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
+    const auto& compilation_result =
+        FLAGS_enable_cinn_compile_cache
+            ? CompilationCache::Instance().Get(fusion_infos_[i])
+            : compilation_results_[i];
+    kernel_infos[i] = compilation_result->GetKernelInfo();
   }
   return kernel_infos;
 }
@@ -133,10 +137,8 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    const auto& int_args_map =
-        compilation_results_[i]->GetBackendResource()->GetIntArgsMap();
     VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info << ", int_args_map: " << int_args_map;
+            << fusion_info;
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }

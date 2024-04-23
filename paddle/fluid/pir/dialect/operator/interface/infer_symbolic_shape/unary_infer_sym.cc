@@ -216,7 +216,7 @@ bool DiagonalOpInferSymbolicShape(
   out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
   out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
 
-  symbol::DimExprBuilder builder{nullptr};
+  symbol::DimExprBuilder builder;
   symbol::DimExpr zero{0};
   symbol::DimExpr res_shape;
   symbol::DimExpr offset_sym{offset};
@@ -326,6 +326,29 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return MaxOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool NonzeroOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
+
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(x) should have number of dimension at least 1."));
+
+  std::string sym_name = shape_analysis->GetNextSymName();
+  std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
+                                         symbol::DimExpr{rank}};
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
 }
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
@@ -463,6 +486,10 @@ bool ReshapeOpInferSymbolicShape(
           op->result(0),
           symbol::TensorShapeOrDataDimExprs(shape_data,
                                             x_dim_expr.data().value()));
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(1),
+          CreateShapeOrDataForXShape(
+              shape_analysis->GetShapeOrDataForValue(op->operand_source(0))));
       return true;
     }
   }
@@ -666,8 +693,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
     const bool &all_sections_sym_not_minus_one =
         All(sections_sym, IsNotMinusOne);
     if (all_sections_sym_not_minus_one) {
-      shape_analysis->DimExprBuilder().CstrEq(x_dims_sym[axis],
-                                              sum_exclude_minus_one);
+      shape_analysis->AddEqualCstr(x_dims_sym[axis], sum_exclude_minus_one);
     }
 
     symbol::TensorListShapeOrDataDimExprs shape_data_list;

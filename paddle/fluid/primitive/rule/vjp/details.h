@@ -163,8 +163,7 @@ void gelu_grad(const Tensor& x,
   // Promote to fp32 when the input type is fp16 for keeping consistent with
   // phi kernel
 
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
+  if (is_half_dtype(x.dtype())) {
     auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
     auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
     if (approximate) {
@@ -775,6 +774,94 @@ void softmax_grad(const Tensor& out,
       }
     } else {
       set_output<T>(out_grad * 0.0, x_grad);
+    }
+  }
+}
+
+template <typename T>
+void matmul_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out_grad,
+                 bool transpose_x,
+                 bool transpose_y,
+                 Tensor* x_grad,
+                 Tensor* y_grad) {
+  auto unsqueeze_out_grad = out_grad;
+  size_t out_grad_rank = out_grad.shape().size();
+  size_t x_rank = x.shape().size();
+  size_t y_rank = y.shape().size();
+  int temp_rank_y = out_grad_rank - 1;
+  int temp_rank_x = out_grad_rank;
+  if (out_grad_rank < y_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_y});
+  }
+  if (out_grad_rank < x_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_x});
+  }
+
+  auto temp_x_unsqueeze = x;
+  if (x_rank == 1) {
+    temp_x_unsqueeze = unsqueeze<T>(x, {0});
+  }
+
+  auto temp_y_unsqueeze = y;
+  if (y_rank == 1) {
+    temp_y_unsqueeze = unsqueeze<T>(y, {1});
+  }
+
+  if (x_grad) {
+    auto x_grad_mm =
+        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
+    auto x_grad_trans = x_grad_mm;
+
+    if (transpose_x) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    }
+
+    if (x_grad_trans.dims() != x.dims()) {
+      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+          x_grad_trans.dims(), temp_x_unsqueeze.dims());
+      auto dx_reduce_res = sum<T>(
+          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+      set_output<T>(x_grad_out, x_grad);
+    } else {
+      auto x_grad_out = x_grad_trans;
+      set_output<T>(x_grad_out, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_grad_mm =
+        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
+    auto y_grad_trans = y_grad_mm;
+
+    if (transpose_y) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    }
+
+    if (y_grad_trans.dims() != y.dims()) {
+      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+          y_grad_trans.dims(), temp_y_unsqueeze.dims());
+      auto dy_reduce_res = sum<T>(
+          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+      set_output<T>(y_grad_out, y_grad);
+    } else {
+      auto y_grad_out = y_grad_trans;
+      set_output<T>(y_grad_out, y_grad);
     }
   }
 }
@@ -1522,19 +1609,27 @@ void group_norm_grad(const Tensor& x,
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
+  if (rank < 3 || rank > 5) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+  }
   int N = x_dims[0];
   int C;
-  int hw;
+  int hw = 1;
   std::vector<int64_t> reduce_axis;
 
   if (data_layout_ == DataLayout::kNCHW) {
     C = x_dims[1];
-    hw = x_dims[2] * x_dims[3];
-    reduce_axis = {2, 3};
+    for (int i = 2; i < rank; ++i) {
+      hw *= x_dims[i];
+      reduce_axis.push_back(i);
+    }
   } else if (data_layout_ == DataLayout::kNHWC) {
     C = x_dims[rank - 1];
-    hw = x_dims[1] * x_dims[2];
-    reduce_axis = {1, 2};
+    for (int i = 1; i < (rank - 1); ++i) {
+      hw *= x_dims[i];
+      reduce_axis.push_back(i);
+    }
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
                                               data_layout));
@@ -1600,25 +1695,27 @@ void group_norm_grad(const Tensor& x,
     } else {
       d1 = (reshape<T>(sum_y_grad_mul_x, shape_group)).sum({2}, dtype, false);
       d2 = (reshape<T>(sum_y_grad, shape_group)).sum({2}, dtype, false);
-      p1 = (reshape<T>(inv_std, {N, groups, 1})).expand(shape_group);
+      p1 = (reshape<T>(inv_std, {N, groups, 1}))
+               .expand(shape_group);  // [n, g, g_n]
     }
 
-    auto p2 = (d2 * mean - d1) * (inv_std_mul_s / var_eps);
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s / var_eps);  // [n, g]
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
     std::vector<int64_t> first_shape;
     std::vector<int64_t> second_shape;
     if (data_layout_ == DataLayout::kNCHW) {
-      first_shape = get_unsqueeze_dims(p1, {3});
-      second_shape = get_unsqueeze_dims(p2, {2, 3});
+      first_shape = get_unsqueeze_dims(p1, {3});      // [n, g, g_n, 1]
+      second_shape = get_unsqueeze_dims(p2, {2, 3});  // [n, g, 1, 1]
     } else {
-      first_shape = get_unsqueeze_dims(p1, {1});
-      second_shape = get_unsqueeze_dims(p2, {1, 3});
+      first_shape = get_unsqueeze_dims(p1, {1});      // [n, 1, g, g_n]
+      second_shape = get_unsqueeze_dims(p2, {1, 3});  // [n, 1, g, 1]
     }
 
     p1 = reshape<T>(p1, first_shape);
     p2 = reshape<T>(p2, second_shape);
     p3 = reshape<T>(p3, second_shape);
-    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
+    auto tmp_1 =
+        reshape<T>(out_grad_data, whole_group_shape) * p1;  // [n, hw, g, g_n]
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
     x_grad_data = reshape<T>(x_grad_data, x.shape());
