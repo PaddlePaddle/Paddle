@@ -49,6 +49,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
+    // 3.1. Set Output Dist Attr For Default Impl{}\n
+    VLOG(1) << 21111111;
     if (rank_is_in_current_mesh) {{
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
@@ -58,8 +60,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 9. DenseTensor Kernel Call{}
       // 10. Fallback{}
     }}\n
-    // 11. Set Output Dist Attr For Default Impl{}\n
-    // 12. Return
+    // 11. Return
     {}
   }}
 """
@@ -489,37 +490,12 @@ NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
 CALCULATE_LOCAL_SHAPE_TEMPLATE = """
 
       // The dist_input_x is a dist tensor, the dims() func return the global dims.
-      auto x_shape = dist_input_x->dims();
-      auto x_numel = dist_input_x->numel();
-      bool visit_negative = false;
-      auto global_shape = {shape};
+      auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
-      for (size_t i = 0; i < global_shape.size(); i++) {{
-        auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
+      auto& out_dist_attr = {out_name}->dist_attr();
+      for (int i = 0; i < out_shape.size(); i++) {{
         if (out_dist_attr.dims_mapping()[i] >= 0) {{
-          {dtype} shape_i = global_shape[i];
-          if (shape_i == 0) {{
-            shape_i = x_shape[i];
-          }} else if (shape_i == -1) {{
-            PADDLE_ENFORCE(not visit_negative,
-                           phi::errors::InvalidArgument(
-                               "{op_name} can only have one -1 in the {shape_name}."));
-            visit_negative = true;
-            int64_t non_negative_product = 1;
-            for (size_t j = 0; j < global_shape.size(); j++) {{
-              if (i == j) {{
-                continue;
-              }}
-              int64_t tmp_j = global_shape[j];
-              if (tmp_j == 0) {{
-                tmp_j = x_shape[j];
-              }}
-              non_negative_product *= tmp_j;
-            }}
-            PADDLE_ENFORCE(x_numel % non_negative_product == 0,
-                           phi::errors::InvalidArgument("Cannot infer real shape for -1."));
-            shape_i = x_numel / non_negative_product;
-          }}
+          {dtype} shape_i = out_shape[i];
           int64_t dim = out_dist_attr.dims_mapping()[i];
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
@@ -530,7 +506,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
                     "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
           local_shape.push_back(shape_i / mesh_dim);
         }} else {{
-          local_shape.push_back({shape}[i]);
+          local_shape.push_back(out_shape[i]);
         }}
       }}
 """
@@ -1589,9 +1565,7 @@ class DistForwardAPI(ForwardAPI):
             shape_type = self.attrs['attr_info'][shape_name][0]
 
             infer_meta_code = CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
-                shape=f"{shape_name}.GetData()"
-                if shape_type == "IntArray"
-                else f"{shape_name}",
+                out_name=self.dist_output_args[0],
                 dtype="int64_t" if shape_type == "IntArray" else "int",
                 op_name=self.kernel['func'][0],
                 shape_name=shape_name,
@@ -1847,6 +1821,7 @@ class DistForwardAPI(ForwardAPI):
             infer_spmd_code,
             output_creation_code,
             infer_global_shape_code,
+            output_dist_attr_setting,
             kernel_selection_code,
             reshard_input_code,
             prepare_data_code,
@@ -1854,7 +1829,6 @@ class DistForwardAPI(ForwardAPI):
             infer_meta_code,
             kernel_call_code,
             fallback_code,
-            output_dist_attr_setting,
             return_code,
         )
 
