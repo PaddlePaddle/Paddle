@@ -1033,15 +1033,15 @@ class Engine:
                     process_group.instantiate()
 
     def _init_lr(self):
-        buffer_tensor = (
-            global_scope().var("learning_rate_0").get_tensor()
-        )
+        buffer_tensor = global_scope().var("learning_rate_0").get_tensor()
         if not isinstance(self._optimizer._learning_rate, float):
             raise TypeError(
-                    "learning rate should be float, got %s here"
-                    % type(learning_rate)
-                    )
-        buffer_tensor.set(np.float32(self._optimizer._learning_rate), self._place)
+                "learning rate should be float, got %s here"
+                % type(learning_rate)
+            )
+        buffer_tensor.set(
+            np.float32(self._optimizer._learning_rate), self._place
+        )
 
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()

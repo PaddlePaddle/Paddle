@@ -16,16 +16,13 @@ import os
 import random
 
 import numpy as np
+from test_to_static_pir_program import DemoNet
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import Shard
-from paddle.distributed.fleet.utils import recompute
-from paddle.io import DataLoader
-
-from test_to_static_pir_program import DemoNet
 from paddle.framework import _current_expected_place
+from paddle.io import DataLoader
 
 BATCH_SIZE = 4
 BATCH_NUM = 4
@@ -59,6 +56,7 @@ class RandomDataset(paddle.io.Dataset):
     def __len__(self):
         return self.num_samples
 
+
 class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
@@ -67,7 +65,6 @@ class TestSimpleNetForSemiAutoParallel:
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
         )["FLAGS_enable_pir_api"]
-
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -111,8 +108,6 @@ class TestSimpleNetForSemiAutoParallel:
                     image, label = data
                 loss = dist_model(image, label)
                 loss_list.append(loss)
-
-
 
         return np.array(loss_list), dist_model
 
@@ -167,6 +162,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_test_case(self):
         self.test_mp_demo_net()
+
 
 if __name__ == '__main__':
     TestSimpleNetForSemiAutoParallel().run_test_case()
