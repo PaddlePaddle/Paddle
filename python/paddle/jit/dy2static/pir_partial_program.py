@@ -219,6 +219,12 @@ class RunnableProgram:
             in_out_values[0], list
         ), "in_out_values must be tuple with len == 3"
         self.program = program
+        print("program", program)
+
+        self.program = paddle.base.libpaddle.pir.remove_no_need_shadow_output(
+            self.program
+        )
+
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
@@ -612,6 +618,8 @@ class PartialProgramLayer:
 
             def pass_fn(forward_program, backward_program):
                 if cinn_is_enabled(self._build_strategy, self._backend):
+                    # print("forward program", forward_program)
+                    # print("backward program", backward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 else:
