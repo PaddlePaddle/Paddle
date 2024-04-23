@@ -57,66 +57,68 @@ __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
-    if paddle.pir.is_fake_value(value):
-        state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
-        return
-    if copy_value.is_dense_tensor_array_type():
-        value_grad = paddle._pir_ops.create_array_like(
-            copy_value,
-            float_value,
+    with paddle.amp.auto_cast(enable=False):
+        if paddle.pir.is_fake_value(value):
+            state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
+            return
+        if copy_value.is_dense_tensor_array_type():
+            value_grad = paddle._C_ops.create_array_like(
+                copy_value,
+                float_value,
+            )
+            full_like_op = value_grad.get_defining_op()
+            backward_ops_ = [full_like_op]
+        else:
+            value_grad = paddle.full_like(
+                copy_value,
+                float_value,
+                dtype=copy_value.dtype,
+            )
+            full_like_op = value_grad.get_defining_op()
+            full_op = full_like_op.operand_source(1).get_defining_op()
+            backward_ops_ = [full_like_op, full_op]
+        update_bwdop_structure(
+            backward_ops,
+            state.op_to_opgrad[value.get_defining_op()],
+            backward_ops_,
         )
-        full_like_op = value_grad.get_defining_op()
-        backward_ops_ = [full_like_op]
-    else:
-        value_grad = paddle.full_like(
-            copy_value,
-            float_value,
-            dtype=copy_value.dtype,
-        )
-        full_like_op = value_grad.get_defining_op()
-        full_op = full_like_op.operand_source(1).get_defining_op()
-        backward_ops_ = [full_like_op, full_op]
-    update_bwdop_structure(
-        backward_ops,
-        state.op_to_opgrad[value.get_defining_op()],
-        backward_ops_,
-    )
-    state.value_to_valuegrad[value] = [[value_grad]]
-    return value_grad
+        state.value_to_valuegrad[value] = [[value_grad]]
+        return value_grad
 
 
 def append_add_n(
     op, value, state, backward_ops, bwd_value_to_block_argument_map
 ):
-    # value is input of more than one fwd_op,
-    # so more than one bwd_op create input_grad,
-    # need add sum op to accumulate gradient
-    add_n_list = []
-    for item in state.value_to_valuegrad[value]:
-        if item[0] is not None:
-            add_n_list.append(
-                return_map_value(item[0], bwd_value_to_block_argument_map)
+    with paddle.amp.auto_cast(enable=False):
+        # value is input of more than one fwd_op,
+        # so more than one bwd_op create input_grad,
+        # need add sum op to accumulate gradient
+        add_n_list = []
+        for item in state.value_to_valuegrad[value]:
+            if item[0] is not None:
+                add_n_list.append(
+                    return_map_value(item[0], bwd_value_to_block_argument_map)
+                )
+
+        if len(add_n_list) == 0:
+            for tmp in state.value_to_valuegrad[value]:
+                state.value_to_sumvaluegrad[value].append(tmp)
+            state.value_to_valuegrad[value] = []
+        else:
+            if value.is_dense_tensor_array_type():
+                add_n_value = paddle._C_ops.add_n_array(add_n_list)
+            else:
+                add_n_value = paddle.add_n(add_n_list)
+
+            add_n_op = add_n_value.get_defining_op()
+            combine_op = add_n_op.operand_source(0).get_defining_op()
+            update_bwdop_structure(
+                backward_ops, state.op_to_opgrad[op], [combine_op, add_n_op]
             )
 
-    if len(add_n_list) == 0:
-        for tmp in state.value_to_valuegrad[value]:
-            state.value_to_sumvaluegrad[value].append(tmp)
-        state.value_to_valuegrad[value] = []
-    else:
-        if value.is_dense_tensor_array_type():
-            add_n_value = paddle._pir_ops.add_n_array(add_n_list)
-        else:
-            add_n_value = paddle.add_n(add_n_list)
-
-        add_n_op = add_n_value.get_defining_op()
-        combine_op = add_n_op.operand_source(0).get_defining_op()
-        update_bwdop_structure(
-            backward_ops, state.op_to_opgrad[op], [combine_op, add_n_op]
-        )
-
-        for tmp in state.value_to_valuegrad[value]:
-            state.value_to_sumvaluegrad[value].append(tmp)
-        state.value_to_valuegrad[value] = [[add_n_value]]
+            for tmp in state.value_to_valuegrad[value]:
+                state.value_to_sumvaluegrad[value].append(tmp)
+            state.value_to_valuegrad[value] = [[add_n_value]]
 
 
 def update_bwdop_structure(backward_ops, op_to_opgrad_list, grad_op_list):

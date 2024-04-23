@@ -700,7 +700,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInferer,
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
     reshape,
@@ -776,7 +775,7 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape,
                                 ops::ReshapeKernel,
                                 phi::dtype::float16,
                                 ops::ReshapeKernel,
-                                plat::bfloat16,
+                                phi::dtype::bfloat16,
                                 ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad,
                                 float,
@@ -793,6 +792,6 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad,
                                 ops::ReshapeGradKernel,
                                 phi::dtype::float16,
                                 ops::ReshapeGradKernel,
-                                plat::bfloat16,
+                                phi::dtype::bfloat16,
                                 ops::ReshapeGradKernel);
 #endif

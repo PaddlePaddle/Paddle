@@ -422,6 +422,7 @@
     spmd_rule : MatmulGradInferSpmd
   kernel :
     func : matmul_grad
+  composite: matmul_grad(x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad)
   backward : matmul_double_grad
 
 - backward_op : matmul_with_flatten_grad
