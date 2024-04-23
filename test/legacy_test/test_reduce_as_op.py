@@ -120,6 +120,16 @@ class TestSumAsOp8(TestSumAsOp):
 
 
 class TestSumAsOp9(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'int8'
+
+
+class TestSumAsOp10(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'uint8'
+
+
+class TestSumAsOp11(TestSumAsOp):
     def init_shape(self):
         self.shape_x = [10, 10, 6]
         self.shape_y = [6]
