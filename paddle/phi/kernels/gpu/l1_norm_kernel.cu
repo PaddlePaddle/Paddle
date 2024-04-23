@@ -13,6 +13,5 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/l1_norm_kernel.h"
-#include "paddle/phi/core/kernel_registry.h"
 
 PD_REGISTER_KERNEL(l1_norm, GPU, ALL_LAYOUT, phi::L1NormKernel, float) {}

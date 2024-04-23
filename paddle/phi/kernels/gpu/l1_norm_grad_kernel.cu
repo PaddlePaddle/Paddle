@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/l1_norm_kernel.h"
 
 PD_REGISTER_KERNEL(
