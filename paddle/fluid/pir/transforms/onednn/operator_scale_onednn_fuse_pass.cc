@@ -129,7 +129,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("Scale_out") = scale(pat.Tensor("Out"), pat.Tensor("Scale"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto scale_bias = match_ctx.Attr<float>("bias");
       if (scale_bias != 0.0) {
         return false;
@@ -146,7 +146,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
             paddle::onednn::dialect::FusedElementwiseMulOp::name() ||
         fusable_ops_ ==
             paddle::onednn::dialect::FusedElementwiseDivOp::name()) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto fused_output_scale = match_ctx.Attr<float>("fused_output_scale");
         if (fused_output_scale != 1.0) {
           // It means that it has been fused and has a value.
