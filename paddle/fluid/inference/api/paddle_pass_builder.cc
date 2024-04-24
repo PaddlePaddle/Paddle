@@ -633,6 +633,7 @@ const std::vector<std::string> kPirMkldnnPasses{
     "fc_fuse_pass",
     "fc_onednn_enable_pass",
     "softplus_activation_fuse_pass",
+    "operator_reshape_onednn_fuse_pass",
     "conv_elementwise_add_onednn_fuse_pass",
     "conv_activation_onednn_fuse_pass",
     "conv_concat_activation_onednn_fuse_pass",
