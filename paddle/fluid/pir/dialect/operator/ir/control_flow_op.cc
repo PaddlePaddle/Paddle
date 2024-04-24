@@ -24,7 +24,8 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -765,14 +766,14 @@ bool WhileOp::InferSymbolicShape(
       }
       if (input_arg_shape[j] ==
           yield_value_shape[j]) {  // Dim isn't changed in while
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        shape_analysis->AddEqualCstr(original_input_shape[j],
+                                     input_arg_shape[j]);
         continue;
       }
       if (original_input_shape.size() == yield_value_shape.size() &&
           original_input_shape[j] == yield_value_shape[j]) {
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        shape_analysis->AddEqualCstr(original_input_shape[j],
+                                     input_arg_shape[j]);
         continue;
       }
     }
@@ -851,6 +852,7 @@ void HasElementsOp::VerifySig() {
 }
 
 const char *AssertOp::attributes_name[1] = {"summarize"};
+const char AssertOp::ERROR_INFO_ATTR_NAME[] = "error_info";
 
 void AssertOp::Build(pir::Builder &builder,             // NOLINT
                      pir::OperationArgument &argument,  // NOLINT

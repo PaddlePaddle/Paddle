@@ -53,7 +53,7 @@ class MultiLevelTiling : public AutoGenRule {
     std::vector<int> write_cache_levels;
   };
 
-  static const std::unordered_map<cinn::common::Target::Arch, Config> kConfigs;
+  static const std::unordered_map<cinn::common::Arch, Config> kConfigs;
 
   MultiLevelTiling(const cinn::common::Target& target, const Config& config);
   ~MultiLevelTiling() = default;

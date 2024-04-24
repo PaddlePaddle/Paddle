@@ -450,16 +450,6 @@ Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
   return result;
 }
 
-void IRSchedule::Broadcast(const std::string& block_name,
-                           const BroadcastInfo& info) {
-  impl_->Broadcast(block_name, info);
-}
-
-void IRSchedule::BroadcastToElementwise(const std::string& block_name,
-                                        const std::vector<int64_t>& axes) {
-  impl_->BroadcastToElementwise(block_name, axes);
-}
-
 void IRSchedule::ComputeAt(const Expr& block,
                            const Expr& loop,
                            bool keep_unit_loops) {

@@ -39,6 +39,7 @@ USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
 USE_PIR_PASS(add_norm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(fused_flash_attn_pass);
+USE_PIR_PASS(remove_redundant_transpose_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);
@@ -52,12 +53,17 @@ USE_PIR_PASS(reshape_transpose_matmul_fuse_pass);
 USE_PIR_PASS(matmul_transpose_reshape_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
+USE_PIR_PASS(fc_onednn_enable_pass);
+USE_PIR_PASS(softplus_activation_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_onednn_fuse_pass);
 USE_PIR_PASS(conv_activation_onednn_fuse_pass);
 USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
+USE_PIR_PASS(elementwise_act_onednn_fuse_pass);
+USE_PIR_PASS(operator_unsqueeze_onednn_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(group_norm_silu_xpu_fuse_pass);
+USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
 #endif

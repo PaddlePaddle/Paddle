@@ -16,8 +16,6 @@ set(prim_eager_deps
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
-paddle_test(test_comp_static SRCS test_static_prim.cc)
-
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
     set(prim_eager_deps ${prim_eager_deps})
@@ -33,8 +31,9 @@ endif()
 if(NOT WIN32)
   paddle_test(test_vjp_pir SRCS test_vjp.cc)
 endif()
+
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
-  copy_onnx(test_comp_static)
+  copy_onnx(test_comp_eager)
 endif()
