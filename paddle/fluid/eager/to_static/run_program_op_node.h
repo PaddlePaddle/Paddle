@@ -1043,6 +1043,9 @@ inline void PirRunProgramGradAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
+  auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
+                                           attrs.at("backward_program"));
+
   auto output_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo_g"));
   auto forward_input_values =
@@ -1059,12 +1062,6 @@ inline void PirRunProgramGradAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
   details::Trans2ContiguousTensorsInplace(out_grad);
-
-  auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
-                                           attrs.at("backward_program"));
-
-  auto forward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
-                                          attrs.at("forward_program"));
 
   // share x, param, middles, output_grads, out into scope.
   details::ShareTensorsIntoScopeByValue(backward_program->block(),
