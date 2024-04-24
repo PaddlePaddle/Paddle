@@ -12,20 +12,274 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include <glog/logging.h>
 #include <utf8proc.h>
 
+#include <codecvt>
+#include <iostream>
+#include <locale>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "paddle/phi/common/pstring.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
+
+template <typename T>
+struct PhiVectorType;
+
+template <typename T>
+class PhiVector : public phi::ExtendedTensor,
+                  public phi::TypeInfoTraits<phi::TensorBase, PhiVector<T>> {
+ public:
+  PhiVector() = default;
+
+  explicit PhiVector(const std::vector<T>& init_data) : data_(init_data) {}
+
+  PhiVector(PhiVector&& other) = default;
+
+  PhiVector(const PhiVector& other) = default;
+
+  PhiVector& operator=(const PhiVector& other) = default;
+
+  PhiVector& operator=(const std::vector<T>& other) {
+    data_ = other;
+    return *this;
+  }
+
+  PhiVector& operator=(PhiVector&& other) = default;
+
+  /// \brief Destroy the PhiVector and release exclusive resources.
+  virtual ~PhiVector() = default;
+
+ public:
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return PhiVectorType<T>().type_name; }
+
+  size_t size() const { return data_.size(); }
+
+  bool empty() const { return data_.empty(); }
+
+  const T& back() const { return data_.back(); }
+
+  T& back() { return data_.back(); }
+
+  void resize(size_t size) { data_.resize(size); }
+
+  void clear() { data_.clear(); }
+
+  void emplace_back(const T& feed_data) { data_.emplace_back(feed_data); }
+
+  void pop_back() { data_.pop_back(); }
+
+  const T& operator[](size_t index) const { return data_[index]; }
+
+  T& operator[](size_t index) { return data_[index]; }
+
+  T& at(size_t index) { return data_.at(index); }
+
+  const T& at(size_t index) const { return data_.at(index); }
+
+  typename std::vector<T>::iterator begin() { return data_.begin(); }
+
+  typename std::vector<T>::const_iterator begin() const {
+    return data_.begin();
+  }
+
+  typename std::vector<T>::iterator end() { return data_.end(); }
+
+  typename std::vector<T>::const_iterator end() const { return data_.end(); }
+
+ private:
+  std::vector<T> data_;
+};
+
+// Note(YuanRisheng): Vocab is mainly used for faster_tokenizer_op and we don't
+// recommend widely use it. Because faster_tokenizer_op may be deleted in the
+// future and this class will be deleted.
+
+class Vocab : public phi::ExtendedTensor,
+              public phi::TypeInfoTraits<phi::TensorBase, Vocab> {
+ public:
+  Vocab() = default;
+
+  Vocab(Vocab&& other) = default;
+
+  Vocab(const Vocab& other) = default;
+
+  Vocab& operator=(const Vocab& other) = default;
+
+  Vocab& operator=(Vocab&& other) = default;
+
+  Vocab& operator=(
+      const std::unordered_map<std::wstring, std::int32_t>& other) {
+    this->data_ = other;
+    return *this;
+  }
+
+  /// \brief Destroy the Vocab and release exclusive resources.
+  virtual ~Vocab() = default;
+
+ public:
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "Vocab"; }
+
+  size_t size() const { return data_.size(); }
+
+  void clear() { data_.clear(); }
+
+  void emplace(const std::wstring& key, std::int32_t value) {
+    data_.emplace(key, value);
+  }
+
+  std::int32_t at(const std::wstring& key) { return data_.at(key); }
+
+  std::int32_t at(const std::wstring& key) const { return data_.at(key); }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator find(
+      const std::wstring& key) {
+    return data_.find(key);
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator find(
+      const std::wstring& key) const {
+    return data_.find(key);
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator begin() {
+    return data_.begin();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator begin() const {
+    return data_.begin();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator end() {
+    return data_.end();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator end() const {
+    return data_.end();
+  }
+
+ private:
+  std::unordered_map<std::wstring, std::int32_t> data_;
+};
+
+// Note(YuanRisheng): PhiVector is essentially a vector that only used for PHI
+// Kernel. It can be used when you define a non-tensor type that needs to be
+// stored in a vector as PHI kernel argument.
+
+template <>
+struct PhiVectorType<std::string> {
+  const char* type_name = "PhiVectorString";
+};
+
+using String = std::string;
+using Strings = PhiVector<std::string>;
+
+// Convert the std::string type to the std::string type.
+bool ConvertStrToWstr(const std::string& src, std::wstring* res);
+// Convert the std::wstring type to the std::string type.
+void ConvertWstrToStr(const std::wstring& src, std::string* res);
+// Normalization Form Canonical Decomposition.
+void NFD(const std::string& s, std::string* ret);
+
+// Write the data which is type of
+// std::unordered_map<td::string, int32_t> to ostream.
+void StringMapToStream(std::ostream& os,
+                       const std::unordered_map<std::string, int32_t>& data);
+
+// Read the data which is type of
+// std::unordered_map<td::string, int32_t> from istream.
+void StringMapFromStream(std::istream& is,
+                         std::unordered_map<std::string, int32_t>* data);
+
+std::wstring_convert<std::codecvt_utf8<wchar_t>> kConverter;
+
+// Convert the std::string type to the std::wstring type.
+bool ConvertStrToWstr(const std::string& src, std::wstring* res) {
+  try {
+    *res = kConverter.from_bytes(src);
+  } catch (std::range_error& e) {
+    VLOG(3) << "The string " << src << " was converted to unicode failedly! ";
+    return false;
+  }
+  return true;
+}
+
+// Convert the std::wstring type to the std::string type.
+void ConvertWstrToStr(const std::wstring& src, std::string* res) {
+  *res = kConverter.to_bytes(src);
+}
+
+// Normalization Form Canonical Decomposition.
+void NFD(const std::string& s, std::string* ret) {
+  *ret = "";
+  char* result = reinterpret_cast<char*>(
+      utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
+  if (result) {
+    *ret = std::string(result);
+    free(result);  // NOLINT
+  }
+}
+
+// Write the data which is type of
+// std::unordered_map<std::string, int32_t> to ostream.
+void StringMapToStream(std::ostream& os,
+                       const std::unordered_map<std::string, int32_t>& data) {
+  {
+    // firstly write the data size.
+    size_t t = data.size();
+    os.write(reinterpret_cast<const char*>(&t), sizeof(t));
+  }
+  {
+    // then write the data
+    for (const auto& item : data) {
+      std::string token = item.first;
+      int32_t token_id = item.second;
+      // write the token
+      size_t length = token.size();
+      os.write(reinterpret_cast<const char*>(&length), sizeof(length));
+      os.write(token.c_str(), length);  // NOLINT
+      // write the token_id
+      os.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
+    }
+  }
+}
+
+// Read the data which is type of
+// std::unordered_map<td::string, int32_t> from istream.
+void StringMapFromStream(std::istream& is,
+                         std::unordered_map<std::string, int32_t>* data) {
+  // first read the map size
+  size_t map_size = 0;
+  is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
+  data->reserve(map_size);
+  // then read the data
+  for (size_t i = 0; i < map_size; ++i) {
+    // read the token
+    size_t token_length = 0;
+    is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
+    char* tmp = new char[token_length];
+    is.read(tmp, token_length);  // NOLINT
+    std::string token(tmp, tmp + token_length);
+    delete[] tmp;
+    // read the token_id
+    int32_t token_id = 0;
+    is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
+
+    data->emplace(token, token_id);
+  }
+}
 
 using std::endl;
 using std::int64_t;
