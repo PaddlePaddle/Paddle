@@ -266,11 +266,20 @@ struct LiftToAnchorPatternOperation {
   }
 };
 
-struct FuseAnchorPatternOperation {
+struct FuseUpstreamAnchorOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
                   PatternNodePtr<Phrase> upstream,
-                  const PatternNodePtr<Phrase>& downstream) {
+                  PatternNodePtr<Phrase> downstream) {
+    // TODO(@wuzhanfei)
+  }
+};
+
+struct FuseDownstreamAnchorOperation {
+  template <typename Phrase>
+  void operator()(PatternGraph<Phrase>* graph,
+                  PatternNodePtr<Phrase> upstream,
+                  PatternNodePtr<Phrase> downstream) {
     // TODO(@wuzhanfei)
   }
 };
@@ -359,6 +368,20 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 };
 
 struct RecomputeNodeMatcher {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    // TODO(@wuzhanfei)
+  }
+};
+
+struct HasUpstreamAnchorMatcher {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    // TODO(@wuzhanfei)
+  }
+};
+
+struct HasDownstreamAnchorMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     // TODO(@wuzhanfei)

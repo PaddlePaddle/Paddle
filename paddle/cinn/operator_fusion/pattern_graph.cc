@@ -160,8 +160,18 @@ void PatternGraph<T>::AnchorPatternFusion() {
   // TODO(@wuzhanfei)
   GraphTransformer<ReverseTopoNodePairPattern,
                    T,
-                   DownstreamGreaterThan<1>,
-                   FuseAnchorPatternOperation>(this);
+                   HasUpstreamAnchorMatcher,
+                   FuseUpstreamAnchorOperation>(this);
+
+  GraphTransformer<NodePairPattern,
+                   T,
+                   HasUpstreamAnchorMatcher,
+                   FuseUpstreamAnchorOperation>(this);
+
+  GraphTransformer<NodePairPattern,
+                   T,
+                   HasDownstreamAnchorMatcher,
+                   FuseDownstreamAnchorOperation>(this);
 }
 
 template <typename T>
