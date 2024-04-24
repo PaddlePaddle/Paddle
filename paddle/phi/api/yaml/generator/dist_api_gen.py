@@ -49,8 +49,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    // 3.1. Set Output Dist Attr For Default Impl{}\n
-    VLOG(1) << 21111111;
+
     if (rank_is_in_current_mesh) {{
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
@@ -60,7 +59,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 9. DenseTensor Kernel Call{}
       // 10. Fallback{}
     }}\n
-    // 11. Return
+    // 11. Set Output Dist Attr For Default Impl{}\n
+    // 12. Return
     {}
   }}
 """
@@ -492,7 +492,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       // The dist_input_x is a dist tensor, the dims() func return the global dims.
       auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
-      auto& out_dist_attr = {out_name}->dist_attr();
+      const auto& out_dist_attr = {out_dist_attr};
       for (int i = 0; i < out_shape.size(); i++) {{
         if (out_dist_attr.dims_mapping()[i] >= 0) {{
           {dtype} shape_i = out_shape[i];
@@ -1563,9 +1563,12 @@ class DistForwardAPI(ForwardAPI):
             "operator {self.kernel['func'][0]}, but {shape_name} is not"
             "found in its attributes."
             shape_type = self.attrs['attr_info'][shape_name][0]
-
+            out_name = self.dist_output_args[0]
             infer_meta_code = CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
-                out_name=self.dist_output_args[0],
+                out_name=out_name,
+                out_dist_attr="paddle::get<0>(spmd_info.second[0])"
+                if self.infer_meta['spmd_rule']
+                else f"phi::distributed::TensorDistAttr(common::vectorize({out_name}->dims()))",
                 dtype="int64_t" if shape_type == "IntArray" else "int",
                 op_name=self.kernel['func'][0],
                 shape_name=shape_name,
@@ -1821,7 +1824,6 @@ class DistForwardAPI(ForwardAPI):
             infer_spmd_code,
             output_creation_code,
             infer_global_shape_code,
-            output_dist_attr_setting,
             kernel_selection_code,
             reshard_input_code,
             prepare_data_code,
@@ -1829,6 +1831,7 @@ class DistForwardAPI(ForwardAPI):
             infer_meta_code,
             kernel_call_code,
             fallback_code,
+            output_dist_attr_setting,
             return_code,
         )
 
