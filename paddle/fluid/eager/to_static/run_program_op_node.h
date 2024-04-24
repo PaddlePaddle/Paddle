@@ -1060,57 +1060,29 @@ inline void PirRunProgramGradAPI(
 
   details::Trans2ContiguousTensorsInplace(out_grad);
 
-  auto testkey = PADDLE_GET_CONST(std::string, attrs.at("testkey"));
-
-  std::cout << "backward_program get start" << std::endl;
   auto backward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
                                            attrs.at("backward_program"));
 
   auto forward_program = PADDLE_GET_CONST(std::shared_ptr<::pir::Program>,
                                           attrs.at("forward_program"));
 
-  VLOG(0) << "[PirRunProgramGradAPI] testkey: " << testkey;
-  VLOG(0) << "[PirRunProgramGradAPI] backward_program addr: "
-          << backward_program;
-  VLOG(0) << "[PirRunProgramGradAPI] forward_program addr: " << forward_program;
-  VLOG(0) << backward_program->num_ops();
-  VLOG(0) << forward_program->num_ops();
-  std::cout << "backward_program get end" << std::endl;
-
-  std::cout << "backward_program block get start" << std::endl;
-  auto pb = backward_program->block();
-  VLOG(0) << pb;
-  VLOG(0) << pb->num_ops();
-  VLOG(0) << pb->empty();
-  std::cout << "backward_program block get end" << std::endl;
-  std::ostringstream print_stream;
-  print_stream << "backward_program is :\n";
-  backward_program->Print(print_stream);
-  std::cout << print_stream.str() << std::endl;
-
   // share x, param, middles, output_grads, out into scope.
-  VLOG(1) << "out_grad start";
   details::ShareTensorsIntoScopeByValue(backward_program->block(),
                                         out_grad,
                                         output_grad_values,
                                         global_inner_scope);
-  VLOG(1) << "out_grad end";
   details::ShareTensorsIntoScopeByValue(
       backward_program->block(), x, forward_input_values, global_inner_scope);
-  VLOG(1) << "x end";
   details::ShareTensorsIntoScopeByValue(backward_program->block(),
                                         middles,
                                         forward_middle_values,
                                         global_inner_scope);
-  VLOG(1) << "middles end";
   details::ShareTensorsIntoScopeByValue(backward_program->block(),
                                         out,
                                         forward_output_values,
                                         global_inner_scope);
-  VLOG(1) << "out end";
   details::ShareTensorsIntoScopeByValue(
       backward_program->block(), params, parameter_values, global_inner_scope);
-  VLOG(1) << "params end";
 
   // Clear out and middles to avoid hold memory until backward finish.
   out.clear();
@@ -1369,8 +1341,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
-        auto selected_row = std::make_shared<phi::SelectedRows>();
-        x_grad->emplace_back(selected_row);
+        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
       x_grad->back().set_name(x_grad_names[i]);
     }

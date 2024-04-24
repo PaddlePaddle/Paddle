@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# breakpoint()
 import unittest
 
 import numpy
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pir_only
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
 
 import paddle
 
@@ -34,8 +33,7 @@ def main_func(x, index):
 
 
 class TestNoGradientCase(Dy2StTestBase):
-    @test_ast_only
-    @test_pir_only
+    @test_legacy_and_pt_and_pir
     def test_no_gradient(self):
         paddle.disable_static()
         x = paddle.randn([10, 3])

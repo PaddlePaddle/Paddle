@@ -867,11 +867,7 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
   VLOG(1) << "After Process pir::Program*";
   const std::shared_ptr<::pir::Program> program =
       ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
-  VLOG(1) << "[CastPyArg2AttrIRProgram] program use count: "
-          << program.use_count();
   attrs[key] = program;
-  VLOG(1) << "[CastPyArg2AttrIRProgram] program use count: "
-          << program.use_count();
 }
 
 void CastPyArg2AttrValues(PyObject* obj,
