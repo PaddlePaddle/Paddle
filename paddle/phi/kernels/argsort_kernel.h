@@ -35,7 +35,7 @@ namespace phi {
  *                      else if false, sort by ascending order
  * @param  stable       Indicate whether to use stable sorting algorithm, which
  *                      guarantees that the order of equivalent elements is
- * preserved.
+ *                      preserved.
  * @param  out          The sorted tensor of Argsort op, with the same shape as
  *                      x
  * @param  indices      The indices of a tensor giving the sorted order, with
