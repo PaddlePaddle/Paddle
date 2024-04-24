@@ -215,7 +215,7 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
     return CreateOpRelativenessForDefault(op);
   }
   if (op->name() == "cinn_op.yield_store") {
-    return CreateOpRelativenessForDefault(op);
+    return CreateOpRelativenessForElementWise(op);
   }
   return {};
 }

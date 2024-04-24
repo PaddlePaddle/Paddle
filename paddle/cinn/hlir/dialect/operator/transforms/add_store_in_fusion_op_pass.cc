@@ -56,10 +56,10 @@ class AddYieldStoreInFusionOpPattern
   }
 };
 
-class AddStoreInFusionOpPass : public pir::Pass {
+class AddStoreInGroupOpPass : public pir::Pass {
  public:
-  AddStoreInFusionOpPass()
-      : pir::Pass("add_store_in_fusion_op", /*opt_level=*/1) {}
+  AddStoreInGroupOpPass()
+      : pir::Pass("add_store_in_group_op", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -76,14 +76,7 @@ class AddStoreInFusionOpPass : public pir::Pass {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
-            auto fusion_op = op.dyn_cast<cinn::dialect::FusionOp>();
-            if (fusion_op.GetOperators().size() == 2 &&
-                fusion_op.GetOperators()
-                    .front()
-                    ->isa<cinn::dialect::ReshapeOp>()) {
-              continue;
-            }
+          if (op.isa<cinn::dialect::GroupOp>()) {
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);
@@ -101,8 +94,8 @@ class AddStoreInFusionOpPass : public pir::Pass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-std::unique_ptr<pir::Pass> CreateAddStoreInFusionOpPass() {
-  return std::make_unique<AddStoreInFusionOpPass>();
+std::unique_ptr<pir::Pass> CreateAddStoreInGroupOpPass() {
+  return std::make_unique<AddStoreInGroupOpPass>();
 }
 
 }  // namespace ir
