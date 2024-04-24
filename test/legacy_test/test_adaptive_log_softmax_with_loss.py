@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import nn
 import paddle.optimizer as optim
+from paddle import nn
 from paddle.base import Program
 from paddle.nn import functional as F
 
@@ -294,9 +294,9 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             loss.backward()
             optimizer.step()
 
-
         tail_weights_before_training = [
-            proj[0].numpy().copy() for proj in model.adaptive_softmax.tail_weights
+            proj[0].numpy().copy()
+            for proj in model.adaptive_softmax.tail_weights
         ]
 
         with paddle.no_grad():
@@ -310,7 +310,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             tail_weights_before_training, tail_weights_after_training
         ):
             assert not np.any(before != after)
-            
+
     def test_cluster(self):
         model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
         x = paddle.randn((128, 16))
