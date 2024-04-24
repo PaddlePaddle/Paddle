@@ -36,7 +36,6 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/op_result.h"
-#include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/value.h"
 
 namespace paddle {
