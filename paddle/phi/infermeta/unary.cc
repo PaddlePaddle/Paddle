@@ -4263,6 +4263,11 @@ void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(x.dtype());
+}
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const IntArray& axes,
                       MetaTensor* out,
