@@ -1437,7 +1437,7 @@ function get_quickly_disable_ut() {
         cd -
     fi
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-        disable_ut_quickly="${disable_ut_quickly} ${deprecated_ut}"
+        disable_ut_quickly="${disable_ut_quickly}${deprecated_ut}"
         echo "========================================="
         echo "The following unittests have been disabled:"
         echo ${disable_ut_quickly}
