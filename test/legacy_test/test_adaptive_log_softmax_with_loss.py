@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import nn
+import paddle.optimizer as optim
 from paddle.base import Program
 from paddle.nn import functional as F
 
@@ -55,6 +56,7 @@ class SimpleModel(nn.Layer):
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
+        paddle.seed(2024)
         self.place = ['cpu']
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
@@ -271,6 +273,44 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.to_tensor([0, 5, 10])
             model(x, y)
 
+    def test_forwadr(self):
+        n_classes = 4
+        in_features = 8
+        cutoffs = [2]
+
+        x = paddle.randn([8, in_features])
+        print(x)
+        labels = paddle.randint(0, n_classes, [8])
+        print(labels)
+        model = SimpleModel(in_features, n_classes, cutoffs, div_value=2.0)
+
+        optimizer = optim.Adam(
+            parameters=model.parameters(), learning_rate=0.001
+        )
+        for _ in range(2):
+            _, loss = model(x, labels)
+
+            optimizer.clear_grad()
+            loss.backward()
+            optimizer.step()
+
+
+        tail_weights_before_training = [
+            proj[0].numpy().copy() for proj in model.adaptive_softmax.tail_weights
+        ]
+
+        with paddle.no_grad():
+            output, loss = model(x, labels)
+
+        tail_weights_after_training = [
+            proj[0].numpy() for proj in model.adaptive_softmax.tail_weights
+        ]
+
+        for before, after in zip(
+            tail_weights_before_training, tail_weights_after_training
+        ):
+            assert not np.any(before != after)
+            
     def test_cluster(self):
         model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
         x = paddle.randn((128, 16))
