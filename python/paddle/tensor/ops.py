@@ -1048,9 +1048,6 @@ def tan(x, name=None):
         return out
 
 
-_erf_ = generate_layer_fn('erf')
-
-
 def erf(x, name=None):
     r"""
     The error function.
@@ -1087,4 +1084,4 @@ def erf(x, name=None):
     for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
-    return _erf_(**kwargs)
+    return generate_layer_fn('erf')(**kwargs)
