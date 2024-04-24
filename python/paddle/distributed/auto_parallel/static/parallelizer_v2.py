@@ -17,7 +17,7 @@ import logging
 import os
 import time
 
-from paddle.distributed.passes import PassManager, new_pass
+from paddle.distributed.passes.pass_base import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
 
