@@ -1084,6 +1084,14 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DequantizeLogInferMeta(const MetaTensor& x,
+                            const MetaTensor& dict,
+                            MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
+}
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -1532,7 +1540,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       target_shape.size(),
@@ -2165,6 +2173,15 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   }
   out->set_dims(common::make_ddim(dim_out));
   out->set_dtype(x.dtype());
+}
+
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out) {
+  out->share_dims(expert_count);
+  out->share_lod(expert_count);
+  out->set_dtype(expert_count.dtype());
 }
 
 void LogLossInferMeta(const MetaTensor& input,
@@ -2855,6 +2872,35 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dims(common::make_ddim(dim_vec));
 }
 
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx) {
+  auto expert_count_dims = expert_count.dims();
+
+  int64_t expert_count_num_ele = 1;
+  for (int i = 0; i < static_cast<int>(expert_count_dims.size()); i++) {
+    expert_count_num_ele *= expert_count_dims[i];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      expert_count_num_ele,
+      n_expert * n_worker,
+      phi::errors::Unavailable(
+          "The number of elements for expert_count is ( %ld ) incorrect. "
+          "Because the number of expert_count must equal the "
+          "product of n_worker ( %ld ) and n_expert ( %ld ). "
+          "Please input appropriate expert_count again!",
+          expert_count_num_ele,
+          n_worker,
+          n_expert));
+
+  auto gate_idx_in_dims = gate_idx.dims();
+  new_gate_idx->set_dims(gate_idx_in_dims);
+  new_gate_idx->set_dtype(gate_idx.dtype());
+}
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
@@ -3007,6 +3053,20 @@ void SequenceMaskInferMeta(const MetaTensor& x,
 
   y->set_dims(common::make_ddim(dim));
   y->set_dtype(out_dtype);
+}
+
+void ReduceAsInferMeta(const MetaTensor& x,
+                       const MetaTensor& target,
+                       MetaTensor* out) {
+  DataType out_dtype;
+  if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
+    out_dtype = DataType::INT64;
+  } else {
+    out_dtype = x.dtype();
+  }
+  out->set_dtype(out_dtype);
+  out->set_dims(target.dims());
+  out->set_layout(x.layout());
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

@@ -119,7 +119,7 @@ DECLARE_KERNELTUPLE(XYNTuple, VSigmoid);
 DECLARE_KERNELTUPLE(XYNTuple, VTanh);
 DECLARE_KERNELTUPLE(XYNTuple, VCopy);
 
-typedef struct {
+typedef struct lstm_t {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
   const void* ct_1;
   void* ct;

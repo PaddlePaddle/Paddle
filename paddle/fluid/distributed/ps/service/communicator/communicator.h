@@ -40,10 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+#include "paddle/utils/string/split.h"
 
 namespace paddle {
 namespace distributed {

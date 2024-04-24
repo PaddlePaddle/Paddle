@@ -24,15 +24,10 @@ disable_wingpu_test="^test_model$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_parallel_executor_seresnext_base_gpu$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_program_prune_backward$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
-^test_parallel_executor_feed_persistable_var$|\
-^test_parallel_executor_inference_feed_partial_data$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
@@ -76,7 +71,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_elementwise_add_mkldnn_op$|\
 ^test_comp_high_grad$|\
 ^test_multi_precision_fp16_train$|\
-^test_fuse_relu_depthwise_conv_pass$|\
 ^test_imperative_skip_op$|\
 ^test_qat$|\
 ^test_standalone_cuda_graph_multi_stream$|\
@@ -143,7 +137,12 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_cuda_graph_static_mode$|\
 ^test_matrix_rank_op$|\
 ^test_sparse_pca_lowrank$|\
-^test_zero_dim_tensor$|\
+^test_zero_dim_no_backward_api$|\
+^test_zero_dim_sundry_dygraph_api$|\
+^test_zero_dim_sundry_static_api_part1$|\
+^test_zero_dim_sundry_static_api_part2$|\
+^test_zero_dim_sundry_static_api_part3$|\
+^test_zero_dim_sundry_static_api_part4$|\
 ^paddle_infer_api_copy_tensor_tester$|\
 ^cudnn_helper_test$|\
 ^test_analyzer_small_dam$|\
@@ -204,7 +203,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_argsort_op$|\
 ^test_image_classification_fp16$|\
 ^test_imperative_double_grad$|\
-^test_parallel_executor_transformer$|\
 ^test_se_resnet$|\
 ^test_standalone_executor_aot_choose_kernel$|\
 ^test_imperative_qat_user_defined$|\
@@ -212,7 +210,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_callback_reduce_lr_on_plateau$|\
 ^test_callback_visualdl$|\
 ^test_callback_wandb$|\
-^test_mix_precision_all_reduce_fuse$|\
 ^test_user_defined_quantization$|\
 ^test_quantization_scale_pass$|\
 ^test_quantization_pass$|\
@@ -394,10 +391,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_push_pop$|\
-^test_parallel_executor_feed_persistable_var$|\
-^test_parallel_executor_inference_feed_partial_data$|\
 ^test_reader_reset$|\
-^test_parallel_executor_seresnext_base_gpu$|\
 ^test_py_reader_pin_memory$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -427,8 +421,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_convert_multihead_matmul$|\
 ^test_trt_convert_prelu$|\
 ^test_trt_fc_fuse_quant_dequant_pass$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
 ^disable_win_inference_test$|\
@@ -698,19 +690,23 @@ export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`
-    while read line
-    do
-        run_unittest_gpu "$line" 16
-    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
-    single_ut_mem_0_endTime_s=`date +%s`
-    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
-    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+    if [ ${WIN_UNITTEST_LEVEL:-2} == "0" ]; then
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: 0 s"
+    else
+        while read line
+        do
+            run_unittest_gpu "$line" 16
+        done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+        single_ut_mem_0_endTime_s=`date +%s`
+        single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s"
+    fi
 
     single_ut_startTime_s=`date +%s`
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -733,7 +729,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -758,7 +754,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -771,7 +767,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     noparallel_ut_startTime_s=`date +%s`
     while read line
     do
-        run_unittest_gpu "$line" 3
+        run_unittest_gpu "$line" 8
     done < $PADDLE_ROOT/tools/no_parallel_case_file
     noparallel_ut_endTime_s=`date +%s`
     noparallel_ut_Time_s=`expr $noparallel_ut_endTime_s - $noparallel_ut_startTime_s`

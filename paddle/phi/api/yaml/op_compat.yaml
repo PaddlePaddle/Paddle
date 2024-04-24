@@ -15,7 +15,7 @@
 #     attrs : [bool is_test = false]
 
 - op : abs
-  backward : abs_grad
+  backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :
     x : X
   outputs :
@@ -296,6 +296,12 @@
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
 
+- op : assign_pos
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : assign_value
   outputs :
     out : Out
@@ -328,6 +334,19 @@
     {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
+
+- op : barrier
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
+- op : batch_fc
+  backward : batch_fc_grad
+  inputs :
+    {input : Input, w : W, bias : Bias}
+  outputs :
+    out : Out
 
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
@@ -805,6 +824,12 @@
   outputs :
     out : Out
 
+- op : dgc_momentum
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut, grad_out : Grad_out}
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -843,6 +868,10 @@
     out : Out
 
 - op : distributed_push_sparse
+  inputs :
+    {ids : Ids, shows : Shows, clicks: Clicks}
+  outputs :
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
@@ -1002,7 +1031,7 @@
     out : Out
 
 - op : exp
-  backward : exp_grad
+  backward : exp_grad, exp_double_grad
   inputs :
     x : X
   outputs :
@@ -1070,8 +1099,11 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
   extra :
@@ -1099,7 +1131,7 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
-    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
   outputs: {out: Out}
@@ -1249,6 +1281,21 @@
     value :
       data_type : float
       support_tensor : true
+
+- op : full_with_tensor
+  int_array:
+    shape :
+      data_type : int64_t
+      support_tensor : true
+
+- op : fused_adam_(fused_adam)
+  inputs :
+    {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
+     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     skip_update : SkipUpdate}
+  outputs :
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+     beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
 
 - op : fused_attention
   backward: fused_attention_grad
@@ -1604,6 +1651,12 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
+- op : global_scatter
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
 - op : grad_add
   inputs :
     {x : X, y : Y}
@@ -1841,6 +1894,15 @@
     x : X
   outputs :
     {out : Out, indices : Indices}
+
+- op : l1_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : l1_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : label_smooth
   inputs :
@@ -2465,8 +2527,31 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_allgather
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : partial_concat
+  backward : partial_concat_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : partial_recv
+  outputs :
+    out : Out
+
 - op : partial_sum
   backward : partial_sum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2585,6 +2670,12 @@
     {x : X, boxes : ROIs, boxes_num : RoisNum}
   outputs :
     out : Out
+
+- op : push_dense
+  inputs :
+    ids : Ids
+  attrs :
+    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
 - op : push_sparse_v2
   inputs :
@@ -2839,6 +2930,9 @@
     scale :
       data_type : float
       tensor_name : ScaleTensor
+    bias :
+      data_type : float
+      support_tensor : false
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3161,7 +3255,7 @@
     outputs : [xshape]
 
 - op : stack
-  backward : stack_grad
+  backward : stack_grad, stack_double_grad
   inputs :
     x : X
   outputs :
@@ -3293,6 +3387,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : tdm_sampler
   inputs:
@@ -3611,6 +3713,12 @@
   outputs :
     out: Out
 
+- op: c_scatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3635,6 +3743,12 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: dgc
+  inputs:
+    {u: U, v: V, grad: Grad}
+  outputs:
+    {u_out: U_out, v_out: V_out, encode_grad: EncodeGrad, grad_out: Grad_out, gather_buff: GatherBuff}
+
 - op: distribute_fpn_proposals
   inputs :
     {fpn_rois: FpnRois, rois_num: RoisNum}
@@ -3642,6 +3756,12 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
+
+- op: distributed_fused_lamb
+  inputs:
+    {param: Param, grad: Grad, fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1pow: Beta1Pow, beta2pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, learning_rate: LearningRate, global_scale: GlobalScale}
+  outputs:
+    {param_out : ParamOut, fp32_fused_param_out: FP32FusedParamOut, fp16_fused_param_out: FP16FusedParamOut, fp32_acc_fused_grad: FP32AccFusedGrad, fp16_acc_fused_grad: FP16AccFusedGrad, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1pow_out: Beta1PowOut, beta2pow_out: Beta2PowOut, found_inf: FoundInf, acc_step: AccStep, stop_update: StopUpdate, step: Step}
 
 - op: distributed_fused_lamb_init
   inputs:
@@ -3692,11 +3812,24 @@
   attrs :
     {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, fused_reshape_x : fused_reshape_X, fused_transpose_x : fused_transpose_X, fused_reshape_y : fused_reshape_Y, fused_transpose_y : fused_transpose_Y, fused_reshape_out : fused_reshape_Out, fused_transpose_out : fused_transpose_Out}
 
+- op: fused_softmax_mask
+  backward : fused_softmax_mask_grad
+  inputs :
+    {x: X, mask: Mask}
+  outputs :
+    {out : Out}
+
 - op: fused_softplus
   inputs :
     {x: X}
   outputs :
     {out : Out}
+
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3725,6 +3858,10 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: limit_by_capacity
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :
@@ -3788,6 +3925,27 @@
 - op: partial_send
   inputs :
     x : X
+
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
+
+- op: random_routing
+  inputs:
+    {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
+  outputs:
+    out : Out
+
+- op: rank_attention
+  backward: rank_attention_grad
+  inputs:
+    {x : X, rank_offset : RankOffset, rank_param : RankParam}
+  outputs:
+    {input_help : InputHelp, out : Out, ins_rank: InsRank}
+  attrs:
+    {max_rank : MaxRank, max_size : MaxSize}
 
 - op: read_from_array
   inputs:

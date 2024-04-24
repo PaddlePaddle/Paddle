@@ -646,7 +646,6 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
   size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-  const cublasLtMatmulAlgo_t* algo = nullptr;
   cudaStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);

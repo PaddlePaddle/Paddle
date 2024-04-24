@@ -66,7 +66,11 @@ def convert_attr(x, attr):
     # Value and Tensor are unified. So we don't need to transform
     # the size attr into a method call. The AttributeJstTransformer and
     # convert_attr can be safely removed.
-    if isinstance(x, Variable) and attr == "size":
+    if (
+        isinstance(x, Variable)
+        and not isinstance(x, paddle.Tensor)
+        and attr == "size"
+    ):
         return x.size()
     else:
         return getattr(x, attr)
@@ -109,7 +113,7 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
-        if x is paddle.amp.auto_cast:
+        if x is paddle.amp.auto_cast and not use_pir_api():
             return convert_auto_cast
 
     return x
@@ -554,9 +558,7 @@ def _check_no_undefined_var(outs, names, branch_name):
     for var, name in zip(list(outs), names):
         if isinstance(var, UndefinedVar):
             raise ValueError(
-                "Required '{}' must be initialized both in if-else branch, but found it not initialized in '{}'.".format(
-                    name, branch_name
-                )
+                f"Required '{name}' must be initialized both in if-else branch, but found it not initialized in '{branch_name}'."
             )
 
 
@@ -734,9 +736,7 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
-            var.name, src_dtype
-        )
+        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
         assert dtype in [
             'bool',
             'int',

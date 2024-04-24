@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {

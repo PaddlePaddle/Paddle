@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
@@ -24,7 +24,7 @@ namespace operators {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 class SparseFTRLFunctor {
@@ -221,8 +221,8 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           lin_accum_out->mutable_data<T>(ctx.GetPlace()));
       for_range(functor);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported Variable Type of Grad"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Unsupported Variable Type of Grad"));
     }
   }
 };

@@ -1273,7 +1273,11 @@ void BindDistributed(py::module *m) {
                   py::arg("world_size"),
                   py::arg("group_id") = 0,
                   py::return_value_policy::reference_internal,
-                  py::call_guard<py::gil_scoped_release>());
+                  py::call_guard<py::gil_scoped_release>())
+      .def("get_comm_name",
+           &distributed::ProcessGroupCustom::GetCommName,
+           py::arg("rank"),
+           py::call_guard<py::gil_scoped_release>());
 
 #endif
 

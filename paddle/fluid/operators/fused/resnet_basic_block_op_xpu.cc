@@ -298,10 +298,9 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     // input
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
@@ -386,7 +385,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
 
       XPUType* conv3_input_l3_data = nullptr;
       XPUType* conv3_filter_l3_data =
-          RAII_GUARD.alloc_l3<XPUType>(attr.conv3_filter_numel);
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv3_filter_numel);
 
       if (attr.find_max) {
         r = xpu::findmax_copy_fusion(dev_ctx.x_context(),
@@ -490,7 +489,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     // 2. conv1
     XPUType* conv1_input_l3_data = nullptr;
     XPUType* conv1_filter_l3_data =
-        RAII_GUARD.alloc_l3<XPUType>(attr.conv1_filter_numel);
+        RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv1_filter_numel);
     if (attr.find_max) {
       r = xpu::findmax_copy_fusion(dev_ctx.x_context(),
                                    x_data,
@@ -589,7 +588,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     // 4. conv2
     XPUType* conv2_input_l3_data = nullptr;
     XPUType* conv2_filter_l3_data =
-        RAII_GUARD.alloc_l3<XPUType>(attr.conv2_filter_numel);
+        RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv2_filter_numel);
     if (attr.find_max) {
       phi::DenseTensor* max_input2 = ctx.Output<phi::DenseTensor>("MaxInput2");
       phi::DenseTensor* max_filter2 =
@@ -704,10 +703,9 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     const phi::DenseTensor* y_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
@@ -995,7 +993,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(resnet_basic_block,
                           XPU,
                           ALL_LAYOUT,

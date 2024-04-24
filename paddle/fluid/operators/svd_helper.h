@@ -24,12 +24,12 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/diag_op.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -42,7 +42,7 @@ using OpName = std::string;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 struct PowFunctor {
@@ -67,9 +67,9 @@ struct RealMulComplexFunctor {
     PADDLE_ENFORCE_LT(
         y.imag,
         1e-6,
-        platform::errors::InvalidArgument("The image part of y must to be 0"
-                                          "but got [%d]",
-                                          y.imag));
+        phi::errors::InvalidArgument("The image part of y must to be 0"
+                                     "but got [%d]",
+                                     y.imag));
     return platform::complex<phi::dtype::Real<T>>(x.real * y.real,
                                                   x.imag * y.real);
   }
@@ -79,9 +79,9 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   PADDLE_ENFORCE_EQ(
       ins.size(),
       2,
-      platform::errors::InvalidArgument("GetBroadcastShape Receive 2 tensors"
-                                        "but got [%d]",
-                                        ins.size()));
+      phi::errors::InvalidArgument("GetBroadcastShape Receive 2 tensors"
+                                   "but got [%d]",
+                                   ins.size()));
   auto x_dim = ins[0]->dims();
   auto y_dim = ins[1]->dims();
   std::vector<int> broadcast_shape =
@@ -104,7 +104,7 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
       broadcast_shape[final_rank - i] = x_dim[rank_x - i];
       continue;
     }
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Wrong Input Shape in broadcast operator: "
         "Input(X)'s shape must follow the broadcast rule with Input(Y)'s "
         "shape, but received [%s] (X) vs [%s] (Y).",
@@ -125,14 +125,14 @@ static inline framework::DDim ComputeAndCheckShapeForConcatOp(
     PADDLE_ENFORCE_EQ(
         inputs_dims[i].size(),
         out_dims.size(),
-        platform::errors::InvalidArgument("The shape of input[0] and input[%d] "
-                                          "is expected to be equal."
-                                          "But received input[0]'s shape = "
-                                          "[%s], input[%d]'s shape = [%s].",
-                                          i,
-                                          inputs_dims[0],
-                                          i,
-                                          inputs_dims[i]));
+        phi::errors::InvalidArgument("The shape of input[0] and input[%d] "
+                                     "is expected to be equal."
+                                     "But received input[0]'s shape = "
+                                     "[%s], input[%d]'s shape = [%s].",
+                                     i,
+                                     inputs_dims[0],
+                                     i,
+                                     inputs_dims[i]));
     for (size_t j = 0; j < in_zero_dims_size; j++) {
       if (j == axis) {
         if (is_runtime) {
@@ -151,7 +151,7 @@ static inline framework::DDim ComputeAndCheckShapeForConcatOp(
           // check all shape in run time
           PADDLE_ENFORCE_EQ(inputs_dims[0][j],
                             inputs_dims[i][j],
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The %d-th dimension of input[0] and input[%d] "
                                 "is expected to be equal."
                                 "But received input[0]'s shape = "
@@ -175,7 +175,7 @@ static inline int64_t ComputeAxisForConcatOp(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank,
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
@@ -205,7 +205,7 @@ static std::vector<int64_t> get_broadcast_batch_portion(
     PADDLE_ENFORCE_EQ(
         (x_size == y_size || x_size == 1 || y_size == 1),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The size of tensor x (%d) must match the size of tensor y "
             "(%d) at non-singleton dimension %d.",
             x_size,
@@ -337,7 +337,7 @@ struct DeviceIndependenceTensorOperations {
       DITO_TRANSPOSE_RANK_CASE(5);
       DITO_TRANSPOSE_RANK_CASE(6);
       default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Invalid Rank number, "
             "currently only support rank between 2~6"));
       }
@@ -350,11 +350,11 @@ struct DeviceIndependenceTensorOperations {
                         int padding_value = 0) {
     PADDLE_ENFORCE_EQ(padding_value,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Current diag only support padding_value = 0"));
     PADDLE_ENFORCE_EQ(offset,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Current diag only support offset = 0,"
                           "you can use DiagOp instead(not recommend)"));
 
@@ -362,7 +362,7 @@ struct DeviceIndependenceTensorOperations {
     int x_rank = x.dims().size();
     std::vector<int> out_shape;
     if (x_rank == 2) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Current diag only support vector"
           "-> diagonalized matrix, not support matrix -> vector,"
           " Use DiagOp instead."));
@@ -371,7 +371,7 @@ struct DeviceIndependenceTensorOperations {
       out_shape.push_back(x.dims()[0]);
     } else {
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Rank must less or equal than 2"));
+          phi::errors::InvalidArgument("Rank must less or equal than 2"));
     }
     ret = Fill({out_shape[0], out_shape[0]}, 0.0);
     T* output = ret.mutable_data<T>(context.GetPlace());
@@ -540,11 +540,11 @@ struct DeviceIndependenceTensorOperations {
     PADDLE_ENFORCE_EQ(
         axes.size(),
         starts.size(),
-        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
+        phi::errors::InvalidArgument("Slice Operator Argument Invalided"));
     PADDLE_ENFORCE_EQ(
         ends.size(),
         starts.size(),
-        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
+        phi::errors::InvalidArgument("Slice Operator Argument Invalided"));
     for (unsigned int i = 0; i < axes.size(); ++i) {
       int axis = axes[i];
       if (axis < 0) axis = rank + axis;
@@ -553,7 +553,7 @@ struct DeviceIndependenceTensorOperations {
       int ed = ends[i];
       PADDLE_ENFORCE_GT(ed,
                         st,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "C++ Slice Operation Not Support End < Start"));
       out_shape[axis] = ed - st;
     }
@@ -576,28 +576,12 @@ struct DeviceIndependenceTensorOperations {
       DITO_SLICE_RANK_CASE(5);
       DITO_SLICE_RANK_CASE(6);
       default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Invalid Rank number, "
             "currently only support rank between 2~6"));
       }
     }
     return ret;
-  }
-
-  phi::DenseTensor TrilTriu(const phi::DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
-    framework::AttributeMap attrs;
-    attrs["diagonal"] = diagonal;
-    attrs["lower"] = lower;
-    NameInTensorMap inputs({{"X", {&x}}});
-    int x_rank = x.dims().size();
-    PADDLE_ENFORCE_GE(
-        x_rank,
-        2,
-        platform::errors::InvalidArgument("Rank must be at least 2."));
-    std::vector<int> out_shape = common::vectorize<int>(x.dims());
-    return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
   }
 
   phi::DenseTensor TriangularSolve(const phi::DenseTensor& x,
@@ -714,28 +698,28 @@ struct DeviceIndependenceTensorOperations {
     size_t rank = in->dims().size();
     PADDLE_ENFORCE_EQ(start.size(),
                       rank,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "EigenSliceWrapper function start "
                           "argument must have the same length as input rank."));
     PADDLE_ENFORCE_EQ(end.size(),
                       rank,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "EigenSliceWrapper function end "
                           "argument must have the same length as input rank."));
     auto eigen_place_ptr =
         context.template device_context<DeviceContext>().eigen_device();
     auto eigen_place = *eigen_place_ptr;
-    auto out_t = framework::EigenTensor<T, D>::From(*out, out->dims());
-    auto in_t = framework::EigenTensor<T, D>::From(*in, in->dims());
+    auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
+    auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
     Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
     for (size_t i = 0; i < D; i++) {
       offsets_32bit[i] = start[i];
       extents_32bit[i] = end[i];
     }
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
-        framework::To32BitIndex(out_t),
-        framework::To32BitIndex(in_t),
+        phi::To32BitIndex(out_t),
+        phi::To32BitIndex(in_t),
         offsets_32bit,
         extents_32bit);
   }

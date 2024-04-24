@@ -199,7 +199,9 @@ def is_floating_point(x):
             >>> print(paddle.is_floating_point(y))
             False
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_fp_dtype = (
@@ -207,6 +209,10 @@ def is_floating_point(x):
         or dtype == core.VarDesc.VarType.FP64
         or dtype == core.VarDesc.VarType.FP16
         or dtype == core.VarDesc.VarType.BF16
+        or dtype == core.DataType.FLOAT32
+        or dtype == core.DataType.FLOAT64
+        or dtype == core.DataType.FLOAT16
+        or dtype == core.DataType.BFLOAT16
     )
     return is_fp_dtype
 

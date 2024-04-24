@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import skip_check_grad_ci
+
+sys.path.append("../deprecated/legacy_test")
 from test_elementwise_mul_op import ElementwiseMulOp
 
 from paddle import enable_static
@@ -149,7 +152,7 @@ class TestInt8(ElementwiseMulOp):
         self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.init_scales()
         self.check_output(check_dygraph=(not self.use_mkldnn))
 

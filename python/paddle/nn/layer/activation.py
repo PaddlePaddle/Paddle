@@ -502,13 +502,7 @@ class PReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
-            self._num_parameters,
-            self._data_format,
-            self._init,
-            self._dtype,
-            name_str,
-        )
+        return f'num_parameters={self._num_parameters}, data_format={self._data_format}, init={self._init}, dtype={self._dtype}{name_str}'
 
 
 class RReLU(Layer):
@@ -597,9 +591,7 @@ class RReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
-            self._lower, self._upper, self.training, self._dtype, name_str
-        )
+        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{name_str}'
 
 
 class ReLU(Layer):

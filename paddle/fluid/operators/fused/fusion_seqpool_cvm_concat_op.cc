@@ -27,33 +27,31 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   PADDLE_ENFORCE_GE(
       ctx->Inputs("X").size(),
       1UL,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Inputs(X) of FusionSeqPoolCVMConcatOp should not be empty."));
   PADDLE_ENFORCE(
       ctx->HasOutput("Out"),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Output(Out) of FusionSeqPoolCVMConcatOp should not be null."));
   int axis = ctx->Attrs().Get<int>("axis");
-  PADDLE_ENFORCE_EQ(axis,
-                    1,
-                    paddle::platform::errors::InvalidArgument(
-                        "FusionSeqPoolCVMConcatOp only supports "
-                        "concat axis=1 yet, but received %d.",
-                        axis));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "concat axis=1 yet, but received %d.",
+                                   axis));
   bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-  PADDLE_ENFORCE_EQ(use_cvm,
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "FusionSeqPoolCVMConcatOp only supports "
-                        "use_cvm is true yet, but received %d.",
-                        use_cvm));
+  PADDLE_ENFORCE_EQ(
+      use_cvm,
+      true,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "use_cvm is true yet, but received %d.",
+                                   use_cvm));
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
-  PADDLE_ENFORCE_GT(n,
-                    0UL,
-                    paddle::platform::errors::InvalidArgument(
-                        "Input tensors count should > 0."));
+  PADDLE_ENFORCE_GT(
+      n, 0UL, phi::errors::InvalidArgument("Input tensors count should > 0."));
   if (n == 1) {
     LOG(WARNING) << "Only have one input, may waste memory";
   }
@@ -62,7 +60,7 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   // since input lod is not accessible here.
   PADDLE_ENFORCE_EQ(ins_dims[0].size(),
                     2,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }
@@ -120,7 +118,7 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
     PADDLE_ENFORCE_EQ(y_dims[1] % w,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The output of dims[1] should be dividable of w"));
     phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
@@ -138,13 +136,13 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
       auto x_lod = ins[i]->lod()[0];
       const T* src = ins[i]->data<T>();
       T* dst = y_data + i * w;
-      PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]),
-                        w,
-                        paddle::platform::errors::InvalidArgument(
-                            "Width of all inputs should be equal."));
+      PADDLE_ENFORCE_EQ(
+          static_cast<int>(ins[i]->numel() / x_dims[0]),
+          w,
+          phi::errors::InvalidArgument("Width of all inputs should be equal."));
       PADDLE_ENFORCE_EQ(x_lod.size(),
                         bs + 1,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Batchsize of all inputs should be equal."));
       for (size_t j = 0; j < bs; ++j) {
         attr.h = static_cast<int>(x_lod[j + 1] - x_lod[j]);

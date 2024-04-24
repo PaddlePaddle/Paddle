@@ -164,6 +164,7 @@ def OpNameNormalizerInitialization(
         "atol_tensor": "TolTensor",
         "out": "Out",
     }
+    op_arg_name_mappings['fused_softmax_mask_grad'].update({"out": "Softmax"})
     op_arg_name_mappings['push_sparse_v2'].update(
         {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
     )

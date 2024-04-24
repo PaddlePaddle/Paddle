@@ -340,9 +340,7 @@ class ForwardAPI(BaseAPI):
                         )
                     else:
                         raise ValueError(
-                            "{} : Output error: only support Tensor type when use view in yaml. But get {}".format(
-                                self.api, out_dtype_list[i]
-                            )
+                            f"{self.api} : Output error: only support Tensor type when use view in yaml. But get {out_dtype_list[i]}"
                         )
         else:
             raise ValueError(

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
+#include <regex>
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -25,6 +26,7 @@
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
 COMMON_DECLARE_bool(prim_check_ops);
+COMMON_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -43,6 +45,26 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze"};
+
+namespace {
+std::set<std::string> StringSplit(const std::string& str) {
+  std::istringstream iss(str);
+  std::set<std::string> tokens;
+  std::string token;
+
+  while (std::getline(iss, token, ';')) {
+    size_t startpos = token.find_first_not_of(" ");
+    size_t endpos = token.find_last_not_of(" ");
+    if ((startpos != std::string::npos) && (endpos != std::string::npos)) {
+      token = token.substr(startpos, endpos - startpos + 1);
+    } else if (startpos != std::string::npos) {
+      token = token.substr(startpos);
+    }
+    tokens.insert(token);
+  }
+  return tokens;
+}
+}  // namespace
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
   std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
@@ -124,8 +146,8 @@ void DecompProgram::check_ops() {
   auto primitives_set = GetPrimitiveOpNames();
   std::set<std::string> undecomposed_set;
   for (const auto& element : decomposed_prog_ops_set_) {
-    auto iter = primitives_set.find(element);
-    if (iter == primitives_set.end()) {
+    if (primitives_set.find(element) == primitives_set.end() &&
+        blacklist_.find(element) == blacklist_.end()) {
       undecomposed_set.insert(element);
     }
   }
@@ -173,7 +195,8 @@ void DecompProgram::check_decomp_outputs(
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (skip_invalid_op_check &&
-        paddle::dialect::IsEmptyValue(decomp_outs[i])) {
+        (paddle::dialect::IsEmptyValue(orig_outs[i]) ||
+         paddle::dialect::IsEmptyValue(decomp_outs[i]))) {
       VLOG(4) << "[Prim] Decomp op skip check of " << i
               << "-index output of op " << op_name;
     } else {
@@ -275,12 +298,12 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
   return new_decomp_outs;
 }
 
-std::vector<pir::Value> DecompProgram::construct_dst_vars(
+void DecompProgram::construct_dst_vars(
     const std::string& op_name,
     const std::vector<pir::Value>& orig_outs,
     const std::vector<pir::Value>& decomp_outs,
-    std::unordered_map<pir::Value, int> orig_vars_dict) {
-  std::vector<pir::Value> tar_vars(src_vars_.size());
+    std::unordered_map<pir::Value, int> orig_vars_dict,
+    std::vector<pir::Value>* tar_vars) {
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
@@ -292,10 +315,9 @@ std::vector<pir::Value> DecompProgram::construct_dst_vars(
           decomp_outs.size()));
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
-      tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
+      (*tar_vars)[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
     }
   }
-  return tar_vars;
 }
 
 std::vector<pir::Value> DecompProgram::get_dst_vars() {
@@ -314,11 +336,11 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
-  if (blacklist_.size() > 0) {
-    if (blacklist_.find(op_name) != blacklist_.end()) {
-      flag = false;
-    }
-  }
+  auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
+  if (from_flag_blacklist.size() > 0)
+    blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
+  if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
+    flag = false;
   return flag;
 }
 
@@ -404,8 +426,11 @@ void DecompProgram::decomp_block(
       std::vector<pir::Value> standard_decomp_res =
           format_decomp_res(op->name(), orig_outs, decomp_res);
       check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
-      tar_vars = construct_dst_vars(
-          op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
+      construct_dst_vars(op->name(),
+                         orig_outs,
+                         standard_decomp_res,
+                         orig_vars_dict,
+                         &tar_vars);
 
       op->ReplaceAllUsesWith(standard_decomp_res);
       bool remove_op = true;

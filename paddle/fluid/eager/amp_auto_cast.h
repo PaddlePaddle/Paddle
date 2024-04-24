@@ -53,8 +53,7 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
       paddle::framework::AttributeMap cast_attrs = {
           {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
           {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      inputs_casted.emplace_back(
-          std::move(cast_dygraph_function(input, cast_attrs)));
+      inputs_casted.emplace_back(cast_dygraph_function(input, cast_attrs));
     } else {
       inputs_casted.emplace_back(input);
     }

@@ -79,8 +79,7 @@ void compare(bool use_mkldnn = false) {
   output->copy_to_cpu(xx_output.data());
 
   // Initialize xx model's predictor to trigger oneDNN cache clearing
-  predictor_xx =
-      std::move(InitializePredictor(FLAGS_infer_model2, data, use_mkldnn));
+  predictor_xx = InitializePredictor(FLAGS_infer_model2, data, use_mkldnn);
 
   // Run sequence of models
   predictor_1->ZeroCopyRun();

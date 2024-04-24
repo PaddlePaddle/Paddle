@@ -629,6 +629,10 @@ PHI_DEFINE_EXPORTED_uint64(
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");
 
+PHI_DEFINE_EXPORTED_bool(custom_device_mem_record,
+                         false,
+                         "Enable mem record event on custom device");
+
 #endif
 
 /**
@@ -737,13 +741,13 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_on
+ * Name: tracer_onednn_ops_on
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
@@ -761,13 +765,13 @@ PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_off
+ * Name: tracer_onednn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "",
                            "List of OneDNN operation types to be turned off");
 
@@ -1023,17 +1027,16 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
 
 /*
  * CINN related FLAG
@@ -1245,6 +1248,17 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
 PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * CINN training related FLAG
+ * Name: FLAGS_disable_dyshape_in_train
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
+                         false,
+                         "Whether disable dyshape in training.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1346,6 +1360,19 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          "Use shm cache in mmap_allocator.");
 
 /**
+ * mmap_allocator related FLAG
+ * Name: dataloader_use_file_descriptor
+ * Since Version: 2.6.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: . If True, mmap_allocator will use file descripor to open shared memory
+ * operation.
+ */
+PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
+                         false,
+                         "Use file descriptor in mmap_allocator.");
+
+/**
  * Tensor operants related FLAG
  * Name: tensor_operants_mode
  * Since Version: 2.5.0
@@ -1367,7 +1394,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR
+ * Note: If True, executor will use new IR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
@@ -1380,7 +1407,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If Ture, program will be translated to pir program
+ * Note: If True, program will be translated to pir program
  * and then run in executor for dy2st mode.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
@@ -1470,6 +1497,14 @@ PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          "Whether to check the decomposed program, to ensure "
                          "that only the primitive operator is present.");
 
+// PIR and prim related FLAG
+// Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
+// `relu` and `mean` two ops in decompsition.
+PHI_DEFINE_EXPORTED_string(
+    prim_forward_blacklist,
+    "",
+    "It controls the forward blacklist ops not to be decomposed.");
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
 /**
@@ -1522,7 +1557,7 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to new IR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,

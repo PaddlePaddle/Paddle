@@ -509,6 +509,13 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
   return device_list_map[device_type];
 }
 
+void DeviceManager::CCLCommName(const std::string& device_type,
+                                const ccl::CCLComm& ccl_comm,
+                                char* comm_name) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->CCLCommName(ccl_comm, comm_name);
+}
+
 void DeviceManager::CCLDestroyComm(const std::string& device_type,
                                    ccl::CCLComm ccl_comm) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);

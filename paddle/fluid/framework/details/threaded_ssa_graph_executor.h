@@ -47,7 +47,7 @@ struct OpDependentData {
   size_t num_ops_{0};
 };
 
-class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
+class ThreadedSSAGraphExecutor final : public SSAGraphExecutor {
  public:
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,

@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 namespace paddle {
 namespace framework {

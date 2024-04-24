@@ -22,8 +22,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
-from paddle.framework import use_pir_api
-from paddle.pir.core import vartype_to_datatype
+from paddle.framework import core
 
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
@@ -33,6 +32,7 @@ from ....utils import (
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
+    printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
@@ -61,30 +61,30 @@ if TYPE_CHECKING:
 
 
 FP_DTYPE_ABBRS = {
-    paddle.bfloat16: 'bfloat16',
-    paddle.float64: 'float64',
-    paddle.float32: 'float32',
-    paddle.float16: 'float16',
+    core.DataType.BFLOAT16: "bfloat16",
+    core.DataType.FLOAT64: "float64",
+    core.DataType.FLOAT32: "float32",
+    core.DataType.FLOAT16: "float16",
 }
 
 CP_DTYPE_ABBRS = {
-    paddle.complex64: 'complex64',
-    paddle.complex128: 'complex128',
+    core.DataType.COMPLEX64: "complex64",
+    core.DataType.COMPLEX128: "complex128",
 }
 
 INT_DTYPE_ABBRS = {
-    paddle.int8: 'int8',
-    paddle.int16: 'int16',
-    paddle.int32: 'int32',
-    paddle.int64: 'int64',
-    paddle.uint8: 'uint8',
+    core.DataType.INT8: "int8",
+    core.DataType.INT16: "int16",
+    core.DataType.INT32: "int32",
+    core.DataType.INT64: "int64",
+    core.DataType.UINT8: "uint8",
 }
 
 DTYPE_ABBRS = {
     **FP_DTYPE_ABBRS,
     **CP_DTYPE_ABBRS,
     **INT_DTYPE_ABBRS,
-    paddle.bool: 'bool',
+    core.DataType.BOOL: "bool",
 }
 
 
@@ -271,32 +271,14 @@ class TensorDtypeVariable(DataVariable):
             return object_equal_stringify_guard(self)
 
     def get_py_value(self, allow_tensor=False):
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            return vartype_to_datatype[self.value]
         return super().get_py_value(allow_tensor)
 
     def get_py_type(self):
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            return paddle.pir.core.DataType
         return super().get_py_type()
 
     def _reconstruct(self, codegen: PyCodeGen):
         # dtype of paddle.Tensor is hashable, we can just load it as const var
-        if use_pir_api() and isinstance(
-            self.value, paddle.base.core.VarDesc.VarType
-        ):
-            assert (
-                self.value in paddle.pir.core.vartype_to_datatype
-            ), f"Unknow dtype {self.value}"
-            codegen.gen_load_const(
-                paddle.pir.core.vartype_to_datatype[self.value]
-            )
-        else:
-            codegen.gen_load_const(self.value)
+        codegen.gen_load_const(self.value)
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -306,7 +288,9 @@ class TensorDtypeVariable(DataVariable):
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, paddle.dtype):
+        if isinstance(
+            value, (paddle.core.VarDesc.VarType, paddle.core.DataType)
+        ):
             return TensorDtypeVariable(value, graph, tracker)
 
 
@@ -338,9 +322,7 @@ class TensorVariable(VariableBase):
             self.meta = tensor
         else:
             raise InnerError(
-                "Required type(tensor) is paddle.Tensor or ProxyTensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
             )
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
@@ -410,15 +392,18 @@ class TensorVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
+        dtype = self.meta.dtype
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         return {
             "shape": self.meta.shape,
-            "dtype": DTYPE_ABBRS[self.meta.dtype],
+            "dtype": DTYPE_ABBRS[dtype],
             "stop_gradient": self.meta.stop_gradient,
             "var_name": self.var_name,
         }
 
     def getitem(self, key):
-        return self.graph.call_tensor_method('__getitem__', self, key)
+        return self.graph.call_tensor_method("__getitem__", self, key)
 
     def setitem(self, key, value):
         self.graph.add_global_guarded_variable(value)
@@ -502,16 +487,22 @@ class TensorVariable(VariableBase):
 
     def is_complex(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_cp_dtype = dtype in CP_DTYPE_ABBRS
         return ConstantVariable(is_cp_dtype, self.graph, DummyTracker([self]))
 
     def is_integer(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_int_dtype = dtype in INT_DTYPE_ABBRS
         return ConstantVariable(is_int_dtype, self.graph, DummyTracker([self]))
 
     def is_floating_point(self):
         dtype = self.meta.dtype
+        if isinstance(dtype, paddle.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
         is_fp_dtype = dtype in FP_DTYPE_ABBRS
         return ConstantVariable(is_fp_dtype, self.graph, DummyTracker([self]))
 
@@ -614,7 +605,12 @@ class ObjectVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        return {"value": self.value}
+        # NOTE(SigureMo): There are some objects that cannot be printed, such as
+        # uninitialized dataclass, we should fallback to the class name.
+        if printable(self.value):
+            return {"value": self.value}
+        else:
+            return {"value": f"instance {self.value.__class__.__name__}"}
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value

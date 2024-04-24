@@ -288,7 +288,7 @@ class FusedDropoutHelper {
                                     quant_max_bound,
                                     quant_min_bound);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }
@@ -332,7 +332,7 @@ class FusedDropoutHelper {
           d_bias,
           ctx);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }

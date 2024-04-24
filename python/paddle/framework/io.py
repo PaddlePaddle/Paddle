@@ -137,6 +137,8 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
+                if value.is_dense() and value.place.is_custom_place():
+                    value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
@@ -166,9 +168,13 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(
-                persistable_var_dict[var_name].cpu()
-            )
+            tmp_var = persistable_var_dict[var_name]
+            if tmp_var.is_dense() and tmp_var.place.is_custom_place():
+                load_param_dict[var_name] = np.array(
+                    paddle._C_ops.npu_identity(tmp_var, -1).cpu()
+                )
+            else:
+                load_param_dict[var_name] = np.array(tmp_var.cpu())
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -222,6 +228,8 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
+        if var.is_dense() and var.place.is_custom_place():
+            var = paddle._C_ops.npu_identity(var, -1)
         load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
@@ -365,7 +373,10 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self.cpu())
+        if self.is_dense() and self.place.is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
+        else:
+            data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
@@ -373,7 +384,10 @@ def _pickle_save(obj, f, protocol):
     def reduce_LoDTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        data = np.array(self._copy(p))
+        if self._place().is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
+        else:
+            data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -566,9 +580,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
-                    type(obj)
-                )
+                f"The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {type(obj)}."
             )
         return obj
 
@@ -628,9 +640,7 @@ def _save_lod_tensor(tensor, file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -649,9 +659,7 @@ def _load_lod_tensor(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_t, _seek
@@ -671,9 +679,7 @@ def _save_selected_rows(selected_rows, file_name):
             _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -694,9 +700,7 @@ def _load_selected_rows(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_sr, _seek
@@ -712,9 +716,7 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
-                type(obj)
-            )
+            f"When use_binary_format = True, `paddle.save`  expected Tensor, but received {type(obj)}."
         )
 
 
@@ -872,9 +874,7 @@ def save(obj, path, protocol=4, **configs):
 
     if not isinstance(config.use_binary_format, bool):
         raise TypeError(
-            "Type of `use_binary_format` should be bool, but received {}.".format(
-                type(config.use_binary_format)
-            )
+            f"Type of `use_binary_format` should be bool, but received {type(config.use_binary_format)}."
         )
 
     if config.use_binary_format:
@@ -1181,7 +1181,12 @@ def load(path, **configs):
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        return np.array(tensor._copy(p))
+                        if tensor._place().is_custom_place():
+                            return np.array(
+                                paddle._C_ops.npu_identity(tensor, -1)._copy(p)
+                            )
+                        else:
+                            return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)

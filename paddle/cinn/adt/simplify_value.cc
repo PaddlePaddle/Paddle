@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn::adt {
 
@@ -67,7 +67,7 @@ struct SimplifyRedundantBroadcastedIterator {
       const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 
@@ -368,7 +368,7 @@ struct SymbolicDim_SimplifyDotUndot {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 
@@ -415,7 +415,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 

@@ -555,7 +555,7 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -594,7 +594,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -1017,8 +1017,9 @@ void StaticShapeGroupScheduler::AllocateStorage() {
                        consumer_block_name)) {
         // TODO(BiynXu): Return error information to the front-end instead of
         // terminating the program.
-        LOG(FATAL) << "Fusion requires synchronization across blocks, but "
-                      "currently we do not support it.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Fusion requires synchronization across blocks, but "
+            "currently we do not support it."));
         break;
       } else if (IsCrossThread(store_indice_value,
                                load_indice_value,

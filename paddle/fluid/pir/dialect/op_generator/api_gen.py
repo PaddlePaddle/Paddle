@@ -105,7 +105,7 @@ AMP_LOGIC_TEMPLATE = """
         auto op_name = phi::TransToFluidOpName("{op_name}");
         paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}
-        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype("{op_name}", amp_values_vector);
+        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_values_vector);
         {new_inputs}
         {{
             paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
@@ -656,10 +656,12 @@ class CodeGen:
         input_list = op_info.input_name_list
         if not input_list:
             return (
-                f'VLOG(7) << " No AMP for {op_name} because it has no input. ";'
+                f'VLOG(5) << " No AMP for {op_name} because it has no input. ";'
             )
         if op_name.endswith(('_grad', '_grad_')):
-            return 'VLOG(7) << " No AMP for grad apis. ";'
+            return 'VLOG(5) << " No AMP for grad apis. ";'
+        if op_name.endswith('_') or op_name == 'cast':
+            return f'VLOG(5) << "No AMP for {op_name} because it is a inplace or cast api.";'
         return AMP_LOGIC_TEMPLATE.format(
             op_name=op_name,
             no_optional_inputs=self._gen_amp_no_optional_inputs(op_info),

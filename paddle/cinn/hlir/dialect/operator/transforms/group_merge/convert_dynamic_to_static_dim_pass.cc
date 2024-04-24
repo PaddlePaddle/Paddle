@@ -24,8 +24,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
-
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 PD_DECLARE_string(cinn_convert_dynamic_dim_to_static_dim);
 
@@ -182,10 +181,23 @@ class DynamicToStaticConverter {
     CHECK(shape_analysis_->HasShapeOrDataForValue(value));
     const auto& origin_shape = GetOriginValueShape(value);
     const auto& target_shape = GetTargetValueShape(value);
-    CHECK_EQ(origin_shape.size(), target_shape.size());
+    PADDLE_ENFORCE_EQ(
+        origin_shape.size(),
+        target_shape.size(),
+        phi::errors::InvalidArgument(
+            "The size of origin shape and target shape is not equal,"
+            "where the size of origin shape:%d but the size of target "
+            "shape:%d.",
+            origin_shape.size(),
+            target_shape.size()));
     for (std::size_t i = 0; i < origin_shape.size(); ++i) {
       if (origin_shape.at(i) == -1) {
-        CHECK_GT(target_shape.at(i), 0);
+        PADDLE_ENFORCE_GT(target_shape.at(i),
+                          0,
+                          phi::errors::InvalidArgument(
+                              "The size of target shape is incorrect."
+                              "Expected size is larger than 0, but receive %d.",
+                              target_shape.at(i)));
         update = true;
       } else {
         CHECK(origin_shape.at(i) == target_shape.at(i));

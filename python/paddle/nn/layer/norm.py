@@ -46,7 +46,7 @@ from ...framework import (
     no_grad,
 )
 from .. import functional as F
-from ..functional import batch_norm, instance_norm, layer_norm
+from ..functional import batch_norm, group_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
 from .layers import Layer
 
@@ -533,55 +533,17 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_or_pir_mode():
-            return _C_ops.group_norm(
-                input,
-                self.weight,
-                self.bias,
-                self._epsilon,
-                self._num_groups,
-                self._data_format,
-            )
-
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
+        return group_norm(
+            input,
+            self._num_groups,
+            self._epsilon,
+            self.weight,
+            self.bias,
+            self._data_format,
         )
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-
-        inputs = {'X': input}
-        if self.bias is not None:
-            inputs['Bias'] = self.bias
-        if self.weight is not None:
-            inputs['Scale'] = self.weight
-
-        # create output
-        group_norm_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype
-        )
-
-        self._helper.append_op(
-            type="group_norm",
-            inputs=inputs,
-            outputs={
-                "Y": group_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "groups": self._num_groups,
-                "data_layout": self._data_format,
-            },
-        )
-
-        return self._helper.append_activation(group_norm_out, None)
 
     def extra_repr(self):
-        return 'num_groups={}, num_channels={}, epsilon={}'.format(
-            self._num_groups, self._num_channels, self._epsilon
-        )
+        return f'num_groups={self._num_groups}, num_channels={self._num_channels}, epsilon={self._epsilon}'
 
 
 class LayerNorm(Layer):
@@ -609,7 +571,7 @@ class LayerNorm(Layer):
 
     Parameters:
         normalized_shape(int|list|tuple): Input shape from an expected input of
-            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            size ``[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`` .
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -627,7 +589,7 @@ class LayerNorm(Layer):
         - output: same shape as input x.
 
     Returns:
-        None
+        ``Tensor`` , the dimension is the same as :attr:`x`, but the internal values have been normalized by ``LayerNorm`` .
 
     Examples:
 
@@ -839,9 +801,7 @@ class _BatchNormBase(Layer):
         )
 
     def extra_repr(self):
-        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
-            self._num_features, self._momentum, self._epsilon
-        )
+        main_str = f'num_features={self._num_features}, momentum={self._momentum}, epsilon={self._epsilon}'
         if self._data_format != 'NCHW':
             main_str += f', data_format={self._data_format}'
         if self._name is not None:

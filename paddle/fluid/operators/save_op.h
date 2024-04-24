@@ -106,14 +106,14 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     auto* input_var = ctx.InputVar("X");
-    auto iname = ctx.InputNames("X").data();
+    std::vector<std::string> _iname = ctx.InputNames("X");
+    auto iname = _iname.data();
     PADDLE_ENFORCE_NOT_NULL(
         input_var,
         phi::errors::InvalidArgument(
             "The variable %s to be saved cannot be found.", iname));
 
     auto filename = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
 
     VLOG(4) << "save output file_path: " << filename;

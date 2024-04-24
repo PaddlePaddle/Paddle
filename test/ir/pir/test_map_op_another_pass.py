@@ -74,7 +74,7 @@ class TestDepthwiseConv2ConvPattern(PassTest):
                             x, conv2d_filter, groups=32, data_format="NCHW"
                         )
                         out = paddle.assign(depthwise_conv2d_out)
-                        self.pass_list = ['map_op_to_another_pass']
+                        self.pass_attr_list = [{'map_op_to_another_pass': {}}]
                         self.feeds = {
                             "x": np.random.random(x_shape).astype("float32"),
                         }

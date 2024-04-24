@@ -169,6 +169,8 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetExtraPaddingSize(size_t dev_id);
 
   // CCL
+  virtual void CCLCommName(ccl::CCLComm ccl_comm, char* comm_name);
+
   virtual void CCLDestroyComm(ccl::CCLComm ccl_comm);
 
   virtual void CCLCommInitRank(size_t num_ranks,

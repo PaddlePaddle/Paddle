@@ -184,8 +184,8 @@ std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
     const cinn::common::CINNValuePack &arg_pack,
     const std::vector<int> &output_shape,
     const cinn::common::Target &target) {
-  if (target.arch == Target::Arch::X86) {
-    CINN_NOT_IMPLEMENTED
+  if (!std::holds_alternative<common::NVGPUArch>(target.arch)) {
+    CINN_NOT_IMPLEMENTED;
   }
   std::vector<Expr> vec_ast;
   for (int i = 0; i < arg_pack.size(); i++) {
@@ -784,7 +784,8 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       }
       return loop_var_count;
     }
-    LOG(FATAL) << "Can't find var in tensor indexes!";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Can't find var in tensor indexes!"));
   };
   auto loop_var_count = get_loop_index(ir_sch.GetLoops(reduce_out->name).back(),
                                        ir_sch.GetBlock(reduce_out->name));
