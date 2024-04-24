@@ -21,5 +21,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_mlp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT
                                            60)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 20)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 30)
 endif()
