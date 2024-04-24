@@ -1010,7 +1010,6 @@ void ConstructAttrMapForRunProgram(
                         attr_end));
 
   PyObject* obj = nullptr;
-  attrs["testkey"] = std::string("testvalue");
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
     VLOG(1) << "Start Process " << arg_pos;
     Py_ssize_t key_len = 0;
