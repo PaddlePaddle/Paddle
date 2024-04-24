@@ -17,21 +17,46 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
 struct ValueDim {
   pir::Value v_;
   size_t idx_;
-  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {}
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
+  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
+    // Just get a related op to get the shape analysis. It can be value's
+    // upstream op (defining op) or downstream op (user op).
+    const auto get_related_op_from_value =
+        [](const pir::Value& v) -> pir::Operation* {
+      if (v.defining_op() != nullptr) {
+        return v.defining_op();
+      }
+      // For inputs of the program, the defining_op is nullptr, we use it's user
+      // as the related op.
+      PADDLE_ENFORCE_EQ(v.use_empty(),
+                        false,
+                        phi::errors::PreconditionNotMet(
+                            "Value is an input value, it should have a use."));
+      return v.first_use().owner();
+    };
+    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
+                          .Get(get_related_op_from_value(v)->GetParentProgram())
+                          .shared_from_this();
+  }
   ValueDim() = default;
   ValueDim(const ValueDim& v) = default;
   bool operator==(const ValueDim& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
 
-  size_t GetNumericValue() const {
-    return v_.type().dyn_cast<pir::DenseTensorType>().dims().at(idx_);
+  symbol::DimExpr GetSymbolicDim() const {
+    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
+  }
+
+  bool SymbolicEqualTo(const ValueDim& other) const {
+    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
   }
 
   std::string DebugStr() const {
@@ -41,6 +66,14 @@ struct ValueDim {
     oss << ", ";
     v_.defining_op()->Print(oss);
     return oss.str();
+  }
+
+  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
+    auto shape_analysis_ptr = shape_analysis_.lock();
+    PADDLE_ENFORCE_NOT_NULL(
+        shape_analysis_ptr,
+        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
+    return *shape_analysis_ptr;
   }
 };
 

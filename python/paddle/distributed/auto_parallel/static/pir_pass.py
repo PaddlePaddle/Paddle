@@ -29,19 +29,48 @@ def apply_partition_pass(program):
             assert len(op.operands()) == len(
                 op.dist_attr.operand_dist_attrs()
             ), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr.operand_dist_attrs()
             ):
+                prev_var = var.source()
                 if (
-                    var.source().is_dist_dense_tensor_type()
-                    and var.source().dist_attr() != operand_dist_attr
+                    prev_var.is_dist()
+                    and prev_var.dist_attr() != operand_dist_attr
                 ):
                     paddle.pir.set_insertion_point(op)
+                    # fold reshard
+                    if prev_var.get_defining_op().name() == 'dist_op.reshard':
+                        prev_reshard = prev_var.get_defining_op()
+                        prev_var = prev_reshard.operand_source(0)
+                        if prev_var.dist_attr() == operand_dist_attr:
+                            var.set_source(prev_var)
+                        else:
+                            reshard_var = paddle._C_ops.reshard_v2(
+                                prev_var, operand_dist_attr
+                            )
+                            var.set_source(reshard_var)
+                        if prev_reshard.result(0).use_empty():
+                            prev_reshard.get_parent_block().remove_op(
+                                prev_reshard
+                            )
+                        continue
                     # insert reshard
-                    reshard_var = paddle._pir_ops.reshard_v2(
-                        var.source(), operand_dist_attr
+                    reshard_var = paddle._C_ops.reshard_v2(
+                        prev_var, operand_dist_attr
                     )
                     var.set_source(reshard_var)
+            for var, result_dist_attr in zip(
+                op.results(), op.dist_attr.result_dist_attrs()
+            ):
+                if var.initialized() and var.dist_attr() != result_dist_attr:
+                    paddle.pir.set_insertion_point_after(op)
+                    old_dist_attr = var.dist_attr()
+                    var.update_dist_attr(result_dist_attr)
+                    # insert reshard
+                    reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
+                    var.replace_all_uses_with(reshard_var)
+                    reshard_var.get_defining_op().operand(0).set_source(var)
     return new_program
 
 

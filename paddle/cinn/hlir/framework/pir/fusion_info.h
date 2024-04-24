@@ -90,6 +90,9 @@ class FusionInfo {
   friend std::ostream &operator<<(std::ostream &os, const FusionInfo &info);
 
  private:
+  void ParseOpInfos(const OpLoweringGroup &group);
+  void ParseInputDimExprs(const OpLoweringGroup &group);
+
   std::vector<FusionOpInfo> op_infos_;
   std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
   std::size_t cached_hash_value_{0};
