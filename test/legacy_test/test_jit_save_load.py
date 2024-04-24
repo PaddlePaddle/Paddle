@@ -298,6 +298,27 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
         return self._linear_0(x) + self._linear_1(x) * self._scale
 
 
+class LinearNetWithNonLexicographicalOrderDict(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self._linear_u = Linear(in_size, out_size)
+        self._linear_v = Linear(in_size, out_size)
+        self._linear_w = Linear(in_size, out_size)
+        self._linear_p = Linear(in_size, out_size)
+
+    def forward(self, x):
+        u = self._linear_u(x)
+        v = self._linear_v(x)
+        w = self._linear_w(x)
+        p = self._linear_p(x)
+        return {
+            "u": u,
+            "v": v,
+            "w": w,
+            "p": p,
+        }
+
+
 def train(layer, input_size=784, label_size=1):
     # create optimizer
     sgd = paddle.optimizer.SGD(
@@ -461,6 +482,62 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         for dy_out, load_out in zip(dy_outs, load_outs):
             np.testing.assert_allclose(
                 dy_out.numpy(), load_out.numpy(), rtol=1e-05
+            )
+
+
+class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        base.enable_dygraph()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_output_same_order(self):
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
+
+        model = LinearNetWithNonLexicographicalOrderDict(8, 8)
+
+        dy_output_dict = model(x)
+
+        st_model = paddle.jit.to_static(model)
+        st_output_dict = st_model(x)
+
+        paddle.jit.save(st_model, "./test_jit_save_load")
+        loaded_model = paddle.jit.load("./test_jit_save_load")
+        loaded_output_seq = loaded_model(x)
+
+        self.assertTrue(len(dy_output_dict) == 4)
+        self.assertTrue(len(st_output_dict) == 4)
+        self.assertTrue(len(loaded_output_seq) == 4)
+
+        # 1. check whether output dict of dygraph and static graph is same
+        for (dy_key, dy_out), (st_key, st_out) in zip(
+            dy_output_dict.items(), st_output_dict.items()
+        ):
+            self.assertTrue(dy_key == st_key)
+            np.testing.assert_allclose(
+                dy_out.numpy(), st_out.numpy(), rtol=1e-05
+            )
+
+        # 2. check whether flattened output has same order of original dict
+        dy_output_seq = paddle.utils.flatten(dy_output_dict)
+
+        self.assertTrue(len(dy_output_seq) == 4)
+        for dy_out, flattened_dy_out in zip(
+            dy_output_dict.values(), dy_output_seq
+        ):
+            np.testing.assert_allclose(
+                dy_out.numpy(), flattened_dy_out.numpy(), rtol=1e-05
+            )
+
+        # 3. check whether flattened output of dygraph static graph has same order of dynamic's
+        for dy_out, loaded_out in zip(
+            dy_output_dict.values(), loaded_output_seq
+        ):
+            np.testing.assert_allclose(
+                dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
             )
 
 
