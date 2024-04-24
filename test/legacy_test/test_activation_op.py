@@ -1287,8 +1287,21 @@ class TestTanhshrinkComplex64(TestActivation):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log(x)
+                x_expect = np.log(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
 
-class TestTanhshrinkComplex128(TestActivation):
+
+class TestTanhshrinkComplex128(TestTanhshrinkComplex64):
     def init_dtype(self):
         self.dtype = np.complex128
 
