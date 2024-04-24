@@ -3851,15 +3851,15 @@ function run_setup(){
     fi
 
     if [[ -n "$AGILE_PULL_ID" && "$AGILE_PULL_ID" -ne 0 ]]; then
-      pip uninstall -y PyGithub
-      pip install github
-      pip install PyGithub
-      python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
-      if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
-           export WITH_CPP_TEST=OFF
-      else
-           export WITH_CPP_TEST=ON
-      fi
+        pip uninstall -y PyGithub
+        pip install github
+        pip install PyGithub
+        python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+        if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
+             export WITH_CPP_TEST=OFF
+        else
+             export WITH_CPP_TEST=ON
+        fi
     fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
