@@ -175,7 +175,12 @@ class RunnableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        return [self.get_value_name_map[v] for v in values]
+        return list(
+            filter(
+                lambda x: x is not None,
+                [self.get_value_name_map.get(v, None) for v in values],
+            )
+        )
 
     @cached_property
     def x_values(self):
@@ -219,12 +224,6 @@ class RunnableProgram:
             in_out_values[0], list
         ), "in_out_values must be tuple with len == 3"
         self.program = program
-        print("program", program)
-
-        self.program = paddle.base.libpaddle.pir.remove_no_need_shadow_output(
-            self.program
-        )
-
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
@@ -412,7 +411,7 @@ class RunnableProgram:
 
 class PartialProgramLayerHook:
     def before_append_backward(self, forward_program, src_vars):
-        ...
+        return forward_program, src_vars
 
     def after_append_backward(
         self,
@@ -423,10 +422,124 @@ class PartialProgramLayerHook:
         forward_end_idx,
         backward_start_idx,
     ):
-        ...
+        return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program):
-        ...
+        return infer_program
+
+
+class OperatorIndexPreservePass:
+    counter = 0
+
+    def __init__(self, indice, pass_fn):
+        self.name = f"preserved_index_{OperatorIndexPreservePass.counter}"
+        OperatorIndexPreservePass.counter += 1
+        self.pass_fn = pass_fn
+        self.indice = indice
+
+    def __call__(self, program):
+        paddle.base.libpaddle.pir.append_shadow_outputs(
+            program,
+            [program.global_block().ops[0].result(0)],
+            self.indice,
+            self.name,
+        )
+        program = self.pass_fn(program)
+        new_indice = 0
+        for op in program.global_block().ops:
+            if (
+                op.name() == "builtin.shadow_output"
+                and self.name in op.attrs()["output_name"]
+            ):
+                break
+            new_indice += 1
+        # remove forward_backward_seperator
+        if new_indice >= len(program.global_block().ops):
+            raise RuntimeError(
+                f"Can't find index preserve label {self.name}, don't remove it in pass."
+            )
+        program.global_block().remove_op(program.global_block().ops[new_indice])
+        self.indice = new_indice
+        return program
+
+
+class IndicesPreservePass:
+    def __init__(self, indices, pass_fn):
+        self.pass_fn = pass_fn
+        self.indices = indices
+        self.new_indices = None
+
+    def __call__(self, program):
+        passes = [self.pass_fn]
+        for idx, index in enumerate(self.indices):
+            passes.append(OperatorIndexPreservePass(index, passes[idx]))
+        new_program = passes[-1](program)
+
+        self.new_indices = [p.indice for p in passes[1:]]
+        return new_program
+
+
+class ValuePreservePass:
+    def __init__(self, values):
+        self.values = values
+
+    def apply(self, program):
+        raise RuntimeError("Not implemented.")
+
+    def __call__(self, program):
+        # create fake values for args
+        all_values = list(
+            filter(
+                lambda x: isinstance(x, Value) and not is_fake_value(x),
+                paddle.utils.flatten(self.values),
+            )
+        )
+        value2name = ValueDict(
+            {v: f"preserved_value_{idx}" for idx, v in enumerate(all_values)}
+        )
+        paddle.base.libpaddle.pir.append_shadow_outputs(
+            program,
+            all_values,
+            len(program.global_block().ops),
+            "preserved_value_",
+        )
+
+        # apply program pass
+        program = self.apply(program)
+
+        # collect new value
+        name2new_value = {}
+        to_remove_op = []
+        for op in program.global_block().ops:
+            if op.name() == "builtin.shadow_output":
+                name2new_value[op.attrs()["output_name"]] = op.operand(
+                    0
+                ).source()
+                if "preserved_value_" in op.attrs()["output_name"]:
+                    to_remove_op.append(op)
+
+        # remove old op
+        for op in to_remove_op:
+            program.global_block().remove_op(op)
+
+        # get new values
+        value2new_value = {
+            v: name2new_value.get(name, fake_value())
+            for v, name in value2name.items()
+        }
+        new_args = paddle.utils.map_structure(
+            lambda x: value2new_value[x]
+            if not is_fake_value(x)
+            else fake_value(),
+            self.values,
+        )
+        self.values = new_args
+        return program
+
+
+class RemoveUnusedParameters(ValuePreservePass):
+    def apply(self, program):
+        return paddle.base.libpaddle.pir.remove_no_need_shadow_output(program)
 
 
 class PartialProgramLayer:
@@ -875,7 +988,30 @@ class PartialProgramLayer:
         backward_start_op_index = (
             forward_end_idx + op_between_forward_and_backward
         )
+
         # construct a runnable program.
+        remove_unused_pass = RemoveUnusedParameters(
+            [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value]
+        )
+        forward_index_pass = IndicesPreservePass(
+            [forward_end_idx, backward_start_op_index, backward_end_op_index],
+            remove_unused_pass,
+        )
+        program = forward_index_pass(program)
+        (
+            inputs,
+            params,
+            targets,
+            x_grad_value,
+            p_grad_value,
+            o_grad_value,
+        ) = remove_unused_pass.values
+        (
+            forward_end_idx,
+            backward_start_op_index,
+            backward_end_op_index,
+        ) = forward_index_pass.new_indices
+
         return RunnableProgram(
             program,
             (inputs, params, targets),

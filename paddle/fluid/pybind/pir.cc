@@ -1475,6 +1475,13 @@ std::shared_ptr<Program> RemoveNoNeedShadowOutput(const Program &program) {
                             .dyn_cast<::pir::StrAttribute>()
                             .AsString();
 
+      if (fetch_name.find("preserved_index") != std::string::npos) {
+        continue;
+      }
+      if (fetch_name.find("preserved_value") != std::string::npos) {
+        continue;
+      }
+
       // std::cerr << "fetch name " << fetch_name << std::endl;
 
       auto shape1 =
@@ -1503,6 +1510,12 @@ std::shared_ptr<Program> RemoveNoNeedShadowOutput(const Program &program) {
                               .dyn_cast<::pir::StrAttribute>()
                               .AsString();
 
+        if (fetch_name.find("preserved_index") != std::string::npos) {
+          continue;
+        }
+        if (fetch_name.find("preserved_value") != std::string::npos) {
+          continue;
+        }
         // std::cerr << "fetch name " << fetch_name << std::endl;
 
         auto shape1 =

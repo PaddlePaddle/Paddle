@@ -86,6 +86,11 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
+    def get(self, key, default):
+        if not self.__contains__(key):
+            return default
+        return self._items[ValueWrapper(key)]
+
     def pop(self, key):
         if not self.__contains__(key):
             raise KeyError(f'{key} is not in ValueDict')
