@@ -36,7 +36,7 @@ from ..framework import (
 __all__ = []
 
 
-def argsort(x, axis=-1, descending=False, name=None):
+def argsort(x, axis=-1, descending=False, stable=False, name=None):
     """
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
@@ -49,6 +49,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -98,9 +101,29 @@ def argsort(x, axis=-1, descending=False, name=None):
              [[2, 0, 2, 0],
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
+
+            >>> x = paddle.to_tensor([1, 0]*40, dtype='float32')
+            >>> out1 = paddle.argsort(x, stable=False)
+            >>> out2 = paddle.argsort(x, stable=True)
+
+            >>> print(out1)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [55, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 1 , 57, 59, 61,
+             63, 65, 67, 69, 71, 73, 75, 77, 79, 17, 11, 13, 25, 7 , 3 , 27, 23, 19,
+             15, 5 , 21, 9 , 10, 64, 62, 68, 60, 58, 8 , 66, 14, 6 , 70, 72, 4 , 74,
+             76, 2 , 78, 0 , 20, 28, 26, 30, 32, 24, 34, 36, 22, 38, 40, 12, 42, 44,
+             18, 46, 48, 16, 50, 52, 54, 56])
+
+            >>> print(out2)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1 , 3 , 5 , 7 , 9 , 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35,
+             37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71,
+             73, 75, 77, 79, 0 , 2 , 4 , 6 , 8 , 10, 12, 14, 16, 18, 20, 22, 24, 26,
+             28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62,
+             64, 66, 68, 70, 72, 74, 76, 78])
     """
     if in_dynamic_or_pir_mode():
-        _, ids = _C_ops.argsort(x, axis, descending)
+        _, ids = _C_ops.argsort(x, axis, descending, stable)
         return ids
     else:
         check_variable_and_dtype(
@@ -129,7 +152,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return ids
 
@@ -500,7 +523,7 @@ def nonzero(x, as_tuple=False):
         return tuple(list_out)
 
 
-def sort(x, axis=-1, descending=False, name=None):
+def sort(x, axis=-1, descending=False, stable=False, name=None):
     """
 
     Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
@@ -514,6 +537,9 @@ def sort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -557,7 +583,7 @@ def sort(x, axis=-1, descending=False, name=None):
               [5. 7. 7. 9.]]]
     """
     if in_dynamic_or_pir_mode():
-        outs, _ = _C_ops.argsort(x, axis, descending)
+        outs, _ = _C_ops.argsort(x, axis, descending, stable)
         return outs
     else:
         helper = LayerHelper("sort", **locals())
@@ -571,7 +597,7 @@ def sort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return out
 

@@ -55,6 +55,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices);
 
@@ -223,6 +224,12 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale);
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
@@ -667,6 +674,8 @@ void SplitWithNumInferMeta(const MetaTensor& x_meta,
                            MetaConfig config = MetaConfig());
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const IntArray& axes,
