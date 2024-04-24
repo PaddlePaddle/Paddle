@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 from typing_extensions import TypeAlias
 
 from .. import Tensor
 
 DynamicShapeLike: TypeAlias = Union[
-    Tuple[Optional[Union[int, Tensor]], ...],
-    list[Optional[Union[int, Tensor]]],
+    Tuple[Union[int, Tensor, None], ...],
+    List[Union[int, Tensor, None]],
     Tensor,
 ]
 
@@ -33,10 +33,10 @@ ShapeLike: TypeAlias = Union[
 
 
 # for size parameters, eg, kernel_size, stride ...
-Size1: TypeAlias = Union[int, Tuple[int]]
-Size2: TypeAlias = Union[int, Tuple[int, int]]
-Size3: TypeAlias = Union[int, Tuple[int, int, int]]
-Size4: TypeAlias = Union[int, Tuple[int, int, int, int]]
-Size5: TypeAlias = Union[int, Tuple[int, int, int, int, int]]
-Size6: TypeAlias = Union[int, Tuple[int, int, int, int, int, int]]
-SizeN: TypeAlias = Union[int, Tuple[int, ...]]
+Size1: TypeAlias = Union[int, Tuple[int], List[int]]
+Size2: TypeAlias = Union[int, Tuple[int, int], List[int]]
+Size3: TypeAlias = Union[int, Tuple[int, int, int], List[int]]
+Size4: TypeAlias = Union[int, Tuple[int, int, int, int], List[int]]
+Size5: TypeAlias = Union[int, Tuple[int, int, int, int, int], List[int]]
+Size6: TypeAlias = Union[int, Tuple[int, int, int, int, int, int], List[int]]
+SizeN: TypeAlias = Union[int, Tuple[int, ...], List[int]]

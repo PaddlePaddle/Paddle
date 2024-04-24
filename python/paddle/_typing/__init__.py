@@ -19,6 +19,7 @@ from .basic import (
     NestedSequence as NestedSequence,
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
+    TensorOrTensors as TensorOrTensors,
 )
 
 # Device
