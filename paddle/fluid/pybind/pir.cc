@@ -1633,9 +1633,6 @@ SplitedResult SplitForwardBackward(
       std::string name = "input_" + std::to_string(counter++);
       if (forward_name_map.count(forward_value)) {
         name = forward_name_map.at(forward_value);
-        VLOG(1) << "contain name: " << name;
-      } else {
-        VLOG(1) << "not contain name: " << name;
       }
 
       backward_value_map[v] = backward_block.AddKwarg(name, v.type());

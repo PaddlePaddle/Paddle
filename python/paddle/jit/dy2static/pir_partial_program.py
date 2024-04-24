@@ -382,7 +382,7 @@ class RunnableProgram:
                         name_defining_op, new_name
                     )
                     if program2 is None:
-                        return
+                        continue
                     block = program2.global_block()
                     kwargs = block.kwargs()
                     if old_name in kwargs and new_name not in kwargs:
