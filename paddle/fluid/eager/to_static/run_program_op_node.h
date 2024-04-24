@@ -1084,7 +1084,6 @@ inline void PirRunProgramGradAPI(
   // Clear out and middles to avoid hold memory until backward finish.
   out.clear();
   middles.clear();
-  VLOG(1) << "out and middles clear end";
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
