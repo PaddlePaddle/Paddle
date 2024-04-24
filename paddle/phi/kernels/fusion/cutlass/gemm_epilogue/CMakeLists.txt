@@ -14,9 +14,8 @@ if(NOT DEFINED COMPUTE_CAPABILITY)
   )
 endif()
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/include")
-include_directories(
-  "${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/tools/util/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cutlass/tools/util/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
