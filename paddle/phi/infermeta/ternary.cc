@@ -385,10 +385,10 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
   auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
-  auto batch_size = q.dims()[0];
-  auto num_heads = q.dims()[2];
-  auto seqlen_q_rounded = round_multiple(q.dims()[1]);
-  auto seqlen_k_rounded = round_multiple(k.dims()[1]);
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_q_rounded = round_multiple(q.dims()[1]);
+  int seqlen_k_rounded = round_multiple(k.dims()[1]);
   if (softmax) {
     softmax->set_dtype(q.dtype());
     softmax->set_dims(
