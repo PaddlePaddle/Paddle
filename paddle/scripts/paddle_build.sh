@@ -289,7 +289,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-	-DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
+        -DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
@@ -3853,9 +3853,9 @@ function run_setup(){
     pip install -U PyGithub
     python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
     if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
-         export WITH_CPP_TEST=OFF
+        export WITH_CPP_TEST=OFF
     else
-	 export WITH_CPP_TEST=ON
+        export WITH_CPP_TEST=ON
     fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
