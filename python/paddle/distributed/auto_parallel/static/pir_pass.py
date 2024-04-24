@@ -23,7 +23,6 @@ register_reshard_funcs()
 
 partition_skip_op_list = ["builtin.combine"]
 
-
 def reshard_single_value(op, operand, attr):
     prev_var = operand.source()
     if prev_var.is_dist() and prev_var.dist_attr() != attr:

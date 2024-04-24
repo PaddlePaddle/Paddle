@@ -102,7 +102,6 @@ class TestReshardRToS:
             assert 'dist_op.reshard' not in new_ops
             assert 'dist_op.reshard' in old_ops
 
-
 if __name__ == '__main__':
     TestReshardRToS().run_test_case()
     TestReshardRToS().run_pir_test_case()
