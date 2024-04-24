@@ -176,7 +176,7 @@ void Program::Execute(
   for (auto& ins : instrs_) {
     ins->Run(name2podargs, false, stream, use_cache);
   }
-  if (instrs_[0]->target_.arch_is_gpu()) {
+  if (instrs_[0]->target_.arch_is_gpu() || instrs_[0]->target_.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(instrs_[0]->target_)->device_sync();
   }
@@ -195,7 +195,7 @@ void Program::ExecuteTest(int repeat_) {
       ins->Run();
     }
   }
-  if (instrs_[0]->target_.arch_is_gpu()) {
+  if (instrs_[0]->target_.arch_is_gpu() || instrs_[0]->target_.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(instrs_[0]->target_)->device_sync();
   }

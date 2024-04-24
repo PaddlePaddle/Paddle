@@ -23,6 +23,8 @@
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #elif defined(CINN_WITH_ROCM)
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#elif defined(CINN_WITH_SYCL)
+#include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
 #endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
@@ -128,7 +130,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     codegen_dev.Compile(ir::LoweredFunc(func));
     shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #elif defined(CINN_WITH_SYCL)
-    CINN_NOT_IMPLEMENTED
+    CodeGenSYCL_Dev codegen_dev(target_);
+    codegen_dev.Compile(ir::LoweredFunc(func));
+    shared_mem_bytes = Expr(0);
 #endif
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"

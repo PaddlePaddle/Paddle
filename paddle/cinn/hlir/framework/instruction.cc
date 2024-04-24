@@ -390,7 +390,7 @@ std::string Instruction::DumpInstruction() const {
 
 void Instruction::CheckResults(
     const std::map<std::string, cinn_pod_value_t>* name2podargs, void* stream) {
-  if (target_.arch_is_gpu()) {
+  if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target_)->stream_sync(stream);
   }

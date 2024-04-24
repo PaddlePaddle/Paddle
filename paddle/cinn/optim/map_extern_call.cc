@@ -56,7 +56,7 @@ void MapExternCall(Expr *e, Target target) {
       auto *node = expr->As<ir::Call>();
       CHECK(node);
       OptimizeConstantPow(node);
-      if (target.arch_is_gpu()) {
+      if (target.arch_is_gpu() || target.arch_is_mlu()) {
         DealWithGpuintrinsics(node, expr);
       } else {
         DealWithCpuIntrinsics(node, expr);

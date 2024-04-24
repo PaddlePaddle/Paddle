@@ -91,7 +91,7 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   int device_id = 0;
-  if (context_->target.arch_is_gpu()) {
+  if (context_->target.arch_is_gpu() || context_->target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     device_id = BackendAPI::get_backend(context_->target)->get_device();
   }
@@ -159,7 +159,7 @@ void ParallelCompiler::RunTask() {
 
 void ParallelCompiler::LaunchTask() {
   int device_id = 0;
-  if (context_->target.arch_is_gpu()) {
+  if (context_->target.arch_is_gpu() || context_->target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     device_id = BackendAPI::get_backend(context_->target)->get_device();
   }

@@ -81,7 +81,7 @@ cinn_buffer_t *CreateBufferFromNumpy(
     int align = 0) {
   if (target == cinn::common::DefaultHostTarget()) {
     return CreateBufferFromNumpy(data, cinn_x86_device);
-  } else if (target.arch_is_gpu()) {
+  } else if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     std::vector<int> shape;
     std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));

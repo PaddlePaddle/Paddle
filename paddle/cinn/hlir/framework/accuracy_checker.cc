@@ -273,7 +273,7 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
 
 template <typename T>
 void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
-  if (target_.arch_is_gpu()) {
+  if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target_)->memcpy(
         dst, src, numel * sizeof(T), BackendAPI::MemcpyType::DeviceToHost);

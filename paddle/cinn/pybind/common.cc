@@ -81,7 +81,8 @@ void BindTarget(py::module *m) {
       .value("ARM", Target::Arch::ARM)
       .value("NVGPU", Target::Arch::NVGPU)
       .value("AMDGPU", Target::Arch::AMDGPU)
-      .value("IntelGPU", Target::Arch::IntelGPU);
+      .value("IntelGPU", Target::Arch::IntelGPU)
+      .value("CambriconMLU", Target::Arch::CambriconMLU);
 
   m->def(
       "SYCLTarget", &common::SYCLTarget, py::arg("arch") = Target::Arch::Unk);

@@ -31,7 +31,7 @@ namespace cinn {
 namespace backends {
 
 const std::string &CodeGenSYCL_Dev::GetSourceHeader() {
-  std::string source_header =
+  static std::string source_header =
       R"(#include <sycl/sycl.hpp>
 #include "cinn_sycl_runtime_source.h"
 typedef sycl::half float16;
@@ -118,7 +118,7 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
       ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
       if (block_dim.is_constant()) {
         launch_bounds_max_work_group_size +=
-            std::to_string(block_dim.get_constant());
+            std::to_string(block_dim.as_int64());
         if (i < 2) {
           launch_bounds_max_work_group_size += ", ";
         }
@@ -145,18 +145,18 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 void CodeGenSYCL_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") ||
-      utils::Startswith(op->name, "blockIdx")) {
-    if (utils::Startswith(op->name, "threadIdx")) {
+  if (utils::StartsWith(op->name, "threadIdx") ||
+      utils::StartsWith(op->name, "blockIdx")) {
+    if (utils::StartsWith(op->name, "threadIdx")) {
       str_ += "(int)item.get_local_id(";
     } else {
       str_ += "(int)item.get_group(";
     }
-    if (utils::Endswith(op->name, "x")) {
+    if (utils::EndsWith(op->name, "x")) {
       str_ += std::to_string(2);
-    } else if (utils::Endswith(op->name, "y")) {
+    } else if (utils::EndsWith(op->name, "y")) {
       str_ += std::to_string(1);
-    } else if (utils::Endswith(op->name, "z")) {
+    } else if (utils::EndsWith(op->name, "z")) {
       str_ += std::to_string(0);
     }
     str_ += ")";
@@ -309,7 +309,7 @@ void CodeGenSYCL_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     case ir::MemoryType::GPUShared: {
       str_ += "auto ";
       str_ += buffer->name;
-      str_ += " = *sycl::ext::oneapi::group_local_memory<";
+      str_ += " = *sycl::group_local_memory<";
       str_ += GetTypeRepr(buffer->dtype);
       str_ += "[ ";
       Expr buffer_size(1);
@@ -335,6 +335,7 @@ void CodeGenSYCL_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
 }
 
 void CodeGenSYCL_Dev::Visit(const ir::Call *op) {
+  VLOG(3) << "CodeGenSYCL visiting call op: " << op->name;
   if (op->name == "__syncthreads") {
     str_ += "sycl::group_barrier(item.get_group())";
     return;
@@ -397,7 +398,7 @@ void CodeGenSYCL_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(op->type().customized_type(),
+      utils::StartsWith(op->type().customized_type(),
                         common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {

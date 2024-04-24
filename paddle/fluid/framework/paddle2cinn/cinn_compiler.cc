@@ -316,9 +316,9 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << string::join_strings(fetch_ids, ',');
 
   auto cinn_graph = Optimize(&frontend_program, fetch_ids, target);
-  VLOG(4) << "-- The " << compiled_num << "-th compilation ("
-          << target.arch_str() << "), and its related graph:\n"
-          << cinn_graph->Visualize();
+  // VLOG(4) << "-- The " << compiled_num << "-th compilation ("
+  //         << target.arch_str() << "), and its related graph:\n"
+  //         << cinn_graph->Visualize();
 
   auto scope = BuildScope(target, cinn_graph);
   CompilationContext context(cinn_graph, scope, target);

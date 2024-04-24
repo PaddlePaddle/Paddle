@@ -110,7 +110,7 @@ class Instruction {
         auto& pod_args = args_cached_[idx];
         CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first "
                                 "by calling SetLoweredFunc method";
-        if (target_.arch_is_gpu()) {
+        if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
           using cinn::runtime::BackendAPI;

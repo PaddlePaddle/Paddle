@@ -131,7 +131,7 @@ void BindFramework(pybind11::module *m) {
                std::memcpy(mutable_data,
                            t->data<void>(),
                            t->shape().numel() * t->type().bytes());
-             } else if (target.arch_is_gpu()) {
+             } else if (target.arch_is_gpu() || target.arch_is_mlu()) {
                using cinn::runtime::BackendAPI;
                BackendAPI::get_backend(target)->memcpy(
                    mutable_data,
@@ -172,7 +172,7 @@ void BindFramework(pybind11::module *m) {
                std::memcpy(array_data,
                            self->data<void>(),
                            self->shape().numel() * self->type().bytes());
-             } else if (target.arch_is_gpu()) {
+             } else if (target.arch_is_gpu() || target.arch_is_mlu()) {
                using cinn::runtime::BackendAPI;
                BackendAPI::get_backend(target)->memcpy(
                    array_data,
@@ -218,7 +218,7 @@ void BindFramework(pybind11::module *m) {
               std::memcpy(data,
                           array.data(),
                           self->shape().numel() * self->type().bytes());
-            } else if (target.arch_is_gpu()) {
+            } else if (target.arch_is_gpu() || target.arch_is_mlu()) {
               using cinn::runtime::BackendAPI;
               BackendAPI::get_backend(target)->memcpy(
                   reinterpret_cast<void *>(data),

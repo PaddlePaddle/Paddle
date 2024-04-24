@@ -322,7 +322,7 @@ void Graph::VisualizeGroupedGraph(
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
     int device_id = 0;
-    if (this->target_.arch_is_gpu()) {
+    if (this->target_.arch_is_gpu() || this->target_.arch_is_mlu()) {
       using cinn::runtime::BackendAPI;
       device_id = BackendAPI::get_backend(this->target_)->get_device();
     }

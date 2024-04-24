@@ -74,12 +74,11 @@ std::string Compiler::CompileToSo(const std::string& source_code,
   command += " " + device_arch_options + " " + cxx_compile_options + " " +
              source_file_path + " -o " + shared_lib_path;
   // compile
-  LOG(INFO) << "compile command: " << command;
   VLOG(2) << "compile command: " << command;
   PADDLE_ENFORCE_EQ(system(command.c_str()),
                     0,
                     ::common::errors::External(
-                        "Following compile command failed:\n%s", commond));
+                        "Following compile command failed:\n%s", command));
   return shared_lib_path;
 }
 
@@ -101,9 +100,12 @@ void Compiler::SetDeviceArchOptions(const Target::Arch gpu_type) {
     case Target::Arch::IntelGPU:
       device_arch_options = "-fsycl";
       break;
+    case Target::Arch::CambriconMLU:
+      device_arch_options = "-fsycl -fsycl-targets=mlisa-cambricon-bang -fsycl-libspirv-path=/workspace/llvm-mlu/libclc/build/lib/clc/builtins.opt.libspirv-mlisa--.bc";
+      break;
     default:
       PADDLE_THROW(::common::errors::Fatal(
-          "valid gpu value in target! possible options: intel/amd/nvidia."));
+          "valid gpu value in target! possible options: intel/amd/nvidia/cambricon."));
   }
 }
 

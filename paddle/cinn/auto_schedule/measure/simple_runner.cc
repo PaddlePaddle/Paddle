@@ -95,7 +95,7 @@ static void InitTensorData(Tensor tensor,
                            bool init_with_zero) {
   int mem_size = tensor->shape().numel() * tensor->type().bytes();
   auto* tensor_data = tensor->mutable_data(target, tensor->type());
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     if (init_with_zero) {
       BackendAPI::get_backend(target)->memset(tensor_data, 0, mem_size);
@@ -230,7 +230,7 @@ MeasureResult SimpleRunner::Run(const MeasureInput& input,
     for (int i = 0; i < repeat_times_; ++i) {
       instr->Run(&execution_args);
     }
-    if (instr->target_.arch_is_gpu()) {
+    if (instr->target_.arch_is_gpu() || instr->target_.arch_is_mlu()) {
       using cinn::runtime::BackendAPI;
       BackendAPI::get_backend(instr->target_)->device_sync();
     }

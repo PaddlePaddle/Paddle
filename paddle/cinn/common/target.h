@@ -44,7 +44,7 @@ struct Target {
     AMDGPU,
     IntelGPU,
     HygonDCU,
-    CambrianMLU,
+    CambriconMLU,
   };
 
   enum class Language : int {
@@ -94,8 +94,7 @@ struct Target {
   }
   // gpu use SIMT
   bool arch_is_gpu() const;
-  // xpu use vector/metric intrinsics
-  bool arch_is_xpu() const;
+  bool arch_is_mlu() const;
   //! Get the Runtime architecture, it is casted to integer to avoid header file
   //! depending.
   int runtime_arch() const;

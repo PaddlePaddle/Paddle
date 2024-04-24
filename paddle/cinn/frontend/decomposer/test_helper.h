@@ -84,7 +84,7 @@ void CopyFromVector(const std::vector<T>& vec,
 
   size_t numel = tensor->shape().numel();
   CHECK_EQ(vec.size(), numel);
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target)->memcpy(
         data,

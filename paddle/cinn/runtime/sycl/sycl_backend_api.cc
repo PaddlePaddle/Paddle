@@ -29,21 +29,23 @@ Target::Arch SYCLBackendAPI::Init(Target::Arch arch) {
   sycl::backend backend;
   switch (arch) {
     case Target::Arch::Unk:
-      SYCL_CALL(backend =
-                    sycl::device::get_devices(sycl::info::device_type::gpu)[0]
-                        .get_backend());
+      backend = sycl::device::get_devices(sycl::info::device_type::gpu)[0].get_backend();
       break;
-    case Target::Arch::NVGPU:
-      backend = sycl::backend::ext_oneapi_cuda;
-      break;
-    case Target::Arch::AMDGPU:
-      backend = sycl::backend::ext_oneapi_hip;
-      break;
-    case Target::Arch::IntelGPU:
-      backend = sycl::backend::ext_oneapi_level_zero;
+    // case Target::Arch::NVGPU:
+    //   backend = sycl::backend::ext_oneapi_cuda;
+    //   break;
+    // case Target::Arch::AMDGPU:
+    //   backend = sycl::backend::ext_oneapi_hip;
+    //   break;
+    // case Target::Arch::IntelGPU:
+    //   backend = sycl::backend::ext_oneapi_level_zero;
+    //   break;
+    case Target::Arch::CambriconMLU:
+      backend = sycl::backend::cnrt;
       break;
     default:
-      LOG(FATAL) << "SYCL Not supported arch:" << arch;
+      break;
+      // LOG(FATAL) << "SYCL Not supported arch:" << arch;
   }
   // look for matched devices
   for (auto device : sycl::device::get_devices(sycl::info::device_type::gpu)) {
@@ -52,23 +54,26 @@ Target::Arch SYCLBackendAPI::Init(Target::Arch arch) {
     }
   }
   if (this->devices.size() == 0) {
-    LOG(FATAL) << "No valid gpu device matched given arch:" << arch;
+    // LOG(FATAL) << "No valid gpu device matched given arch:" << arch;
   }
   this->contexts.resize(this->devices.size(), nullptr);
   this->queues.resize(this->devices.size());
   // sycl::backend -> Target::Arch
   switch (backend) {
-    case sycl::backend::ext_oneapi_cuda:
-      this->arch = Target::Arch::NVGPU;
-      break;
-    case sycl::backend::ext_oneapi_hip:
-      this->arch = Target::Arch::AMDGPU;
-      break;
-    case sycl::backend::ext_oneapi_level_zero:
-      this->arch = Target::Arch::IntelGPU;
-      break;
+    // case sycl::backend::ext_oneapi_cuda:
+    //   this->arch = Target::Arch::NVGPU;
+    //   break;
+    // case sycl::backend::ext_oneapi_hip:
+    //   this->arch = Target::Arch::AMDGPU;
+    //   break;
+    // case sycl::backend::ext_oneapi_level_zero:
+    //   this->arch = Target::Arch::IntelGPU;
+    //   break;
+    case sycl::backend::cnrt:
+      this->arch = Target::Arch::CambriconMLU;
     default:
-      LOG(FATAL) << "SYCL Not supported arch:" << arch;
+      break;
+      // LOG(FATAL) << "SYCL Not supported arch:" << arch;
   }
   initialized_ = true;
   return this->arch;
@@ -114,7 +119,7 @@ std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(
     case DeviceProperty::MaxBlockDims: {
       sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<sycl::info::device::max_work_item_sizes<3>>();
+              .get_info<sycl::info::device::max_work_item_sizes>();
       rv = std::array<int, 3>{max_work_item_sizes[2],
                               max_work_item_sizes[1],
                               max_work_item_sizes[0]};
@@ -237,26 +242,30 @@ std::string SYCLBackendAPI::GetGpuVersion() {
   sycl::device device = this->devices[now_device_id];
   sycl::backend backend = device.get_backend();
   switch (backend) {
-    case sycl::backend::ext_oneapi_cuda: {
-      std::string gpu_version = "sm_";
-      std::string version_with_point =
-          device.get_info<sycl::info::device::backend_version>();
-      size_t pos = version_with_point.find(".");
-      if (pos != std::string::npos) {
-        gpu_version +=
-            version_with_point.substr(0, pos) +
-            version_with_point.substr(pos + 1, version_with_point.size());
-      }
-      return gpu_version;
+    // case sycl::backend::ext_oneapi_cuda: {
+    //   std::string gpu_version = "sm_";
+    //   std::string version_with_point =
+    //       device.get_info<sycl::info::device::backend_version>();
+    //   size_t pos = version_with_point.find(".");
+    //   if (pos != std::string::npos) {
+    //     gpu_version +=
+    //         version_with_point.substr(0, pos) +
+    //         version_with_point.substr(pos + 1, version_with_point.size());
+    //   }
+    //   return gpu_version;
+    // }
+    // case sycl::backend::ext_oneapi_hip: {
+    //   std::string gpu_version = device.get_info<sycl::info::device::version>();
+    //   size_t pos = gpu_version.find(":");
+    //   if (pos != std::string::npos) gpu_version = gpu_version.substr(0, pos);
+    //   return gpu_version;
+    // }
+    // case sycl::backend::ext_oneapi_level_zero:
+    //   return "";
+    case sycl::backend::cnrt: {
+      std::string cnrt_version = device.get_info<sycl::info::device::driver_version>();
+      return cnrt_version;
     }
-    case sycl::backend::ext_oneapi_hip: {
-      std::string gpu_version = device.get_info<sycl::info::device::version>();
-      size_t pos = gpu_version.find(":");
-      if (pos != std::string::npos) gpu_version = gpu_version.substr(0, pos);
-      return gpu_version;
-    }
-    case sycl::backend::ext_oneapi_level_zero:
-      return "";
     default:
       LOG(ERROR) << "unknown sycl backend!";
   }

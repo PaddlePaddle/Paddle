@@ -37,7 +37,7 @@ void SetRandInt(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<int>(target);
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target)->memcpy(
         data,
@@ -70,7 +70,7 @@ void SetRandData<int>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target)->memcpy(
         data,
@@ -103,7 +103,7 @@ void SetRandData<float>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target)->memcpy(
         data,
@@ -124,7 +124,7 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
                              const cinn::common::Target& target) {
   auto size = tensor->shape().numel();
   std::vector<T> data(size);
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(target)->memcpy(
         data.data(),

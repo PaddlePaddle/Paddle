@@ -225,7 +225,7 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch_is_gpu()) {
+              if (target.arch_is_gpu() || target.arch_is_mlu()) {
                 using cinn::runtime::BackendAPI;
                 BackendAPI::get_backend(target)->memcpy(
                     data,
@@ -320,7 +320,7 @@ void BindFrontend(pybind11::module *m) {
                        "The size of tensor [%d] is different with "
                        "the input data's size! Please check.",
                        tensor_inputs[i]->id));
-               if (target.arch_is_gpu()) {
+               if (target.arch_is_gpu() || target.arch_is_mlu()) {
                  using cinn::runtime::BackendAPI;
                  BackendAPI::get_backend(target)->memcpy(
                      reinterpret_cast<void *>(data),
@@ -371,7 +371,7 @@ void BindFrontend(pybind11::module *m) {
                        "The size of tensor [%d] is different with "
                        "the input data's size! Please check.",
                        tensor_inputs[i]->id));
-               if (target.arch_is_gpu()) {
+               if (target.arch_is_gpu() || target.arch_is_mlu()) {
                  using cinn::runtime::BackendAPI;
                  BackendAPI::get_backend(target)->memcpy(
                      reinterpret_cast<void *>(data),

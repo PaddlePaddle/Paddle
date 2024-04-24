@@ -200,7 +200,7 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch_is_gpu()) {
+  if (context_->target.arch_is_gpu() || context_->target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(context_->target)
         ->memcpy(tdata, data, size, BackendAPI::MemcpyType::HostToDevice);
@@ -215,7 +215,7 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch_is_gpu()) {
+  if (context_->target.arch_is_gpu() || context_->target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(context_->target)
         ->memcpy(data, tdata, size, BackendAPI::MemcpyType::DeviceToHost);

@@ -60,7 +60,7 @@ bool Target::arch_is_gpu() const {
   return (arch == Arch::NVGPU || arch == Arch::AMDGPU ||
           arch == Arch::IntelGPU);
 }
-bool Target::arch_is_xpu() const { return (arch == Arch::CambrianMLU); }
+bool Target::arch_is_mlu() const { return (arch == Arch::CambriconMLU); }
 
 int Target::runtime_arch() const {
   switch (arch) {
@@ -225,8 +225,8 @@ std::ostream &operator<<(std::ostream &os, Target::Arch arch) {
     case Target::Arch::HygonDCU:
       os << "HygonDCU";
       break;
-    case Target::Arch::CambrianMLU:
-      os << "CambrianMLU";
+    case Target::Arch::CambriconMLU:
+      os << "CambriconMLU";
       break;
   }
   return os;
@@ -342,6 +342,8 @@ const Target &DefaultGPUTarget() {
   return DefaultNVGPUTarget();
 #elif defined(CINN_WITH_ROCM)
   return DefaultROCMTarget();
+#elif defined(CINN_WITH_SYCL)
+  return SYCLTarget();
 #endif
 }
 

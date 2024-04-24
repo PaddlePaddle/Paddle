@@ -27,8 +27,6 @@ namespace Sycl {
 inline const char* SYCLGetErrorString(std::error_code error_code) {
   sycl::errc error_code_value = static_cast<sycl::errc>(error_code.value());
   switch (error_code_value) {
-    case sycl::errc::success:
-      return "SUCCESS";
     case sycl::errc::runtime:
       return "RUNTIME ERROR";
     case sycl::errc::kernel:
@@ -71,11 +69,9 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
     try {                                                   \
       func;                                                 \
     } catch (const sycl::exception& e) {                    \
-      if (e.code() != sycl::errc::success) {                \
-        LOG(FATAL) << "SYCL Error, error code"              \
-                   << " = " << SYCLGetErrorString(e.code()) \
-                   << ", message:" << e.what();             \
-      }                                                     \
+      LOG(FATAL)  << "SYCL Error, error code"               \
+                  << " = " << e.get_cl_code()               \
+                  << ", message:" << e.what();              \
     }                                                       \
   }
 

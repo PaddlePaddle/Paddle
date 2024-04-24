@@ -121,7 +121,7 @@ bool MemcpyToHost(void* dst,
         "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
     return false;
 #endif
-  } else if (input_target.arch_is_gpu()) {
+  } else if (input_target.arch_is_gpu() || input_target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(input_target)
         ->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToHost);
@@ -157,7 +157,7 @@ bool MemcpyToDevice(void* dst,
         "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
     return false;
 #endif
-  } else if (input_target.arch_is_gpu()) {
+  } else if (input_target.arch_is_gpu() || input_target.arch_is_mlu()) {
     using cinn::runtime::BackendAPI;
     BackendAPI::get_backend(input_target)
         ->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToDevice);
@@ -193,7 +193,7 @@ void CheckAssertTrue(const bool* x,
   // raise error information
   if (error_num > 0) {
     std::string error_info = "[AssertTrue] Check failed!\n";
-    error_info += "- target: " + target.arch_str() + "\n";
+    // error_info += "- target: " + target.arch_str() + "\n";
     error_info += "- assert false number: " + std::to_string(error_num) + "\n";
     error_info += "- first false offset: " + std::to_string(first_diff) + "\n";
     error_info += "- group message:\n" + msg;
