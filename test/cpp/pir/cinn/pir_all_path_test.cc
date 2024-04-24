@@ -71,7 +71,7 @@ static void RunAndCheckResult(::pir::Program* program,
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.EnableIRPrinting();

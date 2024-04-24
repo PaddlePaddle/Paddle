@@ -56,10 +56,10 @@ class AddYieldStoreInFusionOpPattern
   }
 };
 
-class AddStoreInFusionOpPass : public pir::Pass {
+class AddStoreInGroupOpPass : public pir::Pass {
  public:
-  AddStoreInFusionOpPass()
-      : pir::Pass("add_store_in_fusion_op", /*opt_level=*/1) {}
+  AddStoreInGroupOpPass()
+      : pir::Pass("add_store_in_group_op", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -94,8 +94,8 @@ class AddStoreInFusionOpPass : public pir::Pass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-std::unique_ptr<pir::Pass> CreateAddStoreInFusionOpPass() {
-  return std::make_unique<AddStoreInFusionOpPass>();
+std::unique_ptr<pir::Pass> CreateAddStoreInGroupOpPass() {
+  return std::make_unique<AddStoreInGroupOpPass>();
 }
 
 }  // namespace ir
