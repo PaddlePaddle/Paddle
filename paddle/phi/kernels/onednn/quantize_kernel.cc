@@ -86,13 +86,11 @@ void QuantOpKernel(const Context& dev_ctx,
   auto& astream = phi::OneDNNContext::tls().get_stream();
 
   auto scales_md = dnnl::memory::desc(
-      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::input);
-  auto scales_mem =
-      dnnl::memory(scales_md,
-                   dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<float>(&quantization_scale));
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+  auto scales_mem = dnnl::memory(
+      scales_md, dev_ctx.GetEngine(), phi::funcs::to_void_cast<float>(&scale));
   auto zero_points_md = dnnl::memory::desc(
-      {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::input);
+      {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
   auto zero_points_mem =
       dnnl::memory(zero_points_md,
                    dev_ctx.GetEngine(),
