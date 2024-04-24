@@ -29,7 +29,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit_;
 
  public:
-  SelfAttentionFusePattern(std::string self_attn_name, uint32_t benefit)
+  SelfAttentionFusePattern(const std::string &self_attn_name, uint32_t benefit)
       : self_attn_name_(self_attn_name), benefit_(benefit) {}
 
   std::string name() const override { return "SelfAttentionFusePattern"; }
@@ -37,11 +37,6 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-#if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
-    !defined(PADDLE_WITH_DNNL)
-    LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";
-    return;
-#endif
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     const auto &transpose_0 = pat.Op(paddle::dialect::TransposeOp::name(),
@@ -162,7 +157,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
 class SelfAttentionFusePass : public pir::PatternRewritePass {
  public:
   SelfAttentionFusePass()
-      : pir::PatternRewritePass("matmul_elementwise_add_fuse_pass", 3) {}
+      : pir::PatternRewritePass("self_attention_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -171,6 +166,15 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
         context, paddle::dialect::SelfDpAttentionOp::name(), 1));
 
     return ps;
+  }
+
+  bool CanApplyOn(pir::Operation *op) const {
+#if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
+    !defined(PADDLE_WITH_DNNL)
+    LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";
+    return false;
+#endif
+    return op->num_regions() > 0;
   }
 };
 
