@@ -1743,7 +1743,10 @@ static void inline CreateVariableIfNotExist(
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(
           common::make_ddim(phi::vectorize(GetValueDims(value))));
-      tensor_temp->mutable_data(exe->GetPlace(), GetValueDtype(value));
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(exe->GetPlace());
+      dev_ctx->Alloc(tensor_temp, GetValueDtype(value));
     }
   }
   return;
