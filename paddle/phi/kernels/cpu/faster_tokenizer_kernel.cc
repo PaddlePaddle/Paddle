@@ -105,6 +105,7 @@ class PhiVector : public phi::ExtendedTensor,
 // recommend widely use it. Because faster_tokenizer_op may be deleted in the
 // future and this class will be deleted.
 
+/*
 class Vocab : public phi::ExtendedTensor,
               public phi::TypeInfoTraits<phi::TensorBase, Vocab> {
  public:
@@ -173,6 +174,7 @@ class Vocab : public phi::ExtendedTensor,
  private:
   std::unordered_map<std::wstring, std::int32_t> data_;
 };
+*/
 
 // Note(YuanRisheng): PhiVector is essentially a vector that only used for PHI
 // Kernel. It can be used when you define a non-tensor type that needs to be
@@ -797,7 +799,7 @@ void FasterTokenizerKernel(
     int max_seq_len,
     bool pad_to_max_seq_len,
     DenseTensor* input_ids,
-    DenseTensor* segment_ids, ) {
+    DenseTensor* segment_ids) {
   auto* seg_ids = segment_ids;
 
   if (text_pair && text.size() != text_pair.size()) {
