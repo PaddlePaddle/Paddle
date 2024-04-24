@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -76,9 +76,9 @@ void QuantOpKernel(const Context& dev_ctx,
       x_tz, input.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      input->mem_desc(), phi::funcs::to_void_cast(input->data<T>()));
+      input.mem_desc(), phi::funcs::to_void_cast(input.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      output, input->mem_desc(), dev_ctx.GetPlace());
+      output, input.mem_desc(), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
