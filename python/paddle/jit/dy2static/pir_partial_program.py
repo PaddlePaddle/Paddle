@@ -175,12 +175,7 @@ class RunnableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        return list(
-            filter(
-                lambda x: x is not None,
-                [self.get_value_name_map.get(v, None) for v in values],
-            )
-        )
+        return [self.get_value_name_map.get(v, "FakeVar") for v in values]
 
     @cached_property
     def x_values(self):
