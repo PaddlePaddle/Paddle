@@ -587,11 +587,10 @@ def load_pir(program, model_path, executor=None, var_list=None):
             opt_file_name
         ), f"Optimizer file [{opt_file_name}] not exits"
 
-        # TODO(chenzhiyang):
-        # if executor:
-        #     paddle.base.core._create_loaded_parameter(
-        #         optimizer_param_list, global_scope(), executor._default_executor
-        #     )
+        if executor:
+            paddle.base.libpaddle.pir.create_loaded_parameter(
+                optimizer_param_list, global_scope(), executor._default_executor
+            )
 
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')

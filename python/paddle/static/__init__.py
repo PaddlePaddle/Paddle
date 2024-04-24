@@ -67,7 +67,6 @@ from .io import (
 from .nn.common import ExponentialMovingAverage, py_func
 from .nn.control_flow import Print
 from .nn.metric import accuracy, auc, ctr_metric_bundle
-from .pir_io import get_pir_parameters
 
 __all__ = [
     'append_backward',
@@ -115,5 +114,4 @@ __all__ = [
     'create_parameter',
     'set_ipu_shard',
     'ctr_metric_bundle',
-    'get_pir_parameters',
 ]

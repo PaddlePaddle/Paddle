@@ -515,10 +515,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 fetch_list=[out],
             )
 
-        # with paddle.pir_utils.IrGuard():
-        #     pir_program = paddle.static.Program()
-        #     with paddle.static.program_guard(pir_program):
-        #         self.assertRaises(ValueError, test_shape_type)
+        # TODO(chenzhiyang): pir test_shape_dtype
 
 
 class TestFillConstantOp_ValueTensorBf16(OpTest):

@@ -923,6 +923,7 @@ class TestVariableInit(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
+    @test_with_pir_api
     def test_variable_init(self):
         x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
         y = paddle.static.nn.fc(x, 10)
@@ -957,13 +958,21 @@ class TestVariableInit(unittest.TestCase):
 
         place = self.set_place()
         exe = base.Executor(place)
-        parameter_list = list(
-            filter(paddle.framework.is_parameter, program.list_vars())
-        )
-
-        base.core._create_loaded_parameter(
-            parameter_list, new_scope, exe._default_executor
-        )
+        if in_pir_mode():
+            parameter_list = []
+            for var in program.list_vars():
+                if var.is_parameter and var.persistable:
+                    parameter_list.append(var)
+            paddle.base.libpaddle.pir.create_loaded_parameter(
+                parameter_list, new_scope, exe._default_executor
+            )
+        else:
+            parameter_list = list(
+                filter(paddle.framework.is_parameter, program.list_vars())
+            )
+            base.core._create_loaded_parameter(
+                parameter_list, new_scope, exe._default_executor
+            )
         parameter_file_name = os.path.join(temp_dir.name, "test_path.pdparams")
         with open(parameter_file_name, 'rb') as f:
             load_dict = pickle.load(f)
@@ -975,16 +984,24 @@ class TestVariableInit(unittest.TestCase):
             new_v = new_scope.find_var(v.name)
             set_var(new_v, load_dict[v.name])
 
-        opt_list = list(
-            filter(
-                paddle.framework.io_utils.is_belong_to_optimizer,
-                program.list_vars(),
+        if in_pir_mode():
+            opt_list = []
+            for var in program.list_vars():
+                if var.persistable and not var.is_parameter:
+                    opt_list.append(var)
+            paddle.base.libpaddle.pir.create_loaded_parameter(
+                opt_list, new_scope, exe._default_executor
             )
-        )
-
-        base.core._create_loaded_parameter(
-            opt_list, new_scope, exe._default_executor
-        )
+        else:
+            opt_list = list(
+                filter(
+                    paddle.framework.io_utils.is_belong_to_optimizer,
+                    program.list_vars(),
+                )
+            )
+            base.core._create_loaded_parameter(
+                opt_list, new_scope, exe._default_executor
+            )
         opt_file_name = os.path.join(temp_dir.name, "test_path.pdopt")
         with open(opt_file_name, 'rb') as f:
             load_dict = pickle.load(f)

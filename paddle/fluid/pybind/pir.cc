@@ -24,6 +24,7 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -762,6 +763,24 @@ phi::DataType GetValueDtype(Value value) {
   }
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
@@ -893,26 +912,8 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
-      .def_property_readonly(
-          "name",
-          [](Value self) {
-            if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
-              return param_op.param_name();
-            } else if (auto data_op =
-                           self.defining_op<paddle::dialect::DataOp>()) {
-              return data_op.attribute<pir::StrAttribute>("name").AsString();
-            } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
-              if (block_arg.is_kwarg()) {
-                return block_arg.keyword();
-              } else {
-                return "arg_" + std::to_string(block_arg.index());
-              }
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of Value that "
-                  "is persistable"));
-            }
-          })
+      .def_property_readonly("name",
+                             [](Value self) { return GetValueName(self); })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1722,6 +1723,32 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
   }
 }
 
+static void inline CreateVariableIfNotExist(
+    const std::vector<pir::Value> &var_list,
+    const framework::Scope &scope,
+    const framework::Executor *exe = nullptr) {
+  size_t len = var_list.size();
+
+  for (size_t i = 0; i < len; ++i) {
+    pir::Value value = var_list[i];
+    std::string para_name = GetValueName(value);
+    auto var = scope.FindVar(para_name);
+    if (var == nullptr) {
+      PADDLE_ENFORCE_NOT_NULL(exe,
+                              phi::errors::InvalidArgument(
+                                  "Parameter not Initialized, "
+                                  "Please set argument [executor] not None "
+                                  "or run startup program first"));
+      var = const_cast<framework::Scope *>(&scope)->Var(para_name);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(
+          common::make_ddim(phi::vectorize(GetValueDims(value))));
+      tensor_temp->mutable_data(exe->GetPlace(), GetValueDtype(value));
+    }
+  }
+  return;
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1730,6 +1757,7 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
 }
 
 void BindUtils(pybind11::module *m) {
+  m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
