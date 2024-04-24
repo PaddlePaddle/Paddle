@@ -42,6 +42,9 @@ class PatternGraph {
   void ReduceLiftReduceTree();
   void ReduceTreeGrown();
   void ReduceTree_Trivial_Fusion();
+  void LiftToAnchorPattern();
+  void AnchorPatternFusion();
+  void SplitRecomputePattern();
 
   void RemoveNode(const PatternNodePtr<T>& node);
   void AppendNode(const PatternNodePtr<T>& node);
@@ -73,6 +76,7 @@ struct NodePattern {};
 struct EdgePattern {};
 struct GraphPattern {};     // not implemented.
 struct NodePairPattern {};  // not implemented.
+struct ReverseTopoNodePairPattern {};
 
 template <typename Kind,
           typename Phrase,
@@ -149,6 +153,14 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
   }
 };
 
+template <typename Phrase, typename GraphMatcher, typename GraphOperation>
+struct SearchAlgorithm<ReverseTopoNodePairPattern,
+                       Phrase,
+                       GraphMatcher,
+                       GraphOperation> {
+  // TODO(@wuzhanfei)
+};
+
 // Operation
 
 struct MergeReduceTreeOperation {
@@ -210,6 +222,7 @@ struct LiftReduceToReduceTreeOperation {
 };
 
 struct MergeTrivialPatternOperation {
+  // TOOD(@wuzhanfei)
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
                   PatternNodePtr<Phrase> upstream) {
@@ -243,6 +256,29 @@ struct LiftToHorizontalFusionPatternOperation {
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     node->set_stmt_pattern(
         HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
+  }
+};
+
+struct LiftToAnchorPatternOperation {
+  template <typename Phrase>
+  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
+    // TODO(@wuzhanfei)
+  }
+};
+
+struct FuseAnchorPatternOperation {
+  template <typename Phrase>
+  void operator()(PatternGraph<Phrase>* graph,
+                  PatternNodePtr<Phrase> upstream,
+                  const PatternNodePtr<Phrase>& downstream) {
+    // TODO(@wuzhanfei)
+  }
+};
+
+struct SplitRecomputeOperation {
+  template <typename Phrase>
+  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
+    // TODO(@wuzhanfei)
   }
 };
 
@@ -322,6 +358,13 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+struct RecomputeNodeMatcher {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    // TODO(@wuzhanfei)
+  }
+};
+
 struct HorizontalFusionConstrain {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph,
@@ -364,6 +407,8 @@ struct IsOutputNodeMatcher {
 };
 
 struct IsNotOutputNodeMatcher {
+  // TODO(@wuzhanfei) after move yield_store before group cluster, remove this
+  // matcher
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     bool res = !IsOutputNodeMatcher()(graph, node);
@@ -376,6 +421,14 @@ struct DownstreamSmallerThan {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return node->downstream().size() < N;
+  }
+};
+
+template <int N>
+struct DownstreamGreaterThan {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return node->downstream().size() > N;
   }
 };
 

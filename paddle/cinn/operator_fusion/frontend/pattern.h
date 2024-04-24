@@ -72,6 +72,21 @@ struct UnsupportPattern<FrontendStage> {
   static std::string name() { return "Unsupport"; }
 };
 
+template <typename T>
+struct AnchorPattern {
+  explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
+                         const std::vector<pir::Value>* outputs,
+                         const std::vector<pir::Value>* anchors)
+      : ops_(ops), outputs_(outputs), anchors_(anchors) {}
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Value> outputs_;
+  pir::Value anchor_;  // Choose only one anchor
+  std::vector<pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Value> outputs() const { return outputs_; }
+  pir::Value anchor() const { return anchor_; }
+  static std::string name() { return "AnchorPattern"; }
+};
+
 template <>
 struct HorizontalFusionPattern<FrontendStage> {
   explicit HorizontalFusionPattern(

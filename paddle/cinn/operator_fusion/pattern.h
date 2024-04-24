@@ -80,6 +80,10 @@ struct ReduceTreePlusTrivialPattern {
 
 template <typename T>
 class UnsupportPattern {};
+
+template <typename T>
+struct AnchorPattern {};
+
 template <typename T>
 class HorizontalFusionPattern {};
 

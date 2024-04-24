@@ -25,6 +25,8 @@ template <typename T>
 std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps() {
   VLOG(4) << "[Group Cluster] Initial Condition: " << GraphInfo();
 
+  // TODO(@wuzhanfei) Remove All IsOutputPattern Check
+
   VLOG(4) << "[Group Cluster] Start SinkTrivialPattern";
   SinkTrivialPattern();
   VLOG(4) << "[Group Cluster] After SinkTrivialPattern: " << GraphInfo();
@@ -43,6 +45,21 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps() {
   VLOG(4) << "[Group Cluster] Start ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
   VLOG(4) << "[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
+
+  // All -> AnchorPattern
+  VLOG(4) << "[Group Cluster] Start LiftToAnchorPattern";
+  LiftToAnchorPattern();
+  VLOG(4) << "[Group Cluster] After LiftToAnchorPattern: " << GraphInfo();
+
+  // All -> AnchorPattern
+  VLOG(4) << "[Group Cluster] Start AnchorPatternFusion";
+  AnchorPatternFusion();
+  VLOG(4) << "[Group Cluster] After AnchorPatternFusion: " << GraphInfo();
+
+  // All -> AnchorPattern
+  VLOG(4) << "[Group Cluster] Start SplitRecomputePattern";
+  SplitRecomputePattern();
+  VLOG(4) << "[Group Cluster] After SplitRecomputePattern: " << GraphInfo();
 
   // Horizontal fusion.
   VLOG(4) << "[Group Cluster] Start HorizontalFusion";
@@ -80,6 +97,8 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
 
 template <typename T>
 void PatternGraph<T>::SinkTrivialPattern() {
+  // TODO(@wuzhanfei) change sink trivial pattern algorithm, skip pattern with
+  // multi downstream
   GraphTransformer<
       NodePattern,
       T,
@@ -99,6 +118,8 @@ void PatternGraph<T>::ReduceLiftReduceTree() {
 
 template <typename T>
 void PatternGraph<T>::HorizontalFusion() {
+  // TODO(@wuzhanfei) need a new matcher, or check under fusion pattern
+  // operation?
   GraphTransformer<NodePattern,
                    T,
                    StmtPatternGraphMatcher<TrivialPattern<T>>,
@@ -125,6 +146,31 @@ void PatternGraph<T>::ReduceTree_Trivial_Fusion() {
       T,
       And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNodeMatcher>,
       MergeReduceTreeAndTrivialOperation>(this);
+}
+
+template <typename T>
+void PatternGraph<T>::LiftToAnchorPattern() {
+  // TODO(@wuzhanfei)
+  GraphTransformer<NodePattern, T, AlwaysTrue<T>, LiftToAnchorPatternOperation>(
+      this);
+}
+
+template <typename T>
+void PatternGraph<T>::AnchorPatternFusion() {
+  // TODO(@wuzhanfei)
+  GraphTransformer<ReverseTopoNodePairPattern,
+                   T,
+                   DownstreamGreaterThan<1>,
+                   FuseAnchorPatternOperation>(this);
+}
+
+template <typename T>
+void PatternGraph<T>::SplitRecomputePattern() {
+  // TODO(@wuzhanfei)
+  GraphTransformer<NodePattern,
+                   T,
+                   RecomputeNodeMatcher,
+                   SplitRecomputeOperation>(this);
 }
 
 template <typename T>
