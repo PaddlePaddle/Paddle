@@ -20,6 +20,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   FLAGS_enable_pir_api=1)
   set_tests_properties(test_mlp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT
                                            60)
-  set_tests_properties(test_semi_auto_parallel_dist_to_static_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT
-                                           20)
+  set_tests_properties(test_semi_auto_parallel_dist_to_static_pir
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 20)
 endif()
