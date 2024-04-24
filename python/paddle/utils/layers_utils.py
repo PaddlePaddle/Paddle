@@ -142,7 +142,7 @@ def _hash_with_id(*args):
 
 def _yield_value(iterable):
     if isinstance(iterable, dict):
-        # NOTE: Keep order unchanged as python dict is ordered since python3.7
+        # NOTE: Keep order unchanged as python dict is ordered since python3.6
         for key in iterable:
             yield iterable[key]
     else:
