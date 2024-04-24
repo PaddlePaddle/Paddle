@@ -664,7 +664,7 @@ def GenDistBranch(args, op_info):
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
-        dist_operand_attrs.push_back(CvtToPirDistAttr(arg_dist));
+        dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
     }}
 """
     dist_branch_str += TEMPLATE.format(
@@ -691,23 +691,12 @@ def GenDistBranch(args, op_info):
         )
 
     for idx, output_name in enumerate(op_info.output_name_list):
-        # is a vector<Tensor>
-        if 'pir::VectorType' in op_info.output_type_list[idx]:
-            TEMPLATE = """
-    auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
+        TEMPLATE = """
+    auto dist_attr_{name} = CvtToPirAttr(spmd_info.second[{idx}]);
     dist_result_attrs.push_back(dist_attr_{name});
-    argument_outputs.push_back(DistDenseTensorType::get(ctx, {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
+    argument_outputs.push_back(CvtToPirDistType({name}_type, dist_attr_{name}));
 """
-            # Todo: support vector<Tensor> case
-            dist_branch_str += ""
-        # is a Tensor
-        else:
-            TEMPLATE = """
-    auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
-    dist_result_attrs.push_back(dist_attr_{name});
-    argument_outputs.push_back(DistDenseTensorType::get(ctx, {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
-"""
-            dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
+        dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
     attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         ctx,

@@ -21,33 +21,33 @@ from .reshard_funcs.reshard_func_register import register_reshard_funcs
 
 register_reshard_funcs()
 
+partition_skip_op_list = ["builtin.combine"]
+
 
 def apply_partition_pass(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
+            if op.name() in partition_skip_op_list:
+                continue
             assert len(op.operands()) == len(
-                op.dist_attr.operand_dist_attrs()
-            ), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+                op.dist_attr.operands()
+            ), f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
 
-            for var, operand_dist_attr in zip(
-                op.operands(), op.dist_attr.operand_dist_attrs()
-            ):
+            for var, attr in zip(op.operands(), op.dist_attr.operands()):
                 prev_var = var.source()
-                if (
-                    prev_var.is_dist()
-                    and prev_var.dist_attr() != operand_dist_attr
-                ):
+                if prev_var.is_dist() and prev_var.dist_attr() != attr:
+                    operand_attr = attr.as_tensor_dist_attr()
                     paddle.pir.set_insertion_point(op)
                     # fold reshard
                     if prev_var.get_defining_op().name() == 'dist_op.reshard':
                         prev_reshard = prev_var.get_defining_op()
                         prev_var = prev_reshard.operand_source(0)
-                        if prev_var.dist_attr() == operand_dist_attr:
+                        if prev_var.dist_attr() == operand_attr:
                             var.set_source(prev_var)
                         else:
                             reshard_var = paddle._C_ops.reshard_v2(
-                                prev_var, operand_dist_attr
+                                prev_var, operand_attr
                             )
                             var.set_source(reshard_var)
                         if prev_reshard.result(0).use_empty():
@@ -57,17 +57,18 @@ def apply_partition_pass(program):
                         continue
                     # insert reshard
                     reshard_var = paddle._C_ops.reshard_v2(
-                        prev_var, operand_dist_attr
+                        prev_var, operand_attr
                     )
                     var.set_source(reshard_var)
-
-            for var, result_dist_attr in zip(
-                op.results(), op.dist_attr.result_dist_attrs()
-            ):
-                if var.initialized() and var.dist_attr() != result_dist_attr:
+            for var, attr in zip(op.results(), op.dist_attr.results()):
+                if (
+                    var.initialized()
+                    and var.is_dist()
+                    and var.dist_attr() != attr
+                ):
                     paddle.pir.set_insertion_point_after(op)
                     old_dist_attr = var.dist_attr()
-                    var.update_dist_attr(result_dist_attr)
+                    var.update_dist_attr(attr.as_tensor_dist_attr())
                     # insert reshard
                     reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                     var.replace_all_uses_with(reshard_var)
@@ -114,14 +115,13 @@ def apply_reshard_pass(program):
     with paddle.base.program_guard(new_program):
         for op in new_program.global_block().ops:
             if op.name() == 'dist_op.reshard':
-                var = op.operand(0)
-                op_dist_attr = op.attrs()["op_dist_attr"]
-                src_dist_attr = op_dist_attr.operand_dist_attr(0)
-                dst_dist_attr = op_dist_attr.result_dist_attr(0)
+                var = op.operand_source(0)
+                op_dist_attr = op.dist_attr
+                src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
+                dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
                 assert (
-                    paddle.pir.is_fake_value(var.source())
-                    or var.source().dist_attr() == src_dist_attr
-                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
+                    not var.initialized() or var.dist_attr() == src_dist_attr
+                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
 
                 reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
                 assert (

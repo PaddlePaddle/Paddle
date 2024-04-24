@@ -91,6 +91,7 @@ using paddle::dialect::WhileOp;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
 
+using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
@@ -1090,12 +1091,11 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", [](Type &self, Type &other) { return self == other; })
-      .def("__str__", [](Type &self) {
-        std::ostringstream print_stream;
-        print_stream << self;
-        return print_stream.str();
-      });
+  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {
@@ -1128,11 +1128,30 @@ void BindType(py::module *m) {
 
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
-  ir_attr.def("__str__", [](Attribute &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_attr.def("__eq__", &Attribute::operator==)
+      .def("__str__",
+           [](Attribute &self) {
+             std::ostringstream print_stream;
+             print_stream << self;
+             return print_stream.str();
+           })
+      .def("as_tensor_dist_attr",
+           [](Attribute &self) -> py::object {
+             if (auto dist_attr = self.dyn_cast<TensorDistAttribute>()) {
+               return py::cast(dist_attr);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_array_attr", [](Attribute &self) -> py::object {
+        if (auto array_attr = self.dyn_cast<ArrayAttribute>()) {
+          return py::cast(array_attr);
+        }
+        return py::cast<py::none>(Py_None);
+      });
+  py::class_<ArrayAttribute, Attribute> array_attr(*m, "ArrayAttribute");
+  array_attr.def("__len__", [](ArrayAttribute &self) { return self.size(); })
+      .def("__getitem__",
+           [](ArrayAttribute &self, int idx) { return self.at(idx); });
 }
 
 struct PyInsertionPoint {
