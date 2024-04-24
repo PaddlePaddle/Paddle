@@ -17,6 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_to_pd_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -29,7 +30,6 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
-
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -49,7 +49,9 @@ class AddAccuracyCheckPattern
     auto fn_name = group_info.fn_name;
 
     ::pir::IrMapping ir_mapping;
-    ::pir::CloneOptions clone_options(false, true, false);
+    ::pir::CloneOptions clone_options(/*clone_regions=*/false,
+                                      /*clone_operands=*/true,
+                                      /*clone_successors=*/false);
 
     for (auto op : op_list) {
       if (op->isa<::pir::YieldOp>()) {
@@ -62,7 +64,17 @@ class AddAccuracyCheckPattern
               i);
         }
       } else if (op->dialect()->name() == "cinn_op") {
-        PADDLE_THROW(phi::errors::Unimplemented("not support cinn ops yet"));
+        // PADDLE_THROW(phi::errors::Unimplemented("not support cinn ops yet"));
+        for (size_t i = 0; i < op->num_operands(); ++i) {
+          if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
+            ir_mapping.Add(op->operand_source(i), op->operand_source(i));
+          }
+        }
+        pir::Operation* pd_op = cinn::dialect::RewriteCinnOpToPdOp(op);
+        for (uint32_t i = 0; i < op->num_results(); ++i) {
+          ir_mapping.Add(op->result(i), pd_op->result(i));
+        }
+        rewriter.Insert(pd_op);
       } else {
         for (size_t i = 0; i < op->num_operands(); ++i) {
           if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
