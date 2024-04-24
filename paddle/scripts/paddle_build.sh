@@ -958,11 +958,11 @@ function check_run_sot_ci() {
 
     # git diff
     SOT_FILE_LIST=(
-        paddle/fluid/operators/run_program_op.h
-        paddle/fluid/operators/run_program_op.cu
-        paddle/fluid/operators/run_program_op.cc
+        paddle/pir
+        paddle/phi
         paddle/fluid/eager/to_static
         paddle/fluid/pybind/
+        paddle/scripts/paddle_build.sh
         python/
         test/sot
     )
