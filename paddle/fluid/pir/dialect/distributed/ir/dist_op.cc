@@ -37,11 +37,10 @@ void ShardTensorOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    PADDLE_ENFORCE_EQ(
-        input_size,
-        1u,
-        common::errors::PreconditionNotMet(
-            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ(input_size,
+                      1u,
+                      common::errors::PreconditionNotMet(
+                          "The size of inputs must be equal to 1."));
     PADDLE_ENFORCE_EQ((*this)
                           ->operand_source(0)
                           .type()
@@ -80,19 +79,18 @@ void ShardTensorOp::VerifySig() {
     auto op_dist_attr =
         this->attribute<paddle::dialect::OperationDistAttribute>(
             "op_dist_attr");
-    PADDLE_ENFORCE_EQ(op_dist_attr.num_operand_dist_attrs(),
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_operands(),
                       0u,
-                      common::errors::PreconditionNotMet(
-                          "The op_dist_attr input size %d must be equal to 0.",
-                          op_dist_attr.num_operand_dist_attrs()));
+                      phi::errors::PreconditionNotMet(
+                          "The op_dist_attr input size must be equal to 0."));
 
-    PADDLE_ENFORCE_EQ(op_dist_attr.num_result_dist_attrs(),
-                      num_results(),
-                      common::errors::PreconditionNotMet(
-                          "The op_dist_attr output size %d must "
-                          "be equal to op output size %d.",
-                          op_dist_attr.num_result_dist_attrs(),
-                          num_results()));
+    PADDLE_ENFORCE_EQ(
+        op_dist_attr.num_results(),
+        num_results(),
+        phi::errors::PreconditionNotMet("The op_dist_attr output size %d must "
+                                        "be equal to op output size %d.",
+                                        op_dist_attr.num_results(),
+                                        num_results()));
   }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
@@ -137,8 +135,8 @@ void ShardTensorOp::Build(pir::Builder& builder,
   pir::Attribute op_dist_attr = OperationDistAttribute::get(
       pir::IrContext::Instance(),
       process_mesh_attr,
-      std::vector<TensorDistAttribute>(),
-      std::vector<TensorDistAttribute>{tensor_dist_attr});
+      std::vector<pir::Attribute>(),
+      std::vector<pir::Attribute>{tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
   VLOG(4) << "Builder construction outputs";
@@ -254,19 +252,17 @@ void ReshardOp::VerifySig() {
     auto op_dist_attr =
         this->attribute<paddle::dialect::OperationDistAttribute>(
             "op_dist_attr");
-    PADDLE_ENFORCE_EQ(op_dist_attr.num_operand_dist_attrs(),
-                      1u,
-                      common::errors::PreconditionNotMet(
-                          "The op_dist_attr input size %d must be equal to 1.",
-                          op_dist_attr.num_operand_dist_attrs()));
+    PADDLE_ENFORCE_EQ(
+        op_dist_attr.num_operands(),
+        1u,
+        common::errors::PreconditionNotMet(
+            "The op_dist_attr input size of reshard op must be equal to 1."));
 
-    PADDLE_ENFORCE_EQ(op_dist_attr.num_result_dist_attrs(),
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_results(),
                       num_results(),
-                      common::errors::PreconditionNotMet(
-                          "The op_dist_attr output size %d must "
-                          "be equal to op output size %d.",
-                          op_dist_attr.num_result_dist_attrs(),
-                          num_results()));
+                      phi::errors::PreconditionNotMet(
+                          "The op_dist_attr output size of reshard op must be "
+                          "equal to op output size."));
   }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
@@ -293,8 +289,8 @@ void ReshardOp::Build(pir::Builder& builder,
   pir::Attribute op_dist_attr = OperationDistAttribute::get(
       pir::IrContext::Instance(),
       input_tensor_type.tensor_dist_attr().process_mesh_attr(),
-      std::vector<TensorDistAttribute>{input_tensor_type.tensor_dist_attr()},
-      std::vector<TensorDistAttribute>{tensor_dist_attr});
+      std::vector<pir::Attribute>{input_tensor_type.tensor_dist_attr()},
+      std::vector<pir::Attribute>{tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);
 
   VLOG(4) << "Builder construction outputs";

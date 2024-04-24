@@ -19,6 +19,7 @@ import unittest
 import paddle
 from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
@@ -66,6 +67,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_pir_api
     def test_useless_feeded_var_names(self):
         start_prog = base.Program()
         main_prog = base.Program()
@@ -95,6 +97,7 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_pir_api
     def test_when_train_with_no_grad(self):
         paddle.disable_static()
         net = paddle.nn.Linear(1024, 1)
@@ -104,12 +107,13 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
 
         paddle.jit.save(net, save_path)
-        net = paddle.jit.load(save_path)
-        net.train()
+        if not paddle.base.framework.use_pir_api():
+            net = paddle.jit.load(save_path)
+            net.train()
 
-        with paddle.no_grad():
-            x = paddle.rand([1024], 'float32')
-            net(x)
+            with paddle.no_grad():
+                x = paddle.rand([1024], 'float32')
+                net(x)
 
 
 if __name__ == '__main__':

@@ -55,6 +55,17 @@
         - delete_attr : atol
           comment : The attribute 'atol' is deleted. The reason why it is deleted is that
                     attributes do not support a float64 value and it is changed to a tensor.
+
+- op : argsort
+  version :
+    - checkpoint : Upgrade agsort, add a new attribute [stable]
+      action :
+        - add_attr : stable
+          comment : If true, it will use stable sorting algorithm which preserves the order
+                    of equivalent elements. Otherwise, the order of equivalent elements will
+                    not be guaranteed to be preserved.
+          default : "false"
+
 - op : assign_value
   version :
     - checkpoint : Upgrade assign_value, remove plain attributes in favor of generic attribute.
