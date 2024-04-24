@@ -13,5 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/l1_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 PD_REGISTER_KERNEL(l1_norm, CPU, ALL_LAYOUT, phi::L1NormKernel, float) {}
