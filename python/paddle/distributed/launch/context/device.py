@@ -102,7 +102,10 @@ class Device:
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif 'CUDA_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.GPU
+            if core.is_compiled_with_xpu():
+                dev._dtype = DeviceType.XPU
+            else:
+                dev._dtype = DeviceType.GPU
             visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
