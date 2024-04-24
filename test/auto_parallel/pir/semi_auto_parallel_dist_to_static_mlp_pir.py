@@ -158,7 +158,7 @@ class TestSimpleNetForSemiAutoParallel:
             dy2static_layer, dy2static_opt, dist_dataloader
         )
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
+        np.testing.assert_equal(dy_losses, dy2static_losses)
 
     def run_test_case(self):
         self.test_mp_demo_net()
