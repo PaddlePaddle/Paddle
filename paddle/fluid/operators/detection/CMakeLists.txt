@@ -28,18 +28,11 @@ function(detection_library TARGET_NAME)
       PARENT_SCOPE)
 endfunction()
 
-detection_library(density_prior_box_op SRCS density_prior_box_op.cc
-                  density_prior_box_op.cu)
-
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
-detection_library(generate_proposal_labels_op SRCS
-                  generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS phi common)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
-detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
-                  box_decoder_and_assign_op.cu)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
@@ -62,8 +55,3 @@ endif()
 
 #Export local libraries to parent
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
-
-cc_library(mask_util SRCS mask_util.cc)
-
-detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
-                  mask_util)
