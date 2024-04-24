@@ -1505,6 +1505,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: PirGradNodeRunProgram";
 
     *executed_ = true;
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&x_grad,
+                                                        this->OutputMeta()[0]);
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&params_grad,
+                                                        this->OutputMeta()[1]);
     return {x_grad, params_grad};
   }
 
