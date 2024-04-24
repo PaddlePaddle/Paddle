@@ -33,6 +33,49 @@ namespace dialect {
 namespace ir {
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
+static void ReplaceSliceWithSlice(const std::vector<int> &sections,
+                                  int axes,
+                                  pir::Value in,
+                                  pir::Operation *slice_op,
+                                  pir::PatternRewriter &rewriter) {  // NOLINT
+  const int index = slice_op->dyn_cast<::pir::SliceOp>()
+                        .attribute("index")
+                        .dyn_cast<::pir::Int32Attribute>()
+                        .data();
+
+  auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
+      in,
+      std::vector<int64_t>({axes}),
+      std::vector<int64_t>({sections[index]}),
+      std::vector<int64_t>({sections[index + 1]}),
+      std::vector<int64_t>({}),
+      std::vector<int64_t>({}));
+
+  rewriter.ReplaceAllUsesWith(slice_op->result(0), cinn_slice.result(0));
+  rewriter.EraseOp(slice_op);
+}
+
+static void ReplaceSplitWithSlice(const std::vector<int> &sections,
+                                  int axes,
+                                  pir::Value in,
+                                  pir::Operation *split_op,
+                                  pir::PatternRewriter &rewriter) {  // NOLINT
+  const size_t num_results = split_op->num_results();
+  CHECK(split_op->num_results() == (sections.size() - 1));
+  for (size_t i = 0; i < num_results; ++i) {
+    auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
+        in,
+        std::vector<int64_t>({axes}),
+        std::vector<int64_t>({sections[i]}),
+        std::vector<int64_t>({sections[i + 1]}),
+        std::vector<int64_t>({}),
+        std::vector<int64_t>({}));
+
+    rewriter.ReplaceAllUsesWith(split_op->result(i), cinn_slice.result(0));
+  }
+  rewriter.EraseOp(split_op);
+}
+
 class SumOpPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "SumOpPattern"; }
@@ -599,25 +642,25 @@ class SplitWithNumOpPattern
           op->attribute("num").dyn_cast<::pir::Int32Attribute>().data();
       auto part_ele = (split_dim + split_num - 1) / split_num;
       int total_split_num = 0;
+      result.push_back(0);
       for (int i = 0; i < split_num - 1; ++i) {
-        result.push_back(part_ele);
         total_split_num += part_ele;
+        result.push_back(total_split_num);
       }
 
-      result.push_back(split_dim - total_split_num);
+      result.push_back(split_dim);
       return result;
     }();
-
-    auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
-        op->operand_source(0), sections, axis);
 
     auto orig_out = op.result(0);
     for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
       auto downstream_op = (it++)->owner();
       if (downstream_op->isa<::pir::SliceOp>()) {
-        ReplaceSliceOp(cinn_split, downstream_op, rewriter);
+        ReplaceSliceWithSlice(
+            sections, axis, op->operand_source(0), downstream_op, rewriter);
       } else if (downstream_op->isa<::pir::SplitOp>()) {
-        ReplaceSplitOp(cinn_split, downstream_op, rewriter);
+        ReplaceSplitWithSlice(
+            sections, axis, op->operand_source(0), downstream_op, rewriter);
       } else {
         CHECK(false) << "Currently only support pir::slice/split as downstream "
                         "op, but got: "
@@ -940,7 +983,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
-  // ps.Add<SplitWithNumOpPattern>(context);
+  ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);

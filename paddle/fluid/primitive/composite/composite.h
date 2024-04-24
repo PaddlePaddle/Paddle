@@ -767,7 +767,12 @@ template <typename T>
 std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
                                           int start_axis,
                                           int end_axis) {
+  std::cerr << "flattn decomp " << start_axis << "\t" << end_axis << std::endl;
   auto x_dim = x.shape();
+  for (auto d : x_dim) {
+    std::cerr << " x dim " << d << std::endl;
+  }
+
   if (x_dim.size() == 0) {
     start_axis = 0;
     end_axis = 0;
@@ -836,6 +841,9 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       out_shape.push_back(x_dim[i]);
     }
 
+    for (auto d : out_shape) {
+      std::cerr << "dd   " << d << std::endl;
+    }
     return std::make_tuple(reshape<T>(x, out_shape), xshape);
   }
 }
