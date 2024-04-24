@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-from os.path import dirname
-
-sys.path.append(dirname(dirname(__file__)))
-
 import unittest
+from os.path import dirname
 
 import numpy as np
 import utils
 
 import paddle
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
 
 
 def exp_sub(x):
@@ -80,5 +79,5 @@ class TestCinnSubGraphBase(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

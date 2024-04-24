@@ -22,14 +22,13 @@ os.environ['FLAGS_group_schedule_tiling_first'] = '1'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
 
 import numpy as np
+import utils
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-
-import utils
 
 
 class IfSubgraph(nn.Layer):
