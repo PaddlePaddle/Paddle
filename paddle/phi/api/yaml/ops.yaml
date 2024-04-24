@@ -173,7 +173,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : argsort
-  args : (Tensor x, int axis=-1, bool descending=false)
+  args : (Tensor x, int axis=-1, bool descending=false, bool stable=false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
@@ -2616,6 +2616,7 @@
     func : sigmoid
   inplace : (x -> out)
   backward : sigmoid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
