@@ -21,7 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Pass> CreateAddStoreInFusionOpPass();
+std::unique_ptr<pir::Pass> CreateAddStoreInGroupOpPass();
 
 }  // namespace ir
 }  // namespace dialect

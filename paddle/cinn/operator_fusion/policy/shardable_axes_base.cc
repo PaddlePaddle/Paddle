@@ -74,31 +74,6 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   return result;
 }
 
-std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
-    pir::Operation* op) {
-  if (op->num_results() != 1) {
-    VLOG(4) << "Now we do not support op with multi outputs, create default: "
-            << op->name();
-    return CreateDefaultSignature(op);
-  }
-  if (op->isa<cinn::dialect::ReshapeOp>()) {
-    return CreateDefaultSignature(op);
-  }
-  if (op->name() == "cinn_op.generate_shape") {
-    return CreateDefaultSignature(op);
-  }
-  if (op->name() == "cinn_op.yield_store") {
-    return CreateDefaultSignature(op);
-  }
-  if (op->name() == "cinn_op.reshape") {
-    return CreateDefaultSignature(op);
-  }
-  if (op->name() == "pd_op.reshape") {
-    return CreateDefaultSignature(op);
-  }
-  return std::nullopt;
-}
-
 ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   CHECK_EQ(reduce_op->num_operands(), 1);
   CHECK_EQ(reduce_op->num_results(), 1);
@@ -184,6 +159,26 @@ ShardableAxesSignature CreateSignatureForBroadcast(
   result.outputs.emplace_back(ShardableAxes(output_axis_names));
 
   return result;
+}
+
+std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
+    pir::Operation* op) {
+  if (op->isa<cinn::dialect::ReshapeOp>()) {
+    return CreateDefaultSignature(op);
+  }
+  if (op->name() == "cinn_op.generate_shape") {
+    return CreateDefaultSignature(op);
+  }
+  if (op->name() == "cinn_op.yield_store") {
+    return CreateSignatureForElementWise(op);
+  }
+  if (op->name() == "cinn_op.reshape") {
+    return CreateDefaultSignature(op);
+  }
+  if (op->name() == "pd_op.reshape") {
+    return CreateDefaultSignature(op);
+  }
+  return std::nullopt;
 }
 
 ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(

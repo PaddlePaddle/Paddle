@@ -363,14 +363,6 @@ struct IsOutputNodeMatcher {
   }
 };
 
-struct IsNotOutputNodeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    bool res = !IsOutputNodeMatcher()(graph, node);
-    return res;
-  }
-};
-
 template <int N>
 struct DownstreamSmallerThan {
   template <typename T>
