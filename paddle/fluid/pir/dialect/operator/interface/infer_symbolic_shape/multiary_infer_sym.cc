@@ -278,6 +278,9 @@ bool FlashAttnOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &q =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
+  const symbol::ShapeOrDataDimExprs &k =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
   const symbol::ShapeOrDataDimExprs &v =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
 
@@ -287,6 +290,35 @@ bool FlashAttnOpInferSymbolicShape(
 
   shape_analysis->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+
+  auto round_multiple = [](symbol::DimExpr x) {
+    auto m = symbol::DimExpr{128};
+    auto m_minus_one = symbol::DimExpr{127};
+    return (x + m_minus_one) / m * m;
+  };
+  auto batch_size_expr = q.shape()[0];
+  auto num_heads_expr = q.shape()[2];
+  auto seqlen_q_rounded_expr = round_multiple(q.shape()[1]);
+  auto seqlen_k_rounded_expr = round_multiple(k.shape()[1]);
+  if (op->result(1)) {
+    std::vector<symbol::DimExpr> softmax_shape{batch_size_expr,
+                                               num_heads_expr,
+                                               seqlen_q_rounded_expr,
+                                               seqlen_k_rounded_expr};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
+  }
+  if (op->result(2)) {
+    std::vector<symbol::DimExpr> softmax_lse_shape{
+        batch_size_expr, num_heads_expr, seqlen_q_rounded_expr};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
+  }
+  if (op->result(3)) {
+    std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(out_shape));
+  }
   return true;
 }
 
