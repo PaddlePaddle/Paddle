@@ -1028,7 +1028,7 @@ class Engine:
         if not isinstance(self._optimizer._learning_rate, float):
             raise TypeError(
                 "learning rate should be float, got %s here"
-                % type(learning_rate)
+                % type(self._optimizer._learning_rate)
             )
         buffer_tensor.set(
             np.float32(self._optimizer._learning_rate), self._place
