@@ -294,14 +294,9 @@ bool GatherNdOpInferSymbolicShape(
   const auto &index_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
 
-  const std::vector<symbol::DimExpr> &x_sym_shape =
-      x_shape_or_data.data().has_value() ? x_shape_or_data.data().value()
-                                         : x_shape_or_data.shape();
-
+  const std::vector<symbol::DimExpr> &x_sym_shape = x_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   int x_dims_size = x_sym_shape.size();
   int index_dims_size = index_sym_shape.size();

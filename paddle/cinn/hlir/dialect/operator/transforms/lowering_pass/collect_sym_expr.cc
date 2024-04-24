@@ -121,6 +121,10 @@ CollectSubstituteDimExprMap(
     dim_expr_map.erase(dim_expr);
   }
 
+  for (const auto& [dim_expr, new_dim_expr] : dim_expr_map) {
+    VLOG(0) << "dim_expr_map " << dim_expr << " -> " << new_dim_expr;
+  }
+
   return dim_expr_map;
 }
 
