@@ -1614,20 +1614,20 @@ void group_norm_grad(const Tensor& x,
   int N = x_dims[0];
   int C;
   int hw = 1;
-  std::vector<int64_t> reduce_axis;
+  int64_t reduce_axis;
 
   if (data_layout_ == DataLayout::kNCHW) {
     C = x_dims[1];
     for (int i = 2; i < rank; ++i) {
       hw *= x_dims[i];
-      reduce_axis.push_back(i);
     }
+    reduce_axis = 2;
   } else if (data_layout_ == DataLayout::kNHWC) {
     C = x_dims[rank - 1];
     for (int i = 1; i < (rank - 1); ++i) {
       hw *= x_dims[i];
-      reduce_axis.push_back(i);
     }
+    reduce_axis = 1;
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
                                               data_layout));
@@ -1663,8 +1663,11 @@ void group_norm_grad(const Tensor& x,
   auto inv_std_mul_s = inv_std / hw / g_num;
   auto dtype = x_data.dtype();
   auto sum_y_grad_mul_x =
-      sum<T>(out_grad_data * x_data, reduce_axis, dtype, false);
-  auto sum_y_grad = sum<T>(out_grad_data, reduce_axis, dtype, false);
+      sum<T>(out_grad_data * x_data, {reduce_axis}, dtype, false);
+  auto sum_y_grad = sum<T>(out_grad_data, {reduce_axis}, dtype, false);
+  // keep_dim=False, actually here will reduce two continuous axes
+  sum_y_grad_mul_x = sum<T>(sum_y_grad_mul_x, {reduce_axis}, dtype, false);
+  sum_y_grad = sum<T>(sum_y_grad, {reduce_axis}, dtype, false);
 
   Tensor scale_data;
   if (scale) {
