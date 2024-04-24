@@ -41,7 +41,6 @@ class InferShapeContext;
 class InferVarTypeContext;
 class VarDesc;
 class BlockDesc;
-class ProgramDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
