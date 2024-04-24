@@ -44,6 +44,7 @@ class TestBlockDiagError(unittest.TestCase):
 
 class TestBlockDiag(unittest.TestCase):
     def setUp(self):
+        paddle.seed(2024)
         self.type_list = ['int32', 'int64', 'float32', 'float64']
         self.place = [('cpu', paddle.CPUPlace())] + (
             [('gpu', paddle.CUDAPlace(0))]
