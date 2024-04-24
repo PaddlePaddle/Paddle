@@ -101,8 +101,8 @@ class TestReshardPToRCrossMesh:
         )
         for op in dist_program.global_block().ops:
             if op.name() == 'pd_op.send_v2':
-                assert op.dist_attr.num_operand_dist_attrs() == 1
-                assert op.dist_attr.num_result_dist_attrs() == 0
+                assert op.dist_attr.num_operands() == 1
+                assert op.dist_attr.num_results() == 0
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
 
                 assert op.dist_attr.process_mesh == self._in_mesh
@@ -114,8 +114,8 @@ class TestReshardPToRCrossMesh:
 
             elif op.name() == 'pd_op.recv_v2':
                 # check op dist_attr
-                assert op.dist_attr.num_operand_dist_attrs() == 0
-                assert op.dist_attr.num_result_dist_attrs() == 1
+                assert op.dist_attr.num_operands() == 0
+                assert op.dist_attr.num_results() == 1
 
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)
 
@@ -127,8 +127,8 @@ class TestReshardPToRCrossMesh:
             elif op.name() == 'pd_op.c_allreduce_sum_':
                 continue
                 # check op dist_attr
-                assert op.dist_attr.num_operand_dist_attrs() == 1
-                assert op.dist_attr.num_result_dist_attrs() == 1
+                assert op.dist_attr.num_operands() == 1
+                assert op.dist_attr.num_results() == 1
 
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)

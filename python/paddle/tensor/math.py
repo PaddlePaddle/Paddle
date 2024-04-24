@@ -43,7 +43,7 @@ from ..framework import (
     in_pir_mode,
 )
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn, templatedoc
+from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
     abs,
@@ -1993,7 +1993,6 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
 
 
-@templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
     Sum one or more Tensor of the input.

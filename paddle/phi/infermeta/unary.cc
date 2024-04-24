@@ -331,6 +331,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
@@ -4259,6 +4260,11 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
+  out->set_dtype(x.dtype());
+}
+
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 

@@ -1339,6 +1339,39 @@ ir::Tensor Gather(const ir::Tensor& x,
   return output_tensor;
 }
 
+ir::Tensor Gather(const ir::Tensor& x,
+                  const ir::Tensor& index,
+                  int axis,
+                  const std::vector<Expr>& output_shape,
+                  const std::string& name) {
+  // The implementation details are explained below.
+  // If output_shape = [2, 4, 3] and axis = 0, `Compute` can be translated as
+  // the following code:
+  // {
+  //   for (i, 0, 2)
+  //   {
+  //     for (j, 0, 4)
+  //     {
+  //       for (k, 0, 3)
+  //       {
+  //         index_select_output[i, j, k] = X[index(i), j, k]
+  //       }
+  //     }
+  //   }
+  // }
+  auto output_tensor = Compute(
+      output_shape,
+      [x, index, axis](const std::vector<Expr>& indice) {
+        // 1) indice is got from `output_shape`
+        // 2) transformed_indice is used in the input `x`
+        std::vector<Expr> transformed_indice = indice;
+        transformed_indice[axis] = index(indice[axis]);
+        return x(transformed_indice);
+      },
+      name);
+  return output_tensor;
+}
+
 ir::Tensor ScatterAssign(const ir::Tensor& input,
                          const ir::Tensor& updates,
                          const ir::Tensor& index,
