@@ -39,7 +39,7 @@ class TestAddScaleFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.scale(add, 0.5)
                 out = paddle.assign(out)
-                self.pass_attr_list = [{'operator_scale_onednn_fuse_pass':{}}]
+                self.pass_attr_list = [{'operator_scale_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -80,7 +80,7 @@ class TestMatmulScaleFusePass(PassTest):
                 matmul = paddle.matmul(x, y)
                 out = paddle.scale(matmul, 0.5)
                 out = paddle.assign(out)
-                self.pass_attr_list = [{'operator_scale_onednn_fuse_pass':{}}]
+                self.pass_attr_list = [{'operator_scale_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -125,8 +125,8 @@ class TestElementwiseScaleFusePass(PassTest):
                 out = paddle.scale(out1, 0.5)
                 out = paddle.assign(out)
                 self.pass_attr_list = [
-                    {'elementwise_act_onednn_fuse_pass':{}},
-                    {'operator_scale_onednn_fuse_pass':{}},
+                    {'elementwise_act_onednn_fuse_pass': {}},
+                    {'operator_scale_onednn_fuse_pass': {}},
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -177,9 +177,9 @@ class TestFcScaleFusePass(PassTest):
                             out = paddle.scale(fc, 0.5)
                             out = paddle.assign(out)
                             self.pass_attr_list = [
-                                {'fc_fuse_pass':{}},
-                                {"fc_onednn_enable_pass":{}},
-                                {"operator_scale_onednn_fuse_pass":{}},
+                                {'fc_fuse_pass': {}},
+                                {"fc_onednn_enable_pass": {}},
+                                {"operator_scale_onednn_fuse_pass": {}},
                             ]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
