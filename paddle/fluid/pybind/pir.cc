@@ -1638,9 +1638,6 @@ SplitedResult SplitForwardBackward(
         VLOG(1) << "not contain name: " << name;
       }
 
-      // v -> fv
-      // get fv name
-
       backward_value_map[v] = backward_block.AddKwarg(name, v.type());
     }
   };

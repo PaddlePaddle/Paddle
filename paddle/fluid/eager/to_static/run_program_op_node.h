@@ -259,7 +259,6 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<Tensor> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  std::vector<std::string> names;
   auto names = GetNameFromValue(block, values, true, false);
   ShareTensorsIntoScopeWithName(
       tensors, names, scope);  // std::vector<paddle::Tensor *> &middles,
@@ -1544,8 +1543,6 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
   // TensorWrappers
   std::vector<paddle::Tensor> x_;
   std::vector<paddle::Tensor> params_;
-  // std::vector<paddle::Tensor> middles_;
-  // std::vector<paddle::Tensor> outputs_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
   // Attribute Map
