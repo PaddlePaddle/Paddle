@@ -82,6 +82,7 @@ class OpTestUtils:
         except ValueError:
             canonicalized_attrs = attrs_outputs
         try:
+            print("zzzzzzzzzzz=", canonicalized_attrs)
             kernel_sig = _dygraph_tracer()._get_kernel_signature(
                 op_type,
                 eager_tensor_inputs,

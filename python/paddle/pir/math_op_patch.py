@@ -766,4 +766,4 @@ def monkey_patch_value():
         return float(self.value())
 
     base.core.Scalar.__deepcopy__ = scalar_deepcopy
-    base.core.Scalar.__float__ = scalar_to_float
+    # base.core.Scalar.__float__ = scalar_to_float

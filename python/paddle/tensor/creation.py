@@ -932,7 +932,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 attrs['value'] = value
             else:
                 attrs['str_value'] = str(value)
-                attrs['value'] = float(value)
+                attrs['value'] = value
 
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}

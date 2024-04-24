@@ -878,7 +878,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                     * strategy.sharding_configs['dp_degree']
                 )
                 loss_scale = 1.0 / scale
-                self.assertAlmostEqual(float(op.attr('value')), loss_scale)
+                self.assertAlmostEqual(
+                    float(op.attr('value').value()), loss_scale
+                )
 
         # check program (allreduce)
         ops = [op.type for op in main_prog_ops]

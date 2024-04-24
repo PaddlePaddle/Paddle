@@ -216,7 +216,7 @@ class DataParallelOptimizationPass(PassBase):
                     f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
-                loss_scale = float(op.attr('value'))
+                loss_scale = float(op.attr('value').value())
                 loss_scale = loss_scale / dp_degree
                 op._set_attr('value', loss_scale)
                 break

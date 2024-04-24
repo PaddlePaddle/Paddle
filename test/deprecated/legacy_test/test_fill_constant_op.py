@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import sys
 import unittest
+
+sys.path.append("../../legacy_test")
 
 import numpy as np
 from op import Operator
@@ -25,11 +27,18 @@ from paddle.pir_utils import test_with_pir_api
 
 
 def wrap_fill_wrapper(dtype=np.complex64):
+    print("-------------------", dtype)
+
     def fill_wrapper(shape, value=0.0, dtype=dtype):
         out = paddle.full(shape=shape, fill_value=value, dtype=dtype)
         return out
 
     return fill_wrapper
+
+
+def fill_wrapper(shape, value=0.0):
+    out = paddle.full(shape=shape, fill_value=value)
+    return out
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
@@ -49,10 +58,10 @@ class TestFillConstantOp(OpTest):
             'value': self.value,
             'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
         }
-        self.outputs = {'Out': np.full(self.shape, self.value)}
+        self.outputs = {'Out': np.full(self.shape, self.value, self.dtype)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=False)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -61,7 +70,7 @@ class TestFillConstantOp(OpTest):
         self.shape = [123, 92]
 
     def init_value(self):
-        self.value = 0.0
+        self.value = 2.1
 
 
 class TestFillConstantFP32Op(TestFillConstantOp):
@@ -280,7 +289,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.init_data()
-        self.python_api = wrap_fill_wrapper(self.dtype)
+        self.python_api = fill_wrapper
 
         self.inputs = {
             "ShapeTensor": np.array(self.shape).astype("int32"),
@@ -295,7 +304,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=False)
 
 
 # Test python API

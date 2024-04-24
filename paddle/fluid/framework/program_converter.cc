@@ -32,7 +32,7 @@ using paddle::experimental::ExtractPlainVector;
 using paddle::experimental::WrapAsScalars;
 
 static std::unordered_set<std::string> needConvertedOperators = {
-    "assign_value", "set_value", "set_value_grad"};
+    "assign_value", "set_value", "set_value_grad", "fill_constant"};
 
 std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
     ProgramDesc* program) {
