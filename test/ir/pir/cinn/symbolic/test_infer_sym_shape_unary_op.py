@@ -635,9 +635,9 @@ class SplitOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 6, 5)]
         self.expected = [
-            'shape[S0, S1, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
+            'shape[S0, 6, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 5, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
             'shape[S0, 6, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',

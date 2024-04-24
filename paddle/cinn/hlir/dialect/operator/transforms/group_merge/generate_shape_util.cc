@@ -116,7 +116,7 @@ bool RewriteOneGenerateShapeOpToRunFirst(
     if (RunningFirst(op, block_args)) continue;
     pir::Builder builder(ir_context, block);
     builder.set_insertion_point(op);
-    auto new_shape = InsertGenerateShapeOpToRunFirst(
+    std::optional<pir::Value> new_shape = InsertGenerateShapeOpToRunFirst(
         &builder, block_args, op.out(), dim_exprs_accessor);
     if (!new_shape.has_value()) continue;
     CloneDimExprInfo(op.out(), new_shape.value(), dim_exprs_accessor);

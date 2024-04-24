@@ -1099,8 +1099,11 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
   extra :
@@ -3375,6 +3378,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : tdm_sampler
   inputs:
