@@ -508,8 +508,9 @@ void BuildPhiContext(pir::Operation* op,
               << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("only support DenseTensor and vector "));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "only support DenseTensor, SparseCooTensor, SparseCsrTensor, and "
+          "vector "));
     }
   }
   VLOG(8) << "EmplaceBackOutputs done";

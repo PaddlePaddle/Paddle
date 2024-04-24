@@ -444,7 +444,8 @@ void BuildValue(pir::Value value,
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
-        "or SelectedRowsType or VectorType or StackType"));
+        "or SelectedRowsType or VectorType or StackType or SpasrCooTensorType "
+        "or SpasreCsrTensorType"));
   }
 }
 
@@ -875,7 +876,8 @@ void BuildRuntimeContext(pir::Operation* op,
       runtime_ctx->outputs[legacy_arg_name] = vec_tmp;
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType, "
+          "AllocatedSparseCooTensorType, AllocatedSparseCsrTensorType, and "
           "pir::vector type"));
     }
   }
@@ -1031,7 +1033,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType, "
+          "AllocatedSparseCooTensorType, AllocatedSparseCsrTensorType  and "
           "pir::vector type"));
     }
   }

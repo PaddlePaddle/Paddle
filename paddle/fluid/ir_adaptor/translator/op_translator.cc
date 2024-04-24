@@ -289,14 +289,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
-  // //判断op_desc是否是单kernel或者多kernel,单kernel和多kernel可以通过map来判断
-  // if(单kernel){
-  //   target_op_name从sparse_xxx变为xxx_sp或者xxx_sp_
-  // }
-
-  // if(多kernel){
-  //   op_desc--->var_desc--->type---->放到空的vector里，判断是否是一种类型还是两种或者混合的，来确定选哪个kernel
-  // }
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -323,9 +315,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
           phi::errors::InvalidArgument("[Op:%s] Input %s should not be null",
                                        op_desc.Type(),
                                        pair.second[0]));
-      // auto& type_translator = TypeTranslator::instance();
-      // auto pir_type = type_translator[var_desc->GetType()](ctx,*var_desc);//
-      // type_translator[var->GetType()](ctx, *var);
       if (var_desc->GetType() ==
           paddle::framework::proto::VarType::SPARSE_COO) {
         input_types.emplace_back("sparse_coo");
