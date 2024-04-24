@@ -960,9 +960,9 @@ function check_run_sot_ci() {
     SOT_FILE_LIST=(
         paddle/pir
         paddle/phi
+        paddle/scripts
         paddle/fluid/eager/to_static
         paddle/fluid/pybind/
-        paddle/scripts/paddle_build.sh
         python/
         test/sot
     )
