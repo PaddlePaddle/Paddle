@@ -93,8 +93,8 @@
     func : angle_grad
 
 - backward_op : argsort_grad
-  forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
-  args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
+  forward : argsort (Tensor x, int axis, bool descending, bool stable) -> Tensor(out), Tensor(indices)
+  args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending, bool stable)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

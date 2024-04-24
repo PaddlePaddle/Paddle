@@ -112,6 +112,11 @@ std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
+  ParseOpInfos(group);
+  ParseInputDimExprs(group);
+}
+
+void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
 
@@ -141,15 +146,37 @@ FusionInfo::FusionInfo(const OpLoweringGroup& group) {
     op_infos_.emplace_back(*op, GetInnerUpstreamOps(op));
     op_mapper.insert({op, i});
   }
-  auto& shape_analysis =
-      ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-  for (const auto& value : group.GetInputOpValues()) {
+}
+
+void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
+  // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
+  // In case of BroadcastTree, we will clone many Groups containing same ops.
+  // But its input valus is defining outside and will have same DimExprs in
+  // global ShapeAnalysis, which leading hash conflict unexpected.
+  const auto TryGetDimExprsFromGroup = [&](const ::pir::Value& value) -> bool {
+    if (!group.HasShapeOrDataExprs(value)) return false;
+    input_dim_exprs_.push_back(group.GetShapeOrDataExprs(value));
+    return true;
+  };
+  // NOTE(Aurelius84): If we can't get DimExpr from Group, we will find them
+  // from global ShapeAnalysis.
+  const auto TryeGetDimExprsFromGlobal =
+      [&](const ::pir::Value& value) -> bool {
+    auto& shape_analysis =
+        ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
     if (!shape_analysis.HasShapeOrDataForValue(value)) {
       VLOG(4) << "FusionInfo: input value doesn't have shape or data, skip it."
               << value.impl();
-      continue;
+      return false;
     }
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
+    return true;
+  };
+
+  for (const auto& value : group.GetInputOpValues()) {
+    if (!TryGetDimExprsFromGroup(value)) {
+      TryGetDimExprsFromGroup(value);
+    }
   }
 }
 
