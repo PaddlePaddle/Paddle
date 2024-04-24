@@ -164,11 +164,6 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
       [&](const ::pir::Value& value) -> bool {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
-    if (!shape_analysis.HasShapeOrDataForValue(value)) {
-      VLOG(4) << "FusionInfo: input value doesn't have shape or data, skip it."
-              << value.impl();
-      return false;
-    }
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
     return true;
   };
