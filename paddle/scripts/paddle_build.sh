@@ -240,6 +240,7 @@ function cmake_base() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_CPP_TEST=${WITH_CPP_TEST:-ON}
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -288,6 +289,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+	-DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
@@ -3835,6 +3837,15 @@ function run_setup(){
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    pip uninstall -y PyGithub
+    pip install github
+    pip install PyGithub
+    python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+    if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
+         export WITH_CPP_TEST=OFF
+    else
+	 export WITH_CPP_TEST=ON
+    fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
     pscore_flag=${distibuted_flag}
@@ -3904,6 +3915,8 @@ EOF
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
+    export WITH_CPP_TEST=${WITH_CPP_TEST:-ON}
+
 
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
