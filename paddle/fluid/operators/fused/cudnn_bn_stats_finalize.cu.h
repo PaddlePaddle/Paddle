@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
     typename platform::CudnnDataType<T>::BatchNormParamType;
