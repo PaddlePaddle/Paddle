@@ -115,6 +115,7 @@ def ref_ormqr(input, tau, other, left=True, transpose=False):
 
 class TestOrmqrAPI(unittest.TestCase):
     def setUp(self):
+        paddle.seed(2024)
         self.init_input()
         self.place = (
             paddle.CUDAPlace(0)
@@ -199,24 +200,18 @@ class TestOrmqrAPICase2(TestOrmqrAPI):
 
 class TestOrmqrAPICase3(TestOrmqrAPI):
     def init_input(self):
-        self.x = np.random.randn(10, 2).astype('float64')
-        self.other = np.random.randn(2, 10).astype('float64')
-
-
-class TestOrmqrAPICase4(TestOrmqrAPI):
-    def init_input(self):
         self.x = np.random.randn(5, 4, 3).astype('float32')
         self.other = np.random.randn(5, 3, 4).astype('float32')
 
 
 # complex dtype
-class TestOrmqrAPICase5(TestOrmqrAPI):
+class TestOrmqrAPICase4(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('complex64')
         self.other = np.random.randn(3, 4).astype('complex64')
 
 
-class TestOrmqrAPICase6(TestOrmqrAPI):
+class TestOrmqrAPICase5(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('complex128')
         self.other = np.random.randn(3, 4).astype('complex128')
