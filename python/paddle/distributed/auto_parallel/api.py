@@ -37,6 +37,7 @@ from paddle.distributed.auto_parallel.interface import (
 from paddle.distributed.auto_parallel.placement_type import (
     to_placements,
 )
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -443,7 +444,7 @@ def reshard(dist_tensor, mesh, placements):
 
 def shard_layer(
     layer: nn.Layer,
-    process_mesh: dist.ProcessMesh,
+    process_mesh: ProcessMesh,
     shard_fn: Callable = None,
     input_fn: Callable = None,
     output_fn: Callable = None,
@@ -523,13 +524,13 @@ def shard_layer(
         raise ValueError("The argument `process_mesh` cannot be empty.")
 
     # Check the legality of process_mesh
-    if not isinstance(process_mesh, dist.ProcessMesh):
+    if not isinstance(process_mesh, ProcessMesh):
         raise ValueError(
             "The argument `process_mesh` is not `dist.ProcessMesh` type."
         )
 
     def replicate_layer_params_and_buffers(
-        layer: nn.Layer, mesh: dist.ProcessMesh
+        layer: nn.Layer, mesh: ProcessMesh
     ) -> None:
         for key, param in layer._parameters.items():
             if param is not None and not param.is_dist():
@@ -2046,7 +2047,7 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            mesh = dist.ProcessMesh(
+            mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
@@ -2346,9 +2347,7 @@ class ShardDataloader:
     def __init__(
         self,
         dataloader: paddle.io.DataLoader,
-        meshes: Union[
-            dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-        ],
+        meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
         input_keys: Union[List[str], Tuple[str]] = None,
         shard_dims: Union[list, tuple, str, int] = None,
         is_dataset_splitted: bool = False,
@@ -2597,9 +2596,7 @@ class ShardDataloader:
 
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
-    meshes: Union[
-        dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-    ],
+    meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
     input_keys: Union[List[str], Tuple[str]] = None,
     shard_dims: Union[list, tuple, str, int] = None,
     is_dataset_splitted: bool = False,

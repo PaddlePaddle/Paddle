@@ -16,6 +16,7 @@
 
 #include <Python.h>
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -1103,6 +1104,43 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
+
+  ir_insertion_point
+      .def(
+          "next",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->end()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the end and can't call "
+                  "next()."));
+            }
+            return *(self.value.second++);
+          },
+          return_value_policy::reference)
+      .def(
+          "prev",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->begin()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the begin and can't call "
+                  "prev()."));
+            }
+            return *(self.value.second--);
+          },
+          return_value_policy::reference)
+      .def(
+          "get_operation",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->begin()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the begin."));
+            } else if (self.value.second == self.value.first->end()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the end."));
+            }
+            return *(self.value.second);
+          },
+          return_value_policy::reference);
 }
 
 std::list<Operation *>::const_iterator list_offset(const Block *block,
