@@ -38,12 +38,6 @@ class IR_API ConstraintsManager {
   template <typename DoEachClusterT>
   void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
-  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
-  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
-
- private:
-  void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
-
   template <typename DoEachT>
   void EqualConstraintsVisitor(const DoEachT& DoEach);
 
@@ -52,6 +46,12 @@ class IR_API ConstraintsManager {
 
   template <typename DoEachT>
   void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
+
+  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
+  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
+
+ private:
+  void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;

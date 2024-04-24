@@ -29,6 +29,10 @@ namespace pir {
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
+  symbol::ConstraintsManager& GetConstraintsManager() {
+    return constraints_manager_;
+  }
+
   void Init();
 
   const std::string GetNextSymName();
