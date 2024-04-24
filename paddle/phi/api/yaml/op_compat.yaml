@@ -2702,8 +2702,6 @@
     input : Input
   outputs :
     output : Output
-  attrs :
-    {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
   inputs :
