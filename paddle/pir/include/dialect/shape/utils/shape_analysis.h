@@ -129,6 +129,8 @@ class IR_API ShapeConstraintIRAnalysis {
   }
 
  private:
+  void SetStaticShapeForValue(Value val);
+
   void InferShapeOrDataForValue(Value val);
 
  private:

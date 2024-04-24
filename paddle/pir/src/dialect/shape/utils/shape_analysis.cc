@@ -16,6 +16,7 @@
 #include <string>
 #include "paddle/common/bfs_walker.h"
 #include "paddle/common/topo_walker.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -158,6 +159,20 @@ const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
   return context_.GetNextSymName();
 }
 
+void ShapeConstraintIRAnalysis::SetStaticShapeForValue(Value val) {
+  auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
+  std::vector<symbol::DimExpr> static_shape;
+  for (int i = 0; i < type_info.dims().size(); ++i) {
+    int dim = type_info.dims()[i];
+    if (dim > 0) {
+      static_shape.emplace_back(symbol::DimExpr{dim});
+    } else {
+      static_shape.emplace_back(GetNextSymName());
+    }
+  }
+  SetShapeOrDataForValue(val, symbol::TensorShapeOrDataDimExprs(static_shape));
+}
+
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
   std::unordered_set<Operation*> subgraph_ops;
   std::vector<Operation*> start_ops;
@@ -165,7 +180,11 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
         for (auto& operand : op->operands_source()) {
           if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
-            Visit(operand.defining_op());
+            if (!operand.defining_op()) {
+              SetStaticShapeForValue(operand);
+            } else {
+              Visit(operand.defining_op());
+            }
           }
         }
       };
@@ -176,7 +195,11 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     bool has_prev_op = false;
     for (auto& operand : op->operands_source()) {
       if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
-        has_prev_op = true;
+        if (!operand.defining_op()) {
+          SetStaticShapeForValue(operand);
+        } else {
+          has_prev_op = true;
+        }
       }
     }
     if (!has_prev_op) {
@@ -219,9 +242,17 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
         }
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          val.defining_op()->name() +
-          " DOES NOT have InferSymbolicShapeInterface!"));
+      // TODO(Hongqing-work): throw it after the shape analysis reconstruct
+      // is done.
+      // PADDLE_THROW(phi::errors::Unimplemented(
+      //     val.defining_op()->name() +
+      //     " DOES NOT have InferSymbolicShapeInterface!"));
+      LOG(WARNING) << op->name() << " HAS ERROR on InferSymbolicShape!";
+      for (auto& result_value : op->results()) {
+        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
+          SetStaticShapeForValue(result_value);
+        }
+      }
     }
   });
 }
@@ -236,7 +267,11 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   }
   if (!context_.HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op
-    InferShapeOrDataForValue(val);
+    if (!val.defining_op()) {
+      SetStaticShapeForValue(val);
+    } else {
+      InferShapeOrDataForValue(val);
+    }
   }
 
   return context_.GetShapeOrDataForValue(val);
