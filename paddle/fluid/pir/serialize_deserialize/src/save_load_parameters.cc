@@ -25,6 +25,15 @@ const phi::DeviceContext* GetDeviceContext(const phi::DenseTensor& x) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const phi::DeviceContext* dev_ctx = nullptr;
   auto place = x.place();
+  if (place.GetType() == phi::AllocationType::UNDEFINED) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    place = phi::GPUPlace();
+#elif defined(PADDLE_WITH_XPU)
+    place = phi::XPUPlace();
+#else
+    place = phi::CPUPlace();
+#endif
+  }
   dev_ctx = pool.Get(place);
   return dev_ctx;
 }
