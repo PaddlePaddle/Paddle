@@ -95,7 +95,6 @@ const std::unordered_set<std::string> LegacyOpList = {
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
     paddle::onednn::dialect::FusionLstmOp::name(),
