@@ -21,10 +21,12 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
+PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::dialect::ir::details {
 
@@ -78,12 +80,19 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
 
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group) {
-  hlir::framework::pir::FusionInfo fusion_info(*group);
-  auto kernel_info = CompilationCache::Instance().GetKernelInfo(fusion_info);
+  const auto CreateKernelInfo = [&]() -> hlir::framework::pir::CINNKernelInfo {
+    if (FLAGS_enable_cinn_compile_cache) {
+      hlir::framework::pir::FusionInfo fusion_info(*group);
+      return CompilationCache::Instance().GetKernelInfo(fusion_info);
+    } else {
+      PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
+      return pir_compiler.Build({group})[0];
+    }
+  };
   std::unordered_map<std::string, ::pir::Attribute> attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
        cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
-                                                   kernel_info)}};
+                                                   CreateKernelInfo())}};
   return attrs;
 }
 

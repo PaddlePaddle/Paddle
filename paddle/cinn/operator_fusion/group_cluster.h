@@ -58,8 +58,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
 
   pir::Program* program = ops.at(0)->GetParentProgram();
 
-  const auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(program);
+  auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
 
   VLOG(4) << "Start Create Policies and PolicyManager!";
   const auto& relative_judge_policy =
@@ -82,7 +81,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   for (const auto& node : result) {
     VLOG(4) << "\n"
             << node->DebugStr() << "\n"
-            << fusion::StmtPatternDebugStr(node->stmt_pattern_);
+            << fusion::StmtPatternDebugStr(node->stmt_pattern());
   }
 
   return result;

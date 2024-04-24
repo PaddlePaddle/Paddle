@@ -449,6 +449,138 @@ class TestArgsort4(TestArgsort):
         self.axis = 1
 
 
+class TestStableArgsort(unittest.TestCase):
+    def init(self):
+        self.input_shape = [
+            30,
+        ]
+        self.axis = 0
+        self.data = np.array([100.0, 50.0, 10.0] * 10)
+
+    def setUp(self):
+        self.init()
+
+    def cpu_place(self):
+        self.place = core.CPUPlace()
+
+    def gpu_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    @test_with_pir_api
+    def test_api_static1_cpu(self):
+        self.cpu_place()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=self.input_shape, dtype="float64"
+            )
+            output = paddle.argsort(input, axis=self.axis, stable=True)
+            np_result = np.argsort(self.data, axis=self.axis, kind='stable')
+            exe = paddle.static.Executor(self.place)
+            result = exe.run(
+                paddle.static.default_main_program(),
+                feed={'input': self.data},
+                fetch_list=[output],
+            )
+
+            self.assertEqual((result == np_result).all(), True)
+
+    @test_with_pir_api
+    def test_api_static1_gpu(self):
+        self.gpu_place()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=self.input_shape, dtype="float64"
+            )
+            output = paddle.argsort(input, axis=self.axis, stable=True)
+            np_result = np.argsort(self.data, axis=self.axis, kind='stable')
+            exe = paddle.static.Executor(self.place)
+            result = exe.run(
+                paddle.static.default_main_program(),
+                feed={'input': self.data},
+                fetch_list=[output],
+            )
+
+            self.assertEqual((result == np_result).all(), True)
+
+    @test_with_pir_api
+    def test_api_static2_cpu(self):
+        self.cpu_place()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=self.input_shape, dtype="float64"
+            )
+            output2 = paddle.argsort(
+                input, axis=self.axis, descending=True, stable=True
+            )
+            np_result2 = np.argsort(-self.data, axis=self.axis, kind='stable')
+            exe = paddle.static.Executor(self.place)
+            result2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'input': self.data},
+                fetch_list=[output2],
+            )
+
+            self.assertEqual((result2 == np_result2).all(), True)
+
+    @test_with_pir_api
+    def test_api_static2_gpu(self):
+        self.gpu_place()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name="input", shape=self.input_shape, dtype="float64"
+            )
+            output2 = paddle.argsort(
+                input, axis=self.axis, descending=True, stable=True
+            )
+            np_result2 = np.argsort(-self.data, axis=self.axis, kind='stable')
+            exe = paddle.static.Executor(self.place)
+            result2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'input': self.data},
+                fetch_list=[output2],
+            )
+
+            self.assertEqual((result2 == np_result2).all(), True)
+
+
+class TestStableArgsort2(TestStableArgsort):
+    def init(self):
+        self.input_shape = [30, 1]
+        self.data = np.array([100.0, 50.0, 10.0] * 10).reshape(self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsort3(TestStableArgsort):
+    def init(self):
+        self.input_shape = [1, 30]
+        self.data = np.array([100.0, 50.0, 10.0] * 10).reshape(self.input_shape)
+        self.axis = 1
+
+
+class TestStableArgsort4(TestStableArgsort):
+    def init(self):
+        self.input_shape = [40, 3, 4]
+        self.axis = 0
+        self.data = np.array(
+            [
+                [
+                    [100.0, 50.0, -10.0, 1.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [100.0, 50.0, -10.0, 1.0],
+                ],
+                [
+                    [70.0, -30.0, 60.0, 100.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [100.0, 50.0, -10.0, 1.0],
+                ],
+            ]
+            * 20
+        )
+
+
 class TestArgsortImperative(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -494,6 +626,98 @@ class TestArgsortImperative4(TestArgsortImperative):
     def init(self):
         self.input_shape = [2, 3, 4]
         self.axis = 1
+
+
+class TestStableArgsortImperative(unittest.TestCase):
+    def init(self):
+        self.input_shape = [
+            30,
+        ]
+        self.axis = 0
+        self.input_data = np.array([100.0, 50.0, 10.0] * 10)
+
+    def setUp(self):
+        self.init()
+
+    def cpu_place(self):
+        self.place = core.CPUPlace()
+
+    def gpu_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_api_cpu(self):
+        self.cpu_place()
+        paddle.disable_static(self.place)
+        var_x = paddle.to_tensor(self.input_data)
+        out = paddle.argsort(var_x, axis=self.axis, stable=True)
+        expect = np.argsort(self.input_data, axis=self.axis, kind='stable')
+        self.assertEqual((expect == out.numpy()).all(), True)
+
+        out2 = paddle.argsort(
+            var_x, axis=self.axis, descending=True, stable=True
+        )
+        expect2 = np.argsort(-self.input_data, axis=self.axis, kind='stable')
+        self.assertEqual((expect2 == out2.numpy()).all(), True)
+
+        paddle.enable_static()
+
+    def test_api_gpu(self):
+        self.gpu_place()
+        paddle.disable_static(self.place)
+        var_x = paddle.to_tensor(self.input_data)
+        out = paddle.argsort(var_x, axis=self.axis, stable=True)
+        expect = np.argsort(self.input_data, axis=self.axis, kind='stable')
+        self.assertEqual((expect == out.numpy()).all(), True)
+
+        out2 = paddle.argsort(
+            var_x, axis=self.axis, descending=True, stable=True
+        )
+        expect2 = np.argsort(-self.input_data, axis=self.axis, kind='stable')
+        self.assertEqual((expect2 == out2.numpy()).all(), True)
+
+        paddle.enable_static()
+
+
+class TestStableArgsortImperative2(TestStableArgsortImperative):
+    def init(self):
+        self.input_shape = [30, 1]
+        self.input_data = np.array([100.0, 50.0, 10.0] * 10).reshape(
+            self.input_shape
+        )
+        self.axis = 0
+
+
+class TestStableArgsortImperative3(TestStableArgsortImperative):
+    def init(self):
+        self.input_shape = [1, 30]
+        self.input_data = np.array([100.0, 50.0, 10.0] * 10).reshape(
+            self.input_shape
+        )
+        self.axis = 1
+
+
+class TestStableArgsortImperative4(TestStableArgsortImperative):
+    def init(self):
+        self.input_shape = [40, 3, 4]
+        self.axis = 0
+        self.input_data = np.array(
+            [
+                [
+                    [100.0, 50.0, -10.0, 1.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [100.0, 50.0, -10.0, 1.0],
+                ],
+                [
+                    [70.0, -30.0, 60.0, 100.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [100.0, 50.0, -10.0, 1.0],
+                ],
+            ]
+            * 20
+        )
 
 
 class TestArgsortWithInputNaN(unittest.TestCase):

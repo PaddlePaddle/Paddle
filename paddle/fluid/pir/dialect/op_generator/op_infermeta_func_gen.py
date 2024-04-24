@@ -612,7 +612,7 @@ def GenDistBranch(args, op_info):
     {}
     CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
-    std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;"""
 
     extra_call = ""
     for name in op_info.spmd_params:
@@ -664,7 +664,7 @@ def GenDistBranch(args, op_info):
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
-        operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
+        dist_operand_attrs.push_back(CvtToPirDistAttr(arg_dist));
     }}
 """
     dist_branch_str += TEMPLATE.format(
@@ -677,10 +677,10 @@ def GenDistBranch(args, op_info):
         TEMPLATE = """
     for(int i = {input_size}; i < {all_input_size}; ++i) {{
         if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
-            operand_dist_attrs.push_back(dist_type.tensor_dist_attr());
+            dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
         }}
         else {{
-            operand_dist_attrs.push_back(nullptr);
+            dist_operand_attrs.push_back(nullptr);
         }}
     }}
 """
@@ -693,13 +693,18 @@ def GenDistBranch(args, op_info):
     for idx, output_name in enumerate(op_info.output_name_list):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_info.output_type_list[idx]:
+            TEMPLATE = """
+    auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
+    dist_result_attrs.push_back(dist_attr_{name});
+    argument_outputs.push_back(DistDenseTensorType::get(ctx, {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
+"""
             # Todo: support vector<Tensor> case
             dist_branch_str += ""
         # is a Tensor
         else:
             TEMPLATE = """
     auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
-    result_dist_attrs.push_back(dist_attr_{name});
+    dist_result_attrs.push_back(dist_attr_{name});
     argument_outputs.push_back(DistDenseTensorType::get(ctx, {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
 """
             dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
@@ -707,8 +712,8 @@ def GenDistBranch(args, op_info):
     attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
         ctx,
         op_mesh,
-        operand_dist_attrs,
-        result_dist_attrs
+        dist_operand_attrs,
+        dist_result_attrs
     );
     return argument_outputs;
   }}

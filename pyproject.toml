@@ -134,4 +134,3 @@ known-first-party = ["paddle"]
 
 # temp ignore isort
 "python/paddle/distributed/__init__.py" = ["I001"]
-"python/paddle/distributed/passes/__init__.py" = ["I001"]

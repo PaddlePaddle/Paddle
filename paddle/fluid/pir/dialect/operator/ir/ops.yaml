@@ -478,6 +478,15 @@
   optional : in_accum, in_state, out_scale, out_accum, out_state
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
+- op : dequantize_log
+  args: (Tensor x, Tensor dict)
+  output: Tensor(out)
+  infer_meta:
+    func: DequantizeLogInferMeta
+  kernel:
+    func: dequantize_log
+    data_type: x
+
 - op : dgc
   args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float[] sparsity, float m=0.9, bool use_nesterov=true, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
   output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
