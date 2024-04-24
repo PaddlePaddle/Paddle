@@ -809,6 +809,12 @@
   attrs :
     {scale : Scale, shift : Shift}
 
+- op : dequantize_abs_max
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : dequantize_linear
   inputs :
     {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
