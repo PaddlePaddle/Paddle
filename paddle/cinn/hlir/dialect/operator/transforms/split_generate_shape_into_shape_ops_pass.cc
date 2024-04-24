@@ -193,8 +193,10 @@ struct CachedDimExprToValueConverter {
     pir::Value prod = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Reciprocal<symbol::DimExpr>>()) {
-        const auto& [operand] =
-            *operands->at(i).dyn_cast<symbol::Negative<symbol::DimExpr>>();
+        const auto& operand =
+            operands->at(i)
+                .dyn_cast<symbol::Reciprocal<symbol::DimExpr>>()
+                ->data;
         pir::Value operand_value = ConvertToValue(operand);
         prod = rewriter->Build<paddle::dialect::DivideOp>(prod, operand_value)
                    .out();
@@ -218,7 +220,8 @@ struct CachedDimExprToValueConverter {
     pir::Value max = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      max = rewriter->Build<paddle::dialect::MaxOp>(max, operand_value).out();
+      max =
+          rewriter->Build<paddle::dialect::MaximumOp>(max, operand_value).out();
     }
     return max;
   }
@@ -234,7 +237,8 @@ struct CachedDimExprToValueConverter {
     pir::Value min = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      min = rewriter->Build<paddle::dialect::MinOp>(min, operand_value).out();
+      min =
+          rewriter->Build<paddle::dialect::MinimumOp>(min, operand_value).out();
     }
     return min;
   }

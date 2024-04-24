@@ -852,6 +852,7 @@ void HasElementsOp::VerifySig() {
 }
 
 const char *AssertOp::attributes_name[1] = {"summarize"};
+const char AssertOp::ERROR_INFO_ATTR_NAME[] = "error_info";
 
 void AssertOp::Build(pir::Builder &builder,             // NOLINT
                      pir::OperationArgument &argument,  // NOLINT

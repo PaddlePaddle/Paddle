@@ -1154,10 +1154,12 @@ def GenOneDnnExtraAttrsDefaultValue(onednn_extra_args):
     STR_TEMPLATE = """  pir::Attribute attr_{attr_name} = {op_attribute_type}::get(pir::IrContext::Instance(), {attr});
 """
     ARRAY_ATTRIBUTE_TEMPLATE = """  std::vector<pir::Attribute> vec_{attr_name};
-std::vector<{cpp_type}> vec_values = {attr_valuse};
-for (size_t i = 0; i < static_cast<size_t>(vec_values.size()); i++) {{
-    {create_attribute}
-    vec_{attr_name}.push_back(attr_{attr_name});
+{{
+    std::vector<{cpp_type}> vec_values = {attr_valuse};
+    for (size_t i = 0; i < static_cast<size_t>(vec_values.size()); i++) {{
+        {create_attribute}
+        vec_{attr_name}.push_back(attr_{attr_name});
+    }}
 }}
 pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_{attr_name});
 """

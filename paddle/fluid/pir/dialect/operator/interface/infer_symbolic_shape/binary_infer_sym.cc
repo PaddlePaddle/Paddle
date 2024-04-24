@@ -90,14 +90,18 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-  std::vector<symbol::DimExpr> in_data_dims =
+  const std::vector<symbol::DimExpr> in_data_dims =
       channel_last ? std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 1,
                                                   in_s_or_d.shape().end() - 1)
                    : std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 2,
                                                   in_s_or_d.shape().end());
 
-  std::vector<symbol::DimExpr> filter_data_dims = std::vector<symbol::DimExpr>(
-      filter_s_or_d.shape().begin() + 2, filter_s_or_d.shape().end());
+  const std::vector<symbol::DimExpr> filter_data_dims =
+      channel_last
+          ? std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                         filter_s_or_d.shape().end() - 1)
+          : std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                         filter_s_or_d.shape().end());
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
@@ -124,18 +128,13 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
     }
 
     for (size_t i = 0; i < in_data_dims.size(); ++i) {
-      if (!in_data_dims[i].isa<int64_t>() ||
-          !filter_s_or_d.shape()[i + 2].isa<int64_t>()) {
-        out_s_or_d.push_back(infer_context->GetNextSymName());
-      } else {
-        const symbol::DimExpr dkernel =
-            new_dilations[i] * (filter_data_dims[i] - 1) + 1;
-        symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
-                                       new_paddings[2 * i + 1] - dkernel) /
-                                          strides[i] +
-                                      1;
-        out_s_or_d.push_back(output_size);
-      }
+      const symbol::DimExpr dkernel =
+          new_dilations[i] * (filter_data_dims[i] - 1) + 1;
+      symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
+                                     new_paddings[2 * i + 1] - dkernel) /
+                                        strides[i] +
+                                    1;
+      out_s_or_d.push_back(output_size);
     }
     if (channel_last) {
       out_s_or_d.push_back(filter_s_or_d.shape()[0]);
@@ -488,6 +487,15 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
+bool IscloseOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool TakeAlongAxisOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // input
@@ -554,3 +562,7 @@ bool TopPSamplingOpInferSymbolicShape(
 }
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::IscloseOpInferSymbolicShape;
+}
