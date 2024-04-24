@@ -429,16 +429,6 @@ struct IsOutputNodeMatcher {
   }
 };
 
-struct IsNotOutputNodeMatcher {
-  // TODO(@wuzhanfei) after move yield_store before group cluster, remove this
-  // matcher
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    bool res = !IsOutputNodeMatcher()(graph, node);
-    return res;
-  }
-};
-
 template <int N>
 struct DownstreamSmallerThan {
   template <typename T>

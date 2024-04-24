@@ -102,8 +102,7 @@ void PatternGraph<T>::SinkTrivialPattern() {
   GraphTransformer<
       NodePattern,
       T,
-      And<And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern<T>>>,
-          IsNotOutputNodeMatcher>,
+      And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern<T>>>,
       MergeTrivialPatternOperation>(this);
 }
 
@@ -135,17 +134,16 @@ template <typename T>
 void PatternGraph<T>::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
                    T,
-                   And<CanFuseReduceTreeMatcher, IsNotOutputNodeMatcher>,
+                   CanFuseReduceTreeMatcher,
                    MergeReduceTreeOperation>(this);
 }
 
 template <typename T>
 void PatternGraph<T>::ReduceTree_Trivial_Fusion() {
-  GraphTransformer<
-      NodePattern,
-      T,
-      And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNodeMatcher>,
-      MergeReduceTreeAndTrivialOperation>(this);
+  GraphTransformer<NodePattern,
+                   T,
+                   CanFuseReduceTreeAndTrivialMatcher,
+                   MergeReduceTreeAndTrivialOperation>(this);
 }
 
 template <typename T>
