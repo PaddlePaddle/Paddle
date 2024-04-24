@@ -45,6 +45,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
     auto dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
 
+    VLOG(0) << "debug c_sync_calc_stream " << dev_ctx->stream();
     platform::GpuStreamSync(dev_ctx->stream());
 
 #elif defined(PADDLE_WITH_XPU_BKCL)

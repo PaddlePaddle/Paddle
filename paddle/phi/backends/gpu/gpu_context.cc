@@ -77,7 +77,9 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
     device_prop_ = &Eigen::m_deviceProperties[place.device];
   }
 
-  const gpuStream_t& stream() const override { return stream_; }
+  const gpuStream_t& stream() const override { 
+    return stream_; 
+  }
 
   const gpuDeviceProp& deviceProperties() const override {
     return *device_prop_;
@@ -829,7 +831,10 @@ GPUContext::~GPUContext() = default;
 
 const Place& GPUContext::GetPlace() const { return impl_->GetPlace(); }
 
-gpuStream_t GPUContext::stream() const { return impl_->stream(); }
+gpuStream_t GPUContext::stream() const { 
+    //VLOG(0) << "debug gpu stream: " << impl_->stream();
+return impl_->stream(); 
+}
 
 CUDAStream* GPUContext::cuda_stream() const { return impl_->cuda_stream(); }
 

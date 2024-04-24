@@ -704,15 +704,6 @@ class Engine:
             dist_program
         )
 
-        # TODO(ywt01)
-        with paddle.base.program_guard(dense_program):
-            for op in dense_program.global_block().ops:
-                paddle.pir.set_insertion_point_after(op)
-                if op.name() == "pd_op.c_allreduce_sum_":
-                    op_value = op.result(0)
-                    sync_op = paddle._pir_ops.c_sync_calc_stream_(op_value)
-                    sync_op.set_type(op_value.type())
-
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
 

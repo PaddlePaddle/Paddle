@@ -915,8 +915,10 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   auto& op_attr_map = op->attributes();
   auto attr_name_list = op_yaml_info.AttrParams(true);
   for (auto& name : attr_name_list) {
+    VLOG(0) << "debug iter attr_name: " << name;
     auto& val = op_attr_map.at(name);
     auto legacy_arg_name = op_normalizer.GetLegacyAttrName(fluid_op_name, name);
+    VLOG(0) << "debug iter legacy_arg_name: " << legacy_arg_name;
 
     if (val.isa<pir::StrAttribute>()) {
       attr_map[legacy_arg_name] = val.dyn_cast<pir::StrAttribute>().AsString();
@@ -924,6 +926,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
       attr_map[legacy_arg_name] = val.dyn_cast<pir::Int32Attribute>().data();
     } else if (val.isa<pir::BoolAttribute>()) {
       attr_map[legacy_arg_name] = val.dyn_cast<pir::BoolAttribute>().data();
+      VLOG(0) << "debug iter attr_map legacy_arg_name: " << legacy_arg_name;
+      VLOG(0) << "debug iter attr_map calc_stream value: " << val.dyn_cast<pir::BoolAttribute>().data();
     } else if (val.isa<pir::FloatAttribute>()) {
       attr_map[legacy_arg_name] = val.dyn_cast<pir::FloatAttribute>().data();
     } else if (val.isa<pir::DoubleAttribute>()) {
