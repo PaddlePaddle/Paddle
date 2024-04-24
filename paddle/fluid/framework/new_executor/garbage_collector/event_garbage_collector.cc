@@ -104,7 +104,20 @@ void InterpreterCoreEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         event,
         ctx);
-    var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    // var->GetMutable<phi::SparseCooTensor>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    // var->GetMutable<phi::SparseCsrTensor>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {

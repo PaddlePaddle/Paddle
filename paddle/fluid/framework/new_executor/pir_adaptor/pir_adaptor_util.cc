@@ -415,6 +415,12 @@ void BuildValue(pir::Value value,
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
   } else if (value.type()
+                 .isa<paddle::dialect::AllocatedSparseCooTensorType>()) {
+    var->GetMutable<phi::SparseCooTensor>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
+    var->GetMutable<phi::SparseCsrTensor>();
+  } else if (value.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::StackType>()) {
@@ -855,7 +861,9 @@ void BuildRuntimeContext(pir::Operation* op,
 
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        type.isa<paddle::dialect::AllocatedSelectedRowsType>() ||
+        type.isa<paddle::dialect::AllocatedSparseCooTensorType>() ||
+        type.isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
       runtime_ctx->outputs[legacy_arg_name] = {var};
     } else if (type.isa<pir::VectorType>()) {
       auto var_ref = var->Get<VariableRefArray>();
@@ -1006,7 +1014,9 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
     }
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSparseCooTensorType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
       out_name_map[legacy_arg_name].push_back(value_exec_info.GetVarName(ptr));
       VLOG(6) << "Push back outputs to VariableNameMap : "
               << value_exec_info.GetVarName(ptr);

@@ -116,9 +116,16 @@ def get_infermeta_inputs_str(
         else:
             if op_input_optional_list[idx] == 'false':
                 type = op_input_type_list[idx]
-                allocated_type = type.replace(
-                    'DenseTensorType', 'AllocatedDenseTensorType'
-                ).replace("SelectedRowsType", "AllocatedSelectedRowsType")
+                allocated_type = (
+                    type.replace('DenseTensorType', 'AllocatedDenseTensorType')
+                    .replace("SelectedRowsType", "AllocatedSelectedRowsType")
+                    .replace(
+                        "SparseCooTensorType", "AllocatedSparseCooTensorType"
+                    )
+                    .replace(
+                        "SparseCsrTensorType", "AllocatedSparseCsrTensorType"
+                    )
+                )
                 infermeta_inputs_str += GET_INPUT_TYPE_TEMPLATE.format(
                     type=type,
                     name=op_input_name_list[idx],
