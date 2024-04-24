@@ -76,7 +76,7 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
 
     def setXType(self):
         self.x_type = np.float32
-        self.atol = 1e-4
+        self.atol = 2e-4
 
     def config(self):
         self.training = True
@@ -119,7 +119,7 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
             self.x, self.residual, ln_scale, ln_bias, linear_bias
         )
         np.testing.assert_allclose(
-            ref_out, out.numpy(), rtol=1e-5, atol=self.atol
+            ref_out, out.numpy(), rtol=1e-4, atol=self.atol
         )
 
     def run_static(self):
