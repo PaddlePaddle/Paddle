@@ -539,7 +539,6 @@ void analyse_all_event_info(
     }
 
     for (size_t waiter_instr_id : waiter_instr_ids) {
-      VLOG(0) << "debug waiter "<< waiter_instr_id << " " <<  cur_instr_id << " " << &(instructions[cur_instr_id]->DeviceContext());
       (*event_info)[&(instructions[cur_instr_id]->DeviceContext())]
                    [waiter_instr_id]
                        .insert(cur_instr_id);
@@ -563,15 +562,12 @@ void shrink_event_info(
   for (auto& item : *event_info) {
     // shrink redundant recorders, waiter instrs should only wait for the last
     // recorder instrs in each stream
-    VLOG(0) << "item.first: " << item.first;
     std::map<size_t, std::set<size_t>>& waiter_recorder_map = item.second;
     for (auto& waiter_recorder : waiter_recorder_map) {
       size_t waiter_instr_id = waiter_recorder.first;
-      VLOG(0) << "waiter_instr_id: " << waiter_instr_id;
       std::set<size_t>& recorder_instr_ids = waiter_recorder.second;
       std::set<size_t> unnecessary_recorder_instr_ids;
       for (size_t cur_instr_id : recorder_instr_ids) {
-         VLOG(0) << "cur_instr_id: " << cur_instr_id;
         for (size_t next_instr_id : recorder_instr_ids) {
           if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id)) {
             unnecessary_recorder_instr_ids.insert(cur_instr_id);
@@ -606,7 +602,6 @@ void shrink_event_info(
       for (size_t cur_instr_id : waiter_instr_ids) {
         for (size_t next_instr_id : waiter_instr_ids) {
           if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id) && dependency_builder.IsSameDeviceContext(cur_instr_id, next_instr_id)) {
-            VLOG(0) << "debug cur_instr_id " << cur_instr_id << ", next_instr_id " << next_instr_id;
             unnecessary_waiter_instr_ids.insert(next_instr_id);
             break;
           }
@@ -688,21 +683,6 @@ void PirStreamAnalyzer::ConstructEvents(
     AnalyseAllEventInfo(
         cross_step_merged_instructions_ptr, run_type_info, event_info_.get());
 
-    for (auto& item : *event_info_.get()) {
-        // shrink redundant recorders, waiter instrs should only wait for the last
-        // recorder instrs in each stream
-        VLOG(1) << "context:" << item.first;
-        std::map<size_t, std::set<size_t>>& waiter_recorder_map = item.second;
-        for (auto& waiter_recorder : waiter_recorder_map) {
-            size_t waiter_instr_id = waiter_recorder.first;
-            VLOG(1) << "waiter:" <<  waiter_instr_id;
-            std::set<size_t>& recorder_instr_ids = waiter_recorder.second;
-            std::set<size_t> unnecessary_recorder_instr_ids;
-            for (size_t cur_instr_id : recorder_instr_ids) {
-                VLOG(4) << "recoder:" << cur_instr_id;
-            }
-        }
-    }
     ShrinkEventInfo(dependency_builder, event_info_.get());
 
     is_event_info_build_ = true;

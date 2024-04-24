@@ -292,7 +292,6 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "debug use_calc_stream ";
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
@@ -324,9 +323,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     void* recvbuff = out->mutable_data<T>(place);
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    VLOG(0) << "debug use_calc_stream ";
     if (map->has(rid)) {
-      VLOG(0) << "debug use_calc_stream ";
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
       distributed::AllreduceOptions opts;
@@ -354,7 +351,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 
       auto task = pg->AllReduce(out, *in, opts, false, true);
       task->Wait();
-      VLOG(0) << "debug use_calc_stream ";
       return;
     }
 
@@ -393,9 +389,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
       stream = ctx.cuda_device_context().stream();
-      VLOG(0) << "debug use_calc_stream ";
-    } else {
-      VLOG(0) << "debug no use_calc_stream ";
     }
     VLOG(10) << "all reduce buffer:" << sendbuff << ", numel:" << numel
              << ", reduce type:" << static_cast<int>(red_type)
@@ -432,10 +425,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     if (comm_ctx) {
-      VLOG(0) << "debug use_calc_stream ";
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
     } else {
-      VLOG(0) << "debug use_calc_stream ";
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
                                                                   recvbuff,
                                                                   numel,

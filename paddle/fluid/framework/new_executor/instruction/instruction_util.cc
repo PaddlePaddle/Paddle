@@ -88,7 +88,6 @@ platform::DeviceContext* ParseDeviceContext(
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
-      VLOG(0) << "Parse DeviceContext for " << op_name;
       return dev_ctx;
     }
 
@@ -97,14 +96,12 @@ platform::DeviceContext* ParseDeviceContext(
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
-      VLOG(0) << "Parse DeviceContext for " << op_name;
       return dev_ctx;
     } else if (op_name.compare(paddle::dialect::MemcpyH2dOp::name()) == 0) {
       dev_ctx = ctx_manager.Get(std::string(kH2DStream), place, stream_priority)
                     .get()
                     .get();
       interpreter::SetDeviceCommContext(op, dev_ctx);
-      VLOG(0) << "Parse DeviceContext for " << op_name;
       return dev_ctx;
     }
 
@@ -136,20 +133,13 @@ platform::DeviceContext* ParseDeviceContext(
                       .Get(ring_id, place)
                       ->dev_context();
       }
-      VLOG(0) << "Parse DeviceContext for " << op_name;
       return dev_ctx;
     }
 #endif
   }
 
   if (origin_dev_ctx != nullptr) {
-      VLOG(0) << "Parse DeviceContext for " << op_name;
     interpreter::SetDeviceCommContext(op, origin_dev_ctx);
-  }
-  VLOG(0) << "debug Parse DeviceContext for " << op_name;
-  if (op_name == "pd_op.matmul" || op_name == "pd_op.c_allreduce_sum_" || op_name == "pd_op.relu") {
-      auto context = reinterpret_cast<const phi::GPUContext*>(origin_dev_ctx);
-      VLOG(0) << "debug dev ctx stream: " << context->stream();
   }
   return origin_dev_ctx;
 }
