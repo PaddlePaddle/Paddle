@@ -128,7 +128,7 @@ OperationDistAttribute OperationDistAttribute::get(
                         common::errors::PreconditionNotMet(
                             "operand_dist_attrs element's mesh(%s) not belong "
                             "to input mesh(%s)",
-                            iter.process_mesh_attr(),
+                            dist_attr.process_mesh_attr(),
                             mesh));
     }
   };
