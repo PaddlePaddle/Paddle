@@ -656,7 +656,9 @@ def monkey_patch_variable():
                                 self = astype(self, rhs_dtype)
                             else:
                                 other_var = astype(other_var, lhs_dtype)
-                    elif core.need_type_promotion(lhs_dtype, rhs_dtype):
+                    elif core.need_type_promotion(
+                        op_type, lhs_dtype, rhs_dtype
+                    ):
                         # only report warning here, real promotion deal in Executor
                         warnings.warn(
                             f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"

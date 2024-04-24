@@ -133,10 +133,20 @@ inline phi::DataType GetPromoteDtype(const std::string& op_name,
   return phi::promoteTypes(x, y);
 }
 
-inline bool NeedTypePromotion(const DataType x, const DataType y) {
+inline bool NeedTypePromotion(const std::string& op_name,
+                              const DataType x,
+                              const DataType y) {
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x != y) {
+// TODO(Xi Zhao): we got special case for add now, should remove it in furture.
+#ifdef PADDLE_WITH_CUDA
+    if (op_name == "add" && x == DataType::FLOAT32 &&
+        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#endif
+
     if ((is_support_float(x) && is_support_float(y)) ||
         (is_support_complex(x) || is_support_complex(y))) {
       return true;

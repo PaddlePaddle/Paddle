@@ -229,6 +229,83 @@ create_test_case(TestAPIAddInDygraph, 'complex128', 'float32', 'complex128')
 create_test_case(TestAPIAddInDygraph, 'complex128', 'float64', 'complex128')
 
 
+class TestAPIAddInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.add_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.add_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIAddInplaceInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIAddInplaceInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIAddInplaceInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIAddInplaceInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIAddInplaceInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIAddInplaceInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestAPIAddInplaceInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestAPIAddInplaceInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(TestAPIAddInplaceInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIAddInplaceInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestAPIAddInplaceInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
 class TestOperatorOverloadSubInDygraph(TestOperatorOverloadAddInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -371,6 +448,83 @@ create_test_case(TestAPISubInDygraph, 'complex128', 'int64', 'complex128')
 create_test_case(TestAPISubInDygraph, 'complex128', 'float16', 'complex128')
 create_test_case(TestAPISubInDygraph, 'complex128', 'float32', 'complex128')
 create_test_case(TestAPISubInDygraph, 'complex128', 'float64', 'complex128')
+
+
+class TestAPISubInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.subtract_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.subtract_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPISubInplaceInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPISubInplaceInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPISubInplaceInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPISubInplaceInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPISubInplaceInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPISubInplaceInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestAPISubInplaceInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestAPISubInplaceInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPISubInplaceInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(TestAPISubInplaceInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPISubInplaceInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestAPISubInplaceInDygraph, 'complex128', 'float64', 'complex128'
+)
 
 
 class TestOperatorOverloadMulInDygraph(TestOperatorOverloadAddInDygraph):
@@ -517,6 +671,83 @@ create_test_case(TestAPIMulInDygraph, 'complex128', 'float32', 'complex128')
 create_test_case(TestAPIMulInDygraph, 'complex128', 'float64', 'complex128')
 
 
+class TestAPIMulInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.multiply_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.multiply_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIMulInplaceInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIMulInplaceInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIMulInplaceInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIMulInplaceInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIMulInplaceInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIMulInplaceInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestAPIMulInplaceInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestAPIMulInplaceInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(TestAPIMulInplaceInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIMulInplaceInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestAPIMulInplaceInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
 class TestOperatorOverloadDivInDygraph(TestOperatorOverloadAddInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -661,6 +892,83 @@ create_test_case(TestAPIDivInDygraph, 'complex128', 'float32', 'complex128')
 create_test_case(TestAPIDivInDygraph, 'complex128', 'float64', 'complex128')
 
 
+class TestAPIDivInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.divide_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.divide_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIDivInplaceInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIDivInplaceInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIDivInplaceInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(
+        TestAPIDivInplaceInDygraph, 'bfloat16', 'float16', 'float32'
+    )
+    create_test_case(
+        TestAPIDivInplaceInDygraph, 'bfloat16', 'float32', 'float32'
+    )
+    create_test_case(
+        TestAPIDivInplaceInDygraph, 'bfloat16', 'float64', 'float64'
+    )
+    create_test_case(
+        TestAPIDivInplaceInDygraph, 'bfloat16', 'complex64', 'complex64'
+    )
+    create_test_case(
+        TestAPIDivInplaceInDygraph, 'bfloat16', 'complex128', 'complex128'
+    )
+
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'bool', 'complex64')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'int8', 'complex64')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'uint8', 'complex64')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'int16', 'complex64')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'int32', 'complex64')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex64', 'int64', 'complex64')
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex64', 'float16', 'complex64'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex64', 'float32', 'complex64'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex64', 'float64', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex64', 'complex128', 'complex128'
+)
+
+create_test_case(TestAPIDivInplaceInDygraph, 'complex128', 'bool', 'complex128')
+create_test_case(TestAPIDivInplaceInDygraph, 'complex128', 'int8', 'complex128')
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'uint8', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'int16', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'int32', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'int64', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'float16', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'float32', 'complex128'
+)
+create_test_case(
+    TestAPIDivInplaceInDygraph, 'complex128', 'float64', 'complex128'
+)
+
+
 class TestOperatorOverloadPowInDygraph(TestOperatorOverloadAddInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -742,26 +1050,48 @@ class TestAPIFloorDivInDygraph(TestOperatorOverloadAddInDygraph):
         return out, out_reverse
 
 
+create_test_case(TestAPIFloorDivInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIFloorDivInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIFloorDivInDygraph, 'float32', 'float64', 'float64')
+
+if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
+    create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float16', 'float32')
+    create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float32', 'float32')
+    create_test_case(TestAPIFloorDivInDygraph, 'bfloat16', 'float64', 'float64')
+
+
+class TestAPIFloorDivInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.floor_divide_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.floor_divide_(self.l_value)
+
+        return out, out_reverse
+
+
 create_test_case(
-    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float32', 'float32'
+    TestAPIFloorDivInplaceInDygraph, 'float16', 'float32', 'float32'
 )
 create_test_case(
-    TestOperatorOverloadFloorDivInDygraph, 'float16', 'float64', 'float64'
+    TestAPIFloorDivInplaceInDygraph, 'float16', 'float64', 'float64'
 )
 
 create_test_case(
-    TestOperatorOverloadFloorDivInDygraph, 'float32', 'float64', 'float64'
+    TestAPIFloorDivInplaceInDygraph, 'float32', 'float64', 'float64'
 )
 
 if paddle.is_compiled_with_cuda() and paddle.base.core.supports_bfloat16():
     create_test_case(
-        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float16', 'float32'
+        TestAPIFloorDivInplaceInDygraph, 'bfloat16', 'float16', 'float32'
     )
     create_test_case(
-        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float32', 'float32'
+        TestAPIFloorDivInplaceInDygraph, 'bfloat16', 'float32', 'float32'
     )
     create_test_case(
-        TestOperatorOverloadFloorDivInDygraph, 'bfloat16', 'float64', 'float64'
+        TestAPIFloorDivInplaceInDygraph, 'bfloat16', 'float64', 'float64'
     )
 
 
@@ -801,6 +1131,23 @@ create_test_case(TestAPIModInDygraph, 'float16', 'float32', 'float32')
 create_test_case(TestAPIModInDygraph, 'float16', 'float64', 'float64')
 
 create_test_case(TestAPIModInDygraph, 'float32', 'float64', 'float64')
+
+
+class TestAPIModInplaceInDygraph(TestOperatorOverloadAddInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.mod_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.mod_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIModInplaceInDygraph, 'float16', 'float32', 'float32')
+create_test_case(TestAPIModInplaceInDygraph, 'float16', 'float64', 'float64')
+
+create_test_case(TestAPIModInplaceInDygraph, 'float32', 'float64', 'float64')
 
 
 class TestOperatorOverloadEqualInDygraph(unittest.TestCase):
@@ -863,6 +1210,23 @@ create_test_case(TestAPIEqualInDygraph, 'float16', 'float64', 'bool')
 create_test_case(TestAPIEqualInDygraph, 'float32', 'float64', 'bool')
 
 
+class TestAPIEqualInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.equal_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.equal_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPIEqualInplaceInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPIEqualInplaceInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPIEqualInplaceInDygraph, 'float32', 'float64', 'bool')
+
+
 class TestOperatorOverloadNotEqualInDygraph(TestOperatorOverloadEqualInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -901,6 +1265,23 @@ create_test_case(TestAPINotEqualInDygraph, 'float16', 'float64', 'bool')
 create_test_case(TestAPINotEqualInDygraph, 'float32', 'float64', 'bool')
 
 
+class TestAPINotEqualInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.not_equal_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.not_equal_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPINotEqualInplaceInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPINotEqualInplaceInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPINotEqualInplaceInDygraph, 'float32', 'float64', 'bool')
+
+
 class TestOperatorOverloadLessThanInDygraph(TestOperatorOverloadEqualInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -937,6 +1318,23 @@ create_test_case(TestAPILessThanInDygraph, 'float16', 'float32', 'bool')
 create_test_case(TestAPILessThanInDygraph, 'float16', 'float64', 'bool')
 
 create_test_case(TestAPILessThanInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestAPILessThanInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.less_than_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.less_than_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILessThanInplaceInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessThanInplaceInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessThanInplaceInDygraph, 'float32', 'float64', 'bool')
 
 
 class TestOperatorOverloadLessEqualInDygraph(
@@ -979,6 +1377,23 @@ create_test_case(TestAPILessEqualInDygraph, 'float16', 'float64', 'bool')
 create_test_case(TestAPILessEqualInDygraph, 'float32', 'float64', 'bool')
 
 
+class TestAPILessEqualInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.less_equal_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.less_equal_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILessEqualInplaceInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILessEqualInplaceInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILessEqualInplaceInDygraph, 'float32', 'float64', 'bool')
+
+
 class TestOperatorOverloadGreaterThanInDygraph(
     TestOperatorOverloadEqualInDygraph
 ):
@@ -1017,6 +1432,29 @@ create_test_case(TestAPIGreaterThanInDygraph, 'float16', 'float32', 'bool')
 create_test_case(TestAPIGreaterThanInDygraph, 'float16', 'float64', 'bool')
 
 create_test_case(TestAPIGreaterThanInDygraph, 'float32', 'float64', 'bool')
+
+
+class TestAPIGreaterThanInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.greater_than_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.greater_than_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestAPIGreaterThanInplaceInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestAPIGreaterThanInplaceInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestAPIGreaterThanInplaceInDygraph, 'float32', 'float64', 'bool'
+)
 
 
 class TestOperatorOverloadGreaterEqualInDygraph(
@@ -1059,6 +1497,29 @@ create_test_case(TestAPIGreaterEqualInDygraph, 'float16', 'float64', 'bool')
 create_test_case(TestAPIGreaterEqualInDygraph, 'float32', 'float64', 'bool')
 
 
+class TestAPIGreaterEqualInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.greater_equal_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.greater_equal_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestAPIGreaterEqualInplaceInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestAPIGreaterEqualInplaceInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestAPIGreaterEqualInplaceInDygraph, 'float32', 'float64', 'bool'
+)
+
+
 class TestAPILogicalAndInDygraph(TestOperatorOverloadEqualInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -1092,6 +1553,78 @@ create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'int64', 'bool')
 create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float16', 'bool')
 create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float32', 'bool')
 create_test_case(TestAPILogicalAndInDygraph, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalAndInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.logical_and_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.logical_and_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'float32', 'float64', 'bool'
+)
+
+create_test_case(TestAPILogicalAndInplaceInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalAndInplaceInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'int16', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'int32', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'int64', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'float64', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex64', 'complex128', 'bool'
+)
+
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'bool', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'int8', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'int16', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'int32', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'int64', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalAndInplaceInDygraph, 'complex128', 'float64', 'bool'
+)
 
 
 class TestAPILogicalOrInDygraph(TestOperatorOverloadEqualInDygraph):
@@ -1129,6 +1662,62 @@ create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'float32', 'bool')
 create_test_case(TestAPILogicalOrInDygraph, 'complex128', 'float64', 'bool')
 
 
+class TestAPILogicalOrInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.logical_or_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.logical_or_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'float16', 'float32', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'float16', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'float32', 'float64', 'bool')
+
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex64', 'int16', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex64', 'int32', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex64', 'int64', 'bool')
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex64', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex64', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex64', 'float64', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex64', 'complex128', 'bool'
+)
+
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex128', 'bool', 'bool')
+create_test_case(TestAPILogicalOrInplaceInDygraph, 'complex128', 'int8', 'bool')
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'int16', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'int32', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'int64', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalOrInplaceInDygraph, 'complex128', 'float64', 'bool'
+)
+
+
 class TestAPILogicalXorInDygraph(TestOperatorOverloadEqualInDygraph):
     def run_api(self):
         self.generate_test_value()
@@ -1162,6 +1751,78 @@ create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'int64', 'bool')
 create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float16', 'bool')
 create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float32', 'bool')
 create_test_case(TestAPILogicalXorInDygraph, 'complex128', 'float64', 'bool')
+
+
+class TestAPILogicalXorInplaceInDygraph(TestOperatorOverloadEqualInDygraph):
+    def run_api(self):
+        self.generate_test_value()
+        out = self.l_value.logical_xor_(self.r_value)
+
+        self.generate_test_value()
+        out_reverse = self.r_value.logical_xor_(self.l_value)
+
+        return out, out_reverse
+
+
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'float16', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'float16', 'float64', 'bool'
+)
+
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'float32', 'float64', 'bool'
+)
+
+create_test_case(TestAPILogicalXorInplaceInDygraph, 'complex64', 'bool', 'bool')
+create_test_case(TestAPILogicalXorInplaceInDygraph, 'complex64', 'int8', 'bool')
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'int16', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'int32', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'int64', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'float64', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex64', 'complex128', 'bool'
+)
+
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'bool', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'int8', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'int16', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'int32', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'int64', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'float16', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'float32', 'bool'
+)
+create_test_case(
+    TestAPILogicalXorInplaceInDygraph, 'complex128', 'float64', 'bool'
+)
 
 
 class TestAPIFmaxInDygraph(TestOperatorOverloadAddInDygraph):

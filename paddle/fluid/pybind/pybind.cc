@@ -924,9 +924,11 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("need_type_promotion",
-        [](framework::proto::VarType::Type type_x,
+        [](const std::string &op_name,
+           framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
-          return phi::NeedTypePromotion(framework::TransToPhiDataType(type_x),
+          return phi::NeedTypePromotion(op_name,
+                                        framework::TransToPhiDataType(type_x),
                                         framework::TransToPhiDataType(type_y));
         });
   m.def("get_promote_dtype",
