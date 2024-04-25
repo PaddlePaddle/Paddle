@@ -19,8 +19,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +70,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), x_d, scale_d, y_d, x_shape, b_shape);
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
-                      platform::errors::External(
+                      phi::errors::External(
                           "The broadcast_mul XPU OP return wrong value[%d %s]",
                           r,
                           XPUAPIErrorMsg[r]));
@@ -78,7 +78,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), y_d, bias_d, y_d, x_shape, b_shape);
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
-                      platform::errors::External(
+                      phi::errors::External(
                           "The broadcast_add XPU OP return wrong value[%d %s]",
                           r,
                           XPUAPIErrorMsg[r]));
@@ -140,28 +140,28 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), dy_d, dbias_d, x_shape, rdims);
       PADDLE_ENFORCE_EQ(r,
                         xpu::Error_t::SUCCESS,
-                        platform::errors::External(
+                        phi::errors::External(
                             "The reduce_sum XPU OP return wrong value[%d %s]",
                             r,
                             XPUAPIErrorMsg[r]));
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       T* tmp = RAII_GUARD.alloc_l3_or_gm<T>(dy->numel());
       PADDLE_ENFORCE_NOT_NULL(
-          tmp, platform::errors::External("XPU has no enough memory"));
+          tmp, phi::errors::External("XPU has no enough memory"));
 
       r = xpu::mul<T>(
           dev_ctx.x_context(), dy_d, x->data<T>(), tmp, dy->numel());
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
-          platform::errors::External("The mul XPU OP return wrong value[%d %s]",
-                                     r,
-                                     XPUAPIErrorMsg[r]));
+          phi::errors::External("The mul XPU OP return wrong value[%d %s]",
+                                r,
+                                XPUAPIErrorMsg[r]));
       r = xpu::reduce_sum<T>(
           dev_ctx.x_context(), tmp, dscale_d, x_shape, rdims);
       PADDLE_ENFORCE_EQ(r,
                         xpu::Error_t::SUCCESS,
-                        platform::errors::External(
+                        phi::errors::External(
                             "The reduce_sum XPU OP return wrong value[%d %s]",
                             r,
                             XPUAPIErrorMsg[r]));
@@ -172,7 +172,7 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
-          platform::errors::External(
+          phi::errors::External(
               "The broadcast_mul XPU OP return wrong value[%d %s]",
               r,
               XPUAPIErrorMsg[r]));

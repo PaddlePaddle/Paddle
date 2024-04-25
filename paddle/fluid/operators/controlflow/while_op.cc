@@ -64,15 +64,15 @@ class WhileOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)),
-                            platform::errors::NotFound(
-                                "Input(Condition) of WhileOp is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        scope.FindVar(Input(kCondition)),
+        phi::errors::NotFound("Input(Condition) of WhileOp is not found."));
 
     auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         cond.numel(),
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The numel of Input(Condition) of WhileOp must be 1. But now "
             "the Condition's numel is ",
             cond.numel(),
@@ -136,7 +136,7 @@ class WhileOp : public framework::OperatorBase {
 
     PADDLE_ENFORCE_EQ(step_scopes->size(),
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The Output(StepScope) of WhileOp should be empty."));
 
     bool cond_data = GetCondData(cond);
@@ -329,7 +329,7 @@ class WhileGradOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         Attr<bool>("is_test"),
         false,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "WhileGradOp is only callable when is_test is false."));
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -350,7 +350,7 @@ class WhileGradOp : public framework::OperatorBase {
 
     PADDLE_ENFORCE_EQ(outside_og_names.size(),
                       inside_og_names.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of original output gradient names "
                           "does not match the number of backward input "
                           "gradient names. The number of Backward input "
@@ -397,7 +397,7 @@ class WhileGradOp : public framework::OperatorBase {
               !og_outside.GetMutable<phi::DenseTensor>()->IsInitialized()) {
             auto *var_desc = parent_block->FindVarRecursive(outside_og_name);
             PADDLE_ENFORCE_NOT_NULL(var_desc,
-                                    platform::errors::PreconditionNotMet(
+                                    phi::errors::PreconditionNotMet(
                                         "Var `%s` is not found in parent "
                                         "block, can't fill constant.",
                                         outside_og_name));
@@ -448,7 +448,7 @@ class WhileGradOp : public framework::OperatorBase {
               PADDLE_ENFORCE_EQ(
                   inside_array[j].numel(),
                   0,
-                  platform::errors::InvalidArgument(
+                  phi::errors::InvalidArgument(
                       "The numel of %d-th element of var %s (LoDTensorArray) "
                       "in while block must be 0, but received its numel is %d.",
                       j,
@@ -457,7 +457,7 @@ class WhileGradOp : public framework::OperatorBase {
             }
           }
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(phi::errors::Unimplemented(
               "Currently only support phi::DenseTensor and "
               "phi::DenseTensorArray in "
               "WhileGradOp."));
@@ -474,7 +474,7 @@ class WhileGradOp : public framework::OperatorBase {
       auto &p_names = Inputs(kX);
       PADDLE_ENFORCE_EQ(pg_ig_names.size(),
                         p_names.size(),
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The number of names in Outputs(X@GRAD) does not "
                             "match the number of names in Inputs(X). The "
                             "number of names in Outputs(X@GRAD) is %d and "
@@ -493,8 +493,8 @@ class WhileGradOp : public framework::OperatorBase {
         auto pg_ig_var = cur_scope.FindVar(inside_grad_name);
         PADDLE_ENFORCE_NOT_NULL(
             pg_ig_var,
-            platform::errors::NotFound("Variable %s is not found.",
-                                       inside_grad_name));
+            phi::errors::NotFound("Variable %s is not found.",
+                                  inside_grad_name));
         if (pg_ig_var->IsType<framework::LoDTensorArray>()) {
           auto pg_ig_lod_t_arr =
               pg_ig_var->GetMutable<framework::LoDTensorArray>();
@@ -531,13 +531,13 @@ class WhileGradOp : public framework::OperatorBase {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
           PADDLE_ENFORCE_NOT_NULL(
               var,
-              platform::errors::NotFound("Variable %s is not found.",
-                                         inside_grad_name));
+              phi::errors::NotFound("Variable %s is not found.",
+                                    inside_grad_name));
           PADDLE_ENFORCE_EQ(
               var->IsType<framework::LoDTensorArray>() ||
                   var->IsType<phi::DenseTensor>(),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Currently the type of var only can be LoDTensorArray, "
                   "or phi::DenseTensor, but the received var[%s] is %s.",
                   inside_grad_name,
@@ -721,7 +721,7 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     auto out_var_ptrs = ctx->GetOutputVarPtrs(kXGRAD);
     PADDLE_ENFORCE_EQ(in_var_ptrs.size(),
                       out_var_ptrs.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of Inputs(X) must be the same as "
                           "the size of Outputs(X@GRAD)."));
 

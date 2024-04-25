@@ -2,6 +2,7 @@ add_subdirectory(adt)
 add_subdirectory(symbolic)
 add_subdirectory(inference)
 add_subdirectory(sub_graphs)
+add_subdirectory(performance)
 
 if(WITH_GPU)
   file(

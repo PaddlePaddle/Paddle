@@ -181,6 +181,10 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void DequantizeLogInferMeta(const MetaTensor& x,
+                            const MetaTensor& dict,
+                            MetaTensor* out);
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
@@ -476,6 +480,13 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
                             int size,
                             std::vector<MetaTensor*> out);
 
+void PullGpupsSparseInferMeta(const MetaTensor& w,
+                              const std::vector<const MetaTensor*>& ids,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out);
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
@@ -530,6 +541,10 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
                            MetaTensor* seed_out
 
 );
+
+void ReduceAsInferMeta(const MetaTensor& x,
+                       const MetaTensor& target,
+                       MetaTensor* out);
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,

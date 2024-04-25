@@ -32,7 +32,7 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           dim[0] % nranks,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
       dim[0] /= nranks;
     }
@@ -67,7 +67,6 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
                              ops::CReduceScatterOp,
@@ -81,4 +80,4 @@ PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

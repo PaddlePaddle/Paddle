@@ -40,14 +40,14 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->Attrs().Get<int>("contextStride"),
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Currently, SequenceConvOp only supports contextStride=1. But "
             "received contextStride = %u.",
             ctx->Attrs().Get<int>("contextStride")));
     PADDLE_ENFORCE_EQ(
         in_dims.size() == 2 && filter_dims.size() == 2,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X, Filter) should be 2-D tensor. But received Input(X): "
             "input rank %u, input shape [%s]; received Input(Filter): "
             "input rank %u, input shape [%s].",
@@ -58,7 +58,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         filter_dims[0],
         context_length * in_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Filter's height should be context_length * "
             "input_hidden_size. But received: filter's height = %d, "
             "context_length * input_hidden_size = %d.",
@@ -82,13 +82,13 @@ class SequenceConvOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           start_length,
           false,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "If context_start is 0 and context_length is 1, paddingTrainable "
               "should be false."));
       PADDLE_ENFORCE_EQ(
           padding_dim.size(),
           2,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(PaddingData) should be 2-D tensor. But received: "
               "input rank %u, input shape [%s].",
               padding_dim.size(),
@@ -96,14 +96,14 @@ class SequenceConvOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           padding_dim[0] == total_pad && padding_dim[1] == input_width,
           true,
-          platform::errors::InvalidArgument("Input(PaddingData)'s shape is not "
-                                            "consistent with 'context_start' "
-                                            "and 'context_length'. Received "
-                                            "Input(PaddingData): input rank "
-                                            "%u, "
-                                            "input shape [%s].",
-                                            padding_dim.size(),
-                                            padding_dim));
+          phi::errors::InvalidArgument("Input(PaddingData)'s shape is not "
+                                       "consistent with 'context_start' "
+                                       "and 'context_length'. Received "
+                                       "Input(PaddingData): input rank "
+                                       "%u, "
+                                       "input shape [%s].",
+                                       padding_dim.size(),
+                                       padding_dim));
     }
 
     in_dims[1] = filter_dims[1];

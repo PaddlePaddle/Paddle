@@ -89,27 +89,32 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     auto new_B = tensor_B->Reshape(new_shape_B_e, stages);
 
     std::vector<ir::Tensor> out;
-    if (target.arch == Target::Arch::X86) {
+    target.arch.Visit(adt::match{
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-      out = pe::MatmulMKL(new_A,
-                          new_B,
-                          trans_a,
-                          trans_b,
-                          alpha,
-                          UniqName("MatmulMKL_output"),
-                          target);
+          out = pe::MatmulMKL(new_A,
+                              new_B,
+                              trans_a,
+                              trans_b,
+                              alpha,
+                              UniqName("MatmulMKL_output"),
+                              target);
 #else
-      out = pe::MatmulV2(new_A,
-                         new_B,
-                         trans_a,
-                         trans_b,
-                         alpha,
-                         UniqName("MatmulV2_output"),
-                         target);
+          out = pe::MatmulV2(new_A,
+                             new_B,
+                             trans_a,
+                             trans_b,
+                             alpha,
+                             UniqName("MatmulV2_output"),
+                             target);
 #endif
-    } else {
-      out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
-    }
+        },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
+        },
+    });
 
     std::vector<CINNValue> res;
     for (auto &t : out) {
@@ -619,17 +624,23 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         CHECK(pack_args.back().is_string());
         std::string tensor_name = pack_args.back().operator std::string();
 
-        if (target.arch == Target::Arch::X86) {
+        target.arch.Visit(adt::match{
+            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-          out = pe::MatmulMKL(
-              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulMKL(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #else
-          out = pe::MatmulV2(
-              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulV2(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #endif
-        } else {
-          out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
-        }
+            },
+            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::NVGPUArch) {
+              out =
+                  pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
+            },
+        });
 
         std::vector<CINNValue> res;
         for (auto &t : out) {
@@ -854,7 +865,7 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
 
-    if (target.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target.arch)) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target);
     } else {
       CINN_NOT_IMPLEMENTED
@@ -1286,6 +1297,80 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                     1);
   return strategy;
 }
+std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  PADDLE_ENFORCE_NE(output_shapes.size(),
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "The shape of output is empty! Please check again."));
+  PADDLE_ENFORCE_NE(output_shapes[0].size(),
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "The shape of output is empty! Please check again."));
+
+  VLOG(4) << "The output passed in StrategyForGather: "
+          << utils::Join(output_shapes[0], ", ");
+  PADDLE_ENFORCE_NE(
+      out_type.size(),
+      0,
+      ::common::errors::InvalidArgument(
+          "The output type of Gather is empty! Please check again."));
+
+  int axis = 0;
+  if (attrs.attr_store.contains("axis")) {
+    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  }
+  axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
+
+  std::vector<Expr> output_shape = ToCinnExprs(output_shapes[0]);
+
+  framework::CINNCompute gather_compute{
+      [axis, output_shape = std::move(output_shape)](lang::Args args,
+                                                     lang::RetValue *ret) {
+        VLOG(4) << "The axis value used in gather_compute: " << axis;
+        PADDLE_ENFORCE_NE(args.size(),
+                          0,
+                          ::common::errors::InvalidArgument(
+                              "The input args are empty! Please check again."));
+        CINNValuePack input_args = args[0];
+        int input_size = input_args.size();
+        PADDLE_ENFORCE_GE(input_size,
+                          2,
+                          ::common::errors::InvalidArgument(
+                              "Require 2 input tensors for Gather compute."));
+        Expr x = input_args[0];
+        PADDLE_ENFORCE_NE(x.as_tensor(),
+                          nullptr,
+                          ::common::errors::InvalidArgument(
+                              "The first input args's type should be Tensor"));
+        Expr index = input_args[1];
+        PADDLE_ENFORCE_NE(index.as_tensor(),
+                          nullptr,
+                          ::common::errors::InvalidArgument(
+                              "The first input args's type should be Tensor"));
+
+        std::string tensor_name = input_args[2].operator std::string();
+
+        auto out = pe::Gather(x.as_tensor_ref(),
+                              index.as_tensor_ref(),
+                              axis,
+                              output_shape,
+                              tensor_name);
+        auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
+        stages->InsertLazily(out);
+        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        *ret = CINNValuePack{res};
+      }};
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      gather_compute, lang::PackedFunc(), "strategy.gather.x86", 1);
+  return strategy;
+}
 
 std::vector<std::vector<int>> InferShapeForGather(
     const std::vector<std::vector<int>> &inputs_shape,
@@ -1706,7 +1791,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   std::vector<Expr> output_shape;
   for (auto &i : output_shapes[0]) {
     output_shape.push_back(i->dim_expr);
-    LOG(INFO) << "output_shape: " << output_shape.back();
     CHECK(output_shape.back().type().valid());
   }
 
@@ -1727,7 +1811,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
 
         auto out = pe::SliceSymbolic(
             A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
-        LOG(INFO) << "out: " << out;
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
       });
@@ -2226,6 +2309,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGather)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForGatherSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForGather))
       .set_attr("inferdtype",

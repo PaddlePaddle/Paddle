@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bmm",
     "dropout",
     "elu",
     "embedding",
@@ -40,9 +41,9 @@ decomp_interface_declare_gen_op_list = [
     "mean",
     "p_norm",
     "pow",
+    "reciprocal",
     "relu",
     "relu6",
-    "sigmoid",
     "silu",
     "swiglu",
     "softmax",
@@ -50,13 +51,13 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
-    "tile",
 ]
 
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
     "add_n",
+    "bmm",
     "dropout",
     "elu",
     "embedding",
@@ -74,9 +75,9 @@ decomp_interface_implementation_gen_op_list = [
     "mean",
     "p_norm",
     "pow",
+    "reciprocal",
     "relu",
     "relu6",
-    "sigmoid",
     "silu",
     "swiglu",
     "softmax",
@@ -84,7 +85,6 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
-    "tile",
 ]
 
 

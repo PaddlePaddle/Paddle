@@ -3158,15 +3158,7 @@ bool ExpandOp::InferSymbolicShape(
   const auto &expand_shape_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
@@ -3957,6 +3949,29 @@ phi::DataType AssignOut_Op::GetKernelTypeForVar(
   VLOG(4) << "Get KernelType for Var of op: AssignOut_Op";
 
   return expected_kernel_dtype;
+}
+
+OpInfoTuple ShapeBroadcastOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("ElementwiseInferMeta",
+                                     {"x", "y"},
+                                     "shape_broadcast",
+                                     {"x", "y"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "shape_broadcast");
 }
 
 void ShapeBroadcastOp::Build(pir::Builder &builder,

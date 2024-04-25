@@ -119,6 +119,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'dequantize_linear',
     'dequantize_linear_',
     'coalesce_tensor_',
+    'send_v2',
+    'recv_v2',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -164,13 +166,15 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum_',
     'max_pool2d_v2',
     'partial_sum',
+    'pull_gpups_sparse',
+    'pull_gpups_sparse_',
+    'push_gpups_sparse',
+    'push_gpups_sparse_',
     'random_routing',
     'rank_attention',
-    'recv_v2',
     'rnn_',
     'row_conv',
     'seed',
-    'send_v2',
     'shadow_feed',
     'shadow_feed_tensors',
     'shuffle_batch',

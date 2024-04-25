@@ -71,6 +71,7 @@ class SubgraphDetector {
 };
 
 std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
+std::vector<pir::Value> AnalysisExternalInputs(const GroupOpsVec& group_ops);
 void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
 
 }  // namespace pir

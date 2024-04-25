@@ -1027,17 +1027,16 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
 
 /*
  * CINN related FLAG
@@ -1249,6 +1248,17 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
 PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * CINN training related FLAG
+ * Name: FLAGS_disable_dyshape_in_train
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
+                         false,
+                         "Whether disable dyshape in training.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1353,13 +1363,13 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
  * mmap_allocator related FLAG
  * Name: dataloader_use_file_descriptor
  * Since Version: 2.6.2
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: . If True, mmap_allocator will use file descripor to open shared memory
  * operation.
  */
 PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
-                         true,
+                         false,
                          "Use file descriptor in mmap_allocator.");
 
 /**
@@ -1479,6 +1489,10 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
+PHI_DEFINE_EXPORTED_bool(pir_debug,
+                         false,
+                         "Whether print more pir debug info.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
                          "Whether to skip decomposing op with dynamic shape.");
