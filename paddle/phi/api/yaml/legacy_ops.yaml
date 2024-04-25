@@ -1014,6 +1014,7 @@
     func : ReshapeWithXShapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
     local_shape: shape
+    global_shape: out
   kernel :
     func : reshape
   inplace : (x -> out)
