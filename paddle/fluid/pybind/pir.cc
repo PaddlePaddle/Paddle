@@ -768,18 +768,18 @@ phi::DataType GetValueDtype(Value value) {
 }
 
 std::string GetValueName(Value value) {
-  if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
     return param_op.param_name();
-  } else if (auto data_op = self.defining_op<paddle::dialect::DataOp>()) {
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
     return data_op.attribute<pir::StrAttribute>("name").AsString();
-  } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     if (block_arg.is_kwarg()) {
       return block_arg.keyword();
     } else {
       return "arg_" + std::to_string(block_arg.index());
     }
-  } else if (self.first_use()) {
-    auto nextOp = self.first_use().owner();
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
     if (nextOp->isa<::pir::ShadowOutputOp>()) {
       return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
     } else {
@@ -1874,7 +1874,7 @@ static void inline CreateVariableIfNotExist(
   for (size_t i = 0; i < len; ++i) {
     pir::Value value = var_list[i];
     std::string para_name = GetValueName(value);
-    auto var = scope.FindVar(para_name);
+    auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,
                               phi::errors::InvalidArgument(
