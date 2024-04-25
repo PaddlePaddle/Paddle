@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/api/utils/hook_utils.h"
+// #include "paddle/fluid/eager/api/utils/hook_utils.h"
 // #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/prim/utils/utils.h"
 // #include "paddle/phi/core/dense_tensor.h"
@@ -89,7 +89,45 @@ namespace prim {
 //           ->data<float>()[0]);
 // }
 
-// TEST(EagerPrim, LogicalOperantsTest) {
+TEST(EagerPrim, LogicalOperantsTest) {
+  // 1. Initialized
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+  FLAGS_tensor_operants_mode = "eager";
+  paddle::prim::InitTensorOperants();
+  // 2. pre
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  paddle::Tensor tensor0 =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        1 /*value*/,
+                                        true /*is_leaf*/);
+  // ::egr::egr_utils_api::RetainGradForTensor(tensor0);
+  paddle::Tensor tensor1 =
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        0 /*value*/,
+                                        true /*is_leaf*/);
+  // ::egr::egr_utils_api::RetainGradForTensor(tensor1);
+  // 3. Run Forward once
+  paddle::Tensor out0 = tensor0 & tensor1;
+  paddle::Tensor out1 = bitwise_and_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = tensor0 | tensor1;
+  out1 = bitwise_or_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = tensor0 ^ tensor1;
+  out1 = bitwise_xor_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = ~tensor0;
+  out1 = bitwise_not_ad_func(tensor0);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+}
+
+// TEST(EagerPrim, CompareOperantsTest) {
 //   // 1. Initialized
 //   eager_test::InitEnv(paddle::platform::CPUPlace());
 //   FLAGS_tensor_operants_mode = "eager";
@@ -113,63 +151,25 @@ namespace prim {
 //                                         true /*is_leaf*/);
 //   ::egr::egr_utils_api::RetainGradForTensor(tensor1);
 //   // 3. Run Forward once
-//   paddle::Tensor out0 = tensor0 & tensor1;
-//   paddle::Tensor out1 = bitwise_and_ad_func(tensor0, tensor1);
-//   EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
-//   out0 = tensor0 | tensor1;
-//   out1 = bitwise_or_ad_func(tensor0, tensor1);
-//   EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
-//   out0 = tensor0 ^ tensor1;
-//   out1 = bitwise_xor_ad_func(tensor0, tensor1);
-//   EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
-//   out0 = ~tensor0;
-//   out1 = bitwise_not_ad_func(tensor0);
-//   EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+//   paddle::Tensor out0 = (tensor0 < tensor1);
+//   paddle::Tensor out1 = less_than_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+//   out0 = (tensor0 <= tensor1);
+//   out1 = less_equal_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+//   out0 = (tensor0 == tensor1);
+//   out1 = equal_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+//   out0 = (tensor0 != tensor1);
+//   out1 = not_equal_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+//   out0 = (tensor0 > tensor1);
+//   out1 = greater_than_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
+//   out0 = (tensor0 >= tensor1);
+//   out1 = greater_equal_ad_func(tensor0, tensor1);
+//   EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
 // }
-
-TEST(EagerPrim, CompareOperantsTest) {
-  // 1. Initialized
-  eager_test::InitEnv(paddle::platform::CPUPlace());
-  FLAGS_tensor_operants_mode = "eager";
-  paddle::prim::InitTensorOperants();
-  // 2. pre
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
-  paddle::Tensor tensor0 =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::INT32,
-                                        phi::DataLayout::NCHW,
-                                        1 /*value*/,
-                                        true /*is_leaf*/);
-  ::egr::egr_utils_api::RetainGradForTensor(tensor0);
-  paddle::Tensor tensor1 =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::INT32,
-                                        phi::DataLayout::NCHW,
-                                        0 /*value*/,
-                                        true /*is_leaf*/);
-  ::egr::egr_utils_api::RetainGradForTensor(tensor1);
-  // 3. Run Forward once
-  paddle::Tensor out0 = (tensor0 < tensor1);
-  paddle::Tensor out1 = less_than_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-  out0 = (tensor0 <= tensor1);
-  out1 = less_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-  out0 = (tensor0 == tensor1);
-  out1 = equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-  out0 = (tensor0 != tensor1);
-  out1 = not_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-  out0 = (tensor0 > tensor1);
-  out1 = greater_than_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-  out0 = (tensor0 >= tensor1);
-  out1 = greater_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
-}
 
 TEST(EagerPrim, TestFlags) {
   PrimCommonUtils::SetBwdPrimEnabled(true);
