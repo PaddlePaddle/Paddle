@@ -60,6 +60,7 @@ def apply_partition_pass(program):
                         prev_var, operand_dist_attr
                     )
                     var.set_source(reshard_var)
+
             for var, result_dist_attr in zip(
                 op.results(), op.dist_attr.result_dist_attrs()
             ):
@@ -71,6 +72,40 @@ def apply_partition_pass(program):
                     reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                     var.replace_all_uses_with(reshard_var)
                     reshard_var.get_defining_op().operand(0).set_source(var)
+
+        # pruning op and value not belong to cur rank
+        cur_rank = paddle.distributed.get_rank()
+        for op in new_program.global_block().ops[::-1]:
+            if cur_rank not in op.dist_attr.process_mesh.process_ids:
+                new_program.global_block().remove_op(op)
+            else:
+                # set the operand as null when it is not belong to cur rank
+                if (
+                    op.name() == 'dist_op.reshard'
+                    and cur_rank
+                    not in op.operand(0)
+                    .source()
+                    .dist_attr()
+                    .process_mesh.process_ids
+                ):
+                    op.operand(0).set_source(paddle.pir.fake_value())
+
+        # merge pd.data ops for
+        lr_ops = []
+        for op in new_program.global_block().ops[::-1]:
+            if (
+                op.name() == 'pd_op.data'
+                and "learning_rate" in op.attrs()["name"]
+            ):
+                lr_ops.append(op)
+
+        if len(lr_ops) > 1:
+            lr_value = lr_ops[0].result(0)
+            for op in lr_ops[1:]:
+                lr = op.result(0)
+                lr.replace_all_uses_with(lr_value)
+                new_program.global_block().remove_op(op)
+
     return new_program
 
 
@@ -84,14 +119,14 @@ def apply_reshard_pass(program):
                 src_dist_attr = op_dist_attr.operand_dist_attr(0)
                 dst_dist_attr = op_dist_attr.result_dist_attr(0)
                 assert (
-                    var.source().dist_attr() == src_dist_attr
+                    paddle.pir.is_fake_value(var.source())
+                    or var.source().dist_attr() == src_dist_attr
                 ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
 
                 reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
                 assert (
                     reshard_func is not None
                 ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
-
                 reshard_func.reshard(
                     new_program, op, src_dist_attr, dst_dist_attr
                 )

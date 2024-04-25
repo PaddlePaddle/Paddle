@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -26,6 +27,8 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/core/value.h"
+
+COMMON_DECLARE_bool(pir_debug);
 
 namespace pir {
 
@@ -181,6 +184,10 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
   os << " =";
 
   os << " \"" << op->name() << "\"";
+
+  if (FLAGS_pir_debug) {
+    os << " [id:" << op->id() << "]";
+  }
 
   // TODO(lyk): add API to get operands directly
   PrintOpOperands(op);

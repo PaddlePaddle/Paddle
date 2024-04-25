@@ -289,7 +289,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-	-DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
+        -DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
@@ -958,9 +958,9 @@ function check_run_sot_ci() {
 
     # git diff
     SOT_FILE_LIST=(
-        paddle/fluid/operators/run_program_op.h
-        paddle/fluid/operators/run_program_op.cu
-        paddle/fluid/operators/run_program_op.cc
+        paddle/pir
+        paddle/phi
+        paddle/scripts
         paddle/fluid/eager/to_static
         paddle/fluid/pybind/
         python/
@@ -3850,14 +3850,12 @@ function run_setup(){
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
-    pip uninstall -y PyGithub
-    pip install github
-    pip install PyGithub
+    pip install -U PyGithub
     python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
     if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
-         export WITH_CPP_TEST=OFF
+        export WITH_CPP_TEST=OFF
     else
-	 export WITH_CPP_TEST=ON
+        export WITH_CPP_TEST=ON
     fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
