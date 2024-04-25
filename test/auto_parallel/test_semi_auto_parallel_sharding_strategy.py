@@ -41,6 +41,16 @@ class TestSemiAutoParallelInShardingStrategy(
                 user_defined_envs=envs,
             )
 
+    def test_sharding_stage_2_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_sharding_stage_2.py",
+                user_defined_envs=envs,
+            )
+
     def test_sharding_stage_3_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs

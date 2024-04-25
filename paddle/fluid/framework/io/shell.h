@@ -38,8 +38,8 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON) || \
     defined(__ARM_NEON__)

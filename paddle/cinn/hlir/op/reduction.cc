@@ -88,7 +88,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    LOG(FATAL) << "reduce dimension is not set!";
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keep_dim = false;
@@ -205,7 +205,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (!FLAGS_cinn_new_group_scheduler && target.arch == Target::Arch::NVGPU) {
+    const auto ReduceSchedule = [&]() {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
           CHECK_EQ(vec_tensor.size(), 2);
@@ -270,7 +270,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          LOG(FATAL) << "Unkown Reduce Type!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       } else {
         if (arg_pack.size() == 2) {
@@ -304,14 +304,32 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          LOG(FATAL) << "Unkown Reduce Type!";
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
-    } else {
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    }
+    };
+    target.arch.Visit(adt::match{
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
+          std::vector<CINNValue> res{
+              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+        },
+        [&](common::ARMArch) {
+          std::vector<CINNValue> res{
+              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+        },
+        [&](common::NVGPUArch) {
+          if (!FLAGS_cinn_new_group_scheduler) {
+            ReduceSchedule();
+          } else {
+            std::vector<CINNValue> res{
+                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+            *ret = CINNValuePack{res};
+          }
+        },
+    });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -352,7 +370,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    LOG(FATAL) << "reduce dimension is not set!";
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keep_dim = false;

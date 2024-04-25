@@ -82,6 +82,10 @@ def _get_reduce_op(reduce_op, func_name):
     raise ValueError(f"Unknown reduce_op type for {func_name}.")
 
 
+def _to_inplace_op(op_name):
+    return f"{op_name}_"
+
+
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     """
 

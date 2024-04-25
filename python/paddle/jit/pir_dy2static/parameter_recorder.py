@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.framework import core
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -37,15 +38,35 @@ class ParametersRecorder:
         mappings = self.tensor2value[key]
         if id(tensor) not in mappings:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
+            dtype = tensor.dtype
+            if isinstance(dtype, core.VarDesc.VarType):
+                vartype_to_datatype[dtype]
             value = create_parameter(
-                dtype=vartype_to_datatype[tensor.dtype],
+                dtype=dtype,
                 shape=tensor.shape,
                 type=tensor.type,
                 initializer=non_used_initializer,
             )
+
+            if tensor.placements is not None:  # import for shard tensor api
+                import paddle.distributed as dist
+
+                dist_value = dist.shard_tensor(
+                    value,
+                    tensor.process_mesh,
+                    tensor.placements,
+                    stop_gradient=value.stop_gradient,
+                )
+                value.set_type(dist_value.type())
+                value.get_defining_op().dist_attr = (
+                    dist_value.get_defining_op().dist_attr
+                )
+                dist_value.block.remove_op(dist_value.get_defining_op())
+
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
             mappings[id(tensor)] = value
+
         return mappings[id(tensor)]
 
     def pop(self, program):

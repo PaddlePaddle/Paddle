@@ -21,8 +21,11 @@
 
 #include "paddle/common/enforce.h"
 
-#define CHECK_NULL_IMPL(func_name) \
-  IR_ENFORCE(impl_, "impl_ is null when called BlockArgument:" #func_name)
+#define CHECK_NULL_IMPL(func_name)  \
+  PADDLE_ENFORCE_NOT_NULL(          \
+      impl_,                        \
+      phi::errors::InvalidArgument( \
+          "impl_ is null when called BlockArgument:" #func_name))
 
 #define IMPL_ static_cast<detail::BlockArgumentImpl *>(impl_)
 
@@ -75,7 +78,17 @@ class BlockArgumentImpl : public ValueImpl {
 
 BlockArgumentImpl::~BlockArgumentImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destroyed a block argument that is still in use.";
+    if (is_kwarg_) {
+      PADDLE_FATAL(
+          "Destroyed a keyword block argument that is still in use. The key is "
+          ": %s",
+          keyword_);
+    } else {
+      PADDLE_FATAL(
+          "Destroyed a position block argument that is still in use. The index "
+          "is : %u",
+          index_);
+    }
   }
 }
 

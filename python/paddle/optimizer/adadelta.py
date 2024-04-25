@@ -15,10 +15,10 @@
 import warnings
 
 from paddle import _C_ops
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 from ..base import framework
 from ..base.dygraph import no_grad
-from ..framework import in_dynamic_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -190,7 +190,7 @@ class Adadelta(Optimizer):
             else None
         )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             with no_grad():
                 _C_ops.adadelta_(
                     param_and_grad[0],

@@ -186,7 +186,7 @@ template <typename T, typename Context>
 T** GetDevicePointerArray(const Context& ctx,
                           const std::vector<const DenseTensor*>& indices_v) {
   std::vector<const T*> h_indices_v(indices_v.size());
-  for (int i = 0; i < indices_v.size(); ++i) {
+  for (size_t i = 0; i < indices_v.size(); ++i) {
     h_indices_v[i] = indices_v[i]->data<T>();
   }
   auto d_indices_data = phi::memory_utils::Alloc(

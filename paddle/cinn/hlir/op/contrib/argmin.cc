@@ -105,7 +105,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   } else {
-    LOG(FATAL) << "reduce dimension is not set!";
+    PADDLE_THROW(phi::errors::Fatal("reduce dimension is not set!"));
   }
   if (attrs.attr_store.count("keep_dim")) {
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
@@ -182,7 +182,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
                                         output_shapes[0].end(),
                                         1,
                                         std::multiplies<int>());
-    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
     std::vector<cinn::common::CINNValue> res{

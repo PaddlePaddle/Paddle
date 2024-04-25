@@ -1441,40 +1441,39 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id,
       }
     }
   };
-  auto gen_func =
-      [this, &shard_num, &feadim, &local_map_tables, &consume_func](int i) {
-        std::vector<Record> vec_data;
-        std::vector<std::vector<uint64_t>> task_keys(shard_num);
-        std::vector<std::future<void>> task_futures;
-        this->multi_output_channel_[i]->Close();
-        this->multi_output_channel_[i]->ReadAll(vec_data);
-        for (auto& item : vec_data) {
-          for (auto& feature : item.uint64_feasigns_) {
-            int shard =
-                static_cast<int>(feature.sign().uint64_feasign_ % shard_num);
-            task_keys[shard].push_back(feature.sign().uint64_feasign_);
-          }
-        }
+  auto gen_func = [this, &shard_num, &feadim, &consume_func](int i) {
+    std::vector<Record> vec_data;
+    std::vector<std::vector<uint64_t>> task_keys(shard_num);
+    std::vector<std::future<void>> task_futures;
+    this->multi_output_channel_[i]->Close();
+    this->multi_output_channel_[i]->ReadAll(vec_data);
+    for (auto& item : vec_data) {
+      for (auto& feature : item.uint64_feasigns_) {
+        int shard =
+            static_cast<int>(feature.sign().uint64_feasign_ % shard_num);
+        task_keys[shard].push_back(feature.sign().uint64_feasign_);
+      }
+    }
 
-        for (int shard_id = 0; shard_id < shard_num; shard_id++) {
-          task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
-              consume_func, shard_id, feadim, task_keys[shard_id]));
-        }
+    for (int shard_id = 0; shard_id < shard_num; shard_id++) {
+      task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+          consume_func, shard_id, feadim, task_keys[shard_id]));
+    }
 
-        multi_output_channel_[i]->Open();
-        multi_output_channel_[i]->Write(std::move(vec_data));
-        vec_data.clear();
-        vec_data.shrink_to_fit();
-        for (auto& tk : task_keys) {
-          tk.clear();
-          std::vector<uint64_t>().swap(tk);
-        }
-        task_keys.clear();
-        std::vector<std::vector<uint64_t>>().swap(task_keys);
-        for (auto& tf : task_futures) {
-          tf.wait();
-        }
-      };
+    multi_output_channel_[i]->Open();
+    multi_output_channel_[i]->Write(std::move(vec_data));
+    vec_data.clear();
+    vec_data.shrink_to_fit();
+    for (auto& tk : task_keys) {
+      tk.clear();
+      std::vector<uint64_t>().swap(tk);
+    }
+    task_keys.clear();
+    std::vector<std::vector<uint64_t>>().swap(task_keys);
+    for (auto& tf : task_futures) {
+      tf.wait();
+    }
+  };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(gen_func, i);
   }
@@ -1808,22 +1807,22 @@ void MultiSlotDataset::PreprocessChannel(
       }
     }
   }
-  int end_size = 0;
-  if (cur_channel_ == 0) {  // NOLINT
-    for (auto& item : multi_output_channel_) {
-      if (!item) {
-        continue;
-      }
-      end_size += static_cast<int>(item->Size());
-    }
-  } else {
-    for (auto& item : multi_consume_channel_) {
-      if (!item) {
-        continue;
-      }
-      end_size += static_cast<int>(item->Size());
-    }
-  }
+  // int end_size = 0;
+  // if (cur_channel_ == 0) {  // NOLINT
+  //   for (auto& item : multi_output_channel_) {
+  //     if (!item) {
+  //       continue;
+  //     }
+  //     end_size += static_cast<int>(item->Size());
+  //   }
+  // } else {
+  //   for (auto& item : multi_consume_channel_) {
+  //     if (!item) {
+  //       continue;
+  //     }
+  //     end_size += static_cast<int>(item->Size());
+  //   }
+  // }
   CHECK(input_channel_->Size() == 0)
       << "input channel should be empty before slots shuffle";
 }

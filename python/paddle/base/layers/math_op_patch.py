@@ -17,8 +17,12 @@ import warnings
 
 from .. import core
 from ..dygraph.base import in_to_static_mode
-from ..framework import Variable, default_main_program, static_only
-from .layer_function_generator import OpProtoHolder
+from ..framework import (
+    OpProtoHolder,
+    Variable,
+    default_main_program,
+    static_only,
+)
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -370,9 +374,7 @@ def monkey_patch_variable():
                 )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
-                    self.type
-                )
+                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {self.type}"
             )
         from paddle.tensor.array import array_length, array_write
 
@@ -409,9 +411,7 @@ def monkey_patch_variable():
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
-                    self.type
-                )
+                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {self.type}"
             )
         if len(args) == 0:
             idx = -1
@@ -653,16 +653,9 @@ def monkey_patch_variable():
                 file_name = stack[1]
                 line_num = stack[2]
                 warnings.warn(
-                    "{}:{}\nThe behavior of expression {} has been unified with {}(X, Y, axis=-1) from Paddle 2.0. "
+                    f"{file_name}:{line_num}\nThe behavior of expression {EXPRESSION_MAP[method_name]} has been unified with {op_type}(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
-                    "{}(X, Y, axis=0) instead of {}. This transitional warning will be dropped in the future.".format(
-                        file_name,
-                        line_num,
-                        EXPRESSION_MAP[method_name],
-                        op_type,
-                        op_type,
-                        EXPRESSION_MAP[method_name],
-                    ),
+                    f"{op_type}(X, Y, axis=0) instead of {EXPRESSION_MAP[method_name]}. This transitional warning will be dropped in the future.",
                     category=DeprecationWarning,
                 )
             current_block(self).append_op(

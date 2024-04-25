@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 #include <queue>
 
+#include "glog/vlog_is_on.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
@@ -34,21 +35,27 @@ DrrRewritePattern::DrrRewritePattern(
     pir::PatternBenefit benefit,
     const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
     : pir::RewritePattern(
-          drr_context.source_pattern_graph()->AnchorNode()->name(),
+          (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
           context,
           {}),
       pattern_name_(pattern_name),
       source_pattern_graph_(drr_context.source_pattern_graph()),
       constraints_(drr_context.constraints()),
+      post_processes_(drr_context.post_processes()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
       drr_pattern_owner_(drr_pattern_owner) {
-  PADDLE_ENFORCE_NE(
-      source_pattern_graph_->owned_op_call().empty(),
-      true,
-      phi::errors::InvalidArgument("Source pattern graph is empty."
-                                   "Suggested fix: Please check the DRR "
-                                   "source pattern definition code."));
+  PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Source pattern graph is empty. Suggested fix: please "
+                        "check the drr source pattern definition code."));
+  if (VLOG_IS_ON(4)) {
+    std::cout << "\nThe source pattern graph in [" << pattern_name << "]:\n"
+              << *source_pattern_graph_ << std::endl;
+    std::cout << "\nThe result pattern graph in [" << pattern_name << "]:\n"
+              << *result_pattern_graph_ << std::endl;
+  }
 }
 
 bool DrrRewritePattern::MatchAndRewrite(
@@ -58,6 +65,10 @@ bool DrrRewritePattern::MatchAndRewrite(
       std::make_shared<MatchContextImpl>();
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
+    MatchContext match_context{src_match_ctx};
+    for (const auto& post_process : post_processes_) {
+      post_process(match_context);
+    }
     PatternGraphRewrite(*src_match_ctx, rewriter);
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
@@ -68,7 +79,7 @@ bool DrrRewritePattern::MatchAndRewrite(
 bool DrrRewritePattern::PatternGraphMatch(
     pir::Operation* op, MatchContextImpl* source_pattern_match_ctx) const {
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
-  const OpCall* anchor = source_pattern_graph_->AnchorNode();
+  const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
       bind_map =
           FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
@@ -324,7 +335,11 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     }
     return false;
   };
-
+  // Check whether Drr Tensor and IR Value is None.
+  const auto& IsNoneTensorAndValue = [](const Tensor* drr_input_tensor,
+                                        pir::Value ir_value) {
+    return drr_input_tensor->is_none() && ir_value == nullptr;
+  };
   // Step 1: Initialize DRR matched queue.
   bool matched = true;
   size_t step = 0;
@@ -347,6 +362,17 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     const auto& drr_input_tensors = drr_node->inputs();
     auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
+      if (drr_input_tensors[i]->is_none()) {
+        if (IsNoneTensorAndValue(drr_input_tensors[i], ir_input_values[i])) {
+          continue;
+        } else {
+          VLOG(8) << drr_node->name() << "Match failed:drr_input[" << i
+                  << "] !=  pir_intput[" << i << "] , drr_input_tensor[" << i
+                  << "] is None.";
+          matched = false;
+          break;
+        }
+      }
       if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
         VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
@@ -400,9 +426,8 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         step,
         source_pattern_graph.CountOfOpCalls(),
         phi::errors::PreconditionNotMet(
-            "Pattern matching failed."
-            "The number of successful matches and the number of OpCalls in the "
-            "source pattern graph are not equal."));
+            "Pattern matching failed. The number of successful matches and the "
+            "number of OpCalls in the source pattern graph are not equal."));
   } else {
     return matched;
   }
@@ -450,27 +475,27 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     PADDLE_ENFORCE_NE(
         result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
-        phi::errors::NotFound("Not found the input tensor."
-                              "Drr input tensor [%s] must exist in the result "
-                              "pattern graph to be obtained.",
-                              in_tensor));
+        phi::errors::NotFound(
+            "Not found the input tensor. Drr input tensor [%s] must exist in "
+            "the result pattern graph to be obtained.",
+            in_tensor));
     if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
   }
 
-  std::vector<std::vector<pir::Operation*>> temp_program;
-  std::unordered_map<pir::Operation*, size_t> op_2_temp_program_index;
-  for (auto& op : *rewriter.block()) {
-    op_2_temp_program_index[&op] = temp_program.size();
-    temp_program.push_back({&op});
-  }
-
   // topo order visit result_pattern_graph
   GraphTopo graph_topo_visit(&result_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
+    std::vector<std::vector<pir::Operation*>> temp_program;
+    std::unordered_map<pir::Operation*, size_t> op_2_temp_program_index;
+    for (auto& op : *rewriter.block()) {
+      op_2_temp_program_index[&op] = temp_program.size();
+      temp_program.push_back({&op});
+    }
+
     // set insert point
-    size_t max_input_op_index = 0;
+    size_t max_input_op_index = 0UL;
     pir::Operation* max_index_op = nullptr;
     for (const Tensor* input : op_call.inputs()) {
       if (input->is_none()) {
@@ -480,7 +505,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       if (ir_val) {
         pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
-          max_input_op_index = 0UL;
+          // do nothing
         } else if (max_input_op_index <
                    op_2_temp_program_index.at(ir_input_op)) {
           max_input_op_index = op_2_temp_program_index.at(ir_input_op);
@@ -505,21 +530,23 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
     if (max_input_op_index == 0UL) {
       VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_patter_first_op = src_match_ctx.IrOperation(
+      pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
           source_pattern_graph.owned_op_call()[0].get());
-      max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.set_insertion_point(source_patter_first_op);
+      max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
+      rewriter.set_insertion_point(source_pattern_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }
 
     pir::Operation* new_op =
         CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
-    op_2_temp_program_index[new_op] = max_input_op_index + 1;
-    if (max_input_op_index + 1 >= temp_program.size()) {
+
+    size_t new_max_input_op_index = max_input_op_index + 1;
+    op_2_temp_program_index[new_op] = new_max_input_op_index;
+    if (new_max_input_op_index >= temp_program.size()) {
       temp_program.push_back({});
     }
-    temp_program[max_input_op_index + 1].push_back(new_op);
+    temp_program[new_max_input_op_index].push_back(new_op);
   });
 
   return res_match_ctx;

@@ -164,8 +164,13 @@ def OpNameNormalizerInitialization(
         "atol_tensor": "TolTensor",
         "out": "Out",
     }
+    op_arg_name_mappings['fused_softmax_mask_grad'].update({"out": "Softmax"})
     op_arg_name_mappings['push_sparse_v2'].update(
         {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
+    )
+
+    op_arg_name_mappings['push_gpups_sparse'].update(
+        {"out_grad": "Out@GRAD", "out_grad_grad": "Out@GRAD"}
     )
 
     op_name_normalizer_template = env.get_template("op_compat_info.cc.j2")

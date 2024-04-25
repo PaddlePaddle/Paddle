@@ -117,9 +117,11 @@ class PackedStepContext {
     try {
       return absl::get<AttrType>(attrs_.at(idx));
     } catch (absl::bad_variant_access& ex) {
-      LOG(FATAL) << "Attribute cast error, idx:" << idx
-                 << ", get type:" << typeid(AttrType).name()
-                 << ", real index:" << attrs_.at(idx).index();
+      std::stringstream ss;
+      ss << "Attribute cast error, idx:" << idx
+         << ", get type:" << typeid(AttrType).name()
+         << ", real index:" << attrs_.at(idx).index();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       throw ex;
     }
   }
@@ -601,7 +603,9 @@ void AttrVariantToProto(const utils::Attribute& attr,
     SET_DESC_REPEATED_ITEM(10, std::vector<int64_t>, LONGS, longs);
     SET_DESC_REPEATED_ITEM(11, std::vector<double>, DOUBLES, doubles);
     default:
-      LOG(FATAL) << "Invalid index:" << attr.index();
+      std::stringstream ss;
+      ss << "Invalid index:" << attr.index();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef SET_DESC_SINGLE_ITEM
@@ -635,7 +639,9 @@ utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
     PARSE_DESC_REPEATED_ITEM(LONGS, longs, std::vector<int64_t>);
     PARSE_DESC_REPEATED_ITEM(DOUBLES, doubles, std::vector<double>);
     default:
-      LOG(FATAL) << "Invalid type:" << attr.DebugString();
+      std::stringstream ss;
+      ss << "Invalid type:" << attr.DebugString();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef PARSE_DESC_SINGLE_ITEM

@@ -50,7 +50,8 @@ class IR_API GroupOp
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+  std::vector<pir::Operation *> GetOperators() const;
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
@@ -76,7 +77,9 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+
+  std::vector<pir::Operation *> GetOperators() const;
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -84,7 +87,9 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
 
 // YieldStoreOp represents a store operation for
 // seperate local variable and ouptut
-class IR_API YieldStoreOp : public pir::Op<YieldStoreOp> {
+class IR_API YieldStoreOp
+    : public pir::Op<YieldStoreOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.yield_store"; }
@@ -96,6 +101,8 @@ class IR_API YieldStoreOp : public pir::Op<YieldStoreOp> {
                     pir::Type output_type);
 
   void VerifySig();
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class IR_API ConcatOp

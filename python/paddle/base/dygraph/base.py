@@ -83,19 +83,6 @@ def _to_static_mode_guard_(is_to_static=True):
 
 
 @signature_safe_contextmanager
-def program_desc_tracing_guard(enable):
-    tracer = framework._dygraph_tracer()
-    if tracer:
-        original_val = tracer._enable_program_desc_tracing
-        tracer._enable_program_desc_tracing = enable
-    try:
-        yield
-    finally:
-        if tracer:
-            tracer._enable_program_desc_tracing = original_val
-
-
-@signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:

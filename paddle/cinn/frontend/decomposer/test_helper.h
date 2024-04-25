@@ -89,8 +89,8 @@ void CopyFromVector(const std::vector<T>& vec,
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(data, vec.data(), numel * sizeof(T), cudaMemcpyHostToDevice);
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
 #endif
   } else {
     std::copy(vec.begin(), vec.end(), data);

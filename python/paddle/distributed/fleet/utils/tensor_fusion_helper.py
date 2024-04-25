@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import itertools
-import os
 import weakref
 from collections import OrderedDict
 
@@ -24,6 +24,8 @@ from paddle.framework import (
     base as imperative_base,
     core,
 )
+
+from .log_util import logger
 
 
 class HOOK_ACTION:
@@ -522,13 +524,9 @@ class FusedCommBuffer:
         if not self._release_grads:
             current_ptr = get_grad_address(param, self.use_main_grad)
             if self._grads_to_addr[param.name] != current_ptr:
-                raise ValueError(
-                    "The address of the grad/main_grad of the param has been changed during training, "
-                    "which is not allowed for dp/sharding overlap with pp. "
-                    "This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: "
-                    "1. The grad/main_grad of the param is changed by other operations, such as: clear_grad, "
-                    "2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc. "
-                )
+                error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
+                logger.error(error_message)
+                raise ValueError(error_message)
         else:
             self._copy_grad_to_buffer(param)
 
@@ -567,9 +565,7 @@ class FusedCommBuffer:
     def comm_grads(self):
         assert self._all_params_checked_in, (
             "Not all params checked in."
-            "Parameter number: {}, Check-in number: {}".format(
-                len(self._params), self._params_checked_in
-            )
+            f"Parameter number: {len(self._params)}, Check-in number: {self._params_checked_in}"
         )
         self._comm_grads()
 
@@ -837,12 +833,8 @@ def fused_parameters(
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
-        g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
-        act = (
-            HOOK_ACTION.ALL_REDUCE
-            if not g_shard_use_reduce
-            else HOOK_ACTION.REDUCE
-        )
+        act = HOOK_ACTION.REDUCE
+
     if comm_overlap:
         if comm_group is None:
             assert (

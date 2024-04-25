@@ -1828,10 +1828,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                     .is_contiguous())
                   ? paddle::Tensor(
                         std::make_shared<phi::DenseTensor>(
-                            std::move(paddle::experimental::Trans2Contiguous(
+                            paddle::experimental::Trans2Contiguous(
                                 *(std::dynamic_pointer_cast<phi::DenseTensor>(
-                                    transback_sub_tensor.impl()))))),
-                        transback_sub_tensor.mutable_autograd_meta())
+                                    transback_sub_tensor.impl())))),
+                        transback_sub_tensor.mutable_autograd_meta(),
+                        transback_sub_tensor.name())
                   : transback_sub_tensor;
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
@@ -1986,7 +1987,7 @@ This hook will be called every time the gradient of current Tensor has been full
 
 There are two differences with `_register_grad_hook`:
 1. This backward hook will be executed after the gradient accumulation completed across batches,
-  but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
+  but the hook registered by `_register_grad_hook` will be executed before the gradient accumulation
   completed in current batch.
 2. This backward hook function should have the following signature:
 

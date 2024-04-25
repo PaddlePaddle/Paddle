@@ -67,7 +67,7 @@ def get_data_transform_check_str(op_data_transform_map):
                 )
         if "support_trans_dtype" in op_data_transform_map:
             args = op_data_transform_map["support_trans_dtype"]
-            # TODO:(chenxi67) comlete SUPPORT logic
+            # TODO:(chenxi67) complete SUPPORT logic
             if args is not None:
                 if_cond_args = []
                 for support_arg in args:

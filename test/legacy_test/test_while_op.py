@@ -244,9 +244,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
                             continue
                         self.assertTrue(
                             out_name in op.input("X"),
-                            "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition.".format(
-                                out_name
-                            ),
+                            f"In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{out_name}` not meet the precondition.",
                         )
 
 

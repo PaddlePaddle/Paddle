@@ -27,36 +27,30 @@ try:
 except:
     flash_attention = None
 
-_global_mesh = None
 
-
-def set_global_mesh(mesh):
-    global _global_mesh
-    _global_mesh = mesh
-
-
-def is_pp_enable(mesh):
-    return "pp" in mesh.dim_names
+def is_pp_enable():
+    global_mesh = dist.auto_parallel.get_mesh()
+    return "pp" in global_mesh.dim_names
 
 
 def get_mesh(pp_idx=None):
-    global _global_mesh
-    mesh = _global_mesh
-    assert _global_mesh is not None, "_global_mesh is not initialized!"
+    global_mesh = dist.auto_parallel.get_mesh()
+    assert global_mesh is not None, "global_mesh is not initialized!"
     if pp_idx is None:
+        return global_mesh
+    if is_pp_enable():
+        mesh = global_mesh.get_mesh_with_dim("pp")[pp_idx]
         return mesh
-    if is_pp_enable(mesh):
-        mesh = _global_mesh.get_mesh_with_dim("pp")[pp_idx]
-    return mesh
+    else:
+        return global_mesh
 
 
 def global_mesh_starts_with_pp():
-    global _global_mesh
-    mesh = _global_mesh
-    if is_pp_enable(mesh):
-        return _global_mesh.get_mesh_with_dim("pp")
+    global_mesh = dist.auto_parallel.get_mesh()
+    if is_pp_enable():
+        return global_mesh.get_mesh_with_dim("pp")
     else:
-        return mesh
+        return global_mesh
 
 
 class LlamaRotaryEmbedding(nn.Layer):
@@ -493,12 +487,11 @@ class LlamaModelAuto(nn.Layer):
         )
 
         def get_layer_pp_info(layer_index):
-            global _global_mesh
-            mesh = _global_mesh
-            if is_pp_enable(mesh) is False:
+            if is_pp_enable() is False:
                 return None, False
             else:
-                pp_degree = mesh.get_dim_size("pp")
+                global_mesh = dist.auto_parallel.get_mesh()
+                pp_degree = global_mesh.get_dim_size("pp")
                 layer_per_stage = math.ceil(
                     config.num_hidden_layers / pp_degree
                 )
@@ -665,21 +658,27 @@ class LlamaModelAuto(nn.Layer):
                 past_key_values[idx] if past_key_values is not None else None
             )
 
-            if not is_pp_enable(get_mesh()):
+            if not is_pp_enable():
                 position_ids_input = position_ids
                 attention_mask_input = attention_mask
-            elif idx in self.next_pp_stage_indexes:
+            else:
                 ipp = decoder_layer.ipp
                 position_ids_input = dist.reshard(
                     position_ids,
                     get_mesh(ipp),
                     [dist.Replicate(), dist.Replicate()],
                 )
-                attention_mask_input = dist.reshard(
-                    attention_mask,
-                    get_mesh(ipp),
-                    [dist.Replicate(), dist.Replicate()],
+                attention_mask_input = (
+                    dist.reshard(
+                        attention_mask,
+                        get_mesh(ipp),
+                        [dist.Replicate(), dist.Replicate()],
+                    )
+                    if attention_mask is not None
+                    else None
                 )
+
+            if idx in self.next_pp_stage_indexes:
                 hidden_states = dist.reshard(
                     hidden_states,
                     get_mesh(ipp),

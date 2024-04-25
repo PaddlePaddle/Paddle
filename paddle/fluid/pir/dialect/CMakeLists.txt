@@ -110,7 +110,7 @@ set(generated_files_pd_op
     "${pir_bwd_op_source_file}"
     "${pir_update_op_source_file}")
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
 
   set(pd_onednn_op_yaml_file
@@ -247,22 +247,32 @@ set(op_dialect_srcs
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file}
-    ${api_source_file}
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
+    ${api_source_file})
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(op_dialect_srcs
       ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
 file(GLOB_RECURSE dist_dialect_srcs
-     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc")
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
 
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
-set(op_dialect_deps phi common pir type_info string_helper)
+set(op_dialect_deps
+    phi
+    common
+    pir
+    type_info
+    string_helper
+    global_utils
+    amp)
+if(WITH_ROCM)
+  set(op_dialect_deps ${op_dialect_deps} global_utils)
+endif()
 
 cc_library(
   op_dialect
@@ -279,13 +289,13 @@ set(op_dialect_vjp_srcs
     ${op_vjp_source_file}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(op_dialect_vjp_srcs
       ${op_dialect_vjp_srcs}
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
 endif()
 
-set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
+set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect prim_utils)
 
 cc_library(
   op_dialect_vjp

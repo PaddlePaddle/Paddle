@@ -66,6 +66,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'offset',
         'pin_memory',
         'placements',
+        'process_mesh',
         'reconstruct_from_',
         'register_hook',
         'retain_grads',
@@ -92,6 +93,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'first_use',
         'get_defining_op',
         'has_one_use',
+        'has_name',
         'hash',
         'id',
         'initialized',
@@ -105,8 +107,17 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'set_type',
         'use_empty',
         'is_dist_dense_tensor_type',
-        'dims_mapping',  # TODO Unify as Placement
-        'partial_dims',  # TODO Unify as Placement
+        'dist_attr',
+        'update_dist_attr',
+        'value_assign',
+        'replace_grad_users_with',
+        'do_model_average',
+        'is_distributed',
+        'is_parameter',
+        'need_clip',
+        'optimize_attr',
+        'regularizer',
+        'trainable',
     ]
 )
 

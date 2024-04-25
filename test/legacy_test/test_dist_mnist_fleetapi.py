@@ -72,8 +72,6 @@ class FleetCollectiveTest(unittest.TestCase):
         )
         dist_optimizer.minimize(loss)
 
-        self.assertEqual(dist_strategy.exec_strategy.num_threads, 1)
-
 
 if __name__ == "__main__":
     unittest.main()

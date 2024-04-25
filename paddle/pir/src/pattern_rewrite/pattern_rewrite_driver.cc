@@ -115,13 +115,14 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     return num_rewrites;
   }
 
-  // TODO(wilber): OpResult support GetUsers method.
   void NotifyRootReplaced(pir::Operation* op,
                           const std::vector<pir::Value>& replacement) override {
-    //   for (uint32_t i = 0; i < op->num_results(); ++i) {
-    //     auto res = op->GetResultByIndex(i);
-    //   }
-    // }
+    for (uint32_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+        AddToWorklist(it->owner());
+      }
+    }
   }
 
   void FinalizeRootUpdate(pir::Operation* op) override { AddToWorklist(op); }

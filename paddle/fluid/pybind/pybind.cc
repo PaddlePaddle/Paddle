@@ -78,7 +78,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
@@ -134,6 +135,10 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/pybind/dist_api.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -145,7 +150,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -185,6 +190,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
@@ -398,6 +404,10 @@ bool SupportsInt8() {
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
           phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
 #endif
+}
+
+bool SupportsAvx512F() {
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f);
 }
 
 bool SupportsVNNI() {
@@ -721,43 +731,66 @@ void BindVjp(pybind11::module *m) {
             fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
         PADDLE_ENFORCE(
             vjp_interface,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
         std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
             &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
-            phi::errors::InvalidArgument(
-                "The size of stop_gradients should be the same as vjp_res "
-                "size."
-                "But the size of stop_gradients: %d, vjp_res size: %d",
-                stop_gradients.size(),
-                vjp_res.size()));
+            common::errors::InvalidArgument(
+                "The size of  %s stop_gradients should be the same as vjp_res "
+                "size.",
+                fwd_op.name()));
+
         for (size_t i = 0; i < vjp_res.size(); ++i) {
           PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
                             vjp_res[i].size(),
                             phi::errors::InvalidArgument(
                                 "The size of stop_gradients[%d] should be the "
-                                "same as vjp_res[%d] "
-                                "size."
-                                "But the size of stop_gradients[%d]: %d, "
-                                "vjp_res[%d] size: %d",
+                                "same as vjp_res[%d] size.",
                                 i,
-                                i,
-                                i,
-                                stop_gradients[i].size(),
-                                i,
-                                vjp_res[i].size()));
+                                i));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
             if (!vjp_res[i][j]) {
               sub_res.append(nullptr);
             } else {
+              // The grad_type must equal to forward type.
               sub_res.append(vjp_res[i][j]);
             }
           }
           res.append(sub_res);
+        }
+
+        paddle::dialect::OpYamlInfoInterface yaml_interface =
+            fwd_op.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+        if (yaml_interface) {
+          auto inputs_grad_info = std::get<0>(yaml_interface.GetOpInfo());
+          PADDLE_ENFORCE_EQ(inputs.size(),
+                            inputs_grad_info.size(),
+                            common::errors::InvalidArgument(
+                                "The size of %s inputs should be the "
+                                "same as inputs_grad_info size.",
+                                fwd_op.name()));
+          size_t grad_index = 0;
+          for (size_t idx = 0; idx < inputs.size(); ++idx) {
+            if (!inputs_grad_info[idx].with_grad_semantic) continue;
+            PADDLE_ENFORCE_EQ(inputs[idx].size(),
+                              vjp_res[grad_index].size(),
+                              common::errors::InvalidArgument(
+                                  "The size of inouts[%d] should be the "
+                                  "same as vjp_res[%d] size.",
+                                  idx,
+                                  grad_index));
+            for (size_t j = 0; j < inputs[idx].size(); ++j) {
+              if (vjp_res[grad_index][j]) {
+                // The grad_type must equal to forward type.
+                vjp_res[grad_index][j].set_type(inputs[idx][j].type());
+              }
+            }
+            ++grad_index;
+          }
         }
         return res;
       });
@@ -974,12 +1007,12 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
-                        place, static_cast<cudaStreamCaptureMode>(mode));
+                        place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
@@ -1804,7 +1837,7 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_device_type because you have installed"
+              "Cannot use get_all_device_type because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
@@ -1818,8 +1851,8 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_custom_device_type because you have installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "Cannot use get_all_custom_device_type because you have "
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
@@ -1832,7 +1865,7 @@ All parameter, weight, gradient are variables in Paddle.
     devices = phi::DeviceManager::GetAllDeviceList();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_available_device because you have installed"
+              "Cannot use get_available_device because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install"
               "CustomDevice version "
@@ -1847,8 +1880,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
@@ -1866,8 +1898,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_custom_device_count because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
               "install"
               "CustomDevice version "
@@ -2150,12 +2181,19 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
+  m.def("supports_avx512f", SupportsAvx512F);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_set_warmup", [](bool warmup) {
+#if defined(PADDLE_WITH_CUDA)
+    paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
+        .SetWarmup(warmup);
+#endif
   });
   m.def("_test_enforce_gpu_success", []() {
 #if defined(PADDLE_WITH_CUDA)
@@ -2431,7 +2469,7 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
-  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
       .def_property_readonly(
@@ -3044,11 +3082,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CINN)
   BindTest(&m);
+  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  BindDistApi(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle

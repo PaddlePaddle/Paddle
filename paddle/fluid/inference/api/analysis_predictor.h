@@ -29,7 +29,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
@@ -321,7 +321,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
 
   ///
-  /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
+  /// \brief Initialize onednn quantizer and execute onednn quantization pass
   ///
   /// \return Whether the function executed successfully
   ///

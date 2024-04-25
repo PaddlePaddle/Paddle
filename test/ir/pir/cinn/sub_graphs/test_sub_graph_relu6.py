@@ -28,7 +28,8 @@ class Relu6Case(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [22, 144, 56, 56], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [22, 144, 56, 56], dtype: paddle.float32, stop_gradient: False)
+        var_0,
     ):
         var_1 = paddle.nn.functional.activation.relu6(var_0)
         return var_1
@@ -67,5 +68,5 @@ class TestRelu6(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

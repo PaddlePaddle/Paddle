@@ -126,6 +126,9 @@ static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
+      if (op_desc->Type() == "transpose2_grad" && n.first == "XShape") {
+        continue;
+      }
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
         if (inner_outputs.count(var_name) == 0) {
@@ -347,7 +350,9 @@ void ProgramTranslator::TranslateIfOperation(
   pir::AttributeMap attribute_map;
   std::vector<pir::Type> if_op_output_types;
   for (auto var_desc : cond_op_output_vars) {
-    IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
+    PADDLE_ENFORCE_NOT_NULL(var_desc,
+                            phi::errors::PreconditionNotMet(
+                                "[control flow] Output should not be null"));
     pir::Type translated_var_type =
         type_translator[var_desc->GetType()](ctx_, *var_desc);
     if_op_output_types.emplace_back(translated_var_type);
@@ -684,10 +689,12 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), *defining_op_result.owner());
 
-          IR_ENFORCE(
-              insert_pos != block->end(),
-              "Parameter %s must have corresponding its defining operation",
-              var_name);
+          PADDLE_ENFORCE_NE(insert_pos,
+                            block->end(),
+                            phi::errors::InvalidArgument(
+                                "Parameter %s must have corresponding its "
+                                "defining operation",
+                                var_name));
           insert_pos++;
 
           block->insert(insert_pos, op);

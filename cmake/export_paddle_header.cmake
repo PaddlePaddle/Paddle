@@ -27,7 +27,7 @@ function(header_path_compat TARGET_PATH)
                      "${HEADER_CONTENT}")
       string(REPLACE "paddle/fluid/pir/drr/include/" "paddle/pir/drr/"
                      HEADER_CONTENT "${HEADER_CONTENT}")
-      string(REPLACE "paddle/fluid/pir/transforms/" "paddle/pir/transforms/"
+      string(REPLACE "paddle/fluid/pir/utils/" "paddle/pir/utils/"
                      HEADER_CONTENT "${HEADER_CONTENT}")
       file(WRITE ${header} "${HEADER_CONTENT}")
       message(STATUS "header path compat processing complete: ${header}")
@@ -65,7 +65,7 @@ header_path_compat(
 header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pattern_rewrite)
 header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/transforms)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/utils)
 
 # NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
 file(READ ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/extension.h

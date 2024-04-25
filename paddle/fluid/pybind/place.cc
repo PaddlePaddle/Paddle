@@ -125,7 +125,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -462,6 +462,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .value("XPU3", phi::backends::xpu::XPUVersion::XPU3)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("set_xpu_debug_level",
+        [](int level) { platform::set_xpu_debug_level(level); });
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
 #ifdef PADDLE_WITH_XPU_KP

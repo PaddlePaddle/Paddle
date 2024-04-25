@@ -147,10 +147,12 @@ std::map<int, int64_t> GetSplitAxisWithDimsMapping(
 }
 
 std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces) {
-  std::vector<int64_t> result(num_of_pieces, total_nums / num_of_pieces);
-  int64_t remain_nums = total_nums % num_of_pieces;
-  for (int64_t i = 0; i < remain_nums; ++i) {
-    result[i] += 1;
+  bool has_remainder = (total_nums % num_of_pieces != 0);
+  std::vector<int64_t> result(num_of_pieces,
+                              (total_nums + num_of_pieces - 1) / num_of_pieces);
+  if (has_remainder) {
+    int64_t& last_value = result.back();
+    last_value = last_value - (last_value * num_of_pieces - total_nums);
   }
   return result;
 }
