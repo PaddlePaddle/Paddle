@@ -21,7 +21,7 @@ import paddle
 
 
 def shuffle_channel_wrapper(x, group=1):
-    return paddle._C_ops.shuffle_channel(x, "group", group)
+    return paddle._C_ops.shuffle_channel(x, group)
 
 
 class TestShuffleChannelOp(OpTest):
