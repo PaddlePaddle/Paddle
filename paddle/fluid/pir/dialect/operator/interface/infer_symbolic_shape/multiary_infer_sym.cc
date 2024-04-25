@@ -284,6 +284,16 @@ bool FlashAttnOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &v =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
 
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  shape_analysis->AddEqualCstr(q.shape()[0], k.shape()[0]);
+  shape_analysis->AddEqualCstr(q.shape()[1], v.shape()[1]);
+  shape_analysis->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
   std::vector<symbol::DimExpr> out_shape = q.shape();
 
   out_shape.back() = v.shape().back();
@@ -291,6 +301,8 @@ bool FlashAttnOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
 
+  // GPU has round for seqlen, but XPU has not. Here we align with the GPU
+  // version.
   auto round_multiple = [](symbol::DimExpr x) {
     auto m = symbol::DimExpr{128};
     auto m_minus_one = symbol::DimExpr{127};
