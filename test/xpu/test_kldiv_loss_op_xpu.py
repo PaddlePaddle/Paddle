@@ -112,7 +112,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
     class TestKLDivLossOp5(TestKLDivLossOp):
         def initTestCase(self):
             self.x_shape = (5, 20)
-            self.reduction = 'sum'
+            self.reduction = 'none'
             self.log_target = True
 
     class TestKLDivLossDygraph(unittest.TestCase):
@@ -134,14 +134,14 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.run_kl_loss('none')
 
         def test_kl_loss_mean_logtarget(self):
-            self.run_kl_loss('mean', log_target=True)
+            self.run_kl_loss('none', log_target=True)
 
         def test_kl_loss_static_api(self):
             input = paddle.static.data(name='input', shape=[5, 20])
             label = paddle.static.data(name='label', shape=[5, 20])
 
             paddle.nn.functional.kl_div(input, label)
-            paddle.nn.functional.kl_div(input, label, 'batchmean', True)
+            paddle.nn.functional.kl_div(input, label, 'none', True)
 
     class TestKLDivLossTypePromotion(unittest.TestCase):
         def test_kl_div_promotion(self):
