@@ -166,17 +166,6 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T, typename DeviceContext>
-class CorrelationKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
-        true,
-        phi::errors::Unimplemented("Correlation only supports GPU now."));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -187,6 +176,3 @@ REGISTER_OPERATOR(correlation,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(
-    correlation, CPU, ALL_LAYOUT, ops::CorrelationKernel, float, double) {}
