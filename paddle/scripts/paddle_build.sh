@@ -3501,6 +3501,26 @@ function exec_samplecode_test() {
     fi
 }
 
+function exec_type_hints() {
+    if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+    else
+        echo "WARNING: PR wheel is not found. Use develop wheel !!!"
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    fi
+
+    python -c "import paddle;print(paddle.__version__);paddle.version.show()"
+
+    cd ${PADDLE_ROOT}/tools
+    
+    python test_type_hints.py --debug; type_hints_error=$?
+
+    if [ "$type_hints_error" != "0" ];then
+      echo "Example code type checking failed" >&2
+      exit 5
+    fi
+}
+
 
 function collect_ccache_hits() {
     ccache -s
@@ -3545,6 +3565,9 @@ function summary_check_problems() {
     set +x
     local example_code=$1
     local example_info=$2
+    local type_hints_code=$3
+    local type_hints_info=$4
+
     if [ $example_code -ne 0 ];then
         echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
@@ -3561,6 +3584,25 @@ function summary_check_problems() {
         echo "$example_info"
         echo "==============================================================================="
         echo "*****Example code PASS*****"
+        echo "==============================================================================="
+    fi
+
+    if [ $type_hints_code -ne 0 ];then
+        echo "==============================================================================="
+        echo "*****Example code type checking error***** Please fix the error listed in the information:"
+        echo "==============================================================================="
+        echo "$type_hints_info"
+        echo "==============================================================================="
+        echo "*****Example code type checking FAIL*****"
+        echo "==============================================================================="
+        exit $type_hints_code
+    else
+        echo "==============================================================================="
+        echo "*****Example code type checking info*****"
+        echo "==============================================================================="
+        echo "$type_hints_info"
+        echo "==============================================================================="
+        echo "*****Example code type checking PASS*****"
         echo "==============================================================================="
     fi
     set -x
@@ -4238,7 +4280,12 @@ function main() {
         fi
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+
+        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
+        type_hints_code=$?
+        
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"  $type_hints_code "$type_hints_info"
+
         assert_api_spec_approvals
         ;;
       build_and_check_cpu)
@@ -4258,7 +4305,12 @@ function main() {
         fi
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+
+        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
+        type_hints_code=$?
+
+        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}" $type_hints_code "$type_hints_info"
+
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -4496,7 +4548,11 @@ function main() {
       api_example)
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
-        summary_check_problems $example_code "$example_info"
+
+        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
+        type_hints_code=$?
+
+        summary_check_problems $example_code "$example_info" $type_hints_code "$type_hints_info"
         ;;
       test_op_benchmark)
         test_op_benchmark
