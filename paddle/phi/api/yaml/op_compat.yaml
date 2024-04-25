@@ -2681,6 +2681,13 @@
   extra :
     attrs : [bool is_sparse = false, bool is_distributed = false, int size = 1]
 
+- op : pull_gpups_sparse
+  backward : push_gpups_sparse
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
 - op : push_box_sparse
   inputs :
     ids: Ids
@@ -2688,13 +2695,6 @@
     out : Out
   attrs :
     sparse : is_sparse
-
-- op : pull_gpups_sparse
-  backward : push_gpups_sparse
-  inputs :
-    {w : W, ids : Ids}
-  outputs :
-    out : Out
 
 - op : push_dense
   inputs :
