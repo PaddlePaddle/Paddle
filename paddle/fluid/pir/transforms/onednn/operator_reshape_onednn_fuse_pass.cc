@@ -50,8 +50,6 @@ class OperatorReshapeFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("in_num_col_dims", pat.Attr("in_num_col_dims"));
       op_attrs.emplace("activation_type", pat.Attr("activation_type"));
       op_attrs.emplace("padding_weights", pat.Attr("padding_weights"));
-      op_attrs.emplace("ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE",
-                       pat.Attr("ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE"));
       op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
       op_attrs.emplace("scale_in", pat.Attr("scale_in"));
@@ -151,9 +149,6 @@ class OperatorReshapeFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("in_num_col_dims", pat.Attr("in_num_col_dims"));
       fused_op_attrs.emplace("activation_type", pat.Attr("activation_type"));
       fused_op_attrs.emplace("padding_weights", pat.Attr("padding_weights"));
-      fused_op_attrs.emplace(
-          "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE",
-          pat.Attr("ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE"));
       fused_op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
       fused_op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
       fused_op_attrs.emplace("scale_in", pat.Attr("scale_in"));
