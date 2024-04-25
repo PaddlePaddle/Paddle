@@ -314,9 +314,6 @@ class Adam(Optimizer):
             else None
         )
         lr = self._create_param_lr(param_and_grad)
-        lr_local = lr
-        if paddle.in_dynamic_mode() and lr.is_dist():
-            lr_local = lr._local_value()
         # create the adam optimize op
 
         if in_dynamic_or_pir_mode():
@@ -337,7 +334,7 @@ class Adam(Optimizer):
             _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0],
                 param_and_grad[1],
-                lr_local,
+                lr,
                 moment1,
                 moment2,
                 beta1_pow_acc,

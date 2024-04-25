@@ -1845,13 +1845,11 @@ class Optimizer:
             self._declarative_step()
             return
 
-        # print("====== optimizer.step ======")
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                # print(param, param._grad_ivar())
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))

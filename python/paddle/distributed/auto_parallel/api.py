@@ -369,6 +369,7 @@ class _dtensor_from_local(PyLayer):
                         place=place,
                     )
                 )
+                out[-1].get_tensor()._unsafe_set_skip_check_mesh(True)
             return out
 
 
@@ -415,9 +416,10 @@ def dtensor_from_local_list(
             global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
 
     if paddle.in_dynamic_mode():
-        local_mesh_list = [
-            copy.deepcopy(tensor.process_mesh) for tensor in local_tensor_list
-        ]
+        local_mesh_list = []
+        for tensor in local_tensor_list:
+            local_mesh_list.append(copy.deepcopy(tensor.process_mesh))
+            tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
 
         return _dtensor_from_local.apply(
             local_tensor_list,
@@ -720,6 +722,7 @@ class _local_tensors_from_dist(PyLayer):
                     placements=local_placements,
                     place=place,
                 )
+                local_tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
                 local_tensor.stop_gradient = False
                 local_tensor_list.append(local_tensor)
             return local_tensor_list
