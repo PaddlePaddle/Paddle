@@ -70,7 +70,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      const auto &dim_attr =
+          absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+      return std::vector<int>(dim_attr.begin(), dim_attr.end());
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
@@ -352,7 +356,11 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      const auto &dim_attr =
+          absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+      return std::vector<int>(dim_attr.begin(), dim_attr.end());
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
