@@ -169,6 +169,10 @@ def OpNameNormalizerInitialization(
         {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
     )
 
+    op_arg_name_mappings['push_gpups_sparse'].update(
+        {"out_grad": "Out@GRAD", "out_grad_grad": "Out@GRAD"}
+    )
+
     op_name_normalizer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:
         op_compat_definition = op_name_normalizer_template.render(

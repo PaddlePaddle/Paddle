@@ -108,18 +108,18 @@ struct CudnnRNNCache {
 
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenCreateTensorDescriptor(&x_desc_[i]));
+          phi::dynload::miopenCreateTensorDescriptor(&x_desc_[i]));
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenCreateTensorDescriptor(&y_desc_[i]));
+          phi::dynload::miopenCreateTensorDescriptor(&y_desc_[i]));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
           x_desc_[i],
           miopen_type,
           3,
           const_cast<int *>(dims.data()),
           const_cast<int *>(strides.data())));
 
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
           y_desc_[i],
           miopen_type,
           3,
@@ -132,65 +132,65 @@ struct CudnnRNNCache {
     std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&hx_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&hx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&cx_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&cx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&hy_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&hy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&cy_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&cy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&dhx_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&dhx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&dcx_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&dcx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&dhy_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&dhy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&dcy_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&dcy_desc_));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         hx_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         cx_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         hy_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         cy_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         dhx_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         dcx_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         dhy_desc_,
         miopen_type,
         3,
         const_cast<int *>(dims_hx.data()),
         const_cast<int *>(strides_hx.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         dcy_desc_,
         miopen_type,
         3,
@@ -198,46 +198,45 @@ struct CudnnRNNCache {
         const_cast<int *>(strides_hx.data())));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateDropoutDescriptor(&dropout_desc_));
+        phi::dynload::miopenCreateDropoutDescriptor(&dropout_desc_));
 
     size_t state_size;
     if (!initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+          phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       dropout_state_->Resize({static_cast<int64_t>(state_size)});
       uint8_t *dropout_state_data =
           dropout_state_->mutable_data<uint8_t>(place);
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetDropoutDescriptor(
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::miopenSetDropoutDescriptor(dropout_desc_,
+                                                   handle,
+                                                   dropout_prob_,
+                                                   dropout_state_data,
+                                                   state_size,
+                                                   seed_,
+                                                   false,
+                                                   false,
+                                                   MIOPEN_RNG_PSEUDO_XORWOW));
+    } else {
+      uint8_t *dropout_state_data = dropout_state_->data<uint8_t>();
+      auto dropout_state_dims = dropout_state_->dims();
+      state_size = dropout_state_dims[0];
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRestoreDropoutDescriptor(
           dropout_desc_,
           handle,
           dropout_prob_,
           dropout_state_data,
           state_size,
-          seed_,
+          0,
           false,
           false,
           MIOPEN_RNG_PSEUDO_XORWOW));
-    } else {
-      uint8_t *dropout_state_data = dropout_state_->data<uint8_t>();
-      auto dropout_state_dims = dropout_state_->dims();
-      state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenRestoreDropoutDescriptor(
-              dropout_desc_,
-              handle,
-              dropout_prob_,
-              dropout_state_data,
-              state_size,
-              0,
-              false,
-              false,
-              MIOPEN_RNG_PSEUDO_XORWOW));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateRNNDescriptor(&rnn_desc_));
+        phi::dynload::miopenCreateRNNDescriptor(&rnn_desc_));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetRNNDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetRNNDescriptor(
         rnn_desc_,
         hidden_size_,
         num_layers_,
@@ -249,11 +248,11 @@ struct CudnnRNNCache {
         miopen_type));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&w_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&w_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenCreateTensorDescriptor(&dw_desc_));
+        phi::dynload::miopenCreateTensorDescriptor(&dw_desc_));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_, x_desc_[0], &weights_size_, miopen_type));
 
     PADDLE_ENFORCE_EQ(
@@ -271,16 +270,15 @@ struct CudnnRNNCache {
     dim_s[1] = 1;
     dim_s[0] = dim_w[1];
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         w_desc_, miopen_type, 3, dim_w, dim_s));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
         dw_desc_, miopen_type, 3, dim_w, dim_s));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNWorkspaceSize(
         handle, rnn_desc_, seq_length_, x_desc_, &workspace_size_));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenGetRNNTrainingReserveSize(
-            handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
+        handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
 
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(place);
@@ -289,40 +287,40 @@ struct CudnnRNNCache {
   void release() {
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenDestroyTensorDescriptor(x_desc_[i]));
+          phi::dynload::miopenDestroyTensorDescriptor(x_desc_[i]));
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenDestroyTensorDescriptor(y_desc_[i]));
+          phi::dynload::miopenDestroyTensorDescriptor(y_desc_[i]));
     }
 
     delete[] x_desc_;
     delete[] y_desc_;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(hx_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(hx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(cx_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(cx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(hy_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(hy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(cy_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(cy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(dhx_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(dhx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(dcx_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(dcx_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(dhy_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(dhy_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(dcy_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(dcy_desc_));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyDropoutDescriptor(dropout_desc_));
+        phi::dynload::miopenDestroyDropoutDescriptor(dropout_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyRNNDescriptor(rnn_desc_));
+        phi::dynload::miopenDestroyRNNDescriptor(rnn_desc_));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(w_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(w_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenDestroyTensorDescriptor(dw_desc_));
+        phi::dynload::miopenDestroyTensorDescriptor(dw_desc_));
   }
 };
 

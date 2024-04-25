@@ -1870,6 +1870,16 @@
     data_type : x
   optional : boxes_num
 
+- backward_op : push_gpups_sparse
+  forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
+  args : (Tensor[] ids, Tensor[] out_grad, int[] size, bool is_sparse, bool is_distributed)
+  output : Tensor[](out_grad_grad){out_grad.size()}
+  infer_meta :
+    func : PushGpupsSparseInferMeta
+  kernel :
+    func : push_gpups_sparse
+  inplace : (out_grad -> out_grad_grad)
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
