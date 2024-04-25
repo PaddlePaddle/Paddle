@@ -14,4 +14,5 @@
 
 from .hapi.hub import help, list, load
 
+print(123)
 __all__ = ['list', 'help', 'load']
