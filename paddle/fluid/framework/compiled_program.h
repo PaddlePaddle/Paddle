@@ -64,6 +64,9 @@ class CompiledProgram {
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
 
+  void InitProgramPrivateMemberInfo(const BuildStrategy &build_strategy,
+                                    size_t device_count);
+
   void CreateLocalScopes(Scope *global_scope,
                          const std::vector<Scope *> &local_scopes,
                          bool create_new);

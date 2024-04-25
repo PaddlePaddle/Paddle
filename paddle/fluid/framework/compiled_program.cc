@@ -566,6 +566,8 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
+  // Initialize necessary info of member_ with strategy.
+  InitProgramPrivateMemberInfo(build_strategy, places.size());
 
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -761,6 +763,20 @@ CompiledProgram::~CompiledProgram() {
   delete member_;
 }
 
+void CompiledProgram::InitProgramPrivateMemberInfo(
+    const BuildStrategy &build_strategy, size_t device_count) {
+  member_->build_strategy_ = build_strategy;
+  member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
+                             BuildStrategy::ReduceStrategy::kAllReduce;
+  member_->nranks_ = build_strategy.num_trainers_ * device_count;
+  if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
+    LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
+                 "the number of places should be greater than 1.";
+    member_->build_strategy_.reduce_ =
+        BuildStrategy::ReduceStrategy::kAllReduce;
+    member_->use_all_reduce_ = true;
+  }
+}
 void CompiledProgram::CreateLocalScopes(
     Scope *global_scope,
     const std::vector<Scope *> &local_scopes,
