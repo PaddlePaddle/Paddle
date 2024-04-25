@@ -897,10 +897,33 @@ void BindValue(py::module *m) {
               } else {
                 return "arg_" + std::to_string(block_arg.index());
               }
+            } else if (self.first_use()) {
+              auto nextOp = self.first_use().owner();
+              if (nextOp->isa<::pir::ShadowOutputOp>()) {
+                return nextOp->attribute<pir::StrAttribute>("output_name")
+                    .AsString();
+              } else {
+                PADDLE_THROW(phi::errors::InvalidArgument(
+                    "Currently, we can only get name of Value which is "
+                    "shadowoutput "));
+              }
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
                   "is persistable"));
+            }
+          })
+      .def_property_readonly(
+          "has_name",
+          [](Value self) {
+            if (self.defining_op()->isa<::pir::ParameterOp>() ||
+                self.defining_op()->isa<paddle::dialect::DataOp>() ||
+                self.isa<BlockArgument>() ||
+                (self.first_use() &&
+                 self.first_use().owner()->isa<::pir::ShadowOutputOp>())) {
+              return true;
+            } else {
+              return false;
             }
           })
       .def_property(
