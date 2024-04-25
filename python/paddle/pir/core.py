@@ -45,6 +45,8 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
+datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
+
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
@@ -86,7 +88,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if np_dtype == "bfloat16":
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")

@@ -42,6 +42,7 @@ file(
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
 endif()
 
 if(NOT WITH_DGC)
@@ -209,11 +210,9 @@ if(WITH_ROCM)
     "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
-    "gpu/multiclass_nms3_kernel.cu"
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
-    "gpu/rms_norm_grad_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpudnn/mha_cudnn_frontend.cu"
     "fusion/gpu/block_multi_head_attention_kernel.cu"
@@ -264,6 +263,7 @@ if(NOT
     AND WITH_MKL))
   list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
 endif()
 
 file(

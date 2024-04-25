@@ -1,4 +1,4 @@
-# This file is designed for fusion C++ farward operators, which manages the
+# This file is designed for fusion C++ forward operators, which manages the
 # generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
 # "support_dygraph_mode" is an extra configuration item in this file,
 # if one operator have "support_dygraph_mode : true", it supports dygraph mode,
@@ -82,6 +82,15 @@
     func : conv2d_xpu
     data_type : x
   optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
+
+- op : cross_attention_xpu
+  args : (Tensor input_q, Tensor input_kv, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor mask, int head_num, int head_dim, float alpha, DataType out_dtype)
+  output : Tensor(qkv), Tensor(qkv_max)
+  infer_meta :
+    func : CrossAttentionXPUInferMeta
+  kernel :
+    func : cross_attention_xpu
+    data_type : input_q
 
 - op : dequantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
@@ -377,7 +386,7 @@
     data_type : dtype
 
 - op : group_norm_silu_xpu
-  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  args : (Tensor x, Tensor scale, Tensor bias, int groups = -1, float epsilon = 1e-5)
   output : Tensor(out)
   infer_meta :
     func : GroupNormalizeSiluXPUInferMeta
@@ -428,6 +437,15 @@
     func : multihead_matmul
     data_type : input
   optional : bias_qk
+
+- op : pad2d_xpu
+  args : (Tensor x, int[] paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad2dXPUInferMeta
+  kernel :
+    func : pad2d_xpu
+    data_type : x
 
 - op : qkv_attention_xpu
   args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, Tensor qk_max, Tensor qkv_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)

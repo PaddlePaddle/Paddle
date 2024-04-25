@@ -217,6 +217,7 @@ class RecordedGpuMallocHelper {
     CUDADeviceGuard guard(dev_id_);
     gpuError_t result;
 #ifdef PADDLE_WITH_HIP
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
       result = hipMallocManaged(ptr, size);
     } else {

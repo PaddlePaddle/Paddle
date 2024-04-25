@@ -35,11 +35,11 @@ class ScheduleParam {
   ScheduleParam(const ScheduleParam &) = delete;
   ScheduleParam &operator=(const ScheduleParam &) = delete;
   static ScheduleParam &get_cuda_instance() {
-    static ScheduleParam instance{cinn::common::Target::Arch::NVGPU};
+    static ScheduleParam instance{cinn::common::NVGPUArch{}};
     return instance;
   }
   static ScheduleParam &get_x86_instance() {
-    static ScheduleParam instance{cinn::common::Target::Arch::X86};
+    static ScheduleParam instance{cinn::common::X86Arch{}};
     return instance;
   }
   absl::flat_hash_map<std::string,
@@ -54,7 +54,7 @@ class ScheduleParam {
   int Count(const std::string &key) { return param_data.count(key); }
 
  private:
-  explicit ScheduleParam(cinn::common::Target::Arch arch);
+  explicit ScheduleParam(cinn::common::Arch arch);
   absl::flat_hash_map<std::string,
                       absl::flat_hash_map<std::string, std::vector<int>>>
       param_data;

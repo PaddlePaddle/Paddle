@@ -14,12 +14,10 @@
 #pragma once
 
 #include <fstream>
-#include <nlohmann/json.hpp>
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
-
-using Json = nlohmann::json;
 
 namespace pir {
 

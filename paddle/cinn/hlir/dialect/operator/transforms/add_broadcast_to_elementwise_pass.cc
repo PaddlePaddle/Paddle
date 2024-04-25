@@ -107,6 +107,14 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    std::vector<symbol::DimExpr> out_dim;
+    out_dim.reserve(output_shape.size());
+    for (auto d : output_shape) {
+      out_dim.emplace_back(d);
+    }
+
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       if (auto full_op = op->operand_source(0)
@@ -122,6 +130,8 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                 .dyn_cast<paddle::dialect::PlaceAttribute>()
                 .data());
         op->operand(0).set_source(new_full->result(0));
+        shape_analysis.SetShapeOrDataForValue(
+            new_full.result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(0),
@@ -129,6 +139,9 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             output_shape);
 
         op->operand(0).set_source(new_transpose_op->result(0));
+        shape_analysis.SetShapeOrDataForValue(
+            new_transpose_op.result(0),
+            symbol::TensorShapeOrDataDimExprs(out_dim));
       }
     }
 
@@ -147,6 +160,8 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                 .data());
 
         op->operand(1).set_source(new_full->result(0));
+        shape_analysis.SetShapeOrDataForValue(
+            new_full.result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(1),
@@ -154,6 +169,9 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             output_shape);
 
         op->operand(1).set_source(new_transpose_op->result(0));
+        shape_analysis.SetShapeOrDataForValue(
+            new_transpose_op.result(0),
+            symbol::TensorShapeOrDataDimExprs(out_dim));
       }
     }
 
