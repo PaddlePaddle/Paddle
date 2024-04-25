@@ -144,6 +144,22 @@ class TestSincAPI(unittest.TestCase):
                 res = paddle.sinc(x)
                 static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
 
+
+class TestSincInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.cpu_support_dtypes = [
+            'float32',
+            'float64',
+        ]
+        self.cuda_support_dtypes = [
+            'float32',
+            'float64',
+        ]
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+        self.shapes = [[6], [16, 64]]
+
     def test_inplace(self):
         def run_dygraph(place):
             paddle.disable_static(place)
@@ -164,6 +180,11 @@ class TestSincAPI(unittest.TestCase):
 
         for place in self.place:
             run_dygraph(place)
+
+    def test_inplace_input_type_error(self):
+        with self.assertRaises(TypeError):
+            x = np.random.rand(6).astype('float32')
+            paddle.sinc_(x)
 
 
 @unittest.skipIf(
