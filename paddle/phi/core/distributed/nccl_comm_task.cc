@@ -49,7 +49,7 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                stream,
                comm_type),
       sync_op_(sync_op),
-      timeout_(0),
+      timeout_(std::chrono::milliseconds(timeout)),
       use_calc_stream_(use_calc_stream),
       nccl_start_event_(nullptr),
       nccl_end_event_(nullptr) {
@@ -57,7 +57,6 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
   start_event_created_ = false;
   end_event_created_ = false;
   start_time_ = std::chrono::steady_clock::now();
-  timeout_ = std::chrono::milliseconds(timeout);
 }
 
 void NCCLCommTask::StartRecord() {
