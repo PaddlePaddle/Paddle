@@ -55,7 +55,7 @@ void CompilationTask::Lowering() {
                              /* apply op schedule = */ false,
                              /* apply group schedule = */ true,
                              /* apply pass = */ true));
-  VLOG(5) << "End to lowering: " << *context_->PrintPredicate2Funcs();
+  VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
