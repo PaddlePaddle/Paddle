@@ -21,6 +21,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -30,6 +31,7 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
+
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -52,7 +54,10 @@ class AddAccuracyCheckPattern
     ::pir::CloneOptions clone_options(/*clone_regions=*/false,
                                       /*clone_operands=*/true,
                                       /*clone_successors=*/false);
-
+    auto* ctx = ::pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ::pir::Builder builder = ::pir::Builder(ctx, fusion_op->GetParent());
+    builder.set_insertion_point(fusion_op);
     for (auto op : op_list) {
       if (op->isa<::pir::YieldOp>()) {
         rewriter.SetInsertionPointAfter(fusion_op);
@@ -70,11 +75,10 @@ class AddAccuracyCheckPattern
             ir_mapping.Add(op->operand_source(i), op->operand_source(i));
           }
         }
-        pir::Operation* pd_op = cinn::dialect::RewriteCinnOpToPdOp(op);
+        pir::Operation* pd_op = cinn::dialect::RewriteCinnOpToPdOp(op, builder);
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           ir_mapping.Add(op->result(i), pd_op->result(i));
         }
-        rewriter.Insert(pd_op);
       } else {
         for (size_t i = 0; i < op->num_operands(); ++i) {
           if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {

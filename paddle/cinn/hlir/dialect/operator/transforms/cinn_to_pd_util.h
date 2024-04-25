@@ -24,11 +24,13 @@
 namespace pir {
 class Block;
 class Operation;
+class Builder;
 }  // namespace pir
 
 namespace cinn::dialect {
 
-using TRule = std::function<::pir::Operation*(::pir::Operation*)>;
+using TRule =
+    std::function<::pir::Operation*(::pir::Operation*, ::pir::Builder)>;
 
 class TransformContext {
  private:
@@ -42,7 +44,8 @@ class TransformContext {
     return instance;
   }
   static void Register(std::string cinn_op, TRule rule) {
-    Instance().op_transformers[cinn_op] = rule;
+    VLOG(8) << "Registering transform rule for op " << cinn_op;
+    Instance().op_transformers.insert({cinn_op, rule});
   }
   TRule& operator[](std::string cinn_op_name) {
     PADDLE_ENFORCE_NE(
@@ -50,11 +53,11 @@ class TransformContext {
         op_transformers.end(),
         paddle::platform::errors::PreconditionNotMet(
             "op %s has no corresponding transform rules", cinn_op_name));
-
+    VLOG(10) << "Transform rule found for op " << cinn_op_name;
     return op_transformers[cinn_op_name];
   }
 };
 void RewriteCinnOpToPdOp(::pir::Block* src_block, ::pir::Block* target_block);
-::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation*);
+::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation*, ::pir::Builder);
 
 }  // namespace cinn::dialect
