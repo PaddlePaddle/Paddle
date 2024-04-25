@@ -26,25 +26,21 @@ class PolicyManager {
  public:
   PolicyManager() {}
 
-  template <typename U>
-  PolicyKind GetKey() {
-    return U::Kind;
-  }
-
   template <template <typename> typename POLICY>
   void SetPolicy(const std::shared_ptr<POLICY<T>>& policy) {
-    policies[GetKey<POLICY<T>>()] =
-        std::static_pointer_cast<PolicyBase<T>>(policy);
+    auto key = POLICY<T>::Kind;
+    policies[key] = std::static_pointer_cast<PolicyBase<T>>(policy);
   }
 
   template <template <typename> typename POLICY>
-  std::shared_ptr<POLICY<T>> GetPolicy() {
+  std::shared_ptr<POLICY<T>> GetPolicy() const {
+    auto key = POLICY<T>::Kind;
     PADDLE_ENFORCE_NE(
-        policies.find(GetKey<POLICY<T>>()),
+        policies.find(key),
         policies.end(),
         phi::errors::NotFound(
             "The upstream nodes of the merged node are not unique."));
-    return std::static_pointer_cast<POLICY<T>>(policies[GetKey<POLICY<T>>()]);
+    return std::static_pointer_cast<POLICY<T>>(policies.at(key));
   }
 
  private:

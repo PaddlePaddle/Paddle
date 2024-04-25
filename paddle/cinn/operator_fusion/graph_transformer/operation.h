@@ -49,8 +49,8 @@ struct MergeReduceTreeAndTrivialOperation {
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
     auto fake_reduce_iter_idx = graph->policy_manager()
-                                    .GetPolicy<RelativeJudgePolicy>()
-                                    .GetFakeReduceIterIdx(node, downstream);
+                                    .template GetPolicy<RelativeJudgePolicy>()
+                                    ->GetFakeReduceIterIdx(node, downstream);
     const auto merge_pattern_fn = [&fake_reduce_iter_idx](
                                       const StmtPattern<Phrase>& first,
                                       const StmtPattern<Phrase>& secend) {
@@ -126,8 +126,8 @@ struct LiftToAnchorPatternOperation {
 struct FuseUpstreamAnchorOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
-                  PatternNodePtr<Phrase> upstream,
-                  PatternNodePtr<Phrase> downstream) {
+                  const PatternNodePtr<Phrase>& upstream,
+                  const PatternNodePtr<Phrase>& downstream) {
     // TODO(@wuzhanfei)
   }
 };
@@ -135,8 +135,8 @@ struct FuseUpstreamAnchorOperation {
 struct FuseDownstreamAnchorOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
-                  PatternNodePtr<Phrase> upstream,
-                  PatternNodePtr<Phrase> downstream) {
+                  const PatternNodePtr<Phrase>& upstream,
+                  const PatternNodePtr<Phrase>& downstream) {
     // TODO(@wuzhanfei)
   }
 };

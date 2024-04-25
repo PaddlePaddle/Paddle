@@ -104,6 +104,8 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
                        GraphMatcher,
                        GraphOperation> {
   // TODO(@wuzhanfei)
+  explicit SearchAlgorithm(PatternGraph<Phrase>* graph) {}
+  void operator()() {}
 };
 
 template <typename Kind,

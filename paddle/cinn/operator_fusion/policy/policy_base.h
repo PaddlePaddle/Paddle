@@ -36,9 +36,3 @@ template <typename T>
 using PolicyMap = std::unordered_map<PolicyKind, PolicyPtr<T>, PolicyKindHash>;
 
 }  // namespace cinn::fusion
-
-template <typename T>
-struct GeneralTopoPolicy final : public PolicyBase<T> {
-  static constexpr PolicyKind Kind = PolicyKind::GeneralTopo;
-  int i = 123;
-};

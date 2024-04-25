@@ -52,10 +52,12 @@ struct CanFuseReduceTreeMatcher {
            !node->downstream().empty() &&
            std::holds_alternative<ReduceTreePattern<T>>(
                node->downstream().at(0)->stmt_pattern()) &&
-           graph.policy_manager().GetPolicy<GeneralTopoPolicy>().CanFuse(
-               node, node->downstream().at(0)) &&
-           graph.policy_manager().GetPolicy<RelativeJudgePolicy>().CanFuse(
-               node, node->downstream().at(0));
+           graph.policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(node, node->downstream().at(0)) &&
+           graph.policy_manager()
+               .template GetPolicy<RelativeJudgePolicy>()
+               ->CanFuse(node, node->downstream().at(0));
   }
 };
 
@@ -66,10 +68,12 @@ struct CanFuseReduceTreeAndTrivialMatcher {
            !node->downstream().empty() &&
            std::holds_alternative<TrivialPattern<T>>(
                node->downstream().at(0)->stmt_pattern()) &&
-           graph.policy_manager().GetPolicy<GeneralTopoPolicy>().CanFuse(
-               node, node->downstream().at(0)) &&
-           graph.policy_manager().GetPolicy<RelativeJudgePolicy>().CanFuse(
-               node, node->downstream().at(0));
+           graph.policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(node, node->downstream().at(0)) &&
+           graph.policy_manager()
+               .template GetPolicy<RelativeJudgePolicy>()
+               ->CanFuse(node, node->downstream().at(0));
   }
 };
 
@@ -83,7 +87,9 @@ struct RecomputeNodeMatcher {
 
 struct HasUpstreamAnchorMatcher {
   template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& upstream,
+                  const PatternNodePtr<T>& downstream) {
     // TODO(@wuzhanfei)
     return false;
   }
@@ -91,9 +97,11 @@ struct HasUpstreamAnchorMatcher {
 
 struct HasDownstreamAnchorMatcher {
   template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& upstream,
+                  const PatternNodePtr<T>& downstream) {
     // TODO(@wuzhanfei)
-    return false
+    return false;
   }
 };
 
@@ -118,8 +126,9 @@ struct HorizontalFusionMatcher {
                                  .type()
                                  .template dyn_cast<pir::DenseTensorType>()
                                  .dims();
-    return graph.policy_manager.GetPolicy<GeneralTopoPolicy>().CanFuse(
-               first, second) &&
+    return graph.policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(first, second) &&
            first_dim == second_dim;
   }
 };
