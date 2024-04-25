@@ -14,8 +14,9 @@
 
 #pragma once
 #include <functional>
+#include "paddle/cinn/operator_fusion/pattern_node.h"
 #include "paddle/cinn/operator_fusion/policy/dim_relation.h"
-#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/policy_base.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"
@@ -23,8 +24,9 @@
 namespace cinn::fusion {
 
 template <typename T>
-class RelativeJudgePolicy final : public Policy<T> {
+class RelativeJudgePolicy final : public PolicyBase<T> {
  public:
+  static constexpr PolicyKind Kind = PolicyKind::RelativeJudge;
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
@@ -33,13 +35,12 @@ class RelativeJudgePolicy final : public Policy<T> {
     VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
   bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream) override;
+               const PatternNodePtr<T>& downstream);
 
   std::string Name() { return "RelativeJudgePolicy"; }
 
-  std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream,
-      const PatternNodePtr<T>& downstream) override;
+  std::vector<size_t> GetFakeReduceIterIdx(const PatternNodePtr<T>& upstream,
+                                           const PatternNodePtr<T>& downstream);
 
   bool IsRelated(DimUsage in, DimUsage out) {
     return index_expr_map_[in].count(out) == 1;

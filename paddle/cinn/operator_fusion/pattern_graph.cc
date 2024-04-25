@@ -18,6 +18,9 @@
 #include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/graph_transformer/matcher.h"
+#include "paddle/cinn/operator_fusion/graph_transformer/operation.h"
+#include "paddle/cinn/operator_fusion/graph_transformer/search_algorithm.h"
 
 namespace cinn::fusion {
 
@@ -126,7 +129,7 @@ void PatternGraph<T>::HorizontalFusion() {
 
   GraphTransformer<NodePairPattern,
                    T,
-                   HorizontalFusionConstrain,
+                   HorizontalFusionMatcher,
                    HorizontalFusionOperation>(this);
 }
 
@@ -184,11 +187,8 @@ void PatternGraph<T>::SplitRecomputePattern() {
 template <typename T>
 PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
                               const std::vector<pir::Value>& outputs,
-                              const PolicyManager<T> policy_manager,
-                              const PolicyManager<T> topo_manager)
-    : policy_manager_(policy_manager),
-      topo_manager_(topo_manager),
-      outputs_(outputs) {
+                              const PolicyManager<T> policy_manager)
+    : policy_manager_(policy_manager), outputs_(outputs) {
   std::unordered_map<pir::Operation*, PatternNodePtr<T>> op_to_node_map;
 
   VLOG(4) << "len(outputs) = " << outputs_.size();

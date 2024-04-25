@@ -19,9 +19,7 @@
 #include "paddle/cinn/operator_fusion/frontend/pattern.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
-#include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
-#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_policy.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 
 namespace cinn::fusion {
 
@@ -67,14 +65,13 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   const auto& general_topo_policy =
       std::make_shared<fusion::GeneralTopoPolicy<T>>();
 
-  auto policy_manager =
-      fusion::PolicyManager<T>({relative_judge_policy, general_topo_policy});
+  fusion::PolicyManager<T> policy_manager();
 
-  auto topo_manager = fusion::PolicyManager<T>({general_topo_policy});
+  policy_manager.SetPolicy(relative_judge_policy);
+  policy_manager.SetPolicy(general_topo_policy);
 
   VLOG(4) << "Start Create PatternGraph";
-  fusion::PatternGraph<T> graph(
-      content_without_yield, outputs, policy_manager, topo_manager);
+  fusion::PatternGraph<T> graph(content_without_yield, outputs, policy_manager);
   auto result = graph.ClusterOps();
 
   VLOG(4) << "End Cluster Ops! result size:" << result.size();

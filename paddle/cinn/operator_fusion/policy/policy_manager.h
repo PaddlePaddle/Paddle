@@ -15,37 +15,40 @@
 #pragma once
 
 #include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
+#include "paddle/cinn/operator_fusion/policy/policy_base.h"
+#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 
 namespace cinn::fusion {
 
 template <typename T>
-class Policy {
- public:
-  virtual std::string Name() = 0;
-  virtual bool CanFuse(const PatternNodePtr<T>& upstream,
-                       const PatternNodePtr<T>& downstream) = 0;
-  virtual std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-    return {};
-  }
-};
-
-template <typename T>
-using PolicyPtr = std::shared_ptr<Policy<T>>;
-
-template <typename T>
 class PolicyManager {
  public:
-  explicit PolicyManager(const std::vector<PolicyPtr<T>>& policies)
-      : policies_(policies) {}
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream) const;
-  std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream,
-      const PatternNodePtr<T>& downstream) const;
+  PolicyManager() {}
+
+  template <typename U>
+  PolicyKind GetKey() {
+    return U::Kind;
+  }
+
+  template <template <typename> typename POLICY>
+  void SetPolicy(const std::shared_ptr<POLICY<T>>& policy) {
+    policies[GetKey<POLICY<T>>()] =
+        std::static_pointer_cast<PolicyBase<T>>(policy);
+  }
+
+  template <template <typename> typename POLICY>
+  std::shared_ptr<POLICY<T>> GetPolicy() {
+    PADDLE_ENFORCE_NE(
+        policies.find(GetKey<POLICY<T>>()),
+        policies.end(),
+        phi::errors::NotFound(
+            "The upstream nodes of the merged node are not unique."));
+    return std::static_pointer_cast<POLICY<T>>(policies[GetKey<POLICY<T>>()]);
+  }
 
  private:
-  std::vector<PolicyPtr<T>> policies_;
+  PolicyMap<T> policies;
 };
 
 }  // namespace cinn::fusion

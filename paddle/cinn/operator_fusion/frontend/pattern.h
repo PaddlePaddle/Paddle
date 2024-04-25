@@ -72,12 +72,12 @@ struct UnsupportPattern<FrontendStage> {
   static std::string name() { return "Unsupport"; }
 };
 
-template <typename T>
-struct AnchorPattern {
+template <>
+struct AnchorPattern<FrontendStage> {
   explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
-                         const std::vector<pir::Value>* outputs,
-                         const std::vector<pir::Value>* anchors)
-      : ops_(ops), outputs_(outputs), anchors_(anchors) {}
+                         const std::vector<pir::Value>& outputs,
+                         const pir::Value& anchor)
+      : ops_(ops), outputs_(outputs), anchor_(anchor) {}
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Value> outputs_;
   pir::Value anchor_;  // Choose only one anchor
