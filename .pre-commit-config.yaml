@@ -115,7 +115,6 @@ repos:
             - -extra-arg=-Wno-unused-lambda-capture
             - -extra-arg=-Wno-unused-private-field
             - -extra-arg=-Wno-unused-value
-            - -extra-arg=-Wno-unused-variable
             - -extra-arg=-Wno-overloaded-virtual
             - -extra-arg=-Wno-defaulted-function-deleted
             - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
