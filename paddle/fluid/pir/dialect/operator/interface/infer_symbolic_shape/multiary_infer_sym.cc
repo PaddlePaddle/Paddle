@@ -291,7 +291,7 @@ bool FlashAttnOpInferSymbolicShape(
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
   shape_analysis->AddEqualCstr(q.shape()[0], k.shape()[0]);
-  shape_analysis->AddEqualCstr(q.shape()[1], v.shape()[1]);
+  shape_analysis->AddEqualCstr(q.shape()[0], v.shape()[0]);
   shape_analysis->AddEqualCstr(k.shape()[1], v.shape()[1]);
 
   std::vector<symbol::DimExpr> out_shape = q.shape();
