@@ -2738,6 +2738,55 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void PullGpupsSparseInferMeta(const MetaTensor& w,
+                              const std::vector<const MetaTensor*>& ids,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_GE(
+      ids.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Inputs(Ids) of PullGpuPSSparseOp should not be empty."));
+  PADDLE_ENFORCE_GE(
+      out.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
+  PADDLE_ENFORCE_EQ(
+      ids.size(),
+      size.size(),
+      phi::errors::InvalidArgument("The ids size: %lu must be equal to "
+                                   "the length of embedding size: %lu.",
+                                   ids.size(),
+                                   size.size()));
+  const size_t n_ids = ids.size();
+  std::vector<phi::DDim> outs_dims;
+  outs_dims.resize(n_ids);
+  for (size_t i = 0; i < n_ids; ++i) {
+    int embedding_size = size[i];
+    const auto ids_dims = ids[i]->dims();
+    int ids_rank = ids_dims.size();
+    PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Shape error in %lu id, the last dimension of the "
+                          "'Ids' tensor must be 1.",
+                          i));
+    auto out_dim =
+        common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    out_dim.push_back(embedding_size);
+    outs_dims[i] = common::make_ddim(out_dim);
+  }
+
+  for (size_t i = 0; i < n_ids; ++i) {
+    out[i]->set_dims(outs_dims[i]);
+    out[i]->share_lod(*ids[i], i);
+    out[i]->set_dtype(w.dtype());
+  }
+}
+
 void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
                                    const MetaTensor& scales,
                                    MetaTensor* out) {

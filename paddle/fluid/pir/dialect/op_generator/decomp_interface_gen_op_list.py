@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bmm",
     "dropout",
     "elu",
     "embedding",
@@ -56,6 +57,7 @@ decomp_interface_declare_gen_op_list = [
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
     "add_n",
+    "bmm",
     "dropout",
     "elu",
     "embedding",

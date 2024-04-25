@@ -673,6 +673,8 @@ void SplitWithNumInferMeta(const MetaTensor& x_meta,
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const IntArray& axes,
                       MetaTensor* out,

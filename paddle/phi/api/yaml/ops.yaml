@@ -1314,6 +1314,7 @@
   optional : scale, bias
   intermediate : mean, variance
   backward : group_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -1595,6 +1596,17 @@
     func : kthvalue
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : l1_norm
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : L1NormInferMeta
+  kernel :
+    func : l1_norm
+    data_type : x
+  inplace: (x -> out)
+  backward : l1_norm_grad
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
@@ -2184,6 +2196,7 @@
   kernel :
     func : pad3d
   backward : pad3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
@@ -2309,6 +2322,7 @@
     func : reciprocal
   inplace : (x -> out)
   backward : reciprocal_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_as
   args : (Tensor x, Tensor target)

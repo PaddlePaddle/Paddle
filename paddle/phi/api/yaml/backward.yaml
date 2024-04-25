@@ -1331,6 +1331,17 @@
     func : kthvalue_grad
     data_type : out_grad
 
+- backward_op : l1_norm_grad
+  forward : l1_norm (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : l1_norm_grad
+    data_type : x
+
 - backward_op : label_smooth_grad
   forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
   args : (Tensor out_grad, float epsilon)
@@ -1858,6 +1869,16 @@
     func : psroi_pool_grad
     data_type : x
   optional : boxes_num
+
+- backward_op : push_gpups_sparse
+  forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
+  args : (Tensor[] ids, Tensor[] out_grad, int[] size, bool is_sparse, bool is_distributed)
+  output : Tensor[](out_grad_grad){out_grad.size()}
+  infer_meta :
+    func : PushGpupsSparseInferMeta
+  kernel :
+    func : push_gpups_sparse
+  inplace : (out_grad -> out_grad_grad)
 
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
