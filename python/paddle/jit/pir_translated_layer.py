@@ -343,10 +343,10 @@ def _run_dygraph(instance, input, program_holder):
     )
 
     attrs = [
-        'forward_global_block',
-        forward_program.global_block(),
-        'backward_global_block',
-        backward_program.global_block(),
+        'forward_program',
+        forward_program,
+        'backward_program',
+        backward_program,
         'is_test',
         instance._is_test,
         'program_id',
