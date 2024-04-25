@@ -133,8 +133,8 @@ OP_SAME_OPERANDS_AND_RESULT(Triu)
 OP_SAME_OPERANDS_AND_RESULT(Triu_)
 OP_SAME_OPERANDS_AND_RESULT(Trunc)
 OP_SAME_OPERANDS_AND_RESULT(Trunc_)
-// OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
-// OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
