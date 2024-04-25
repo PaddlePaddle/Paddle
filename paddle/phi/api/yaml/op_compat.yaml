@@ -2671,6 +2671,13 @@
   outputs :
     out : Out
 
+- op : pull_gpups_sparse
+  backward : push_gpups_sparse
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
 - op : push_dense
   inputs :
     ids : Ids
