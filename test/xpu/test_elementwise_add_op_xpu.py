@@ -27,6 +27,7 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -305,6 +306,10 @@ for stype in support_types:
     create_test_class(globals(), XPUTestElementwiseAddOp, stype)
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) != core.XPUVersion.XPU3,
+    "only supported on XPU3",
+)
 class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
     def _floa32_bfloat16_or_float16_add(self, y_dtype):
         paddle.disable_static()
