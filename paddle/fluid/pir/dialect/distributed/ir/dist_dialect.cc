@@ -74,6 +74,10 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.process_mesh_attr().shape()) +
               "]";
+    os << ",process_ids:[" +
+              phi::distributed::auto_parallel::str_join(
+                  tensor_dist_attr.process_mesh_attr().process_ids()) +
+              "]";
     os << ",dims_mappings:[" +
               phi::distributed::auto_parallel::str_join(
                   tensor_dist_attr.dims_mapping()) +
@@ -98,7 +102,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   op_dist_attr.process_mesh_attr().process_ids()) +
               "]}";
-    auto num_operand_dist_attrs = op_dist_attr.num_operand_dist_attrs();
+    auto num_operand_dist_attrs = op_dist_attr.num_operands();
     for (uint32_t i = 0; i < num_operand_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.operand_dist_attr(i);
       os << ",operand(" + std::to_string(i) + "):{";
@@ -110,6 +114,10 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "mesh_shape:[" +
                   phi::distributed::auto_parallel::str_join(
                       dist_attr.process_mesh_attr().shape()) +
+                  "],";
+        os << "process_ids:[" +
+                  phi::distributed::auto_parallel::str_join(
+                      dist_attr.process_mesh_attr().process_ids()) +
                   "],";
       }
       os << "dims_maping:[" +
@@ -132,7 +140,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "}";
       }
     }
-    auto num_result_dist_attrs = op_dist_attr.num_result_dist_attrs();
+    auto num_result_dist_attrs = op_dist_attr.num_results();
     for (uint32_t i = 0; i < num_result_dist_attrs; ++i) {
       auto dist_attr = op_dist_attr.result_dist_attr(i);
       os << ",result(" + std::to_string(i) + "):{";
@@ -144,6 +152,10 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
         os << "mesh_shape:[" +
                   phi::distributed::auto_parallel::str_join(
                       dist_attr.process_mesh_attr().shape()) +
+                  "],";
+        os << "process_ids:[" +
+                  phi::distributed::auto_parallel::str_join(
+                      dist_attr.process_mesh_attr().process_ids()) +
                   "],";
       }
       os << "dims_maping:[" +
