@@ -49,8 +49,8 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                stream,
                comm_type),
       sync_op_(sync_op),
-      use_calc_stream_(use_calc_stream),
       timeout_(0),
+      use_calc_stream_(use_calc_stream),
       nccl_start_event_(nullptr),
       nccl_end_event_(nullptr) {
   start_trace_updated_ = false;
