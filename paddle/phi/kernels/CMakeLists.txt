@@ -27,19 +27,24 @@ file(GLOB kernel_primitive_h "primitive/*.h")
 
 # fusion ops would be included here
 file(
-  GLOB kernel_gpu
+  GLOB kernel_cu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "gpu/*.cu"
-  "gpu/*.cu.cc"
   "gpudnn/*.cu"
+  "kps/*.cu"
+  "legacy/kps/*.cu"
   "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+file(
+  GLOB kernel_gpu
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "gpu/*.cu" "gpu/*.cu.cc")
+
 if(APPLE OR WIN32)
-  list(REMOVE_ITEM kernel_gpu "fusion/gpu/fusion_group_kernel.cu")
+  list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
@@ -47,6 +52,7 @@ if(NOT WITH_DGC)
 endif()
 
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
   list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
   list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
 endif()
@@ -178,13 +184,13 @@ if(WITH_CUTLASS)
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
 
-  list(APPEND kernel_gpu ${cutlass_cu})
+  list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
   list(
     REMOVE_ITEM
-    kernel_gpu
+    kernel_cu
     "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
     "fusion/gpu/fused_scale_bias_add_relu_kernel.cu"
     "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu"
@@ -195,6 +201,14 @@ endif()
 
 # Note(qili93): remove kernels not supported on DCU yet
 if(WITH_ROCM)
+  list(
+    REMOVE_ITEM
+    kernel_cu
+    "gpudnn/mha_cudnn_frontend.cu"
+    "fusion/gpu/block_multi_head_attention_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_kernel.cu"
+    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
   list(
     REMOVE_ITEM
     kernel_gpu
@@ -210,12 +224,7 @@ if(WITH_ROCM)
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
-    "gpu/svd_kernel.cu"
-    "gpudnn/mha_cudnn_frontend.cu"
-    "fusion/gpu/block_multi_head_attention_kernel.cu"
-    "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
-    "fusion/gpu/fused_bn_add_activation_kernel.cu"
-    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
+    "gpu/svd_kernel.cu")
 endif()
 
 set(cc_search_pattern
@@ -270,6 +279,8 @@ file(
   "sparse/xpu/*.cc")
 
 if(WITH_GPU OR WITH_ROCM)
+  collect_srcs(kernels_srcs SRCS ${kernel_cu})
+  kernel_declare("${kernel_cu}")
   collect_srcs(kernels_gpu_srcs SRCS ${kernel_gpu})
   kernel_declare("${kernel_gpu}")
 endif()
