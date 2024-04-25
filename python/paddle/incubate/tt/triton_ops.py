@@ -29,6 +29,7 @@ from .triton_utils import (
     build_package,
     extract_triton_kernel,
     find_so_path,
+    get_op_name_with_suffix,
     get_pointer_hint,
     get_value_hint,
     multi_process_do,
@@ -302,21 +303,12 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
     op_name = "triton_wint8"
     if bool_trans_w:
-        op_name += "_trans"
+        op_name = "triton_wint8_trans"
 
-    # output type is same as x, bias type is same as x
-    dtypes = [x.dtype, qweight.dtype, x.dtype, scales.dtype, x.dtype]
-    address_hint = get_pointer_hint(dtypes)
-    assert (
-        x.dtype == paddle.float16
-    ), "weight_only_int8 now only support float16 as input x"
+    # -1 means this value does not matter for triton compilation
+    x_list = [-1, N, K, K, 1, stride_bk, stride_bn, N, 1]
 
-    x_list = [M, N, K, K, 1, stride_bk, stride_bn, N, 1]
-    value_hint = get_value_hint(x_list)
-
-    op_name += value_hint.replace(",", "").replace(":", "")
-
-    python_package_name = f"{op_name}_package"
+    op_name = get_op_name_with_suffix(op_name, x_list)
 
     if (
         op_name in OpProtoHolder.instance().op_proto_map.keys()
@@ -326,6 +318,17 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
             op_name, x, qweight, scales, bias, bool_trans_w
         )
         return outs[0]
+
+    value_hint = get_value_hint(x_list)
+
+    # output type is same as x, bias type is same as x
+    dtypes = [x.dtype, qweight.dtype, x.dtype, scales.dtype, x.dtype]
+    address_hint = get_pointer_hint(dtypes)
+    assert (
+        x.dtype == paddle.float16
+    ), "weight_only_int8 now only support float16 as input x"
+
+    python_package_name = f"{op_name}_package"
 
     generated_dir = (
         f"/zhoukangkang/2023-06-06minigpt/PaddleNLP/llm/inference/{op_name}"
@@ -398,6 +401,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         so_path = find_so_path(generated_dir, python_package_name)
+        print("we find so_path: ", so_path)
         paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
 
     if in_dynamic_or_pir_mode():

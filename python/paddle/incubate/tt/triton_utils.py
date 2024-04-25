@@ -155,6 +155,18 @@ setup(
 """
 
 
+def get_op_name_with_suffix(op_name, x_list):
+    suffix = []
+    for x in x_list:
+        if x % 16 == 0:
+            suffix.append(16)
+        elif x == 1:
+            suffix.append(1)
+        else:
+            suffix.append(0)
+    return op_name + "_".join([str(i) for i in suffix])
+
+
 def get_value_hint(x):
     hint = ""
     for ele in x:
