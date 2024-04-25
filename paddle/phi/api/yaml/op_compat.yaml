@@ -3189,6 +3189,14 @@
   outputs :
     out : Out
 
+- op : sparse_batch_norm
+  attrs:
+    data_format: data_layout
+
+- op : sparse_sync_batch_norm
+  attrs:
+    data_format: data_layout
+
 - op : spectral_norm
   backward : spectral_norm_grad
   inputs :

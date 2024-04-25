@@ -16,6 +16,7 @@ import copy
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base, sparse
@@ -168,6 +169,7 @@ class TestSyncBatchNorm(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
+    @compare_legacy_with_pt
     def test(self):
         paddle.enable_static()
         indices = paddle.static.data(

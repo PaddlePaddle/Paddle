@@ -181,7 +181,7 @@ def OpNameNormalizerInitialization(
                 else:
                     op_name = sparse_op['backward_op']
                 if op_name[-1] == "_":
-                    op_name_mappings["sparse_" + op_name] = op_name + 'sp_'
+                    op_name_mappings["sparse_" + op_name[:-1]] = op_name + 'sp_'
                 else:
                     op_name_mappings["sparse_" + op_name] = op_name + '_sp'
 

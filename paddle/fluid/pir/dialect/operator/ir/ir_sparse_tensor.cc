@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_sparse_tensor.h"
+#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace dialect {

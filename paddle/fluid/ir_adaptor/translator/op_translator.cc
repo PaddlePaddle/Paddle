@@ -292,7 +292,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-    VLOG(6) << "305:" << target_op_name;
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
                op_desc.Type(),
@@ -333,7 +332,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       }
     }
     target_op_name = OpNameCompatibleMapping(op_desc.Type());
-    VLOG(6) << "344:" << target_op_name;
     auto sig_infos = paddle::dialect::SparseOpToPdOpsMapping(target_op_name);
 
     target_op_name = "";
@@ -355,7 +353,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
         break;
       }
     }
-    VLOG(6) << "366:" << target_op_name;
     PADDLE_ENFORCE_EQ(!target_op_name.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -848,7 +845,6 @@ pir::AttributeMap OpTranscriber::TranslateOpAttribute(
       attribute_map[info.name] = new_attr;
       continue;
     }
-
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
     VLOG(10) << "[op: " << op_desc.Type()
