@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -766,6 +767,33 @@ phi::DataType GetValueDtype(Value value) {
   }
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
@@ -816,6 +844,18 @@ pir::Value apply(Value self, py::object func) {
 }
 
 #define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return bool_data && bool_data.data();                                 \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_STOP_GRADIENT_PROPERTY(name)                                \
   def_property(                                                               \
       name,                                                                   \
       [](Value self) {                                                        \
@@ -885,36 +925,8 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
-      .def_property_readonly(
-          "name",
-          [](Value self) {
-            if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
-              return param_op.param_name();
-            } else if (auto data_op =
-                           self.defining_op<paddle::dialect::DataOp>()) {
-              return data_op.attribute<pir::StrAttribute>("name").AsString();
-            } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
-              if (block_arg.is_kwarg()) {
-                return block_arg.keyword();
-              } else {
-                return "arg_" + std::to_string(block_arg.index());
-              }
-            } else if (self.first_use()) {
-              auto nextOp = self.first_use().owner();
-              if (nextOp->isa<::pir::ShadowOutputOp>()) {
-                return nextOp->attribute<pir::StrAttribute>("output_name")
-                    .AsString();
-              } else {
-                PADDLE_THROW(phi::errors::InvalidArgument(
-                    "Currently, we can only get name of Value which is "
-                    "shadowoutput "));
-              }
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of Value that "
-                  "is persistable"));
-            }
-          })
+      .def_property_readonly("name",
+                             [](Value self) { return GetValueName(self); })
       .def_property_readonly(
           "has_name",
           [](Value self) {
@@ -964,7 +976,7 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_STOP_GRADIENT_PROPERTY("stop_gradient")
       .DEF_VALUE_BOOL_PROPERTY("trainable")
       .DEF_VALUE_BOOL_PROPERTY("persistable")
       .DEF_VALUE_BOOL_PROPERTY("need_clip")
@@ -1853,6 +1865,35 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
   }
 }
 
+static void inline CreateVariableIfNotExist(
+    const std::vector<pir::Value> &var_list,
+    framework::Scope *scope,
+    const framework::Executor *exe = nullptr) {
+  size_t len = var_list.size();
+
+  for (size_t i = 0; i < len; ++i) {
+    pir::Value value = var_list[i];
+    std::string para_name = GetValueName(value);
+    auto var = scope->FindVar(para_name);
+    if (var == nullptr) {
+      PADDLE_ENFORCE_NOT_NULL(exe,
+                              phi::errors::InvalidArgument(
+                                  "Parameter not Initialized, "
+                                  "Please set argument [executor] not None "
+                                  "or run startup program first"));
+      var = scope->Var(para_name);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(
+          common::make_ddim(phi::vectorize(GetValueDims(value))));
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(exe->GetPlace());
+      dev_ctx->Alloc(tensor_temp, GetValueDtype(value));
+    }
+  }
+  return;
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1861,6 +1902,7 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
 }
 
 void BindUtils(pybind11::module *m) {
+  m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
