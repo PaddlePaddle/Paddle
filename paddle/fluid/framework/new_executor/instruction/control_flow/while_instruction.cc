@@ -38,7 +38,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -238,6 +238,16 @@ void WhileInstruction::ShareDatasToOutputs() {
       }
     }
   }
+}
+
+void WhileInstruction::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetOutputHooks(hookfuncs);
+}
+
+void WhileInstruction::SetInputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetInputHooks(hookfuncs);
 }
 
 void WhileInstruction::Run() {

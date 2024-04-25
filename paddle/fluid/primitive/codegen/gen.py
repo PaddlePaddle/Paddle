@@ -63,6 +63,7 @@ UNARY_PRIM_VJP_OPS = [
     'exp_grad',
     'floor_grad',
     'log_grad',
+    'rsqrt_grad',
     'sin_grad',
     'cos_grad',
     'tanh_grad',
@@ -70,6 +71,7 @@ UNARY_PRIM_VJP_OPS = [
 
 # prim op with two inputs and one output, with no attribute
 BINARY_PRIM_VJP_OPS = [
+    'matmul_grad',
     'add_grad',
     'divide_grad',
     'subtract_grad',
@@ -117,6 +119,9 @@ CUSTOM_VJP = [
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
+    'exp_grad',
+    'log_grad',
+    'abs_double_grad',
     'softmax_grad',
     'sqrt_grad',
 ]  # custom vjp list of composite op

@@ -22,10 +22,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -68,7 +68,7 @@ inline void CheckIsDimsMatch(const framework::DDim first,
       return;
     }
   }
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(phi::errors::InvalidArgument(
       "The shape of tensor assigned value must match the shape "
       "of target shape: %d, but now shape is %d.",
       second.to_str(),

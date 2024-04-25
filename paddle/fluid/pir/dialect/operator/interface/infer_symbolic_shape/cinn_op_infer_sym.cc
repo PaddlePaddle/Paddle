@@ -85,9 +85,6 @@ bool ConcatOpInferSymbolicShape(
     return out_dims;
   };
 
-  VLOG(3) << "constraints size:"
-          << shape_analysis->DimExprBuilder().constraints().size();
-
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
 
@@ -161,8 +158,10 @@ bool ReshapeOpInferSymbolicShape(
     return target_shape;
   }();
 
-  const auto &original_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &original_shape = x_dim_expr.shape();
 
   const auto &out_dims = [&] {
     const auto &numel =
@@ -184,8 +183,14 @@ bool ReshapeOpInferSymbolicShape(
     return out_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  symbol::ShapeOrDataDimExprs shape_data = [&] {
+    if (x_dim_expr.data().has_value()) {
+      return symbol::TensorShapeOrDataDimExprs(out_dims,
+                                               x_dim_expr.data().value());
+    }
+    return symbol::TensorShapeOrDataDimExprs(out_dims);
+  }();
+
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
 
   return true;

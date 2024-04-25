@@ -15,7 +15,7 @@
 #     attrs : [bool is_test = false]
 
 - op : abs
-  backward : abs_grad
+  backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :
     x : X
   outputs :
@@ -295,6 +295,12 @@
   manual_signature : [assign, assign_grad]
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
+
+- op : assign_pos
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
 
 - op : assign_value
   outputs :
@@ -818,6 +824,12 @@
   outputs :
     out : Out
 
+- op : dgc_momentum
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut, grad_out : Grad_out}
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -1019,7 +1031,7 @@
     out : Out
 
 - op : exp
-  backward : exp_grad
+  backward : exp_grad, exp_double_grad
   inputs :
     x : X
   outputs :
@@ -1087,8 +1099,11 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
   extra :
@@ -1116,7 +1131,7 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
-    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
   outputs: {out: Out}
@@ -1265,6 +1280,12 @@
   scalar :
     value :
       data_type : float
+      support_tensor : true
+
+- op : full_with_tensor
+  int_array:
+    shape :
+      data_type : int64_t
       support_tensor : true
 
 - op : fused_adam_(fused_adam)
@@ -1873,6 +1894,15 @@
     x : X
   outputs :
     {out : Out, indices : Indices}
+
+- op : l1_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : l1_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : label_smooth
   inputs :
@@ -2641,6 +2671,13 @@
   outputs :
     out : Out
 
+- op : pull_gpups_sparse
+  backward : push_gpups_sparse
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
 - op : push_dense
   inputs :
     ids : Ids
@@ -3225,7 +3262,7 @@
     outputs : [xshape]
 
 - op : stack
-  backward : stack_grad
+  backward : stack_grad, stack_double_grad
   inputs :
     x : X
   outputs :
@@ -3357,6 +3394,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : tdm_sampler
   inputs:
@@ -3705,6 +3750,12 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: dgc
+  inputs:
+    {u: U, v: V, grad: Grad}
+  outputs:
+    {u_out: U_out, v_out: V_out, encode_grad: EncodeGrad, grad_out: Grad_out, gather_buff: GatherBuff}
+
 - op: distribute_fpn_proposals
   inputs :
     {fpn_rois: FpnRois, rois_num: RoisNum}
@@ -3712,6 +3763,12 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
+
+- op: distributed_fused_lamb
+  inputs:
+    {param: Param, grad: Grad, fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1pow: Beta1Pow, beta2pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, learning_rate: LearningRate, global_scale: GlobalScale}
+  outputs:
+    {param_out : ParamOut, fp32_fused_param_out: FP32FusedParamOut, fp16_fused_param_out: FP16FusedParamOut, fp32_acc_fused_grad: FP32AccFusedGrad, fp16_acc_fused_grad: FP16AccFusedGrad, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1pow_out: Beta1PowOut, beta2pow_out: Beta2PowOut, found_inf: FoundInf, acc_step: AccStep, stop_update: StopUpdate, step: Step}
 
 - op: distributed_fused_lamb_init
   inputs:

@@ -17,6 +17,8 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/dist_to_dense_pass.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pybind/dist_api.h"
 #include "paddle/fluid/pybind/dist_static_op_function.h"
 #include "paddle/phi/core/enforce.h"
@@ -44,7 +46,8 @@ namespace paddle {
 namespace pybind {
 
 void BindOperationDistAttribute(py::module *m) {
-  py::class_<OperationDistAttribute> dist_attr(*m, "OperationDistAttribute");
+  py::class_<OperationDistAttribute, pir::Attribute> dist_attr(
+      *m, "OperationDistAttribute");
   dist_attr
       .def("__str__",
            [](OperationDistAttribute &self) {
@@ -56,18 +59,33 @@ void BindOperationDistAttribute(py::module *m) {
                              [](OperationDistAttribute &self) {
                                return self.process_mesh_attr().process_mesh();
                              })
-      .def("num_operand_dist_attrs",
-           &OperationDistAttribute::num_operand_dist_attrs)
-      .def("operand_dist_attrs", &OperationDistAttribute::operand_dist_attrs)
+      .def("num_operands", &OperationDistAttribute::num_operands)
+      .def(
+          "operand_dist_attrs",
+          [](OperationDistAttribute &self) -> std::vector<TensorDistAttribute> {
+            std::vector<TensorDistAttribute> operand_dist_attrs;
+            for (size_t idx = 0; idx < self.num_operands(); ++idx) {
+              operand_dist_attrs.emplace_back(self.operand_dist_attr(idx));
+            }
+            return operand_dist_attrs;
+          })
       .def("operand_dist_attr", &OperationDistAttribute::operand_dist_attr)
-      .def("num_result_dist_attrs",
-           &OperationDistAttribute::num_result_dist_attrs)
-      .def("result_dist_attrs", &OperationDistAttribute::result_dist_attrs)
+      .def("num_results", &OperationDistAttribute::num_results)
+      .def(
+          "result_dist_attrs",
+          [](OperationDistAttribute &self) -> std::vector<TensorDistAttribute> {
+            std::vector<TensorDistAttribute> result_dist_attrs;
+            for (size_t idx = 0; idx < self.num_results(); ++idx) {
+              result_dist_attrs.emplace_back(self.result_dist_attr(idx));
+            }
+            return result_dist_attrs;
+          })
       .def("result_dist_attr", &OperationDistAttribute::result_dist_attr);
 }
 
 void BindTensorDistAttribute(py::module *m) {
-  py::class_<TensorDistAttribute> dist_attr(*m, "TensorDistAttribute");
+  py::class_<TensorDistAttribute, pir::Attribute> dist_attr(
+      *m, "TensorDistAttribute");
   dist_attr
       .def("__str__",
            [](TensorDistAttribute &self) {
@@ -105,6 +123,32 @@ void BindDistOpsAPI(pybind11::module *module) {
   }
 }
 
+TensorDistAttribute CreateTensorDistAttribute(
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<int64_t> &dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType> &partial_status = {}) {
+  return TensorDistAttribute::get(
+      pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
+}
+
+OperationDistAttribute CreateOperationDistAttribute(
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<pir::Attribute> &operand_attrs,
+    const std::vector<pir::Attribute> &result_attrs) {
+  return OperationDistAttribute::get(
+      pir::IrContext::Instance(), mesh, operand_attrs, result_attrs);
+}
+
+void BindDistUtils(pybind11::module *m) {
+  m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
+  m->def("create_op_dist_attribute", CreateOperationDistAttribute);
+}
+
+void BindDistPassAPI(pybind11::module *module) {
+  module->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+  module->def("apply_dist2dense_pass", paddle::dialect::DistToDensePass);
+}
+
 void BindOpsFunction(py::module *m) {
   m->def("reshard_v2",
          [](const pir::Value &x, const TensorDistAttribute &dist_attr) {
@@ -116,6 +160,8 @@ void BindDistApi(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindOperationDistAttribute(&ir_module);
   BindTensorDistAttribute(&ir_module);
+  BindDistUtils(&ir_module);
+  BindDistPassAPI(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindDistOpsAPI(&ops_modules);
   BindOpsFunction(&ops_modules);

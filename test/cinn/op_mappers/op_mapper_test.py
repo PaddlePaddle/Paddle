@@ -18,12 +18,11 @@ import logging
 import os
 import sys
 
-from cinn.common import is_compiled_with_cuda
-from cinn.framework import Scope
-from cinn.frontend import PaddleModelConvertor
-
 import paddle
 from paddle.base.layer_helper import LayerHelper
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.framework import Scope
+from paddle.cinn.frontend import PaddleModelConvertor
 from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
@@ -178,9 +177,7 @@ class OpMapperTest(OpTest):
             self.assertNotIn(
                 out_name,
                 self.output_dtypes,
-                msg="The {} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"".format(
-                    out_name
-                ),
+                msg=f"The {out_name} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"",
             )
             self.assertIn(
                 in_name,
@@ -219,12 +216,7 @@ class OpMapperTest(OpTest):
             if self.fetch_targets[i].name not in self.skip_check_list:
                 check_outputs.append(results[i])
                 logger.debug(
-                    msg="{}, shape={}, dtype={}:\n{}".format(
-                        self.fetch_targets[i].name,
-                        results[i].shape,
-                        str(results[i].dtype),
-                        results[i],
-                    )
+                    msg=f"{self.fetch_targets[i].name}, shape={results[i].shape}, dtype={str(results[i].dtype)}:\n{results[i]}"
                 )
 
         return check_outputs

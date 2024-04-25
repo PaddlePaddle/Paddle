@@ -94,6 +94,10 @@ phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
   return phi::backends::xpu::get_xpu_version(dev_id);
 }
 
+void set_xpu_debug_level(int level) {
+  phi::backends::xpu::set_xpu_debug_level(level);
+}
+
 /**************************** XPU Allocator **************************/
 size_t XPUMinChunkSize() { return 1 << 6; }
 

@@ -28,12 +28,16 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_pir_mode,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.placement_type import (
+    to_placements,
+)
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -249,9 +253,9 @@ def shard_tensor(
             dist_tensor.stop_gradient = tensor.stop_gradient
             return dist_tensor
     elif paddle.framework.in_pir_mode():
-        sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
-        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
-        dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
+        dist_tensor = paddle._C_ops.shard_tensor(tensor, mesh, placements)
+        dist_tensor.stop_gradient = tensor.stop_gradient
+        dist_tensor.persistable = tensor.persistable
         return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
@@ -386,12 +390,12 @@ def reshard(dist_tensor, mesh, placements):
             dist_attr._set_partial_dims(partial_dims)
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
+    elif in_pir_mode():
+        return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "in dy2static mode, reshard's input should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"in dy2static mode, reshard's input should be Variable, but got [{dist_tensor}]"
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         main_program = default_main_program()
         default_dist_ctx = get_default_distributed_context()
@@ -440,7 +444,7 @@ def reshard(dist_tensor, mesh, placements):
 
 def shard_layer(
     layer: nn.Layer,
-    process_mesh: dist.ProcessMesh,
+    process_mesh: ProcessMesh,
     shard_fn: Callable = None,
     input_fn: Callable = None,
     output_fn: Callable = None,
@@ -520,13 +524,13 @@ def shard_layer(
         raise ValueError("The argument `process_mesh` cannot be empty.")
 
     # Check the legality of process_mesh
-    if not isinstance(process_mesh, dist.ProcessMesh):
+    if not isinstance(process_mesh, ProcessMesh):
         raise ValueError(
             "The argument `process_mesh` is not `dist.ProcessMesh` type."
         )
 
     def replicate_layer_params_and_buffers(
-        layer: nn.Layer, mesh: dist.ProcessMesh
+        layer: nn.Layer, mesh: ProcessMesh
     ) -> None:
         for key, param in layer._parameters.items():
             if param is not None and not param.is_dist():
@@ -1445,33 +1449,39 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
-    def _from_legacy_strategy(self, auto_stragety):
+    def _from_legacy_strategy(self, legacy_strategy):
         """
         NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
         """
         import copy
 
-        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(self, key, getattr(legacy_strategy, key))
+        self._fused_passes.enable = legacy_strategy.fused_passes.enable
         if (
             "fused_gemm_epilogue_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.gemm_epilogue = True
         if (
             "fused_dropout_add_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.dropout_add = True
 
-        self._amp = copy.deepcopy(auto_stragety.amp)
-        self._sharding = copy.deepcopy(auto_stragety.sharding)
-        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
-        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        self._amp = copy.deepcopy(legacy_strategy.amp)
+        self._sharding = copy.deepcopy(legacy_strategy.sharding)
+        self._gradient_merge = copy.deepcopy(legacy_strategy.gradient_merge)
+        self._pipeline = copy.deepcopy(legacy_strategy.pipeline)
         # The below are template interfaces
-        self._recompute = copy.deepcopy(auto_stragety.recompute)
-        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
-        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
-        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+        self._recompute = copy.deepcopy(legacy_strategy.recompute)
+        self._mp_optimization = copy.deepcopy(legacy_strategy.mp_optimization)
+        self._dp_optimization = copy.deepcopy(legacy_strategy.dp_optimization)
+        self._sp_optimization = copy.deepcopy(legacy_strategy.sp_optimization)
 
     @property
     def sharding(self):
@@ -1697,12 +1707,18 @@ class DistModel:
         # call paddle.disable_static to keep the outside of DistModel in dynamic graph mode
 
         # set the default mode
-        if optimizer is not None and loss is not None:
-            self.train()
-        elif loss is not None:
-            self.eval()
-        else:
-            self.predict()
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
+        if (
+            not self._in_pir_mode
+        ):  # TODO (2024-Q2) remove this when pir mode is fully constructed.
+            if optimizer is not None and loss is not None:
+                self.train()
+            elif loss is not None:
+                self.eval()
+            else:
+                self.predict()
 
     def train(self):
         """
@@ -1835,6 +1851,10 @@ class DistModel:
         return self._engine.get_serial_startup_program(mode)
 
     def _make_feeds(self, data_list):
+        # TODO (2024-Q2): formula make feed
+        if self._in_pir_mode:
+            self._feed_name_list[self._mode] = ['input0', 'label0']
+
         if (
             self._mode not in self._feed_name_list
             or self._feed_name_list[self._mode] == []
@@ -1887,6 +1907,12 @@ class DistModel:
         if strategy is None:
             return None
         inner_strategy = auto_strategy.Strategy()
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(inner_strategy, key, getattr(strategy, key))
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
         if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(
@@ -1902,16 +1928,21 @@ class DistModel:
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
         # The below are template interfaces
-        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
-        inner_strategy.mp_optimization = copy.deepcopy(
-            strategy._mp_optimization
-        )
-        inner_strategy.dp_optimization = copy.deepcopy(
-            strategy._dp_optimization
-        )
-        inner_strategy.sp_optimization = copy.deepcopy(
-            strategy._sp_optimization
-        )
+        if hasattr(strategy, "_recompute"):
+            inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+
+        if hasattr(strategy, "_mp_optimization"):
+            inner_strategy.mp_optimization = copy.deepcopy(
+                strategy._mp_optimization
+            )
+        if hasattr(strategy, "_dp_optimization"):
+            inner_strategy.dp_optimization = copy.deepcopy(
+                strategy._dp_optimization
+            )
+        if hasattr(strategy, "_sp_optimization"):
+            inner_strategy.sp_optimization = copy.deepcopy(
+                strategy._sp_optimization
+            )
 
         return inner_strategy
 
@@ -2016,7 +2047,7 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            mesh = dist.ProcessMesh(
+            mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
@@ -2273,9 +2304,7 @@ def unshard_dtensor(dist_tensor):
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"the input type of 'unshard_dtensor' should be Variable, but got [{dist_tensor}]"
         # in static mode, 'distributed tensor' and 'dense tensor' are all
         # Variable type, the distributed attribute is a property of the Variable.
         # So, it's no need to convert the distributed tensor to a dense tensor.
@@ -2318,9 +2347,7 @@ class ShardDataloader:
     def __init__(
         self,
         dataloader: paddle.io.DataLoader,
-        meshes: Union[
-            dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-        ],
+        meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
         input_keys: Union[List[str], Tuple[str]] = None,
         shard_dims: Union[list, tuple, str, int] = None,
         is_dataset_splitted: bool = False,
@@ -2338,9 +2365,7 @@ class ShardDataloader:
         process_id = dist.get_rank()
         if self._process_id_in_multi_meshes(process_id):
             raise ValueError(
-                "process_id {} is in more than one mesh, the meshes are {}".format(
-                    process_id, self._meshes
-                )
+                f"process_id {process_id} is in more than one mesh, the meshes are {self._meshes}"
             )
         if input_keys is not None:
             assert len(input_keys) == 2, "input_keys lengths must be 2"
@@ -2410,9 +2435,7 @@ class ShardDataloader:
         else:
             if len(shard_dims) != len(self._meshes):
                 raise ValueError(
-                    "shard_dims must be the same length as meshes, but got {} != {}".format(
-                        len(shard_dims), len(self._meshes)
-                    )
+                    f"shard_dims must be the same length as meshes, but got {len(shard_dims)} != {len(self._meshes)}"
                 )
             return shard_dims
 
@@ -2573,9 +2596,7 @@ class ShardDataloader:
 
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
-    meshes: Union[
-        dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-    ],
+    meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
     input_keys: Union[List[str], Tuple[str]] = None,
     shard_dims: Union[list, tuple, str, int] = None,
     is_dataset_splitted: bool = False,

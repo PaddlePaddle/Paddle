@@ -56,9 +56,9 @@ class CommunicationTestDistBase(unittest.TestCase):
             runtime_envs.update(user_defined_envs)
         runtime_envs["CUDA_VISIBLE_DEVICES"] = self._devices
         if self._nnode > 1:
-            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir ./log --devices {self._devices} {script_file}"
         else:
-            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir ./log --devices {self._devices} {script_file}"
         start_command_list = start_command.strip().split()
 
         if self._nnode > 1:
@@ -79,15 +79,11 @@ class CommunicationTestDistBase(unittest.TestCase):
             )
         except subprocess.TimeoutExpired as err:
             raise TimeoutError(
-                "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                    err.cmd, err.timeout
-                )
+                f"Timeout while running command {err.cmd}, try to set a longer period, {err.timeout} is not enough."
             )
         except subprocess.CalledProcessError as err:
             raise RuntimeError(
-                "Error occurs when running this test case. The return code of command {} is {}".format(
-                    err.cmd, err.returncode
-                )
+                f"Error occurs when running this test case. The return code of command {err.cmd} is {err.returncode}"
             )
 
     def tearDown(self):

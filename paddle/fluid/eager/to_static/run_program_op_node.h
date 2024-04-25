@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -33,9 +32,14 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/onednn_helper.h"
+#endif
+
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -91,45 +95,52 @@ static bool IsVariableRefArray(const Tensor &tensor) {
 
 static auto GetNameFromValue(const ::pir::Block *block,
                              const std::vector<::pir::Value> &values,
-                             bool is_input) {
+                             bool allow_input,
+                             bool allow_output) {
+  PADDLE_ENFORCE_EQ(
+      allow_input || allow_output,
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "GetNameFromValue should allow input or output at least one."));
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
-  if (is_input) {
+  if (allow_input) {
     for (auto &kwarg : block->kwargs()) {
       value2name[kwarg.second] = kwarg.first;
     }
   }
   for (auto &op : *block) {
     std::string name;
-    if (is_input && op.name() == "pd_op.data") {
+    if (allow_input && op.name() == "pd_op.data") {
       name =
           op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
       value2name[op.results()[0].Value::impl()] = name;
-    } else if (!is_input && op.name() == "builtin.set_parameter") {
+    } else if (allow_output && op.name() == "builtin.set_parameter") {
       name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
-    } else if (!is_input && op.name() == "builtin.shadow_output") {
+    } else if (allow_output && op.name() == "builtin.shadow_output") {
       name = op.attributes()
                  .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
-    } else if (is_input && op.name() == "builtin.parameter") {
+    } else if (allow_input && op.name() == "builtin.parameter") {
       name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.result(0).Value::impl()] = name;
-    } else if (is_input && op.name() == "builtin.constant") {
+    } else if (allow_input && op.name() == "builtin.constant") {
       if (op.isa<pir::ConstantTensorOp>()) {
         name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
         value2name[op.result(0).Value::impl()] = name;
       }
     }
   }
+
   std::vector<std::string> names;
   std::transform(values.begin(),
                  values.end(),
@@ -248,12 +259,7 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<Tensor> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values, true);
-  if (VLOG_IS_ON(4)) {
-    for (auto &s : names) {
-      VLOG(4) << "ShareTensorIntoScopeByValue name: " << s;
-    }
-  }
+  auto names = GetNameFromValue(block, values, true, false);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -262,11 +268,16 @@ static void ShareTensorsFromScopeByValue(
     const std::vector<Tensor *> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values, false);
+  // NOTE(SigureMo): If the program has an inplace chain connecting
+  // an input value to an output value, the output value will be
+  // replaced with the input value, so we set the `allow_input` to
+  // `true` in `GetNameFromValue`
+  auto names = GetNameFromValue(block, values, true, true);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
-    VLOG(2) << "share " << name << " from scope";
+    VLOG(4) << "Share Tensor From Scope: " << name;
+
     if (value.impl() == nullptr) {
       // skip stop_gradient.
       continue;
@@ -417,7 +428,6 @@ inline void PirRunProgramAPI(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor *> &out,                   // NOLINT
-    std::vector<paddle::Tensor *> &middles,               // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
@@ -524,20 +534,23 @@ inline void PirRunProgramAPI(
     // *backward_program);
 
     // update interpretercore skip_gc_var
-    auto skip_names =
-        details::GetNameFromValue(forward_global_block, middle_values, false);
+    auto skip_names = details::GetNameFromValue(
+        forward_global_block, middle_values, false, true);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
-        forward_global_block, no_need_buffer_values, false);
+        forward_global_block, no_need_buffer_values, false, true);
     for (auto &name : no_need_buffer_names) {
       VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names = details::GetNameFromValue(
+        forward_global_block, output_values, false, true);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
+    skip_names = details::GetNameFromValue(
+        forward_global_block, input_values, true, false);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -590,8 +603,6 @@ inline void PirRunProgramAPI(
     // Get Output, and Middle Outputs
     details::ShareTensorsFromScopeByValue(
         forward_global_block, out, output_values, global_inner_scope);
-    details::ShareTensorsFromScopeByValue(
-        forward_global_block, middles, middle_values, global_inner_scope);
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -604,8 +615,6 @@ inline void PirRunProgramAPI(
     } else {
       VLOG(4) << "not test, set this scope can not reused";
       global_inner_scope->SetCanReused(false);
-      details::GcScope(global_inner_scope);  // we can gc all the time, because
-                                             // we save the middles.
     }
   }
 
@@ -1009,11 +1018,7 @@ inline void RunProgramGradAPI(
 }
 
 inline void PirRunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x,
-    const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
-    std::vector<paddle::Tensor> &middles,                       // NOLINT
-    std::vector<paddle::Tensor> &out,                           // NOLINT
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
@@ -1061,20 +1066,6 @@ inline void PirRunProgramGradAPI(
   // share x, param, middles, output_grads, out into scope.
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, out_grad, output_grad_values, global_inner_scope);
-  details::ShareTensorsIntoScopeByValue(
-      backward_global_block, x, forward_input_values, global_inner_scope);
-  details::ShareTensorsIntoScopeByValue(backward_global_block,
-                                        middles,
-                                        forward_middle_values,
-                                        global_inner_scope);
-  details::ShareTensorsIntoScopeByValue(
-      backward_global_block, out, forward_output_values, global_inner_scope);
-  details::ShareTensorsIntoScopeByValue(
-      backward_global_block, params, parameter_values, global_inner_scope);
-
-  // Clear out and middles to avoid hold memory until backward finish.
-  out.clear();
-  middles.clear();
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -1092,6 +1083,11 @@ inline void PirRunProgramGradAPI(
     // Step 1. share input_vars & parameters into scope
     auto passed_kernel_program =
         paddle::framework::ApplyIrPass(backward_program, place);
+
+    const auto &new_block = passed_kernel_program->block();
+    passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
+        std::move(passed_kernel_program), new_block, place, global_inner_scope);
+
     if (FLAGS_print_ir) {
       std::ostringstream print_stream;
       print_stream << "LoweredProgram( AfterPass | Backward ) is :\n";
@@ -1127,11 +1123,11 @@ inline void PirRunProgramGradAPI(
 
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    auto skip_names =
-        details::GetNameFromValue(backward_global_block, x_grad_values, false);
+    auto skip_names = details::GetNameFromValue(
+        backward_global_block, x_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(backward_global_block, p_grad_values, false);
+    skip_names = details::GetNameFromValue(
+        backward_global_block, p_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     cache.UpdateSkipEagerDeleteVars(program_id,
@@ -1392,8 +1388,6 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         details::GcScope(global_inner_scope);
         VLOG(4) << "global_inner_scope SetCanReused";
       }
-      middles_.clear();
-      outputs_.clear();
     }
   }
   // Functor: perform backward computations
@@ -1443,11 +1437,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
 
-    PirRunProgramGradAPI(x_,
-                         params_,
-                         hooked_grads[0],
-                         middles_,
-                         outputs_,
+    PirRunProgramGradAPI(hooked_grads[0],
                          step_scope_,
                          attrs_,
                          x_grad_ptr,
@@ -1462,8 +1452,6 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
   void ClearTensorWrappers() override {
     x_.clear();
     params_.clear();
-    middles_.clear();
-    outputs_.clear();
     SetIsTensorWrappersCleared(true);
   }
 
@@ -1473,10 +1461,6 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
   }
 
   void SetFwdX(const std::vector<paddle::Tensor> &tensors) { x_ = tensors; }
-
-  std::vector<paddle::Tensor> &GetMiddle() { return middles_; }
-
-  std::vector<paddle::Tensor> &GetOutputs() { return outputs_; }
 
   void SetFwdParams(const std::vector<paddle::Tensor> &tensors) {
     params_ = tensors;
@@ -1558,8 +1542,6 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
   // TensorWrappers
   std::vector<paddle::Tensor> x_;
   std::vector<paddle::Tensor> params_;
-  std::vector<paddle::Tensor> middles_;
-  std::vector<paddle::Tensor> outputs_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
   // Attribute Map

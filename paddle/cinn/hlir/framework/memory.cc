@@ -58,10 +58,10 @@ class CudaMemoryMng : public MemoryInterface {
 }  // namespace
 
 MemoryManager::MemoryManager() {
-  Register(Target::Arch::Unk, new X86MemoryMng);
-  Register(Target::Arch::X86, new X86MemoryMng);
+  Register(common::UnknownArch{}, new X86MemoryMng);
+  Register(common::X86Arch{}, new X86MemoryMng);
 #ifdef CINN_WITH_CUDA
-  Register(Target::Arch::NVGPU, new CudaMemoryMng);
+  Register(common::NVGPUArch{}, new CudaMemoryMng);
 #endif
 }
 

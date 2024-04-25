@@ -387,9 +387,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
-            attr_name=op_non_mutable_attribute_name_list[idx]
-        )
+        attr_str += f"""  argument_attributes.insert({{"{op_non_mutable_attribute_name_list[idx]}", attr_{op_non_mutable_attribute_name_list[idx]}}});\n"""
 
     return attr_str
 
@@ -558,15 +556,11 @@ def GenBuildOutputs(
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
             if op_input_optional_list[idx] == 'false':
-                build_output_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                    name=op_input_name_list[idx]
-                )
+                build_output_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
-                build_output_str += "  {type} {name} = {name}_.type().dyn_cast<{type}>(); (void){name};\n".format(
-                    type=op_input_type_list[idx], name=op_input_name_list[idx]
-                )
+                build_output_str += f"  {op_input_type_list[idx]} {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<{op_input_type_list[idx]}>(); (void){op_input_name_list[idx]};\n"
 
     # Prepare mutable attributes
     if mutable_attr_is_input:
@@ -826,13 +820,11 @@ def gen_build_func_str(
         op_non_mutable_attribute_type_list,
     )
 
-    build_outputs_str = """
-  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, &argument_attributes);
+    build_outputs_str = f"""
+  std::vector<pir::Type> argument_outputs = {op_info.class_name}::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);""".format(
-        op_name=op_info.class_name
-    )
+  ::pir::PassStopGradientsDefaultly(argument);"""
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
   PADDLE_ENFORCE_NE(

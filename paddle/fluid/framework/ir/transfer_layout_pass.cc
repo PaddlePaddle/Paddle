@@ -107,13 +107,17 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("fused_conv2d_add_act_layout_transfer", graph);
   auto *scope = param_scope();
 
-  // only float16 compute precision need insert transfer_layout.
+  // float16 for all(cutlass cudnn), float32 for cutlass.
+  // why?
+  // In the case of cudnn nhwc fp32, performance degradation will occur
   bool is_fp16_precision =
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
 
-  if (!is_fp16_precision) return;
+  bool cutlass_enable = Get<bool>("use_cutlass");
+
+  if (!is_fp16_precision && !cutlass_enable) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,

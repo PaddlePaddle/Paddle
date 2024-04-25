@@ -39,13 +39,13 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) phi::DenseTensor of SequenceConvOp "
                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
             in->lod().size()));
@@ -107,7 +107,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
             in->lod().size()));

@@ -376,18 +376,36 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   auto copy_kernel_key = kernel_key;
+  auto place2backend = [](phi::AllocationType new_place_type) {
+    auto new_backend = phi::Backend::GPU;
+    switch (new_place_type) {
+      case phi::AllocationType::GPU:
+        new_backend = phi::Backend::GPU;
+        break;
+      case phi::AllocationType::XPU:
+        new_backend = phi::Backend::XPU;
+        break;
+      default:
+        new_backend = phi::Backend::CPU;
+        break;
+    }
+    return new_backend;
+  };
   std::unordered_map<std::string, pir::Attribute> op_attribute;
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
-      (dst_place.GetType() == phi::AllocationType::GPU)) {
-    copy_kernel_key.set_backend(phi::Backend::GPU);
+      (dst_place.GetType() == phi::AllocationType::GPU ||
+       dst_place.GetType() == phi::AllocationType::XPU)) {
+    copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
     op_attribute = {
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
         {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_h2d")},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
-  } else if ((src_place.GetType() == phi::AllocationType::GPU) &&
+  } else if ((src_place.GetType() == phi::AllocationType::GPU ||
+              src_place.GetType() == phi::AllocationType::XPU) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
-    copy_kernel_key.set_backend(phi::Backend::GPU);
+    copy_kernel_key.set_backend(place2backend(src_place.GetType()));
+
     std::string copy_kernel_name = "memcpy_d2h";
     if (in.type().isa<AllocatedDenseTensorArrayType>()) {
       copy_kernel_name = "memcpy_d2h_multi_io";
@@ -737,7 +755,7 @@ static phi::Backend GetKernelBackendByYaml(
   auto& backend_info = op_info_parser->OpRuntimeInfo().kernel_key_backend;
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
 
-  for (auto slot_name : backend_info) {
+  for (const auto& slot_name : backend_info) {
     auto& input_map = op_info_parser->InputName2Id();
 
     if (input_map.count(slot_name)) {

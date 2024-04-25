@@ -53,6 +53,11 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& step,
                            MetaTensor* out);
 
+void AssignPosInferMeta(const MetaTensor& x,
+                        const MetaTensor& cum_count,
+                        const MetaTensor& eff_num_len,
+                        MetaTensor* out);
+
 void BatchFCInferMeta(const MetaTensor& input,
                       const MetaTensor& w,
                       const MetaTensor& bias,
@@ -197,6 +202,13 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* out,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
+
+void PushGpupsSparseInferMeta(const std::vector<const MetaTensor*>& ids,
+                              const std::vector<const MetaTensor*>& out,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out_grad);
 
 void PutAlongAxisInferMeta(const MetaTensor& x,
                            const MetaTensor& index,

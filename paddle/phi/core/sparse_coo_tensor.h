@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kmap_cache.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -244,6 +245,43 @@ class SparseCooTensor : public TensorBase,
     indices_dict_ = indices_dict;
   }
 
+  /// \brief set kmaps_ pointer
+  KmapCache* SetKmapCache(const std::string& key, const KmapCache& kmap) {
+    if (kmaps_ == nullptr) {
+      kmaps_ = std::make_shared<std::map<std::string, KmapCache>>();
+      kmaps_->insert({key, kmap});
+    }
+    return &kmaps_->at(key);
+  }
+
+  void SetKmaps(
+      const std::shared_ptr<std::map<std::string, KmapCache>>& kmaps) {
+    kmaps_ = kmaps;
+  }
+
+  std::shared_ptr<std::map<std::string, KmapCache>> GetKmaps() const {
+    return kmaps_;
+  }
+
+  const KmapCache* GetKmapCache(const std::string& key) const {
+    if (kmaps_ == nullptr) {
+      return nullptr;
+    }
+    const auto& iter = kmaps_->find(key);
+    if (iter == kmaps_->end()) {
+      return nullptr;
+    }
+    return &iter->second;
+  }
+
+  void ClearKmaps() {
+    if (kmaps_ != nullptr) {
+      // set shared_ptr to nullptr,
+      // if no other shared_ptr point to it, it will be released.
+      kmaps_ = nullptr;
+    }
+  }
+
  private:
   friend class DenseTensorUtils;
 
@@ -264,6 +302,9 @@ class SparseCooTensor : public TensorBase,
   // refer to sparse/gpu/convolution_kernel.cu.
   std::shared_ptr<std::map<std::string, std::pair<DenseTensor, DenseTensor>>>
       indices_dict_ = nullptr;
+
+  // Sparse conv will generate a kmap, which can be reused.
+  std::shared_ptr<std::map<std::string, KmapCache>> kmaps_ = nullptr;
 
   /* --------------------------- */
   /*   example: non zero element is scalar */

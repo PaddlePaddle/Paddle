@@ -904,6 +904,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
@@ -951,7 +952,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out);
 
