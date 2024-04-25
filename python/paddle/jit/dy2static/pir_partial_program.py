@@ -344,21 +344,21 @@ class RunnableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
-        self.deal_inplace_values(self.forward_program)
+        self.deal_inplace_values(self.forward_program, self.backward_program)
         self.deal_inplace_values(self.backward_program)
         return value_program_attr
 
-    def deal_inplace_values(self, program):
-        # deal inplace op and modify program inplacely.
-        value2name = self._get_value_name_map_from_program(program)
+    def deal_inplace_values(self, program1, program2=None):
+        # deal inplace op and modify program1 inplacely.
+        value2name = self._get_value_name_map_from_program(program1)
 
         def has_name(value):
-            if self._get_name_defining_op(program, value) is not None:
+            if self._get_name_defining_op(program1, value) is not None:
                 return True
             return False
 
         ufset = UnionFindSet()
-        for op in program.global_block().ops:
+        for op in program1.global_block().ops:
             for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(
                 op
             ).items():
@@ -371,11 +371,26 @@ class RunnableProgram:
 
         for value in ufset.iter_elements():
             if has_name(ufset.find_root(value)):
-                name_defining_op = self._get_name_defining_op(program, value)
-                if name_defining_op:
+                name_defining_op = self._get_name_defining_op(program1, value)
+                if (
+                    name_defining_op
+                    and name_defining_op.name() == 'builtin.shadow_output'
+                ):
+                    old_name = name_defining_op.attrs()['output_name']
+                    new_name = value2name[ufset.find_root(value)]
                     paddle.core.pir.reset_shadow_output_name(
-                        name_defining_op, value2name[ufset.find_root(value)]
+                        name_defining_op, new_name
                     )
+                    if program2 is None:
+                        continue
+                    block = program2.global_block()
+                    kwargs = block.kwargs()
+                    if old_name in kwargs and new_name not in kwargs:
+                        new_value = block.add_kwarg(
+                            new_name, kwargs[old_name].type()
+                        )
+                        kwargs[old_name].replace_all_uses_with(new_value)
+                        block.erase_kwarg(old_name)
 
     @cached_property
     def program_name_attr(self):
