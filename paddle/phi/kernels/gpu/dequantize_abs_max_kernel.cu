@@ -54,6 +54,6 @@ void DequantizeAbsMaxKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(dequantize_abs_max,
                    GPU,
                    ALL_LAYOUT,
-                   ops::DequantizeAbsMaxKernel,
+                   phi::DequantizeAbsMaxKernel,
                    int8_t,
                    int16_t) {}
