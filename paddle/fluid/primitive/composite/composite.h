@@ -459,6 +459,26 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
+  size_t rank = x.size();
+  std::vector<Tensor> res;
+  std::vector<int64_t> tar_shape(rank, 1);
+  for (size_t i = 0; i < rank; i++) {
+    if (x[i].shape().size() == 1) {
+      tar_shape[i] = x[i].shape()[0];
+    }
+  }
+  for (size_t i = 0; i < rank; i++) {
+    std::vector<int64_t> view_shape(rank, 1);
+    if (x[i].shape().size() == 1) {
+      view_shape[i] = x[i].shape()[0];
+    }
+    res.push_back(expand<T>(reshape<T>(x[i], view_shape), tar_shape));
+  }
+  return res;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,

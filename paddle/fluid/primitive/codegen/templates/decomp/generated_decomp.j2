@@ -122,12 +122,23 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
 
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule begin";
   {% if outputs|length == 1 %}
+    {% if outputs[0].typename == "Tensor[]" %}
+  std::vector<Tensor> op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>({{common.args(input_names, attr_names)}});
+    {% else %}
   Tensor op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>({{common.args(input_names, attr_names)}});
+    {% endif %}
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule end";
-
+    {% if outputs[0].typename == "Tensor[]" %}
+  for (size_t idx = 0; idx < op_res.size(); idx++) {
+      res[0].push_back(
+          std::static_pointer_cast<primitive::LazyTensor>(op_res[idx].impl())
+              ->value());
+  }
+    {% else %}
   res[0].push_back(
     std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
         ->value());
+    {% endif %}
   {% else %}
     {% for item in outputs %}
       {% do output_names.append(item.name) %}
