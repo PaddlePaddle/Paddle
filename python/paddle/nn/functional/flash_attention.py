@@ -324,6 +324,7 @@ def flash_attn_qkvpacked(
 
     Warning:
         This API is only support inputs with dtype float16 and bfloat16.
+        Don't call this API if flash_attn is not supported.
 
     Args:
         qkv(Tensor): The query/key/value packed tensor in the Attention module.
