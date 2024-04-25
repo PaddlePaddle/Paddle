@@ -101,8 +101,6 @@ class TestReshardRToS:
             assert 'pd_op.slice' in new_ops
             assert 'dist_op.reshard' not in new_ops
             assert 'dist_op.reshard' in old_ops
-            print(dist_program)
-            print(main_program)
 
 
 if __name__ == '__main__':

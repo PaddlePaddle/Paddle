@@ -416,22 +416,8 @@ void BindBlock(py::module *m) {
       .def("kwargs", &Block::kwargs, return_value_policy::reference)
       .def("add_kwarg", &Block::AddKwarg)
       .def("erase_kwarg", &Block::EraseKwarg)
-      .def(
-          "remove_op",
-          [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), *op);
-            self.erase(op_iter);
-          },
-          R"DOC(
-        Remove the specific position operator.
-
-        Args:
-            index(int): the position that the operator to insert.
-
-        Returns:
-            None
-
-      )DOC")
+      .def("remove_op",
+           [](Block &self, const Operation &op) { self.erase(op); })
       .def(
           "move_op",
           [](Block &self, Operation *op, uint32_t offset) {
@@ -663,6 +649,7 @@ void BindOperation(py::module *m) {
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
           return_value_policy::reference)
+      .def("erase", &Operation::Erase)
       .def("move_before",
            [](Operation &self, Operation &other) {
              self.MoveTo(other.GetParent(), Block::Iterator{other});
@@ -1044,6 +1031,8 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
+      .def("is_combine",
+           [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
       .def(
@@ -1077,9 +1066,10 @@ void BindOpOperand(py::module *m) {
 
   )DOC");
   op_operand.def("source", [](OpOperand &self) { return self.source(); })
-      .def(
-          "set_source",
-          [](OpOperand &self, const Value &result) { self.set_source(result); })
+      .def("set_source",
+           [](OpOperand &self, Value *value) {
+             value ? self.set_source(*value) : self.set_source(nullptr);
+           })
       .def("owner", &OpOperand::owner, return_value_policy::reference)
       .def("index", &OpOperand::index);
 }
