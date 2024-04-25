@@ -294,6 +294,14 @@ bool FlashAttnOpInferSymbolicShape(
   shape_analysis->AddEqualCstr(q.shape()[0], v.shape()[0]);
   shape_analysis->AddEqualCstr(k.shape()[1], v.shape()[1]);
 
+  if (op->operand_source(4)) {
+    const symbol::ShapeOrDataDimExprs &attn_mask =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(4));
+    shape_analysis->AddEqualCstr(attn_mask.shape()[0], q.shape()[0]);
+    shape_analysis->AddEqualCstr(attn_mask.shape()[2], q.shape()[1]);
+    shape_analysis->AddEqualCstr(attn_mask.shape()[3], k.shape()[1]);
+  }
+
   std::vector<symbol::DimExpr> out_shape = q.shape();
 
   out_shape.back() = v.shape().back();
