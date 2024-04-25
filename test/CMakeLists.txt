@@ -128,6 +128,12 @@ function(set_pit_tests_properties)
 
 endfunction()
 
+set(INFERENCE_URL
+    "http://paddle-inference-dist.bj.bcebos.com"
+    CACHE STRING "inference download url")
+set(INFERENCE_DEMO_INSTALL_DIR
+    "${THIRD_PARTY_PATH}/inference_demo"
+    CACHE STRING "A path setting inference demo download directories.")
 function(inference_download_and_uncompress INSTALL_DIR URL FILENAME CHECK_SUM)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%./\\]" "_" FILENAME_EX ${FILENAME})
