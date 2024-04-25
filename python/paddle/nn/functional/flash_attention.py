@@ -350,6 +350,7 @@ def flash_attn_qkvpacked(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
 
             >>> paddle.seed(2023)
@@ -367,7 +368,7 @@ def flash_attn_qkvpacked(
                 0.53336465, 0.54540104],
                [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
                 0.40526697, 0.60541755]]]]), None)
-
+            >>> # doctest: -SKIP
     """
     head_dim = qkv.shape[-1]
     sdp_func_name = _select_sdp(head_dim)
@@ -652,6 +653,7 @@ def flash_attn_varlen_qkvpacked(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
             >>> paddle.seed(2023)
             >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
@@ -659,6 +661,7 @@ def flash_attn_varlen_qkvpacked(
             >>> qq = paddle.reshape(q, [256, 8, 16])
             >>> qkv = paddle.stack([qq,qq,qq], axis=2)
             >>> output = paddle.nn.functional.flash_attn_varlen_qkvpacked(qkv, cu, cu, 128, 128, 0.25, 0.0, False, False)
+            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():
