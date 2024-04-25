@@ -305,6 +305,16 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         return out
 
 
+def fp8_gemm_fused(x, y, transpose_x=False, transpose_y=False, name=None):
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fp8_fp8_fp16_gemm_fused(
+            x, y, None, transpose_x, transpose_y, 1.0, "identity"
+        )
+
+    else:
+        return x
+
+
 def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.

@@ -589,6 +589,7 @@ def save_inference_model(
     _check_vars('feed_vars', feed_vars)
     # verify fetch_vars
     _check_vars('fetch_vars', fetch_vars)
+    print("feed_vars: ", feed_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
 
@@ -1103,6 +1104,7 @@ def save_vars(
 
         save_var_map = {}
         for each_var in vars:
+            print("each_var: ", each_var)
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue

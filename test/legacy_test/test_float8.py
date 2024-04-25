@@ -16,6 +16,8 @@ import os
 import re
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.base import core
 
@@ -105,6 +107,38 @@ class TestFP8FullOp(unittest.TestCase):
                 expect = paddle.to_tensor([[0, 0]]).astype("float32")
                 if self.device == "gpu":
                     self.assertTrue(paddle.equal_all(expect, input_fp32))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11800,
+    "fp8 support in CUDA need CUDA version >= 11.8.",
+)
+class TestFP8MatmulOp(unittest.TestCase):
+    def setUp(self):
+        paddle.device.set_device("gpu")
+        self.dtype_dict = {
+            "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+            "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+        }
+
+    def test_matmul(self):
+        for self.device in ["gpu"]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([8, 16], dtype=self.dtype)
+                input2 = paddle.ones([16, 32], dtype=self.dtype)
+                input3 = np.ones((8, 16)).astype("float32")
+                input4 = np.ones((16, 32)).astype("float32")
+                output = paddle.fp8_gemm_fused(input1, input2)
+                print("output: ", output)
+                expect_result = np.matmul(input3, input4)
+                if self.device == "gpu":
+                    self.assertTrue(
+                        paddle.equal_all(
+                            paddle.cast(output, "float32"),
+                            paddle.to_tensor(expect_result),
+                        )
+                    )
 
 
 if __name__ == "__main__":
