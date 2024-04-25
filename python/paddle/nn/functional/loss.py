@@ -1618,7 +1618,7 @@ def poisson_nll_loss(
     return loss_out
 
 
-def kl_div(input, label, reduction='mean', name=None):
+def kl_div(input, label, reduction='mean', log_target=False, name=None):
     r"""
     Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
@@ -1626,7 +1626,13 @@ def kl_div(input, label, reduction='mean', name=None):
 
     KL divergence loss is calculated as follows:
 
+    If `log_target` is False:
+
     $$l(x, y) = y * (\log(y) - x)$$
+
+    If `log_target` is True:
+
+    $$l(x, y) = \exp(y) * (y - x)$$
 
     Here :math:`x` is input and :math:`y` is label.
 
@@ -1649,6 +1655,7 @@ def kl_div(input, label, reduction='mean', name=None):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
+        log_target (bool, optional): Indicate whether `label` is passed in log space. Default is False.
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -1703,7 +1710,7 @@ def kl_div(input, label, reduction='mean', name=None):
         label = paddle.cast(label, 'float64')
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.kldiv_loss(input, label, 'none')
+        out = _C_ops.kldiv_loss(input, label, 'none', log_target)
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1729,7 +1736,7 @@ def kl_div(input, label, reduction='mean', name=None):
             type='kldiv_loss',
             inputs={'X': input, 'Target': label},
             outputs={'Loss': loss},
-            attrs={'reduction': 'none'},
+            attrs={'reduction': 'none', 'log_target': log_target},
         )
 
         if reduction == 'mean':
