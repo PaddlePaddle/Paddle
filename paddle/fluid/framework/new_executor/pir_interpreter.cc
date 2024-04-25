@@ -757,6 +757,7 @@ void PirInterpreter::BuildInstruction() {
                                                &op,
                                                value_exe_info_.get(),
                                                execution_config_);
+
         while_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         while_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
 
@@ -770,12 +771,12 @@ void PirInterpreter::BuildInstruction() {
               continue;
             }
             if (kv.first.isa<pir::BlockArgument>()) {
-              LOG(INFO) << " ---- is block argument";
               continue;
             }
             auto var_id = this->value_exe_info_->GetVarId(kv.first);
             bool is_ready = this->refs_[var_id]->DynamicRef() == 1;
             if (is_ready) {
+              VLOG(4) << "early gc: " << this->GetNameByValue(kv.first);
               this->refs_[var_id]->CheckAndDecrease();
               this->gc_->Add(this->refs_[var_id]->Var(), instr);
             }

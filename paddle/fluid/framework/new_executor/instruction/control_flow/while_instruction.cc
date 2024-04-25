@@ -259,7 +259,9 @@ void WhileInstruction::Run() {
 #endif
   ShareInputsToOutputs();
 
-  check_gc_early_(this);
+  if (check_gc_early_) {
+    check_gc_early_(this);
+  }
 
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
