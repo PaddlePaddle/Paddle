@@ -50,8 +50,8 @@ class SimpleModel(nn.Layer):
             return self.adaptive_softmax.log_prob(x)
 
     def predict(self, input):
-        logprob = self.adaptive_softmax.log_prob(self.fc(input))
-        return logprob.argmax(axis=1)
+        logprob = self.adaptive_softmax.predict(self.fc(input))
+        return logprob
 
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
@@ -278,10 +278,92 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         in_features = 8
         cutoffs = [2]
 
-        x = paddle.randn([8, in_features])
-        print(x)
-        labels = paddle.randint(0, n_classes, [8])
-        print(labels)
+        x = paddle.to_tensor(
+            [
+                [
+                    0.99785769,
+                    -1.14492130,
+                    0.62956816,
+                    0.77550924,
+                    -1.97198308,
+                    0.50906199,
+                    0.76702958,
+                    1.31143034,
+                ],
+                [
+                    0.17371807,
+                    2.68322444,
+                    1.90870595,
+                    0.58601201,
+                    -0.78898108,
+                    0.42098731,
+                    -0.74253917,
+                    -0.37492049,
+                ],
+                [
+                    -0.77694625,
+                    -0.11529812,
+                    0.38232428,
+                    0.70575434,
+                    0.73429769,
+                    0.81399834,
+                    0.14212975,
+                    0.12567955,
+                ],
+                [
+                    0.44165909,
+                    0.23613696,
+                    0.81143701,
+                    0.60473150,
+                    0.77017546,
+                    0.27865678,
+                    -0.03236491,
+                    0.31634274,
+                ],
+                [
+                    0.15336825,
+                    -0.66177142,
+                    -0.01784009,
+                    0.08901446,
+                    0.85228783,
+                    1.49427640,
+                    -1.66938102,
+                    0.86154014,
+                ],
+                [
+                    -0.60814697,
+                    1.26191938,
+                    -0.21735200,
+                    -0.88890392,
+                    0.49093658,
+                    -1.28960681,
+                    1.06943762,
+                    0.15803306,
+                ],
+                [
+                    -0.12136814,
+                    -0.16133699,
+                    0.15643604,
+                    0.79464215,
+                    -1.02201688,
+                    0.26957786,
+                    -0.31038952,
+                    0.93334937,
+                ],
+                [
+                    0.66997373,
+                    0.95807010,
+                    -0.66944563,
+                    -0.89887059,
+                    1.00404060,
+                    0.69594669,
+                    -0.82105070,
+                    1.15200853,
+                ],
+            ],
+            dtype='float32',
+        )
+        labels = paddle.to_tensor([3, 3, 3, 2, 3, 0, 0, 0], dtype='int64')
         model = SimpleModel(in_features, n_classes, cutoffs, div_value=2.0)
 
         optimizer = optim.Adam(
@@ -343,6 +425,25 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             ValueError, "cutoffs should be a sequence of unique,"
         ):
             _ = SimpleModel(16, 20, [5, 10, 20], div_value=2.0)
+
+    def test_dim_error(self):
+        with self.assertRaises(ValueError):
+            model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
+            x = paddle.randn((129, 16))
+            y = paddle.randint(low=0, high=20, shape=[128])
+            _ = model(x, y)
+
+        with self.assertRaises(ValueError):
+            model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
+            x = paddle.randn((128, 16))
+            y = paddle.randint(low=0, high=20, shape=[])
+            _ = model(x, y)
+
+        with self.assertRaises(ValueError):
+            model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
+            x = paddle.randn((128, 16))
+            y = paddle.randint(low=0, high=20, shape=[128, 1])
+            _ = model(x, y)
 
 
 if __name__ == "__main__":
