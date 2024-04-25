@@ -163,15 +163,15 @@ DecoderAttentionFusePattern::DecoderAttentionFusePattern(
 
   // link nodes
   reshape2_1->LinksFrom({input_q}).LinksTo({reshape2_1_out});
-  reshape2_2->LinksFrom({input_k}).LinksTo({reshape2_2_out});
-  reshape2_3->LinksFrom({input_v}).LinksTo({reshape2_3_out});
   transpose2_1->LinksFrom({reshape2_1_out}).LinksTo({transpose2_1_out});
+  reshape2_2->LinksFrom({input_k}).LinksTo({reshape2_2_out});
   transpose2_2->LinksFrom({reshape2_2_out}).LinksTo({transpose2_2_out});
-  transpose2_3->LinksFrom({reshape2_3_out}).LinksTo({transpose2_3_out});
   qk_matmul->LinksFrom({transpose2_1_out, transpose2_2_out})
       .LinksTo({qk_matmul_out});
   scale->LinksFrom({qk_matmul_out}).LinksTo({scale_out});
   qk_softmax->LinksFrom({scale_out}).LinksTo({qk_softmax_out});
+  reshape2_3->LinksFrom({input_v}).LinksTo({reshape2_3_out});
+  transpose2_3->LinksFrom({reshape2_3_out}).LinksTo({transpose2_3_out});
   qkv_matmul->LinksFrom({qk_softmax_out, transpose2_3_out})
       .LinksTo({qkv_matmul_out});
   transpose2_4->LinksFrom({qkv_matmul_out}).LinksTo({transpose2_4_out});

@@ -42,7 +42,9 @@ class Test1TransposeFlattenConcatFusePattern(PassTest):
                     )
                     out = paddle.concat([flatten_out], axis=1)
                     out = paddle.assign(out)
-                    self.pass_list = ['transpose_flatten_concat_fuse_pass']
+                    self.pass_attr_list = [
+                        {'transpose_flatten_concat_fuse_pass': {}}
+                    ]
                     self.feeds = {
                         "x": np.random.random(x_shape).astype("float32"),
                     }
@@ -109,7 +111,9 @@ class Test6TransposeFlattenConcatFusePattern(PassTest):
                     axis=1,
                 )
                 out = paddle.assign(out)
-                self.pass_list = ['transpose_flatten_concat_fuse_pass']
+                self.pass_attr_list = [
+                    {'transpose_flatten_concat_fuse_pass': {}}
+                ]
                 self.feeds = {
                     "x1": np.random.random([2, 1, 1, 19]).astype("float32"),
                     "x2": np.random.random([2, 1, 1, 16]).astype("float32"),

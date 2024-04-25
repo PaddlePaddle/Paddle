@@ -94,7 +94,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     RESHARD_FUNCTOR(
         dev_ctx, Reshape, dtype, out_transpose, pre_shape_vec, &in_all_to_all);
   } else {
-    in_all_to_all.ShareDataWith(in.value());
+    in_all_to_all.ShareDataNoCheckWith(in.value());
   }
 
   // 2. use all to all to switch data to other ranks

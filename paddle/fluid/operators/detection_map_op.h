@@ -19,8 +19,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -82,12 +82,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         label_lod.size(),
         1UL,
-        platform::errors::InvalidArgument("Only support LodTensor of lod_level "
-                                          "with 1 in label, but received %d.",
-                                          label_lod.size()));
+        phi::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                     "with 1 in label, but received %d.",
+                                     label_lod.size()));
     PADDLE_ENFORCE_EQ(label_lod[0].size(),
                       detect_lod[0].size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The batch_size of input(Label) and input(Detection) "
                           "must be the same, but received %d:%d",
                           label_lod[0].size(),
@@ -187,8 +187,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
                 std::vector<std::map<int, std::vector<Box>>>* gt_boxes,
                 std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
                     detect_boxes) const {
-    auto labels = framework::EigenTensor<T, 2>::From(input_label);
-    auto detect = framework::EigenTensor<T, 2>::From(input_detect);
+    auto labels = phi::EigenTensor<T, 2>::From(input_label);
+    auto detect = phi::EigenTensor<T, 2>::From(input_detect);
 
     auto& label_lod = input_label.lod();
     auto& detect_lod = input_detect.lod();
@@ -212,7 +212,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_EQ(
               input_label.dims()[1],
               5,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The input label width"
                   " must be 5, but received %d, please check your input data",
                   input_label.dims()[1]));
@@ -504,7 +504,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         mAP += average_precisions;
         ++count;
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unkown ap version %s. Now only supports integral and l1point.",
             ap_type));
       }
