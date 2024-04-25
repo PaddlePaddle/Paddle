@@ -157,7 +157,7 @@ class FusedFcGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit_;
 
  public:
-  FusedFcGeluTanhFusePattern(uint32_t benefit) : benefit_(benefit) {}
+  explicit FusedFcGeluTanhFusePattern(uint32_t benefit) : benefit_(benefit) {}
 
   std::string name() const override { return "FusedFcActivationFusePattern"; }
 
@@ -230,7 +230,7 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit_;
 
  public:
-  FusedFcClipFusePattern(uint32_t benefit) : benefit_(benefit) {}
+  explicit FusedFcClipFusePattern(uint32_t benefit) : benefit_(benefit) {}
 
   std::string name() const override { return "FusedFcActivationFusePattern"; }
 
