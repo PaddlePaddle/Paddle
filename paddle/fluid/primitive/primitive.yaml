@@ -122,3 +122,4 @@
 - randint
 - uniform
 - unique_consecutive
+- sigmoid

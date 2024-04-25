@@ -29,6 +29,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
                          bool time_major,
+                         float rotary_emb_base,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
