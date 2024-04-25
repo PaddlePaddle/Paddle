@@ -164,18 +164,18 @@ __global__ void groupNormNHWCSumSingerChannelKernel(
     return;
   }
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     static_cast<int64_t>(hwi) * params.c + ci;
+    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
+                     static_cast<int64_t>(dhwi) * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     UpdateSum<T, 1>(&params.srcX[offset], &sum, &sumSq);
   }
@@ -187,7 +187,7 @@ __global__ void groupNormNHWCSumSingerChannelKernel(
   float2 sums = smem[threadIdx.x];
 
   atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + ci],
-            sums.x * params.invHWC);
+            sums.x * params.invDHWC);
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + ci], sums.y);
 }
 
@@ -210,18 +210,18 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
     return;
   }
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     static_cast<int64_t>(hwi) * params.c + ci;
+    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
+                     static_cast<int64_t>(dhwi) * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     UpdateSum<T, THREADS_PER_CHANNEL>(&params.srcX[offset], &sum, &sumSq);
   }
@@ -249,7 +249,7 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
           params.cPerBlock - THREADS_PER_CHANNEL) {
     float2 sums = smem[gi];
     atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj],
-              sums.x * params.invHWC);
+              sums.x * params.invDHWC);
     atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
   }
 }
@@ -259,7 +259,7 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
                                      gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
-  grid.y = divUp(params->hw, params->hwPerBlock);
+  grid.y = divUp(params->dhw, params->dhwPerBlock);
   grid.z = params->n;
   if (params->cPerGroup % 2 == 0) {
     switch (params->cPerBlock) {
@@ -338,8 +338,8 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
 template class groupNormNHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
-inline __device__ void GroupNormCompute(int32_t hwBegin,
-                                        int32_t hwEnd,
+inline __device__ void GroupNormCompute(int32_t dhwBegin,
+                                        int32_t dhwEnd,
                                         int32_t ci,
                                         const GroupNormNHWCParams<T>& params,
                                         float mean,
@@ -348,9 +348,9 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
     const float src_data = phi::__2float<T>(params.srcX[offset]);
     // Normalize the channels.
     float dst_data = (src_data - mean) * invStdDev;
@@ -369,8 +369,8 @@ inline __device__ void GroupNormCompute(int32_t hwBegin,
 
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
-    int32_t hwBegin,
-    int32_t hwEnd,
+    int32_t dhwBegin,
+    int32_t dhwEnd,
     int32_t ci,
     const GroupNormNHWCParams<phi::dtype::float16>& params,
     float mean,
@@ -382,9 +382,9 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -412,8 +412,8 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
 
 template <>
 inline __device__ void GroupNormCompute<__half, 2>(
-    int32_t hwBegin,
-    int32_t hwEnd,
+    int32_t dhwBegin,
+    int32_t dhwEnd,
     int32_t ci,
     const GroupNormNHWCParams<__half>& params,
     float mean,
@@ -425,9 +425,9 @@ inline __device__ void GroupNormCompute<__half, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -456,8 +456,8 @@ inline __device__ void GroupNormCompute<__half, 2>(
 #ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
-    int32_t hwBegin,
-    int32_t hwEnd,
+    int32_t dhwBegin,
+    int32_t dhwEnd,
     int32_t ci,
     const GroupNormNHWCParams<phi::dtype::bfloat16>& params,
     float mean,
@@ -469,9 +469,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __nv_bfloat162 h2 =
@@ -521,7 +521,7 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
   float sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
 
   // Compute the variance.
-  float var = sumSq * params.invHWC - (mean * mean);
+  float var = sumSq * params.invDHWC - (mean * mean);
 
   if (params.var_data != nullptr) {
     params.var_data[ni * params.groups + gi] = var;
@@ -530,11 +530,11 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
   GroupNormCompute<T, THREADS_PER_CHANNEL>(
-      hwBegin, hwEnd, ci, params, mean, invStdDev);
+      dhwBegin, dhwEnd, ci, params, mean, invStdDev);
 }
 
 template <typename T>
@@ -545,7 +545,7 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
   // The number of blocks to compute all the channels.
   grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -618,10 +618,25 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   if (scale_ptr) scale_data = scale_ptr->data<T>();
   const T* bias_data = nullptr;
   if (bias_ptr) bias_data = bias_ptr->data<T>();
+  const auto d_dim = x_dims.size();
   params_.n = x_dims[0];
-  params_.c = x_dims[3];
-  params_.h = x_dims[1];
-  params_.w = x_dims[2];
+  if (d_dim == 3) {
+    params_.c = x_dims[2];
+    params_.d = 1;
+    params_.h = 1;
+    params_.w = x_dims[1];
+  } else if (d_dim == 4) {
+    params_.c = x_dims[3];
+    params_.d = 1;
+    params_.h = x_dims[1];
+    params_.w = x_dims[2];
+  } else {
+    // d_dim == 5
+    params_.c = x_dims[4];
+    params_.d = x_dims[1];
+    params_.h = x_dims[2];
+    params_.w = x_dims[3];
+  }
 
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
@@ -630,7 +645,7 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   params_.var_data = var_data;
 
   int32_t cPerBlock = 320;
-  int32_t maxBlocksPerHW = 1024;
+  int32_t maxBlocksPerDHW = 1024;
   switch (params_.c) {
     case 2048:
     case 1024:
@@ -660,12 +675,12 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
 
   params_.gamma = scale_data;
   params_.beta = bias_data;
-  params_.hw = params_.h * params_.w;
-  const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-  params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
+  params_.dhw = params_.d * params_.h * params_.w;
+  const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+  params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
   params_.cPerBlock = cPerBlock;
-  params_.hwc = params_.hw * params_.c;
-  params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
+  params_.dhwc = params_.dhw * params_.c;
+  params_.invDHWC = 1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
   DenseTensor redBuffer;
