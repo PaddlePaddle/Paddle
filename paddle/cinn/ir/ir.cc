@@ -398,6 +398,40 @@ Expr Store::index() const {
   return res;
 }
 
+void Store::replace(Expr old_op, Expr new_op) {
+  VLOG(-1) << "========== enter Store replace==============";
+  VLOG(-1) << "========== old_op: " << old_op << "=========";
+  VLOG(-1) << "========== new_op: " << new_op << "=========";
+  VLOG(-1) << "========== value: " << value << "==========";
+  VLOG(-1) << "========== tensor: " << tensor << "========";
+  for (int i = 0; i < indices.size(); i++) {
+    VLOG(-1) << "========== indices: " << indices[i] << "========";
+  }
+  if (value == old_op) {
+    value = new_op;
+  }
+  if (tensor == old_op) {
+    tensor = new_op;
+  }
+  for (int i = 0; i < indices.size(); i++) {
+    if (indices[i] == old_op) {
+      indices[i] = new_op;
+    }
+  }
+}
+
+void Select::replace(Expr old_op, Expr new_op) {
+  if (condition == old_op) {
+    condition = new_op;
+  }
+  if (true_value == old_op) {
+    true_value = new_op;
+  }
+  if (false_value == old_op) {
+    false_value = new_op;
+  }
+}
+
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
   CHECK(t);
@@ -492,6 +526,28 @@ Expr Call::Make(Type type,
   node->attrs = attrs;
   return Expr(node);
 }
+
+void Call::replace(Expr old_op, Expr new_op) {
+  VLOG(-1) << "Replace Call's old op [" << old_op << "] with new_op [" << new_op
+           << "] ";
+  for (int i = 0; i < read_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+  for (int i = 0; i < write_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+  // for (auto &expr : node->read_args) {
+  //   IRVisitorRequireReImpl<void, T>::Visit(&expr, &expr);
+  // }
+  // for (auto &expr : node->write_args) {
+  //   IRVisitorRequireReImpl<void, T>::Visit(&expr, &expr);
+  // }
+}
+
 std::vector<Expr *> Call::expr_fields() {
   std::vector<Expr *> res;
   for (auto &x : read_args) res.push_back(&x);
