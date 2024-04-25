@@ -17,6 +17,7 @@
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_attribute_storage.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -104,29 +105,28 @@ class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
   using Base::Base;
   ProcessMeshAttribute process_mesh_attr() const;
 
-  const std::vector<TensorDistAttribute>& operand_dist_attrs() const;
+  const std::vector<Attribute>& operand_attrs() const;
   TensorDistAttribute operand_dist_attr(uint32_t index) const;
-  uint32_t num_operand_dist_attrs() const;
+  pir::ArrayAttribute operand_array_attr(uint32_t index) const;
+  uint32_t num_operands() const;
 
-  const std::vector<TensorDistAttribute>& result_dist_attrs() const;
+  const std::vector<Attribute>& result_attrs() const;
   TensorDistAttribute result_dist_attr(uint32_t index) const;
-  uint32_t num_result_dist_attrs() const;
+  pir::ArrayAttribute result_array_attr(uint32_t index) const;
+  uint32_t num_results() const;
 
-  static OperationDistAttribute get(
-      pir::IrContext* ctx,
-      ProcessMeshAttribute mesh,
-      const std::vector<TensorDistAttribute>& operand_dist_attrs,
-      const std::vector<TensorDistAttribute>& result_dist_attrs);
+  static OperationDistAttribute get(pir::IrContext* ctx,
+                                    ProcessMeshAttribute mesh,
+                                    const std::vector<Attribute>& operand_attrs,
+                                    const std::vector<Attribute>& result_attrs);
 
   static OperationDistAttribute get(
       pir::IrContext* ctx,
       const phi::distributed::ProcessMesh& mesh,
-      const std::vector<TensorDistAttribute>& operand_dist_attrs,
-      const std::vector<TensorDistAttribute>& result_dist_attrs) {
-    return get(ctx,
-               ProcessMeshAttribute::get(ctx, mesh),
-               operand_dist_attrs,
-               result_dist_attrs);
+      const std::vector<Attribute>& operand_attrs,
+      const std::vector<Attribute>& result_attrs) {
+    return get(
+        ctx, ProcessMeshAttribute::get(ctx, mesh), operand_attrs, result_attrs);
   }
 };
 

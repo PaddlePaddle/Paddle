@@ -328,6 +328,29 @@ bool MinOpInferSymbolicShape(pir::Operation *op,
   return MaxOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool NonzeroOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
+
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(x) should have number of dimension at least 1."));
+
+  std::string sym_name = shape_analysis->GetNextSymName();
+  std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
+                                         symbol::DimExpr{rank}};
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // input(0): Tensor x
@@ -453,19 +476,6 @@ bool ReshapeOpInferSymbolicShape(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &shape_dim_expr =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  if (x_dim_expr.data().has_value()) {
-    const auto &shape_data = details::GetExprVecFromData(shape_dim_expr);
-    auto IsOne = [](const symbol::DimExpr &expr) {
-      return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
-    };
-    if (shape_data.size() == 1 && IsOne(shape_data.at(0))) {
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::TensorShapeOrDataDimExprs(shape_data,
-                                            x_dim_expr.data().value()));
-      return true;
-    }
-  }
 
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
@@ -517,20 +527,15 @@ bool ReshapeOpInferSymbolicShape(
     return out_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  symbol::ShapeOrDataDimExprs shape_data = [&] {
+    if (x_dim_expr.data().has_value()) {
+      return symbol::TensorShapeOrDataDimExprs(out_dims,
+                                               x_dim_expr.data().value());
+    }
+    return symbol::TensorShapeOrDataDimExprs(out_dims);
+  }();
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
-
-  const auto UNUSED &x_shape = [&] {
-    std::vector<symbol::DimExpr> x_shape{symbol::DimExpr(0)};
-    const auto &original_shape =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    for (const auto &dim : original_shape) {
-      x_shape.push_back(dim);
-    }
-    return x_shape;
-  }();
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(
