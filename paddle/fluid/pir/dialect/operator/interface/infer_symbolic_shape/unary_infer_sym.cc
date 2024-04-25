@@ -475,23 +475,6 @@ bool ReshapeOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &shape_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  if (x_dim_expr.data().has_value()) {
-    const auto &shape_data = details::GetExprVecFromData(shape_dim_expr);
-    auto IsOne = [](const symbol::DimExpr &expr) {
-      return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
-    };
-    if (shape_data.size() == 1 && IsOne(shape_data.at(0))) {
-      infer_context->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::TensorShapeOrDataDimExprs(shape_data,
-                                            x_dim_expr.data().value()));
-      infer_context->SetShapeOrDataForValue(
-          op->result(1),
-          CreateShapeOrDataForXShape(
-              infer_context->GetShapeOrDataForValue(op->operand_source(0))));
-      return true;
-    }
-  }
 
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
@@ -543,20 +526,15 @@ bool ReshapeOpInferSymbolicShape(
     return out_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  symbol::ShapeOrDataDimExprs shape_data = [&] {
+    if (x_dim_expr.data().has_value()) {
+      return symbol::TensorShapeOrDataDimExprs(out_dims,
+                                               x_dim_expr.data().value());
+    }
+    return symbol::TensorShapeOrDataDimExprs(out_dims);
+  }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-
-  const auto UNUSED &x_shape = [&] {
-    std::vector<symbol::DimExpr> x_shape{symbol::DimExpr(0)};
-    const auto &original_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    for (const auto &dim : original_shape) {
-      x_shape.push_back(dim);
-    }
-    return x_shape;
-  }();
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(
