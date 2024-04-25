@@ -121,12 +121,18 @@ OperationDistAttribute OperationDistAttribute::get(
     const std::vector<pir::Attribute>& result_attrs) {
   auto check_dist_attr = [=](pir::Attribute attr) {
     auto dist_attr = attr.dyn_cast<TensorDistAttribute>();
-    PADDLE_ENFORCE_EQ(mesh,
-                      dist_attr.process_mesh_attr(),
-                      common::errors::PreconditionNotMet(
-                          "operand_dist_attrs element's mesh(%s) not equal "
-                          "to input mesh(%s)"));
+    auto ids = mesh.process_ids();
+    for (const auto& id : dist_attr.process_mesh_attr().process_ids()) {
+      PADDLE_ENFORCE_EQ(std::find(ids.begin(), ids.end(), id) != ids.end(),
+                        true,
+                        common::errors::PreconditionNotMet(
+                            "operand_dist_attrs element's mesh(%s) not belong "
+                            "to input mesh(%s)",
+                            dist_attr.process_mesh_attr(),
+                            mesh));
+    }
   };
+
   for (auto attr : operand_attrs) {
     // NOTE: The operand dist attr maybe empty while the corresponding input is
     // optional.

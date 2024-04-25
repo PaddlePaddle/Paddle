@@ -362,9 +362,12 @@ TEST(shard_tensor_op_replicate_test, base) {
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_results(),
             (uint32_t)1);
+  phi::distributed::ProcessMesh flatten_process_mesh(
+      {6}, process_ids, {"merged"});
+  auto flatten_mesh_attr = ProcessMeshAttribute::get(ctx, flatten_process_mesh);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
-            mesh_attr);
+            flatten_mesh_attr);
 }
 
 TEST(shard_tensor_op_shard_row_test, base) {
@@ -445,9 +448,12 @@ TEST(shard_tensor_op_shard_row_test, base) {
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_results(),
             (uint32_t)1);
+  phi::distributed::ProcessMesh flatten_process_mesh(
+      {6}, process_ids, {"merged"});
+  auto flatten_mesh_attr = ProcessMeshAttribute::get(ctx, flatten_process_mesh);
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
-            mesh_attr);
+            flatten_mesh_attr);
 }
 
 TEST(shard_tensor_op_shard_col_test, base) {
@@ -585,10 +591,8 @@ TEST(mix_to_dist_pass_test, base) {
             (uint32_t)1);
 
   // Apply Pass
-  std::cout << "IR before MixToDist Pass = " << program << std::endl;
   std::shared_ptr<pir::Program> new_program =
       paddle::dialect::MixToDistPass(&program);
-  std::cout << "IR before MixToDist Pass = " << new_program << std::endl;
   pir::Block* new_block = new_program->block();
   EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
   std::vector<pir::Operation*> ops;
