@@ -271,6 +271,7 @@ XPUOpMap& get_kl2_ops() {
       {"elementwise_add",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"elementwise_div_grad",
