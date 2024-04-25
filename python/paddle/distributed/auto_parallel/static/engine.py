@@ -1782,9 +1782,15 @@ class Engine:
         use_cache = self._strategy.use_cache
         if self._in_pir_mode:
             use_cache = False
-            fetch_names = [
-                self.main_program.get_output_value_by_name(self._loss_names[0])
-            ]
+            no_fetch = False  # not last rank should not fetch loss in pipeline parallel
+            loss_value = self.main_program.get_output_value_by_name(
+                self._loss_names[0]
+            )
+            if paddle.pir.is_fake_value(loss_value):
+                no_fetch = True
+                fetch_names = []
+            else:
+                fetch_names = [loss_value]
 
         outs = self._executor.run(
             self.main_program,
@@ -1795,7 +1801,10 @@ class Engine:
         )
 
         if self._in_pir_mode:
-            logs = {"outputs": outs[0], "loss": outs[0]}
+            if no_fetch:
+                logs = {"outputs": None, "loss": None}
+            else:
+                logs = {"outputs": outs[0], "loss": outs[0]}
             return logs
 
         logs = self._prepare_logger(

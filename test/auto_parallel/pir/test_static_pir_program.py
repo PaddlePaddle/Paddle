@@ -96,18 +96,18 @@ class TestBuildFakeProgram(unittest.TestCase):
         # #check attrs
 
         self.assertEqual(dist_input_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_input_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_input_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_input_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_input_op_dist_attr.num_results(), 1)
 
         dist_w0_op_dist_attr = dist_w0.get_defining_op().dist_attr
         self.assertEqual(dist_w0_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_w0_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_w0_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_w0_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_w0_op_dist_attr.num_results(), 1)
 
         dist_w1_op_dist_attr = dist_w1.get_defining_op().dist_attr
         self.assertEqual(dist_w1_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_w1_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_w1_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_w1_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_w1_op_dist_attr.num_results(), 1)
 
         attrs_op_dist_attr = (
             dist_input.get_defining_op().attrs().get("op_dist_attr")

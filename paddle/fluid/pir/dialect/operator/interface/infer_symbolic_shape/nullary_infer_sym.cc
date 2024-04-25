@@ -26,37 +26,17 @@ bool ArangeOpInferSymbolicShape(
   const auto &step_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
 
-  const auto start = [&] {
-    symbol::DimExpr expr;
-    if (start_shape_or_data.data().has_value()) {
-      expr = start_shape_or_data.data().value()[0];
-    } else {
-      expr = start_shape_or_data.shape()[0];
-    }
-    return expr;
-  }();
-
-  const auto end = [&] {
-    symbol::DimExpr expr;
-    if (end_shape_or_data.data().has_value()) {
-      expr = end_shape_or_data.data().value()[0];
-    } else {
-      expr = end_shape_or_data.shape()[0];
-    }
-    return expr;
-  }();
-
-  const auto step = [&] {
-    symbol::DimExpr expr;
-    if (step_shape_or_data.data().has_value()) {
-      expr = step_shape_or_data.data().value()[0];
-    } else {
-      expr = step_shape_or_data.shape()[0];
-    }
-    return expr;
-  }();
-
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    if (!start_shape_or_data.data().has_value() ||
+        !end_shape_or_data.data().has_value() ||
+        !step_shape_or_data.data().has_value()) {
+      return symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{
+              symbol::DimExpr(shape_analysis->GetNextSymName())})};
+    }
+    const auto &start = start_shape_or_data.data()->at(0);
+    const auto &end = end_shape_or_data.data()->at(0);
+    const auto &step = step_shape_or_data.data()->at(0);
     std::vector<symbol::DimExpr> out_dims;
     // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
     // but DimExpr doesn't support ceil and float now
@@ -135,10 +115,32 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
     return sym_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(sym_dims)};
+  auto IsOneNumel = [&](pir::Value value) {
+    const auto &dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
+    if (dims.size() == 1 && dims[0] == 1) {
+      return true;
+    }
+    return false;
+  };
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  auto IsIntType = [&](pir::Value value) {
+    const auto &dtype = value.type().dyn_cast<pir::DenseTensorType>().dtype();
+    return dtype.isa<pir::Int32Type>() || dtype.isa<pir::Int64Type>();
+  };
+
+  const auto &shape_or_data = [&]() {
+    if (IsOneNumel(op->result(0)) && IsIntType(op->result(0))) {
+      std::vector<symbol::DimExpr> data{
+          symbol::DimExpr(shape_analysis->GetNextSymName())};
+      return symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(sym_dims, data)};
+    } else {
+      return symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(sym_dims)};
+    }
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_or_data);
 
   return true;
 }
@@ -164,9 +166,17 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
     pir::Value operand_source = op->operand_source(0);
     const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
         shape_analysis->GetShapeOrDataForValue(operand_source);
+    PADDLE_ENFORCE_EQ(
+        operand_shape_or_data.data().has_value(),
+        true,
+        common::errors::InvalidArgument(
+            "The data of input dim_expr shape is null. When input of empty op "
+            "is a tensor, the data of input dim_expr shape must have value."));
 
-    shape_analysis->SetShapeOrDataForValue(op->result(0),
-                                           operand_shape_or_data);
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::TensorShapeOrDataDimExprs{
+            operand_shape_or_data.data().value()});
     return true;
   }
 }

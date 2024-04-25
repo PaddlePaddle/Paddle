@@ -14,69 +14,121 @@
 
 import paddle
 
-from .process_group import new_process_group
+from .reshard_funcs.base_reshard_func import (
+    choose_reshard_func,
+)
+from .reshard_funcs.reshard_func_register import register_reshard_funcs
+
+register_reshard_funcs()
 
 
 def apply_partition_pass(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
-            # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+            assert len(op.operands()) == len(
+                op.dist_attr.operand_dist_attrs()
+            ), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
+
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr.operand_dist_attrs()
             ):
+                prev_var = var.source()
                 if (
-                    var.source().is_dist_dense_tensor_type()
-                    and var.source().dist_attr() != operand_dist_attr
+                    prev_var.is_dist()
+                    and prev_var.dist_attr() != operand_dist_attr
                 ):
                     paddle.pir.set_insertion_point(op)
+                    # fold reshard
+                    if prev_var.get_defining_op().name() == 'dist_op.reshard':
+                        prev_reshard = prev_var.get_defining_op()
+                        prev_var = prev_reshard.operand_source(0)
+                        if prev_var.dist_attr() == operand_dist_attr:
+                            var.set_source(prev_var)
+                        else:
+                            reshard_var = paddle._C_ops.reshard_v2(
+                                prev_var, operand_dist_attr
+                            )
+                            var.set_source(reshard_var)
+                        if prev_reshard.result(0).use_empty():
+                            prev_reshard.get_parent_block().remove_op(
+                                prev_reshard
+                            )
+                        continue
                     # insert reshard
-                    reshard_var = paddle._pir_ops.reshard_v2(
-                        var.source(), operand_dist_attr
+                    reshard_var = paddle._C_ops.reshard_v2(
+                        prev_var, operand_dist_attr
                     )
                     var.set_source(reshard_var)
+
+            for var, result_dist_attr in zip(
+                op.results(), op.dist_attr.result_dist_attrs()
+            ):
+                if var.initialized() and var.dist_attr() != result_dist_attr:
+                    paddle.pir.set_insertion_point_after(op)
+                    old_dist_attr = var.dist_attr()
+                    var.update_dist_attr(result_dist_attr)
+                    # insert reshard
+                    reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
+                    var.replace_all_uses_with(reshard_var)
+                    reshard_var.get_defining_op().operand(0).set_source(var)
+
+        # pruning op and value not belong to cur rank
+        cur_rank = paddle.distributed.get_rank()
+        for op in new_program.global_block().ops[::-1]:
+            if cur_rank not in op.dist_attr.process_mesh.process_ids:
+                new_program.global_block().remove_op(op)
+            else:
+                # set the operand as null when it is not belong to cur rank
+                if (
+                    op.name() == 'dist_op.reshard'
+                    and cur_rank
+                    not in op.operand(0)
+                    .source()
+                    .dist_attr()
+                    .process_mesh.process_ids
+                ):
+                    op.operand(0).set_source(paddle.pir.fake_value())
+
+        # merge pd.data ops for
+        lr_ops = []
+        for op in new_program.global_block().ops[::-1]:
+            if (
+                op.name() == 'pd_op.data'
+                and "learning_rate" in op.attrs()["name"]
+            ):
+                lr_ops.append(op)
+
+        if len(lr_ops) > 1:
+            lr_value = lr_ops[0].result(0)
+            for op in lr_ops[1:]:
+                lr = op.result(0)
+                lr.replace_all_uses_with(lr_value)
+                new_program.global_block().remove_op(op)
+
     return new_program
 
 
 def apply_reshard_pass(program):
     new_program = program.clone()
-    with paddle.static.program_guard(new_program):
+    with paddle.base.program_guard(new_program):
         for op in new_program.global_block().ops:
-            # TODO(ywt): add common reshard rules
-            # only support 1-D partial to replicated now
             if op.name() == 'dist_op.reshard':
-                process_mesh = op.operand(0).source().dist_attr().process_mesh
+                var = op.operand(0)
+                op_dist_attr = op.attrs()["op_dist_attr"]
+                src_dist_attr = op_dist_attr.operand_dist_attr(0)
+                dst_dist_attr = op_dist_attr.result_dist_attr(0)
                 assert (
-                    len(process_mesh.shape) == 1
-                ), f'only support 1-D mesh now, but the op is: {op}'
-                assert op.operand(0).source().dist_attr().partial_dims == {
-                    0
-                }, f'only support partial input on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.result(0).dist_attr().partial_dims == set()
-                ), f'only support un-partial output on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.result(0).dist_attr().dims_mapping
-                    == op.operand(0).source().dist_attr().dims_mapping
-                ), f'only support the same dims maping on 1-D mesh now, but the op is: {op}'
-                assert (
-                    op.dist_attr.operand_dist_attr(0).partial_status[0]
-                    == paddle.distributed.ReduceType.kRedSum
-                ), f'only support partial sum now, but the op is: {op}'
-                assert (
-                    op.operand(0).source().has_one_use()
-                ), f'only support use count of 1 for reshard input, but the op is: {op}'
-                assert op.result(
-                    0
-                ).has_one_use(), f'only support use count of 1 for reshard output, but the op is: {op}'
+                    paddle.pir.is_fake_value(var.source())
+                    or var.source().dist_attr() == src_dist_attr
+                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.source().dist_attr()} and {src_dist_attr}"
 
-                paddle.pir.set_insertion_point(op)
-                group = new_process_group(process_mesh.process_ids)
-                reduced_value = paddle._pir_ops.c_allreduce_sum_(
-                    op.operand(0).source(), group.id, False, False
+                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+                assert (
+                    reshard_func is not None
+                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+                reshard_func.reshard(
+                    new_program, op, src_dist_attr, dst_dist_attr
                 )
-                reduced_value.set_type(op.result(0).type())
-                op.result(0).replace_all_uses_with(reduced_value)
-                new_program.global_block().remove_op(op)
 
     return new_program

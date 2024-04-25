@@ -26,7 +26,7 @@ set(transforms_deps
     device_event_base)
 
 if(WITH_CINN)
-  set(transforms_deps ${transforms_deps} cinn_op_dialect cinnapi)
+  set(transforms_deps ${transforms_deps} cinnapi)
 endif()
 
 cc_library(

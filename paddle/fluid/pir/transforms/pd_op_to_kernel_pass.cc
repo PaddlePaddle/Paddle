@@ -404,7 +404,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   } else if ((src_place.GetType() == phi::AllocationType::GPU ||
               src_place.GetType() == phi::AllocationType::XPU) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
-    copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
+    copy_kernel_key.set_backend(place2backend(src_place.GetType()));
+
     std::string copy_kernel_name = "memcpy_d2h";
     if (in.type().isa<AllocatedDenseTensorArrayType>()) {
       copy_kernel_name = "memcpy_d2h_multi_io";

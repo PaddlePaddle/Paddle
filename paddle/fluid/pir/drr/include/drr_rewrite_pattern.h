@@ -99,6 +99,7 @@ class DrrRewritePattern : public pir::RewritePattern {
   const std::string pattern_name_;
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   const std::vector<Constraint> constraints_;
+  const std::vector<PostProcess> post_processes_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   // Not used, just for hold it's life cycle.

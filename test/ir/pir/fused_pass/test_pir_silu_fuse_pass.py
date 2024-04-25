@@ -41,7 +41,7 @@ class TestSiluFusePass(PassTest):
                 sigmoid_op = paddle.nn.Sigmoid()
                 out = paddle.multiply(x, sigmoid_op(x))
                 out = paddle.assign(out)
-                self.pass_list = ['silu_fuse_pass']
+                self.pass_attr_list = [{'silu_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                 }
