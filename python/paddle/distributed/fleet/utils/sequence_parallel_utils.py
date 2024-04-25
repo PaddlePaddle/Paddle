@@ -254,7 +254,8 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
         world_size = model_parallel_group.nranks
         input_parallel = all_gather(x)
 
-        ctx.save_for_backward(x, weight, bias, input_parallel)
+        # ctx.save_for_backward(x, weight, bias, input_parallel)
+        ctx.save_for_backward(x, weight, bias)
         if not fuse_matmul_bias:
             output = paddle._C_ops.linear(input_parallel, weight, bias)
         else:
@@ -265,9 +266,20 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        x, weight, bias, input_parallel = ctx.saved_tensor()
-        parallelism = ctx.model_parallel_group.nranks
+        # x, weight, bias, input_parallel = ctx.saved_tensor()
+        x, weight, bias = ctx.saved_tensor()
+        group = ctx.model_parallel_group
+        parallelism = group.nranks
 
+        # all-gather x
+        input_parallel_shape = x.shape
+        input_parallel_shape[0] = input_parallel_shape[0] * parallelism
+        input_parallel = paddle.empty(shape=input_parallel_shape, dtype=x.dtype)
+        allgather_task = dist.all_gather(
+            input_parallel, x, group=group, sync_op=False
+        )
+
+        # compute dx
         if dy.dtype == weight.dtype:
             dinput_parallel = paddle.matmul(dy, weight, transpose_y=True)
         else:
@@ -279,11 +291,13 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             dinput_parallel.shape[0] % parallelism == 0
         ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
 
+        # wait the finish of all-gather of x
+        allgather_task.wait()
+
+        # reduce-scatter dx
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism
         dx = paddle.empty(shape=dx_shape, dtype=dinput_parallel.dtype)
-        hcg = fleet.get_hybrid_communicate_group()
-        group = hcg.get_model_parallel_group()
         task = dist.stream.reduce_scatter(
             dx,
             dinput_parallel,
@@ -291,6 +305,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
+
         # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
         if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
             global _raise_cuda_env_unset_warning_for_sp
