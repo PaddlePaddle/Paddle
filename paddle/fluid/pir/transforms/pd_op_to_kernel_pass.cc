@@ -2050,7 +2050,6 @@ void PushBackOutputTypes(pir::IrContext* ctx,
                          const phi::KernelKey& kernel_key,
                          std::vector<pir::Type>* op_output_types) {
   auto result_type = origin_type;
-  VLOG(6) << "result_type: " << result_type;
   if (!result_type) {
     op_output_types->push_back(result_type);
   } else if (result_type.isa<DenseTensorType>() ||

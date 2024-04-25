@@ -38,11 +38,11 @@ class IrSparseCooTensor
                     bool coalesced = false);
   IrSparseCooTensor(IrSparseCooTensor&& other) = default;
 
-  IrSparseCooTensor(const IrSparseCooTensor& other);
+  IrSparseCooTensor(const IrSparseCooTensor& other) = default;
 
-  IrSparseCooTensor& operator=(const IrSparseCooTensor& other);
+  IrSparseCooTensor& operator=(const IrSparseCooTensor& other) = default;
 
-  IrSparseCooTensor& operator=(IrSparseCooTensor&& other) noexcept;
+  IrSparseCooTensor& operator=(IrSparseCooTensor&& other) noexcept = default;
 
   virtual ~IrSparseCooTensor() = default;
 
@@ -120,11 +120,11 @@ class IrSparseCsrTensor
                     pir::DenseTensorType non_zero_elements);
   IrSparseCsrTensor(IrSparseCsrTensor&& other) = default;
 
-  IrSparseCsrTensor(const IrSparseCsrTensor& other);
+  IrSparseCsrTensor(const IrSparseCsrTensor& other) = default;
 
-  IrSparseCsrTensor& operator=(const IrSparseCsrTensor& other);
+  IrSparseCsrTensor& operator=(const IrSparseCsrTensor& other) = default;
 
-  IrSparseCsrTensor& operator=(IrSparseCsrTensor&& other) noexcept;
+  IrSparseCsrTensor& operator=(IrSparseCsrTensor&& other) noexcept = default;
 
   virtual ~IrSparseCsrTensor() = default;
 

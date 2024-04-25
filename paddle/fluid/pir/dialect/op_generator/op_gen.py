@@ -1956,13 +1956,6 @@ def AutoCodeGen(
                         sparse_op_name_suffix = (
                             '_sp' if op_info.is_sparse_op else ''
                         )
-                        # if op_info.is_sparse_op:
-                        #     if op_info.op_phi_name[0].endswith('_'):
-                        #         sparse_op_name_suffix='sp_'
-                        #     else:
-                        #         sparse_op_name_suffix='_sp'
-                        # else:
-                        #     sparse_op_name_suffix=''
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,
                             op_info.backward_name,
@@ -2012,8 +2005,6 @@ def AutoCodeGen(
                     )
                     SP_OP_TO_MULTI_KERNELS_MAP_ITEM_SIG = """paddle::dialect::PdOpSig("{kernel_name}", {{{inputs}}}, {{{outputs}}})"""
                     sp_op_to_multi_kernels_sig_list = []
-                # if op_info.is_sparse_op:
-                #     breakpoint()
                 for kernel_func_name in op_kernel_map['func']:
                     inputs = op_kernel_map['dispatch'][kernel_func_name][0]
                     outputs = op_kernel_map['dispatch'][kernel_func_name][1]
@@ -2219,8 +2210,6 @@ def OpGenerator(
                         op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
                     continue
-            # if yaml_file.endswith("sparse_ops.parsed.yaml") and op['name']=='scale':
-            #     op_compat_item=None
             item = OpInfoParser(op, op_compat_item, yaml_file)
             key_suffix = '_sp' if item.is_sparse_op else ''
             op_info_items[op['name'] + key_suffix] = item
