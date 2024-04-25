@@ -355,7 +355,7 @@ def flash_attn_qkvpacked(
             >>> paddle.seed(2023)
             >>> q = paddle.rand((1, 128, 2, 16))
             >>> qkv = paddle.stack([q,q,q], axis=2)
-            >>> output = paddle.nn.functional.flash_attention.flash_attn_qkvpacked(qkv, 0.9, False, False)
+            >>> output = paddle.nn.functional.flash_attn_qkvpacked(qkv, 0.9, False, False)
             >>> print(output)
             (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
@@ -658,7 +658,7 @@ def flash_attn_varlen_qkvpacked(
             >>> cu = paddle.arange(0, 384, 128, dtype='int32')
             >>> qq = paddle.reshape(q, [256, 8, 16])
             >>> qkv = paddle.stack([qq,qq,qq], axis=2)
-            >>> output = paddle.nn.functional.flash_attention.flash_attn_varlen_qkvpacked(qkv, cu, cu, 128, 128, 0.25, 0.0, False, False)
+            >>> output = paddle.nn.functional.flash_attn_varlen_qkvpacked(qkv, cu, cu, 128, 128, 0.25, 0.0, False, False)
 
     """
     if in_dynamic_mode():
