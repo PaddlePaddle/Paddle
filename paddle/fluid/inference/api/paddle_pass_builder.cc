@@ -576,6 +576,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",
       "sine_pos_fuse_pass",
+      "pad2d_xpu_fuse_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
       "xpu_quantize_op_pass",

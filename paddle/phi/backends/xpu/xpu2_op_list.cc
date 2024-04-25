@@ -1227,6 +1227,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32})},
       {"sine_pos_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"pad2d_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"roformer_relative_embedding_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"cross_attention_xpu",
