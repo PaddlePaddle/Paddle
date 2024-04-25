@@ -1239,6 +1239,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
+  void EnableTransferLayout();
+  bool transfer_layout_enabled() const;
+
   ///
   /// \brief Set the custom passes list .
   ///
@@ -1490,6 +1493,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
+  bool use_transfer_layout_pass_{false};
+
   std::vector<std::string> custom_passes_;
   bool custom_pass_only_{false};
   int pm_opt_level_{2};

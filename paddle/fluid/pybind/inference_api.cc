@@ -872,6 +872,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_new_ir", &AnalysisConfig::EnableNewIR, py::arg("x") = true)
       .def("new_ir_enabled", &AnalysisConfig::new_ir_enabled)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
+      .def("enable_transfer_layout", &AnalysisConfig::EnableTransferLayout)
+      .def("transfer_layout_enabled", &AnalysisConfig::transfer_layout_enabled)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
       .def("enable_save_optim_model",

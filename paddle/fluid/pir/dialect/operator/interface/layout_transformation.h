@@ -31,21 +31,25 @@ class LayoutTransformationInterface
     : public pir::OpInterfaceBase<LayoutTransformationInterface> {
  public:
   using PreferLayoutFn = common::DataLayout (*)(pir::Operation*);
+  using CurrentLayoutFn = common::DataLayout (*)(pir::Operation*);
   using RewriteByLayoutFn = void (*)(pir::Operation*, common::DataLayout);
   using RelevantInputsFn = std::vector<pir::Value> (*)(pir::Operation*);
   using RelevantOutputsFn = std::vector<pir::Value> (*)(pir::Operation*);
 
   struct Concept {
     explicit Concept(PreferLayoutFn prefer_layout,
+                     CurrentLayoutFn current_layout,
                      RewriteByLayoutFn rewrite_by_layout,
                      RelevantInputsFn relevant_inputs,
                      RelevantOutputsFn relevant_outputs)
         : prefer_layout(prefer_layout),
+          current_layout(current_layout),
           rewrite_by_layout(rewrite_by_layout),
           relevant_inputs(relevant_inputs),
           relevant_outputs(relevant_outputs) {}
 
     PreferLayoutFn prefer_layout;
+    CurrentLayoutFn current_layout;
     RewriteByLayoutFn rewrite_by_layout;
     RelevantInputsFn relevant_inputs;
     RelevantOutputsFn relevant_outputs;
@@ -55,6 +59,10 @@ class LayoutTransformationInterface
   struct Model : public Concept {
     static common::DataLayout PreferLayoutModel(pir::Operation* op) {
       return PreferLayoutImpl<ConcreteOp>(op);
+    }
+
+    static common::DataLayout CurrentLayoutModel(pir::Operation* op) {
+      return CurrentLayoutImpl<ConcreteOp>(op);
     }
 
     static void RewriteByLayoutModel(pir::Operation* op,
@@ -72,6 +80,7 @@ class LayoutTransformationInterface
 
     Model()
         : Concept(PreferLayoutModel,
+                  CurrentLayoutModel,
                   RewriteByLayoutModel,
                   RelevantInputsModel,
                   RelevantOutputsModel) {}
@@ -82,6 +91,10 @@ class LayoutTransformationInterface
 
   common::DataLayout PreferLayout(pir::Operation* op) {
     return impl_->prefer_layout(op);
+  }
+
+  common::DataLayout CurrentLayout(pir::Operation* op) {
+    return impl_->current_layout(op);
   }
 
   void RewriteByLayout(pir::Operation* op, common::DataLayout new_layout) {

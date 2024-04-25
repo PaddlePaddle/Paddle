@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
+#include "paddle/fluid/pir/transforms/general/transfer_layout_pass.h"
 
+#include <deque>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -38,14 +39,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/general/transfer_layout_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
-
-namespace {
+#include "paddle/pir/include/pass/pass_registry.h"
 
 class Node;
 
@@ -127,8 +127,6 @@ SrcNode::operator Node() const { return Node(*this); }
 
 DstNode::operator Node() const { return Node(*this); }
 
-}  // namespace
-
 namespace std {
 
 template <>
@@ -150,7 +148,6 @@ struct hash<Node> {
 
 }  // namespace std
 
-namespace {
 struct FlowGraph {
   using EdgeIndex = size_t;
 
@@ -247,8 +244,10 @@ struct FlowGraph {
     for (auto& op : *(program.block())) {
       // we need to ensure the edge from src node to real src node in
       // calculation graph
-      if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() > 0 &&
-          op.name() != "builtin.combine") {
+      //   if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() >
+      //   0 &&
+      //       op.name() != "builtin.combine") {
+      if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() > 0) {
         continue;
       }
       Node op_node(&op);
@@ -323,7 +322,8 @@ struct FlowGraph {
                     op->name() == "pd_op.transpose" ||
                     op->name() == "pd_op.unsqueeze" ||
                     op->name() == "pd_op.squeeze" ||
-                    op->name() == "pd_op.flatten") {
+                    op->name() == "pd_op.flatten" ||
+                    op->name() == "builtin.combine") {
                   return true;
                 }
                 return false;
@@ -517,52 +517,283 @@ struct FlowGraph {
 
 using Edge = FlowGraph::Edge;
 
-}  // namespace
+class TransferLayoutPass : public pir::Pass {
+ public:
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 3) {}
 
-using ProgramDesc = paddle::framework::ProgramDesc;
-ProgramDesc load_from_file(const std::string& file_name) {
-  std::ifstream fin(file_name, std::ios::in | std::ios::binary);
-  fin.seekg(0, std::ios::end);
+  void Run(pir::Operation* op) override {
+    PADDLE_ENFORCE(
+        op->isa<pir::ModuleOp>(),
+        common::errors::InvalidArgument(
+            "The target of TransferLayoutPass should be a Module Op"));
 
-  std::string buffer(fin.tellg(), ' ');
-  fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());  // NOLINT
-  fin.close();
-  return ProgramDesc(buffer);
-}
+    pir::IrContext* ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-TEST(transfer_layout_pass, pass_test) {
-  // Load Unet Program
-  const std::string model_name = "sd15_unet.pdmodel";
-  auto p = load_from_file(model_name);
-  EXPECT_EQ(p.Size(), 1u);
-  EXPECT_GT(p.Block(0).OpSize(), 0u);
+    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    auto* program = module_op.program();
 
-  // Translate to PIR Program
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  auto program = paddle::TranslateLegacyProgramToProgram(p);
-  std::cout << *program << std::endl;
+    std::cout
+        << "---------------------[program before pass]---------------------"
+        << std::endl;
+    std::cout << *program << std::endl;
 
-  pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
-  for (const auto& gpu_pass : paddle::kPirGpuPasses) {
-    pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+    // MinCut
+    std::cout << "---------------------MinCut---------------------"
+              << std::endl;
+    FlowGraph graph(*program);
+    auto&& [src_set, cut] = graph.min_cut();
+    for (auto& e : cut) {
+      std::cout << e << std::endl;
+    }
+
+    // collect all edges from variable to operation
+    // for these, we only need to add 1 for every variable
+    // instead of every edges
+    std::unordered_map<Node, std::vector<Node>> var_set;
+    std::unordered_map<Node, Node> op_src_set;
+    std::vector<Edge> op_set;
+    for (const auto& e : cut) {
+      if (std::get_if<const pir::Operation*>(&(e.src.data))) {
+        op_src_set[e.src] = e.dst;
+        op_set.push_back(e);
+      } else {
+        var_set[e.src].push_back(e.dst);
+      }
+    }
+
+    std::cout << "-----------------------[var set]------------------------"
+              << std::endl;
+
+    // cout var_set
+    for (auto& [var, ops] : var_set) {
+      std::cout << var << ":";
+      for (auto op : ops) {
+        std::cout << op << ",";
+      }
+      std::cout << std::endl;
+    }
+
+    std::cout << "-----------------------[op src set]------------------------"
+              << std::endl;
+
+    // cout op_set
+    for (auto& [k, v] : op_src_set) {
+      std::cout << k << "," << v << std::endl;
+    }
+
+    std::cout << "-----------------------[min cut end]------------------------"
+              << std::endl;
+
+    pir::Builder builder(ctx, program->block());
+    auto layout_to_perm = [](std::string src, std::string dst) {
+      std::vector<int> perm(src.size(), 0);
+      std::unordered_map<char, int> d;
+      for (size_t i = 0; i < src.size(); ++i) {
+        d[src[i]] = i;
+      }
+      for (size_t i = 0; i < dst.size(); ++i) {
+        perm[i] = d[dst[i]];
+      }
+      return perm;
+    };
+
+    std::deque<Node> q;
+    std::unordered_set<Node> is_node_layout_visited;
+    std::function<void(Node)> topological_visit = [&](Node node) -> void {
+      if (is_node_layout_visited.count(node)) return;
+      is_node_layout_visited.insert(node);
+
+      // add successors to queue
+      for (auto& ind : graph.adjs[node]) {
+        auto& e = graph.edges[ind];
+        if (!e.real) continue;
+        topological_visit(e.dst);
+      }
+
+      q.push_front(node);
+    };
+
+    for (auto& op : *(program->block())) {
+      if (op.num_operands() > 0) continue;
+      Node op_node(&op);
+      topological_visit(op_node);
+      q.push_front(op_node);
+    }
+
+    std::cout
+        << "-----------------------[topological sort]------------------------"
+        << std::endl;
+
+    // process every node by topology and the consequences of min cut
+    // while (!q.empty()) {
+    //   auto node = q.front();
+    //   q.pop_front();
+    //   topological_visit(node);
+    // }
+    for (auto n : q) {
+      std::cout << n << std::endl;
+    }
+
+    std::cout
+        << "-----------------------[rewrite begin]------------------------"
+        << std::endl;
+
+    while (!q.empty()) {
+      auto node = q.front();
+      q.pop_front();
+      // if (is_node_layout_visited.count(node)) continue;
+      // is_node_layout_visited.insert(node);
+
+      std::cout << "[Rewrite] for " << node << std::endl;
+      // if node is the src node of a cut edge
+      // and it's an operation
+      if (op_src_set.find(node) != op_src_set.end()) {
+        std::cout << "[Rewrite][Op] for " << node << std::endl;
+
+        // just insert a transpose op
+        auto src = node;
+        auto dst = op_src_set[src];
+        auto dst_value = std::get<pir::Value>(dst.data);
+
+        std::cout << "[Rewrite][Op] for var:"
+                  << (dst_value ? (dst_value.defining_op()) : nullptr)
+                  << " t:" << (dst_value ? (dst_value.type()) : pir::Type())
+                  << std::endl;
+
+        // TODO(lyk): special process for reshape, we cannot only just insert a
+        // transpose op temporarily ignore reshape
+        // if (dst_value.defining_op()->name() == "pd_op.reshape") continue;
+
+        // enforce dst value.defining_op = src
+        const auto& perm =
+            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
+                                       : layout_to_perm("NHWC", "NCHW"));
+        builder.SetInsertionPointAfter(dst_value.defining_op());
+        auto transpose_op =
+            builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
+        auto replace_uses_without_self = [&](pir::OpOperand arg) {
+          return arg.owner() != transpose_op.operation();
+        };
+        dst_value.ReplaceUsesWithIf(transpose_op.out(),
+                                    replace_uses_without_self);
+      }
+
+      // if node is the src node of a cut edge
+      // and it's a value
+      // this node must not be in the nhwc set
+      if (var_set.find(node) != var_set.end()) {
+        std::cout << "[Rewrite][Var] for " << node << std::endl;
+        const auto& ops = var_set[node];
+        // operand should be replaced
+        std::unordered_set<const pir::Operation*> operation_set;
+        for (auto op : ops) {
+          operation_set.insert(std::get<const pir::Operation*>(op.data));
+        }
+
+        auto value = std::get<pir::Value>(node.data);
+        std::cout << "[Rewrite][Var] for var:"
+                  << (value ? value.defining_op() : nullptr);
+        for (const auto& op : operation_set) {
+          std::cout << " op: " << op << ",";
+        }
+        std::cout << std::endl;
+        const auto& perm =
+            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
+                                       : layout_to_perm("NHWC", "NCHW"));
+        builder.SetInsertionPointAfter(value.defining_op());
+        auto transpose_op =
+            builder.Build<paddle::dialect::TransposeOp>(value, perm);
+        auto replace_uses_in_cut_set = [&](pir::OpOperand arg) {
+          return (operation_set.find(arg.owner()) != operation_set.end()) &&
+                 (arg.owner() != transpose_op.operation());
+        };
+        value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
+      }
+
+      // not in cut set and its layout should not be changed
+      if (src_set.find(node) != src_set.end()) continue;
+
+      // process layout transformation
+      if (std::get_if<const pir::Operation*>(&(node.data)) == nullptr) continue;
+      auto* op = const_cast<pir::Operation*>(
+          std::get<const pir::Operation*>(node.data));
+      //  auto layout_transformation_iface =
+      //  op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+      //  if(!layout_transformation_iface) continue;
+      //  layout_transformation_iface->RewriteByLayout(op,
+      //  common::DataLayout::NHWC);
+      std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
+      if (op->name() == "pd_op.fused_conv2d_add_act") {
+        op->set_attribute(
+            "data_format",
+            pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
+        // auto concrete_op =
+        // op->dyn_cast<paddle::dialect::FusedConv2dAddActOp>();
+
+        std::vector<pir::Type> new_outputs =
+            paddle::dialect::FusedConv2dAddActOp::InferMeta(
+                op->operands_source(),
+                const_cast<pir::AttributeMap*>(&op->attributes()));
+        for (size_t i = 0; i < new_outputs.size(); ++i) {
+          op->result(i).set_type(new_outputs[i]);
+        }
+      } else if (op->name() == "pd_op.group_norm") {
+        op->set_attribute(
+            "data_format",
+            pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
+        auto new_outputs = paddle::dialect::GroupNormOp::InferMeta(
+            op->operands_source(),
+            const_cast<pir::AttributeMap*>(&op->attributes()));
+        for (size_t i = 0; i < new_outputs.size(); ++i) {
+          op->result(i).set_type(new_outputs[i]);
+        }
+      } else if (op->name() == "pd_op.silu") {
+        auto new_outputs = paddle::dialect::SiluOp::InferMeta(
+            op->operands_source(),
+            const_cast<pir::AttributeMap*>(&op->attributes()));
+        for (size_t i = 0; i < new_outputs.size(); ++i) {
+          op->result(i).set_type(new_outputs[i]);
+        }
+      } else if (op->name() == "pd_op.add") {
+        auto new_outputs = paddle::dialect::AddOp::InferMeta(
+            op->operands_source(),
+            const_cast<pir::AttributeMap*>(&op->attributes()));
+        for (size_t i = 0; i < new_outputs.size(); ++i) {
+          op->result(i).set_type(new_outputs[i]);
+        }
+      } else if (op->name() == "pd_op.cast") {
+        auto new_outputs = paddle::dialect::CastOp::InferMeta(
+            op->operands_source(),
+            const_cast<pir::AttributeMap*>(&op->attributes()));
+        for (size_t i = 0; i < new_outputs.size(); ++i) {
+          op->result(i).set_type(new_outputs[i]);
+        }
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Op %s should have a specialized RewriteByLayout function",
+            op->name()));
+      }
+    }
+
+    std::cout
+        << "-----------------------[trans var end]------------------------"
+        << std::endl;
+
+    std::cout
+        << "---------------------[program after pass]---------------------"
+        << std::endl;
+    std::cout << *program << std::endl;
   }
-  pass_pm.Run(program.get());
+};
 
-  std::ofstream before_modify(
-      "/home/lvyongkang/Paddle/logs/sd15_vae_encoder_before.txt",
-      std::ios::out);
-  before_modify << *program << std::endl;
+namespace pir {
 
-  pir::PassManager transfer_layout_manager(::pir::IrContext::Instance(), 3);
-  transfer_layout_manager.AddPass(pir::CreateTransferLayoutPass());
-  transfer_layout_manager.Run(program.get());
-
-  std::ofstream after_modify(
-      "/home/lvyongkang/Paddle/logs/sd15_vae_encoder_after.txt", std::ios::out);
-  after_modify << *program << std::endl;
-
-  // insert transpose between
+std::unique_ptr<pir::Pass> CreateTransferLayoutPass() {
+  return std::make_unique<TransferLayoutPass>();
 }
+
+}  // namespace pir
+
+REGISTER_IR_PASS(transfer_layout_pass, TransferLayoutPass);

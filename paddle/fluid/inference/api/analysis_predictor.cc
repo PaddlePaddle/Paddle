@@ -52,6 +52,7 @@
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/pir/transforms/general/transfer_layout_pass.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -942,8 +943,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
 
       // Apply some optimization passes required by the inference
-      ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
-                                 config_.pm_opt_level_);
+      ::pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
       if (!config_.custom_passes_.empty()) {
         for (const auto &custom_pass : config_.custom_passes_) {
           pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
@@ -954,6 +954,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+          }
+          if (config_.use_transfer_layout_pass_) {
+            pass_pm.AddPass(pir::CreateTransferLayoutPass());
           }
         }
 

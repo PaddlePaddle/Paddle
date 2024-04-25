@@ -36,6 +36,7 @@ extern bool HasCUDNN();
  * different cudnn version has different interfaces
  **/
 #define CUDNN_DNN_ROUTINE_EACH(__macro)                    \
+  __macro(cudnnSetCallback);                               \
   __macro(cudnnSetTensor4dDescriptor);                     \
   __macro(cudnnSetTensor4dDescriptorEx);                   \
   __macro(cudnnSetTensorNdDescriptor);                     \

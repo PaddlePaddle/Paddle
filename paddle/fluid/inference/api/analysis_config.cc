@@ -597,6 +597,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(pm_opt_level_);
   CP_MEMBER(ir_debug_passes_);
 
+  // passes
+  CP_MEMBER(use_transfer_layout_pass_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -1668,6 +1671,13 @@ void AnalysisConfig::EnableCINN() {
 }
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
+
+void AnalysisConfig::EnableTransferLayout() {
+  use_transfer_layout_pass_ = true;
+}
+bool AnalysisConfig::transfer_layout_enabled() const {
+  return use_transfer_layout_pass_;
+}
 
 void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
                                         bool custom_pass_only) {

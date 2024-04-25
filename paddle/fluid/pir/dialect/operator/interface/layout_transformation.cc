@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 
+#include "build_gpu/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+
 namespace paddle {
 namespace dialect {
 
@@ -23,9 +26,75 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
 }
 
 template <>
+common::DataLayout CurrentLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "op (%s) should have attribute `data_format`, but got %s",
+        op,
+        data_format_attr));
+  }
+  return common::StringToDataLayout(data_format_attr.AsString());
+}
+
+template <>
 void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op,
                                               common::DataLayout new_layout) {
   return;
+}
+
+template <>
+void RewriteByLayoutImpl<GroupNormOp>(pir::Operation* op,
+                                      common::DataLayout new_layout) {
+  return;
+}
+
+template <>
+std::vector<pir::Value> RelevantInputsImpl<GroupNormOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<GroupNormOp>();
+  return {concrete_op.x()};
+}
+
+template <>
+std::vector<pir::Value> RelevantOutputsImpl<GroupNormOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<GroupNormOp>();
+  return {concrete_op.y()};
+}
+
+template <>
+void RewriteByLayoutImpl<ReshapeOp>(pir::Operation* op,
+                                    common::DataLayout new_layout) {
+  return;
+}
+
+template <>
+std::vector<pir::Value> RelevantInputsImpl<ReshapeOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<ReshapeOp>();
+  return {concrete_op.x()};
+}
+
+template <>
+std::vector<pir::Value> RelevantOutputsImpl<ReshapeOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<ReshapeOp>();
+  return {concrete_op.out()};
+}
+
+template <>
+void RewriteByLayoutImpl<SqueezeOp>(pir::Operation* op,
+                                    common::DataLayout new_layout) {
+  return;
+}
+
+template <>
+std::vector<pir::Value> RelevantInputsImpl<SqueezeOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<SqueezeOp>();
+  return {concrete_op.x()};
+}
+
+template <>
+std::vector<pir::Value> RelevantOutputsImpl<SqueezeOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<SqueezeOp>();
+  return {concrete_op.out()};
 }
 
 }  // namespace dialect
