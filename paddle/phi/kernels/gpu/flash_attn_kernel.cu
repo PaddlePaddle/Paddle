@@ -99,6 +99,7 @@ void FlashAttnUnpaddedBaseKernel(
                               fixed_seed_offset,
                               attn_mask,
                               nullptr,  // attn_mask_start_row_indices
+                              nullptr,  // attn_mask_end_row_indices
                               softmax,
                               softmax_lse,
                               seed_offset);
@@ -296,6 +297,7 @@ void FlashAttnBaseKernel(
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
     const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
     float dropout,
     bool causal,
     bool return_softmax,
@@ -346,6 +348,7 @@ void FlashAttnBaseKernel(
                               fixed_seed_offset,
                               attn_mask,
                               attn_mask_start_row_indices,
+                              attn_mask_end_row_indices,
                               softmax,
                               softmax_lse,
                               seed_offset);
@@ -399,6 +402,9 @@ void FlashAttnBaseKernel(
       params.attn_mask_start_row_indices_tensor
           ? params.attn_mask_start_row_indices_dims.data()
           : nullptr,
+      params.attn_mask_end_row_indices_tensor
+          ? params.attn_mask_end_row_indices_tensor->data()
+          : nullptr,
       params.attn_mask_start_row,
       q.strides()[1],
       k.strides()[1],
@@ -441,6 +447,7 @@ void FlashAttnKernel(const Context& ctx,
                                   fixed_seed_offset,
                                   attn_mask,
                                   paddle::none,
+                                  paddle::none,
                                   dropout,
                                   causal,
                                   return_softmax,
@@ -481,6 +488,7 @@ void FlashAttnQKVPackedKernel(
                                   fixed_seed_offset,
                                   attn_mask,
                                   paddle::none,
+                                  paddle::none,
                                   dropout,
                                   causal,
                                   return_softmax,
@@ -503,6 +511,7 @@ void FlashAttnWithSparseMaskKernel(
     const DenseTensor& k,
     const DenseTensor& v,
     const DenseTensor& attn_mask_start_row_indices,
+    const DenseTensor& attn_mask_end_row_indices,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     float dropout,
     bool causal,
@@ -521,6 +530,7 @@ void FlashAttnWithSparseMaskKernel(
                                   fixed_seed_offset,
                                   paddle::none,
                                   attn_mask_start_row_indices,
+                                  attn_mask_end_row_indices,
                                   dropout,
                                   causal,
                                   return_softmax,
@@ -581,6 +591,6 @@ PD_REGISTER_KERNEL(flash_attn_with_sparse_mask,
                    phi::FlashAttnWithSparseMaskKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  kernel->InputAt(4).SetBackend(
+  kernel->InputAt(5).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

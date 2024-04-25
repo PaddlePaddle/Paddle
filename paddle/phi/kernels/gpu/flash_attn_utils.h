@@ -153,6 +153,7 @@ struct FlashAttnParamsBase {
   const DenseTensor* attn_mask_tensor;
 
   const DenseTensor* attn_mask_start_row_indices_tensor;
+  const DenseTensor* attn_mask_end_row_indices_tensor;
   std::vector<int64_t> attn_mask_start_row_indices_dims;
   int attn_mask_start_row;
 
@@ -168,7 +169,8 @@ struct FlashAttnParamsBase {
       const int _attn_mask_start_row,
       const DataType q_dtype,
       const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& attn_mask_start_row_indices)
+      const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const paddle::optional<DenseTensor>& attn_mask_end_row_indices)
       : batch_size(_batch_size),
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
@@ -180,7 +182,8 @@ struct FlashAttnParamsBase {
         attn_mask_start_row(_attn_mask_start_row),
         attn_mask_tensor(attn_mask.get_ptr()),
         attn_mask_start_row_indices_tensor(
-            attn_mask_start_row_indices.get_ptr()) {
+            attn_mask_start_row_indices.get_ptr()),
+        attn_mask_end_row_indices_tensor(attn_mask_end_row_indices.get_ptr()) {
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
     auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
@@ -246,6 +249,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       const paddle::optional<DenseTensor>& fixed_seed_offset,
       const paddle::optional<DenseTensor>& attn_mask,
       const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
       DenseTensor* _softmax,
       DenseTensor* _softmax_lse,
       DenseTensor* _seed_offset)
@@ -260,7 +264,8 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
                             _attn_mask_start_row,
                             q_dtype,
                             attn_mask,
-                            attn_mask_start_row_indices),
+                            attn_mask_start_row_indices,
+                            attn_mask_end_row_indices),
         dropout(_dropout),
         return_softmax(_return_softmax),
         softmax(_softmax),
@@ -322,6 +327,7 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
       const DataType q_dtype,
       const paddle::optional<DenseTensor>& attn_mask,
       const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
       const int64_t* seed_offset_data)
       : FlashAttnParamsBase(_batch_size,
                             _max_seqlen_q,
@@ -334,7 +340,8 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
                             _attn_mask_start_row,
                             q_dtype,
                             attn_mask,
-                            attn_mask_start_row_indices),
+                            attn_mask_start_row_indices,
+                            attn_mask_end_row_indices),
         dropout(_dropout) {
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);

@@ -282,7 +282,8 @@ void FlashAttnUnpaddedGradBaseKernel(
                            0,  // attn_mask_start_row
                            q.dtype(),
                            attn_mask,
-                           nullptr,  // attn_mask_start_row_indices
+                           nullptr,  // attn_mask_start_row_indices,
+                           nullptr,  // attn_mask_end_row_indices,
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
@@ -536,6 +537,7 @@ void FlashAttnGradBaseKernel(
     const DenseTensor& seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
     const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
     const DenseTensor& dout,
     float dropout,
     bool causal,
@@ -609,6 +611,7 @@ void FlashAttnGradBaseKernel(
                            q.dtype(),
                            attn_mask,
                            attn_mask_start_row_indices,
+                           attn_mask_end_row_indices,
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
@@ -662,6 +665,9 @@ void FlashAttnGradBaseKernel(
           : nullptr,
       params.attn_mask_start_row_indices_tensor
           ? params.attn_mask_start_row_indices_dims.data()
+          : nullptr,
+      params.attn_mask_end_row_indices_tensor
+          ? params.attn_mask_end_row_indices_tensor->data()
           : nullptr,
       params.attn_mask_start_row,
       q.strides()[1],
@@ -742,6 +748,7 @@ void FlashAttnGradKernel(const Context& ctx,
                                       seed_offset,
                                       attn_mask,
                                       paddle::none,
+                                      paddle::none,
                                       dout,
                                       dropout,
                                       causal,
@@ -791,6 +798,7 @@ void FlashAttnQKVPackedGradKernel(
                                       seed_offset,
                                       attn_mask,
                                       paddle::none,
+                                      paddle::none,
                                       dout,
                                       dropout,
                                       causal,
@@ -810,6 +818,7 @@ void FlashAttnWithSparseGradKernel(
     const DenseTensor& k,
     const DenseTensor& v,
     const DenseTensor& attn_mask_start_row_indices,
+    const DenseTensor& attn_mask_end_row_indices,
     const DenseTensor& out,
     const DenseTensor& softmax_lse,
     const DenseTensor& seed_offset,
@@ -838,6 +847,7 @@ void FlashAttnWithSparseGradKernel(
                                       seed_offset,
                                       paddle::none,
                                       attn_mask_start_row_indices,
+                                      attn_mask_end_row_indices,
                                       dout,
                                       dropout,
                                       causal,
@@ -890,5 +900,5 @@ PD_REGISTER_KERNEL(flash_attn_with_sparse_mask_grad,
                    phi::FlashAttnWithSparseGradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
