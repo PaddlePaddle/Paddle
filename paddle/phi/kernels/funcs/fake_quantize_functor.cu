@@ -98,6 +98,21 @@ __global__ void ClipAndQuantKernel(const T *in,
   }
 }
 
+template <typename T>
+__global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
+                                              const T *in_accum,
+                                              const T *cur_scale,
+                                              const T rate,
+                                              T *out_state,
+                                              T *out_accum,
+                                              T *out_scale) {
+  T state = rate * (*in_state) + T(1.0f);
+  T accum = rate * (*in_accum) + (*cur_scale);
+  *out_state = state;
+  *out_accum = accum;
+  *out_scale = accum / state;
+}
+
 template <typename Context, typename T>
 void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
                                                const T *in,
@@ -135,10 +150,37 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
       in_data, scale_data, bin_cnt, round_type, num, out_data);
 }
 
+template <typename Context, typename T>
+void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in_accum,
+    const DenseTensor &in_state,
+    const T *cur_scale,
+    const float rate,
+    DenseTensor *out_state,
+    DenseTensor *out_accum,
+    DenseTensor *out_scale) {
+  T rate_t = static_cast<T>(rate);
+  T *out_state_data = ctx.template Alloc<T>(out_state);
+  T *out_accum_data = ctx.template Alloc<T>(out_accum);
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+
+  FindMovingAverageAbsMaxKernel<T>
+      <<<1, 1, 0, ctx.stream()>>>(in_state.data<T>(),
+                                  in_accum.data<T>(),
+                                  cur_scale,
+                                  rate_t,
+                                  out_state_data,
+                                  out_accum_data,
+                                  out_scale_data);
+}
+
 template class FindAbsMaxFunctor<GPUContext, float16>;
 template class FindAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantFunctor<GPUContext, float>;
+template class FindMovingAverageAbsMaxFunctor<GPUContext, float16>;
+template class FindMovingAverageAbsMaxFunctor<GPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi
