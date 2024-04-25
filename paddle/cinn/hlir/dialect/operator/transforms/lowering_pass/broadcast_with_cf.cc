@@ -67,7 +67,7 @@ void CompileGroupToJitKernelOp(
     auto& yield_op = block->back();
     CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = yield_op.operand_source();
+    const auto& group_output_values = yield_op.operands_source();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
