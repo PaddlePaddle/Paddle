@@ -3158,15 +3158,7 @@ bool ExpandOp::InferSymbolicShape(
   const auto &expand_shape_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;

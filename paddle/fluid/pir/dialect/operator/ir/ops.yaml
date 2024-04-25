@@ -478,6 +478,15 @@
   optional : in_accum, in_state, out_scale, out_accum, out_state
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
+- op : dequantize_log
+  args: (Tensor x, Tensor dict)
+  output: Tensor(out)
+  infer_meta:
+    func: DequantizeLogInferMeta
+  kernel:
+    func: dequantize_log
+    data_type: x
+
 - op : dgc
   args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float[] sparsity, float m=0.9, bool use_nesterov=true, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
   output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
@@ -1341,6 +1350,17 @@
   kernel :
     func : prune_gate_by_capacity
     data_type : gate_idx
+
+- op : pull_gpups_sparse
+  args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
+  output : Tensor[](out){ids.size()}
+  infer_meta :
+    func : PullGpupsSparseInferMeta
+  kernel :
+    func : pull_gpups_sparse
+    data_type : PullGpupsSparseKernelKey
+  optional : w
+  backward: push_gpups_sparse
 
 - op : push_dense
   args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
