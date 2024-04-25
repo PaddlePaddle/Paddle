@@ -773,13 +773,6 @@ EOF
     fi
 }
 
-function run_linux_cpu_test_pir() {
-    export FLAGS_enable_pir_api=1
-    # disable deprecated test in pir
-    deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
-    run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-}
-
 function run_linux_cpu_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
@@ -4454,6 +4447,12 @@ function main() {
       cicheck_py37)
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_py37_pir)
+        export FLAGS_enable_pir_api=1
+        # disable deprecated test in pir
+        deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
