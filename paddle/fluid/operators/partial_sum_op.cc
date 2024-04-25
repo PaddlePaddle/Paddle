@@ -9,11 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/partial_sum_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -203,20 +204,3 @@ REGISTER_OPERATOR(partial_sum,
                   ops::PartialSumGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
-
-PD_REGISTER_STRUCT_KERNEL(partial_sum,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialSumKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-PD_REGISTER_STRUCT_KERNEL(partial_sum_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialSumGradientOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
