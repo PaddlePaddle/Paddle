@@ -75,7 +75,8 @@ StepScopes::StepScopes(const platform::DeviceContext &dev_ctx,
     : counter_(is_backward ? seq_len - 1 : 0UL),
       scopes_(scopes),
       is_train_(is_train),
-      is_backward_(is_backward) {
+      is_backward_(is_backward),
+      scopes_() {
   size_t num_step_scopes = is_train ? seq_len : 2;
   PADDLE_ENFORCE_EQ(
       is_train || !is_backward,
