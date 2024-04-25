@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import math
+import operator
+from functools import reduce
 
 import paddle
 from paddle.distribution import distribution
@@ -23,32 +25,18 @@ __all__ = ["LKJCholesky"]
 
 def mvlgamma(a, p):
     """
-    Computes the multivariate gamma function for each element in the input tensor `a` with dimension `p`.
-    The multivariate gamma function is an extension of the gamma function to multiple dimensions.
-    Args:
-        a (paddle.Tensor): A scalar or tensor of shape (...,), representing the input values for the
-                           multivariate gamma function.
-        p (int): An integer representing the dimension of the multivariate gamma function.
-
-    Returns:
-        paddle.Tensor: A tensor with the same shape as the input tensor `a`, containing the result of the
-                       multivariate gamma function for each element in `a`.
+    Computes the multivariate log gamma function for input `a` and dimension `p`.
     """
-    p_float = float(p)
-    order = paddle.arange(0, p_float, dtype=a.dtype)
-    return paddle.sum(paddle.lgamma(a.unsqueeze(-1) - 0.5 * order), axis=-1)
+    pi = paddle.to_tensor(math.pi, dtype=a.dtype)
+    j = paddle.arange(1, p + 1, dtype=a.dtype)
+    gammaln_terms = paddle.lgamma(a.unsqueeze(-1) + (1 - j) / 2)
+    gammaln_sum = paddle.sum(gammaln_terms, axis=-1)
+    return (p * (p - 1) / 4) * paddle.log(pi) + gammaln_sum
 
 
 def tril_indices(n, k=0):
     """
     Returns the indices of the lower triangular part of an n x n matrix, including the k-th diagonal.
-    Args:
-        n (int): The size of the square matrix (n x n).
-        k (int, optional): The diagonal to include in the lower triangular part. Default is 0, which
-                           corresponds to the main diagonal.
-    Returns:
-        tuple: A tuple containing two 1D tensors, one for the row indices and one for the column indices
-               of the non-zero elements in the lower triangular matrix.
     """
     full_matrix = paddle.ones((n, n), dtype='int32')
     tril_matrix = paddle.tril(full_matrix, diagonal=k)
@@ -59,39 +47,69 @@ def tril_indices(n, k=0):
 def matrix_to_tril(x, diagonal=0):
     """
     Extracts the lower triangular part of the input matrix or batch of matrices `x`, including the specified diagonal.
-    Args:
-        x (paddle.Tensor): A square matrix or a batch of square matrices of shape (..., n, n), where n is the matrix size.
-        diagonal (int, optional): The diagonal to include in the lower triangular part. Default is 0, which corresponds
-                                  to the main diagonal.
-    Returns:
-        paddle.Tensor: A 1D tensor or a batch of 1D tensors containing the elements of the lower triangular parts of the
-                       input matrix or matrices `x`, including the specified diagonal.
     """
-    matrix_dim = x.shape[-1]
-    rows, cols = tril_indices(matrix_dim, diagonal)
-    return x[..., rows, cols]
+    tril_mask = paddle.tril(paddle.ones_like(x), diagonal=diagonal)
+    tril_elements = paddle.masked_select(x, tril_mask.astype('bool'))
+    return tril_elements
 
 
-def construct_matrix_lower(p):
+def vec_to_tril_matrix(
+    p_flatten, dim, last_dim, flatten_shape, sample_shape=(), diag=0
+):
     """
-    Constructs a lower triangular matrix from a 1D tensor `p` containing the elements of the lower triangular part.
-    Args:
-        p (paddle.Tensor): A 1D tensor containing the elements of the lower triangular part, including the main diagonal.
-                           Its length must be a triangular number (i.e., 1, 3, 6, 10, ...).
-    Returns:
-        paddle.Tensor: A square lower triangular matrix of shape (n, n), where n is the matrix size, with its elements
-                       filled from the input tensor `p`.
+    Constructs a batch of lower triangular matrices from a given input tensor `p`.
     """
-    dim = int((math.sqrt(paddle.to_tensor(1 + 8 * p.shape[0])) + 1) / 2)
-    matrix = paddle.zeros(shape=[dim, dim], dtype='float32')
+    # Calculate the dimension of the square matrix based on the last but one dimension of `p`
+    # Define the output shape, which adds two dimensions for the square matrix
+    shape0 = flatten_shape // last_dim
+    output_shape = sample_shape + (
+        shape0 // reduce(operator.mul, sample_shape),
+        dim,
+        dim,
+    )
 
+    # Create index_matrix = [index0, rows, cols]
     rows, cols = paddle.meshgrid(paddle.arange(dim), paddle.arange(dim))
     mask = rows > cols
-
     lower_indices = paddle.stack([rows[mask], cols[mask]], axis=1)
-    matrix = paddle.scatter_nd_add(matrix, lower_indices, paddle.flatten(p))
+    repeated_lower_indices = paddle.repeat_interleave(
+        lower_indices, shape0, axis=0
+    )
+    index0 = paddle.arange(shape0).unsqueeze(1).tile([last_dim, 1])
+    index_matrix = paddle.concat([index0, repeated_lower_indices], axis=1)
+
+    # Sort the indices
+    sorted_indices = paddle.argsort(index_matrix[:, 0])
+    index_matrix = index_matrix[sorted_indices]
+
+    # Set the value
+    matrix = paddle.zeros(shape=(shape0, dim, dim), dtype=p_flatten.dtype)
+    matrix = paddle.scatter_nd_add(matrix, index_matrix, p_flatten).reshape(
+        output_shape
+    )
 
     return matrix
+
+
+def tril_matrix_to_vec(mat: paddle.Tensor, diag: int = 0) -> paddle.Tensor:
+    r"""
+    Convert a `D x D` matrix or a batch of matrices into a (batched) vector
+    which comprises of lower triangular elements from the matrix in row order.
+    """
+    out_shape = mat.shape[:-2]
+    n = mat.shape[-1]
+    if diag < -n or diag >= n:
+        raise ValueError(f"diag ({diag}) provided is outside [{-n}, {n-1}].")
+
+    rows, cols = paddle.meshgrid(paddle.arange(n), paddle.arange(n))
+    tril_mask = diag + rows >= cols
+
+    vec_len = (n + diag) * (n + diag + 1) // 2
+    out_shape += (vec_len,)
+
+    # Use the mask to index the lower triangular elements from the input matrix
+    vec = paddle.masked_select(mat, tril_mask).reshape(out_shape)
+    return vec
 
 
 class LKJCholesky(distribution.Distribution):
@@ -132,13 +150,14 @@ class LKJCholesky(distribution.Distribution):
 
     """
 
-    def __init__(self, dim, concentration=1.0, sample_method="onion"):
+    def __init__(self, dim=2, concentration=1.0, sample_method="onion"):
         if dim < 2:
             raise ValueError(
                 f"Expected dim to be an integer greater than or equal to 2. Found dim={dim}."
             )
         self.dim = dim
-        self.concentration = paddle.to_tensor(concentration)
+        if not isinstance(concentration, paddle.Tensor):
+            self.concentration = paddle.to_tensor(concentration)
         self.sample_method = sample_method
 
         batch_shape = self.concentration.shape
@@ -169,7 +188,8 @@ class LKJCholesky(distribution.Distribution):
         super().__init__(batch_shape, event_shape)
 
     def _onion(self, sample_shape):
-        """Generate a sample using the "onion" method.
+        """
+        Generate a sample using the "onion" method.
 
         Args:
             sample_shape (tuple): The shape of the samples to be generated.
@@ -177,7 +197,6 @@ class LKJCholesky(distribution.Distribution):
         Returns:
             w (paddle.Tensor): The Cholesky factor of the sampled correlation matrix.
         """
-
         # Sample y from the Beta distribution
         y = self._beta.sample(sample_shape).unsqueeze(-1)
 
@@ -188,8 +207,16 @@ class LKJCholesky(distribution.Distribution):
 
         # Normalize u to get u_hypersphere
         u_hypersphere = u_normal / u_normal.norm(axis=-1, keepdim=True)
+
         # Replace NaNs in first row
-        u_hypersphere[..., 0, :].fill_(0.0)
+        # TODO: check if static graph can use fill_
+        # u_hypersphere[..., 0, :].fill_(0.0)
+        # u_hypersphere[..., 0, :] = 0.0
+        u_hypersphere_other = u_hypersphere[..., 1:, :]
+        zero_shape = tuple(u_hypersphere.shape[:-2]) + (1, self.dim)
+        zero_row = paddle.zeros(shape=zero_shape, dtype=u_hypersphere.dtype)
+        u_hypersphere = paddle.concat([zero_row, u_hypersphere_other], axis=-2)
+
         w = paddle.sqrt(y) * u_hypersphere
 
         # Fill diagonal elements; clamp for numerical stability
@@ -211,12 +238,34 @@ class LKJCholesky(distribution.Distribution):
         Returns:
             r (paddle.Tensor): The Cholesky factor of the sampled correlation matrix.
         """
+
+        # for paddle.static, U need to set sample_shape
+        if sample_shape == ():
+            sample_shape = (1,)
+
         # Sample beta and calculate partial correlations
         beta_sample = self._beta.sample(sample_shape).unsqueeze(-1)
         partial_correlation = 2 * beta_sample - 1
 
+        if self.dim == 2:
+            partial_correlation = partial_correlation.unsqueeze(-2)
+
+        # import pdb; pdb.set_trace()
         # Construct the lower triangular matrix from the partial correlations
-        partial_correlation = construct_matrix_lower(partial_correlation)
+        last_dim = self.dim * (self.dim - 1) // 2
+        flatten_shape = last_dim * reduce(operator.mul, sample_shape)
+        if self.concentration.shape != ():
+            flatten_shape *= self.concentration.shape[-1]
+
+        partial_correlation = partial_correlation.reshape((flatten_shape,))
+        partial_correlation = vec_to_tril_matrix(
+            partial_correlation,
+            self.dim,
+            last_dim,
+            flatten_shape,
+            sample_shape,
+            -1,
+        )
 
         # Clip partial correlations for numerical stability
         eps = paddle.finfo(beta_sample.dtype).tiny
@@ -239,9 +288,12 @@ class LKJCholesky(distribution.Distribution):
         r += paddle.eye(
             partial_correlation.shape[-2], partial_correlation.shape[-1]
         )
-        return r * z1m_cumprod_sqrt_shifted
+        r = r * z1m_cumprod_sqrt_shifted
+        if sample_shape == (1,):
+            r = r.reshape((flatten_shape // last_dim, self.dim, self.dim))
+        return r
 
-    def sample(self, sample_shape=None):
+    def sample(self, sample_shape=()):
         """Generate a sample using the specified sampling method."""
         if sample_shape is None:
             sample_shape = paddle.to_tensor([])
