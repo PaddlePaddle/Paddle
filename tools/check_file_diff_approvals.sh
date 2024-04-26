@@ -37,7 +37,6 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/distributed/__init"
            "python/paddle/distributed/fleet/__init__.py"
            "python/paddle/distributed/fleet/launch.py"
-           "python/requirements.txt"
            "python/paddle/base/__init__.py"
            "python/paddle/base/compiler.py"
            "python/paddle/base/parallel_executor.py"
@@ -144,9 +143,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/base/init.py, which manages the environment variables.\n"
           check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
-      elif [ "${API_FILE}" == "python/requirements.txt" ];then
-          echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
-          check_approval 3 phlrain dingjiaweiww kolinwei
       elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 gongweibao seiriosPlus

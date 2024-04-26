@@ -86,7 +86,7 @@ class SingleOpTester(unittest.TestCase):
         args = []
         temp_inputs = []
         alignment = 0
-        if self.target.arch == common.Target.Arch.X86:
+        if self.target.arch.IsX86Arch():
             alignment = 32
         for in_data in inputs_data:
             temp_inputs.append(

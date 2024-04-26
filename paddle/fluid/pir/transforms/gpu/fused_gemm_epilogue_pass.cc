@@ -37,7 +37,7 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
@@ -79,7 +79,7 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
     matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("tmp_grad")},
                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
@@ -131,7 +131,7 @@ class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("out") = gelu(pat.Tensor("fuse_out"));
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Attr<std::string>("act") == "none");
     });
 
@@ -167,7 +167,7 @@ class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("out") = relu(pat.Tensor("fuse_out"));
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return (match_ctx.Attr<std::string>("act") == "none");
     });
 
@@ -216,7 +216,7 @@ class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("gelu_dx") = pat.Op(paddle::dialect::GeluGradOp::name())(
         pat.Tensor("fuse_out"), pat.Tensor("x1_grad"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("act1") == "none" &&
              match_ctx.Attr<std::string>("act2") == "none";
     });
@@ -288,7 +288,7 @@ class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
                               &pat.Tensor("w_grad"),
                               &pat.Tensor("bias_grad")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("act1") == "relu" &&
              match_ctx.Attr<std::string>("act3") == "none";
     });

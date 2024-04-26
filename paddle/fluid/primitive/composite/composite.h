@@ -320,6 +320,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
     run_var_ = run_var * momentum + batch_var * (1. - momentum);
+    assign_out_<T>(run_mean_, run_mean);
+    assign_out_<T>(run_var_, run_var);
   } else {
     batch_mean = full<T>(run_mean.shape(), 0, run_mean.dtype());
     auto batch_var = full<T>(run_var.shape(), 0, run_var.dtype());
@@ -432,11 +434,7 @@ Tensor silu_decomp(const Tensor& x) {
   if (need_cast) {
     x_tmp = cast<T>(x, DataType::FLOAT32);
   }
-
-  // res = x / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-  auto exp_temp = exp<T>(full<T>(empty_shape, -1, x_tmp.dtype()) * x_tmp);
-  auto res = x_tmp / (exp_temp + one);
+  auto res = x_tmp * sigmoid<T>(x_tmp);
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -732,27 +730,6 @@ Tensor hardswish_decomp(const Tensor& x) {
 }
 
 template <typename T>
-Tensor sigmoid_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  // res = 1 / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_cast.dtype());
-  auto exp_tmp = exp<T>(full<T>(empty_shape, -1, x_cast.dtype()) * x_cast);
-  auto res = one / (one + exp_tmp);
-  if (need_cast) {
-    return cast<T>(res, org_dtype);
-  } else {
-    return res;
-  }
-}
-
-template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
   auto multiply_tmp = full<T>(empty_shape, negative_slope, x.dtype()) * x;
   if (negative_slope < 1.0) {
@@ -858,10 +835,12 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
     for (size_t i = 0; i < x_dim.size();) {
       if (i == static_cast<size_t>(start_axis)) {
-        Tensor flat =
-            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
-        flat = prod<T>(flat, {0}, false, false);
-        out_shape.push_back(reshape<T>(flat, {1}));
+        Tensor flat = get_slice<T>(x_shape, i);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          flat = flat * get_slice<T>(x_shape, t);
+        }
+        out_shape.push_back(flat);
         i = end_axis + 1;
       } else {
         out_shape.push_back(get_slice<T>(x_shape, i));

@@ -331,6 +331,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
@@ -1284,6 +1285,23 @@ void ExpandInferMeta(const MetaTensor& x,
     out->share_lod(x);
   }
 #undef EXPAND_MAX_RANK_SUPPORTED
+}
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
 }
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
@@ -5478,14 +5496,16 @@ void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* out,
                         MetaConfig config) {
+#define UNSQUEEZE_MAX_RANK_SUPPORTED 8
   const auto& x_dims = x.dims();
-  // Validity Check: input tensor dims (<6).
+  // Validity Check: input tensor dims (<=8).
   PADDLE_ENFORCE_LE(x_dims.size(),
-                    6,
+                    UNSQUEEZE_MAX_RANK_SUPPORTED,
                     phi::errors::InvalidArgument(
                         "Invalid "
                         "dimensions, the rank of Input(X) "
-                        "should be in the range of [1, 6] (Eigen limit)"));
+                        "should be in the range of [1, %d] (Eigen limit)",
+                        UNSQUEEZE_MAX_RANK_SUPPORTED));
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape.  set all elements to -1.
     int output_size = static_cast<int>(x.dims().size() + axes.GetData().size());
@@ -5500,6 +5520,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     }
     out->set_dtype(x.dtype());
   }
+#undef UNSQUEEZE_MAX_RANK_SUPPORTED
 }
 
 void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,

@@ -108,7 +108,7 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOp,
                   ops::GlobalScatterOpMaker,

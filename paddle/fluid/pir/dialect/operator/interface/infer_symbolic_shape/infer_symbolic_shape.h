@@ -21,49 +21,11 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/nullary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/unary_infer_sym.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-// Type inference is currently modelled executionally for operation creation
-// using the `InferMetaInterface`. While `InferSymbolicShapeInterface` is used
-// to implement the shape and element type inference. The return type can often
-// be deduced from the deduced return shape and elemental type (queryable from
-// `InferSymbolicShapeInterface`) and so type inference for tensor types can be
-// implemented with `InferSymbolicShapeInterface`.
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 
 namespace paddle::dialect {
 
-class InferSymbolicShapeInterface
-    : public pir::OpInterfaceBase<InferSymbolicShapeInterface> {
- public:
-  /// Defined these methods with the interface.
-  struct Concept {
-    explicit Concept(bool (*infer_symbolic_shapes)(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis))
-        : infer_symbolic_shapes(infer_symbolic_shapes) {}
-    bool (*infer_symbolic_shapes)(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-  };
-
-  template <class ConcreteOp>
-  struct Model : public Concept {
-    static inline bool InferSymbolicShape(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(shape_analysis);
-    }
-
-    Model() : Concept(InferSymbolicShape) {}
-  };
-
-  /// Constructor
-  InferSymbolicShapeInterface(pir::Operation *op, Concept *impl)
-      : pir::OpInterfaceBase<InferSymbolicShapeInterface>(op), impl_(impl) {}
-
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
-
- private:
-  Concept *impl_;
-};
+using InferSymbolicShapeInterface = pir::InferSymbolicShapeInterface;
 
 }  // namespace paddle::dialect
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)

@@ -30,10 +30,14 @@ from paddle.framework import use_pir_api
 
 
 class LSTMLayer(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, proj_size=0):
         super().__init__()
         self.cell = nn.LSTM(
-            in_channels, hidden_size, direction='bidirectional', num_layers=2
+            in_channels,
+            hidden_size,
+            direction='bidirectional',
+            num_layers=2,
+            proj_size=proj_size,
         )
 
     def forward(self, x):
@@ -42,9 +46,9 @@ class LSTMLayer(nn.Layer):
 
 
 class Net(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, proj_size=0):
         super().__init__()
-        self.lstm = LSTMLayer(in_channels, hidden_size)
+        self.lstm = LSTMLayer(in_channels, hidden_size, proj_size=proj_size)
 
     def forward(self, x):
         x = self.lstm(x)
@@ -126,6 +130,22 @@ class TestLstm(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_save_with_training(self):
         self.save_in_eval(with_training=True)
+
+
+class TestLstmWithProjsize(TestLstm):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.net = Net(12, 8, 4)
+        self.inputs = paddle.zeros((2, 10, 12))
+
+    def test_error(self):
+        # proj_size < 0
+        with self.assertRaises(ValueError):
+            nn.LSTM(4, 4, 4, proj_size=-1)
+
+        # proj_size >= hidden_size
+        with self.assertRaises(ValueError):
+            nn.LSTM(4, 4, 4, proj_size=20)
 
 
 class LinearNet(nn.Layer):

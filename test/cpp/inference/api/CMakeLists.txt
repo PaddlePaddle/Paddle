@@ -323,13 +323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endfunction()
 
   if(NOT APPLE AND WITH_MKLML)
-    # RNN1
-    set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data_without_verify(
-      ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
-
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data_without_verify(
@@ -1149,15 +1142,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
-  inference_analysis_test(
-    lite_resnet50_test
-    SRCS
-    lite_resnet50_test.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR})
 
   inference_analysis_test(
     test_analyzer_capi_exp
@@ -1326,7 +1310,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)

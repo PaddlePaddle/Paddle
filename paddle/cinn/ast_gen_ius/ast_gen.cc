@@ -28,6 +28,10 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace ast_gen_ius {
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
+  return lhs.type().is_bool() || rhs.type().is_bool();
+}
+
 ir::Expr ConvertReduceBody(ir::Expr body,
                            ir::Tensor tensor,
                            const std::vector<Expr>& axis_exprs) {
@@ -38,9 +42,17 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 
   switch (reduce_node->reduce_type) {
     case ir::Reduce::kSum:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) || reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) + reduce_node->body, axis_exprs);
     case ir::Reduce::kMul:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) && reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) * reduce_node->body, axis_exprs);
     case ir::Reduce::kMax:
