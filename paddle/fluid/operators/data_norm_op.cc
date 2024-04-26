@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -268,21 +269,21 @@ The required data format for this layer is one of the following:
 
 template <typename T, typename Context>
 void DataNormKernel(const Context &dev_ctx,
-                    const paddle::optional<DenseTensor> &scale_w,
-                    const paddle::optional<DenseTensor> &bias,
-                    const DenseTensor &x,
-                    const DenseTensor &batch_size,
-                    const DenseTensor &batch_sum,
-                    const DenseTensor &batch_square_sum,
+                    const paddle::optional<phi::DenseTensor> &scale_w,
+                    const paddle::optional<phi::DenseTensor> &bias,
+                    const phi::DenseTensor &x,
+                    const phi::DenseTensor &batch_size,
+                    const phi::DenseTensor &batch_sum,
+                    const phi::DenseTensor &batch_square_sum,
                     float epsilon,
                     int slot_dim,
                     float summary_decay_rate,
                     bool enable_scale_and_shift,
                     const std::string &data_layout,
                     bool sync_stats,
-                    DenseTensor *out,
-                    DenseTensor *means,
-                    DenseTensor *scales) {
+                    phi::DenseTensor *out,
+                    phi::DenseTensor *means,
+                    phi::DenseTensor *scales) {
   const std::string data_layout_str = data_layout;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
