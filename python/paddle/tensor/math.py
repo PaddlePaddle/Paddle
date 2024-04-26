@@ -219,6 +219,8 @@ def scale(
     x, scale: int = 1, bias=0.0, bias_after_scale=True, act=None, name=None
 ) -> paddle.Tensor:
     """
+    TODO:
+
     Scale operator.
 
     Putting scale and bias to the input Tensor as following:
