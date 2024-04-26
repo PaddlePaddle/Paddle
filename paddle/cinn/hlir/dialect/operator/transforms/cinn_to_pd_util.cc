@@ -36,30 +36,31 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
   return attr_data;
 }
 
-TransformContext::TransformContext() {
-  const auto& handler_name =
-      [&](::pir::Operation* op,
-          const ::pir::Builder& builder) -> ::pir::Operation* {
-    VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-    auto cinn_op = op->dyn_cast<cinn::dialect::ReduceMaxOp>();
-    auto attr = cinn_op.attributes();
+const auto& handler_reduce_max_op =
+    [&](::pir::Operation* op,
+        const ::pir::Builder& builder) -> ::pir::Operation* {
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto cinn_op = op->dyn_cast<cinn::dialect::ReduceMaxOp>();
+  auto attr = cinn_op.attributes();
 
-    // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
-    // Normalization
-    pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-        attr.at("dim").dyn_cast<::pir::ArrayAttribute>());
-    attr.insert({"axis", attr_axis});
-    attr.insert({"keepdim", attr["keep_dim"]});
-    attr.erase("dim");
-    attr.erase("keep_dim");
+  // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
+  // Normalization
+  pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attr.at("dim").dyn_cast<::pir::ArrayAttribute>());
+  attr.insert({"axis", attr_axis});
+  attr.insert({"keepdim", attr["keep_dim"]});
+  attr.erase("dim");
+  attr.erase("keep_dim");
 
-    auto pd_op =
-        const_cast<::pir::Builder*>(&builder)->Build<paddle::dialect::MaxOp>(
-            cinn_op.operand_source(0), attr);
-    return pd_op;
-  };
-  op_transformers.insert({cinn::dialect::ReduceMaxOp::name(), handler_name});
-}
+  auto pd_op =
+      const_cast<::pir::Builder*>(&builder)->Build<paddle::dialect::MaxOp>(
+          cinn_op.operand_source(0), attr);
+  return pd_op;
+};
+
+REGISTER_TRANSFORM_RULES(reduce_max_op,
+                         cinn::dialect::ReduceMaxOp::name(),
+                         handler_reduce_max_op);
 
 bool CanApplyOn(::pir::Operation* op) {
   return op->dialect()->name() == "cinn_op";

@@ -32,7 +32,7 @@ using TRule =
 
 class TransformContext {
  private:
-  TransformContext();
+  TransformContext() = default;
   DISABLE_COPY_AND_ASSIGN(TransformContext);
   std::unordered_map<std::string, TRule> op_transformers;
 
@@ -41,25 +41,46 @@ class TransformContext {
     static thread_local TransformContext instance;
     return instance;
   }
-  static void Register(const std::string cinn_op, TRule rule) {
-    VLOG(8) << "Registering transform rule for op " << cinn_op;
+  void Insert(const std::string op_name, TRule rule) {
+    VLOG(8) << "Inserting transform rule for op " << op_name;
     PADDLE_ENFORCE_EQ(
-        Instance().op_transformers.find(cinn_op),
-        Instance().op_transformers.end(),
-        ::common::errors::PreconditionNotMet(
-            "op %s 's transform rule already registered", cinn_op));
-    Instance().op_transformers.insert({cinn_op, rule});
-  }
-  TRule& operator[](const std::string cinn_op_name) {
-    PADDLE_ENFORCE_NE(
-        op_transformers.find(cinn_op_name),
+        op_transformers.find(op_name),
         op_transformers.end(),
         ::common::errors::PreconditionNotMet(
-            "op %s has no corresponding transform rules", cinn_op_name));
-    VLOG(8) << "Transform rule found for op " << cinn_op_name;
-    return op_transformers[cinn_op_name];
+            "op %s 's transform rule already registered", op_name));
+    op_transformers.insert({op_name, rule});
+  }
+  TRule& operator[](const std::string op_name) {
+    PADDLE_ENFORCE_NE(
+        op_transformers.find(op_name),
+        op_transformers.end(),
+        ::common::errors::PreconditionNotMet(
+            "op %s has no corresponding transform rules", op_name));
+    VLOG(8) << "Transform rule found for op " << op_name;
+    return op_transformers[op_name];
   }
 };
+
+class TransformRegistrar {
+ public:
+  void Touch() {}
+  explicit TransformRegistrar(const std::string op_name, TRule rule) {
+    TransformContext::Instance().Insert(op_name, rule);
+  }
+};
+
+#define REGISTER_TRANSFORM_RULES(registrar_name, op_name, rule_hadler_name)    \
+  static cinn::dialect::details::TransformRegistrar                            \
+      __op_transformer_rules_registrar_##registrar_name##__(op_name,           \
+                                                            rule_hadler_name); \
+  int TouchOpTransformerRulesRegistrar_##registrar_name() {                    \
+    __op_transformer_rules_registrar_##registrar_name##__.Touch();             \
+    return 0;                                                                  \
+  }                                                                            \
+  static cinn::dialect::details::TransformRegistrar&                           \
+      __op_transformer_rules_tmp_registrar_##registrar_name##__ UNUSED =       \
+          __op_transformer_rules_registrar_##registrar_name##__
+
 void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
                          ::pir::Block* target_block);
 ::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation*, const ::pir::Builder&);
