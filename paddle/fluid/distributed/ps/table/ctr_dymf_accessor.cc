@@ -121,11 +121,6 @@ bool CtrDymfAccessor::SaveCache(float* value,
 }
 
 bool CtrDymfAccessor::SaveSSD(float* value) {
-  // if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
-  //   return true;
-  // }
-  // return false;
-
   if (_day_id == 0) {
     return true;
   }
@@ -396,15 +391,7 @@ int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   common_feature_value.PassId(value) = 0;
 #endif
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
-  if (ret == 7) {
-    value[7] = 8;
-  } else {
-    for (int i = ret; i >= 7; i--) {
-      value[i + 1] = value[i];
-    }
-    value[7] = 8;
-  }
-  return ret + 1;
+  return ret;
 }
 
 void CtrDymfAccessor::SetDayId(int day_id) { _day_id = day_id; }

@@ -320,11 +320,6 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
 #ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
 #endif
-        // if (idx< 10) {
-        //   std::string format_value =
-        //   _value_accessor->ParseToString(ret->data(), value_size); VLOG(3) <<
-        //   "Pull SSD2 Value:" << cur_key << " " << format_value;
-        // }
         int pull_data_idx = cur_ctx->batch_index[idx];
         pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }

@@ -188,7 +188,6 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int Dim(int embedx_dim) { return 4 + embedx_dim; }
     __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
     __host__ __device__ int Size(int embedx_dim) {
-      // return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
       return Dim(embedx_dim) * sizeof(float);
     }
     __host__ __device__ int ShowIndex() { return 0; }
@@ -216,7 +215,6 @@ class CommonFeatureValueAccessor {
       return sizeof(float);
     }
     __host__ __device__ int Size(int embedx_dim) const {
-      // return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
       return Dim(embedx_dim) * sizeof(float);
     }
     __host__ __device__ int SlotIndex() const { return 0; }
