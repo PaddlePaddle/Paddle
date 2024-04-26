@@ -56,3 +56,4 @@ if __name__ == "__main__":
         print(
             "Usage: python check_pr_approval.py [count] [required reviewer id] ..."
         )
+    print(123)
