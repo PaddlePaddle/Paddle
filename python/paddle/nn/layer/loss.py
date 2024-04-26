@@ -1111,9 +1111,9 @@ class KLDivLoss(Layer):
             >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
             >>> pred_loss_1 = kldiv_criterion_1(x, target)
             >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
-            >>> print(paddle.equal_all(pred_loss_1, pred_loss_2))
+            >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            True)
+                   True)
     """
 
     def __init__(self, reduction='mean', log_target=False):
