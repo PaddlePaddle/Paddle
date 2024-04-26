@@ -188,6 +188,7 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int Dim(int embedx_dim) { return 4 + embedx_dim; }
     __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
     __host__ __device__ int Size(int embedx_dim) {
+      // return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
       return Dim(embedx_dim) * sizeof(float);
     }
     __host__ __device__ int ShowIndex() { return 0; }
@@ -215,6 +216,7 @@ class CommonFeatureValueAccessor {
       return sizeof(float);
     }
     __host__ __device__ int Size(int embedx_dim) const {
+      // return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
       return Dim(embedx_dim) * sizeof(float);
     }
     __host__ __device__ int SlotIndex() const { return 0; }
@@ -650,13 +652,13 @@ class CommonFeatureValueAccessor {
       *(dest_val + common_pull_value.EmbedWIndex()) = 0;
     } else {
       *(dest_val + common_pull_value.ShowIndex()) =
-          src_val[common_feature_value.ShowIndex()];
+          src_val[common_pull_value.ShowIndex()];
       *(dest_val + common_pull_value.ClickIndex()) =
-          src_val[common_feature_value.ClickIndex()];
+          src_val[common_pull_value.ClickIndex()];
       *(dest_val + common_pull_value.EmbedWIndex()) =
-          src_val[common_feature_value.EmbedWIndex()];
+          src_val[common_pull_value.EmbedWIndex()];
     }
-    int mf_size = static_cast<int>(src_val[common_feature_value.MfSizeIndex()]);
+    int mf_size = static_cast<int>(src_val[common_pull_value.MfSizeIndex()]);
     if (mf_size == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest_val + 3 + j) = 0;

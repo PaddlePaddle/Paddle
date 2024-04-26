@@ -942,5 +942,43 @@ size_t FleetWrapper::GetAbsoluteSum(size_t start,
   return ret;
 }
 
+void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
+#if (defined PADDLE_WITH_PSLIB) || (defined PADDLE_WITH_HETERPS)
+  assert(date.size() == 8);
+  int year = std::stoi(date.substr(0, 4));
+  int month = std::stoi(date.substr(4, 2));
+  int day = std::stoi(date.substr(6, 2));
+  struct std::tm b;
+  b.tm_year = year - 1900;
+  b.tm_mon = month - 1;
+  b.tm_mday = day;
+  b.tm_hour = b.tm_min = b.tm_sec = 0;
+  // b.tm_isdst = -1;          // 让库函数自动处理夏令时
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  VLOG(0) << "set date to " << year << "-" << month << "-" << day
+          << " day_id:" << day_id << " seconds_from_1970:" << seconds_from_1970;
+
+  // Convert to system clock time point
+  std::chrono::system_clock::time_point tp =
+      std::chrono::system_clock::from_time_t(seconds_from_1970);
+
+  // Calculate days
+  auto duration = tp.time_since_epoch();
+  auto days =
+      std::chrono::duration_cast<std::chrono::hours>(duration).count() / 24;
+  VLOG(0) << "set date to " << year << "-" << month << "-" << day
+          << " new !!! day_id:" << days;
+  auto ret = worker_ptr_->SetDayId(table_id, day_id);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "setdate : " << date << " failed";
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib or heterps";
+#endif
+}
+
 }  // end namespace distributed
 }  // end namespace paddle

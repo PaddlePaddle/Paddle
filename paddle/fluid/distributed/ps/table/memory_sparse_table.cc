@@ -1092,6 +1092,13 @@ int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
                   float *data_ptr = feature_value.data();
                   _value_accessor->Create(&data_buffer_ptr, 1);
                   memcpy(data_ptr, data_buffer_ptr, data_size * sizeof(float));
+                  // std::stringstream ss;
+                  // ss << "MEMPullSparsePtr value_size :" << value_size << "
+                  // mf_value_size :" << mf_value_size << " --:"; for(size_t i =
+                  // 0; i < value_size; i++) {
+                  //   ss << data_buffer[i] << " ";
+                  // }
+                  // VLOG(3) << ss.str();
                   ret = &feature_value;
                 } else {
                   ret = itr.value_ptr();
