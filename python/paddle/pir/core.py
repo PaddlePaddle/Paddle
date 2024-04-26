@@ -421,3 +421,4 @@ def static_op_arg_cast_guard(hook):
         yield
     finally:
         set_static_op_arg_pre_cast_hook(original_callback)
+        print(111)
