@@ -441,23 +441,23 @@ int SkipGroupnormActPluginDynamic::enqueue(
       cPerBlock = 8;
     }
     auto d_dim = input_desc[0].dims.d.size();
-    params_.n = x_dims[0];
+    params_.n = input_desc[0].dims.d[0];
     if (d_dim == 3) {
-      params_.c = x_dims[1];
+      params_.c = input_desc[0].dims.d[1];
       params_.d = 1;
       params_.h = 1;
-      params_.w = x_dims[2];
+      params_.w = input_desc[0].dims.d[2];
     } else if (d_dim == 4) {
-      params_.c = x_dims[1];
+      params_.c = input_desc[0].dims.d[1];
       params_.d = 1;
-      params_.h = x_dims[2];
-      params_.w = x_dims[3];
+      params_.h = input_desc[0].dims.d[2];
+      params_.w = input_desc[0].dims.d[3];
     } else {
       // d_dim == 5
-      params_.c = x_dims[1];
-      params_.d = x_dims[2];
-      params_.h = x_dims[3];
-      params_.w = x_dims[4];
+      params_.c = input_desc[0].dims.d[1];
+      params_.d = input_desc[0].dims.d[2];
+      params_.h = input_desc[0].dims.d[3];
+      params_.w = input_desc[0].dims.d[4];
     }
     params_.withSilu = true;
     params_.dst = static_cast<half *>(outputs[0]);
