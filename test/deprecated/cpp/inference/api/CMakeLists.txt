@@ -313,15 +313,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR}
                               analyzer_rnn2_tester.cc EXTRA_DEPS common)
 
-  # TODO(luotao, Superjom) Disable DAM test, temporarily fix
-  # https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
-  # After inference framework refactor, will reopen it.
-  # normal DAM
-  set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
-  download_model_and_data_without_verify(${DAM_INSTALL_DIR} "DAM_model.tar.gz"
-                                         "DAM_data.txt.tar.gz")
-  #inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator common)
-
   # small DAM
   set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
   download_model_and_data_without_verify(
@@ -502,9 +493,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_multiple_models_analysis_api_test(
     test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR}
     analyzer_mmp_tester.cc EXTRA_DEPS common)
-
-  set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
-  download_data_without_verify(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
 
   inference_analysis_test(
     test_analyzer_capi_exp

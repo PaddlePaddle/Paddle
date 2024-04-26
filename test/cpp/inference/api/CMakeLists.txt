@@ -386,6 +386,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   if(WITH_GPU)
     inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR}
                                 analyzer_ernie_tester.cc EXTRA_DEPS common)
+    inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
+                                gpu_ernie_half_test.cc EXTRA_DEPS common)
     set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
   endif()
   inference_analysis_api_int8_test(
@@ -436,14 +438,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
     --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
-
-  ### Image classification tests with fake data
-  set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
-  set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
-
-  # build test binary to be used in subsequent tests
-  inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP}
-                                                   ${IMG_CLASS_TEST_APP_SRC})
 
   if(WITH_ONEDNN)
 
