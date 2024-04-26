@@ -63,6 +63,7 @@ USE_PIR_PASS(conv_activation_onednn_fuse_pass);
 USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
 USE_PIR_PASS(elementwise_act_onednn_fuse_pass);
 USE_PIR_PASS(operator_unsqueeze_onednn_fuse_pass);
+USE_PIR_PASS(operator_scale_onednn_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU
