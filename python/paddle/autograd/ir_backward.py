@@ -838,7 +838,7 @@ def append_backward_ops(
                 else:
                     if op.name() not in ALLOW_NO_GRAD_OPS:
                         raise ValueError(
-                            f"op {op.name()} has no grad op, consider enable prim to decompose it."
+                            f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
                         )
                     state.op_to_opgrad[op] = []
 
