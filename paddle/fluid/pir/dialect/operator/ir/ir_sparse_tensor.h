@@ -42,7 +42,7 @@ class IrSparseCooTensor
 
   IrSparseCooTensor& operator=(const IrSparseCooTensor& other) = default;
 
-  IrSparseCooTensor& operator=(IrSparseCooTensor&& other) noexcept = default;
+  IrSparseCooTensor& operator=(IrSparseCooTensor&& other) noexcept;
 
   virtual ~IrSparseCooTensor() = default;
 
@@ -124,7 +124,7 @@ class IrSparseCsrTensor
 
   IrSparseCsrTensor& operator=(const IrSparseCsrTensor& other) = default;
 
-  IrSparseCsrTensor& operator=(IrSparseCsrTensor&& other) noexcept = default;
+  IrSparseCsrTensor& operator=(IrSparseCsrTensor&& other) noexcept;
 
   virtual ~IrSparseCsrTensor() = default;
 

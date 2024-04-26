@@ -32,6 +32,18 @@ IrSparseCooTensor::IrSparseCooTensor(phi::DataType dtype,
       non_zero_elements_(non_zero_elements),
       coalesced_(coalesced) {}
 
+IrSparseCooTensor& IrSparseCooTensor::operator=(
+    IrSparseCooTensor&& other) noexcept {
+  dims_ = std::move(other.dims());
+  non_zero_dims_ = std::move(other.non_zero_dims());
+  dtype_ = other.dtype();
+  layout_ = other.layout();
+  non_zero_indices_ = other.non_zero_indices();
+  non_zero_elements_ = other.non_zero_elements();
+  coalesced_ = other.coalesced();
+  return *this;
+}
+
 int64_t IrSparseCooTensor::numel() const { return common::product(dims_); }
 
 const phi::Place& IrSparseCooTensor::place() const {
@@ -57,6 +69,17 @@ IrSparseCsrTensor::IrSparseCsrTensor(phi::DataType dtype,
       non_zero_crows_(non_zero_crows),
       non_zero_cols_({non_zero_cols}),
       non_zero_elements_(non_zero_elements) {}
+
+IrSparseCsrTensor& IrSparseCsrTensor::operator=(
+    IrSparseCsrTensor&& other) noexcept {
+  dims_ = std::move(other.dims());
+  dtype_ = other.dtype();
+  layout_ = other.layout();
+  non_zero_crows_ = other.non_zero_crows();
+  non_zero_cols_ = other.non_zero_cols();
+  non_zero_elements_ = other.non_zero_elements();
+  return *this;
+}
 
 int64_t IrSparseCsrTensor::numel() const { return common::product(dims_); }
 
