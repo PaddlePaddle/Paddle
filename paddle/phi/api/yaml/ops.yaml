@@ -2396,6 +2396,7 @@
     func : reverse
     data_type : x
   backward : reverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)

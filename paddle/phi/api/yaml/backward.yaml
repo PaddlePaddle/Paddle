@@ -1870,6 +1870,12 @@
     data_type : x
   optional : boxes_num
 
+- backward_op : pull_sparse_v2_grad
+  forward : pull_sparse_v2 (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctrlabel_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true) -> Tensor[](out)
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctrlabel_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
+  output : Tensor[](out_grad_out)
+  invoke : push_sparse_v2(ids, w, out_grad, embedding_dim, table_id, accessor_class, ctrlabel_name, padding_id, scale_sparse_grad, input_names, is_distributed)
+
 - backward_op : push_gpups_sparse
   forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
   args : (Tensor[] ids, Tensor[] out_grad, int[] size, bool is_sparse, bool is_distributed)
