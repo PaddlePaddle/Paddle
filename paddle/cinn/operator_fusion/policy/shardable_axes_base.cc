@@ -107,13 +107,13 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
-  const auto reduce_axis_idx = [&]() -> declytype(auto) {
+  const auto reduce_axis_idx = [&]() -> decltype(auto) {
     const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
     return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
   }();
   CHECK_NE(reduce_axis_idx.size(), 0);
   bool keep_dim = GetReduceOpKeepDims(reduce_op);
-  const auto output_axes = [&]() -> declytype(auto) {
+  const auto output_axes = [&]() -> decltype(auto) {
     std::vector<std::string> axes;
     // In case of reduce all and keep_dim is false.
     if (reduce_axis_idx.size() == input_rank && !keep_dim) {
