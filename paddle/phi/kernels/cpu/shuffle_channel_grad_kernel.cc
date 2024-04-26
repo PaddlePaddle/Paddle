@@ -13,18 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/fake_quantize_kernel_impl.h"
+#include "paddle/phi/kernels/shuffle_channel_kernel.h"
 
-PD_REGISTER_KERNEL(fake_quantize_abs_max,
-                   GPU,
+PD_REGISTER_KERNEL(shuffle_channel_grad,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::FakeQuantizeAbsMaxKernel,
+                   phi::ShuffleChannelGradOpKernel,
                    float,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(fake_quantize_moving_average_abs_max,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::FakeQuantOrWithDequantMovingAverageAbsMaxKernel,
-                   float,
-                   phi::dtype::float16) {}
+                   double) {}

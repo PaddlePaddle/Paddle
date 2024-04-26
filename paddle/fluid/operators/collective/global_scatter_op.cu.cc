@@ -173,30 +173,30 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       auto recv_buf = out->data<T>();
 
       for (auto i = 0; i < n_expert; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
         for (auto j = 0; j < nranks; ++j) {
           int idx = i + j * n_expert;
           if (cpu_local_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-                send_buf + expert_ptr[idx] * in_feat,
-                cpu_local_count_data[idx] * in_feat,
-                dtype,
-                j,
-                comm->comm(),
-                stream));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::ncclSend(send_buf + expert_ptr[idx] * in_feat,
+                                       cpu_local_count_data[idx] * in_feat,
+                                       dtype,
+                                       j,
+                                       comm->comm(),
+                                       stream));
           }
           if (cpu_global_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-                recv_buf + recv_ptr * in_feat,
-                cpu_global_count_data[idx] * in_feat,
-                dtype,
-                j,
-                comm->comm(),
-                stream));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::ncclRecv(recv_buf + recv_ptr * in_feat,
+                                       cpu_global_count_data[idx] * in_feat,
+                                       dtype,
+                                       j,
+                                       comm->comm(),
+                                       stream));
             recv_ptr += cpu_global_count_data[idx];
           }
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
       }
     }
 

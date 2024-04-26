@@ -494,50 +494,7 @@ struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T>
-__global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
-                                              const T *in_accum,
-                                              const T *cur_scale,
-                                              const T rate,
-                                              T *out_state,
-                                              T *out_accum,
-                                              T *out_scale) {
-  T state = rate * (*in_state) + T(1.0f);
-  T accum = rate * (*in_accum) + (*cur_scale);
-  *out_state = state;
-  *out_accum = accum;
-  *out_scale = accum / state;
-}
-
 template struct FindRangeAbsMaxFunctor<phi::GPUContext, float>;
-
-template <typename T>
-struct FindMovingAverageAbsMaxFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &ctx,
-                  const phi::DenseTensor &in_accum,
-                  const phi::DenseTensor &in_state,
-                  const T *cur_scale,
-                  const float rate,
-                  phi::DenseTensor *out_state,
-                  phi::DenseTensor *out_accum,
-                  phi::DenseTensor *out_scale) {
-    const auto gpu_place = ctx.GetPlace();
-
-    T rate_t = static_cast<T>(rate);
-    T *out_state_data = out_state->mutable_data<T>(gpu_place);
-    T *out_accum_data = out_accum->mutable_data<T>(gpu_place);
-    T *out_scale_data = out_scale->mutable_data<T>(gpu_place);
-
-    FindMovingAverageAbsMaxKernel<T>
-        <<<1, 1, 0, ctx.stream()>>>(in_state.data<T>(),
-                                    in_accum.data<T>(),
-                                    cur_scale,
-                                    rate_t,
-                                    out_state_data,
-                                    out_accum_data,
-                                    out_scale_data);
-  }
-};
 
 // ChannelClipAndQuantDequantKernel for quant_axis is 0
 template <typename T>
