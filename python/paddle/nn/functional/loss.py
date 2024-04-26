@@ -1703,7 +1703,7 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
             >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-                   True)
+            True)
 
     """
     # ugly type promotion

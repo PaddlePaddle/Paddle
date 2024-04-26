@@ -1113,7 +1113,7 @@ class KLDivLoss(Layer):
             >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
             >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-                   True)
+            True)
     """
 
     def __init__(self, reduction='mean', log_target=False):
