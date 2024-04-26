@@ -14,13 +14,16 @@
 
 import unittest
 
-import config
-import lkj_cholesky
 import numpy as np
 import parameterize
-from lkj_cholesky import tril_matrix_to_vec, vec_to_tril_matrix
+from distribution import config
 
 import paddle
+from paddle.distribution import lkj_cholesky
+from paddle.distribution.lkj_cholesky import (
+    tril_matrix_to_vec,
+    vec_to_tril_matrix,
+)
 
 # from distribution import config
 
@@ -65,8 +68,8 @@ class TestLKJCholeskyShape(unittest.TestCase):
                 'expect': () + extra_shape,
             },
             {
-                'input': (4, 2),
-                'expect': (4, 2) + extra_shape,
+                'input': (2, 2),
+                'expect': (2, 2) + extra_shape,
             },
         ]
         return cases

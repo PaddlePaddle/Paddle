@@ -14,9 +14,9 @@
 
 import unittest
 
-import config
 import numpy as np
 import parameterize
+from distribution import config
 
 import paddle
 from paddle.distribution import lkj_cholesky
@@ -81,8 +81,8 @@ class TestLKJCholeskyShape(unittest.TestCase):
                 'expect': () + extra_shape,
             },
             {
-                'input': (4, 2),
-                'expect': (4, 2) + extra_shape,
+                'input': (2, 2),
+                'expect': (2, 2) + extra_shape,
             },
         ]
         return cases

@@ -14,15 +14,13 @@
 
 import unittest
 
-import chi2
-
-# from distribution import config
-import config
 import numpy as np
 import parameterize
 import scipy.stats
+from distribution import config
 
 import paddle
+from paddle.distribution import chi2
 
 paddle.enable_static()
 
