@@ -77,6 +77,15 @@ class MypyChecker(TypeChecker):
             [f'--config-file={self.config_file}', '-c', example_code]
         )
 
+        logger.error('-' * 20)
+        logger.error('>>> Type hints ...')
+        logger.error(example_code)
+        logger.error('>>> Results ...')
+        logger.error(normal_report)
+        logger.error(error_report)
+        logger.error(exit_status)
+        logger.error('!' * 20)
+
         return TestResult(
             api_name=api_name,
             msg='\n'.join([normal_report, error_report]),
