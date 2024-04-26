@@ -133,6 +133,9 @@ COMPUTE_INTENSIVE_OPS: List[str] = [
     "pd_op.layer_norm",
     "pd_op.batchnorm",
     "pd_op.softmax",
+    "pd_op.c_allreduce_sum_",
+    "pd_op.c_broadcast_",
+    "pd_op.c_reduce_sum_",
 ]
 
 
@@ -364,11 +367,21 @@ def auto_recompute(
             continue
 
         if value_node in required_bw_value_nodes:
+            print(
+                "add edge link from: ", value_node.id, " -> ", "sink", " (inf) "
+            )
             nx_graph.add_edge(value_node.id + "_in", "sink", capacity=math.inf)
             value_id_dict[value_node.id] = value_node
             continue
 
         if value_node in inputs:
+            print(
+                "add edge link from: ",
+                " source ",
+                " -> ",
+                value_node.id,
+                " (inf)",
+            )
             nx_graph.add_edge(
                 "source", value_node.id + "_in", capacity=math.inf
             )
@@ -381,6 +394,13 @@ def auto_recompute(
             _ban_recomputation(value_node)
             and value_node in required_fw_value_nodes
         ):
+            print(
+                "add edge link from: ",
+                " source ",
+                " -> ",
+                value_node.id,
+                "(inf)",
+            )
             nx_graph.add_edge(
                 "source", value_node.id + "_in", capacity=math.inf
             )
@@ -402,11 +422,20 @@ def auto_recompute(
 
         users = find_value_node_users(value_node)
         for user in users:
+            print(
+                "add edge link from: ",
+                value_node.id,
+                " -> ",
+                user.id,
+                " (inf) ",
+            )
             nx_graph.add_edge(
                 value_node.id + "_out", user.id + "_in", capacity=math.inf
             )
+
     # 1.5  find saved values by minimum cut.
-    _, partition = nx.minimum_cut(nx_graph, "source", "sink")
+    cut_value, partition = nx.minimum_cut(nx_graph, "source", "sink")
+    print("Cut Value:", cut_value)
     reachable, non_reachable = partition
     cutset = set()
     for u, nbrs in ((n, nx_graph[n]) for n in reachable):
@@ -420,7 +449,8 @@ def auto_recompute(
 
     saved_values = cut_value_nodes
     # (TODO: wanghao107): remove it and fix model
-    saved_values = cut_value_nodes | inputs
+    # saved_values = cut_value_nodes | inputs
+    saved_values = cut_value_nodes
     # 2.patition the joint graph by saved values.
     (
         program_after_recompute,
@@ -475,6 +505,24 @@ def partition_joint_graph(
         backward_op_start_idx,
     )
 
+    print(
+        "Saved_Values:",
+    )
+
+    def getIdx(program, op):
+        for idx, op_iter in enumerate(program.global_block().ops):
+            if op == op_iter:
+                return idx
+        raise RuntimeError("op not found in program")
+
+    for value in saved_values:
+        print(
+            "Saved Values:",
+            value,
+            getIdx(program, value.get_defining_op()),
+            value.id,
+        )
+
     # 2. Extract the recompute subgraph and replace forward mid hold values with recompute subgraph's outputs
     program, fwd_op_end_idx = replace_mid_values_with_forward_subgraph(
         program,
@@ -498,7 +546,10 @@ def replace_mid_values_with_forward_subgraph(
             saved_values,
             marked_recompute_ops,
             needed_saved_values,
+            chain,
         ):
+            new_chain = list(chain)
+            new_chain.append(recompute_value)
             define_op = recompute_value.get_defining_op()
             if define_op in marked_recompute_ops:
                 return
@@ -507,6 +558,23 @@ def replace_mid_values_with_forward_subgraph(
                 "pd_op.full",
                 "pd_op.full_int_array",
             ]:
+
+                def getIdx(program, op):
+                    for idx, op_iter in enumerate(program.global_block().ops):
+                        if op == op_iter:
+                            return idx
+                    raise RuntimeError("op not found in program")
+
+                for value in new_chain:
+                    print(
+                        "Error Chain is:",
+                        value,
+                        getIdx(program, value.get_defining_op()),
+                        value.id,
+                    )
+                print(
+                    f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
+                )
                 raise Exception(
                     f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
                 )
@@ -520,6 +588,7 @@ def replace_mid_values_with_forward_subgraph(
                     saved_values,
                     marked_recompute_ops,
                     needed_saved_values,
+                    new_chain,
                 )
             marked_recompute_ops.add(define_op)
             return
@@ -528,13 +597,22 @@ def replace_mid_values_with_forward_subgraph(
         recompute_subgraph_ops = set()
         recompute_subgraph_inputs = backward_utils.ValueSet()
         recompute_subgraph_outputs_backward_needed = mid_values
+
+        def getIdx(program, op):
+            for idx, op_iter in enumerate(program.global_block().ops):
+                if op == op_iter:
+                    return idx
+            raise RuntimeError("op not found in program")
+
         for recompute_value in mid_values:
             _find_recompute_ops(
                 recompute_value,
                 saved_values,
                 recompute_subgraph_ops,
                 recompute_subgraph_inputs,
+                [],
             )
+        print("Recompute Ops: ", len(recompute_subgraph_ops))
         recompute_subgraph = {
             "inputs": recompute_subgraph_inputs,
             "recompute_ops": recompute_subgraph_ops,
@@ -615,8 +693,8 @@ def classify_value_node(program, grad_outputs, fwd_op_end_idx):
         )
     return (
         required_fw_value_nodes,
-        required_bw_value_nodes,
-        unclaimed_value_nodes,
+        required_bw_value_nodes | unclaimed_value_nodes,
+        backward_utils.ValueSet(),
     )
 
 
