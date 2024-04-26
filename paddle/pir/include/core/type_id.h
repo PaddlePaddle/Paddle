@@ -32,7 +32,7 @@ namespace pir {
 ///   TypeId type_a_id = TypeId::get<TypeA>();
 /// \endcode
 ///
-class TypeId {
+class IR_API TypeId {
   struct Storage {};
 
  public:
