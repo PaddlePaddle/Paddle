@@ -1145,8 +1145,6 @@ class DistForwardAPI(ForwardAPI):
                                 output_creation_code += MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
                                     idx=i, out=get_out_code
                                 )
-                            if 'reshape' in self.api:
-                                print("55555")
                 elif out_type == 'std::vector<Tensor>':
                     self.vector_output_size_assertion_check()
                     # Special case for inplace vector and inplace optional<vector>
