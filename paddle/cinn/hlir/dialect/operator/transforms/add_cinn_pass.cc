@@ -42,6 +42,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -215,6 +216,9 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyBuildGroupOpPass(program, CreatePassManager);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
+  LOG(INFO) << "====[pir-to-py-code begin]===" << std::endl
+            << PirToPyCodeConverter().Convert(*program);
+  LOG(INFO) << "====[pir-to-py-code end]===";
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
