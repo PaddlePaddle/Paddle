@@ -154,6 +154,11 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self.program_mem_usages = []
         self.program_max_mem_usages = []
         self.base_memory = []
+        self.program_runtime = {
+            "forward": 1000,
+            "backward": 1000,
+            "communication": 1,
+        }
 
     def _create_job_list(self):
         pass
@@ -165,14 +170,12 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self._split_matmul_grad_ops_to_matmul(program, dist_context)
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         types, sub_program_list = _program_for_zero_bubble_vpp(
-            program, num_model_chunks, enable_send_recv_overlap
+            program, num_model_chunks, dist_context, enable_send_recv_overlap
         )
         self._estimate_program_mem_usagess(
             types, sub_program_list, dist_context
         )
-
-        device_num = paddle.distributed.get_world_size()
-        self._get_all_device_base_memory(device_num)
+        self._get_all_device_base_memory()
 
         return types, sub_program_list
 
@@ -195,7 +198,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         mem_usages = paddle.to_tensor(mem_usages)
         max_mem_usages = paddle.to_tensor(max_mem_usages)
 
-        # Get memory usage from all devices
+        # Get program memory usage from all devices
         all_mem_usages = []
         all_max_usages = []
         paddle.distributed.all_gather(all_mem_usages, mem_usages)
@@ -209,8 +212,9 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
                 self.program_mem_usages[id][type] = all_mem_usages[id][i]
                 self.program_max_mem_usages[id][type] = all_max_usages[id][i]
 
-    def _get_all_device_base_memory(self, device_num):
+    def _get_all_device_base_memory(self):
         self.base_memory = []
-        for i in range(device_num):
-            mem_allocated = paddle.device.cuda.memory_allocated(i)
-            self.base_memory.append(mem_allocated)
+        rank = self.get_attr("pp_stage")
+        base_memory = paddle.device.cuda.memory_allocated(rank)
+        base_memory = paddle.to_tensor(base_memory)
+        paddle.distributed.all_gather(self.base_memory, base_memory)

@@ -748,10 +748,20 @@ def _program_for_vpp(
 
         return type_to_ops
 
+    type_to_program = _build_vpp_sub_programs(program, _split_ops)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
+
+
+def _build_vpp_sub_programs(program, split_method):
     type_to_program = OrderedDict()
 
     for ib, src_block in enumerate(program.blocks):
-        type_to_ops = _split_ops(src_block)
+        type_to_ops = split_method(src_block)
         fetch_ops = type_to_ops.pop("fetch", [])
         dst_blocks = []
 
@@ -784,11 +794,7 @@ def _program_for_vpp(
             if fetch_block:
                 _create_program(src_block, fetch_block, fetch_op)
 
-    for prog in type_to_program.values():
-        prog._sync_with_cpp()
-        prog._roll_to_global_block()
-
-    return list(type_to_program.keys()), list(type_to_program.values())
+    return type_to_program
 
 
 def _get_backward_op_type(block, op):
@@ -920,6 +926,82 @@ def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
                     break
             if dst_block:
                 _create_program(src_block, dst_block, fetch_op)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
+
+
+def _program_for_zero_bubble_vpp(
+    program, num_model_chunks, dist_context, enable_send_recv_overlap=False
+):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program, dist_context)
+
+    oprole_type = {
+        0: "forward",
+        1: "backward_b",
+        2: "backward_w",
+        3: "optimizer",
+    }
+
+    def _split_ops(block):
+        type_to_ops = OrderedDict()
+        chunk_ids = list(range(num_model_chunks))
+        for type in oprole_type.values():
+            if type == "optimizer":
+                type_to_ops[type] = []
+            else:
+                chunk_ids = (
+                    chunk_ids if type != "backward" else reversed(chunk_ids)
+                )
+                for chunk_id in chunk_ids:
+                    type_to_ops[type + str(chunk_id)] = []
+        type_to_ops["fetch"] = []
+
+        for ip, op in enumerate(block.ops):
+            if is_forward_op(op):
+                type = oprole_type[0]
+            elif is_backward_op(op):
+                type = _get_backward_op_type(block, op)
+            elif is_optimize_op(op):
+                type = oprole_type[2]
+            else:
+                raise ValueError(
+                    "The op role: "
+                    + str(op.attr('op_role'))
+                    + " isn't one of Forward, Backward or Optimizer."
+                )
+
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if _is_fetch_op(op):
+                type_to_ops["fetch"].append(op)
+            elif is_optimize_op(op):
+                type_to_ops[type].append(op)
+            elif op.type == "feed":
+                type_to_ops[type + str(0)].append(op)
+            elif op.type == "share_buffer":
+                dist_pre_op = dist_context.get_dist_op_for_program(
+                    block.ops[ip - 1]
+                )
+                type_to_ops[type + str(dist_pre_op.dist_attr.chunk_id)].append(
+                    op
+                )
+            elif (
+                dist_op
+                and type + str(dist_op.dist_attr.chunk_id) in type_to_ops
+            ):
+                type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(op)
+            else:
+                raise ValueError(f"There is not dist_attr for op[{op.type}].")
+
+        return type_to_ops
+
+    type_to_program = _build_vpp_sub_programs(program, _split_ops)
 
     for prog in type_to_program.values():
         prog._sync_with_cpp()
