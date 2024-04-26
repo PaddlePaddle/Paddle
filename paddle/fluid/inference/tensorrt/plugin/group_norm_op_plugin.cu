@@ -238,7 +238,7 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // nchw32 layout
-  int c_offset = ci / 32 * params.hw * 32 + ci % 32;
+  int c_offset = ci / 32 * params.dhw * 32 + ci % 32;
 
   // Iterate over the activations to compute the sums.
   for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
@@ -743,7 +743,7 @@ int GroupNormPluginDynamic::enqueue(
       if (cPerBlock > input_desc[0].dims.d[1]) {
         cPerBlock = 8;
       }
-      auto d_dim = input_desc[0].dims.d.size();
+      auto d_dim = input_desc[0].dims.nbDims;
       params_.n = input_desc[0].dims.d[0];
       if (d_dim == 3) {
         params_.c = input_desc[0].dims.d[1];
