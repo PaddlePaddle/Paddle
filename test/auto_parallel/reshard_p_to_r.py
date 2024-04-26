@@ -104,8 +104,8 @@ class TestReshardPToR:
         for op in ops:
             if op.name() == 'pd_op.c_allreduce_sum_':
                 # check op dist_attr
-                assert op.dist_attr.num_operand_dist_attrs() == 1
-                assert op.dist_attr.num_result_dist_attrs() == 1
+                assert op.dist_attr.num_operands() == 1
+                assert op.dist_attr.num_results() == 1
 
                 op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
                 op_result_dist_attr = op.dist_attr.result_dist_attr(0)

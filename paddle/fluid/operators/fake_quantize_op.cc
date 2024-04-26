@@ -316,32 +316,6 @@ struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
 
 template struct FindRangeAbsMaxFunctor<phi::CPUContext, float>;
 
-template <typename T>
-struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &in_accum,
-                  const phi::DenseTensor &in_state,
-                  const T *cur_scale,
-                  const float rate,
-                  phi::DenseTensor *out_state,
-                  phi::DenseTensor *out_accum,
-                  phi::DenseTensor *out_scale) {
-    T accum = in_accum.data<T>()[0];
-    T state = in_state.data<T>()[0];
-    T scale = cur_scale[0];
-
-    state = rate * state + 1;
-    accum = rate * accum + scale;
-    scale = accum / state;
-
-    out_state->mutable_data<T>(ctx.GetPlace())[0] = state;
-    out_accum->mutable_data<T>(ctx.GetPlace())[0] = accum;
-    out_scale->mutable_data<T>(ctx.GetPlace())[0] = scale;
-  }
-};
-
-template struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, float>;
-
 class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
   FakeQuantOrWithDequantAbsMaxOp(const std::string &type,
@@ -856,18 +830,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_range_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeQuantizeRangeAbsMaxKernel,
-                          float) {}
-
-REGISTER_OPERATOR(
-    fake_quantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_moving_average_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeMovingAverageAbsMaxKernel,
                           float) {}
 
 REGISTER_OPERATOR(

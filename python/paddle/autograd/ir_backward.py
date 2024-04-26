@@ -560,7 +560,10 @@ def append_backward_ops(
                     )
                     append_full_like(0.0, new_value, value, state, backward_ops)
 
-                input_grad = state.value_to_valuegrad[value][0][0]
+                input_grad = return_map_value(
+                    state.value_to_valuegrad[value][0][0],
+                    bwd_value_to_block_argument_map,
+                )
 
                 inputs_grad.append(input_grad)
 

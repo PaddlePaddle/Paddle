@@ -84,14 +84,15 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         out_scale->mutable_data<T>(context.GetPlace());
         float moving_rate = context.Attr<float>("moving_rate");
 
-        FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
-                                                           *in_accum,
-                                                           *in_state,
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+        phi::funcs::FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx,
+            *in_accum,
+            *in_state,
+            cur_scale_data,
+            moving_rate,
+            out_state,
+            out_accum,
+            out_scale);
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {

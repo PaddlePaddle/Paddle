@@ -16,6 +16,7 @@
 
 #include <Python.h>
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -24,6 +25,7 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -80,6 +82,7 @@ using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::DistDenseTensorType;
+using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
@@ -410,6 +413,8 @@ void BindBlock(py::module *m) {
       .def("__len__", [](Block &self) { return self.size(); })
       .def("args", &Block::args, return_value_policy::reference)
       .def("kwargs", &Block::kwargs, return_value_policy::reference)
+      .def("add_kwarg", &Block::AddKwarg)
+      .def("erase_kwarg", &Block::EraseKwarg)
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
@@ -762,6 +767,33 @@ phi::DataType GetValueDtype(Value value) {
   }
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
@@ -812,6 +844,18 @@ pir::Value apply(Value self, py::object func) {
 }
 
 #define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return bool_data && bool_data.data();                                 \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_STOP_GRADIENT_PROPERTY(name)                                \
   def_property(                                                               \
       name,                                                                   \
       [](Value self) {                                                        \
@@ -881,24 +925,19 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
+      .def_property_readonly("name",
+                             [](Value self) { return GetValueName(self); })
       .def_property_readonly(
-          "name",
+          "has_name",
           [](Value self) {
-            if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
-              return param_op.param_name();
-            } else if (auto data_op =
-                           self.defining_op<paddle::dialect::DataOp>()) {
-              return data_op.attribute<pir::StrAttribute>("name").AsString();
-            } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
-              if (block_arg.is_kwarg()) {
-                return block_arg.keyword();
-              } else {
-                return "arg_" + std::to_string(block_arg.index());
-              }
+            if (self.defining_op()->isa<::pir::ParameterOp>() ||
+                self.defining_op()->isa<paddle::dialect::DataOp>() ||
+                self.isa<BlockArgument>() ||
+                (self.first_use() &&
+                 self.first_use().owner()->isa<::pir::ShadowOutputOp>())) {
+              return true;
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of Value that "
-                  "is persistable"));
+              return false;
             }
           })
       .def_property(
@@ -937,7 +976,7 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_STOP_GRADIENT_PROPERTY("stop_gradient")
       .DEF_VALUE_BOOL_PROPERTY("trainable")
       .DEF_VALUE_BOOL_PROPERTY("persistable")
       .DEF_VALUE_BOOL_PROPERTY("need_clip")
@@ -1004,12 +1043,24 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
-      .def("dist_attr", [](Value &self) {
-        if (!self.type().isa<DistDenseTensorType>()) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "dist_attr is only for distdense tensor."));
+      .def("is_dist",
+           [](Value self) { return self.type().isa<DistTypeInterface>(); })
+      .def(
+          "dist_attr",
+          [](Value &self) {
+            if (!self.type().isa<DistTypeInterface>()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "dist_attr is only for dist type tensor."));
+            }
+            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
+          })
+      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
+        if (auto dist_type = self.type().dyn_cast<DistTypeInterface>()) {
+          self.set_type(dist_type.CopyWithNewDistAttr(dist_attr));
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "update_dist_attr is only for dist type tensor."));
         }
-        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
       });
 }
 
@@ -1090,6 +1141,43 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
+
+  ir_insertion_point
+      .def(
+          "next",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->end()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the end and can't call "
+                  "next()."));
+            }
+            return *(self.value.second++);
+          },
+          return_value_policy::reference)
+      .def(
+          "prev",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->begin()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the begin and can't call "
+                  "prev()."));
+            }
+            return *(self.value.second--);
+          },
+          return_value_policy::reference)
+      .def(
+          "get_operation",
+          [](PyInsertionPoint &self) -> Operation & {
+            if (self.value.second == self.value.first->begin()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the begin."));
+            } else if (self.value.second == self.value.first->end()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The insertion point is already at the end."));
+            }
+            return *(self.value.second);
+          },
+          return_value_policy::reference);
 }
 
 std::list<Operation *>::const_iterator list_offset(const Block *block,
@@ -1444,6 +1532,46 @@ int AppendShadowOutputs(Program *forward_program,
   return counter;
 }
 
+std::unordered_map<::pir::Value, std::string> GetNameMap(
+    const ::pir::Block *block) {
+  std::unordered_map<::pir::Value, std::string> value2name;
+  for (auto &kwarg : block->kwargs()) {
+    value2name[kwarg.second] = kwarg.first;
+  }
+  for (auto &op : *block) {
+    std::string name;
+    if (op.name() == "pd_op.data") {
+      name =
+          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      value2name[op.results()[0].Value::impl()] = name;
+    } else if (op.name() == "builtin.set_parameter") {
+      name = op.attributes()
+                 .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.operand(0).source()] = name;
+    } else if (op.name() == "builtin.shadow_output") {
+      name = op.attributes()
+                 .at("output_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.operand(0).source()] = name;
+    } else if (op.name() == "builtin.parameter") {
+      name = op.attributes()
+                 .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.result(0).Value::impl()] = name;
+    } else if (op.name() == "builtin.constant") {
+      if (op.isa<pir::ConstantTensorOp>()) {
+        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
+        value2name[op.result(0).Value::impl()] = name;
+      }
+    }
+  }
+  return value2name;
+}
+
 std::shared_ptr<Program> RemoveNoNeedShadowOutput(const Program &program) {
   pir::IrMapping mapper;
   auto cloned_program = program.Clone(mapper);
@@ -1611,21 +1739,7 @@ SplitedResult SplitForwardBackward(
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
-  int counter = 0;
-  auto create_kwarg_fn = [&backward_block,
-                          &backward_inputs,
-                          &backward_value_map,
-                          &replacement_for_forward_middles,
-                          &replacement_for_forward_outputs,
-                          &counter](const pir::Value &v) {
-    if (v && !backward_value_map.count(v) &&
-        (backward_inputs.count(v) ||
-         ExistsInMapValues(replacement_for_forward_middles, v) ||
-         ExistsInMapValues(replacement_for_forward_outputs, v))) {
-      backward_value_map[v] = backward_block.AddKwarg(
-          "input_" + std::to_string(counter++), v.type());
-    }
-  };
+  int counter = forward_outputs.size();
 
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
@@ -1670,6 +1784,37 @@ SplitedResult SplitForwardBackward(
         {backward_value_map.at(v)}, attribute_map, {}, op_info);
     backward_program->block()->push_back(operation);
     counter += 1;
+  };
+
+  VLOG(4) << "start create forward outputs, inserting shadow_output ops.";
+  std::for_each(
+      middle_values.begin(), middle_values.end(), create_output_fn_forward);
+  std::for_each(forward_outputs_mutable.begin(),
+                forward_outputs_mutable.end(),
+                create_output_fn_forward);
+
+  pir::Block *forward_block = forward_program->block();
+  const auto &forward_name_map = GetNameMap(forward_block);
+  auto create_kwarg_fn = [&backward_block,
+                          &backward_inputs,
+                          &backward_value_map,
+                          &forward_value_map,
+                          &forward_name_map,
+                          &replacement_for_forward_middles,
+                          &replacement_for_forward_outputs,
+                          &counter](const pir::Value &v) {
+    if (v && !backward_value_map.count(v) &&
+        (backward_inputs.count(v) ||
+         ExistsInMapValues(replacement_for_forward_middles, v) ||
+         ExistsInMapValues(replacement_for_forward_outputs, v))) {
+      auto forward_value = forward_value_map[v];
+      std::string name = "input_" + std::to_string(counter++);
+      if (forward_name_map.count(forward_value)) {
+        name = forward_name_map.at(forward_value);
+      }
+
+      backward_value_map[v] = backward_block.AddKwarg(name, v.type());
+    }
   };
 
   if (has_backward) {
@@ -1717,13 +1862,6 @@ SplitedResult SplitForwardBackward(
     }
   }
 
-  VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
-  std::for_each(
-      middle_values.begin(), middle_values.end(), create_output_fn_forward);
-  std::for_each(forward_outputs_mutable.begin(),
-                forward_outputs_mutable.end(),
-                create_output_fn_forward);
-
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
   range_block_do(
@@ -1733,7 +1871,7 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
+  VLOG(4) << "start create backward outputs, inserting shadow_output ops.";
   if (has_backward) {
     std::for_each(forward_inputs_grads.begin(),
                   forward_inputs_grads.end(),
@@ -1830,6 +1968,35 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
   }
 }
 
+static void inline CreateVariableIfNotExist(
+    const std::vector<pir::Value> &var_list,
+    framework::Scope *scope,
+    const framework::Executor *exe = nullptr) {
+  size_t len = var_list.size();
+
+  for (size_t i = 0; i < len; ++i) {
+    pir::Value value = var_list[i];
+    std::string para_name = GetValueName(value);
+    auto var = scope->FindVar(para_name);
+    if (var == nullptr) {
+      PADDLE_ENFORCE_NOT_NULL(exe,
+                              phi::errors::InvalidArgument(
+                                  "Parameter not Initialized, "
+                                  "Please set argument [executor] not None "
+                                  "or run startup program first"));
+      var = scope->Var(para_name);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(
+          common::make_ddim(phi::vectorize(GetValueDims(value))));
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(exe->GetPlace());
+      dev_ctx->Alloc(tensor_temp, GetValueDtype(value));
+    }
+  }
+  return;
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1838,6 +2005,7 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
 }
 
 void BindUtils(pybind11::module *m) {
+  m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
