@@ -25,7 +25,7 @@ def geqrf(x):
         tau = np.zeros([n, 1], dtype=x.dtype)
         for i in range(min(n, m)):
             alpha = x[i, i]
-            normx = np.linalg.norm(x[min(i + 1, m) :, i])
+            normx = np.linalg.norm(x[min(i + 1, m):, i])
             beta = np.linalg.norm(x[i:, i])
             if x.dtype in [np.complex64, np.complex128]:
                 s = 1 if alpha < 0 else -1
@@ -35,7 +35,7 @@ def geqrf(x):
             u1 = alpha - s * beta
             w = x[i:, i] / u1
             w[0] = 1
-            x[i + 1 :, i] = w[1 : m - i + 1]
+            x[i + 1:, i] = w[1: m - i + 1]
             if normx == 0:
                 tau[i] = 0
             else:
@@ -43,12 +43,12 @@ def geqrf(x):
                 x[i, i] = s * beta
             w = w.reshape([-1, 1])
             if x.dtype in [np.complex64, np.complex128]:
-                x[i:, i + 1 :] = x[i:, i + 1 :] - (tau[i] * w) @ (
-                    np.conj(w).T @ x[i:, i + 1 :]
+                x[i:, i + 1:] = x[i:, i + 1:] - (tau[i] * w) @ (
+                    np.conj(w).T @ x[i:, i + 1:]
                 )
             else:
-                x[i:, i + 1 :] = x[i:, i + 1 :] - (tau[i] * w) @ (
-                    w.T @ x[i:, i + 1 :]
+                x[i:, i + 1:] = x[i:, i + 1:] - (tau[i] * w) @ (
+                    w.T @ x[i:, i + 1:]
                 )
         return x, tau[: min(m, n)].reshape(-1)
 
@@ -256,10 +256,31 @@ class TestOrmqrAPI_householder_error(TestOrmqrAPI):
 class TestOrmqrAPI_other_error(TestOrmqrAPI):
     def test_error(self):
         with self.assertRaises(AssertionError):
-            x = paddle.randn([3, 4], dtype='float32')
+            x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([3, 3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other)
+            other = paddle.randn([3, 4], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, other, left=True, transpose=True)
+
+        with self.assertRaises(AssertionError):
+            x = paddle.randn([4, 3], dtype='float32')
+            tau = paddle.randn([3], dtype='float32')
+            other = paddle.randn([4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(
+                x, tau, other, left=True, transpose=False)
+
+        with self.assertRaises(AssertionError):
+            x = paddle.randn([4, 3], dtype='float32')
+            tau = paddle.randn([3], dtype='float32')
+            other = paddle.randn([3, 4], dtype='float32')
+            out = paddle.linalg.ormqr(
+                x, tau, other, left=False, transpose=False)
+
+        with self.assertRaises(AssertionError):
+            x = paddle.randn([4, 3], dtype='float32')
+            tau = paddle.randn([3], dtype='float32')
+            other = paddle.randn([4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(
+                x, tau, other, left=False, transpose=True)
 
 
 class TestOrmqrAPI_batch_error(TestOrmqrAPI):
