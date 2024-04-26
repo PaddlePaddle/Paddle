@@ -3906,6 +3906,17 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims(common::make_ddim({}));
 }
 
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The layout of input is NCHW."));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(input_dims);
+}
+
 // This logic is copied from
 // `paddle/fluid/operators/slice_op.cc/SliceOp::InferShape`
 void SliceArrayInferMeta(const MetaTensor& input,

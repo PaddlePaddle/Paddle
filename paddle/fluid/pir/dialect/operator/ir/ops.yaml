@@ -1351,6 +1351,17 @@
     func : prune_gate_by_capacity
     data_type : gate_idx
 
+- op : pull_gpups_sparse
+  args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
+  output : Tensor[](out){ids.size()}
+  infer_meta :
+    func : PullGpupsSparseInferMeta
+  kernel :
+    func : pull_gpups_sparse
+    data_type : PullGpupsSparseKernelKey
+  optional : w
+  backward: push_gpups_sparse
+
 - op : push_dense
   args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
   output :
