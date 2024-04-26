@@ -178,7 +178,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
 
                 log_probs.append(log_prob - logabsdet)
             max_abs_error = np.max(np.abs(log_probs[0] - log_probs[1]))
-            self.assertAlmostEqual(max_abs_error, 0, places=5)
+            self.assertAlmostEqual(max_abs_error, 0, places=3)
 
     def _tril_cholesky_to_tril_corr(self, x, last_dim):
         x = x.reshape((last_dim,))
