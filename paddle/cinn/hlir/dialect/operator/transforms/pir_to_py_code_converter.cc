@@ -680,9 +680,10 @@ struct PirToPyCodeConverterHelper {
     const std::string& block_signature = ConvertBlockSignatureAsArgs(op);
     std::stringstream ss;
     ss << "self." << ConvertOpUniqueName(op) << " = self.Op("
-       << std::quoted(op->name()) << ", " << id << ", " << input_types_str
-       << ", " << output_types_str << (attrs_as_args.empty() ? "" : ", ")
-       << attrs_as_args;
+       << std::quoted(op->name()) << ", " << id << ", "
+       << "input_types=" << input_types_str
+       << ", output_types=" << output_types_str << ", attrs=dict("
+       << attrs_as_args << ")";
     if (!block_signature.empty()) {
       ss << ", " << block_signature;
     }

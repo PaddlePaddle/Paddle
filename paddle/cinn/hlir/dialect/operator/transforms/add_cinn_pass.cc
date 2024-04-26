@@ -214,11 +214,14 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
+  LOG(INFO) << "====[pir-to-py-code group-ops begin]===" << std::endl
+            << PirToPyCodeConverter().Convert(*program);
+  LOG(INFO) << "====[pir-to-py-code group-ops end]===";
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  LOG(INFO) << "====[pir-to-py-code begin]===" << std::endl
+  LOG(INFO) << "====[pir-to-py-code fusion-ops begin]===" << std::endl
             << PirToPyCodeConverter().Convert(*program);
-  LOG(INFO) << "====[pir-to-py-code end]===";
+  LOG(INFO) << "====[pir-to-py-code fusion-ops end]===";
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
