@@ -96,7 +96,7 @@ class alignas(8) UniqueingId {
 };
 
 template <typename T>
-class TypeIdResolver;
+class TEST_API TypeIdResolver;
 
 }  // namespace detail
 
@@ -129,11 +129,11 @@ TypeId TypeId::get() {
   }                                                    \
   }  // namespace pir
 
-#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)             \
-  namespace pir {                                          \
-  namespace detail {                                       \
-  UniqueingId IR_API TypeIdResolver<TYPE_CLASS>::id_ = {}; \
-  }                                                        \
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
+  namespace pir {                                   \
+  namespace detail {                                \
+  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                 \
   }  // namespace pir
 
 }  // namespace pir
