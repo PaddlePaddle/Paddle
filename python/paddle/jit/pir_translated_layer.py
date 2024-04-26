@@ -74,8 +74,6 @@ class _PirProgramHolder:
 
         self.support_train = trainable
         self._infer_program = program
-        self._forward_program = program
-        self._backward_program = paddle.pir.Program()
 
         self._preprocess()
 
@@ -135,18 +133,6 @@ class _PirProgramHolder:
     @property
     def scope(self):
         return self._inner_scope
-
-    @property
-    def forward_program(self):
-        return self._forward_program
-
-    @property
-    def backward_program(self):
-        return self._backward_program
-
-    @property
-    def train_attr(self):
-        return self._train_attr
 
 
 # [ PirTranslatedLayer : Run program in dygraph mode ]
@@ -353,9 +339,9 @@ def _run_dygraph(instance, input, program_holder):
     if instance._is_test:
         attrs = [
             'forward_global_block',
-            program_holder._infer_program.global_block(),
+            program_holder.infer_program.global_block(),
             'backward_global_block',
-            program_holder.backward_program.global_block(),
+            paddle.pir.Program().global_block(),
             'is_test',
             instance._is_test,
             'program_id',
@@ -389,12 +375,12 @@ def _run_dygraph(instance, input, program_holder):
     else:
         from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
 
-        inputs = program_holder._input_vars
-        outputs = program_holder._output_vars
-        parameters = (persistable_tensors, program_holder._persistable_vars)
+        inputs = program_holder.input_vars
+        outputs = program_holder.output_vars
+        parameters = (persistable_tensors, program_holder.persistable_vars)
 
         layer = PartialProgramLayer(
-            program_holder._infer_program,
+            program_holder.infer_program,
             inputs,
             outputs,
             parameters,
