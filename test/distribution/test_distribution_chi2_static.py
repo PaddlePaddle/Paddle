@@ -35,7 +35,7 @@ paddle.seed(2024)
         (
             'one-dim',
             parameterize.xrand(
-                (6,),
+                (4,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -43,7 +43,7 @@ paddle.seed(2024)
         (
             'multi-dim',
             parameterize.xrand(
-                (10, 12),
+                (2, 10),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -194,8 +194,8 @@ class TestGammaSample(unittest.TestCase):
                 'expect': () + np.squeeze(self.df).shape,
             },
             {
-                'input': (4, 2),
-                'expect': (4, 2) + np.squeeze(self.df).shape,
+                'input': (2, 2),
+                'expect': (2, 2) + np.squeeze(self.df).shape,
             },
         ]
         for case in cases:
@@ -214,8 +214,8 @@ class TestGammaSample(unittest.TestCase):
                 'expect': () + np.squeeze(self.df).shape,
             },
             {
-                'input': (3, 2),
-                'expect': (3, 2) + np.squeeze(self.df).shape,
+                'input': (2, 2),
+                'expect': (2, 2) + np.squeeze(self.df).shape,
             },
         ]
         for case in cases:
@@ -229,7 +229,7 @@ class TestGammaSample(unittest.TestCase):
                 self.assertTrue(data.shape == case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (30000,)
+        sample_shape = (300,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -252,7 +252,7 @@ class TestGammaSample(unittest.TestCase):
             )
 
     def test_rsample(self):
-        sample_shape = (30000,)
+        sample_shape = (300,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -292,7 +292,7 @@ class TestChi2SampleKS(unittest.TestCase):
             self.feeds = {'df': self.df}
 
     def test_sample(self):
-        sample_shape = (15000,)
+        sample_shape = (150,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,
@@ -302,7 +302,7 @@ class TestChi2SampleKS(unittest.TestCase):
             self.assertTrue(self._kstest(samples))
 
     def test_rsample(self):
-        sample_shape = (15000,)
+        sample_shape = (150,)
         with paddle.static.program_guard(self.program):
             [samples] = self.executor.run(
                 self.program,

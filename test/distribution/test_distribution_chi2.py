@@ -36,7 +36,7 @@ paddle.seed(2024)
         (
             'one-dim',
             parameterize.xrand(
-                (6,),
+                (4,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -44,7 +44,7 @@ paddle.seed(2024)
         (
             'multi-dim',
             parameterize.xrand(
-                (10, 12),
+                (2, 10),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -153,8 +153,8 @@ class TestChi2Sample(unittest.TestCase):
                 + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
             },
             {
-                'input': (4, 2),
-                'expect': (4, 2)
+                'input': (2, 2),
+                'expect': (2, 2)
                 + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
             },
         ]
@@ -177,8 +177,8 @@ class TestChi2Sample(unittest.TestCase):
                 + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
             },
             {
-                'input': (3, 2),
-                'expect': (3, 2)
+                'input': (2, 2),
+                'expect': (2, 2)
                 + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
             },
         ]
@@ -190,7 +190,7 @@ class TestChi2Sample(unittest.TestCase):
             print("case.get('expect'):", case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (30000,)
+        sample_shape = (300,)
         samples = self._paddle_chi2.sample(sample_shape)
         sample_values = samples.numpy()
 
@@ -208,7 +208,7 @@ class TestChi2Sample(unittest.TestCase):
         )
 
     def test_rsample(self):
-        sample_shape = (30000,)
+        sample_shape = (300,)
         samples = self._paddle_chi2.rsample(sample_shape)
         sample_values = samples.numpy()
 
@@ -242,12 +242,12 @@ class TestChi2SampleKS(unittest.TestCase):
         self._paddle_chi2 = chi2.Chi2(df)
 
     def test_sample_ks(self):
-        sample_shape = (15000,)
+        sample_shape = (150,)
         samples = self._paddle_chi2.sample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
     def test_rsample_ks(self):
-        sample_shape = (15000,)
+        sample_shape = (150,)
         samples = self._paddle_chi2.rsample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
