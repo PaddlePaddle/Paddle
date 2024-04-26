@@ -38,8 +38,10 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
 ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
                              Type type,
                              const std::string &name) {
-  PADDLE_ENFORCE_GT(
-      shape.size(), 0, "The shape of Placeholder should not be empty.");
+  PADDLE_ENFORCE_GT(shape.size(),
+                    0,
+                    ::common::errors::PreconditionNotMet(
+                        "The shape of Placeholder should not be empty."));
   if (type.is_float(32)) {
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {
