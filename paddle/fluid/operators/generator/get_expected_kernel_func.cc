@@ -317,7 +317,7 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
-                        platform::CPUPlace());
+                        phi::CPUPlace());
 }
 
 phi::KernelKey GetPad3dExpectedKernelType(
@@ -340,8 +340,7 @@ phi::KernelKey GetPad3dExpectedKernelType(
 phi::KernelKey GetYoloLossExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
-  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"),
-                        platform::CPUPlace());
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"), phi::CPUPlace());
 }
 
 phi::KernelKey GetUniqueExpectedKernelType(
@@ -353,7 +352,7 @@ phi::KernelKey GetUniqueExpectedKernelType(
   if (!ctx.Attr<bool>("is_sorted")) {
     return phi::KernelKey(
         op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   } else {
     // new version paddle.unique is called.
     return phi::KernelKey(

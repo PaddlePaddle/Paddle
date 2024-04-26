@@ -314,15 +314,15 @@ class TensorRTEngineOp : public framework::OperatorBase {
           if (platform::is_cpu_place(t.place())) {
             auto &int32_tensor = t;
             if (t.dtype() == phi::DataType::INT64) {
-              auto *cpu_ctx = pool.Get(platform::CPUPlace());
+              auto *cpu_ctx = pool.Get(phi::CPUPlace());
               int32_tensor = phi::funcs::TransDataType(
                   reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
                   t,
                   DataType::INT32);
             }
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  int32_host.data(),
-                                 platform::CPUPlace(),
+                                 phi::CPUPlace(),
                                  int32_tensor.data<int>(),
                                  int32_tensor.numel() * sizeof(int));
           } else if (platform::is_gpu_place(t.place())) {
@@ -335,7 +335,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                   t,
                   DataType::INT32);
             }
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  int32_host.data(),
                                  int32_tensor.place(),
                                  int32_tensor.data<int>(),
@@ -619,7 +619,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  shape_v.data(),
                                  t.place(),
                                  t.data<int32_t>(),
@@ -636,7 +636,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  shape_v.data(),
                                  int32_tensor->place(),
                                  int32_tensor->data<int32_t>(),
@@ -656,7 +656,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  shape_v.data(),
                                  t.place(),
                                  t.data<int32_t>(),
@@ -673,7 +673,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            paddle::memory::Copy(platform::CPUPlace(),
+            paddle::memory::Copy(phi::CPUPlace(),
                                  shape_v.data(),
                                  int32_tensor->place(),
                                  int32_tensor->data<int32_t>(),

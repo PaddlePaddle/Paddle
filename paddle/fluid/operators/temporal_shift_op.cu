@@ -183,7 +183,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim out_dims =
+    phi::DDim out_dims =
         (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
                                           : common::make_ddim({nt, h, w, c}));
     const T* input_data = input->data<T>();
@@ -237,7 +237,7 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim in_grad_dims =
+    phi::DDim in_grad_dims =
         (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
                                           : common::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();

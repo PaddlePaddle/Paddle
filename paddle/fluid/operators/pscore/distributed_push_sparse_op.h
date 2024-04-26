@@ -59,7 +59,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       auto inputs_name = context.InputNames("Ids");
       auto outputs_name = context.OutputNames("Outputs");
 
-      auto cpu_place = platform::CPUPlace();
+      auto cpu_place = phi::CPUPlace();
       framework::Scope *tmp_scope = scope.NewTmpScope().release();
 
       std::vector<const phi::DenseTensor *> tmp_input_vec;

@@ -93,7 +93,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "DetectRes"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 

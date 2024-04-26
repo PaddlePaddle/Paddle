@@ -34,7 +34,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* label = ctx.Input<phi::DenseTensor>("Label");
     auto* decoded_path = ctx.Output<phi::DenseTensor>("ViterbiPath");
 
-    int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
+    int64_t* path = decoded_path->mutable_data<int64_t>(phi::CPUPlace());
     phi::funcs::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
 
@@ -133,12 +133,11 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     // best sequence of tags from position 1 to position k with v being the end
     // tag.
     phi::DenseTensor alpha;
-    T* alpha_value = alpha.mutable_data<T>(emission_dims, platform::CPUPlace());
+    T* alpha_value = alpha.mutable_data<T>(emission_dims, phi::CPUPlace());
     phi::DenseTensor track;
-    int* track_value =
-        track.mutable_data<int>(emission_dims, platform::CPUPlace());
+    int* track_value = track.mutable_data<int>(emission_dims, phi::CPUPlace());
     auto ker = phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>,
-                                     platform::CPUPlace>::Cache()
+                                     phi::CPUPlace>::Cache()
                    .At(tag_num);
     ker(static_cast<int>(seq_len), x, w, alpha_value, track_value, tag_num);
     T max_score = -std::numeric_limits<T>::max();

@@ -62,7 +62,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
 
-      auto cpu_place = platform::CPUPlace();
+      auto cpu_place = phi::CPUPlace();
 
       std::vector<const phi::DenseTensor *> tmp_input_vec;
       auto input_var_size = inputs_variable.size();

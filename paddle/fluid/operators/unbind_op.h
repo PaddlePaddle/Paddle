@@ -26,8 +26,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-static inline framework::DDim UnbindOutsDims(const framework::DDim in_dims,
-                                             int axis) {
+static inline phi::DDim UnbindOutsDims(const phi::DDim in_dims, int axis) {
   std::vector<int> out_dims;
   axis = axis < 0 ? in_dims.size() + axis : axis;
   for (int i = 0; i < in_dims.size(); i++) {
