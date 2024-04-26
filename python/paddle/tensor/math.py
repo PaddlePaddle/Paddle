@@ -277,7 +277,6 @@ def scale(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1. , 3. , 5. ],
              [7. , 9. , 11.]])
-
     """
 
     if in_dynamic_mode():
