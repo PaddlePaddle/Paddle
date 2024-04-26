@@ -1149,6 +1149,13 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PushGpupsSparseInferMeta(const std::vector<const MetaTensor*>& ids,
+                              const std::vector<const MetaTensor*>& out,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out_grad) {}
+
 void RandomRoutingInferMeta(const MetaTensor& prob,
                             const MetaTensor& topk_value,
                             const MetaTensor& topk_idx,

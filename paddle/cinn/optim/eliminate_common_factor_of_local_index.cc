@@ -135,17 +135,32 @@ CollectLocalVarToIndexes(ir::Expr* expr) {
       gather_prohibited_local_var_visitor.prohibited_local_vars());
 }
 
-int ExtractNumberFromExpr(const ir::Expr& expr) {
+int ExtractMulNumberFromExpr(const ir::Expr& expr) {
   ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
   if (simplied_expr.is_constant()) {
     return static_cast<int>(simplied_expr.get_constant());
   } else if (expr.As<ir::Mul>()) {
     auto mul = expr.As<ir::Mul>();
-    return std::max(ExtractNumberFromExpr(mul->a()),
-                    ExtractNumberFromExpr(mul->b()));
+    return ExtractMulNumberFromExpr(mul->a()) *
+           ExtractMulNumberFromExpr(mul->b());
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
+  }
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+}
+
+int ExtractAddNumberFromExpr(const ir::Expr& expr) {
+  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
+  if (simplied_expr.is_constant()) {
+    return static_cast<int>(simplied_expr.get_constant());
+  } else if (expr.As<ir::Add>()) {
+    auto add = expr.As<ir::Add>();
+    return ExtractAddNumberFromExpr(add->a()) +
+           ExtractAddNumberFromExpr(add->b());
+  } else {
+    VLOG(6) << "Not supported for calculating offset, expr = " << expr;
+    return 0;
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
@@ -170,7 +185,7 @@ struct CommonFactorTrait<Gcd> {
   // Note (Hongyu Jia): Currently, we only calculates gcd of int factors.
   static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
     return ir::Expr(
-        gcd(ExtractNumberFromExpr(expr1), ExtractNumberFromExpr(expr2)));
+        gcd(ExtractMulNumberFromExpr(expr1), ExtractMulNumberFromExpr(expr2)));
   }
 
   static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
@@ -188,11 +203,8 @@ struct CommonFactorTrait<Offset> {
   static const ir::Expr unit;
 
   static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
-    int offset1 =
-        expr1.is_constant() ? static_cast<int>(expr1.get_constant()) : 0;
-    int offset2 =
-        expr2.is_constant() ? static_cast<int>(expr2.get_constant()) : 0;
-    return ir::Expr(std::min(offset1, offset2));
+    return ir::Expr(std::min(ExtractAddNumberFromExpr(expr1),
+                             ExtractAddNumberFromExpr(expr2)));
   }
 
   static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {

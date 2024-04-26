@@ -1114,8 +1114,16 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_moving_average_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    in_accum : InAccum
+    in_state : InState
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_state : OutState
+    out_accum : OutAccum
 
 - op : fake_quantize_range_abs_max
   inputs :
@@ -1137,7 +1145,7 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
-    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
   outputs: {out: Out}
@@ -1900,6 +1908,15 @@
     x : X
   outputs :
     {out : Out, indices : Indices}
+
+- op : l1_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : l1_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : label_smooth
   inputs :
@@ -2668,6 +2685,13 @@
   outputs :
     out : Out
 
+- op : pull_gpups_sparse
+  backward : push_gpups_sparse
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
 - op : push_dense
   inputs :
     ids : Ids
@@ -3063,6 +3087,10 @@
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
+  inputs:
+    {x : X, group : group}
+  outputs:
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3384,6 +3412,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : tdm_sampler
   inputs:

@@ -122,6 +122,15 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T>
+std::vector<T> ConcatAll(const std::vector<std::vector<T>>& all) {
+  std::vector<T> result;
+  for (const auto& vec : all) {
+    result = ConcatVector(result, vec);
+  }
+  return result;
+}
+
 template <typename T, typename F>
 std::vector<T> FilterVector(const std::vector<T>& first, const F& func) {
   std::vector<T> result;
@@ -184,6 +193,18 @@ std::vector<T> UniqueConcatVector(const std::vector<T>& first,
                                   const std::vector<T>& second) {
   std::vector<T> result = std::vector<T>(first);
   ExtendVector(&result, second);
+  return result;
+}
+
+template <typename T, typename U>
+std::vector<T> GatherVectorExcept(const std::vector<T>& source,
+                                  const std::vector<U>& idx) {
+  std::vector<T> result;
+  for (U i = 0; i < source.size(); i++) {
+    if (std::find(idx.begin(), idx.end(), i) == idx.end()) {
+      result.emplace_back(source[i]);
+    }
+  }
   return result;
 }
 
