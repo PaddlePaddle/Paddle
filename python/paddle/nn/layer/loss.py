@@ -1104,6 +1104,15 @@ class KLDivLoss(Layer):
             >>> print(pred_loss.shape)
             [5, 20]
 
+            >>> # if label is in the log space, set log_target = True
+            >>> log_target = paddle.log(target)
+            >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
+            >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
+            >>> pred_loss_1 = kldiv_criterion_1(x, target)
+            >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
+            >>> print(paddle.equal_all(pred_loss_1, pred_loss_2))
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
     """
 
     def __init__(self, reduction='mean', log_target=False):

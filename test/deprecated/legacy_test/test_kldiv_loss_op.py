@@ -101,6 +101,13 @@ class TestKLDivLossOp5(TestKLDivLossOp):
         self.log_target = True
 
 
+class TestKLDivLossOp6(TestKLDivLossOp):
+    def initTestCase(self):
+        self.x_shape = (3, 2, 7, 7)
+        self.reduction = 'none'
+        self.log_target = True
+
+
 class TestKLDivLossDygraph(unittest.TestCase):
     def run_kl_loss(self, reduction, shape=(5, 20), log_target=False):
         x = np.random.uniform(-10, 10, shape).astype('float64')

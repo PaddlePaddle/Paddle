@@ -1696,6 +1696,14 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
             >>> print(pred_loss.shape)
             [5, 20]
 
+            >>> # if label is in the log space, set log_target = True
+            >>> log_target = paddle.log(target)
+            >>> pred_loss_1 = F.kl_div(x, target, reduction='none')
+            >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
+            >>> print(paddle.equal_all(pred_loss_1, pred_loss_2))
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+
     """
     # ugly type promotion
     if (
