@@ -66,10 +66,11 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
   for (int i = 0; i < op->num_operands(); ++i) {
     result.inputs.emplace_back(
-        CreateNewNamesWithRank(GetRank(op->operand_source(i))));
+        CreateNewNamesWithRank(GetCompitableRank(op->operand_source(i))));
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    result.outputs.emplace_back(CreateNewNamesWithRank(GetRank(op->result(i))));
+    result.outputs.emplace_back(
+        CreateNewNamesWithRank(GetCompitableRank(op->result(i))));
   }
   return result;
 }
@@ -103,24 +104,30 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   CHECK_EQ(reduce_op->num_operands(), 1);
   CHECK_EQ(reduce_op->num_results(), 1);
   ShardableAxesSignature result = ShardableAxesSignature();
-  const size_t input_rank = GetRank(reduce_op->operand_source(0));
+  const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
-  const auto& reduce_axis_idx = GetReduceAxisIdx(reduce_op);
+  const auto reduce_axis_idx = [&]() -> declytype(auto) {
+    const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
+    return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
+  }();
+  CHECK_NE(reduce_axis_idx.size(), 0);
   bool keep_dim = GetReduceOpKeepDims(reduce_op);
-  auto output_axes = std::vector<std::string>();
-
-  for (int i = 0; i < input_rank; i++) {
-    if (reduce_axis_idx.empty() ||
-        std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
-            reduce_axis_idx.end()) {
-      if (keep_dim) {
-        output_axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
-      }  // else do nothing
-    } else {
-      output_axes.emplace_back(input_axes[i]);
+  const auto output_axes = [&]() -> declytype(auto) {
+    std::vector<std::string> axes;
+    // In case of reduce all and keep_dim is fale.
+    if (reduce_axis_idx.size() == input_rank && !keep_dim) {
+      axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
+      return axes;
     }
-  }
+    for (size_t i = 0; i < input_rank; i++) {
+      if (reduce_axis_idx.count(i) && keep_dim) {
+        axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
+      } else {
+        axes.emplace_back(input_axes[i]);
+      }
+    }
+  }();
 
   result.inputs.emplace_back(input_axes);
   result.outputs.emplace_back(output_axes);
@@ -131,15 +138,15 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
 ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
 
-  int64_t rank = GetRank(op->result(0));
+  int64_t rank = GetCompitableRank(op->result(0));
   auto same_axes = CreateNewNamesWithRank(rank);
 
   for (int i = 0; i < op->num_operands(); ++i) {
-    CHECK(rank == GetRank(op->operand_source(i)));
+    CHECK(rank == GetCompitableRank(op->operand_source(i)));
     result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    CHECK(rank == GetRank(op->result(i)));
+    CHECK(rank == GetCompitableRank(op->result(i)));
     result.outputs.emplace_back(same_axes);
   }
   return result;
@@ -153,15 +160,15 @@ ShardableAxesSignature CreateSignatureForBroadcast(
   CHECK(broad_cast_value.has_value());
 
   const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetRank(input_value);
-  const int output_rank = GetRank(output_value);
+  const int input_rank = GetCompitableRank(input_value);
+  const int output_rank = GetCompitableRank(output_value);
   CHECK_GE(output_rank, input_rank);
 
   // Create axes for operands. For expand op, the second operand is the shape of
   // output.
   for (int i = 0; i < op->num_operands(); ++i) {
     result.inputs.emplace_back(
-        CreateNewNamesWithRank(GetRank(op->operand_source(i))));
+        CreateNewNamesWithRank(GetCompitableRank(op->operand_source(i))));
   }
 
   // Create output axes. Compare axis one by one, from back to front.

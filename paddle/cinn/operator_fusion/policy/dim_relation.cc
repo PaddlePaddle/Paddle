@@ -30,7 +30,7 @@ const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
 
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
   ValueUsage valud_dim;
-  size_t rank = GetRank(v);
+  size_t rank = GetCompitableRank(v);
   for (size_t i = 0; i < rank; ++i) {
     valud_dim.emplace_back(v, i, usage_idx);
   }
@@ -107,8 +107,8 @@ static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
   CHECK(broad_cast_value.has_value());
 
   const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetRank(input_value);
-  const int output_rank = GetRank(output_value);
+  const int input_rank = GetCompitableRank(input_value);
+  const int output_rank = GetCompitableRank(output_value);
   CHECK_GE(output_rank, input_rank);
 
   // Compare axis one by one, from back to front.
@@ -144,7 +144,7 @@ static DimUsageRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
 static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   const auto& reduce_axis_idx = GetReduceAxisIdx(op);
   DimUsageRelation res;
-  const size_t input_rank = GetRank(op->operand_source(0));
+  const size_t input_rank = GetCompitableRank(op->operand_source(0));
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
   for (int i = 0; i < input_rank; i++) {

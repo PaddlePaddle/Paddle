@@ -389,10 +389,10 @@ void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst) {
 
 ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
                                      const std::vector<ir::Expr>& indices) {
-  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+  const auto& MakeStoreNode = [=](const ir::Expr& e) -> ir::Expr {
     return ir::Store::Make(tensor, e, indices);
   };
-  return ExprTransformer(f);
+  return ExprTransformer(MakeStoreNode);
 }
 
 std::vector<ir::Var> CreateInnerBlockVars(

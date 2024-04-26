@@ -250,8 +250,8 @@ ir::Expr CreateReduceExpr(
     const ir::Tensor& new_write_tensor,
     const ir::Tensor& origin_write_tensor) {
   VLOG(4) << "CreateReduceExpr Start.";
-  const std::vector<ir::Expr> indice_expr =
-      std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+  const std::vector<ir::Expr> indice_expr(output_iters.begin(),
+                                          output_iters.end());
   auto new_init_tensor = ir::Tensor(new_write_tensor->name + "__reduce_init",
                                     new_write_tensor->type(),
                                     new_write_tensor->shape,
@@ -333,8 +333,6 @@ ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
   return std::visit(Visitor(new_compute_body), fusible_op);
 }
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
-
 int GetTensorCounter() {
   static int counter = 1;
   return counter++;
@@ -358,13 +356,15 @@ std::vector<FusibleOp> TransformReduceLoopRange(
 
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "Create New Tensor Start";
-    ir::Tensor result = ir::Tensor(
-        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
-        downstream_load_tensor->type(),
+    const auto shape =
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->shape,
                                        fake_reduce_iter_idx)
-            : downstream_output_tensor->shape,
+            : downstream_output_tensor->shape;
+    ir::Tensor result = ir::Tensor(
+        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
+        downstream_load_tensor->type(),
+        shape,
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->domain,
                                        fake_reduce_iter_idx)

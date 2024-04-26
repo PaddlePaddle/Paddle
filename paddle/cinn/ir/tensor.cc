@@ -25,6 +25,7 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
@@ -46,7 +47,7 @@ Tensor _Tensor_::Make(const std::string &name,
   CHECK(!name.empty()) << "Tensor name is set empty";
   auto n = make_shared<_Tensor_>();
   n->name = name;
-  n->shape = shape;
+  n->shape = utils::GetCompitableShape(shape);
   n->domain = domain;
   n->reduce_axis = reduce_axis;
   n->set_type(dtype);
@@ -63,7 +64,7 @@ Tensor _Tensor_::Make(const std::string &name,
   CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
   auto n = make_shared<_Tensor_>();
   n->name = name;
-  n->shape = shape;
+  n->shape = utils::GetCompitableShape(shape);
   n->domain = domain;
   n->reduce_axis = reduce_axis;
   n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
@@ -154,11 +155,13 @@ Expr Tensor::operator()(const std::vector<Expr> &indices) const {
   CHECK(!self()->is_tuple()) << "should extract a specific value from the "
                                 "tuple and operate on that instead";
   auto *node = operator->();
+  const auto compitable_indices =
+      utils::GetCompitableStoreLoadIndices(*this, indices);
 
-  CHECK_EQ(indices.size(), ndims())
+  CHECK_EQ(compitable_indices.size(), ndims())
       << "number of indices not match the dimension";
 
-  return Load::Make(*this, indices);
+  return Load::Make(*this, compitable_indices);
 }
 
 Expr _Tensor_::inline_expanded(const std::vector<Expr> &indices) {
