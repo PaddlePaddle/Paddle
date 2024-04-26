@@ -136,21 +136,9 @@ class LKJCholesky(distribution.Distribution):
 
             >>> dim = 3
             >>> lkj = paddle.distribution.LKJCholesky(dim=dim)
-            >>> lkj.sample()
-            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                [[ 1.        ,  0.        ,  0.        ],
-                    [ 0.23500462,  0.97199428,  0.        ],
-                    [-0.03465778, -0.92403257,  0.38073963]])
-
-            >>> dim = 3
-            >>> sample_method = 'cvine'
-            >>> lkj = paddle.distribution.LKJCholesky(dim = dim, sample_method=sample_method)
-            >>> lkj.sample()
-            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [[1.        , 0.        , 0.        ],
-                    [0.13515258, 0.99082482, 0.        ],
-                    [0.12862849, 0.01884033, 0.99151385]])
-
+            >>> sample = lkj.sample()
+            >>> sample.shape
+            [3, 3]
     """
 
     def __init__(self, dim=2, concentration=1.0, sample_method="onion"):
