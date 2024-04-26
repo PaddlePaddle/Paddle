@@ -17,12 +17,8 @@
 #include <memory>
 #include "paddle/pir/include/pass/pass.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace cinn::dialect::ir {
 
 std::unique_ptr<pir::Pass> CreateAccuarcyCheckPass();
 
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace cinn::dialect::ir

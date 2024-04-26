@@ -14,17 +14,18 @@
 
 #include "paddle/phi/kernels/accuracy_check_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-const float atol_v = 1e-5;
-const float rtol_v = 1e-5;
+static constexpr float kAtolValue = 1e-5;
+static constexpr float kRtolValue = 1e-5;
 
 bool allclose(float a, float b) {
   float left = (a > b ? a - b : b - a);
-  float right = atol_v + (b > 0 ? rtol_v * b : (-rtol_v) * b);
+  float right = kAtolValue + (b > 0 ? kRtolValue * b : (-kRtolValue) * b);
   float diff = (left > right ? left - right : right - left);
   bool val = a == b || left <= right || diff <= 1e-10;
 
@@ -42,7 +43,7 @@ void AccuracyCheckKernel(const Context& ctx,
                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims(),
                     y.dims(),
-                    phi::errors::PreconditionNotMet("input Dim must equal"));
+                    phi::errors::PreconditionNotMet("input Dim must be equal"));
 
   DenseTensor x_cpu;
   DenseTensor y_cpu;
@@ -56,6 +57,8 @@ void AccuracyCheckKernel(const Context& ctx,
   for (int64_t i = 0; i < x_numel; ++i) {
     if (!allclose(x_cpu.data<T>()[i], y_cpu.data<T>()[i])) {
       check_result = false;
+      VLOG(2) << "Accuracy check failed between %f and %f", x_cpu.data<T>()[i],
+          y_cpu.data<T>()[i];
       break;
     }
   }

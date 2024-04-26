@@ -32,9 +32,7 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace cinn::dialect::ir {
 
 class AddAccuracyCheckPattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
@@ -43,61 +41,72 @@ class AddAccuracyCheckPattern
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
-    auto op_list = fusion_op.GetOperators();
+    const auto op_list = fusion_op.GetOperators();
 
-    auto group_info = fusion_op.attribute("group_info")
-                          .dyn_cast<cinn::dialect::GroupInfoAttribute>()
-                          .data();
-    auto fn_name = group_info.fn_name;
+    const auto group_info = fusion_op.attribute("group_info")
+                                .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                                .data();
+    const auto& fn_name = group_info.fn_name;
 
     ::pir::IrMapping ir_mapping;
     ::pir::CloneOptions clone_options(/*clone_regions=*/false,
                                       /*clone_operands=*/true,
                                       /*clone_successors=*/false);
-    auto* ctx = ::pir::IrContext::Instance();
+    ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     ::pir::Builder builder = ::pir::Builder(ctx, fusion_op->GetParent());
     builder.set_insertion_point(fusion_op);
-    for (auto op : op_list) {
-      if (op->isa<::pir::YieldOp>()) {
-        rewriter.SetInsertionPointAfter(fusion_op);
-        for (size_t i = 0; i < op->num_operands(); ++i) {
-          rewriter.Build<paddle::dialect::AccuracyCheckOp>(
-              fusion_op.result(i),
-              ir_mapping.Lookup(op->operand_source(i)),
-              fn_name,
-              i);
-        }
-      } else if (op->dialect()->name() == "cinn_op") {
-        // PADDLE_THROW(phi::errors::Unimplemented("not support cinn ops yet"));
-        for (size_t i = 0; i < op->num_operands(); ++i) {
-          if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
-            ir_mapping.Add(op->operand_source(i), op->operand_source(i));
-          }
-        }
-        pir::Operation* pd_op = cinn::dialect::RewriteCinnOpToPdOp(op, builder);
-        for (uint32_t i = 0; i < op->num_results(); ++i) {
-          ir_mapping.Add(op->result(i), pd_op->result(i));
-        }
-      } else {
-        for (size_t i = 0; i < op->num_operands(); ++i) {
-          if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
-            ir_mapping.Add(op->operand_source(i), op->operand_source(i));
-          }
-        }
 
-        auto new_op = op->Clone(ir_mapping, clone_options);
-        rewriter.Insert(new_op);
+    const auto& InsertAccuaryCheckOp = [&](::pir::Operation* op) -> void {
+      rewriter.SetInsertionPointAfter(fusion_op);
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        rewriter.Build<paddle::dialect::AccuracyCheckOp>(
+            fusion_op.result(i),
+            ir_mapping.Lookup(op->operand_source(i)),
+            fn_name,
+            i);
+      }
+    };
+    const auto& ConvertCinnOpToPdOp = [&](::pir::Operation* op) -> void {
+      rewriter.SetInsertionPointAfter(fusion_op);
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
+          ir_mapping.Add(op->operand_source(i), op->operand_source(i));
+        }
+      }
+      pir::Operation* pd_op =
+          cinn::dialect::details::RewriteCinnOpToPdOp(op, builder);
+      for (uint32_t i = 0; i < op->num_results(); ++i) {
+        ir_mapping.Add(op->result(i), pd_op->result(i));
+      }
+    };
+
+    const auto& ClonePdOp = [&](::pir::Operation* op) -> void {
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
+          ir_mapping.Add(op->operand_source(i), op->operand_source(i));
+        }
+      }
+      auto new_op = op->Clone(ir_mapping, clone_options);
+      rewriter.Insert(new_op);
+    };
+
+    for (auto& op : op_list) {
+      if (op->isa<::pir::YieldOp>()) {
+        InsertAccuaryCheckOp(op);
+      } else if (op->dialect()->name() == "cinn_op") {
+        ConvertCinnOpToPdOp(op);
+      } else {
+        ClonePdOp(op);
       }
     }
-
     return true;
   }
 };
 
 class AccuarcyCheckPass : public pir::Pass {
  public:
-  AccuarcyCheckPass() : pir::Pass("accuarcy_check_pass", /*opt_level=*/1) {}
+  AccuarcyCheckPass() : pir::Pass("accuarcy_check_pass", /*opt_level=*/4) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -134,6 +143,4 @@ std::unique_ptr<pir::Pass> CreateAccuarcyCheckPass() {
   return std::make_unique<AccuarcyCheckPass>();
 }
 
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace cinn::dialect::ir

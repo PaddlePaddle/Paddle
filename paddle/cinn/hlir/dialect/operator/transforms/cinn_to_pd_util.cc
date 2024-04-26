@@ -23,55 +23,59 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
+namespace cinn::dialect::details {
 
-namespace cinn::dialect {
+pir::Attribute ArrayAttributeToIntArrayAttribute(
+    const ::pir::ArrayAttribute& array_attr) {
+  std::vector<int64_t> data;
+  for (size_t i = 0; i < array_attr.size(); ++i) {
+    data.push_back(array_attr.at(i).dyn_cast<::pir::Int64Attribute>().data());
+  }
+  pir::Attribute attr_data = paddle::dialect::IntArrayAttribute::get(
+      pir::IrContext::Instance(), phi::IntArray(data));
+  return attr_data;
+}
 
 TransformContext::TransformContext() {
-  const auto& handler_name = [&](::pir::Operation* op,
-                                 ::pir::Builder builder) -> ::pir::Operation* {
-    VLOG(10) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& handler_name =
+      [&](::pir::Operation* op,
+          const ::pir::Builder& builder) -> ::pir::Operation* {
+    VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
     auto cinn_op = op->dyn_cast<cinn::dialect::ReduceMaxOp>();
     auto attr = cinn_op.attributes();
-    std::vector<int64_t> axis;
-    for (size_t i = 0;
-         i < attr.at("dim").dyn_cast<::pir::ArrayAttribute>().size();
-         i++) {
-      axis.push_back(attr.at("dim")
-                         .dyn_cast<::pir::ArrayAttribute>()
-                         .at(i)
-                         .dyn_cast<::pir::Int64Attribute>()
-                         .data());
-    }
-    pir::Attribute attr_axis = paddle::dialect::IntArrayAttribute::get(
-        pir::IrContext::Instance(), phi::IntArray(axis));
+
+    // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
+    // Normalization
+    pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+        attr.at("dim").dyn_cast<::pir::ArrayAttribute>());
     attr.insert({"axis", attr_axis});
     attr.insert({"keepdim", attr["keep_dim"]});
     attr.erase("dim");
     attr.erase("keep_dim");
+
     auto pd_op =
-        builder.Build<paddle::dialect::MaxOp>(cinn_op.operand_source(0), attr);
+        const_cast<::pir::Builder*>(&builder)->Build<paddle::dialect::MaxOp>(
+            cinn_op.operand_source(0), attr);
     return pd_op;
   };
   op_transformers.insert({cinn::dialect::ReduceMaxOp::name(), handler_name});
 }
 
 bool CanApplyOn(::pir::Operation* op) {
-  if (op->dialect()->name() == "cinn_op") {
-    return true;
-  }
-  return false;
+  return op->dialect()->name() == "cinn_op";
 }
 
 ::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation* op,
-                                      ::pir::Builder builder) {
+                                      const ::pir::Builder& builder) {
   VLOG(8) << "Rewrite CinnOp to PdOp for op: " << op->name();
   auto& op_transformers = TransformContext::Instance();
   return op_transformers[op->name()](op, builder);
 }
 
-void RewriteCinnOpToPdOp(::pir::Block* src_block, ::pir::Block* target_block) {
+void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
+                         ::pir::Block* target_block) {
   VLOG(8) << "Rewrite CinnOp to PdOp for block.";
-  if (src_block == nullptr || target_block == nullptr) {
+  if (target_block == nullptr) {
     return;
   }
   ::pir::IrMapping ir_mapping;
@@ -82,7 +86,7 @@ void RewriteCinnOpToPdOp(::pir::Block* src_block, ::pir::Block* target_block) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, target_block);
 
-  for (auto& op : *src_block) {
+  for (auto& op : src_block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
       if (!ir_mapping.GetMap<::pir::Value>().count(op.operand_source(i))) {
         ir_mapping.Add(op.operand_source(i), op.operand_source(i));
@@ -102,4 +106,4 @@ void RewriteCinnOpToPdOp(::pir::Block* src_block, ::pir::Block* target_block) {
   }
 }
 
-}  // namespace cinn::dialect
+}  // namespace cinn::dialect::details
