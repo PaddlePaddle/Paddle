@@ -55,7 +55,62 @@ from paddle.base.libpaddle.pir import (
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
-ALLOW_NO_GRAD_OPS = ["pd_op.full_like"]
+# TODO: Consider a better way to mark these ops has no grad op.
+# Such as use a new trait to mark these ops.
+ALLOW_NO_GRAD_OPS = [
+    # Compare ops
+    "pd_op.equal",
+    "pd_op.equal_",
+    "pd_op.not_equal",
+    "pd_op.not_equal_",
+    "pd_op.less_than",
+    "pd_op.less_than_",
+    "pd_op.less_equal",
+    "pd_op.less_equal_",
+    "pd_op.greater_than",
+    "pd_op.greater_than_",
+    "pd_op.greater_equal",
+    "pd_op.greater_equal_",
+    # Logical ops
+    "pd_op.logical_and",
+    "pd_op.logical_and_",
+    "pd_op.logical_not",
+    "pd_op.logical_not_",
+    "pd_op.logical_or",
+    "pd_op.logical_or_",
+    "pd_op.logical_xor",
+    "pd_op.logical_xor_",
+    # Array ops
+    "pd_op.assign_array",
+    "pd_op.array_length",
+    "pd_op.slice_array",
+    "pd_op.slice_array_dense",
+    "pd_op.assign_array",
+    "pd_op.assign_array_",
+    "pd_op.create_array",
+    "pd_op.create_array_like",
+    "pd_op.array_read",
+    "pd_op.array_write_",
+    "pd_op.array_pop",
+    # Others
+    "pd_op.remainder",
+    "pd_op.argmax",
+    "pd_op.print",
+    "pd_op.accuracy",
+    "pd_op.uniform",
+    "pd_op.gaussian",
+    "pd_op.bernoulli",
+    "pd_op.full_like",
+    "pd_op.assign_value_",
+    "pd_op.nextafter",
+    "pd_op.isnan",
+    "pd_op.isinf",
+]
+
+
+def is_builtin_op(op):
+    dialect_name, opname = op.name().split(".")
+    return dialect_name == "builtin"
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
@@ -836,7 +891,10 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
-                    if op.name() not in ALLOW_NO_GRAD_OPS:
+                    if (
+                        not is_builtin_op(op)
+                        and op.name() not in ALLOW_NO_GRAD_OPS
+                    ):
                         raise ValueError(
                             f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
                         )
