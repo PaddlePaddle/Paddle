@@ -63,6 +63,20 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.at(val);
 }
 
+void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
+  auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
+  std::vector<symbol::DimExpr> static_shape;
+  for (int i = 0; i < type_info.dims().size(); ++i) {
+    int dim = type_info.dims()[i];
+    if (dim > 0) {
+      static_shape.emplace_back(symbol::DimExpr{dim});
+    } else {
+      static_shape.emplace_back(GetNextSymName());
+    }
+  }
+  SetShapeOrDataForValue(val, symbol::TensorShapeOrDataDimExprs(static_shape));
+}
+
 void InferSymbolicShapeContext::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
@@ -160,17 +174,7 @@ const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
 }
 
 void ShapeConstraintIRAnalysis::SetStaticShapeForValue(Value val) {
-  auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
-  std::vector<symbol::DimExpr> static_shape;
-  for (int i = 0; i < type_info.dims().size(); ++i) {
-    int dim = type_info.dims()[i];
-    if (dim > 0) {
-      static_shape.emplace_back(symbol::DimExpr{dim});
-    } else {
-      static_shape.emplace_back(GetNextSymName());
-    }
-  }
-  SetShapeOrDataForValue(val, symbol::TensorShapeOrDataDimExprs(static_shape));
+  context_.SetStaticShapeForValue(val);
 }
 
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
@@ -270,6 +274,8 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
     if (!val.defining_op()) {
       SetStaticShapeForValue(val);
     } else {
+      VLOG(3) << "InferShapeOrDataForValue,  defining_op: "
+              << val.defining_op()->name();
       InferShapeOrDataForValue(val);
     }
   }

@@ -189,16 +189,53 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  CHECK(op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>());
-
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
   size_t rank = shape_data_list[0].shape().size();
+
+  int64_t axis = 0;
+
+  auto SetShapeOrDataForAxis = [&](int axis_value) {
+    std::vector<symbol::DimExpr> data{axis_value};
+    symbol::TensorShapeOrDataDimExprs shape_or_data(
+        std::vector<symbol::DimExpr>{}, data);
+    infer_context->SetShapeOrDataForValue(op->operand_source(1), shape_or_data);
+  };
+
+  if (infer_context->HasShapeOrDataForValue(op->operand_source(1)) &&
+      (infer_context->GetShapeOrDataForValue(op->operand_source(1)))
+          .data()
+          .has_value()) {
+    const auto &axis_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    axis =
+        static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+  } else {
+    if (op->operand_source(1).defining_op() &&
+        op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()) {
+      axis = op->operand_source(1)
+                 .defining_op<paddle::dialect::FullOp>()
+                 .attributes()
+                 .at("value")
+                 .dyn_cast<paddle::dialect::ScalarAttribute>()
+                 .data()
+                 .to<int64_t>();
+      SetShapeOrDataForAxis(axis);
+    } else {
+      pir::Value res = op->result(0);
+      infer_context->SetStaticShapeForValue(res);
+      // update axis value
+      auto res_shape = infer_context->GetShapeOrDataForValue(res);
+      for (size_t i = 0; i < rank; ++i) {
+        auto res_shape_dim = res_shape.shape()[i];
+        auto shape_data_dim = shape_data_list[0].shape()[i];
+        if (!res_shape_dim.isa<int64_t>()) break;
+        if (!shape_data_dim.isa<int64_t>()) break;
+        if (res_shape_dim.Get<int64_t>() > shape_data_dim.Get<int64_t>()) {
+          SetShapeOrDataForAxis(i);
+        }
+      }
+      return true;
+    }
+  }
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
 
   if (shape_data_list[0].data().has_value()) {

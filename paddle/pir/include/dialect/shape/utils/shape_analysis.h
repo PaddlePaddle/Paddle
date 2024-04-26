@@ -37,6 +37,8 @@ class IR_API InferSymbolicShapeContext {
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
+  void SetStaticShapeForValue(Value val);
+
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
