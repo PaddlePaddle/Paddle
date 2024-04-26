@@ -20,7 +20,7 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestGlobalGatherOpTranslator(
+class TestGlobalScatterOpTranslator(
     test_op_translator.TestOpWithBackwardTranslator
 ):
     def append_op(self):
