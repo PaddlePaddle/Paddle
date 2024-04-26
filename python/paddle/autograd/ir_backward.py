@@ -55,6 +55,8 @@ from paddle.base.libpaddle.pir import (
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
+ALLOW_NO_GRAD_OPS = ["pd_op.full_like"]
+
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
     with paddle.amp.auto_cast(enable=False):
@@ -834,7 +836,10 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
-                    logging.warning("%s op has no grad op", op.name())
+                    if op.name() not in ALLOW_NO_GRAD_OPS:
+                        raise ValueError(
+                            f"op {op.name()} has no grad op, consider enable prim to decompose it."
+                        )
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
@@ -1202,9 +1207,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         input_inputs_grad.append(
             (
                 input,
-                input_to_inputgrad_map[input][0][0]
-                if input_to_inputgrad_map[input] != []
-                else None,
+                (
+                    input_to_inputgrad_map[input][0][0]
+                    if input_to_inputgrad_map[input] != []
+                    else None
+                ),
             )
         )
 
