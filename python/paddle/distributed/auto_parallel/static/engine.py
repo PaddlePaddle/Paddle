@@ -703,6 +703,7 @@ class Engine:
         dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
             dist_program
         )
+
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
 
@@ -1022,6 +1023,17 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
+    def _init_lr(self):
+        buffer_tensor = global_scope().var("learning_rate_0").get_tensor()
+        if not isinstance(self._optimizer._learning_rate, float):
+            raise TypeError(
+                "learning rate should be float, got %s here"
+                % type(self._optimizer._learning_rate)
+            )
+        buffer_tensor.set(
+            np.float32(self._optimizer._learning_rate), self._place
+        )
+
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
@@ -1042,6 +1054,7 @@ class Engine:
                 self._pir_dense_main_progs[mode], self._place
             )
 
+            self._init_lr()
             return
 
         if self._strategy.seed:
