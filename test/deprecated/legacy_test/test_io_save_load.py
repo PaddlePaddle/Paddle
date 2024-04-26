@@ -107,12 +107,18 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
 
         paddle.jit.save(net, save_path)
-        net = paddle.jit.load(save_path)
-        net.eval()
+        net1 = paddle.jit.load(save_path)
+        net1.eval()
 
         with paddle.no_grad():
-            out2 = net(x)
-            self.assertEqual(out, out2)
+            out1 = net1(x)
+            self.assertEqual(out, out1)
+
+        net2 = paddle.jit.load(save_path)
+        net2.train()
+
+        out2 = net2(x)
+        self.assertEqual(out, out2)
 
 
 if __name__ == '__main__':
