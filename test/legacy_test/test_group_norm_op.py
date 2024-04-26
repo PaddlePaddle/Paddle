@@ -592,6 +592,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         }
         self.compare_between_place = False
         self.init_test_case()
+        self.data_format = 'NCHW' if self.data_format[1] == 'C' else 'NHWC'
         input = (
             np.sin(np.arange(np.prod(self.shape)))
             .reshape(self.shape)
