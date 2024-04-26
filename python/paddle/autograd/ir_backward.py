@@ -80,6 +80,19 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.logical_or_",
     "pd_op.logical_xor",
     "pd_op.logical_xor_",
+    # Bitwise ops
+    "pd_op.bitwise_and",
+    "pd_op.bitwise_and_",
+    "pd_op.bitwise_left_shift",
+    "pd_op.bitwise_left_shift_",
+    "pd_op.bitwise_not",
+    "pd_op.bitwise_not_",
+    "pd_op.bitwise_or",
+    "pd_op.bitwise_or_",
+    "pd_op.bitwise_right_shift",
+    "pd_op.bitwise_right_shift_",
+    "pd_op.bitwise_xor",
+    "pd_op.bitwise_xor_",
     # Array ops
     "pd_op.assign_array",
     "pd_op.array_length",
@@ -105,6 +118,8 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.nextafter",
     "pd_op.isnan",
     "pd_op.isinf",
+    "pd_op.all",
+    "pd_op.any",
 ]
 
 
