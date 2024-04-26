@@ -75,9 +75,9 @@ bool CanApplyOn(::pir::Operation* op) {
 void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
                          ::pir::Block* target_block) {
   VLOG(8) << "Rewrite CinnOp to PdOp for block.";
-  if (target_block == nullptr) {
-    return;
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      target_block,
+      ::common::errors::Fatal("target_block pointer is nullptr."));
   ::pir::IrMapping ir_mapping;
   ::pir::CloneOptions clone_options(/*clone_regions=*/true,
                                     /*clone_operands=*/true,

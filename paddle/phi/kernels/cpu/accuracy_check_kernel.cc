@@ -57,8 +57,8 @@ void AccuracyCheckKernel(const Context& ctx,
   for (int64_t i = 0; i < x_numel; ++i) {
     if (!allclose(x_cpu.data<T>()[i], y_cpu.data<T>()[i])) {
       check_result = false;
-      VLOG(2) << "Accuracy check failed between %f and %f", x_cpu.data<T>()[i],
-          y_cpu.data<T>()[i];
+      VLOG(2) << "Accuracy check failed between" << x_cpu.data<T>()[i]
+              << " and " << y_cpu.data<T>()[i];
       break;
     }
   }
