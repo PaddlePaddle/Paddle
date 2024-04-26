@@ -3415,7 +3415,7 @@ void YoloBoxHeadInferMeta(const MetaTensor& x,
                           const std::vector<int>& anchors UNUSED,
                           int class_num UNUSED,
                           MetaTensor* out,
-                          MetaConfig config = MetaConfig()) {
+                          MetaConfig config) {
   out->set_dims(x.dims());
 }
 
