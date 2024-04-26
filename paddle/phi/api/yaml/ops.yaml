@@ -1324,6 +1324,7 @@
   optional : scale, bias
   intermediate : mean, variance
   backward : group_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -2204,6 +2205,7 @@
   kernel :
     func : pad3d
   backward : pad3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")

@@ -61,7 +61,7 @@ WhileInstruction::WhileInstruction(
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
+  cond_var_ = parent_exe_info->GetVarByValue(while_op.cond());
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
     inputs_.push_back(
         parent_exe_info->GetVarByValue(while_op.operand_source(i)));
@@ -128,34 +128,30 @@ WhileInstruction::WhileInstruction(
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, execution_config));
 
-  std::set<std::string> body_skip_gc_names_set;
   auto body_block_outputs = GetYiedOpInputs(body_block_);
   for (auto value : body_block_outputs) {
     body_outputs_.push_back(body_inter_->GetNameByValue(value));
-    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
-    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+    skip_gc_vars.insert(body_inter_->GetNameByValue(value));
   }
   for (auto value : body_outside_inputs) {
     auto name = body_inter_->GetNameByValue(value);
     external_input_names_.insert(name);
-    body_skip_gc_names_.push_back(name);
-    body_skip_gc_names_set.insert(name);
+    skip_gc_vars.insert(name);
   }
   for (const auto& var_name : skip_gc_vars) {
-    body_skip_gc_names_.push_back(var_name);
-    body_skip_gc_names_set.insert(var_name);
+    skip_gc_vars.insert(var_name);
   }
-  body_inter_->SetSkipGcVars(body_skip_gc_names_set);
+  body_inter_->SetSkipGcVars(skip_gc_vars);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream body_outputs;
-    for (auto var_name : body_outputs_) {
+    for (const auto& var_name : body_outputs_) {
       body_outputs << " " << var_name;
     }
     VLOG(6) << "body_outputs include: " << body_outputs.str();
 
     std::stringstream body_skip_gc_names;
-    for (auto var_name : body_skip_gc_names_) {
+    for (const auto& var_name : skip_gc_vars) {
       body_skip_gc_names << " " << var_name;
     }
     VLOG(6) << "body_skip_gc_names include: " << body_skip_gc_names.str();
@@ -250,6 +246,10 @@ void WhileInstruction::SetInputHooks(
   body_inter_->SetInputHooks(hookfuncs);
 }
 
+void WhileInstruction::CheckGCEarly(const CheckGCEarlyHook& check_gc_early) {
+  check_gc_early_ = check_gc_early;
+}
+
 void WhileInstruction::Run() {
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets
@@ -258,6 +258,11 @@ void WhileInstruction::Run() {
   paddle::platform::DontClearMKLDNNCache(body_inter_->GetPlace());
 #endif
   ShareInputsToOutputs();
+
+  if (check_gc_early_) {
+    check_gc_early_(this);
+  }
+
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";

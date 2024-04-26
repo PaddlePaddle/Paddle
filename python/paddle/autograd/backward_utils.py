@@ -489,7 +489,7 @@ def return_map_value_list(value, map):
     output = []
     for i in range(len(value)):
         if value[i] in map:
-            output.append(map[value[i]])
+            output.append(return_map_value(value[i], map))
         else:
             output.append(value[i])
     return output
