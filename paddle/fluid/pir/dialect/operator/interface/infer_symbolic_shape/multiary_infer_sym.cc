@@ -362,26 +362,6 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
-bool GroupNormOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-
-  shape_analysis->SetShapeOrDataForValue(op->result(0), x_shape);
-
-  const symbol::DimExpr &batch_size = x_shape.shape()[0];
-  int groups = op->attribute<pir::Int32Attribute>("groups").data();
-  symbol::TensorShapeOrDataDimExprs mean_shape(
-      std::vector<symbol::DimExpr>{batch_size, groups});
-  if (op->result(1)) {
-    shape_analysis->SetShapeOrDataForValue(op->result(1), mean_shape);
-  }
-  if (op->result(2)) {
-    shape_analysis->SetShapeOrDataForValue(op->result(2), mean_shape);
-  }
-  return true;
-}
-
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &num_shape_or_data =
