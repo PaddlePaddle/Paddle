@@ -212,6 +212,14 @@ Tensor reciprocal_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
+  auto one = full<T>(x.shape(), 1, x.dtype());
+  auto ans = full<T>(x.shape(), -1, x.dtype()) *
+             (label * log<T>(x) + (one - label) * log<T>(one - x));
+  return ans;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
