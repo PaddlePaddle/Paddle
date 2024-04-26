@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
 
 namespace cinn::fusion {
 

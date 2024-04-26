@@ -15,9 +15,9 @@
 #pragma once
 #include <functional>
 #include "paddle/cinn/operator_fusion/pattern_node.h"
-#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/dim_relation.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/policy/policy_base.h"
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"
 

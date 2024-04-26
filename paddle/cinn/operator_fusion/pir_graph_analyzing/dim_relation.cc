@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/dim_relation.h"
 
 namespace cinn::fusion {
 
