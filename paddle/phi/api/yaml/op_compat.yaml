@@ -3610,6 +3610,12 @@
   outputs :
     {boxes : Boxes, scores : Scores}
 
+- op : yolo_box_head
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
 - op : yolo_loss (yolov3_loss)
   backward: yolo_loss_grad (yolov3_loss_grad)
   inputs :

@@ -3411,6 +3411,14 @@ void YoloBoxInferMeta(const MetaTensor& x,
   scores->set_dims(common::make_ddim(dim_scores));
 }
 
+void YoloBoxHeadInferMeta(const MetaTensor& x,
+                          const std::vector<int>& anchors UNUSED,
+                          int class_num UNUSED,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig()) {
+  out->set_dims(x.dims());
+}
+
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
