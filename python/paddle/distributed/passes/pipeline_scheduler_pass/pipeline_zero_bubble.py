@@ -182,6 +182,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
     def _estimate_program_mem_usagess(
         self, types, sub_program_list, dist_context
     ):
+        types = types[:-1]
         type_to_program = dict(zip(types, sub_program_list))
         memory_estimator = PipelineMemoryEstimator()
         memory_estimator.set_program_skip_gc_vars(type_to_program, types)
@@ -201,13 +202,13 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         # Get program memory usage from all devices
         all_mem_usages = []
         all_max_usages = []
-        paddle.distributed.all_gather(all_mem_usages, mem_usages)
-        paddle.distributed.all_gather(all_max_usages, max_mem_usages)
+        paddle.distributed.all_gather_object(all_mem_usages, mem_usages)
+        paddle.distributed.all_gather_object(all_max_usages, max_mem_usages)
 
         self.program_mem_usages = [{} for _ in range(len(all_mem_usages))]
         self.program_max_mem_usages = [{} for _ in range(len(all_max_usages))]
 
-        for id in all_mem_usages:
+        for id in range(len(all_mem_usages)):
             for i, type in enumerate(types):
                 self.program_mem_usages[id][type] = all_mem_usages[id][i]
                 self.program_max_mem_usages[id][type] = all_max_usages[id][i]
@@ -218,3 +219,4 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         base_memory = paddle.device.cuda.memory_allocated(rank)
         base_memory = paddle.to_tensor(base_memory)
         paddle.distributed.all_gather(self.base_memory, base_memory)
+        self.base_memory = []

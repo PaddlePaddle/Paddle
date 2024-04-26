@@ -955,12 +955,14 @@ def _program_for_zero_bubble_vpp(
         for type in oprole_type.values():
             if type == "optimizer":
                 type_to_ops[type] = []
-            else:
+            elif type in ["forward", "backward_b"]:
                 chunk_ids = (
                     chunk_ids if type != "backward" else reversed(chunk_ids)
                 )
                 for chunk_id in chunk_ids:
                     type_to_ops[type + str(chunk_id)] = []
+                    if type == "backward_b":
+                        type_to_ops["backward_w" + str(chunk_id)] = []
         type_to_ops["fetch"] = []
 
         for ip, op in enumerate(block.ops):
@@ -969,7 +971,7 @@ def _program_for_zero_bubble_vpp(
             elif is_backward_op(op):
                 type = _get_backward_op_type(block, op)
             elif is_optimize_op(op):
-                type = oprole_type[2]
+                type = oprole_type[3]
             else:
                 raise ValueError(
                     "The op role: "
@@ -1158,6 +1160,17 @@ def split_matmul_grad_to_matmul(
     matmul_grad_dist_attr = dist_context.get_op_dist_attr_for_program(
         matmul_grad_op
     )
+    matmul_grad_dist_attr.set_input_dist_attr(
+        new_x.name, dist_context.get_tensor_dist_attr_for_program(var_x)
+    )
+    matmul_grad_dist_attr.set_input_dist_attr(
+        new_out_grad.name,
+        dist_context.get_tensor_dist_attr_for_program(var_out_grad),
+    )
+    matmul_grad_dist_attr.set_output_dist_attr(
+        new_y_grad.name,
+        dist_context.get_tensor_dist_attr_for_program(var_y_grad),
+    )
 
     matmul_op = block._insert_op_without_sync(
         index=matmul_grad_id + 3,
@@ -1198,15 +1211,16 @@ def split_matmul_grad_to_matmul(
         },
     )
 
-    dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
+    dist_context.set_op_dist_attr_for_program(
+        matmul_op, dist_context.get_op_dist_attr_for_program(matmul_grad_op)
+    )
 
     block._remove_op(matmul_grad_id, sync=False)
 
 
 class PipelineMemoryEstimator:
-    def __init__(self, rank):
+    def __init__(self):
         self.type_to_skip_gc_vars = {}
-        self.rank = rank
         self.program_types = []
         self.logger = logging.getLogger(__name__)
 

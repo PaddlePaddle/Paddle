@@ -1187,9 +1187,11 @@ class Completer:
             raise ValueError(
                 "VPP schedule mode only can be set in pipeline mode."
             )
-        if vpp_degree > 1 and (not seg_method or schedule_mode != "VPP"):
+        if vpp_degree > 1 and (
+            not seg_method or schedule_mode not in ["VPP", "ZBVPP"]
+        ):
             raise ValueError(
-                "Please set right schedule_mode and vpp_seg_method for VPP."
+                "Please set right schedule_mode and vpp_seg_method for VPP and ZBVPP."
             )
         if vpp_degree < 2:
             return
