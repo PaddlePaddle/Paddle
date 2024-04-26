@@ -268,8 +268,8 @@ The required data format for this layer is one of the following:
 
 template <typename T, typename Context>
 void DataNormKernel(const Context &dev_ctx,
-                    const phi::optional<DenseTensor> &scale_w,
-                    const phi::optional<DenseTensor> &bias,
+                    const paddle::optional<DenseTensor> &scale_w,
+                    const paddle::optional<DenseTensor> &bias,
                     const DenseTensor &x,
                     const DenseTensor &batch_size,
                     const DenseTensor &batch_sum,
