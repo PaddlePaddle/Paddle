@@ -1035,7 +1035,8 @@ def get_package_data_and_package_dir():
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
         if env_dict.get("PHI_KERNEL_GPU_LIB"):
             package_data['paddle.libs'] += [
-                ('libphi_kernel_gpu' if os.name != 'nt' else 'phi') + ext_suffix
+                ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
+                + ext_suffix
             ]
             shutil.copy(env_dict.get("PHI_KERNEL_GPU_LIB"), libs_path)
 
