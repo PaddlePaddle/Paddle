@@ -25,8 +25,6 @@ from paddle.distribution.lkj_cholesky import (
     vec_to_tril_matrix,
 )
 
-# from distribution import config
-
 np.random.seed(2024)
 paddle.seed(2024)
 
@@ -34,16 +32,52 @@ paddle.seed(2024)
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'concentration'),
+    [('one-dim', 1.0)],
+)
+class TestLKJCholeskyShapeOneDim(unittest.TestCase):
+    def gen_cases(self):
+        extra_shape = (
+            self._paddle_lkj_cholesky.dim,
+            self._paddle_lkj_cholesky.dim,
+        )
+        cases = [
+            {
+                'input': (),
+                'expect': () + extra_shape,
+            },
+            {
+                'input': (2, 2),
+                'expect': (2, 2) + extra_shape,
+            },
+        ]
+        return cases
+
+    def test_onion_sample_shape(self):
+        sample_method = 'onion'
+        self._test_sample_shape_dim(sample_method)
+
+    def test_cvine_sample_shape(self):
+        sample_method = 'cvine'
+        self._test_sample_shape_dim(sample_method)
+
+    def _test_sample_shape_dim(self, sample_method):
+        for dim in range(2, 5):
+            self._test_sample_shape(dim, sample_method)
+
+    def _test_sample_shape(self, dim, sample_method):
+        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
+            dim, self.concentration, sample_method
+        )
+        cases = self.gen_cases()
+        for case in cases:
+            data = self._paddle_lkj_cholesky.sample(case.get('input'))
+            self.assertTrue(tuple(data.shape) == case.get('expect'))
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration'),
     [
-        (
-            'one-dim',
-            parameterize.xrand(
-                (1,),
-                dtype='float32',
-                max=1.0,
-                min=0,
-            ),
-        ),
         (
             'multi',
             parameterize.xrand(
@@ -55,7 +89,7 @@ paddle.seed(2024)
         ),
     ],
 )
-class TestLKJCholeskyShape(unittest.TestCase):
+class TestLKJCholeskyShapeMulti(unittest.TestCase):
     def gen_cases(self):
         extra_shape = (
             len(self.concentration),
@@ -92,10 +126,8 @@ class TestLKJCholeskyShape(unittest.TestCase):
         )
         cases = self.gen_cases()
         for case in cases:
-            self.assertTrue(
-                tuple(self._paddle_lkj_cholesky.sample(case.get('input')).shape)
-                == case.get('expect')
-            )
+            data = self._paddle_lkj_cholesky.sample(case.get('input'))
+            self.assertTrue(tuple(data.shape) == case.get('expect'))
 
 
 @parameterize.place(config.DEVICES)
@@ -156,7 +188,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
         for i in range(outputs.shape[0]):
             grad = paddle.grad(
                 outputs=outputs[i], inputs=x, create_graph=False
-            )[0][0]
+            )[0]
             jacobian_matrix.append(grad)
         J = paddle.stack(jacobian_matrix, axis=0)
         logabsdet = paddle.linalg.slogdet(J)

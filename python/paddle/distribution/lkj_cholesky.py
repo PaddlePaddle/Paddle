@@ -17,8 +17,11 @@ import operator
 from functools import reduce
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.distribution.beta import Beta
+from paddle.framework import in_dynamic_mode
 
 __all__ = ["LKJCholesky"]
 
@@ -142,15 +145,43 @@ class LKJCholesky(distribution.Distribution):
     """
 
     def __init__(self, dim=2, concentration=1.0, sample_method="onion"):
-        if dim < 2:
+        if not in_dynamic_mode():
+            check_type(
+                dim,
+                "dim",
+                (int, Variable),
+                "LKJCholesky",
+            )
+            check_type(
+                concentration,
+                "concentration",
+                (float, list, tuple, Variable),
+                "LKJCholesky",
+            )
+
+        # Get/convert concentration/rate to tensor.
+        if self._validate_args(concentration):
+            self.concentration = concentration
+            self.dtype = convert_dtype(concentration.dtype)
+        else:
+            [self.concentration] = self._to_tensor(concentration)
+            self.dtype = paddle.get_default_dtype()
+
+        self.dim = dim
+        if not self.dim >= 2:
             raise ValueError(
                 f"Expected dim to be an integer greater than or equal to 2. Found dim={dim}."
             )
-        self.dim = dim
-        if not isinstance(concentration, paddle.Tensor):
-            self.concentration = paddle.to_tensor(concentration)
-        self.sample_method = sample_method
 
+        self.concentration = concentration
+        if isinstance(self.concentration, float):
+            self.concentration = (self.concentration,)
+            # self.concentration = paddle.to_tensor([self.concentration])
+
+        if not isinstance(self.concentration, paddle.Tensor):
+            self.concentration = paddle.to_tensor(self.concentration)
+
+        self.sample_method = sample_method
         batch_shape = self.concentration.shape
         event_shape = (dim, dim)
 
@@ -230,10 +261,6 @@ class LKJCholesky(distribution.Distribution):
             r (paddle.Tensor): The Cholesky factor of the sampled correlation matrix.
         """
 
-        # for paddle.static, U need to set sample_shape
-        if sample_shape == ():
-            sample_shape = (1,)
-
         # Sample beta and calculate partial correlations
         beta_sample = self._beta.sample(sample_shape).unsqueeze(-1)
         partial_correlation = 2 * beta_sample - 1
@@ -241,7 +268,6 @@ class LKJCholesky(distribution.Distribution):
         if self.dim == 2:
             partial_correlation = partial_correlation.unsqueeze(-2)
 
-        # import pdb; pdb.set_trace()
         # Construct the lower triangular matrix from the partial correlations
         last_dim = self.dim * (self.dim - 1) // 2
         flatten_shape = last_dim * reduce(operator.mul, sample_shape)
@@ -286,12 +312,26 @@ class LKJCholesky(distribution.Distribution):
 
     def sample(self, sample_shape=()):
         """Generate a sample using the specified sampling method."""
-        if sample_shape is None:
-            sample_shape = paddle.to_tensor([])
+        # for paddle.static, U need to set sample_shape
+        if sample_shape == ():
+            sample_shape = (1,)
         if self.sample_method == "onion":
-            return self._onion(sample_shape)
+            res = self._onion(sample_shape)
         else:
-            return self._cvine(sample_shape)
+            res = self._cvine(sample_shape)
+
+        output_shape = []
+        if sample_shape != (1,):
+            output_shape = list(sample_shape)
+
+        if tuple(self.concentration.shape) != () and tuple(
+            self.concentration.shape
+        ) != (1,):
+            output_shape.extend(self.concentration.shape)
+
+        output_shape.extend([self.dim, self.dim])
+
+        return res.reshape(output_shape)
 
     def log_prob(self, value):
         r"""

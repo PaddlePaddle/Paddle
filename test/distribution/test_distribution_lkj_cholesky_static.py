@@ -34,16 +34,72 @@ paddle.seed(2024)
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'concentration'),
+    [('one-dim', 1.0)],
+)
+class TestLKJCholeskyShapeOneDim(unittest.TestCase):
+    def setUp(self):
+        self.program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(self.program):
+            self.conc = paddle.static.data(
+                'concentration',
+                (),
+                'float',
+            )
+            self.feeds = {
+                'concentration': self.concentration,
+            }
+
+    def gen_cases(self):
+        extra_shape = (
+            self._paddle_lkj_cholesky.dim,
+            self._paddle_lkj_cholesky.dim,
+        )
+        cases = [
+            {
+                'input': (),
+                'expect': () + extra_shape,
+            },
+            {
+                'input': (2, 2),
+                'expect': (2, 2) + extra_shape,
+            },
+        ]
+        return cases
+
+    def test_onion_sample_shape(self):
+        sample_method = 'onion'
+        self._test_sample_shape_dim(sample_method)
+
+    def test_cvine_sample_shape(self):
+        sample_method = 'cvine'
+        self._test_sample_shape_dim(sample_method)
+
+    def _test_sample_shape_dim(self, sample_method):
+        for dim in range(2, 5):
+            self._test_sample_shape(dim, sample_method)
+
+    def _test_sample_shape(self, dim, sample_method):
+        with paddle.static.program_guard(self.program):
+            self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
+                dim, self.conc, sample_method
+            )
+            cases = self.gen_cases()
+            for case in cases:
+                [data] = self.executor.run(
+                    self.program,
+                    feed=self.feeds,
+                    fetch_list=self._paddle_lkj_cholesky.sample(
+                        case.get('input')
+                    ),
+                )
+            self.assertTrue(tuple(data.shape) == case.get('expect'))
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'concentration'),
     [
-        (
-            'one-dim',
-            parameterize.xrand(
-                (1,),
-                dtype='float32',
-                max=1.0,
-                min=0,
-            ),
-        ),
         (
             'multi',
             parameterize.xrand(
@@ -55,7 +111,7 @@ paddle.seed(2024)
         ),
     ],
 )
-class TestLKJCholeskyShape(unittest.TestCase):
+class TestLKJCholeskyShapeMulti(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
