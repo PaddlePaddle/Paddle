@@ -399,8 +399,8 @@ def _run_dygraph(instance, input, program_holder):
             outputs,
             parameters,
         )
-
-        return layer(input_tensors)
+        instance.layer = layer
+        return instance.layer(input_tensors)
 
 
 def _run_static_graph(program_holder, trace_program):

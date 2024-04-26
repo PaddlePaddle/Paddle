@@ -97,28 +97,33 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_when_train_with_no_grad(self):
-        paddle.disable_static()
-        net = paddle.nn.Linear(1024, 1)
-        net = paddle.jit.to_static(net)
-        x = paddle.rand([1024], 'float32')
-        out = net(x)
-        save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
+        with paddle.pir_utils.IrGuard():
+            paddle.disable_static()
+            net = paddle.nn.Linear(1024, 1)
+            net = paddle.jit.to_static(net, full_graph=True)
+            x = paddle.rand([1024], 'float32')
+            x.stop_gradient = False
+            out = net(x)
+            out.backward()
+            x_grad = x.grad.mean()
+            save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
 
-        paddle.jit.save(net, save_path)
-        net1 = paddle.jit.load(save_path)
-        net1.eval()
+            paddle.jit.save(net, save_path)
+            net1 = paddle.jit.load(save_path)
+            net1.eval()
 
-        with paddle.no_grad():
-            out1 = net1(x)
-            self.assertEqual(out, out1)
+            with paddle.no_grad():
+                out1 = net1(x)
+                self.assertEqual(out, out1)
 
-        net2 = paddle.jit.load(save_path)
-        net2.train()
-
-        out2 = net2(x)
-        self.assertEqual(out, out2)
+            net2 = paddle.jit.load(save_path)
+            net2.train()
+            out2 = net2(x)
+            out2.backward()
+            self.assertEqual(out, out2)
+            x_grad2 = x.grad.mean()
 
 
 if __name__ == '__main__':
