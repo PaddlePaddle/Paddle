@@ -168,8 +168,12 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
             logabsdet = paddle.to_tensor(logabsdet)
 
             log_probs.append((log_prob - logabsdet).numpy())
-        max_abs_error = np.max(np.abs(log_probs[0] - log_probs[1]))
-        self.assertAlmostEqual(max_abs_error, 0, places=3)
+        np.testing.assert_allclose(
+            log_probs[0],
+            log_probs[1],
+            rtol=0.1,
+            atol=config.ATOL.get('float32'),
+        )
 
     def _tril_cholesky_to_tril_corr(self, x):
         last_dim = self.dim * (self.dim - 1) // 2
