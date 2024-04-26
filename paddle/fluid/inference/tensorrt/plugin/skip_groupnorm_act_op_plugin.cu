@@ -440,7 +440,7 @@ int SkipGroupnormActPluginDynamic::enqueue(
     if (cPerBlock > input_desc[0].dims.d[1]) {
       cPerBlock = 8;
     }
-    auto d_dim = input_desc[0].dims.d.size();
+    auto d_dim = input_desc[0].dims.nbDims;
     params_.n = input_desc[0].dims.d[0];
     if (d_dim == 3) {
       params_.c = input_desc[0].dims.d[1];
