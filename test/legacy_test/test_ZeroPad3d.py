@@ -19,19 +19,18 @@ import numpy as np
 from paddle import to_tensor
 from paddle.nn import ZeroPad3D
 
-# class TestZeroPad3DAPIError(unittest.TestCase):
+class TestZeroPad3DAPIError(unittest.TestCase):
 
-#     def setUp(self):
-#         self.shape = [4, 3, 6, 6, 6]
-#         self.unsupport_dtypes = ['bool', 'int8']
+    def setUp(self):
+        self.shape = [4, 3, 6, 6, 6]
+        self.unsupport_dtypes = 'int8'
 
-#     def test_unsupport_dtypes(self):
-#         for dtype in self.unsupport_dtypes:
-#             pad = 2
-#             x = np.random.randint(-255, 255, size=self.shape)
-#             zeropad3d = ZeroPad3D(padding=pad)
-#             x_tensor = to_tensor(x).astype(dtype)
-#             self.assertRaises(TypeError, zeropad3d, x=x_tensor)
+    def test_unsupport_dtypes(self):
+        pad = 2
+        x = np.random.randint(-255, 255, size=self.shape)
+        zeropad3d = ZeroPad3D(padding=pad)
+        x_tensor = to_tensor(x).astype(self.unsupport_dtypes)
+        self.assertRaises(TypeError, zeropad3d, x=x_tensor)
 
 
 class TestZeroPad3DAPI(unittest.TestCase):
@@ -55,42 +54,47 @@ class TestZeroPad3DAPI(unittest.TestCase):
             ret_res = zeropad3d(x_tensor).numpy()
             np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
-    # def test_support_pad2(self):
-    #     pad = [1, 2, 3, 4, 5, 6]
-    #     x = np.random.randint(-255, 255, size=self.shape)
-    #     expect_res = np.pad(
-    #         x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]], mode='constant', constant_values=0
-    #     )
+    def test_support_pad2(self):
+        pad = [1, 2, 3, 4, 5, 6]
+        x = np.random.randint(-255, 255, size=self.shape)
+        expect_res = np.pad(
+            x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]], mode='constant', constant_values=0
+        )
 
-    #     x_tensor = to_tensor(x)
-    #     zeropad3d = ZeroPad3D(padding=pad)
-    #     ret_res = zeropad3d(x_tensor).numpy()
-    #     np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+        x_tensor = to_tensor(x)
+        zeropad3d = ZeroPad3D(padding=pad)
+        ret_res = zeropad3d(x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
-    # def test_support_pad3(self):
-    #     pad = (1, 2, 3, 4, 5, 6)
-    #     x = np.random.randint(-255, 255, size=self.shape)
-    #     expect_res = np.pad(
-    #         x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]]
-    #     )
+    def test_support_pad3(self):
+        pad = (1, 2, 3, 4, 5, 6)
+        x = np.random.randint(-255, 255, size=self.shape)
+        expect_res = np.pad(
+            x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]]
+        )
 
-    #     x_tensor = to_tensor(x)
-    #     zeropad3d = ZeroPad3D(padding=pad)
-    #     ret_res = zeropad3d(x_tensor).numpy()
-    #     np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+        x_tensor = to_tensor(x)
+        zeropad3d = ZeroPad3D(padding=pad)
+        ret_res = zeropad3d(x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
-    # def test_support_pad4(self):
-    #     pad = [1, 2, 3, 4, 5, 6]
-    #     x = np.random.randint(-255, 255, size=self.shape)
-    #     expect_res = np.pad(
-    #         x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]]
-    #     )
+    def test_support_pad4(self):
+        pad = [1, 2, 3, 4, 5, 6]
+        x = np.random.randint(-255, 255, size=self.shape)
+        expect_res = np.pad(
+            x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]]
+        )
 
-    #     x_tensor = to_tensor(x)
-    #     pad_tensor = to_tensor(pad, dtype='int32')
-    #     zeropad3d = ZeroPad3D(padding=pad_tensor)
-    #     ret_res = zeropad3d(x_tensor).numpy()
-    #     np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+        x_tensor = to_tensor(x)
+        pad_tensor = to_tensor(pad, dtype='int32')
+        zeropad3d = ZeroPad3D(padding=pad_tensor)
+        ret_res = zeropad3d(x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+    
+    def test_repr(self):
+        pad = pad = [1, 2, 3, 4, 5, 6]
+        zeropad3d = ZeroPad3D(padding=pad)
+        zeropad3d.extra_repr()
 
 
 if __name__ == '__main__':
