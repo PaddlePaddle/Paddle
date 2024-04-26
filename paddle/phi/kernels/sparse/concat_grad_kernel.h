@@ -17,6 +17,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 namespace phi {
@@ -27,6 +28,13 @@ void ConcatCooGradKernel(const Context& dev_ctx,
                          const SparseCooTensor& out_grad,
                          const Scalar& axis_scalar,
                          std::vector<SparseCooTensor*> x_grad);
+
+template <typename T, typename Context>
+void ConcatCsrGradKernel(const Context& dev_ctx,
+                         const std::vector<const SparseCsrTensor*>& x,
+                         const SparseCsrTensor& out_grad,
+                         const Scalar& axis_scalar,
+                         std::vector<SparseCsrTensor*> x_grad);
 
 }  // namespace sparse
 }  // namespace phi

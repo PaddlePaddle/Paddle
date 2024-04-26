@@ -193,6 +193,32 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                              default_tensor_layout,
                              default_key.dtype(),
                              arg_type);
+    } else if (arg_type ==
+               std::type_index(typeid(
+                   const std::vector<const SparseCooTensor*>&))) {  // NOLINT
+      args_def->AppendInput(default_key.backend(),
+                            default_tensor_layout,
+                            default_key.dtype(),
+                            arg_type);
+    } else if (arg_type ==
+               std::type_index(typeid(
+                   const std::vector<const SparseCsrTensor*>&))) {  // NOLINT
+      args_def->AppendInput(default_key.backend(),
+                            default_tensor_layout,
+                            default_key.dtype(),
+                            arg_type);
+    } else if (arg_type == std::type_index(typeid(
+                               std::vector<SparseCooTensor*>))) {  // NOLINT
+      args_def->AppendOutput(default_key.backend(),
+                             default_tensor_layout,
+                             default_key.dtype(),
+                             arg_type);
+    } else if (arg_type == std::type_index(typeid(
+                               std::vector<SparseCsrTensor*>))) {  // NOLINT
+      args_def->AppendOutput(default_key.backend(),
+                             default_tensor_layout,
+                             default_key.dtype(),
+                             arg_type);
     } else if (arg_type == std::type_index(typeid(StringTensor*))) {  // NOLINT
       args_def->AppendOutput(default_key.backend(),
                              default_tensor_layout,

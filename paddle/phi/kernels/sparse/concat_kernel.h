@@ -33,5 +33,6 @@ void ConcatCsrKernel(const Context& dev_ctx,
                      const std::vector<const SparseCsrTensor*>& x,
                      const Scalar& axis_scalar,
                      SparseCsrTensor* out);
+
 }  // namespace sparse
 }  // namespace phi
