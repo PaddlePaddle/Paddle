@@ -268,26 +268,26 @@ The required data format for this layer is one of the following:
 };
 
 template <typename T, typename Context>
-void DataNormKernel(const Context &dev_ctx,
-                    const paddle::optional<phi::DenseTensor> &scale_w,
-                    const paddle::optional<phi::DenseTensor> &bias,
-                    const phi::DenseTensor &x,
-                    const phi::DenseTensor &batch_size,
-                    const phi::DenseTensor &batch_sum,
-                    const phi::DenseTensor &batch_square_sum,
-                    float epsilon,
-                    int slot_dim,
-                    float summary_decay_rate,
-                    bool enable_scale_and_shift,
-                    const std::string &data_layout,
-                    bool sync_stats,
-                    phi::DenseTensor *out,
-                    phi::DenseTensor *means,
-                    phi::DenseTensor *scales) {
-  const std::string data_layout_str = data_layout;
+void DataNormKernelCPU(const Context &dev_ctx,
+                       const paddle::optional<phi::DenseTensor> &scale_w,
+                       const paddle::optional<phi::DenseTensor> &bias,
+                       const phi::DenseTensor &in_x,
+                       const phi::DenseTensor &batch_size,
+                       const phi::DenseTensor &batch_sum,
+                       const phi::DenseTensor &batch_square_sum,
+                       float epsilon,
+                       int slot_dim,
+                       float summary_decay_rate,
+                       bool enable_scale_and_shift,
+                       const std::string &in_data_layout,
+                       bool sync_stats,
+                       phi::DenseTensor *out,
+                       phi::DenseTensor *means,
+                       phi::DenseTensor *scales) {
+  const std::string data_layout_str = in_data_layout;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
-  const auto *x = &x;
+  const auto *x = &in_x;
   const auto &x_dims = x->dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
@@ -308,7 +308,6 @@ void DataNormKernel(const Context &dev_ctx,
 
   auto *y = out;
   auto *mean_out = means;
-  auto *scales = scales;
 
   // alloc memory
   T *y_data = dev_ctx.template Alloc<T>(y);
@@ -358,8 +357,8 @@ void DataNormKernel(const Context &dev_ctx,
                   .colwise() *
               scales_arr;
         } else if (enable_scale_and_shift && slot_dim <= 0) {
-          const auto *scale_w_p = &scale_w;
-          const auto *bias_p = &bias;
+          const phi::DenseTensor *scale_w_p = scale_w.get_ptr();
+          const phi::DenseTensor *bias_p = bias.get_ptr();
           ConstEigenVectorArrayMap<T> scale_w_arr(scale_w_p->data<T>(), C);
           ConstEigenVectorArrayMap<T> bias_arr(bias_p->data<T>(), C);
 
@@ -374,8 +373,8 @@ void DataNormKernel(const Context &dev_ctx,
 
         } else {
           const int item_size = static_cast<int>(x->numel() / N);
-          const auto *scale_w_p = &scale_w;
-          const auto *bias_p = &bias;
+          const phi::DenseTensor *scale_w_p = scale_w.get_ptr();
+          const phi::DenseTensor *bias_p = bias.get_ptr();
           const T *scale_w_data = scale_w_p->data<T>();
           const T *bias_data = bias_p->data<T>();
           // location of show number in one embedding
@@ -764,7 +763,7 @@ REGISTER_OPERATOR(data_norm,
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 PD_REGISTER_KERNEL(
-    data_norm, CPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
+    data_norm, CPU, ALL_LAYOUT, ops::DataNormKernelCPU, float, double) {}
 PD_REGISTER_STRUCT_KERNEL(
     data_norm_grad, CPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}
 
