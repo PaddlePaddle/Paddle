@@ -20,7 +20,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
-#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -30,8 +29,6 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
-
-COMMON_DECLARE_bool(pir_debug);
 
 namespace cinn {
 namespace dialect {
@@ -106,10 +103,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
-  if (FLAGS_pir_debug) {
-    os << " [id:" << op->id() << "]";
-  }
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
@@ -187,10 +181,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
-  if (FLAGS_pir_debug) {
-    os << " [id:" << op->id() << "]";
-  }
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
