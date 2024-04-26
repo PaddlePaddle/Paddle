@@ -598,6 +598,8 @@ function(paddle_test_build TARGET_NAME)
                           ${paddle_test_DEPS} common paddle_gtest_main_new)
     add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} common
                      paddle_gtest_main_new)
+    message(STATUS "paddle_test_DEPS: ${paddle_test_DEPS}")
+    message(STATUS "paddle_lib: ${paddle_lib}")
     if(WITH_ONEDNN)
       target_link_libraries(${TARGET_NAME} onednn)
       add_dependencies(${TARGET_NAME} onednn)
