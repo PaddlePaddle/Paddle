@@ -212,7 +212,10 @@ def log_(x, name=None):
         return _C_ops.log_(x)
 
 
-def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+# TODO(megemini): test for `type hints``
+def scale(
+    x, scale: int = 1, bias=0.0, bias_after_scale=True, act=None, name=None
+) -> paddle.Tensor:
     """
     Scale operator.
 
