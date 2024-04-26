@@ -1438,15 +1438,25 @@ function collect_failed_tests() {
 # getting qucik disable ut list
 function get_quickly_disable_ut() {
     python -m pip install httpx
+    if [ $deprecated_test_path ];then
+        cd $deprecated_test_path
+        deprecated_ut=`ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/^/|^/' | sed 's/$/$/'`
+        deprecated_ut=`echo $deprecated_ut | sed 's/ //g'`
+        cd -
+    fi
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+        disable_ut_quickly="${disable_ut_quickly}${deprecated_ut}"
         echo "========================================="
         echo "The following unittests have been disabled:"
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-
-        exit 102
-        disable_ut_quickly='disable_ut'
+        if [ $deprecated_ut ];then
+            disable_ut_quickly="${deprecated_ut}"
+        else
+            exit 102
+            disable_ut_quickly='disable_ut'
+        fi
     fi
 }
 
@@ -4463,6 +4473,12 @@ function main() {
       cicheck_py37)
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_py37_pir)
+        export FLAGS_enable_pir_api=1
+        # disable deprecated test in pir
+        deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)

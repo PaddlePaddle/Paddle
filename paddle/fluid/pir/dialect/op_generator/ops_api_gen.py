@@ -195,6 +195,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
+    'pull_sparse_v2',
     'partial_concat',
     'partial_send',
     'partial_recv',
