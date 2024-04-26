@@ -304,9 +304,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       isSparseString(op_desc.Type())) {
     std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
     std::vector<std::string> input_types;
-    std::stringstream ss;
     for (const auto& pair : inputs) {
-      ss << pair.first << ": " << pair.second << ", ";
       VarDesc* var_desc = op_desc.Block()->FindVarRecursive(pair.second[0]);
       PADDLE_ENFORCE_NE(
           var_desc,

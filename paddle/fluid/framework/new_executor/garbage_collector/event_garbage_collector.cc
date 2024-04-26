@@ -110,7 +110,22 @@ void InterpreterCoreEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         event,
         ctx);
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
   } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
     Add(var->GetMutable<phi::SparseCsrTensor>()
             ->mutable_values()
             ->MoveMemoryHolder(),
