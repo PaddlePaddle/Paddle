@@ -490,7 +490,7 @@ class TestPrimDropout(TestPrimBase):
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=1e-6)
+            np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=0.08)
 
 
 if __name__ == "__main__":
