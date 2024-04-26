@@ -737,6 +737,17 @@ bool WhileOp::InferSymbolicShape(
     shape_analysis->SetShapeOrDataForValue(value, shape_data);
   }
 
+  // add GreaterThanOne constraint
+  for (size_t i = 1; i < num_operands(); ++i) {
+    const auto &input_i =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    for (const auto &dim_expr : input_i) {
+      if (shape_analysis->IsGreatThanOne(dim_expr)) {
+        shape_analysis->AddGreatThanOneCstr(dim_expr);
+      }
+    }
+  }
+
   pir::InferSymExprForBlock(body(), shape_analysis);
 
   // add constraints for args
@@ -794,24 +805,20 @@ bool WhileOp::InferSymbolicShape(
                     num_results(),
                     phi::errors::InvalidArgument(
                         "The body_args.size and num_results is not equal"));
-  for (int i = 0; i < num_results(); ++i) {
+  for (size_t i = 0; i < num_results(); ++i) {
     const auto &input_i =
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     const auto &output_i =
         shape_analysis->GetShapeOrDataForValue(result(i)).shape();
     const auto &args_i =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
-    if (input_i.size() != output_i.size() || output_i.size() != args_i.size()) {
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
       continue;
     }
-    for (int j = 0; j < output_i.size(); j++) {
+    for (size_t j = 0; j < output_i.size(); j++) {
       if (shape_analysis->IsEqual(output_i[j], args_i[j])) {
         shape_analysis->AddEqualCstr(output_i[j], input_i[j]);
-      }
-    }
-    for (int j = 0; j < input_i.size(); j++) {
-      if (shape_analysis->IsGreatThanOne(input_i[j])) {
-        shape_analysis->AddGreatThanOneCstr(input_i[j]);
       }
     }
   }
