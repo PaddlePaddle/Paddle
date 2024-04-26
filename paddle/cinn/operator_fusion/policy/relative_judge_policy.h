@@ -21,86 +21,10 @@
 
 namespace cinn::fusion {
 
-struct ValueDim {
-  pir::Value v_;
-  size_t idx_;
-  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
-  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
-    // Just get a related op to get the shape analysis. It can be value's
-    // upstream op (defining op) or downstream op (user op).
-    const auto get_related_op_from_value =
-        [](const pir::Value& v) -> pir::Operation* {
-      if (v.defining_op() != nullptr) {
-        return v.defining_op();
-      }
-      // For inputs of the program, the defining_op is nullptr, we use it's user
-      // as the related op.
-      PADDLE_ENFORCE_EQ(v.use_empty(),
-                        false,
-                        phi::errors::PreconditionNotMet(
-                            "Value is an input value, it should have a use."));
-      return v.first_use().owner();
-    };
-    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
-                          .Get(get_related_op_from_value(v)->GetParentProgram())
-                          .shared_from_this();
-  }
-  ValueDim() = default;
-  ValueDim(const ValueDim& v) = default;
-  bool operator==(const ValueDim& v) const {
-    return (idx_ == v.idx_) && (v_ == v.v_);
-  }
-
-  symbol::DimExpr GetSymbolicDim() const {
-    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
-  }
-
-  bool SymbolicEqualTo(const ValueDim& other) const {
-    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
-  }
-
-  std::string DebugStr() const {
-    std::ostringstream oss;
-    oss << "ValueDim: ";
-    oss << "Index: " << idx_;
-    oss << ", ";
-    v_.defining_op()->Print(oss);
-    return oss.str();
-  }
-
-  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
-    auto shape_analysis_ptr = shape_analysis_.lock();
-    PADDLE_ENFORCE_NOT_NULL(
-        shape_analysis_ptr,
-        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
-    return *shape_analysis_ptr;
-  }
-};
-
-struct ValueDimHash {
-  std::size_t operator()(const ValueDim& p) const {
-    auto h1 = std::hash<size_t>{}(p.idx_);
-    auto h2 = std::hash<pir::Value>{}(p.v_);
-    // Mainly for demonstration purposes, i.e. works but is overly simple
-    // In the real world, use sth. like boost.hash_combine
-    return h1 ^ (h2 << 1);
-  }
-};
-
 using ValueDimRelation =
     std::unordered_map<ValueDim,
                        std::unordered_map<ValueDim, bool, ValueDimHash>,
                        ValueDimHash>;
-// ValueDimRelation[in][out] = True; means f(out) = in is related.
-
-static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
-  std::vector<ValueDim> value_dims;
-  size_t rank = GetRank(v);
-  for (size_t i = 0; i < rank; ++i) {
-    value_dims.emplace_back(v, i);
-  }
-  return value_dims;
-}
 
 static std::vector<ValueDim> GetAllInputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;

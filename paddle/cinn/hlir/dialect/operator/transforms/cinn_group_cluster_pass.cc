@@ -394,6 +394,9 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (op->isa<cinn::dialect::FusionOp>()) {
+      return false;
+    }
     return op->num_regions() > 0;
   }
 };

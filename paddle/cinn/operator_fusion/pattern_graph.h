@@ -333,18 +333,14 @@ struct HorizontalFusionConstrain {
     if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, second)) {
       return false;
     }
-    const auto& first_dim = first->sink_op()
-                                ->result(0)
-                                .type()
-                                .template dyn_cast<pir::DenseTensorType>()
-                                .dims();
-    const auto& second_dim = second->sink_op()
-                                 ->result(0)
-                                 .type()
-                                 .template dyn_cast<pir::DenseTensorType>()
-                                 .dims();
-    return graph.topo_manager().CanFuse(first, second) &&
-           first_dim == second_dim;
+    const auto& lhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
+    const auto& rhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
+
+    return graph.topo_manager().CanFuse(lhs, rhs) &&
+           IsLoopFrameworkEqual(lhs_pattern.patterns_.back(),
+                                rhs_pattern.patterns_.back());
   }
 };
 

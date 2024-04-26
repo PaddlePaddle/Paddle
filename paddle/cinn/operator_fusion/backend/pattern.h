@@ -39,12 +39,15 @@ using FusionOp = std::variant<ReduceOp, TrivialOp>;
 template <>
 struct TrivialPattern<BackendStage> {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
+                          pir::Operation* sink_op,
                           const TrivialOp& op)
-      : ops_(ops), trivial_op(op) {}
+      : ops_(ops), sink_op(sink_op), trivial_op(op) {}
   std::vector<pir::Operation*> ops_;
+  pir::Operation* sink_op;
   TrivialOp trivial_op;
   static std::string name() { return "Trivial"; }
   std::vector<pir::Operation*> ops() const { return ops_; }
+  pir::Operation* sink() const { return sink_op; }
 };
 
 template <>

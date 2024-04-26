@@ -34,8 +34,8 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
     CHECK(content.expr.has_value());
-    return TrivialPattern<BackendStage>({content.op},
-                                        TrivialOp(content.expr.value()));
+    return TrivialPattern<BackendStage>(
+        {content.op}, content.op, TrivialOp(content.expr.value()));
   } else {
     CHECK(false);
     return UnsupportPattern<BackendStage>({content.op});
@@ -74,7 +74,7 @@ StmtPattern<BackendStage> MergePatternImpl(
   const auto& trivial_op =
       cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
           first.trivial_op, second.trivial_op);
-  return TrivialPattern<BackendStage>(ops, trivial_op);
+  return TrivialPattern<BackendStage>(ops, second.sink(), trivial_op);
 }
 
 template <>
