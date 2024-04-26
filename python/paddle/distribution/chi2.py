@@ -24,7 +24,9 @@ class Chi2(Gamma):
 
     Example::
         .. code-block:: python
-            >>> m = Chi2(paddle.to_tensor([1.0]))
+
+            >>> import paddle
+            >>> m = paddle.distribution.Chi2(paddle.to_tensor([1.0]))
             >>> m.sample()
             tensor([ 0.1046])
 
