@@ -229,7 +229,7 @@ class TestGammaSample(unittest.TestCase):
                 self.assertTrue(data.shape == case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (3000,)
+        sample_shape = (30000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,
@@ -252,7 +252,7 @@ class TestGammaSample(unittest.TestCase):
             )
 
     def test_rsample(self):
-        sample_shape = (3000,)
+        sample_shape = (30000,)
         with paddle.static.program_guard(self.program):
             [data] = self.executor.run(
                 self.program,

@@ -190,7 +190,7 @@ class TestChi2Sample(unittest.TestCase):
             print("case.get('expect'):", case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (3000,)
+        sample_shape = (30000,)
         samples = self._paddle_chi2.sample(sample_shape)
         sample_values = samples.numpy()
 
@@ -208,7 +208,7 @@ class TestChi2Sample(unittest.TestCase):
         )
 
     def test_rsample(self):
-        sample_shape = (3000,)
+        sample_shape = (30000,)
         samples = self._paddle_chi2.rsample(sample_shape)
         sample_values = samples.numpy()
 
