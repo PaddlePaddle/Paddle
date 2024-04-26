@@ -391,9 +391,9 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
 }
 
 bool Pad3dOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   PADDLE_ENFORCE_EQ(x_shape.size(),
                     5,
                     common::errors::InvalidArgument(
@@ -401,7 +401,7 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
                         "5, but received %d. ",
                         x_shape.size()));
   const auto &paddings_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   if (!paddings_shape.data().has_value()) {
     std::stringstream ss;
     ss << paddings_shape;
@@ -436,7 +436,7 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
     return out_dims;
   }();
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
 
   return true;
