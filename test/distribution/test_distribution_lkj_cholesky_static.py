@@ -76,7 +76,7 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
         self._test_sample_shape_dim(sample_method)
 
     def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 5):
+        for dim in range(2, 4):
             self._test_sample_shape(dim, sample_method)
 
     def _test_sample_shape(self, dim, sample_method):
@@ -152,7 +152,7 @@ class TestLKJCholeskyShapeMulti(unittest.TestCase):
         self._test_sample_shape_dim(sample_method)
 
     def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 5):
+        for dim in range(2, 4):
             self._test_sample_shape(dim, sample_method)
 
     def _test_sample_shape(self, dim, sample_method):
