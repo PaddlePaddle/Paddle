@@ -1543,7 +1543,7 @@ class Layer:
         elif hasattr(self, name) and name not in self._parameters:
             raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
-            parameter, framework.Parameter
+            parameter, (framework.Parameter, paddle.pir.Value)
         ):
             raise TypeError(
                 f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."

@@ -703,6 +703,7 @@ class Engine:
         dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
             dist_program
         )
+
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
 
@@ -1022,6 +1023,17 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
+    def _init_lr(self):
+        buffer_tensor = global_scope().var("learning_rate_0").get_tensor()
+        if not isinstance(self._optimizer._learning_rate, float):
+            raise TypeError(
+                "learning rate should be float, got %s here"
+                % type(self._optimizer._learning_rate)
+            )
+        buffer_tensor.set(
+            np.float32(self._optimizer._learning_rate), self._place
+        )
+
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
@@ -1042,6 +1054,7 @@ class Engine:
                 self._pir_dense_main_progs[mode], self._place
             )
 
+            self._init_lr()
             return
 
         if self._strategy.seed:
@@ -1782,9 +1795,15 @@ class Engine:
         use_cache = self._strategy.use_cache
         if self._in_pir_mode:
             use_cache = False
-            fetch_names = [
-                self.main_program.get_output_value_by_name(self._loss_names[0])
-            ]
+            no_fetch = False  # not last rank should not fetch loss in pipeline parallel
+            loss_value = self.main_program.get_output_value_by_name(
+                self._loss_names[0]
+            )
+            if paddle.pir.is_fake_value(loss_value):
+                no_fetch = True
+                fetch_names = []
+            else:
+                fetch_names = [loss_value]
 
         outs = self._executor.run(
             self.main_program,
@@ -1795,7 +1814,10 @@ class Engine:
         )
 
         if self._in_pir_mode:
-            logs = {"outputs": outs[0], "loss": outs[0]}
+            if no_fetch:
+                logs = {"outputs": None, "loss": None}
+            else:
+                logs = {"outputs": outs[0], "loss": outs[0]}
             return logs
 
         logs = self._prepare_logger(

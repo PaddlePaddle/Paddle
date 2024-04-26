@@ -29,16 +29,19 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
 ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
     pir::Operation* op) {
   return op_signature_map_[op];
-  // TODO(baizhou) fix broadcast signature and enable here
-  // auto result = ShardableAxesSignature();
-  // auto origin_sig = op_signature_map_[op];
-  // for (const auto& axes : origin_sig.inputs) {
-  //   result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  // }
-  // for (const auto& axes : origin_sig.outputs) {
-  //   result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  // }
-  // return result;
+}
+
+ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
+    pir::Operation* op) {
+  auto result = ShardableAxesSignature();
+  auto origin_sig = op_signature_map_[op];
+  for (const auto& axes : origin_sig.inputs) {
+    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  for (const auto& axes : origin_sig.outputs) {
+    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  return result;
 }
 
 ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
@@ -73,6 +76,11 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
 
 std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
     pir::Operation* op) {
+  if (op->num_results() != 1) {
+    VLOG(4) << "Now we do not support op with multi outputs, create default: "
+            << op->name();
+    return CreateDefaultSignature(op);
+  }
   if (op->isa<cinn::dialect::ReshapeOp>()) {
     return CreateDefaultSignature(op);
   }
@@ -182,13 +190,12 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     pir::Operation* op) {
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
-    VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature : \n"
+    VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature for "
+               "Special Op: \n"
             << op->name() << " : " << special_result.value().DebugStr();
     return special_result.value();
   }
 
-  CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs: " << op->name();
   ShardableAxesSignature result;
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   if (kind == hlir::framework::kReduction) {

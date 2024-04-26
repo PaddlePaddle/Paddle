@@ -64,13 +64,13 @@ void CompileGroupToJitKernelOp(
   auto op_attr_map = CompileGroupAsOpAttribute(group_list);
   VLOG(4) << "The size of group_map is : " << group_map->size();
   for (auto& [block, group] : *group_map) {
+    auto& yield_op = block->back();
+    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values();
+    const auto& group_output_values = yield_op.operands_source();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    auto& yield_op = block->back();
-    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     rewriter.set_insertion_point(&yield_op);
     const auto& group_inputs = GetBlockOutsideInput(group->ops());
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
@@ -283,6 +283,7 @@ void SetLeafBlockByGroupView(
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
+  new_group->SetIsBroadcastLeaf(true);
   PADDLE_ENFORCE_EQ(
       origin_group->ops().size(),
       new_group->ops().size(),
