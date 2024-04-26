@@ -82,20 +82,20 @@ class TestReshardSToR:
                 std_ops,
             )
         elif self._shard == 1:
-            np.testing.assert_equal(dist_program.num_ops(), 11)
+            np.testing.assert_equal(dist_program.num_ops(), 10)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
                 'dist_op.shard_tensor',
                 'pd_op.c_allgather',
-                'pd_op.full_int_array',
                 'pd_op.full',
-                'pd_op.split',
+                'pd_op.split_with_num',
                 'builtin.split',
                 'pd_op.full',
                 'builtin.combine',
                 'pd_op.concat',
             ]
+
             np.testing.assert_equal(
                 ops,
                 std_ops,
@@ -108,10 +108,11 @@ class TestReshardSToR:
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+                op_result_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._mesh
+                print(f'debug op_operand_dist_attr: {op_operand_dist_attr.process_mesh}')
                 assert op_operand_dist_attr.process_mesh == self._mesh
                 if self._shard == 0:
                     assert op_operand_dist_attr.dims_mapping == [0, -1]
@@ -130,12 +131,12 @@ class TestReshardSToR:
                 assert op_value.dist_attr().process_mesh == self._mesh
                 assert op_value.dist_attr().dims_mapping == [-1, -1]
                 assert op_value.dist_attr().partial_status == {}
-            elif op.name() == 'pd_op.split':
+            elif op.name() == 'pd_op.split_with_num':
                 print(f'op dist_attr: {op.dist_attr}')
-                print(f'op result dist_attr: {op.result(0).dist_attr()}')
+                print(f'op result dist_attr: {op.dist_attr.result(0).as_tensor_dist_attr()}')
             elif op.name() == 'pd_op.concat':
                 print(f'op dist_attr: {op.dist_attr}')
-                print(f'op result dist_attr: {op.result(0).dist_attr()}')
+                print(f'op result dist_attr: {op.dist_attr.result(0).as_tensor_dist_attr()}')
 
     def run_pir_to_static_test_case(self):
         paddle.disable_static()
