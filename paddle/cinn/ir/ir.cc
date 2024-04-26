@@ -589,7 +589,8 @@ Var &Var::operator=(const _Var_ *x) {
 Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   CHECK(tensor->type().valid());
   const auto indices = utils::GetCompitableStoreLoadIndices(
-      tensor.as_tensor_ref(), origin_indices) CHECK(!indices.empty());
+      tensor.as_tensor_ref(), origin_indices);
+  CHECK(!indices.empty());
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {
     CHECK(idx.type().ElementOf() == Int(64) ||
