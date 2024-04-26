@@ -28,7 +28,8 @@ class Chi2(Gamma):
             >>> import paddle
             >>> m = paddle.distribution.Chi2(paddle.to_tensor([1.0]))
             >>> m.sample()
-            tensor([ 0.1046])
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+       [0.90904468])
 
     Args:
         df (float or Tensor): shape parameter of the distribution
