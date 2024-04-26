@@ -190,7 +190,7 @@ class TestChi2Sample(unittest.TestCase):
             print("case.get('expect'):", case.get('expect'))
 
     def test_sample(self):
-        sample_shape = (300,)
+        sample_shape = (3000,)
         samples = self._paddle_chi2.sample(sample_shape)
         sample_values = samples.numpy()
 
@@ -208,7 +208,7 @@ class TestChi2Sample(unittest.TestCase):
         )
 
     def test_rsample(self):
-        sample_shape = (300,)
+        sample_shape = (3000,)
         samples = self._paddle_chi2.rsample(sample_shape)
         sample_values = samples.numpy()
 
@@ -242,12 +242,12 @@ class TestChi2SampleKS(unittest.TestCase):
         self._paddle_chi2 = chi2.Chi2(df)
 
     def test_sample_ks(self):
-        sample_shape = (150,)
+        sample_shape = (15000,)
         samples = self._paddle_chi2.sample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
     def test_rsample_ks(self):
-        sample_shape = (150,)
+        sample_shape = (15000,)
         samples = self._paddle_chi2.rsample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
