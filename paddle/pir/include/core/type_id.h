@@ -32,7 +32,7 @@ namespace pir {
 ///   TypeId type_a_id = TypeId::get<TypeA>();
 /// \endcode
 ///
-class IR_API TypeId {
+class TypeId {
   struct Storage {};
 
  public:
@@ -129,11 +129,11 @@ TypeId TypeId::get() {
   }                                                    \
   }  // namespace pir
 
-#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
-  namespace pir {                                   \
-  namespace detail {                                \
-  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
-  }                                                 \
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)             \
+  namespace pir {                                          \
+  namespace detail {                                       \
+  UniqueingId IR_API TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                        \
   }  // namespace pir
 
 }  // namespace pir
