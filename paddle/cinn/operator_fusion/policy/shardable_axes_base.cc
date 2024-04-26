@@ -127,6 +127,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
         axes.emplace_back(input_axes[i]);
       }
     }
+    return axes;
   }();
 
   result.inputs.emplace_back(input_axes);
