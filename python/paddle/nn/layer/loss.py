@@ -1105,6 +1105,7 @@ class KLDivLoss(Layer):
             [5, 20]
 
             >>> # if label is in the log space, set log_target = True
+            >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
             >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)

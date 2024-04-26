@@ -1697,6 +1697,7 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
             [5, 20]
 
             >>> # if label is in the log space, set log_target = True
+            >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
             >>> log_target = paddle.log(target)
             >>> pred_loss_1 = F.kl_div(x, target, reduction='none')
             >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
