@@ -19,7 +19,7 @@
   namespace pir {                                    \
   namespace detail {                                 \
   template <>                                        \
-  class TypeIdResolver<TYPE_CLASS> {                 \
+  class IR_API TypeIdResolver<TYPE_CLASS> {          \
    public:                                           \
     static TypeId Resolve() { return id_; }          \
     static UniqueingId id_;                          \
