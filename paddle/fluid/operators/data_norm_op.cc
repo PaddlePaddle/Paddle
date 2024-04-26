@@ -266,68 +266,117 @@ The required data format for this layer is one of the following:
   }
 };
 
-template <typename T>
-class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    // const bool is_test = ctx.Attr<bool>("is_test");
-    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+template <typename T, typename Context>
+void DataNormKernel(const Context &dev_ctx,
+                    const phi::optional<DenseTensor> &scale_w,
+                    const phi::optional<DenseTensor> &bias,
+                    const DenseTensor &x,
+                    const DenseTensor &batch_size,
+                    const DenseTensor &batch_sum,
+                    const DenseTensor &batch_square_sum,
+                    float epsilon,
+                    int slot_dim,
+                    float summary_decay_rate,
+                    bool enable_scale_and_shift,
+                    const std::string &data_layout,
+                    bool sync_stats,
+                    DenseTensor *out,
+                    DenseTensor *means,
+                    DenseTensor *scales) {
+  const std::string data_layout_str = data_layout;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
-    const auto *x = ctx.Input<phi::DenseTensor>("X");
-    const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(),
-        2,
-        phi::errors::InvalidArgument("The Input dim size should be 2"));
-    const int N = static_cast<int>(x_dims[0]);
-    const int C = static_cast<int>(data_layout == DataLayout::kNCHW
-                                       ? x_dims[1]
-                                       : x_dims[x_dims.size() - 1]);
+  const auto *x = &x;
+  const auto &x_dims = x->dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument("The Input dim size should be 2"));
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
 
-    PADDLE_ENFORCE_LT(0,
-                      N,
-                      phi::errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
-    PADDLE_ENFORCE_LT(0,
-                      C,
-                      phi::errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+  PADDLE_ENFORCE_LT(0,
+                    N,
+                    phi::errors::InvalidArgument(
+                        "The dims of Input(X) should be greater than 0."));
+  PADDLE_ENFORCE_LT(0,
+                    C,
+                    phi::errors::InvalidArgument(
+                        "The dims of Input(X) should be greater than 0."));
 
-    auto *y = ctx.Output<phi::DenseTensor>("Y");
-    auto *mean_out = ctx.Output<phi::DenseTensor>("Means");
-    auto *scales = ctx.Output<phi::DenseTensor>("Scales");
+  auto *y = out;
+  auto *mean_out = means;
+  auto *scales = scales;
 
-    // alloc memory
-    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+  // alloc memory
+  T *y_data = dev_ctx.template Alloc<T>(y);
 
-    ConstEigenVectorArrayMap<T> b_size_arr(
-        ctx.Input<phi::DenseTensor>("BatchSize")->data<T>(), C);
-    ConstEigenVectorArrayMap<T> b_sum_arr(
-        ctx.Input<phi::DenseTensor>("BatchSum")->data<T>(), C);
-    ConstEigenVectorArrayMap<T> b_square_sum_arr(
-        ctx.Input<phi::DenseTensor>("BatchSquareSum")->data<T>(), C);
-    EigenVectorArrayMap<T> means_arr(mean_out->mutable_data<T>(ctx.GetPlace()),
-                                     C);
-    EigenVectorArrayMap<T> scales_arr(scales->mutable_data<T>(ctx.GetPlace()),
-                                      C);
-    means_arr = b_sum_arr / b_size_arr;
-    scales_arr = (b_size_arr / b_square_sum_arr).sqrt();
+  ConstEigenVectorArrayMap<T> b_size_arr(batch_size.data<T>(), C);
+  ConstEigenVectorArrayMap<T> b_sum_arr(batch_sum.data<T>(), C);
+  ConstEigenVectorArrayMap<T> b_square_sum_arr(batch_square_sum.data<T>(), C);
+  EigenVectorArrayMap<T> means_arr(dev_ctx.template Alloc<T>(mean_out), C);
+  EigenVectorArrayMap<T> scales_arr(dev_ctx.template Alloc<T>(scales), C);
+  means_arr = b_sum_arr / b_size_arr;
+  scales_arr = (b_size_arr / b_square_sum_arr).sqrt();
 
-    const T *means_data = mean_out->data<T>();
-    const T *x_data = x->data<T>();
+  const T *means_data = mean_out->data<T>();
+  const T *x_data = x->data<T>();
 
-    const T *scales_data = scales->data<T>();
-    const int slot_dim = ctx.Attr<int>("slot_dim");
-    T min_precision = 1e-7f;
-    switch (data_layout) {
-      case DataLayout::kNCHW:  // It's two dimensions, so make no difference
-      case DataLayout::kNHWC: {
-        // if slot_dim is set and batch size is larger than zero, we choose
-        // to check if show number is zero, if so, skip normalization.
-        if (slot_dim > 0 && N > 0 &&
-            (!ctx.Attr<bool>("enable_scale_and_shift"))) {
+  const T *scales_data = scales->data<T>();
+  T min_precision = 1e-7f;
+  switch (data_layout) {
+    case DataLayout::kNCHW:  // It's two dimensions, so make no difference
+    case DataLayout::kNHWC: {
+      // if slot_dim is set and batch size is larger than zero, we choose
+      // to check if show number is zero, if so, skip normalization.
+      if (slot_dim > 0 && N > 0 && (!enable_scale_and_shift)) {
+        const int item_size = static_cast<int>(x->numel() / N);
+        // location of show number in one embedding
+        int offset = 0;
+        for (int k = 0; k < N; ++k) {
+          for (int i = 0; i < item_size; i += slot_dim) {
+            if (x_data[offset + i] > -min_precision &&
+                x_data[offset + i] < min_precision) {
+              // show = 0
+              memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
+            } else {
+              for (int j = i; j < i + slot_dim; ++j) {
+                y_data[offset + j] =
+                    (x_data[offset + j] - means_data[j]) * scales_data[j];
+              }
+            }
+          }
+
+          offset += item_size;
+        }
+      } else {
+        if (!enable_scale_and_shift && slot_dim <= 0) {
+          EigenArrayMap<T>(y_data, C, N) =
+              (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
+                  .colwise() *
+              scales_arr;
+        } else if (enable_scale_and_shift && slot_dim <= 0) {
+          const auto *scale_w_p = &scale_w;
+          const auto *bias_p = &bias;
+          ConstEigenVectorArrayMap<T> scale_w_arr(scale_w_p->data<T>(), C);
+          ConstEigenVectorArrayMap<T> bias_arr(bias_p->data<T>(), C);
+
+          Eigen::Array<T, Eigen::Dynamic, 1> new_scale =
+              scales_arr * scale_w_arr;
+          Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
+              bias_arr - means_arr * scales_arr * scale_w_arr;
+          EigenArrayMap<T>(y_data, C, N) =
+              (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() * new_scale)
+                  .colwise() +
+              new_bias;
+
+        } else {
           const int item_size = static_cast<int>(x->numel() / N);
+          const auto *scale_w_p = &scale_w;
+          const auto *bias_p = &bias;
+          const T *scale_w_data = scale_w_p->data<T>();
+          const T *bias_data = bias_p->data<T>();
           // location of show number in one embedding
           int offset = 0;
           for (int k = 0; k < N; ++k) {
@@ -339,73 +388,24 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
               } else {
                 for (int j = i; j < i + slot_dim; ++j) {
                   y_data[offset + j] =
-                      (x_data[offset + j] - means_data[j]) * scales_data[j];
+                      ((x_data[offset + j] - means_data[j]) * scales_data[j]) *
+                          scale_w_data[j] +
+                      bias_data[j];
                 }
               }
-            }
+            }  // end for i
 
             offset += item_size;
-          }
-        } else {
-          if (!ctx.Attr<bool>("enable_scale_and_shift") && slot_dim <= 0) {
-            EigenArrayMap<T>(y_data, C, N) =
-                (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() -
-                 means_arr)
-                    .colwise() *
-                scales_arr;
-          } else if (ctx.Attr<bool>("enable_scale_and_shift") &&
-                     slot_dim <= 0) {
-            const auto *scale_w = ctx.Input<phi::DenseTensor>("scale_w");
-            const auto *bias = ctx.Input<phi::DenseTensor>("bias");
-            ConstEigenVectorArrayMap<T> scale_w_arr(scale_w->data<T>(), C);
-            ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
-
-            Eigen::Array<T, Eigen::Dynamic, 1> new_scale =
-                scales_arr * scale_w_arr;
-            Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
-                bias_arr - means_arr * scales_arr * scale_w_arr;
-            EigenArrayMap<T>(y_data, C, N) =
-                (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() *
-                 new_scale)
-                    .colwise() +
-                new_bias;
-
-          } else {
-            const int item_size = static_cast<int>(x->numel() / N);
-            const auto *scale_w = ctx.Input<phi::DenseTensor>("scale_w");
-            const auto *bias = ctx.Input<phi::DenseTensor>("bias");
-            const T *scale_w_data = scale_w->data<T>();
-            const T *bias_data = bias->data<T>();
-            // location of show number in one embedding
-            int offset = 0;
-            for (int k = 0; k < N; ++k) {
-              for (int i = 0; i < item_size; i += slot_dim) {
-                if (x_data[offset + i] > -min_precision &&
-                    x_data[offset + i] < min_precision) {
-                  // show = 0
-                  memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
-                } else {
-                  for (int j = i; j < i + slot_dim; ++j) {
-                    y_data[offset + j] = ((x_data[offset + j] - means_data[j]) *
-                                          scales_data[j]) *
-                                             scale_w_data[j] +
-                                         bias_data[j];
-                  }
-                }
-              }  // end for i
-
-              offset += item_size;
-            }  // end for k
-          }
+          }  // end for k
         }
-        break;
       }
-      default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "Unknown storage order: %d, please use NCHW or NHWC", data_layout));
+      break;
     }
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Unknown storage order: %d, please use NCHW or NHWC", data_layout));
   }
-};
+}
 
 class DataNormGradOp : public framework::OperatorWithKernel {
  public:
@@ -762,7 +762,7 @@ REGISTER_OPERATOR(data_norm,
                   ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
-PD_REGISTER_STRUCT_KERNEL(
+PD_REGISTER_KERNEL(
     data_norm, CPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
 PD_REGISTER_STRUCT_KERNEL(
     data_norm_grad, CPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}
