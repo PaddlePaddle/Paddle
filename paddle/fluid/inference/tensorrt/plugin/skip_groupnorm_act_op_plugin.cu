@@ -147,19 +147,19 @@ __global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams<__half> params) {
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     static_cast<int64_t>(hwi) * params.c + ci;
+    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
+                     static_cast<int64_t>(dhwi) * params.c + ci;
     // Fetch two channels per thread.
     __half2 h2(0, 0);
     if (ci < params.c) {
@@ -235,12 +235,12 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
           "params.c %% params.cPerBlock should be 0, but get %d.",
           params.c % params.cPerBlock));
   PADDLE_ENFORCE_EQ(
-      params.hw % params.hwPerBlock,
+      params.dhw % params.dhwPerBlock,
       0,
       platform::errors::InvalidArgument(
           "The groupNormNHWCSum of SkipGroupnormAct Plugin got wrong parameters"
-          "params.hw  %% params.hwPerBlock should be 0, but get %d.",
-          params.hw % params.hwPerBlock));
+          "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
+          params.dhw % params.dhwPerBlock));
   // Make sure a group does not span multiple blocks.
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
@@ -254,7 +254,7 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
   // The number of blocks to compute all the channels.
   grid.x = params.c / params.cPerBlock;
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -308,21 +308,21 @@ __global__ void skipGroupNormNHWCScaleKernel(
   }
 
   // Compute the mean.
-  float mean = sum * params.invHWC;
+  float mean = sum * params.invDHWC;
   // Compute the variance.
-  float var = sumSq * params.invHWC - (mean * mean);
+  float var = sumSq * params.invDHWC - (mean * mean);
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)ni * params.hwc + hwi * params.c + ci;
+    int64_t offset = (int64_t)ni * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
@@ -378,7 +378,7 @@ void skipGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
   // The number of blocks to compute all the channels.
   grid.x = params.c / params.cPerBlock;
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -420,7 +420,7 @@ int SkipGroupnormActPluginDynamic::enqueue(
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. SkipGroupnormAct-->fp16";
     int32_t cPerBlock = 320;
-    int32_t maxBlocksPerHW = 1024;
+    int32_t maxBlocksPerDHW = 1024;
 
     switch (input_desc[0].dims.d[1]) {
       case 960:
@@ -440,6 +440,25 @@ int SkipGroupnormActPluginDynamic::enqueue(
     if (cPerBlock > input_desc[0].dims.d[1]) {
       cPerBlock = 8;
     }
+    auto d_dim = input_desc[0].dims.d.size();
+    params_.n = x_dims[0];
+    if (d_dim == 3) {
+      params_.c = x_dims[1];
+      params_.d = 1;
+      params_.h = 1;
+      params_.w = x_dims[2];
+    } else if (d_dim == 4) {
+      params_.c = x_dims[1];
+      params_.d = 1;
+      params_.h = x_dims[2];
+      params_.w = x_dims[3];
+    } else {
+      // d_dim == 5
+      params_.c = x_dims[1];
+      params_.d = x_dims[2];
+      params_.h = x_dims[3];
+      params_.w = x_dims[4];
+    }
     params_.withSilu = true;
     params_.dst = static_cast<half *>(outputs[0]);
     params_.srcX = static_cast<half const *>(inputs[0]);
@@ -447,18 +466,18 @@ int SkipGroupnormActPluginDynamic::enqueue(
     params_.gamma = scale_gpu_.get();
     params_.beta = bias_gpu_.get();
     params_.redBuffer = static_cast<float *>(workspace);
-    params_.n = input_desc[0].dims.d[0];
-    params_.h = input_desc[0].dims.d[2];
-    params_.w = input_desc[0].dims.d[3];
-    params_.c = input_desc[0].dims.d[1];
+    // params_.n = input_desc[0].dims.d[0];
+    // params_.h = input_desc[0].dims.d[2];
+    // params_.w = input_desc[0].dims.d[3];
+    // params_.c = input_desc[0].dims.d[1];
     params_.groups = groups_;
-    params_.hw = params_.h * params_.w;
-    const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-    params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
+    params_.dhw = params_.d * params_.h * params_.w;
+    const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+    params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
     params_.cPerBlock = cPerBlock;
     params_.cPerGroup = params_.c / params_.groups;
-    params_.hwc = params_.hw * params_.c;
-    params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
+    params_.dhwc = params_.dhw * params_.c;
+    params_.invDHWC = 1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
     params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
     params_.eps = eps_;
 
