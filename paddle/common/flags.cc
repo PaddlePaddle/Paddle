@@ -1489,6 +1489,10 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
+PHI_DEFINE_EXPORTED_bool(pir_debug,
+                         false,
+                         "Whether print more pir debug info.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
                          "Whether to skip decomposing op with dynamic shape.");

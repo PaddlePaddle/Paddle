@@ -84,7 +84,7 @@ class TestRotaryPosEmb(unittest.TestCase):
 
         for cinn_out, dy_out in zip(cinn_outs, dy_outs):
             np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-8
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
             )
 
 

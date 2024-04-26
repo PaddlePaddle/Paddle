@@ -331,6 +331,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
@@ -1284,6 +1285,23 @@ void ExpandInferMeta(const MetaTensor& x,
     out->share_lod(x);
   }
 #undef EXPAND_MAX_RANK_SUPPORTED
+}
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
 }
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
@@ -4242,6 +4260,11 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
+  out->set_dtype(x.dtype());
+}
+
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 

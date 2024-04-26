@@ -272,7 +272,7 @@ uint64_t Generator::Random64() {
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(uint64_t increment) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   std::lock_guard<std::mutex> lock(mu_);
   uint64_t offset = state().offset;
   state().offset = offset + increment;
