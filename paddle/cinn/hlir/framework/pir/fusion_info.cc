@@ -175,7 +175,7 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
 
   for (const auto& value : group.GetInputOpValues()) {
     if (!TryGetDimExprsFromGroup(value)) {
-      TryGetDimExprsFromGroup(value);
+      TryeGetDimExprsFromGlobal(value);
     }
   }
 }
