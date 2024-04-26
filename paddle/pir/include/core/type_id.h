@@ -32,7 +32,7 @@ namespace pir {
 ///   TypeId type_a_id = TypeId::get<TypeA>();
 /// \endcode
 ///
-class TypeId {
+class IR_API TypeId {
   struct Storage {};
 
  public:
@@ -83,7 +83,7 @@ class TypeId {
 };
 
 namespace detail {
-class alignas(8) UniqueingId {
+class IR_API alignas(8) UniqueingId {
  public:
   UniqueingId() = default;
   UniqueingId(const UniqueingId &) = delete;
@@ -96,7 +96,7 @@ class alignas(8) UniqueingId {
 };
 
 template <typename T>
-class TEST_API TypeIdResolver;
+class IR_API TypeIdResolver;
 
 }  // namespace detail
 
