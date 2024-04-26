@@ -30,8 +30,18 @@ class AdamWJitCode : public JitCode {
                         size_t code_size = 256 * 1024,
                         void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr) {
+
+  }
+
+  void initialize() {
     this->genCode();
   }
+};
+
+
+AdamWJitCode adamWCode(attr);
+adamWCode.initialize();
+
 
   DECLARE_JIT_CODE(AdamJitCode);
   void genCode() override;
