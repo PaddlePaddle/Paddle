@@ -56,7 +56,7 @@ class TopkOp : public framework::OperatorWithKernel {
           phi::errors::InvalidArgument("input must have >= k columns"));
     }
 
-    framework::DDim dims = input_dims;
+    phi::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
@@ -172,9 +172,9 @@ REGISTER_OPERATOR(top_k,
 REGISTER_OPERATOR(top_k_grad, ops::TopkOpGrad);
 
 REGISTER_OP_CPU_KERNEL(top_k,
-                       ops::TopkKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, double>);
+                       ops::TopkKernel<phi::CPUPlace, float>,
+                       ops::TopkKernel<phi::CPUPlace, double>);
 
 REGISTER_OP_CPU_KERNEL(top_k_grad,
-                       ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkGradKernel<paddle::platform::CPUPlace, double>);
+                       ops::TopkGradKernel<phi::CPUPlace, float>,
+                       ops::TopkGradKernel<phi::CPUPlace, double>);

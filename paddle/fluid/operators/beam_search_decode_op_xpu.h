@@ -48,9 +48,8 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
       phi::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
-    T* dstData =
-        dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
+    T* dstData = dstTensor->template mutable_data<T>(phi::CPUPlace());
+    paddle::memory::Copy(phi::CPUPlace(),
                          dstData,
                          place,
                          srcData,
@@ -59,7 +58,7 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
     T* dstData = dstTensor->template mutable_data<T>(place);
     paddle::memory::Copy(place,
                          dstData,
-                         paddle::platform::CPUPlace(),
+                         phi::CPUPlace(),
                          srcData,
                          srcTensor.numel() * sizeof(T));
   }

@@ -33,7 +33,7 @@ namespace operators {
 
 using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,

@@ -114,9 +114,9 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   return broadcast_shape;
 }
 
-static inline framework::DDim ComputeAndCheckShapeForConcatOp(
+static inline phi::DDim ComputeAndCheckShapeForConcatOp(
     const bool is_runtime,
-    const std::vector<framework::DDim>& inputs_dims,
+    const std::vector<phi::DDim>& inputs_dims,
     const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];
@@ -620,12 +620,12 @@ struct DeviceIndependenceTensorOperations {
                                     int axis) {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
-    std::vector<framework::DDim> inputs_dims({x.dims(), y.dims()});
+    std::vector<phi::DDim> inputs_dims({x.dims(), y.dims()});
     NameInTensorMap inputs({{"X", {&x, &y}}});
     size_t axis_ =
         ComputeAxisForConcatOp(static_cast<int64_t>(axis),
                                static_cast<int64_t>(inputs_dims[0].size()));
-    framework::DDim out_dims =
+    phi::DDim out_dims =
         ComputeAndCheckShapeForConcatOp(true, inputs_dims, axis_);
     if (out_dims[axis_] < 0) {
       out_dims[axis_] = -1;

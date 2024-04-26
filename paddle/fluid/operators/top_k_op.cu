@@ -72,9 +72,9 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       phi::DenseTensor k_host;
-      framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
+      framework::TensorCopySync(*k_t, phi::CPUPlace(), &k_host);
       k = k_host.data<int>()[0];
-      framework::DDim output_dims = output->dims();
+      phi::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);
       indices->Resize(output_dims);
@@ -84,7 +84,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     // FIXME(typhoonzero): data is always converted to type T?
 
-    framework::DDim inputdims = input->dims();
+    phi::DDim inputdims = input->dims();
     const int64_t input_height =
         common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const int64_t input_width = inputdims[inputdims.size() - 1];
@@ -153,7 +153,7 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
     const int64_t* indices_data = indices->data<int64_t>();
     size_t k = indices->dims()[indices->dims().size() - 1];
 
-    framework::DDim xdims = x->dims();
+    phi::DDim xdims = x->dims();
     const size_t row =
         common::product(common::slice_ddim(xdims, 0, xdims.size() - 1));
     const size_t col = xdims[xdims.size() - 1];

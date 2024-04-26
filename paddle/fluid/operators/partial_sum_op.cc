@@ -108,7 +108,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
         flag,
         1,
         phi::errors::InvalidArgument("All Inputs of PartialSum OP are Empty!"));
-    return phi::KernelKey(input_data_type, platform::CPUPlace());
+    return phi::KernelKey(input_data_type, phi::CPUPlace());
   }
 };
 

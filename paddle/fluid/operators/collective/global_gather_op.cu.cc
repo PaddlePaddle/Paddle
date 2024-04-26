@@ -59,7 +59,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       local_count_len = local_count->numel();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -69,7 +69,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -128,7 +128,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -232,7 +232,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       local_count_len = local_count->numel();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
@@ -242,7 +242,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -267,7 +267,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;

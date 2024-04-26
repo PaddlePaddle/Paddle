@@ -47,7 +47,7 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,

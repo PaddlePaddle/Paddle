@@ -472,7 +472,7 @@ struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
                                     out_size_data);
 
     int g_find_max;
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  &g_find_max,
                  gpu_place,
                  find_max,
@@ -481,7 +481,7 @@ struct FindRangeAbsMaxFunctor<phi::GPUContext, T> {
     ctx.Wait();
     if (g_find_max) {
       int len;
-      memory::Copy(platform::CPUPlace(),
+      memory::Copy(phi::CPUPlace(),
                    &len,
                    gpu_place,
                    out_size_data,

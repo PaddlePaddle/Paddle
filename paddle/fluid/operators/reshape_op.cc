@@ -135,8 +135,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
   }
 
-  static framework::DDim ValidateShape(const std::vector<int> shape,
-                                       const framework::DDim &in_dims) {
+  static phi::DDim ValidateShape(const std::vector<int> shape,
+                                 const phi::DDim &in_dims) {
     const int64_t in_size = common::product(in_dims);
     auto in_dims_vec = common::vectorize(in_dims);
     bool all_positive = std::all_of(in_dims_vec.cbegin(),
@@ -394,8 +394,7 @@ class ReshapeKernel {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
           phi::DenseTensor temp;
-          paddle::framework::TensorCopySync(
-              *tensor, platform::CPUPlace(), &temp);
+          paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
         } else {
           pt_vec_shape.push_back(*tensor);
@@ -408,7 +407,7 @@ class ReshapeKernel {
           platform::is_xpu_place(shape_tensor->place())) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
-            *shape_tensor, platform::CPUPlace(), &temp);
+            *shape_tensor, phi::CPUPlace(), &temp);
         pt_shape = std::move(temp);
       } else {
         pt_shape = *shape_tensor;

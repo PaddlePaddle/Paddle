@@ -33,13 +33,13 @@ inline std::vector<int> get_expand_times(
     phi::DenseTensor cpu_expand_tensor;
     if (platform::is_gpu_place(expand_tensor->place())) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(expand_tensor->place())) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #endif
@@ -57,13 +57,13 @@ inline std::vector<int> get_expand_times(
       auto tensor = list_expand_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #endif
@@ -158,7 +158,7 @@ class ExpandKernel : public framework::OpKernel<T> {
       bcast_dims[i] = expand_times[i];
     }
 
-    framework::DDim out_dims(in_dims);
+    phi::DDim out_dims(in_dims);
     for (size_t i = 0; i < expand_times.size(); ++i) {
       out_dims[i] *= expand_times[i];
     }

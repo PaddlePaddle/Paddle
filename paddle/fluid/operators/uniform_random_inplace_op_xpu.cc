@@ -65,7 +65,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
     }
     memory::Copy(ctx.GetPlace(),
                  data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  reinterpret_cast<void *>(data_cpu.get()),
                  size * sizeof(T));
   }
@@ -85,7 +85,7 @@ class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
       }
       memory::Copy(ctx.GetPlace(),
                    data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    reinterpret_cast<void *>(data_cpu.get()),
                    size * sizeof(T));
     }
