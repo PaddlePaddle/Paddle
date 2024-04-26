@@ -115,7 +115,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   bool keep_dim = GetReduceOpKeepDims(reduce_op);
   const auto output_axes = [&]() -> declytype(auto) {
     std::vector<std::string> axes;
-    // In case of reduce all and keep_dim is fale.
+    // In case of reduce all and keep_dim is false.
     if (reduce_axis_idx.size() == input_rank && !keep_dim) {
       axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       return axes;
