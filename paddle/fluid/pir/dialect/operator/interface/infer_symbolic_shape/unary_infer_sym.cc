@@ -391,6 +391,58 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool Pad3dOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &x_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    5,
+                    common::errors::InvalidArgument(
+                        "The size of Input(X)'s dimension should be equal to "
+                        "5, but received %d. ",
+                        x_shape.size()));
+  const auto &paddings_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  if (!paddings_shape.data().has_value()) {
+    std::stringstream ss;
+    ss << paddings_shape;
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The data of paddings's symbol shape "
+                                        "should have value, but now got [%s].",
+                                        ss.str()));
+  }
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_shape;
+    const auto &paddings = paddings_shape.data().value();
+    PADDLE_ENFORCE_EQ(paddings.size(),
+                      6,
+                      common::errors::InvalidArgument(
+                          "Shape of Input(Paddings) should be equal to "
+                          "[6], but received [%d].",
+                          paddings.size()));
+    if (data_format == "NCDHW") {
+      out_dims[1] = x_shape[1];
+      out_dims[2] = x_shape[2] + paddings[4] + paddings[5];
+      out_dims[3] = x_shape[3] + paddings[2] + paddings[3];
+      out_dims[4] = x_shape[4] + paddings[0] + paddings[1];
+    } else {
+      out_dims[1] = x_shape[1] + paddings[4] + paddings[5];
+      out_dims[2] = x_shape[2] + paddings[2] + paddings[3];
+      out_dims[3] = x_shape[3] + paddings[0] + paddings[1];
+      out_dims[4] = x_shape[4];
+    }
+    return out_dims;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+
+  return true;
+}
+
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   bool keepdim = GetBoolAttr(op, "keep_dim");
