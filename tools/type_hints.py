@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import argparse
 import doctest
+import re
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from mypy import api as mypy_api
-from sampcd_processor_utils import (  # type: ignore
+from sampcd_processor_utils import (
     extract_code_blocks_from_docstr,
     get_docstring,
     init_logger,
@@ -53,7 +54,8 @@ class TypeChecker:
 class TestResult:
     api_name: str
     msg: str
-    exit_status: int
+    fail: bool = False
+    extra_info: dict[str, Any] = field(default_factory=dict)
 
 
 class MypyChecker(TypeChecker):
@@ -62,6 +64,10 @@ class MypyChecker(TypeChecker):
         super().__init__(*args, **kwargs)
 
     def run(self, api_name: str, codeblock: str) -> TestResult:
+        # remove `doctest` in the codeblock, or the module `doctest` cannot `get_examples`` correctly
+        codeblock = re.sub(r'#\s*x?doctest\s*:.*', '', codeblock)
+
+        # `get_examples` codes with `>>>` and `...` stripped
         _example_code = doctest.DocTestParser().get_examples(codeblock)
         example_code = '\n'.join(
             [l for e in _example_code for l in e.source.splitlines()]
@@ -74,7 +80,12 @@ class MypyChecker(TypeChecker):
         return TestResult(
             api_name=api_name,
             msg='\n'.join([normal_report, error_report]),
-            exit_status=exit_status,
+            fail=exit_status != 0,
+            extra_info={
+                'normal_report': normal_report,
+                'error_report': error_report,
+                'exit_status': exit_status,
+            },
         )
 
     def print_summary(
@@ -99,7 +110,7 @@ class MypyChecker(TypeChecker):
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
             for test_result in test_results:
-                if test_result.exit_status != 0:
+                if test_result.fail:
                     logger.error(
                         "In addition, mistakes found in type checking: %s",
                         test_result.api_name,
@@ -108,7 +119,7 @@ class MypyChecker(TypeChecker):
 
         else:
             for test_result in test_results:
-                if test_result.exit_status != 0:
+                if test_result.fail:
                     is_fail = True
 
                     logger.error(test_result.api_name)
