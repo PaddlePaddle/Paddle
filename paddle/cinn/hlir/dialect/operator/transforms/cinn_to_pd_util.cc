@@ -58,10 +58,6 @@ const auto& handler_reduce_max_op =
   return pd_op;
 };
 
-REGISTER_TRANSFORM_RULES(reduce_max_op,
-                         cinn::dialect::ReduceMaxOp::name(),
-                         handler_reduce_max_op);
-
 bool CanApplyOn(::pir::Operation* op) {
   return op->dialect()->name() == "cinn_op";
 }
@@ -108,3 +104,7 @@ void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
 }
 
 }  // namespace cinn::dialect::details
+
+REGISTER_TRANSFORM_RULES(reduce_max_op,
+                         cinn::dialect::ReduceMaxOp::name(),
+                         cinn::dialect::details::handler_reduce_max_op);
