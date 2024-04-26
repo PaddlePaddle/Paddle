@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
     typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;
