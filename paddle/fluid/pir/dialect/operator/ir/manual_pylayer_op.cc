@@ -64,20 +64,20 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       int backward_function_id) {
   VLOG(4) << "Start build PyLayerOp";
 
-  PADDLE_ENFORCE_NOT_NULL(fwd_block,
-                          paddle::platform::errors::InvalidArgument(
-                              "The sub-block for building pylayer_op "
-                              "can't be None"));
+  PADDLE_ENFORCE_NOT_NULL(
+      fwd_block,
+      common::errors::InvalidArgument("The sub-block for building pylayer_op "
+                                      "can't be None"));
 
-  PADDLE_ENFORCE_NE(fwd_block->empty(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The sub-block for building pylayer_op "
-                        "can't be empty"));
+  PADDLE_ENFORCE_NE(
+      fwd_block->empty(),
+      true,
+      common::errors::InvalidArgument("The sub-block for building pylayer_op "
+                                      "can't be empty"));
 
   PADDLE_ENFORCE_EQ(fwd_block->back().isa<pir::YieldOp>(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The last op of sub-block for building pylayer_op "
                         "must be pir::YieldOp"));
 
@@ -135,11 +135,11 @@ void PyLayerOp::VerifySig() {
   PADDLE_ENFORCE_GT(
       attributes.count(kBackwardFunctionIdAttrName),
       0,
-      phi::errors::InvalidArgument("backward_function_id does not exist."));
+      common::errors::InvalidArgument("backward_function_id does not exist."));
   PADDLE_ENFORCE_EQ(
       attributes.at(kBackwardFunctionIdAttrName).isa<pir::Int32Attribute>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Type of attribute: value is not pir::Int32Attribute."));
   VLOG(4) << "Finish Verifying attributes for: PyLayerOp.";
 }
@@ -149,19 +149,19 @@ void PyLayerOp::VerifyRegion() {
   VLOG(4) << "Start Verifying forward block.";
   PADDLE_ENFORCE_EQ((*this)->region(0).size(),
                     1u,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The size %d of forward_region must be 1.",
                         (*this)->region(0).size()));
   if ((*this)->num_results() != 0) {
     auto &fwd_last_op = (*this)->region(0).front().back();
     PADDLE_ENFORCE_EQ(true,
                       fwd_last_op.isa<pir::YieldOp>(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The last of forward block must be YieldOp"));
     PADDLE_ENFORCE_EQ(
         fwd_last_op.num_operands(),
         (*this)->num_results(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The size of last of forward block op's input must be "
             "equal to PyLayerOp's outputs num."));
   }
@@ -169,13 +169,13 @@ void PyLayerOp::VerifyRegion() {
 
 void PyLayerOp::UpdateOutput() {
   PADDLE_ENFORCE_NOT_NULL(*this,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pylayer_op in PyLayerOp used to update "
                               "output can't be nullptr"));
   auto block = parent();
   PADDLE_ENFORCE_NOT_NULL(
       block,
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The parent block of pylayer_op which used to update "
           "output can't be nullptr"));
   pir::Block::Iterator iter = **this;

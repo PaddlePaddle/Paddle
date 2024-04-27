@@ -188,13 +188,13 @@ void BindTuplePopOp(py::module* m) {
 void BuildPipeForPyLayer(Block* block, const std::vector<pir::Value>& values) {
   PADDLE_ENFORCE_NOT_NULL(
       block,
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The block used to hook local value can't be nullptr"));
   auto& builder = *(ApiBuilder::Instance().GetBuilder());
   Program* program = block->parent_program();
   PADDLE_ENFORCE_NOT_NULL(
       program,
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The block used to hook local value must belong to a program"));
 
   auto original_position = builder.insertion_point();

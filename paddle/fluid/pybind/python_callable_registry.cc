@@ -85,7 +85,7 @@ void PirCallPythonFunc(py::object *callable,
 }
 
 PythonCallableRegistrar &PythonCallableRegistrar::GetInstance() {
-  static PythonCallableRegistrar instance;
+  static thread_local PythonCallableRegistrar instance;
   return instance;
 }
 void PythonCallableRegistrar::Register(uint64_t unique_id,

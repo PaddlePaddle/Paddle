@@ -42,14 +42,14 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
                     std::unique_ptr<pir::Block> &&fwd_block,
                     int backward_function_id = -1);
 
-  std::vector<pir::Value> inputs() {
+  std::vector<pir::Value> inputs() const {
     std::vector<pir::Value> input_values;
     for (size_t index = 0; index < num_operands(); ++index) {
       input_values.push_back(operand_source(index));
     }
     return input_values;
   }
-  pir::Value input(size_t index) {
+  pir::Value input(size_t index) const {
     PADDLE_ENFORCE_LT(
         index,
         num_operands(),
@@ -63,7 +63,7 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
   // Returns the backward function id which may have been registered in
   // PythonCallableRegistrar. Returns -1 only if this PyLayer Op does not have a
   // backward function.
-  int backward_function_id() {
+  int backward_function_id() const {
     return this->attributes()
         .at("backward_function_id")
         .dyn_cast<pir::Int32Attribute>()

@@ -806,7 +806,7 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   }
   PADDLE_ENFORCE_LE(tuple_push_op_list.size(),
                     1,
-                    paddle::platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of tuple_push op in pylayer forward block "
                         "is either unique or does not exist."));
 

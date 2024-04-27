@@ -465,6 +465,10 @@ def all_output_grad_none(list_of_list):
 
 
 def op_has_vjp(op):
+    # NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+    # not have a vjp interface, we still need to generate the backward
+    # block based on its registered backward function. To achieve this,
+    # we add more handling logic for `PyLayer` Op in the `call_vjp` function
     return core.has_vjp(op) or op.name() == "pd_op.pylayer"
 
 
