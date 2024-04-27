@@ -3504,10 +3504,10 @@ function build_document_preview() {
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
-        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+        pip install --force-reinstall ${PADDLE_ROOT}/build/pr_whl/*.whl
     else
         echo "WARNING: PR wheel is not found. Use develop wheel !!!"
-        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+        pip install --force-reinstall ${PADDLE_ROOT}/build/python/dist/*.whl
     fi
 
     python -c "import paddle;print(paddle.__version__);paddle.version.show()"
@@ -3527,10 +3527,10 @@ function exec_samplecode_test() {
 
 function exec_type_hints() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
-        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+        pip install --force-reinstall ${PADDLE_ROOT}/build/pr_whl/*.whl
     else
         echo "WARNING: PR wheel is not found. Use develop wheel !!!"
-        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+        pip install --force-reinstall ${PADDLE_ROOT}/build/python/dist/*.whl
     fi
 
     python -c "import paddle;print(paddle.__version__);paddle.version.show()"
