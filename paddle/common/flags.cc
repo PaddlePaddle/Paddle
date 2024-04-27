@@ -1037,7 +1037,17 @@ PHI_DEFINE_EXPORTED_bool(
     enable_cinn_compile_cache,
     true,
     "It controls whether to enable cinn compilation cache.");
-
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=-1
+ * Example: FLAGS_cinn_compile_thread_nume=8
+ */
+PHI_DEFINE_EXPORTED_int64(
+    cinn_compile_thread_num,
+    -1,
+    "It controls how many thread numbers applying compilation cache.");
 /*
  * CINN related FLAG
  * Name: FLAGS_enable_interpretercore_launch_cinn
@@ -1489,6 +1499,10 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
+PHI_DEFINE_EXPORTED_bool(pir_debug,
+                         false,
+                         "Whether print more pir debug info.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
                          "Whether to skip decomposing op with dynamic shape.");

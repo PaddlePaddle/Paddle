@@ -103,17 +103,16 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         net = paddle.nn.Linear(1024, 1)
         net = paddle.jit.to_static(net)
         x = paddle.rand([1024], 'float32')
-        net(x)
+        out = net(x)
         save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
 
         paddle.jit.save(net, save_path)
-        if not paddle.base.framework.use_pir_api():
-            net = paddle.jit.load(save_path)
-            net.train()
+        net = paddle.jit.load(save_path)
+        net.eval()
 
-            with paddle.no_grad():
-                x = paddle.rand([1024], 'float32')
-                net(x)
+        with paddle.no_grad():
+            out2 = net(x)
+            self.assertEqual(out, out2)
 
 
 if __name__ == '__main__':
