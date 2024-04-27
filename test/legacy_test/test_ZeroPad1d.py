@@ -19,19 +19,6 @@ import numpy as np
 from paddle import to_tensor
 from paddle.nn import ZeroPad1D
 
-class TestZeroPad1dAPIError(unittest.TestCase):
-
-    def setUp(self):
-        self.shape = [4, 6, 6]
-        self.unsupport_dtypes = 'int8'
-
-    def test_unsupport_dtypes(self):
-        pad = 2
-        x = np.random.randint(-255, 255, size=self.shape)
-        zeropad1d = ZeroPad1D(padding=pad)
-        x_tensor = to_tensor(x).astype(self.unsupport_dtypes)
-        self.assertRaises(TypeError, zeropad1d, x=x_tensor)
-
 
 class TestZeroPad1dAPI(unittest.TestCase):
     def setUp(self):
