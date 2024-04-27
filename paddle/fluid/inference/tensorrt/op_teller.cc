@@ -39,6 +39,7 @@ namespace tensorrt {
 bool IsDynamicShapeOp(const framework::OpDesc& desc) {
   VLOG(3) << "forbid_dynamic_op_enter_into_trt is open";
   auto* block = desc.Block();
+  const auto& inputs = desc.Inputs();
    for (auto iter : inputs) {
     for (auto var_name : iter.second) {
       if (block) {
@@ -52,7 +53,7 @@ bool IsDynamicShapeOp(const framework::OpDesc& desc) {
       }
     }
   }
-
+   const auto& outputs = desc.Outputs();
    for (auto iter : outputs) {
     for (auto var_name : iter.second) {
       if (block) {
@@ -173,6 +174,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     // Static shape does not support 0 or 1 dim's input.
     if (!with_dynamic_shape) {
+      const auto& inputs = desc.Inputs();
            for (auto iter : inputs) {
         for (auto var_name : iter.second) {
           auto* block = desc.Block();

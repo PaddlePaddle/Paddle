@@ -37,7 +37,7 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& ctx,
-                          DenseTensor& x,
+                          const DenseTensor& x,
                           const paddle::optional<DenseTensor>& scale,
                           const paddle::optional<DenseTensor>& bias,
                           const paddle::optional<DenseTensor>& mean,
@@ -208,7 +208,8 @@ void BatchNormGradFunctor(const Context& ctx,
   switch (data_layout) {
     case DataLayout::kNCHW: {
       if (is_inplace) {
-               EigenArrayMap<T> x_data(ctx.template Alloc<T>(&x), sample_size, N * C);
+        auto px = x;
+               EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), sample_size, N * C);
         ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /

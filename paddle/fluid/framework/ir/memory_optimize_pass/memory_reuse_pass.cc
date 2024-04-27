@@ -156,12 +156,14 @@ void MemoryReusePass::CollectReusedVars() const {
 
 bool MemoryReusePass::IsInVarAlreadyReused(
     const details::VarHandle &in_var) const {
+      const auto& var_name = in_var.Name();
    size_t scope_idx = in_var.scope_idx();
   return reused_in_var_names_[scope_idx].count(var_name) > 0;
 }
 
 bool MemoryReusePass::IsOutVarAlreadyReused(
     const details::VarHandle &out_var) const {
+      const auto& var_name = out_var.Name();
    size_t scope_idx = out_var.scope_idx();
   return reused_out_var_names_[scope_idx].count(var_name) > 0;
 }

@@ -3500,7 +3500,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   main_pred_ = std::make_unique<Predictor>(config);
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
-           preds_.emplace_back(new Predictor(config_tmp));
+           preds_.emplace_back(new Predictor(config));
     } else {
       preds_.emplace_back(main_pred_->Clone());
     }
