@@ -29,7 +29,7 @@ endif()
 cc_test(
   concat_test
   SRCS concat_test.cc
-  DEPS concat_and_split)
+  DEPS phi common)
 
 if(WITH_TESTING AND TEST im2col_test)
   set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)

@@ -70,14 +70,13 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
-        selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
+        selected_ids->mutable_data<int64_t>(dims, phi::CPUPlace());
     auto *selected_scores_data =
-        selected_scores->mutable_data<float>(dims, platform::CPUPlace());
+        selected_scores->mutable_data<float>(dims, phi::CPUPlace());
     auto *parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_instances)}, platform::CPUPlace())
-            : nullptr;
+        parent_idx ? parent_idx->mutable_data<int>(
+                         {static_cast<int64_t>(num_instances)}, phi::CPUPlace())
+                   : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;

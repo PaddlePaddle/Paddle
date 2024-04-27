@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 
 #include <stack>
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/tree2col.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/math/tree2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
-using Node = paddle::operators::math::TreeNode;
+using Node = phi::math::TreeNode;
 template <typename T>
 __global__ void tree2col(const T* eta,
                          const int* node,
@@ -60,13 +59,13 @@ class Tree2ColFunctor<phi::GPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
-    auto cpu_place = platform::CPUPlace();
+    auto cpu_place = phi::CPUPlace();
     auto stream = context.stream();
     auto feature_dims = node_features.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
     phi::DenseTensor EdgeSet_cpu;
-    framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
+    phi::Copy(context, EdgeSet, cpu_place, false, &EdgeSet_cpu);
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, total_size = 0;
@@ -103,9 +102,9 @@ class Tree2ColFunctor<phi::GPUContext, T> {
       }
       index[index_idx++] = idx;
     }
-    framework::TensorCopy(node_cpu, gpu_place, context, &node_gpu);
-    framework::TensorCopy(eta_cpu, gpu_place, context, &eta_gpu);
-    framework::TensorCopy(index_cpu, gpu_place, context, &index_gpu);
+    phi::Copy(context, node_cpu, gpu_place, false, &node_gpu);
+    phi::Copy(context, eta_cpu, gpu_place, false, &eta_gpu);
+    phi::Copy(context, index_cpu, gpu_place, false, &index_gpu);
 
     int elem_size = patch_size * feature_size;
     int blocks = (elem_size + 1024 - 1) / 1024;
@@ -137,13 +136,13 @@ class Col2TreeFunctor<phi::GPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
-    auto cpu_place = platform::CPUPlace();
+    auto cpu_place = phi::CPUPlace();
     auto stream = context.stream();
     auto output_dims = patch_grad.dims();
     phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
     phi::DenseTensor EdgeSet_cpu;
-    framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
+    phi::Copy(context, EdgeSet, cpu_place, false, &EdgeSet_cpu);
     int64_t output_size = output_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, patch_count = 0;
@@ -188,9 +187,9 @@ class Col2TreeFunctor<phi::GPUContext, T> {
       }
       index[index_idx++] = idx;
     }
-    framework::TensorCopy(node_cpu, gpu_place, &node_gpu);
-    framework::TensorCopy(eta_cpu, gpu_place, &eta_gpu);
-    framework::TensorCopy(index_cpu, gpu_place, &index_gpu);
+    phi::Copy(context, node_cpu, gpu_place, false, &node_gpu);
+    phi::Copy(context, eta_cpu, gpu_place, false, &eta_gpu);
+    phi::Copy(context, index_cpu, gpu_place, false, &index_gpu);
 
     int elem_size = output_size * grad_size;
     int blocks = (elem_size + 1024 - 1) / 1024;
@@ -219,5 +218,4 @@ template class Tree2ColFunctor<phi::GPUContext, double>;
 template class Col2TreeFunctor<phi::GPUContext, float>;
 template class Col2TreeFunctor<phi::GPUContext, double>;
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

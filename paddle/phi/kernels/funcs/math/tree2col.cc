@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/math/tree2col.h"
+#include "paddle/phi/kernels/funcs/math/tree2col.h"
 
 #include <deque>
 #include <stack>
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
 std::vector<TreeNode> Tree2ColUtil::construct_patch(
     size_t root, int max_depth, const std::vector<std::vector<int>> &tr) {
@@ -201,5 +200,4 @@ template class Tree2ColFunctor<phi::CPUContext, double>;
 template class Col2TreeFunctor<phi::CPUContext, float>;
 template class Col2TreeFunctor<phi::CPUContext, double>;
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

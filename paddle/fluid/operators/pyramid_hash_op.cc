@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/search_compute.h"
 
 extern "C" {
-#include "math/bloomfilter.h"
+#include "paddle/phi/kernels/funcs/math/bloomfilter.h"
 }
 
 namespace paddle {
@@ -235,14 +235,14 @@ class PyramidHashOP : public framework::OperatorWithKernel {
 template <typename T, typename DeviceContext>
 class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
-  bool should_use_term(math::bloomfilter* _filter,
-                       math::bloomfilter* _black_filter,
+  bool should_use_term(phi::math::bloomfilter* _filter,
+                       phi::math::bloomfilter* _black_filter,
                        const float* word_repr,
                        int len) const {
-    return (!_filter || 1 == math::bloomfilter_get(
+    return (!_filter || 1 == phi::math::bloomfilter_get(
                                  _filter, word_repr, len * sizeof(float))) &&
            (!_black_filter ||
-            0 == math::bloomfilter_get(
+            0 == phi::math::bloomfilter_get(
                      _black_filter, word_repr, len * sizeof(float)));
   }
 
@@ -307,13 +307,13 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     top_offset.resize(offset.size());
     top_offset[0] = 0;
 
-    math::bloomfilter* _filter = nullptr;
-    math::bloomfilter* _black_filter = nullptr;
+    phi::math::bloomfilter* _filter = nullptr;
+    phi::math::bloomfilter* _black_filter = nullptr;
     if (use_filter) {
       if (white_list_len != 0) {
-        _filter = (math::bloomfilter*)_blobs_1->data<float>();
+        _filter = (phi::math::bloomfilter*)_blobs_1->data<float>();
         PADDLE_ENFORCE_EQ(
-            math::bloomfilter_check(_filter),
+            phi::math::bloomfilter_check(_filter),
             1,
             phi::errors::PreconditionNotMet(
                 "The white filter is not loaded successfully, please make sure "
@@ -321,9 +321,9 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
                 white_list_len));
       }
       if (black_list_len != 0) {
-        _black_filter = (math::bloomfilter*)_blobs_2->data<float>();
+        _black_filter = (phi::math::bloomfilter*)_blobs_2->data<float>();
         PADDLE_ENFORCE_EQ(
-            math::bloomfilter_check(_black_filter),
+            phi::math::bloomfilter_check(_black_filter),
             1,
             phi::errors::PreconditionNotMet(
                 "The black filter is not loaded successfully, please make sure "
