@@ -54,7 +54,7 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
         index,
         num_operands(),
         common::errors::InvalidArgument("The index of input must be less than "
-                                     "num_operands of pylayer op."));
+                                        "num_operands of pylayer op."));
     return operand_source(index);
   }
   pir::Block &forward_block();
