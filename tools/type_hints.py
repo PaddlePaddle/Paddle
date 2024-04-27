@@ -77,14 +77,17 @@ class MypyChecker(TypeChecker):
             [f'--config-file={self.config_file}', '-c', example_code]
         )
 
-        logger.error('-' * 20)
-        logger.error('>>> Type hints ...')
-        logger.error(example_code)
-        logger.error('>>> Results ...')
-        logger.error(normal_report)
-        logger.error(error_report)
-        logger.error(exit_status)
-        logger.error('!' * 20)
+        logger.info('-' * 20)
+        logger.info(f'>>> Type hints with api {api_name} start ...')
+        logger.debug(example_code)
+        logger.info('>>> Results ...')
+        logger.info('>>> mypy normal_report is ...')
+        logger.info(normal_report)
+        logger.info('>>> mypy error_report is ...')
+        logger.info(error_report)
+        logger.info('>>> mypy exit_status is ...')
+        logger.info(exit_status)
+        logger.info(f'>>> Type hints with api {api_name} end...')
 
         return TestResult(
             api_name=api_name,

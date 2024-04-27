@@ -3513,7 +3513,7 @@ function exec_type_hints() {
 
     cd ${PADDLE_ROOT}/tools
     
-    python test_type_hints.py --debug; type_hints_error=$?
+    python type_hints.py --debug; type_hints_error=$?
 
     if [ "$type_hints_error" != "0" ];then
       echo "Example code type checking failed" >&2
