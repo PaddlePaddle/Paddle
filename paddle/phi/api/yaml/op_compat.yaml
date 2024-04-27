@@ -734,6 +734,8 @@
     x : X
   attrs :
     dim : dim
+    exclusive : exclusive
+    reverse : reverse
   outputs :
     out : Out
 

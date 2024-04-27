@@ -542,7 +542,7 @@
     data_type : out_grad
 
 - backward_op : cumprod_grad
-  forward : cumprod (Tensor x, int dim) -> Tensor(out)
+  forward : cumprod (Tensor x, int dim, bool exclusive, bool reverse) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int dim)
   output : Tensor(x_grad)
   infer_meta :

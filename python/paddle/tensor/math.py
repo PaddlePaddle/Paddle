@@ -4318,7 +4318,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return out
 
 
-def cumprod(x, dim=None, dtype=None, name=None):
+def cumprod(x, dim=None, exclusive=False, reverse=False, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
@@ -4380,7 +4380,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim)
+        return _C_ops.cumprod(x, dim, exclusive, reverse)
     else:
         check_variable_and_dtype(
             x,
@@ -4405,13 +4405,15 @@ def cumprod(x, dim=None, dtype=None, name=None):
             type='cumprod',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'dim': dim},
+            attrs={'dim': dim, 'exclusive': exclusive, 'reverse': reverse},
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def cumprod_(x, dim=None, dtype=None, name=None):
+def cumprod_(
+    x, dim=None, exclusive=False, reverse=False, dtype=None, name=None
+):
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
@@ -4420,7 +4422,7 @@ def cumprod_(x, dim=None, dtype=None, name=None):
         x = cast_(x, dtype)
 
     if in_dynamic_mode():
-        return _C_ops.cumprod_(x, dim)
+        return _C_ops.cumprod(x, dim, exclusive, reverse)
 
 
 def isfinite(x, name=None):
