@@ -50,7 +50,7 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
   }
   DenseTensor out_indices = Empty<IntT, Context>(
       dev_ctx, {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz});
-  DenseTensor out_values(x.values());
+  const DenseTensor& out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices

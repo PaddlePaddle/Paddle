@@ -99,7 +99,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int64_t first_diff_axis = FindFirstDiffShardAxis(in_dist_attr, out_dist_attr);
 
   // Backup out_dist_attr to to avoid overwriting the out's dist attr
-  auto out_dist_attr_orig = out_dist_attr;
+  const auto& out_dist_attr_orig = out_dist_attr;
 
   SetValue(out, in.value());
   SetDistProps(out, in.dims(), in_dist_attr);
@@ -108,7 +108,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   if (in_dist_attr.is_partial()) {
     // Copy in_dist_attr.partial_status to avoid overwriting the value of
     // input when the output and input are the same value
-    const auto in_partial_status = in_dist_attr.partial_status();
+    const auto& in_partial_status = in_dist_attr.partial_status();
     const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : in_partial_status) {
       if (out_partial_status.count(kv.first) != 0 ||

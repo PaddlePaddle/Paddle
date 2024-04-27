@@ -34,7 +34,7 @@ void CreateArrayLikeKernel(const Context& dev_ctx,
                            TensorArray* out) {
   out->resize(input.size());
   for (size_t i = 0; i < input.size(); i++) {
-    DenseTensor input_i = input[i];
+    const DenseTensor& input_i = input[i];
     out->at(i).Resize(input_i.dims());
     FullLikeKernel<T, Context>(
         dev_ctx, input_i, val, input_i.dtype(), &out->at(i));

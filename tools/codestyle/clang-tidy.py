@@ -151,6 +151,7 @@ def get_tidy_invocation(
     extra_arg_before,
     quiet,
     config,
+    fix_errors  # 添加这个参数
 ):
     """Gets a command line for clang-tidy."""
     start = [clang_tidy_binary]
@@ -160,8 +161,6 @@ def get_tidy_invocation(
         start.append('-checks=' + checks)
     if tmpdir is not None:
         start.append('-export-fixes')
-        # Get a temporary file. We immediately close the handle so clang-tidy can
-        # overwrite it.
         (handle, name) = tempfile.mkstemp(suffix='.yaml', dir=tmpdir)
         os.close(handle)
         start.append(name)
@@ -169,6 +168,8 @@ def get_tidy_invocation(
         start.append('-extra-arg=%s' % arg)
     for arg in extra_arg_before:
         start.append('-extra-arg-before=%s' % arg)
+    if fix_errors:
+        start.append('-fix-errors')  # 将 -fix-errors 添加到命令行
     start.append('-p=' + build_path)
     if quiet:
         start.append('-quiet')
@@ -245,6 +246,7 @@ def run_tidy(args, tmpdir, build_path, queue, lock, failed_files):
             args.extra_arg_before,
             args.quiet,
             args.config,
+            args.fix_errors
         )
 
         proc = subprocess.Popen(
@@ -271,6 +273,7 @@ def main():
         'clang-tidy and clang-apply-replacements in '
         '$PATH.'
     )
+    parser.add_argument('-fix-errors', action='store_true', help='Apply suggested fixes for errors detected by clang-tidy')
     parser.add_argument(
         '-clang-tidy-binary',
         metavar='PATH',

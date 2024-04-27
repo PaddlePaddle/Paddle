@@ -27,7 +27,7 @@ void IndexSelectStridedKernel(const Context& ctx,
                               int64_t index,
                               int dim,
                               DenseTensor* output) {
-  auto input_dim = x.dims();
+  const auto& input_dim = x.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
 
   std::vector<int64_t> shape = common::vectorize<int64_t>(x.dims());

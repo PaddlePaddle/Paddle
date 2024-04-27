@@ -302,7 +302,7 @@ void TensorCopySync(const phi::DenseTensor& src,
                     const platform::Place& dst_place,
                     phi::DenseTensor* dst) {
   if (&src == dst) {
-    auto src_copy = src;
+    const auto& src_copy = src;
     TensorCopySync(src_copy, dst_place, dst);
     return;
   }

@@ -83,7 +83,7 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  const TensorDistAttr& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
                     x_dims_mapping.size(),
@@ -130,7 +130,7 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  const TensorDistAttr& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
                     x_dims_mapping.size(),
@@ -180,7 +180,7 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
   int x_ndim = static_cast<int>(x_shape.size());
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
-  TensorDistAttr out_dist_attr_src = out.dist_attr();
+  const TensorDistAttr& out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
@@ -236,8 +236,8 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   int x_ndim = static_cast<int>(x_shape.size());
   auto y_shape = common::vectorize(y.dims());
   int y_ndim = static_cast<int>(y_shape.size());
-  TensorDistAttr x_dist_attr_src = x.dist_attr();
-  TensorDistAttr y_dist_attr_src = y.dist_attr();
+  const TensorDistAttr& x_dist_attr_src = x.dist_attr();
+  const TensorDistAttr& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
@@ -309,7 +309,7 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
-  TensorDistAttr out_dist_attr = out.dist_attr();
+  const TensorDistAttr& out_dist_attr = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,

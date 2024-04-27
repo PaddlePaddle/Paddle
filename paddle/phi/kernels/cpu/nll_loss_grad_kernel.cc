@@ -135,7 +135,7 @@ void NllLossGradKernel(const Context& dev_ctx,
   auto total_weight_data = total_weight.data<T>();
   memset(dx_data, 0, dx->numel() * sizeof(T));
 
-  const auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   const auto batch_size = x_dims[0];
   const auto n_classes = x_dims[1];
 

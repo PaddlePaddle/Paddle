@@ -643,7 +643,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
   // FindAllConditionalBlockAndConditionalBlockGradOp in
   // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
   if (graph_idx != 0) {
-    auto origin_program = graph.OriginProgram();
+    const auto& origin_program = graph.OriginProgram();
     auto &block = origin_program.Block(graph_idx);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(static_cast<int>(j));

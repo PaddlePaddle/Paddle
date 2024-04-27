@@ -38,7 +38,7 @@ void NormGradKernel(const Context& ctx,
 
   ctx.template Alloc<T>(out_dx);
 
-  auto xdim = in_x->dims();
+  const auto& xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
   int pre = 0, n = 0, post = 0;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);

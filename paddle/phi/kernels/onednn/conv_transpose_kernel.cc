@@ -126,7 +126,7 @@ class ConvTransposeOneDNNHandlerT
         phi::errors::Unimplemented(
             "Now we only support 2d oneDNN convolution transpose op"));
 
-    const auto x_dims = x->dims();
+    const auto& x_dims = x->dims();
     const auto x_data_dims = common::slice_ddim(x_dims, 2, x_dims.size());
     const auto filter_dims = filter->dims();
     const auto filter_data_dims =

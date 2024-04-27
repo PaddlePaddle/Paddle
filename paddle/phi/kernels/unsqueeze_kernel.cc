@@ -25,7 +25,7 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
                           DenseTensor* out) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor() && out->dims()[0] == -1) {
     out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);

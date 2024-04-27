@@ -72,7 +72,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
   // Step0: Verify input args based on reduction logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto x_dist_attr_src = x.dist_attr();
+  const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,

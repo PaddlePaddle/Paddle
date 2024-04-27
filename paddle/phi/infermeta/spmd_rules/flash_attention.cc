@@ -63,7 +63,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_q, num_heads, head_dim]
   auto q_shape = common::vectorize(q.dims());
   int q_ndim = q_shape.size();
-  auto q_dist_attr = q.dist_attr();
+  const auto& q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
 
   PADDLE_ENFORCE_EQ(
@@ -88,7 +88,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto k_shape = common::vectorize(k.dims());
   int k_ndim = k_shape.size();
-  auto k_dist_attr = k.dist_attr();
+  const auto& k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(
       k_ndim,
@@ -145,7 +145,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto v_shape = common::vectorize(v.dims());
   int v_ndim = v_shape.size();
-  auto v_dist_attr = v.dist_attr();
+  const auto& v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(
       v_ndim,
@@ -193,12 +193,12 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
-  auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
+  const auto& fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
   auto fixed_seed_offset_shape = common::vectorize(fixed_seed_offset.dims());
   // attn_mask
   auto attn_mask_shape = common::vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
-  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  const auto& attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
   if (!IsEmpty(attn_mask_shape)) {
     PADDLE_ENFORCE_EQ(
@@ -330,26 +330,26 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
   auto q_shape = common::vectorize(q.dims());
-  auto q_dist_attr = q.dist_attr();
+  const auto& q_dist_attr = q.dist_attr();
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto k_shape = common::vectorize(k.dims());
-  auto k_dist_attr = k.dist_attr();
+  const auto& k_dist_attr = k.dist_attr();
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto v_shape = common::vectorize(v.dims());
-  auto v_dist_attr = v.dist_attr();
+  const auto& v_dist_attr = v.dist_attr();
 
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset、seed_offset、 and attn_mask
-  auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
+  const auto& fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
   auto fixed_seed_offset_shape = common::vectorize(fixed_seed_offset.dims());
   // attn_mask
   auto attn_mask_shape = common::vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
-  auto attn_mask_dist_attr = attn_mask.dist_attr();
+  const auto& attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
   if (!IsEmpty(attn_mask_shape)) {
     PADDLE_ENFORCE_EQ(
@@ -365,7 +365,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // [batch_size, seq_len_q, num_heads, head_dim_v]
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
-  auto out_dist_attr = v.dist_attr();
+  const auto& out_dist_attr = v.dist_attr();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
                     4,
@@ -389,7 +389,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
   auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
   int softmax_lse_ndim = softmax_lse_shape.size();
-  auto softmax_lse_dist_attr = softmax_lse.dist_attr();
+  const auto& softmax_lse_dist_attr = softmax_lse.dist_attr();
   int softmax_lse_dims_mapping_size =
       softmax_lse_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
@@ -434,10 +434,10 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
           seq_len_q,
           seq_len_q_2));
 
-  TensorDistAttr seed_offset_dist_attr = fixed_seed_offset.dist_attr();
+  const TensorDistAttr& seed_offset_dist_attr = fixed_seed_offset.dist_attr();
   auto seed_offset_shape = common::vectorize(seed_offset.dims());
 
-  TensorDistAttr softmax_dist_attr = softmax.dist_attr();
+  const TensorDistAttr& softmax_dist_attr = softmax.dist_attr();
   auto softmax_shape = common::vectorize(softmax.dims());
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -551,7 +551,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_q, num_heads, head_dim]
   auto q_shape = common::vectorize(q.dims());
   int q_ndim = q_shape.size();
-  auto q_dist_attr = q.dist_attr();
+  const auto& q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
 
   PADDLE_ENFORCE_EQ(
@@ -576,7 +576,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto k_shape = common::vectorize(k.dims());
   int k_ndim = k_shape.size();
-  auto k_dist_attr = k.dist_attr();
+  const auto& k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(
       k_ndim,
@@ -625,7 +625,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim]
   auto v_shape = common::vectorize(v.dims());
   int v_ndim = v_shape.size();
-  auto v_dist_attr = v.dist_attr();
+  const auto& v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(
       v_ndim,
@@ -689,13 +689,13 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   }
 
   auto out_shape = common::vectorize(out.dims());
-  auto out_dist_attr = out.dist_attr();
+  const auto& out_dist_attr = out.dist_attr();
 
   auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
-  auto softmax_lse_dist_attr = softmax_lse.dist_attr();
+  const auto& softmax_lse_dist_attr = softmax_lse.dist_attr();
 
   auto out_grad_shape = common::vectorize(out_grad.dims());
-  auto out_grad_dist_attr = out_grad.dist_attr();
+  const auto& out_grad_dist_attr = out_grad.dist_attr();
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   int used_axes_index = 0;

@@ -93,11 +93,11 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          int axis,
                          SparseCooTensor* out) {
-  auto indices = x.indices();
+  const auto& indices = x.indices();
   auto values = x.values();
-  const auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   const auto sparse_dim = x.sparse_dim();
-  DenseTensor out_indices(indices);
+  const DenseTensor& out_indices(indices);
   DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, values);
   out->SetMember(out_indices, out_values, x.dims(), x.coalesced());
 

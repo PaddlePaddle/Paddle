@@ -20,7 +20,7 @@
 namespace phi {
 
 bool SliceCheckIfOneDNNSupport(const KernelContext* ctx) {
-  auto x = ctx->InputAt<phi::DenseTensor>(0);
+  const auto& x = ctx->InputAt<phi::DenseTensor>(0);
   auto vec_dims = common::vectorize(x.dims());
   bool all_zero_dims = std::all_of(
       vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });

@@ -31,7 +31,7 @@ void CumprodKernel(const Context& dev_ctx,
   const DenseTensor* x = &input;
   auto* x_data = x->data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
-  DDim shape = x->dims();
+  const DDim& shape = x->dims();
 
   size_t outer_dim = 1;
   size_t mid_dim = 1;

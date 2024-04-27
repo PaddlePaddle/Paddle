@@ -27,7 +27,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* xshape) {
   DDim x_dims = x.dims();
-  DDim x_stride = x.strides();
+  const DDim& x_stride = x.strides();
   size_t x_offset = x.offset();
   if (xshape) {
     x_dims = DDim(xshape->dims().Get() + 1, xshape->dims().size() - 1);

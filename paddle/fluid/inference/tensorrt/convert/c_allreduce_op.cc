@@ -38,8 +38,7 @@ class CAllReduceOpConverter : public OpConverter {
                                   "dynamic shape of inputs."));
     }
     ReduceType red_type = op_to_reduce_type[op.type()];
-    std::string name = op.type();
-
+    
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();

@@ -54,7 +54,7 @@ void SplitKernel(const Context& dev_ctx,
   int axis = split_axis.to<int>();
 
   auto outs_number = out.size();
-  const auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto x_vec_dims = common::vectorize(x_dims);
 
   dnnl::memory::data_type x_type = funcs::ToOneDNNDataType(x.dtype());

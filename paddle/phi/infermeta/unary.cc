@@ -3779,7 +3779,7 @@ void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out) {
-  auto shifts_data = shifts.GetData();
+  const auto& shifts_data = shifts.GetData();
 
   if (!axis.empty()) {
     PADDLE_ENFORCE_EQ(

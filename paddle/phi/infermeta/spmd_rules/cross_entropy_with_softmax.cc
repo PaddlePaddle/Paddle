@@ -245,7 +245,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
 
   auto s_out_shape = phi::vectorize(softmax_out.dims());
   int s_out_ndim = s_out_shape.size();
-  TensorDistAttr s_out_dist_attr_src = softmax_out.dist_attr();
+  const TensorDistAttr& s_out_dist_attr_src = softmax_out.dist_attr();
   std::vector<int64_t> s_out_dims_mapping_src =
       s_out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(

@@ -73,7 +73,7 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
 }  // namespace funcs
 
 bool ConcatCheckIfOneDNNSupport(const KernelContext* ctx) {
-  auto input0 = ctx->InputAt<DenseTensor>(0);
+  const auto& input0 = ctx->InputAt<DenseTensor>(0);
   int batch_size =
       !input0.lod().empty() ? input0.lod()[0].size() - 1 : input0.dims()[0];
   if (ctx->InputsSize() > 64 && batch_size < 1000) {

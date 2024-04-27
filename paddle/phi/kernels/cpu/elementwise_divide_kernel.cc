@@ -33,8 +33,8 @@ void DivideKernel(const Context& dev_ctx,
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
         dev_ctx, x, y, out);
   } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
+    const auto& x_dims = x.dims();
+    const auto& y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {  // NOLINT
       funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
           dev_ctx, x, y, funcs::DivideFunctor<T>(), out, -1);

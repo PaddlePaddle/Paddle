@@ -58,7 +58,7 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& axes,
                         DenseTensor* out) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto x_dims_tz = x_dims.size();
   std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
 

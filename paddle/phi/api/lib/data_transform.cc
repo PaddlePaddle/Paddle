@@ -676,7 +676,7 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
       true,
       phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
 
-  auto tensor_in = tensor.impl();
+  const auto& tensor_in = tensor.impl();
   const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
@@ -776,7 +776,7 @@ void SetInplaceOutputCorrectDistAttr(
     Tensor& tensor,  // NOLINT
     const phi::distributed::TensorDistAttr& dist_attr,
     bool use_general_spmd_rule) {
-  auto tensor_in = tensor.impl();
+  const auto& tensor_in = tensor.impl();
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
@@ -879,7 +879,7 @@ void ReshardKernelOutputToApiOutput(
     Tensor* dst_tensor,
     const std::string& arg_name) {
   if (dst_tensor) {
-    auto tensor_out = dst_tensor->impl();
+    const auto& tensor_out = dst_tensor->impl();
     PADDLE_ENFORCE_NE(
         tensor_out,
         nullptr,

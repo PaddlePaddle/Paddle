@@ -61,7 +61,7 @@ void PNormGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out_dx);
 
   T eps = static_cast<T>(epsilon);
-  auto xdim = in_x->dims();
+  const auto& xdim = in_x->dims();
 
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;

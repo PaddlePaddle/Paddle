@@ -38,7 +38,7 @@ void LayerNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
-  const auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto* scale = scale_opt.get_ptr();
   auto* bias = bias_opt.get_ptr();
 

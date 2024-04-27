@@ -41,7 +41,7 @@ DistTensorSpec::DistTensorSpec(const Tensor& tensor) {
 }
 
 DistTensorSpec& DistTensorSpec::operator=(const DistTensorSpec& spec) {
-  std::vector<int64_t> spec_shape = spec.shape();
+  const std::vector<int64_t>& spec_shape = spec.shape();
   shape_ = spec_shape;
   dist_attr_.copy_from(spec.dist_attr());
   return *this;

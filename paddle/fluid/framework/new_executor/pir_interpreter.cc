@@ -92,7 +92,7 @@ namespace framework {
 
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
-    std::string op_name = instr_node->Name();
+    const std::string& op_name = instr_node->Name();
     ::pir::Operation* op = instr_node->Operation();
     if (op->HasAttribute("kernel_key")) {
       phi::KernelKey kernel_key =
