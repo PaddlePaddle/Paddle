@@ -468,13 +468,42 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
       tar_shape[i] = x[i].shape()[0];
     }
   }
-  for (size_t i = 0; i < rank; i++) {
-    std::vector<int64_t> view_shape(rank, 1);
-    if (x[i].shape().size() == 1) {
-      view_shape[i] = x[i].shape()[0];
+  if (has_dynamic_shape(tar_shape)) {
+    std::vector<Tensor> tmp_shape;
+    for (size_t i = 0; i < rank; i++) {
+      if (tar_shape[i] != -1) {
+        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT64));
+      } else {
+        tmp_shape.push_back(shape<T>(x[i]));
+      }
     }
-    res.push_back(expand<T>(reshape<T>(x[i], view_shape), tar_shape));
+    auto tar_tensor_shape = concat<T>(tmp_shape);
+
+    for (size_t i = 0; i < rank; i++) {
+      if (tar_shape[i] = 1) {
+        res.push_back(expand_with_tensor<T>(x[i], tar_tensor_shape));
+      } else {
+        std::vector<size_t> unsqueeze_dim;
+        for (size_t k = 0; k < rank; i++) {
+          if (i != k) {
+            unsqueeze_dim.push_back(k);
+          }
+        }
+        res.push_back(expand_with_tensor<T>(unsqueeze<T>(x[i], unsqueeze_dim),
+                                            tar_tensor_shape));
+      }
+    }
+
+  } else {
+    for (size_t i = 0; i < rank; i++) {
+      std::vector<int64_t> view_shape(rank, 1);
+      if (x[i].shape().size() == 1) {
+        view_shape[i] = x[i].shape()[0];
+      }
+      res.push_back(expand<T>(reshape<T>(x[i], view_shape), tar_shape));
+    }
   }
+
   return res;
 }
 
