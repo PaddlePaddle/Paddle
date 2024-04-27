@@ -1075,6 +1075,7 @@ if '${WITH_CPP_DIST}' == 'ON':
 
 # type hints
 package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + ['*.pyi']
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
