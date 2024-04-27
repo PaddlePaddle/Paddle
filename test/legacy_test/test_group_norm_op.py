@@ -638,6 +638,28 @@ class TestGroupNormBF16Op_With_NDHWC(TestGroupNormBF16Op_With_NHWC):
         self.shape = (1, 3, 2, 2, 512)
         self.data_format = "NDHWC"
 
+    def test_check_grad(self):
+        if self.compare_between_place:
+            return
+
+        check_prim_grad = False
+
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        # prim bf16 has diff in windows
+        if sys.platform == "win32" or self.channel_last:
+            self.rev_comp_atol = 5e-2
+            self.rev_comp_rtol = 5e-2
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
+            max_relative_error=0.03,
+        )
+
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
