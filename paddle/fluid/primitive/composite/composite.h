@@ -497,10 +497,10 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
 
 template <typename T>
 std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
-  size_t rank = x.size();
+  int64_t rank = x.size();
   std::vector<Tensor> res;
   std::vector<int64_t> tar_shape(rank, 1);
-  for (size_t i = 0; i < rank; i++) {
+  for (int64_t i = 0; i < rank; i++) {
     if (x[i].shape().size() == 1) {
       tar_shape[i] = x[i].shape()[0];
     }
@@ -508,8 +508,8 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
   if (has_dynamic_shape(tar_shape)) {
     std::vector<Tensor> tmp_shape;
     for (int64_t i = 0; i < rank; i++) {
-      if (tar_shape[i] != -1) {
-        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT64));
+      if (tar_shape[i] == 1) {
+        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT32));
       } else {
         tmp_shape.push_back(shape<T>(x[i]));
       }
@@ -517,11 +517,11 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
     auto tar_tensor_shape = concat<T>(tmp_shape);
 
     for (int64_t i = 0; i < rank; i++) {
-      if (tar_shape[i] = 1) {
+      if (tar_shape[i] == 1) {
         res.push_back(backend::expand_with_tensor<T>(x[i], tar_tensor_shape));
       } else {
         std::vector<int64_t> unsqueeze_dim;
-        for (int64_t k = 0; k < rank; i++) {
+        for (int64_t k = 0; k < rank; k++) {
           if (i != k) {
             unsqueeze_dim.push_back(k);
           }
