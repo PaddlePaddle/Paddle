@@ -20,7 +20,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     init_env_utils
     SRCS init_env_utils.cc
-    DEPS ${prim_generated_deps})
+    DEPS ${prim_generated_deps} ${prim_eager_deps})
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
   paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils)
