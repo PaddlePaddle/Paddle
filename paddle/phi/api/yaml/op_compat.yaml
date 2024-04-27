@@ -3756,6 +3756,18 @@
   outputs:
     {out: Out}
 
+- op: data_norm
+  backward: data_norm_grad
+  inputs:
+    x: X
+    batch_size: BatchSize
+    batch_sum: BatchSum
+    batch_square_sum: BatchSquareSum
+  outputs:
+    out: "Y"
+    means: Means
+    scales: Scales
+
 - op: decayed_adagrad
   inputs:
     {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
