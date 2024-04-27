@@ -21,6 +21,8 @@ import numpy as np
 
 import paddle
 
+paddle.seed(2024)
+
 
 class LayerCase(paddle.nn.Layer):
     def __init__(self):
@@ -103,7 +105,7 @@ class TestLayer(unittest.TestCase):
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

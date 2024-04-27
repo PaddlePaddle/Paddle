@@ -47,7 +47,7 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
     scale_op({&pat.Tensor("matmul_out"), &full_op()},
              {&pat.Tensor("scale_out")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
         return false;
       }

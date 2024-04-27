@@ -91,7 +91,6 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
-
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {

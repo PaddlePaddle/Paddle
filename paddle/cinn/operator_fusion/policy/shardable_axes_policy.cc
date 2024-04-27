@@ -62,9 +62,9 @@ bool ShardableAxesRRFusePolicy<T>::ReduceTreeGrownCanMerge(
     return false;
   }
   const auto& upstream_tree =
-      std::get<ReduceTreePattern>(upstream->stmt_pattern_);
+      std::get<ReduceTreePattern>(upstream->stmt_pattern());
   const auto& downstream_tree =
-      std::get<ReduceTreePattern>(downstream->stmt_pattern_);
+      std::get<ReduceTreePattern>(downstream->stmt_pattern());
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
       upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns_);
   if (!maybe_downstream_op.has_value()) {

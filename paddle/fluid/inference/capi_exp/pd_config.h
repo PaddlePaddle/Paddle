@@ -245,7 +245,10 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
 /// \param[in] device_id device_id the custom device card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
-    __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
+    __pd_keep PD_Config* pd_config,
+    char* device_type,
+    int32_t device_id,
+    PD_PrecisionType precision);
 ///
 /// \brief A boolean state telling whether the custom device is turned on.
 ///
@@ -485,35 +488,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtDla(
 /// \return Whether to use the TensorRT DLA.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDlaEnabled(
-    __pd_keep PD_Config* pd_config);
-///
-/// \brief Turn on the usage of Lite sub-graph engine.
-///
-/// \param[in] pd_config config
-/// \param[in] precision Precision used in Lite sub-graph engine.
-/// \param[in] zero_copy whether use zero copy.
-/// \param[in] passes_filter_num The number of passes used in Lite sub-graph
-/// engine.
-/// \param[in] passes_filter The name of passes used in Lite sub-graph engine.
-/// \param[in] ops_filter_num The number of operators not supported by Lite.
-/// \param[in] ops_filter The name of operators not supported by Lite.
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableLiteEngine(
-    __pd_keep PD_Config* pd_config,
-    PD_PrecisionType precision,
-    PD_Bool zero_copy,
-    size_t passes_filter_num,
-    const char** passes_filter,
-    size_t ops_filter_num,
-    const char** ops_filter);
-///
-/// \brief A boolean state indicating whether the Lite sub-graph engine is
-/// used.
-///
-/// \param[in] pd_config config
-/// \return Whether the Lite sub-graph engine is used.
-///
-PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigLiteEngineEnabled(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Control whether to debug IR graph analysis phase.

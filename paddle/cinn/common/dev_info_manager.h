@@ -24,7 +24,7 @@
 namespace cinn {
 namespace common {
 
-template <Target::Arch arch>
+template <typename arch>
 struct GetDevType {
   using DevType = DevInfoBase;
 };
@@ -32,11 +32,11 @@ struct GetDevType {
 // Extra device should be added here
 class NVGPUDevInfo;
 template <>
-struct GetDevType<Target::Arch::NVGPU> {
+struct GetDevType<NVGPUArch> {
   using DevType = NVGPUDevInfo;
 };
 
-template <Target::Arch arch>
+template <typename arch>
 class DevInfoMgr final {
  private:
   explicit DevInfoMgr(int device_num = 0) : device_num_(device_num) {

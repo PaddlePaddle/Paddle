@@ -297,7 +297,7 @@ TEST(matmul, ArrayPacking_dynamic_shape) {
   stages[packedB]->Vectorize(2, 8);
 
   Target target;
-  target.arch = Target::Arch::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit::k32;
   target.os = Target::OS::Linux;
 

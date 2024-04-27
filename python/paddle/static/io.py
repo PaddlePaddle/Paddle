@@ -23,9 +23,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import pir
 from paddle.base import (
-    CompiledProgram,
     Program,
     Variable,
     core,
@@ -53,70 +51,27 @@ from paddle.framework.io_utils import (
     is_persistable,
 )
 
+from .io_utils import (
+    _check_args,
+    _check_vars,
+    _get_valid_program,
+    _normalize_path_prefix,
+    _safe_load_pickle,
+)
+from .pir_io import (
+    load_pir,
+    load_pir_inference_model,
+    load_vars_pir,
+    save_pir,
+    save_pir_inference_model,
+    save_vars_pir,
+)
+
 __all__ = []
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
-
-
-def _check_args(caller, args, supported_args=None, deprecated_args=None):
-    supported_args = [] if supported_args is None else supported_args
-    deprecated_args = [] if deprecated_args is None else deprecated_args
-    for arg in args:
-        if arg in deprecated_args:
-            raise ValueError(
-                f"argument '{arg}' in function '{caller}' is deprecated, only {supported_args} are supported."
-            )
-        elif arg not in supported_args:
-            raise ValueError(
-                f"function '{caller}' doesn't support argument '{arg}',\n only {supported_args} are supported."
-            )
-
-
-def _check_vars(name, var_list):
-    if not isinstance(var_list, list):
-        var_list = [var_list]
-    if not all(isinstance(var, (Variable, pir.Value)) for var in var_list):
-        raise ValueError(
-            f"'{name}' should be a Variable or a list of Variable."
-        )
-
-
-def _normalize_path_prefix(path_prefix):
-    """
-    convert path_prefix to absolute path.
-    """
-    if not isinstance(path_prefix, str):
-        raise ValueError("'path_prefix' should be a string.")
-    if path_prefix.endswith("/"):
-        raise ValueError("'path_prefix' should not be a directory")
-    path_prefix = os.path.normpath(path_prefix)
-    path_prefix = os.path.abspath(path_prefix)
-    return path_prefix
-
-
-def _get_valid_program(program=None):
-    """
-    return default main program if program is None.
-    """
-    if program is None:
-        program = default_main_program()
-    elif isinstance(program, CompiledProgram):
-        program = program._program
-        if program is None:
-            raise TypeError(
-                "The type of input program is invalid, expected type is Program, but received None"
-            )
-        warnings.warn(
-            "The input is a CompiledProgram, this is not recommended."
-        )
-    if not isinstance(program, paddle.static.Program):
-        raise TypeError(
-            "The type of input program is invalid, expected type is base.Program, but received %s"
-            % type(program)
-        )
-    return program
 
 
 def _clone_var_in_block(block, var):
@@ -138,11 +93,6 @@ def _clone_var_in_block(block, var):
             type=var.type,
             persistable=True,
         )
-
-
-def _safe_load_pickle(file, encoding="ASCII"):
-    load_dict = pickle.Unpickler(file, encoding=encoding).load()
-    return load_dict
 
 
 def prepend_feed_ops(
@@ -191,100 +141,6 @@ def append_fetch_ops(
             outputs={'Out': [fetch_var]},
             attrs={'col': i},
         )
-
-
-def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
-    """
-
-    Normalize/Optimize a program according to feed_vars and fetch_vars.
-
-    Args:
-        program(Program): Specify a program you want to optimize.
-        feed_vars(Tensor | list[Tensor]): Values needed by inference.
-        fetch_vars(Tensor | list[Tensor]): Values returned by inference.
-        kwargs: Supported keys including ``skip_prune_program``.
-            - skip_prune_program(bool): whether to skip pruning program. Defaults to False.
-
-    Returns:
-        Program: Normalized/Optimized program.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> paddle.enable_static()
-
-            >>> path_prefix = "./infer_model"
-
-            # User defined network, here a softmax regression example
-            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
-
-            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
-
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> exe.run(paddle.static.default_startup_program())
-
-            # normalize main program.
-            >>> program = paddle.static.default_main_program()
-            >>> normalized_program = paddle.static.normalize_program(program, [image], [predict])
-
-    """
-    if not isinstance(program, paddle.static.Program):
-        raise TypeError(
-            "program type must be `paddle.static.Program`, but received `%s`"
-            % type(program)
-        )
-    if not isinstance(feed_vars, list):
-        feed_vars = [feed_vars]
-    if not all(isinstance(v, pir.Value) for v in feed_vars):
-        raise TypeError("feed_vars type must be a Value or a list of Variable.")
-    if not isinstance(fetch_vars, list):
-        fetch_vars = [fetch_vars]
-    if not all(isinstance(v, pir.Value) for v in fetch_vars):
-        raise TypeError(
-            "fetch_vars type must be a Value or a list of Variable."
-        )
-
-    # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
-
-    # fix the bug that the activation op's output as target will be pruned.
-    # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
-    with paddle.static.program_guard(program):
-        uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
-            if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
-
-    # serialize program
-    copy_program = program.clone()
-    global_block = copy_program.global_block()
-    remove_ops = []
-    for op in global_block.ops:
-        if op.name() == "pd_op.feed" or op.name() == "pd_op.fetch":
-            remove_ops.append(op)
-
-    for op in remove_ops:
-        global_block.remove_op(op)
-
-    # feed_var_names = [var.name for var in feed_vars]
-
-    # skip_prune_program = kwargs.get('skip_prune_program', False)
-    # if not skip_prune_program:
-    #     copy_program = copy_program._prune_with_input(
-    #         feeded_var_names=feed_var_names, targets=fetch_vars
-    #     )
-    # copy_program = copy_program._inference_optimize(prune_read_op=True)
-    # fetch_var_names = [var.name for var in fetch_vars]
-    # prepend_feed_ops(copy_program, feed_var_names)
-    # append_fetch_ops(copy_program, fetch_var_names)
-
-    return copy_program
 
 
 def normalize_program(program, feed_vars, fetch_vars, **kwargs):
@@ -665,6 +521,12 @@ def save_inference_model(
 
     """
 
+    if in_pir_mode():
+        save_pir_inference_model(
+            path_prefix, feed_vars, fetch_vars, executor, **kwargs
+        )
+        return
+
     # check path_prefix, set model_path and params_path
     path_prefix = _normalize_path_prefix(path_prefix)
     try:
@@ -675,11 +537,7 @@ def save_inference_model(
         if e.errno != errno.EEXIST:
             raise
 
-    if in_pir_mode():
-        model_path = path_prefix + ".json"
-    else:
-        model_path = path_prefix + ".pdmodel"
-
+    model_path = path_prefix + ".pdmodel"
     params_path = path_prefix + ".pdiparams"
     if os.path.isdir(model_path):
         raise ValueError(f"'{model_path}' is an existing directory.")
@@ -699,49 +557,37 @@ def save_inference_model(
     clip_extra = kwargs.get('clip_extra', True)
     # serialize and save program
 
-    if in_pir_mode():
-        program = normalize_pir_program(
-            program,
-            feed_vars,
-            fetch_vars,
-            skip_prune_program=kwargs.get('skip_prune_program', False),
-        )
-        paddle.core.serialize_pir_program(
-            program, model_path, 1, True, False, True
-        )
+    program = normalize_program(
+        program,
+        feed_vars,
+        fetch_vars,
+        skip_prune_program=kwargs.get('skip_prune_program', False),
+    )
+    legacy_format = kwargs.get('legacy_format', False)
+    program_bytes = _serialize_program(
+        program._remove_training_info(clip_extra=clip_extra),
+        legacy_format=legacy_format,
+    )
 
-    else:
-        program = normalize_program(
-            program,
-            feed_vars,
-            fetch_vars,
-            skip_prune_program=kwargs.get('skip_prune_program', False),
-        )
-        legacy_format = kwargs.get('legacy_format', False)
-        program_bytes = _serialize_program(
-            program._remove_training_info(clip_extra=clip_extra),
-            legacy_format=legacy_format,
+    save_to_file(model_path, program_bytes)
+
+    vars = list(filter(is_persistable, program.list_vars()))
+
+    if len(list(vars)) == 0:
+        warnings.warn(
+            "no variable in your model, please ensure there are any variables in your model to save"
         )
 
-        save_to_file(model_path, program_bytes)
-
-        vars = list(filter(is_persistable, program.list_vars()))
-
-        if len(list(vars)) == 0:
-            warnings.warn(
-                "no variable in your model, please ensure there are any variables in your model to save"
-            )
-
-        if len(vars) > 0:
-            save_dirname = os.path.dirname(params_path)
-            params_filename = os.path.basename(params_path)
-            save_vars(
-                executor,
-                dirname=save_dirname,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
+    if len(vars) > 0:
+        save_dirname = os.path.dirname(params_path)
+        params_filename = os.path.basename(params_path)
+        save_vars(
+            executor,
+            dirname=save_dirname,
+            main_program=program,
+            predicate=is_persistable,
+            filename=params_filename,
+        )
 
 
 @static_only
@@ -1107,150 +953,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
     return [program, feed_target_names, fetch_targets]
 
 
-@static_only
-def load_pir_inference_model(path_prefix, executor, **kwargs):
-    """
-
-    Load inference model from a given path. By this API, you can get the model
-    structure(Inference Program) and model parameters.
-
-    Args:
-        path_prefix(str | None): One of the following:
-          - Directory path to save model + model name without suffix.
-          - Set to None when reading the model from memory.
-        executor(Executor): The executor to run for loading inference model.
-                            See :ref:`api_guide_executor_en` for more details about it.
-        kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
-
-            - model_filename(str): specify model_filename if you don't want to use default name.
-
-            - params_filename(str): specify params_filename if you don't want to use default name.
-
-    Returns:
-        list: The return of this API is a list with three elements:
-        (program, feed_target_names, fetch_targets). The `program` is a
-        ``Program`` (refer to :ref:`api_guide_Program_en`), which is used for inference.
-        The `feed_target_names` is a list of ``str``, which contains names of variables
-        that need to feed data in the inference program. The `fetch_targets` is a list of
-        ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
-        we can get inference results.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import numpy as np
-
-            >>> paddle.enable_static()
-
-            # Build the model
-            >>> startup_prog = paddle.static.default_startup_program()
-            >>> main_prog = paddle.static.default_main_program()
-            >>> with paddle.static.program_guard(main_prog, startup_prog):
-            ...     image = paddle.static.data(name="img", shape=[64, 784])
-            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
-            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
-            ...     hidden_w = paddle.matmul(x=image, y=w)
-            ...     hidden_b = paddle.add(hidden_w, b)
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> exe.run(startup_prog)
-
-            # Save the inference model
-            >>> path_prefix = "./infer_model"
-            >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
-
-            >>> [inference_program, feed_target_names, fetch_targets] = (
-            ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
-            >>> results = exe.run(inference_program,
-            ...               feed={feed_target_names[0]: tensor_img},
-            ...               fetch_list=fetch_targets)
-
-            # In this example, the inference program was saved in file
-            # "./infer_model.pdmodel" and parameters were saved in file
-            # " ./infer_model.pdiparams".
-            # By the inference program, feed_target_names and
-            # fetch_targets, we can use an executor to run the inference
-            # program to get the inference result.
-    """
-    # check kwargs
-    supported_args = ('model_filename', 'params_filename')
-    deprecated_args = ('pserver_endpoints',)
-    caller = inspect.currentframe().f_code.co_name
-    _check_args(caller, kwargs, supported_args, deprecated_args)
-
-    # load from memory
-    if path_prefix is None:
-        _logger.warning(
-            "Load inference model from memory is deprecated. Please specify path_prefix."
-        )
-        model_filename = kwargs.get('model_filename', None)
-        params_filename = kwargs.get('params_filename', None)
-        if params_filename is None:
-            raise ValueError(
-                "params_filename cannot be None when path_prefix is None."
-            )
-
-        # deserialize bytes to program
-        program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_filename, program, 1)
-
-        vars = list(filter(is_persistable, program.list_vars()))
-        if len(vars) > 0:
-            load_vars(
-                executor,
-                # load from memory, dirname is None
-                dirname=None,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
-    # load from file
-    else:
-        # check and norm path_prefix
-        path_prefix = _normalize_path_prefix(path_prefix)
-        dir_path = os.path.dirname(path_prefix)
-        if not os.path.isdir(dir_path):
-            raise ValueError(f"There is no directory named {dir_path}")
-        # set model_path and params_path in new way,
-        # path_prefix represents a file path without suffix in this case.
-        if not kwargs:
-            model_path = path_prefix + ".json"
-            params_path = path_prefix + ".pdiparams"
-        # set model_path and params_path in old way for compatible,
-        # path_prefix represents a directory path.
-        else:
-            model_filename = kwargs.get('model_filename', None)
-            params_filename = kwargs.get('params_filename', None)
-            # set model_path
-            if model_filename is None:
-                model_path = os.path.join(path_prefix, "__model__")
-            else:
-                model_path = os.path.join(path_prefix, model_filename + ".json")
-
-                if not os.path.exists(model_path):
-                    model_path = os.path.join(path_prefix, model_filename)
-            # set params_path
-            if params_filename is None:
-                params_path = os.path.join(path_prefix, "")
-            else:
-                params_path = os.path.join(
-                    path_prefix, params_filename + ".pdiparams"
-                )
-                if not os.path.exists(params_path):
-                    params_path = os.path.join(path_prefix, params_filename)
-            _logger.warning(
-                "The old way to load inference model is deprecated. Please specify path_prefix."
-                f" model path: {model_path}, params path: {params_path}"
-            )
-
-        # deserialize bytes to program
-        program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_path, program, 1)
-
-    return [program, [], []]
-
-
 @dygraph_not_support
 def save_vars(
     executor,
@@ -1334,6 +1036,9 @@ def save_vars(
 
 
     """
+    if in_pir_mode():
+        return save_vars_pir(dirname, main_program, vars, predicate, filename)
+
     save_to_memory = False
     if dirname is None and filename is None:
         save_to_memory = True
@@ -1409,109 +1114,6 @@ def save_vars(
         # flush to root_scope
         executor.flush()
         executor.run(save_program)
-        if save_to_memory:
-            return global_scope().find_var(params_var_name).get_bytes()
-
-
-@dygraph_not_support
-def save_vars_pir(
-    dirname,
-    main_program=None,
-    vars=None,
-    predicate=None,
-    filename=None,
-):
-    """
-    Save specific variables in the `Program` to files.
-
-    There are two ways to specify the variables to be saved: set variables in
-    a list and assign it to the `vars`, or use the `predicate` function to select
-    variables that make `predicate(variable) == True`. The first way has a higher priority.
-
-    The `dirname` is used to specify the folder where to save variables.
-    If you prefer to save variables in separate files in the `dirname` folder,
-    do not set `filename`. If you prefer to save all variables in a single file,
-    use `filename` to specify it.
-
-    Args:
-        dirname(str, optional): The folder to save variables.
-                            When you need to save the parameter to the memory, set it to None.
-        main_program(Program, optional): The program whose variables will be saved.
-                                    If it is None, the default main program will
-                                    be used automatically.
-                                    Default: None
-        vars(list[Variable], optional): The list contains all variables to be saved.
-                                        Default: None
-        predicate(function, optional): The function selects the variables that make
-                                       `predicate(variable) == True`.
-                                       Default: None
-        filename(str, optional): If you prefer to save all variables in a single file,
-                                 use `filename` to specify it. Otherwise, let `filename` be None.
-                                 Default: None
-
-    Returns:
-        str: When saving parameters to a file, returns None.
-             When saving parameters to memory, returns a binary string containing parameters.
-    """
-
-    save_to_memory = False
-    if dirname is None and filename is None:
-        save_to_memory = True
-
-    main_program = _get_valid_program(main_program)
-
-    if vars is None:
-        param, opt = get_pir_parameters(main_program)
-        vars_list = param + opt
-        return save_vars_pir(
-            main_program=main_program,
-            dirname=dirname,
-            vars=list(filter(predicate, vars_list)),
-            filename=filename,
-        )
-    else:
-        params_var_name = "saved_params"
-        # give warning when there is no var in model
-        if len(list(vars)) == 0:
-            warnings.warn(
-                "no variable in your model, please ensure there are any variables in your model to save"
-            )
-            return None
-
-        save_var_map = {}
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
-            # TODO(chenzhiyang): deal with RAW type and sparse
-            if filename is None and save_to_memory is False:
-                save_file_path = os.path.join(
-                    os.path.normpath(dirname), var_name
-                )
-                core.save_func(
-                    var.get_tensor(), var_name, save_file_path, True, False
-                )
-            else:
-                save_var_map[var_name] = var.get_tensor()
-
-        if filename is not None or save_to_memory:
-            save_var_list = []
-            save_var_names = []
-            for name in sorted(save_var_map.keys()):
-                save_var_list.append(save_var_map[name])
-                save_var_names.append(name)
-
-            save_path = ''
-            if save_to_memory is False:
-                save_path = os.path.join(os.path.normpath(dirname), filename)
-
-            core.save_combine_func(
-                save_var_list,
-                save_var_names,
-                save_path,
-                True,
-                False,
-                save_to_memory,
-            )
-
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()
 
@@ -1602,6 +1204,9 @@ def load_vars(
             # And all the variables are supposed to be saved in separate files.
 
     """
+    if in_pir_mode():
+        return load_vars_pir(dirname, main_program, vars, predicate, filename)
+
     vars_from_memory = False
     if dirname is not None:
         dirname = os.path.normpath(dirname)
@@ -1773,102 +1378,6 @@ def load_vars(
                 )
 
 
-def load_vars_pir(
-    dirname,
-    main_program=None,
-    vars=None,
-    predicate=None,
-    filename=None,
-):
-    """
-    :api_attr: PIR Static Graph
-
-    This API loads variables from files by C++ function.
-
-    There are two ways to specify the variables to be loaded: the first way, set
-    variables in a list and assign it to the `vars`; the second way, use the
-    `predicate` function to select variables that make `predicate(variable) == True`.
-    The first way has a higher priority.
-
-    The `dirname` is used to specify the folder where to load variables.
-    If variables were saved in separate files in the folder `dirname`,
-    set `filename` None. If all variables were saved in a single file,
-    use `filename` to specify it.
-
-    Args:
-        dirname(str): The folder where to load the variables.
-        main_program(Program, optional): The program whose variables will be loaded.
-                                    If it is None, the default main program will
-                                    be used automatically.
-                                    Default: None
-        vars(list[Variable], optional): The list that contains all variables to be loaded.
-                                   Default: None
-        predicate(function, optional): The function selects variables that make
-                                        `predicate(variable) == True`.
-                                        Default: None
-        filename(str, optional): The file which saved all required variables. If variables
-                                were saved in separate files, set it to be None.
-                                Default: None
-
-    Returns:
-        None
-    """
-
-    vars_from_memory = False
-    if dirname is not None:
-        dirname = os.path.normpath(dirname)
-    # TODO(chenzhiyang): vars_from_memory
-
-    if filename == '':
-        filename = None
-
-    if vars is None:
-        if main_program is None:
-            main_program = default_main_program()
-
-        param, opt = get_pir_parameters(main_program)
-        vars_list = param + opt
-        load_vars_pir(
-            dirname=dirname,
-            main_program=main_program,
-            vars=list(filter(predicate, vars_list)),
-            filename=filename,
-        )
-    else:
-        if main_program is None:
-            main_program = default_main_program()
-
-        # TODO(chenzhiyang):save origin param shape, check vars
-        load_var_map = {}
-
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
-            assert isinstance(var, paddle.base.libpaddle.Variable)
-            if filename is None:
-                if dirname is None:
-                    raise ValueError(
-                        "The directory path and params cannot be None at the same time."
-                    )
-                file_path = os.path.join(dirname, var_name)
-                core.load_func(file_path, -1, [], False, var.get_tensor())
-            else:
-                load_var_map[var_name] = var
-
-        if filename is not None:
-            load_var_list = []
-            load_var_names = []
-            for name in sorted(load_var_map.keys()):
-                load_var_list.append(load_var_map[name].get_tensor())
-                load_var_names.append(name)
-
-            if vars_from_memory is False:
-                filename = os.path.join(dirname, filename)
-
-            core.load_combine_func(
-                filename, load_var_names, load_var_list, False
-            )
-
-
 @static_only
 def save(program, model_path, protocol=4, **configs):
     """
@@ -1908,6 +1417,8 @@ def save(program, model_path, protocol=4, **configs):
 
             >>> static.save(prog, "./temp")
     """
+    if in_pir_mode():
+        return save_pir(program, model_path, protocol, **configs)
 
     base_name = os.path.basename(model_path)
     assert (
@@ -1968,100 +1479,6 @@ def save(program, model_path, protocol=4, **configs):
         f.write(program.desc.serialize_to_string())
 
 
-def get_pir_parameters(program):
-    """
-    Get parameters and optimizer variables from program.
-        Args:
-            program(Program): The program to get parameters and optimizer variables.
-    """
-    params = []
-    opts = []
-    for op in program.global_block().ops:
-        if op.name() == "builtin.parameter" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["parameter_name"]
-                params.append(name)
-        elif op.name() == "pd_op.data" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["name"]
-                opts.append(name)
-    return params, opts
-
-
-@static_only
-def save_pir(program, model_path, protocol=4, **configs):
-    """
-    This function saves parameters, optimizer information and network description to model_path.
-
-    The parameters contain all the trainable Tensor, and save to a file with suffix ".pdparams".
-    The optimizer information contains all the Tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will be saved to a file with suffix ".pdopt". (If the optimizer has no Tensor to save (like SGD), the file will not be generated).
-    The network description is the description of the program. It's only used for deployment. The description will be saved to a file with a suffix ".pdmodel".
-
-    Args:
-        program(Program) : The program to be saved.
-        model_path(str): The file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is an empty str, an exception will be raised.
-        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 4
-        configs(dict, optional) : Optional keyword arguments.
-
-    Returns:
-        None
-    """
-
-    base_name = os.path.basename(model_path)
-    assert (
-        base_name != ""
-    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
-    if 'pickle_protocol' in configs:
-        protocol = configs['pickle_protocol']
-        warnings.warn(
-            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
-        )
-
-    if not isinstance(protocol, int):
-        raise ValueError(
-            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
-        )
-
-    if protocol < 2 or protocol > 4:
-        raise ValueError(
-            f"Expected 1<'protocol'<5, but received protocol={protocol}"
-        )
-
-    dir_name = os.path.dirname(model_path)
-    if dir_name and not os.path.exists(dir_name):
-        os.makedirs(dir_name)
-
-    def get_tensor(name):
-        t = global_scope().find_var(name).get_tensor()
-        return np.array(t)
-
-    # get parameters and optimizer variables
-    parameter_list, optimizer_param_list = get_pir_parameters(program)
-    param_dict = {name: get_tensor(name) for name in parameter_list}
-    opt_dict = {name: get_tensor(name) for name in optimizer_param_list}
-
-    # save parameters
-    param_dict = _unpack_saved_dict(param_dict, protocol)
-
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if sys.platform == 'darwin' and sys.version_info.major == 3:
-        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
-        with open(model_path + ".pdparams", 'wb') as f:
-            max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
-    else:
-        with open(model_path + ".pdparams", 'wb') as f:
-            pickle.dump(param_dict, f, protocol=protocol)
-
-    # save optimizer parameters
-    with open(model_path + ".pdopt", 'wb') as f:
-        pickle.dump(opt_dict, f, protocol=protocol)
-
-    ### TODO(chenzhiyang): save program
-
-
 @static_only
 def load(program, model_path, executor=None, var_list=None):
     """
@@ -2106,6 +1523,8 @@ def load(program, model_path, executor=None, var_list=None):
             >>> static.save(prog, "./temp")
             >>> static.load(prog, "./temp")
     """
+    if in_pir_mode():
+        return load_pir(program, model_path, executor, var_list)
 
     assert executor is None or isinstance(executor, Executor)
 
@@ -2272,104 +1691,6 @@ def load(program, model_path, executor=None, var_list=None):
                 v.name in load_dict
             ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
             set_var(v, load_dict[v.name])
-
-
-@static_only
-def load_pir(program, model_path, executor=None, var_list=None):
-    """
-    :api_attr: PIR Static Graph
-
-    This function gets parameters and optimizer information from program, and then gets corresponding value from file.
-    An exception will be thrown if shape or dtype of the parameters does not match.
-
-    This function can also load model file saved with [ save_params, save_persistables, save_vars ].
-    var_list can not be None when loading a single model file
-    ( filename is not None when save_params, save_persistables or save_vars is called ).
-
-    Args:
-        program(Program): The program to be loaded
-        model_path(str): The file prefix to store the program
-        executor(Executor, optional): The executor used for initializing the parameter
-                                      when startup program is not run.
-        var_list(list|tuple, optional): The Tensor list/tuple to load a single model file saved with
-                                  [ save_params, save_persistables, save_vars ].
-                                  Default: None
-
-    Returns:
-        None
-    """
-
-    assert executor is None or isinstance(executor, Executor)
-
-    model_prefix = model_path
-    if model_prefix.endswith(".pdparams"):
-        model_prefix = model_prefix[:-9]
-    elif model_prefix.endswith(".pdopt"):
-        model_prefix = model_prefix[:-6]
-    elif model_prefix.endswith(".pdmodel"):
-        model_prefix = model_prefix[:-8]
-
-    parameter_file_name = model_prefix + ".pdparams"
-
-    # TODO(chenzhiyang): if not os.path.exists(parameter_file_name): load_vars
-
-    def set_var(name, ndarray):
-        t = global_scope().find_var(name).get_tensor()
-        p = t._place()
-        if p.is_cpu_place():
-            place = paddle.base.CPUPlace()
-        elif p.is_cuda_pinned_place():
-            place = paddle.base.CUDAPinnedPlace()
-        elif p.is_xpu_place():
-            p = paddle.base.core.Place()
-            p.set_place(t._place())
-            place = paddle.base.XPUPlace(p.xpu_device_id())
-        elif p.is_custom_place():
-            p = paddle.base.core.Place()
-            p.set_place(t._place())
-            place = paddle.base.CustomPlace(
-                paddle.device.get_device().split(':')[0], p.custom_device_id()
-            )
-        else:
-            p = paddle.base.core.Place()
-            p.set_place(t._place())
-            place = paddle.base.CUDAPlace(p.gpu_device_id())
-
-        t.set(ndarray, place)
-
-    parameter_list, optimizer_param_list = get_pir_parameters(program)
-
-    with open(parameter_file_name, 'rb') as f:
-        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-        if sys.platform == 'darwin' and sys.version_info.major == 3:
-            load_dict = _pickle_loads_mac(parameter_file_name, f)
-        else:
-            load_dict = _safe_load_pickle(f, encoding='latin1')
-        load_dict = _pack_loaded_dict(load_dict)
-    for name in parameter_list:
-        assert (
-            name in load_dict
-        ), f"Can not find [{name}] in model file [{parameter_file_name}]"
-        set_var(name, load_dict[name])
-
-    if len(optimizer_param_list) > 0:
-        opt_file_name = model_prefix + ".pdopt"
-        assert os.path.exists(
-            opt_file_name
-        ), f"Optimizer file [{opt_file_name}] not exits"
-
-        if executor:
-            paddle.base.core._create_loaded_parameter(
-                optimizer_param_list, global_scope(), executor._default_executor
-            )
-
-        with open(opt_file_name, 'rb') as f:
-            load_dict = _safe_load_pickle(f, encoding='latin1')
-        for name in optimizer_param_list:
-            assert (
-                name in load_dict
-            ), f"Can not find [{name}] in model file [{opt_file_name}]"
-            set_var(name, load_dict[name])
 
 
 @static_only

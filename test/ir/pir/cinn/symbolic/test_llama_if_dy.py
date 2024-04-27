@@ -11,28 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import sys
 import unittest
 from os.path import dirname
 
 import numpy as np
 
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_all'] = 'true'
+os.environ['FLAGS_prim_enable_dynamic'] = 'true'
+os.environ['FLAGS_print_ir'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_use_cinn'] = '1'
+os.environ['FLAGS_cinn_bucket_compile'] = '1'
+
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
+import utils
 
 
 class PrepareDecoderAttentionMask(nn.Layer):
@@ -93,14 +93,14 @@ class TestPrepareDecoderAttentionMask(unittest.TestCase):
             InputSpec(shape=[None, None], dtype="bool"),
         ]
         if mode == "static":
-            net = apply_to_static(net, use_cinn, input_spec)
+            net = utils.apply_to_static(net, use_cinn, input_spec)
             net.eval()
         out = net(self.input_ids, self.attention_mask)
         return out
 
     def test_eval(self):
         eager_outs = self.eval(mode="eager")
-        dy_outs = self.eval(use_cinn=False)
+        dy_outs = self.eval(use_cinn=True)
 
         for cinn_out, dy_out in zip(eager_outs, dy_outs):
             np.testing.assert_allclose(

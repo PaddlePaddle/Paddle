@@ -358,7 +358,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(resnet_unit,
                           XPU,
                           ALL_LAYOUT,

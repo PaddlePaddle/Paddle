@@ -212,6 +212,47 @@ Tensor reciprocal_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
+  std::size_t x_ndims = x.dims().size();
+  std::size_t y_ndims = y.dims().size();
+  if (x_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received X's shape: [%s].",
+        x_ndims));
+  }
+  if (y_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received Y's shape: [%s].",
+        y_ndims));
+  }
+
+  auto x_shape = phi::vectorize(x.dims());
+  auto y_shape = phi::vectorize(y.dims());
+
+  if (x_shape[0] != y_shape[0]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+        "but received X's batch size: [%s],"
+        "Y's batch size [%s].",
+        x_shape[0],
+        y_shape[0]));
+  }
+
+  if (x_shape[2] != y_shape[1]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+        "but receive X's width: [%s],"
+        "Y's height: [%s].",
+        x_shape[2],
+        y_shape[1]));
+  }
+
+  return matmul<T>(x, y, false, false);
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
@@ -280,6 +321,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
     run_var_ = run_var * momentum + batch_var * (1. - momentum);
+    assign_out_<T>(run_mean_, run_mean);
+    assign_out_<T>(run_var_, run_var);
   } else {
     batch_mean = full<T>(run_mean.shape(), 0, run_mean.dtype());
     auto batch_var = full<T>(run_var.shape(), 0, run_var.dtype());
@@ -392,11 +435,7 @@ Tensor silu_decomp(const Tensor& x) {
   if (need_cast) {
     x_tmp = cast<T>(x, DataType::FLOAT32);
   }
-
-  // res = x / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-  auto exp_temp = exp<T>(full<T>(empty_shape, -1, x_tmp.dtype()) * x_tmp);
-  auto res = x_tmp / (exp_temp + one);
+  auto res = x_tmp * sigmoid<T>(x_tmp);
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -692,27 +731,6 @@ Tensor hardswish_decomp(const Tensor& x) {
 }
 
 template <typename T>
-Tensor sigmoid_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  // res = 1 / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_cast.dtype());
-  auto exp_tmp = exp<T>(full<T>(empty_shape, -1, x_cast.dtype()) * x_cast);
-  auto res = one / (one + exp_tmp);
-  if (need_cast) {
-    return cast<T>(res, org_dtype);
-  } else {
-    return res;
-  }
-}
-
-template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
   auto multiply_tmp = full<T>(empty_shape, negative_slope, x.dtype()) * x;
   if (negative_slope < 1.0) {
@@ -818,10 +836,12 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
     for (size_t i = 0; i < x_dim.size();) {
       if (i == static_cast<size_t>(start_axis)) {
-        Tensor flat =
-            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
-        flat = prod<T>(flat, {0}, false, false);
-        out_shape.push_back(reshape<T>(flat, {1}));
+        Tensor flat = get_slice<T>(x_shape, i);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          flat = flat * get_slice<T>(x_shape, t);
+        }
+        out_shape.push_back(flat);
         i = end_axis + 1;
       } else {
         out_shape.push_back(get_slice<T>(x_shape, i));
@@ -993,92 +1013,6 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
 
   return std::make_tuple(out, mean_out, var_out);
-}
-
-template <typename T>
-Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
-  // x.shape = [3,4] repeat_time=(a,b,c)
-  // shape1 = [1,3,4]
-  // shape2 = [1,1,1,3,1,4]
-  // shape3 = [a,1,b,3,c,4]
-  // shape4 = shape1 -> [a, b*3, c*4]
-  // t1 = x.reshape(shape1)
-  // t2 = t1.reshape(shape2)
-  // t3 = t2.expand(shape3)
-  // res = t3.reshape(t3)
-  std::vector<int64_t> repeat_times_ = repeat_times.GetData();
-  std::vector<int64_t> shape1 = x.shape();
-  auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
-  Tensor t1;
-  if (has_dynamic_shape(shape1)) {
-    size_t repeat_time_length = repeat_times_.size();
-    std::vector<int64_t> unsqueeze_idx2;
-    if (diff > 0) {
-      std::vector<int64_t> unsqueeze_idx1(diff);
-      std::iota(unsqueeze_idx1.begin(), unsqueeze_idx1.end(), 0);
-      t1 = unsqueeze<T>(x, unsqueeze_idx1);
-    } else {
-      t1 = x;
-    }
-    auto length2 = t1.dims().size();
-    for (size_t i = 0; i < repeat_times_.size(); i++) {
-      unsqueeze_idx2.push_back(length2 - repeat_times_.size() + i * 2);
-    }
-
-    Tensor t2 = unsqueeze<T>(t1, unsqueeze_idx2);
-    std::vector<int64_t> ref_shape(t2.dims().size(), 1);
-    for (size_t i = 0; i < unsqueeze_idx2.size(); i++) {
-      ref_shape[unsqueeze_idx2[i]] = repeat_times_[i];
-    }
-    Tensor ref_t = full<T>(ref_shape, 1.0, t2.dtype());
-    Tensor t3 = t2 * ref_t;
-    Tensor origin_shape_t = shape<T>(t1);
-    std::vector<Tensor> res_s;
-    for (int64_t i = int64_t(length2) - 1; i >= 0; i--) {
-      auto relative_idx =
-          int64_t(repeat_time_length) - 1 - int64_t(length2 - i - 1);
-
-      if (relative_idx >= 0) {
-        res_s.insert(
-            res_s.begin(),
-            get_slice<T>(origin_shape_t, i) * repeat_times_[relative_idx]);
-      } else {
-        res_s.insert(res_s.begin(), get_slice<T>(origin_shape_t, i));
-      }
-    }
-    Tensor s4 = concat<T>(res_s, 0);
-    return backend::reshape_with_tensor<T>(t3, s4);
-
-  } else {
-    if (diff > 0) {
-      for (int64_t i = 0; i < diff; i++) {
-        shape1.insert(shape1.begin(), 1);
-      }
-    }
-
-    auto length = int64_t(shape1.size());
-    std::vector<int64_t> shape2 = shape1;
-    std::vector<int64_t> shape3 = shape1;
-    std::vector<int64_t> final_shape = shape1;
-    auto r_length = repeat_times_.size();
-    for (size_t j = 0; j < repeat_times_.size(); j++) {
-      int64_t i = int64_t(j);
-
-      shape2.insert(shape2.begin() + (length - 1 - i), 1);
-      shape3.insert(shape3.begin() + (length - 1 - i),
-                    repeat_times_[r_length - i - 1]);
-
-      final_shape[length - i - 1] =
-          final_shape[length - i - 1] * repeat_times_[r_length - i - 1];
-    }
-
-    t1 = reshape<T>(x, shape1);
-
-    auto t2 = reshape<T>(t1, shape2);
-    auto t3 = t2.expand(shape3);
-    auto res = reshape<T>(t3, final_shape);
-    return res;
-  }
 }
 
 template <typename T>
