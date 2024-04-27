@@ -621,16 +621,9 @@ class PartialProgramLayer:
             train_program: RunnableProgram = (
                 self.origin_runnable_program.clone()
             )
-
-            print("========== before backward: train_program ==========")
-            print(train_program.program)
-
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
-
-            print("========== after backward: train_program ==========")
-            print(train_program.program)
 
             def pass_fn(forward_program, backward_program):
                 if cinn_is_enabled(self._build_strategy, self._backend):

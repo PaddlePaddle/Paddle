@@ -69,7 +69,6 @@ void PirCallPythonFunc(py::object *callable,
 
   for (size_t i = 0; i < out_num; ++i) {
     try {
-      // NOTE(MarioLulab): why can cast ? Might release Value in dangerous.
       auto py_out_value = py::cast<pir::Value>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_value.impl(),
                               common::errors::InvalidArgument(
