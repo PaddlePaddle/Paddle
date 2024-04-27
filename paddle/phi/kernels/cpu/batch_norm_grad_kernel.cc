@@ -37,7 +37,7 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& ctx,
-                          const DenseTensor& x,
+                          DenseTensor& x,
                           const paddle::optional<DenseTensor>& scale,
                           const paddle::optional<DenseTensor>& bias,
                           const paddle::optional<DenseTensor>& mean,
