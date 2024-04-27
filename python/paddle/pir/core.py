@@ -45,6 +45,8 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
+datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
+
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,

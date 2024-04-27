@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
@@ -377,21 +377,20 @@ class CudnnNormConvolutionGrad {
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cudnnConvolutionBackwardData(
-                  cudnn_handle,
-                  &alpha,
-                  args_.filter_desc.desc(),
-                  filter_ptr,
-                  args_.out_desc.desc(),
-                  output_grad_ptr,
-                  args_.conv_desc.desc(),
-                  dgrad_algo_,
-                  cudnn_workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args_.in_desc.desc(),
-                  input_grad_ptr));
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionBackwardData(
+              cudnn_handle,
+              &alpha,
+              args_.filter_desc.desc(),
+              filter_ptr,
+              args_.out_desc.desc(),
+              output_grad_ptr,
+              args_.conv_desc.desc(),
+              dgrad_algo_,
+              cudnn_workspace_ptr,
+              workspace_size,
+              &beta,
+              args_.in_desc.desc(),
+              input_grad_ptr));
         },
         workspace_size);
   }
@@ -443,7 +442,7 @@ class CudnnNormConvolutionGrad {
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
+        phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle,
             args_.filter_desc.desc(),
             args_.out_desc.desc(),

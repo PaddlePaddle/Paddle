@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+#include <memory>
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-
-KernelSignature SparseIndicesOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature("indices_coo", {"x"}, {}, {"out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(sparse_indices, phi::SparseIndicesOpArgumentMapping);

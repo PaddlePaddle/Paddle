@@ -14,16 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
-if TYPE_CHECKING:
-    from typing_extensions import Concatenate, ParamSpec, TypeAlias
+from typing_extensions import Concatenate, ParamSpec, TypeAlias
 
-    P = ParamSpec("P")
-    R = TypeVar("R")
+P = ParamSpec("P")
+R = TypeVar("R")
 
-    MutableDataT = TypeVar("MutableDataT", bound="MutableData")
-    DataGetter: TypeAlias = Callable[[MutableDataT, Any], Any]
+MutableDataT = TypeVar("MutableDataT", bound="MutableData")
+DataGetter: TypeAlias = Callable[[MutableDataT, Any], Any]
 
 InnerMutableDataT = TypeVar(
     "InnerMutableDataT", bound="dict[str, Any] | list[Any]"

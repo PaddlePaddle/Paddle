@@ -58,7 +58,7 @@ class PToRReshardFunction(ReshardFunction):
             paddle.pir.set_insertion_point_after(op)
         group = new_process_group(src_mesh.process_ids)
         reduced_value = paddle._pir_ops.c_allreduce_sum_(
-            op_value, group.id, False, False
+            op_value, group.id, True, False
         )
 
         # set dist type and dist attr
@@ -103,16 +103,19 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
             src_dist_attr.dims_mapping,
             src_dist_attr.partial_status,
         )
-        out, out_dist_attr = same_status_func.reshard(
+        pre_op, out_dist_attr = same_status_func.reshard(
             program, op, src_dist_attr, tmp_dist_attr
         )
+
+        if pre_op is None:
+            return None, out_dist_attr
 
         curr_global_rank = paddle.distributed.get_rank()
         if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
             p_to_r_func = PToRReshardFunction()
             assert p_to_r_func.is_suitable(
                 out_dist_attr, dst_dist_attr
-            ), f"Invoke the p to r reshard function is not valid from {out.dist_attr()} to {dst_dist_attr}"
+            ), f"Invoke the p to r reshard function is not valid from {pre_op.dist_attr()} to {dst_dist_attr}"
             p_to_r_func.reshard(
-                program, out, out_dist_attr, dst_dist_attr, False
+                program, pre_op, out_dist_attr, dst_dist_attr, False
             )

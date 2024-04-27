@@ -789,8 +789,8 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
       backward_function_id,
       0,
       common::errors::InvalidArgument("The backward function id of pylayer op "
-                                   "should be non-negative, but got %d",
-                                   backward_function_id));
+                                      "should be non-negative, but got %d",
+                                      backward_function_id));
   VLOG(6) << "pylayer op unique_id is " << op->id();
   VLOG(6) << "pylayer op backward_function_id is " << backward_function_id;
   auto py_callable = paddle::pybind::PythonCallableRegistrar::GetInstance().Get(
@@ -851,67 +851,102 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
 }
 
 void BindVjp(pybind11::module *m) {
-  m->def("call_vjp",
-         [](pir::Operation &fwd_op,
-            const std::vector<std::vector<pir::Value>> &inputs,
-            const std::vector<std::vector<pir::Value>> &outputs,
-            const std::vector<std::vector<pir::Value>> &out_grads,
-            const std::vector<std::vector<bool>> &stop_gradients) {
-           py::list res;
-           std::vector<std::vector<pir::Value>> vjp_res;
-           if (fwd_op.isa<paddle::dialect::PyLayerOp>()) {
-             // NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
-             // not have a vjp interface, we still need to generate the backward
-             // block based on its registered backward function.
-             vjp_res = GenerateBackwardBlockForPyLayerOp(
-                 &fwd_op, inputs, outputs, out_grads, stop_gradients);
-           } else {
-             paddle::dialect::VjpInterface vjp_interface =
-                 fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
-             PADDLE_ENFORCE(vjp_interface,
+  m->def(
+      "call_vjp",
+      [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::Value>> &inputs,
+         const std::vector<std::vector<pir::Value>> &outputs,
+         const std::vector<std::vector<pir::Value>> &out_grads,
+         const std::vector<std::vector<bool>> &stop_gradients) {
+        py::list res;
+        std::vector<std::vector<pir::Value>> vjp_res;
+
+        if (fwd_op.isa<paddle::dialect::PyLayerOp>()) {
+          // NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+          // not have a vjp interface, we still need to generate the backward
+          // block based on its registered backward function.
+          vjp_res = GenerateBackwardBlockForPyLayerOp(
+              &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        } else {
+          paddle::dialect::VjpInterface vjp_interface =
+              fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+          PADDLE_ENFORCE(vjp_interface,
+                         common::errors::InvalidArgument(
+                             "The vjp function is not registered in %s op ",
+                             fwd_op.name()));
+          vjp_res = vjp_interface.Vjp(
+              &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        }
+
+        PADDLE_ENFORCE_EQ(
+            stop_gradients.size(),
+            vjp_res.size(),
+            common::errors::InvalidArgument(
+                "The size of  %s stop_gradients should be the same as vjp_res "
+                "size."
+                "But the size of stop_gradients: %d, vjp_res size: %d",
+                fwd_op.name(),
+                stop_gradients.size(),
+                vjp_res.size()));
+
+        for (size_t i = 0; i < vjp_res.size(); ++i) {
+          PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
+                            vjp_res[i].size(),
                             common::errors::InvalidArgument(
-                                "The vjp function is not registered in %s op ",
+                                "The size of stop_gradients[%d] should be the "
+                                "same as vjp_res[%d] "
+                                "size."
+                                "But the size of stop_gradients[%d]: %d, "
+                                "vjp_res[%d] size: %d",
+                                i,
+                                i,
+                                i,
+                                stop_gradients[i].size(),
+                                i,
+                                vjp_res[i].size()));
+          py::list sub_res;
+          for (size_t j = 0; j < vjp_res[i].size(); ++j) {
+            if (!vjp_res[i][j]) {
+              sub_res.append(nullptr);
+            } else {
+              // The grad_type must equal to forward type.
+              sub_res.append(vjp_res[i][j]);
+            }
+          }
+          res.append(sub_res);
+        }
+
+        paddle::dialect::OpYamlInfoInterface yaml_interface =
+            fwd_op.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+        if (yaml_interface) {
+          auto inputs_grad_info = std::get<0>(yaml_interface.GetOpInfo());
+          PADDLE_ENFORCE_EQ(inputs.size(),
+                            inputs_grad_info.size(),
+                            common::errors::InvalidArgument(
+                                "The size of %s inputs should be the "
+                                "same as inputs_grad_info size.",
                                 fwd_op.name()));
-             vjp_res = vjp_interface.Vjp(
-                 &fwd_op, inputs, outputs, out_grads, stop_gradients);
-           }
-           PADDLE_ENFORCE_EQ(
-               stop_gradients.size(),
-               vjp_res.size(),
-               common::errors::InvalidArgument(
-                   "The size of stop_gradients should be the same as vjp_res "
-                   "size."
-                   "But the size of stop_gradients: %d, vjp_res size: %d",
-                   stop_gradients.size(),
-                   vjp_res.size()));
-           for (size_t i = 0; i < vjp_res.size(); ++i) {
-             PADDLE_ENFORCE_EQ(
-                 stop_gradients[i].size(),
-                 vjp_res[i].size(),
-                 common::errors::InvalidArgument(
-                     "The size of stop_gradients[%d] should be the "
-                     "same as vjp_res[%d] "
-                     "size."
-                     "But the size of stop_gradients[%d]: %d, "
-                     "vjp_res[%d] size: %d",
-                     i,
-                     i,
-                     i,
-                     stop_gradients[i].size(),
-                     i,
-                     vjp_res[i].size()));
-             py::list sub_res;
-             for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-               if (!vjp_res[i][j]) {
-                 sub_res.append(nullptr);
-               } else {
-                 sub_res.append(vjp_res[i][j]);
-               }
-             }
-             res.append(sub_res);
-           }
-           return res;
-         });
+          size_t grad_index = 0;
+          for (size_t idx = 0; idx < inputs.size(); ++idx) {
+            if (!inputs_grad_info[idx].with_grad_semantic) continue;
+            PADDLE_ENFORCE_EQ(inputs[idx].size(),
+                              vjp_res[grad_index].size(),
+                              common::errors::InvalidArgument(
+                                  "The size of inouts[%d] should be the "
+                                  "same as vjp_res[%d] size.",
+                                  idx,
+                                  grad_index));
+            for (size_t j = 0; j < inputs[idx].size(); ++j) {
+              if (vjp_res[grad_index][j]) {
+                // The grad_type must equal to forward type.
+                vjp_res[grad_index][j].set_type(inputs[idx][j].type());
+              }
+            }
+            ++grad_index;
+          }
+        }
+        return res;
+      });
 
   m->def("has_vjp", [](pir::Operation &fwd_op) {
     pir::IrContext *ctx = pir::IrContext::Instance();
