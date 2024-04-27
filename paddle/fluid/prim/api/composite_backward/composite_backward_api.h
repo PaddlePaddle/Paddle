@@ -1039,6 +1039,12 @@ void prod_grad(const Tensor& x,
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     int64_t axis_size = axis.size();
     int64_t x_dim_size = x_dim.size();
+    auto is_zero =
+        equal<T>(x, full<T>(common::vectorize(x.dims()), 0.0, x.dtype()));
+    auto zero_counts = is_zero.sum(axis, x.dtype(), keep_dim);
+    auto one_replace_zero = where<T>(
+        is_zero, full<T>(common::vectorize(x.dims()), 1.0, x.dtype()), x);
+    auto new_prod = prod<T>(one_replace_zero, axis, keep_dim, reduce_all);
     reduce_all = false;
     if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
       reduce_all = true;
@@ -1047,9 +1053,13 @@ void prod_grad(const Tensor& x,
     }
     auto x_grad_tmp = Tensor();
     auto out_tmp = Tensor();
+    auto zero_counts_tmp = Tensor();
+    auto new_prod_tmp = Tensor();
     if (x_dim_size == 1) {
       x_grad_tmp = out_grad.expand(IntArray(x_dim));
       out_tmp = out.expand(IntArray(x_dim));
+      zero_counts_tmp = zero_counts.expand(IntArray(x_dim));
+      new_prod_tmp = new_prod.expand(IntArray(x_dim));
     } else {
       if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
@@ -1070,13 +1080,25 @@ void prod_grad(const Tensor& x,
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
         auto out_ = reshape<T>(out, out_grad_shape);
         out_tmp = out_.expand(IntArray(x_dim));
+        auto zero_counts_ = reshape<T>(zero_counts, out_grad_shape);
+        zero_counts_tmp = zero_counts_.expand(IntArray(x_dim));
+        auto new_prod_ = reshape<T>(new_prod, out_grad_shape);
+        new_prod_tmp = new_prod_.expand(IntArray(x_dim));
       } else {
         x_grad_tmp = out_grad.expand(IntArray(x_dim));
         out_tmp = out.expand(IntArray(x_dim));
+        zero_counts_tmp = zero_counts.expand(IntArray(x_dim));
+        new_prod_tmp = new_prod.expand(IntArray(x_dim));
       }
     }
     auto x_grad_res = x_grad_tmp * out_tmp * (1 / x);
-    set_output<T>(x_grad_res, x_grad);
+    auto more_than_2_zeros = greater_equal<T>(
+        zero_counts_tmp, full<T>(common::vectorize(x.dims()), 2.0, x.dtype()));
+    auto new_grad = where<T>(more_than_2_zeros,
+                             full<T>(common::vectorize(x.dims()), 0, x.dtype()),
+                             x_grad_tmp * new_prod_tmp);
+    auto x_grad_final = where<T>(is_zero, new_grad, x_grad_res);
+    set_output<T>(x_grad_final, x_grad);
   }
 }
 
