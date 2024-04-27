@@ -30,10 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/event.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -982,112 +978,6 @@ std::vector<ir::Graph *> CompiledProgram::CompileGraphWithBuildStrategy(
 #endif
 
   return async_graphs;
-}
-
-void CompiledProgram::PrepareForCUDAGraphCapture(ir::Graph *graph) {
-  const auto &build_strategy = member_->build_strategy_;
-  if (!build_strategy.allow_cuda_graph_capture_) return;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PADDLE_ENFORCE_EQ(
-      build_strategy.async_mode_,
-      false,
-      platform::errors::InvalidArgument(
-          "Async Executor does not support CUDA Graph capturing."));
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
-  PADDLE_ENFORCE_EQ(
-      member_->places_.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "CUDA Graph is only supported when one GPU device is running."));
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(member_->places_[0]),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "CUDA Graph is only supported on NVIDIA GPU device."));
-  PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce,
-                    false,
-                    platform::errors::InvalidArgument(
-                        "FLAGS_sync_nccl_allreduce must be False to support "
-                        "CUDA Graph capturing."));
-
-  std::unordered_map<std::string, std::vector<VarDesc *>> all_vars;
-  for (auto &node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      auto *var_desc = node->Var();
-      all_vars[var_desc->Name()].emplace_back(var_desc);
-    }
-  }
-
-  auto mark_var_as_persistable = [&all_vars](const std::string &name) {
-    auto iter = all_vars.find(name);
-    if (iter != all_vars.end()) {
-      for (auto *var_desc : iter->second) {
-        var_desc->SetPersistable(true);
-      }
-    }
-  };
-
-  // Step 1: All fused vars must be persistable.
-  if (graph->Has(details::kFusedVars)) {
-    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
-    for (auto &fused_var : fused_vars) {
-      fused_var.second.persistable_ = true;
-      mark_var_as_persistable(fused_var.first);
-    }
-  }
-
-  // Step 2: All pinned vars must be persistable.
-  if (graph->Has(details::kPinnedVars)) {
-    auto &pinned_vars = graph->Get<details::PinnedVars>(details::kPinnedVars);
-    for (auto &pinned_var : pinned_vars) {
-      mark_var_as_persistable(pinned_var);
-    }
-  }
-
-  // Step 3: Move all main programs to startup programs to make sure that
-  // the main programs would only be run once.
-  if (graph->Has(details::kProgramDescs)) {
-    auto &startup_programs =
-        graph->GetOrInit<details::ProgramDescs>(details::kStartupProgramDescs);
-    auto &main_programs =
-        graph->Get<details::ProgramDescs>(details::kProgramDescs);
-    for (auto &main_program : main_programs) {
-      startup_programs.emplace_back(main_program);
-    }
-    graph->Erase(details::kProgramDescs);
-  }
-
-  // Step 4: Mark all vars in startup programs to be persistable.
-  if (graph->Has(details::kStartupProgramDescs)) {
-    auto &startup_programs =
-        graph->GetOrInit<details::ProgramDescs>(details::kStartupProgramDescs);
-    for (auto &startup_program : startup_programs) {
-      for (auto &op_desc : startup_program.Block(0).AllOps()) {
-        for (auto &output : op_desc->OutputArgumentNames()) {
-          mark_var_as_persistable(output);
-        }
-      }
-    }
-  }
-
-  // Step 5: ScaleLossGrad must be run beforehand to avoid H2D copy.
-  auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
-  auto *scope = member_->local_scopes_[0];
-  for (auto *op : ops) {
-    auto *loss_grad_op = dynamic_cast<details::ScaleLossGradOpHandle *>(op);
-    if (loss_grad_op == nullptr) continue;
-    auto loss_grad_name = loss_grad_op->LossGradName();
-    mark_var_as_persistable(loss_grad_name);
-    loss_grad_op->RunOnVar(scope->Var(loss_grad_name));
-    loss_grad_op->SetSkipRunning(true);
-  }
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "CUDA Graph is only supported on NVIDIA GPU device."));
-#endif
 }
 
 }  // namespace framework

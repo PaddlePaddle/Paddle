@@ -80,8 +80,6 @@ class CompiledProgram {
       std::vector<ir::Graph *> *graphs,
       const std::string &loss_var_name);
 
-  void PrepareForCUDAGraphCapture(ir::Graph *graph);
-
   CompiledProgramPrivate *member_;
 };
 }  // namespace framework

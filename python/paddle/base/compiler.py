@@ -155,7 +155,6 @@ class CompiledProgram:
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
-        self._exec_strategy = None
 
     def _with_inference_optimize(self, config):
         """Add inference optimize
