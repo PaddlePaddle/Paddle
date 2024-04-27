@@ -222,8 +222,8 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
     syevjInfo_t syevj_params;
     if (use_syevj) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cusolverDnCreateSyevjInfo(&syevj_params));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj_bufferSize(
+          phi::dynload::cusolverDnCreateSyevjInfo(&syevj_params));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSsyevj_bufferSize(
           dev_ctx.cusolver_dn_handle(),
           jobz,
           uplo,
@@ -253,7 +253,7 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
       auto *value_data = out_value + i * values_stride;
       auto handle = dev_ctx.cusolver_dn_handle();
       if (use_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSsyevj(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSsyevj(
             handle,
             jobz,
             uplo,
@@ -289,7 +289,7 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
 
     if (use_syevj) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cusolverDnDestroySyevjInfo(syevj_params));
+          phi::dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
     if (has_vectors) {
       PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
@@ -329,55 +329,54 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
       m(paddle::platform::complex<float>, Che, cuComplex) \
           m(paddle::platform::complex<double>, Zhe, cuDoubleComplex)
 
-#define EVDBUFFER_INSTANCE(T, C, CastType)                      \
-  template <>                                                   \
-  inline void MatrixEighFunctor<phi::GPUContext, T>::EvdBuffer( \
-      cusolverDnHandle_t handle,                                \
-      cusolverEigMode_t jobz,                                   \
-      cublasFillMode_t uplo,                                    \
-      int n,                                                    \
-      const T *A,                                               \
-      int lda,                                                  \
-      const ValueType *W,                                       \
-      int *lwork) const {                                       \
-    PADDLE_ENFORCE_GPU_SUCCESS(                                 \
-        platform::dynload::cusolverDn##C##evd_bufferSize(       \
-            handle,                                             \
-            jobz,                                               \
-            uplo,                                               \
-            n,                                                  \
-            reinterpret_cast<const CastType *>(A),              \
-            lda,                                                \
-            W,                                                  \
-            lwork));                                            \
+#define EVDBUFFER_INSTANCE(T, C, CastType)                                  \
+  template <>                                                               \
+  inline void MatrixEighFunctor<phi::GPUContext, T>::EvdBuffer(             \
+      cusolverDnHandle_t handle,                                            \
+      cusolverEigMode_t jobz,                                               \
+      cublasFillMode_t uplo,                                                \
+      int n,                                                                \
+      const T *A,                                                           \
+      int lda,                                                              \
+      const ValueType *W,                                                   \
+      int *lwork) const {                                                   \
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDn##C##evd_bufferSize( \
+        handle,                                                             \
+        jobz,                                                               \
+        uplo,                                                               \
+        n,                                                                  \
+        reinterpret_cast<const CastType *>(A),                              \
+        lda,                                                                \
+        W,                                                                  \
+        lwork));                                                            \
   }
 
 FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
-#define EVD_INSTANCE(T, C, CastType)                                  \
-  template <>                                                         \
-  inline void MatrixEighFunctor<phi::GPUContext, T>::Evd(             \
-      cusolverDnHandle_t handle,                                      \
-      cusolverEigMode_t jobz,                                         \
-      cublasFillMode_t uplo,                                          \
-      int n,                                                          \
-      T *A,                                                           \
-      int lda,                                                        \
-      ValueType *W,                                                   \
-      T *work,                                                        \
-      int lwork,                                                      \
-      int *devInfo) const {                                           \
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDn##C##evd( \
-        handle,                                                       \
-        jobz,                                                         \
-        uplo,                                                         \
-        n,                                                            \
-        reinterpret_cast<CastType *>(A),                              \
-        lda,                                                          \
-        W,                                                            \
-        reinterpret_cast<CastType *>(work),                           \
-        lwork,                                                        \
-        devInfo));                                                    \
+#define EVD_INSTANCE(T, C, CastType)                                         \
+  template <>                                                                \
+  inline void MatrixEighFunctor<phi::GPUContext, T>::Evd(                    \
+      cusolverDnHandle_t handle,                                             \
+      cusolverEigMode_t jobz,                                                \
+      cublasFillMode_t uplo,                                                 \
+      int n,                                                                 \
+      T *A,                                                                  \
+      int lda,                                                               \
+      ValueType *W,                                                          \
+      T *work,                                                               \
+      int lwork,                                                             \
+      int *devInfo) const {                                                  \
+    PADDLE_ENFORCE_GPU_SUCCESS(                                              \
+        phi::dynload::cusolverDn##C##evd(handle,                             \
+                                         jobz,                               \
+                                         uplo,                               \
+                                         n,                                  \
+                                         reinterpret_cast<CastType *>(A),    \
+                                         lda,                                \
+                                         W,                                  \
+                                         reinterpret_cast<CastType *>(work), \
+                                         lwork,                              \
+                                         devInfo));                          \
   }
 
 FUNC_WITH_TYPES(EVD_INSTANCE);
