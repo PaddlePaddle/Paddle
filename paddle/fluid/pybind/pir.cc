@@ -620,7 +620,7 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::list {
              if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
                  false) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Currently, we can only get input grad semantics of "
                    "Operation that "
                    "has OpYamlInfoInterface"));
@@ -644,7 +644,7 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> PyLayerOp {
              auto pylayer_op = self.dyn_cast<PyLayerOp>();
              if (!pylayer_op) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Can't cast non-pylayer_op type Operation to PyLayerOp."));
              }
              return pylayer_op;
@@ -656,7 +656,7 @@ void BindOperation(py::module *m) {
           [](Operation &self) -> TuplePopOp {
             auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
             if (!tuple_pop_op) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
             }
             return tuple_pop_op;

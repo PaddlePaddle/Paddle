@@ -1252,7 +1252,7 @@ void HandleForPyLayerOp(
     PADDLE_ENFORCE_EQ(
         map_value_pair->count(old_input),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     const auto& new_input = map_value_pair->at(old_input);
     new_vec_input[index] = new_input;

@@ -752,7 +752,7 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
     const std::vector<std::vector<bool>> &stop_gradients) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::PyLayerOp>(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "GenerateBackwardBlockForPyLayerOp only support PyLayerOp"));
 
   // 1. construct pylayer grad op
@@ -788,7 +788,7 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   PADDLE_ENFORCE_GE(
       backward_function_id,
       0,
-      phi::errors::InvalidArgument("The backward function id of pylayer op "
+      common::errors::InvalidArgument("The backward function id of pylayer op "
                                    "should be non-negative, but got %d",
                                    backward_function_id));
   VLOG(6) << "pylayer op unique_id is " << op->id();
@@ -869,7 +869,7 @@ void BindVjp(pybind11::module *m) {
              paddle::dialect::VjpInterface vjp_interface =
                  fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
              PADDLE_ENFORCE(vjp_interface,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The vjp function is not registered in %s op ",
                                 fwd_op.name()));
              vjp_res = vjp_interface.Vjp(
@@ -878,7 +878,7 @@ void BindVjp(pybind11::module *m) {
            PADDLE_ENFORCE_EQ(
                stop_gradients.size(),
                vjp_res.size(),
-               phi::errors::InvalidArgument(
+               common::errors::InvalidArgument(
                    "The size of stop_gradients should be the same as vjp_res "
                    "size."
                    "But the size of stop_gradients: %d, vjp_res size: %d",
@@ -888,7 +888,7 @@ void BindVjp(pybind11::module *m) {
              PADDLE_ENFORCE_EQ(
                  stop_gradients[i].size(),
                  vjp_res[i].size(),
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "The size of stop_gradients[%d] should be the "
                      "same as vjp_res[%d] "
                      "size."

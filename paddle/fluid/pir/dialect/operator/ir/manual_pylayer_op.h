@@ -53,7 +53,7 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
     PADDLE_ENFORCE_LT(
         index,
         num_operands(),
-        phi::errors::InvalidArgument("The index of input must be less than "
+        common::errors::InvalidArgument("The index of input must be less than "
                                      "num_operands of pylayer op."));
     return operand_source(index);
   }

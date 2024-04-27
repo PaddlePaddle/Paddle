@@ -43,7 +43,7 @@ void PirCallPythonFunc(py::object *callable,
     // Otherwise, ret_num must be equal to out_num
     PADDLE_ENFORCE_EQ(ret_num == 1,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Python function has no return values or returns "
                           "None. In this case, ret_num = 1 && ret[0] == None "
                           "&& out_num should be 0. But ret_num is %d",
@@ -52,7 +52,7 @@ void PirCallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         out_num == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But out_num is %d",
@@ -61,7 +61,7 @@ void PirCallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         py::cast<pir::Value *>(ret_tuple[0]) == nullptr,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But ret[0] is not None"));
@@ -72,11 +72,11 @@ void PirCallPythonFunc(py::object *callable,
       // NOTE(MarioLulab): why can cast ? Might release Value in dangerous.
       auto py_out_value = py::cast<pir::Value>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_value.impl(),
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Output value %d should not be nullptr", i));
       (*outs)[i] = py_out_value;
     } catch (py::cast_error &) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "pybind11::cast to pir::Value error. The %d-th output exception is "
           "pir::Value",
           i));
@@ -107,7 +107,7 @@ py::object *PythonCallableRegistrar::Get(uint64_t unique_id) {
   PADDLE_ENFORCE_NE(
       python_callable_registry_.find(unique_id),
       python_callable_registry_.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Unique_id %d is not found in python_callable_registry_. The "
           "possible "
           "reasons are below:\n"
