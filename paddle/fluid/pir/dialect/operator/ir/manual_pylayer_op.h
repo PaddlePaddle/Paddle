@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
@@ -25,17 +26,21 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
   using Op::Op;
 
   static const char *name() { return "pd_op.pylayer"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    std::vector<pir::Type> &&output_types);
+  static constexpr char kBackwardFunctionIdAttrName[] = "backward_function_id";
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
-                    std::unique_ptr<pir::Block> &&fwd_block);
+                    std::vector<pir::Type> &&output_types,
+                    int backward_function_id = -1);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Value> &inputs,
+                    std::unique_ptr<pir::Block> &&fwd_block,
+                    int backward_function_id = -1);
 
   std::vector<pir::Value> inputs() {
     std::vector<pir::Value> input_values;
@@ -54,6 +59,16 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
   }
   pir::Block &forward_block();
   pir::Region &forward_region() { return (*this)->region(0); }
+
+  // Returns the backward function id which may have been registered in
+  // PythonCallableRegistrar. Returns -1 only if this PyLayer Op does not have a
+  // backward function.
+  int backward_function_id() {
+    return this->attributes()
+        .at("backward_function_id")
+        .dyn_cast<pir::Int32Attribute>()
+        .data();
+  }
 
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();

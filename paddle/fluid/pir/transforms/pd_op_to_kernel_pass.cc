@@ -1268,7 +1268,9 @@ void HandleForPyLayerOp(
   // Create PyLayerOp and insert to kernel dialect program
   pir::Builder builder(ctx, block);
   auto new_pylayerop =
-      builder.Build<PyLayerOp>(new_vec_input, std::move(new_pylayerop_outputs));
+      builder.Build<PyLayerOp>(new_vec_input,
+                               std::move(new_pylayerop_outputs),
+                               old_pylayerop.backward_function_id());
 
   // process sub block
   auto& fwd_block = new_pylayerop.forward_block();

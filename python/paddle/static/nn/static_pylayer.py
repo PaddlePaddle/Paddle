@@ -368,15 +368,25 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     )
 
     if in_pir_mode():
-        pylayer_op = build_pylayer_op(inputs)
+        fwd_inputs = [
+            inp for inp in inputs if isinstance(inp, paddle.pir.Value)
+        ]
+        pylayer_op = build_pylayer_op(fwd_inputs)
+        outputs = None
         if forward_fn is not None:
             if not callable(forward_fn):
                 raise ValueError("`forward_fn` should be callable")
             with pylayer_op.forward_block():
-                fwd_outputs = forward_fn(*inputs)
+                outputs = forward_fn(*inputs)
 
-            if fwd_outputs is None:
+            if outputs is None:
                 return None
+
+            fwd_outputs = [
+                out
+                for out in flatten(outputs)
+                if isinstance(out, paddle.pir.Value)
+            ]
 
             with pylayer_op.forward_block():
                 if fwd_outputs is not None:
@@ -436,11 +446,14 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             )
             pylayer_op.register_backward_function(bwd_fn)
 
-        return (
-            pylayer_op.results()[0]
-            if len(pylayer_op.results()) == 1
-            else pylayer_op.results()
-        )
+        # NOTE: Replace pir.Value of `outputs` with pylayer_op.result, because value of `outputs` which is inside pylayer block can't be reference outside the block.
+        op_result_idx = 0
+        outputs = flatten(outputs)
+        for i in range(len(outputs)):
+            if isinstance(outputs[i], paddle.pir.Value):
+                outputs[i] = pylayer_op.results()[op_result_idx]
+                op_result_idx += 1
+        return outputs[0] if len(outputs) == 1 else outputs
 
     check_type(name, "name", (str, type(None)), "base.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())

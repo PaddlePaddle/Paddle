@@ -61,6 +61,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
@@ -85,6 +86,7 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+using pir::TuplePopOp;
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -649,6 +651,16 @@ void BindOperation(py::module *m) {
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def(
+          "as_tuple_pop_op",
+          [](Operation &self) -> TuplePopOp {
+            auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
+            if (!tuple_pop_op) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
+            }
+            return tuple_pop_op;
+          })
       .def("__repr__",
 
            [](Operation &self) {
@@ -1098,6 +1110,10 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
+  ir_insertion_point.def(
+      "block",
+      [](PyInsertionPoint &self) { return self.value.first; },
+      return_value_policy::reference);
 }
 
 std::list<Operation *>::const_iterator list_offset(const Block *block,

@@ -39,19 +39,29 @@ paddle::dialect::PyLayerOp
 namespace paddle {
 namespace dialect {
 
+const char *PyLayerOp::attributes_name[1] = {kBackwardFunctionIdAttrName};
+
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
                       const std::vector<pir::Value> &inputs,
-                      std::vector<pir::Type> &&output_types) {
+                      std::vector<pir::Type> &&output_types,
+                      int backward_function_id) {
+  VLOG(4) << "Start building PyLayerOp";
+  argument.AddAttribute(
+      kBackwardFunctionIdAttrName,
+      pir::Int32Attribute::get(builder.ir_context(), backward_function_id));
+
   argument.AddInputs(inputs);
   argument.output_types.swap(output_types);
   argument.AddRegion().emplace_back();
+  VLOG(4) << "Finish building PyLayerOp";
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
                       const std::vector<pir::Value> &inputs,
-                      std::unique_ptr<pir::Block> &&fwd_block) {
+                      std::unique_ptr<pir::Block> &&fwd_block,
+                      int backward_function_id) {
   VLOG(4) << "Start build PyLayerOp";
 
   PADDLE_ENFORCE_NOT_NULL(fwd_block,
@@ -83,6 +93,9 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
   }
 
   argument.AddAttribute(
+      kBackwardFunctionIdAttrName,
+      pir::Int32Attribute::get(builder.ir_context(), backward_function_id));
+  argument.AddAttribute(
       pir::kStopGradientAttrName,
       pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
 
@@ -105,6 +118,7 @@ void PyLayerOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpResult(op);
   os << " = pd_op.pylayer";
   printer.PrintOpOperands(op);
+  printer.PrintAttributeMap(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{";
@@ -116,8 +130,18 @@ void PyLayerOp::Print(pir::IrPrinter &printer) {
 }
 
 void PyLayerOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: PyLayerOp.";
-  // NOTE(MarioLulab): do nothing.
+  VLOG(4) << "Start Verifying attributes for: PyLayerOp.";
+  auto &attributes = this->attributes();
+  PADDLE_ENFORCE_GT(
+      attributes.count(kBackwardFunctionIdAttrName),
+      0,
+      phi::errors::InvalidArgument("backward_function_id does not exist."));
+  PADDLE_ENFORCE_EQ(
+      attributes.at(kBackwardFunctionIdAttrName).isa<pir::Int32Attribute>(),
+      true,
+      phi::errors::InvalidArgument(
+          "Type of attribute: value is not pir::Int32Attribute."));
+  VLOG(4) << "Finish Verifying attributes for: PyLayerOp.";
 }
 
 void PyLayerOp::VerifyRegion() {
@@ -156,8 +180,8 @@ void PyLayerOp::UpdateOutput() {
           "output can't be nullptr"));
   pir::Block::Iterator iter = **this;
   pir::Builder builder(ir_context(), false);
-  auto new_pylayer_op =
-      builder.Build<PyLayerOp>(inputs(), forward_region().TakeBack());
+  auto new_pylayer_op = builder.Build<PyLayerOp>(
+      inputs(), forward_region().TakeBack(), backward_function_id());
   block->Assign(iter, new_pylayer_op);
   PyLayerOp::operator=(new_pylayer_op);
   VerifyRegion();

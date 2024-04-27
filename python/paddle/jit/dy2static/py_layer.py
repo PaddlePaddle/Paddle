@@ -15,11 +15,11 @@
 import functools
 import inspect
 
+from paddle import pir
 from paddle.base.framework import Variable, in_pir_mode
 from paddle.base.libpaddle.pir import build_pipe_for_pylayer
 from paddle.common_ops_import import LayerHelper
 from paddle.static.nn import static_pylayer
-from paddle import pir
 
 from .program_translator import convert_to_static, unwrap_decorators
 
@@ -29,12 +29,14 @@ class StaticPyLayerContext:
         self.saved_vars = []
 
         if in_pir_mode():
-            self.tuple_push_op = None
+            self.tuple_push_op_name = "cf.tuple_push"
+            self.tuple_pop_op_name = "cf.tuple_pop"
 
     def save_for_backward(self, *tensors):
         if in_pir_mode():
-            current_block = pir.default_main_program().current_block()
-            self.tuple_push_op = build_pipe_for_pylayer(current_block, *tensors)
+            current_insert_point = pir.get_current_insertion_point()
+            current_block = current_insert_point.block()
+            build_pipe_for_pylayer(current_block, tensors)
         else:
             for tensor in tensors:
                 assert isinstance(tensor, Variable)
@@ -42,9 +44,12 @@ class StaticPyLayerContext:
 
     def saved_tensor(self):
         if in_pir_mode():
-            out_list = self.tuple_push_op.pop_values()
-            print("======== saved_tensor ========")
-            print(f"out_list = {out_list}")
+            current_insert_point = pir.get_current_insertion_point()
+            current_block = current_insert_point.block()
+            out_list = []
+            for op in current_block.ops:
+                if op.name() == self.tuple_pop_op_name:
+                    out_list = op.as_tuple_pop_op().pop_all_values()
         else:
             helper = LayerHelper("StaticPyLayerContext")
             out_list = []

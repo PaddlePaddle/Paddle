@@ -750,6 +750,11 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
     const std::vector<std::vector<pir::Value>> &outputs,
     const std::vector<std::vector<pir::Value>> &out_grads,
     const std::vector<std::vector<bool>> &stop_gradients) {
+  PADDLE_ENFORCE(
+      op->isa<paddle::dialect::PyLayerOp>(),
+      phi::errors::InvalidArgument(
+          "GenerateBackwardBlockForPyLayerOp only support PyLayerOp"));
+
   // 1. construct pylayer grad op
   VLOG(6) << "Prepare Outputs for pylayer_grad";
   std::vector<pir::Type> output_types;
@@ -769,21 +774,56 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   auto pylayer_grad = dialect::ApiBuilder::Instance()
                           .GetBuilder()
                           ->Build<paddle::dialect::PyLayerOp>(
-                              output_grads, std::move(output_types));
+                              output_grads, std::move(output_types), -1);
 
   VLOG(6) << "Construct pylayer_grad finished";
 
-  // 2. Get registered backward function from
-  // `PythonCallableRegistrar::python_callable_registry_`. auto *py_callable =
-  // GetPythonCallableObject(op->id());
-  uint64_t unique_id = op->id();
-  VLOG(6) << "pylayer op unique_id is " << unique_id;
-  auto py_callable =
-      paddle::pybind::PythonCallableRegistrar::GetInstance().Get(unique_id);
+  // 2.1 Get registered backward function from
+  // `PythonCallableRegistrar::python_callable_registry_`.
+  int backward_function_id =
+      op->attributes()
+          .at(paddle::dialect::PyLayerOp::kBackwardFunctionIdAttrName)
+          .dyn_cast<pir::Int32Attribute>()
+          .data();
+  PADDLE_ENFORCE_GE(
+      backward_function_id,
+      0,
+      phi::errors::InvalidArgument("The backward function id of pylayer op "
+                                   "should be non-negative, but got %d",
+                                   backward_function_id));
+  VLOG(6) << "pylayer op unique_id is " << op->id();
+  VLOG(6) << "pylayer op backward_function_id is " << backward_function_id;
+  auto py_callable = paddle::pybind::PythonCallableRegistrar::GetInstance().Get(
+      static_cast<uint64_t>(backward_function_id));
+
+  // 2.2 Get TuplePushOp from forward block if exists
+  auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
+  std::vector<pir::Operation *> tuple_push_op_list;
+  for (auto &op : pylayer_op.forward_block()) {
+    if (op.isa<pir::TuplePushOp>()) {
+      tuple_push_op_list.push_back(&op);
+    }
+  }
+  PADDLE_ENFORCE_LE(tuple_push_op_list.size(),
+                    1,
+                    paddle::platform::errors::InvalidArgument(
+                        "The number of tuple_push op in pylayer forward block "
+                        "is either unique or does not exist."));
+
   {
     // enter block of pylayer_grad
     PyLayerBlockContextManager pylayer_block_context_manager(
         &(pylayer_grad.forward_block()));
+
+    // create tuple_pop op if needed
+    if (tuple_push_op_list.size() > 0) {
+      VLOG(6) << "Start creating tuple_pop op in the front of backward block "
+                 "of pylayer.";
+      auto tuple_push_op = tuple_push_op_list[0]->dyn_cast<pir::TuplePushOp>();
+      dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::TuplePopOp>(
+          tuple_push_op.outlet());
+      VLOG(6) << "Finish creating tuple_pop op.";
+    }
 
     VLOG(6) << "call pylayer op backward function";
     PirCallPythonFunc(py_callable, output_grads, &pylayer_grad_inputs);
@@ -800,9 +840,12 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   VLOG(6) << "Update pylayer_grad op finished";
 
   std::vector<std::vector<pir::Value>> res{inputs_.size()};
-  for (size_t i = 0; i < pylayer_grad_inputs.size(); ++i) {
+  int grad_op_result_index = 0;
+  for (size_t i = 0; i < res.size(); ++i) {
     res[i].resize(1);
-    res[i][0] = pylayer_grad->result(i);
+    res[i][0] = !stop_gradients[i][0]
+                    ? pylayer_grad->result(grad_op_result_index++)
+                    : pir::Value();
   }
   return res;
 }

@@ -413,7 +413,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 }
 
 pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
-  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
     return PrintOperationImpl;
   }
   return nullptr;

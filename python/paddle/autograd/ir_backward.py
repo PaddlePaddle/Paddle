@@ -794,8 +794,14 @@ def append_backward_ops(
                         update_input_grad_map(op, input_grads, origin_inputs)
                     elif op.name() == "pd_op.pylayer":
                         # create grad_op
-
                         before_ops_num = len(bwd_block.ops)
+
+                        # TODO(MarioLulab): `PyLayer.backward` has not supported return `None` yet. Will be supported soon.
+                        if any(zero_flag):
+                            raise ValueError(
+                                "pylayer_op.backward have not supported return `None` yet. Will be supported soon."
+                            )
+
                         with dynamic_shape_prim_vjp_guard(op, inputs):
                             input_grads = paddle.framework.core.call_vjp(
                                 op,

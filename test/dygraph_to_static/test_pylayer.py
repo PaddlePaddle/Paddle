@@ -19,11 +19,9 @@ from pathlib import Path
 
 from dygraph_to_static_utils import (
     enable_to_static_guard,
-    to_ast_test,
+    to_legacy_ir_test,
     to_pir_test,
 )
-
-from paddle.pir_utils import IrGuard
 
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
@@ -149,6 +147,23 @@ class cus_tanh_4(PyLayer):
         return grad
 
 
+class cus_tanh_5(PyLayer):
+    @staticmethod
+    def forward(ctx, x1, x2, func1, func2=paddle.square):
+        ctx.func = func2
+        y1 = func1(x1)
+        y2 = func1(x2)
+        ctx.save_for_backward(y1, y2)
+        return 1, None, y1, y2, ''
+
+    @staticmethod
+    def backward(ctx, dy1, dy2):
+        y1, y2 = ctx.saved_tensor()
+        re1 = dy1 * (1 - ctx.func(y1))
+        re2 = dy2 * (1 - paddle.square(y2))
+        return re1, re2
+
+
 class cus_sigmoid(PyLayer):
     @staticmethod
     def forward(ctx, x, func1, func2):
@@ -262,7 +277,6 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static(full_graph=True)
     def forward(self, x):
         y = self.linear(x)
         y.stop_gradient = True
@@ -290,17 +304,14 @@ class TestPyLayerBase(unittest.TestCase):
         self.to_static = False
         return self._run(*args, **kwargs)
 
-    @to_ast_test
-    @to_pir_test
     def _run_static(self, *args, **kwargs):
         self.to_static = True
-        return self._run(*args, **kwargs)
-
-    def _run_pir(self, *args, **kwargs):
-        self.to_static = True
-        with IrGuard():
-            results = self._run(*args, **kwargs)
-        return results
+        fn = (
+            to_pir_test(self._run)
+            if self.run_in_pir
+            else to_legacy_ir_test(self._run)
+        )
+        return fn(*args, **kwargs)
 
     # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
     # but also non-Tensor objects will be included in the argument list.
@@ -339,14 +350,12 @@ class TestPyLayerBase(unittest.TestCase):
         # Step2. Run the dygraph and the static separately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
-        # static_res = self._run_pir(*static_inp_args, **static_inp_kwargs)
 
         # Step3. Compare forward result between dygraph and static
         if not isinstance(dygraph_res, tuple):
             dygraph_res = (dygraph_res,)
         if not isinstance(static_res, tuple):
             static_res = (static_res,)
-
         for d, s in zip(dygraph_res, static_res):
             compare_result(d, s)
 
@@ -386,6 +395,10 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_multi_in_single_out(self):
@@ -401,6 +414,10 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
@@ -416,6 +433,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_nested_pylayer(self):
@@ -431,6 +452,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_apply_kwargs_pylayer(self):
@@ -446,6 +471,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs(self):
@@ -459,6 +488,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_simple_pylayer_return_none_with_no_grad(self):
@@ -475,6 +508,36 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        # TODO(MarioLulab): pylayer_op.backward have not supported return `None` yet. Will be supported soon.
+        with self.assertRaises(Exception) as e:
+            self.run_in_pir = True
+            self._run_and_compare(input1, input2)
+        self.assertTrue(
+            "pylayer_op.backward have not supported return `None` yet. Will be supported soon."
+            in str(e.exception)
+        )
+
+    def test_simple_pylayer_return_none(self):
+        @paddle.jit.to_static(full_graph=True)
+        def test_func(input1, input2):
+            z = cus_tanh_5.apply(input1, input2, paddle.tanh, paddle.square)
+            z = z[2] + z[3]
+            return z
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs_and_userdefined_call(self):
@@ -490,6 +553,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
 
@@ -500,6 +567,11 @@ class TestPyLayerInsideNet(TestPyLayerBase):
 
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
+
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_inplace(self):
@@ -508,6 +580,11 @@ class TestPyLayerInsideNet(TestPyLayerBase):
 
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
+
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_non_variable_args_pylayernet(self):
@@ -516,6 +593,11 @@ class TestPyLayerInsideNet(TestPyLayerBase):
 
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
+
+        self.run_in_pir = False
+        self._run_and_compare(input1)
+
+        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_pylayer_net_with_no_grad(self):
@@ -526,6 +608,11 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input2 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         input2.stop_gradient = True
+
+        self.run_in_pir = False
+        self._run_and_compare(input1, input2)
+
+        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
@@ -533,7 +620,9 @@ class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
 
-    def _run_train(self, to_static: bool, layer_builder, build_strategy=None):
+    def _run_train(
+        self, to_static: bool, layer_builder, build_strategy=None, in_pir=True
+    ):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
@@ -542,14 +631,20 @@ class PyLayerTrainHelper(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-        # net = self.build_layer()
         net = layer_builder()
+
         if to_static:
             net = paddle.jit.to_static(
                 net, build_strategy=build_strategy, full_graph=True
             )
 
-        _, _, avg_loss = train(net)
+            train_fn = (
+                to_pir_test(train) if in_pir else to_legacy_ir_test(train)
+            )
+            _, _, avg_loss = train_fn(net)
+        else:
+            _, _, avg_loss = train(net)
+
         return avg_loss.numpy()
 
 
@@ -557,46 +652,82 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
     def test_tanh_pylayer(self):
         build_layer = lambda: SimpleNet_2(784, 20)
 
-        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        legacy_static_loss = self._run_train(
+            to_static=True, in_pir=False, layer_builder=build_layer
+        )
+        pir_static_loss = self._run_train(
+            to_static=True, in_pir=True, layer_builder=build_layer
+        )
         dygraph_loss = self._run_train(
             to_static=False, layer_builder=build_layer
         )
 
         np.testing.assert_allclose(
-            static_loss,
+            legacy_static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+            err_msg=f'legacy_static_loss: {legacy_static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+        np.testing.assert_allclose(
+            pir_static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'pir_static_loss: {pir_static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_sigmoid_pylayer(self):
         build_layer = lambda: SimpleNet_3(784, 20)
 
-        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        legacy_static_loss = self._run_train(
+            to_static=True, in_pir=False, layer_builder=build_layer
+        )
+        pir_static_loss = self._run_train(
+            to_static=True, in_pir=True, layer_builder=build_layer
+        )
         dygraph_loss = self._run_train(
             to_static=False, layer_builder=build_layer
         )
 
         np.testing.assert_allclose(
-            static_loss,
+            legacy_static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+            err_msg=f'legacy_static_loss: {legacy_static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+        np.testing.assert_allclose(
+            pir_static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'pir_static_loss: {pir_static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_pylayer_net_no_grad(self):
         build_layer = lambda: SimplePyLayerNetStopGrad(784, 20)
 
-        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        legacy_static_loss = self._run_train(
+            to_static=True, in_pir=False, layer_builder=build_layer
+        )
+        pir_static_loss = self._run_train(
+            to_static=True, in_pir=True, layer_builder=build_layer
+        )
         dygraph_loss = self._run_train(
             to_static=False, layer_builder=build_layer
         )
 
         np.testing.assert_allclose(
-            static_loss,
+            legacy_static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+            err_msg=f'legacy_static_loss: {legacy_static_loss} \n dygraph_loss: {dygraph_loss}',
+        )
+
+        np.testing.assert_allclose(
+            pir_static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'pir_static_loss: {pir_static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
 
@@ -615,6 +746,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @to_legacy_ir_test
     def train_and_save_model(self, model_path=None):
         layer = SimpleNet_1(784, 20)
         example_inputs, layer, _ = train(layer)
@@ -627,6 +759,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         self.assertEqual(orig_input_types, new_input_types)
         return layer
 
+    @to_legacy_ir_test
     def test_save_load(self):
         # train and save model
         train_layer = self.train_and_save_model()
@@ -634,6 +767,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         loaded_layer = paddle.jit.load(self.model_path)
         self.load_and_inference(train_layer, loaded_layer)
 
+    @to_legacy_ir_test
     def load_and_inference(self, train_layer, infer_layer):
         train_layer.eval()
         infer_layer.eval()
