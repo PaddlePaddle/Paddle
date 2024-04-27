@@ -54,7 +54,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (root == comm->rank()) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
             numel,
             dtype,
@@ -71,7 +71,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
               static_cast<phi::DenseTensor*>(out));
         }
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             out->data<T>(), numel, dtype, root, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
                 << common::product(out->dims());

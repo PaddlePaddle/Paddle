@@ -354,6 +354,59 @@ ir::Tensor Tril(const ir::Tensor& A,
   return res;
 }
 
+ir::Tensor IsClose(const ir::Tensor& x,
+                   const ir::Tensor& y,
+                   int axis,
+                   float rtol,
+                   float atol,
+                   bool equal_nan,
+                   const std::string& out_name) {
+  // [To do] axis is not used in the op.
+  // For each a=x[i], b=y[i]:
+  // ```
+  // if (isnan(a) || isnan(b)) {
+  //   out = equal_nan && isnan(a) == isnan(b);
+  // } else {
+  //   T left = (a > b ? a - b : b - a);
+  //   T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+  //   T diff = (left > right ? left - right : right - left);
+  //   out = a == b || left <= right || diff <= 1e-15;
+  // }
+  // ```
+  auto fnop = [&](const Expr& a, const Expr& b) {
+    // check whether x or y is nan
+    auto check_x_nan = lang::IsNan(a);
+    auto check_y_nan = lang::IsNan(b);
+
+    // out = equal_nan && isnan(a) == isnan(b);
+    auto check_nan_same =
+        Expr(equal_nan) && ir::EQ::Make(check_x_nan, check_y_nan);
+
+    // check whether x and y are close
+    // T left = (a > b ? a - b : b - a);
+    auto left = ir::Select::Make(a > b, a - b, b - a);
+    // T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+    auto right = ir::Cast::Make(x->type(), atol) +
+                 ir::Select::Make(b > ir::Zero(b->type()),
+                                  ir::Cast::Make(x->type(), rtol) * b,
+                                  ir::Cast::Make(x->type(), -rtol) * b);
+    // T diff = (left > right ? left - right : right - left);
+    auto diff = ir::Select::Make(left > right, left - right, right - left);
+    // out = a == b || left <= right || diff <= 1e-15;
+    auto check_diff = (ir::EQ::Make(a, b) || (left <= right)) ||
+                      (diff <= lang::Epsilon(diff->type()));
+
+    return ir::Select::Make(
+        check_x_nan || check_y_nan, check_nan_same, check_diff);
+  };
+  auto fn = [=](const std::vector<Expr>& indice) {
+    CHECK_EQ(indice.size(), y->shape.size());
+    return fnop(x(indice), y(indice));
+  };
+  auto res = Compute(x->shape, fn, out_name);
+  return res;
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

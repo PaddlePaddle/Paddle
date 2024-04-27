@@ -60,6 +60,7 @@ from .dy2static.program_translator import (
     SymbolicStaticFunction,
     unwrap_decorators,
 )
+from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_INFO_SUFFIX,
@@ -575,7 +576,11 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
     # raise error, avoid confusing behavior
-    prefix_format_path = path + INFER_MODEL_SUFFIX
+    if use_pir_api():
+        model_suffix = PIR_INFER_MODEL_SUFFIX
+    else:
+        model_suffix = INFER_MODEL_SUFFIX
+    prefix_format_path = path + model_suffix
     prefix_format_exist = os.path.exists(prefix_format_path)
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
@@ -600,7 +605,7 @@ def _build_load_path_and_config(path, config):
                     "specified file prefix, the ``model_filename`` config does "
                     "not take effect."
                 )
-            config.model_filename = file_prefix + INFER_MODEL_SUFFIX
+            config.model_filename = file_prefix + model_suffix
             if config.params_filename is not None:
                 warnings.warn(
                     "When loading the result saved with the "
@@ -1508,15 +1513,14 @@ def load(path, **configs):
                 ...         print("Epoch {} batch {}: loss = {}".format(
                 ...             epoch_id, batch_id, np.mean(loss.numpy())))
     """
-    if use_pir_api():
-        raise NotImplementedError(
-            "Currently, `paddle.jit.load` is not supported in PIR mode."
-        )
     # 1. construct correct config
     config = _parse_load_config(configs)
     model_path, config = _build_load_path_and_config(path, config)
 
-    return TranslatedLayer._construct(model_path, config)
+    if use_pir_api():
+        return PirTranslatedLayer._construct(model_path, config)
+    else:
+        return TranslatedLayer._construct(model_path, config)
 
 
 def set_dynamic_shape(variable, shape_list):
