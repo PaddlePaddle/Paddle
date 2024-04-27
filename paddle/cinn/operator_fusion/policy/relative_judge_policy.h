@@ -14,282 +14,13 @@
 
 #pragma once
 #include <functional>
+#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
-
-struct ValueDim {
-  pir::Value v_;
-  size_t idx_;
-  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
-  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
-    // Just get a related op to get the shape analysis. It can be value's
-    // upstream op (defining op) or downstream op (user op).
-    const auto get_related_op_from_value =
-        [](const pir::Value& v) -> pir::Operation* {
-      if (v.defining_op() != nullptr) {
-        return v.defining_op();
-      }
-      // For inputs of the program, the defining_op is nullptr, we use it's user
-      // as the related op.
-      PADDLE_ENFORCE_EQ(v.use_empty(),
-                        false,
-                        phi::errors::PreconditionNotMet(
-                            "Value is an input value, it should have a use."));
-      return v.first_use().owner();
-    };
-    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
-                          .Get(get_related_op_from_value(v)->GetParentProgram())
-                          .shared_from_this();
-  }
-  ValueDim() = default;
-  ValueDim(const ValueDim& v) = default;
-  bool operator==(const ValueDim& v) const {
-    return (idx_ == v.idx_) && (v_ == v.v_);
-  }
-
-  symbol::DimExpr GetSymbolicDim() const {
-    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
-  }
-
-  bool SymbolicEqualTo(const ValueDim& other) const {
-    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
-  }
-
-  std::string DebugStr() const {
-    std::ostringstream oss;
-    oss << "ValueDim: ";
-    oss << "Index: " << idx_;
-    oss << ", ";
-    v_.defining_op()->Print(oss);
-    return oss.str();
-  }
-
-  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
-    auto shape_analysis_ptr = shape_analysis_.lock();
-    PADDLE_ENFORCE_NOT_NULL(
-        shape_analysis_ptr,
-        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
-    return *shape_analysis_ptr;
-  }
-};
-
-struct ValueDimHash {
-  std::size_t operator()(const ValueDim& p) const {
-    auto h1 = std::hash<size_t>{}(p.idx_);
-    auto h2 = std::hash<pir::Value>{}(p.v_);
-    // Mainly for demonstration purposes, i.e. works but is overly simple
-    // In the real world, use sth. like boost.hash_combine
-    return h1 ^ (h2 << 1);
-  }
-};
-
-using ValueDimRelation =
-    std::unordered_map<ValueDim,
-                       std::unordered_map<ValueDim, bool, ValueDimHash>,
-                       ValueDimHash>;
-// ValueDimRelation[in][out] = True; means f(out) = in is related.
-
-static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
-  std::vector<ValueDim> value_dims;
-  size_t rank = GetRank(v);
-  for (size_t i = 0; i < rank; ++i) {
-    value_dims.emplace_back(v, i);
-  }
-  return value_dims;
-}
-
-static std::vector<ValueDim> GetAllInputValueDim(pir::Operation* op) {
-  std::vector<ValueDim> value_dims;
-  for (const auto& v : op->operands()) {
-    value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v.source()));
-  }
-  return value_dims;
-}
-
-static std::vector<ValueDim> GetAllOutputValueDim(pir::Operation* op) {
-  std::vector<ValueDim> value_dims;
-  for (const auto& v : op->results()) {
-    value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v));
-  }
-  return value_dims;
-}
-
-static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
-  ValueDimRelation res;
-  for (const auto& v : op->operands()) {
-    const auto& value_dims = GetAllValueDimFromValue(v.source());
-    const auto& out_value_dims = GetAllOutputValueDim(op);
-    CHECK_EQ(value_dims.size(), out_value_dims.size());
-    for (size_t i = 0; i < value_dims.size(); ++i) {
-      res[value_dims[i]][out_value_dims[i]] = true;
-    }
-  }
-  return res;
-}
-
-static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
-    pir::Operation* op) {
-  std::vector<std::pair<size_t, size_t>> res;
-  auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
-  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  CHECK(broad_cast_value.has_value());
-
-  const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetRank(input_value);
-  const int output_rank = GetRank(output_value);
-  CHECK_GE(output_rank, input_rank);
-
-  // Compare axis one by one, from back to front.
-  // The rule of broadcasting:
-  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
-  for (int i = 1; i <= input_rank; ++i) {
-    int input_axis = input_rank - i;
-    int output_axis = output_rank - i;
-    if (input_axis < 0 || output_axis < 0) break;
-    if (shape_analysis->IsProductEqual(
-            input_value, {input_axis}, output_value, {output_axis})) {
-      res.emplace_back(input_axis, output_axis);
-    }
-  }
-
-  return res;
-}
-
-static ValueDimRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
-  ValueDimRelation res;
-  const auto& in_value = op->operand(0).source();
-  const auto& out_value = op->result(0);
-  for (const auto& t : GetNonBroadCastDims(op)) {
-    res[ValueDim(in_value, t.first)][ValueDim(out_value, t.second)] = true;
-  }
-  return res;
-}
-
-static ValueDimRelation CreateOpRelativenessForDefault(pir::Operation* op) {
-  ValueDimRelation res;
-  for (const auto& out_dim : GetAllOutputValueDim(op)) {
-    for (const auto& in_dim : GetAllInputValueDim(op)) {
-      res[in_dim][out_dim] = true;
-    }
-  }
-  return res;
-}
-
-static ValueDimRelation CreateOpRelativenessForReduce(pir::Operation* op) {
-  const auto& reduce_axis_idx = GetReduceAxisIdx(op);
-  ValueDimRelation res;
-  const size_t input_rank = GetRank(op->operand_source(0));
-  int out_idx = 0;
-  bool keep_dim = GetReduceOpKeepDims(op);
-  for (int i = 0; i < input_rank; i++) {
-    if (!reduce_axis_idx.empty() &&
-        std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) ==
-            reduce_axis_idx.end()) {
-      res[ValueDim(op->operand_source(0), i)]
-         [ValueDim(op->result(0), out_idx)] = true;
-      out_idx += 1;
-    } else {
-      out_idx += keep_dim;
-    }
-  }
-  return res;
-}
-
-static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
-    pir::Operation* op) {
-  if (op->name() == "cinn_op.reshape") {
-    // Special Elementwise.
-    return CreateOpRelativenessForDefault(op);
-  }
-  if (op->name() == "pd_op.reshape") {
-    // Special Elementwise.
-    return CreateOpRelativenessForDefault(op);
-  }
-  if (op->name() == "cinn_op.generate_shape") {
-    return CreateOpRelativenessForDefault(op);
-  }
-  if (op->name() == "cinn_op.yield_store") {
-    return CreateOpRelativenessForDefault(op);
-  }
-  return {};
-}
-
-static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
-  VLOG(4) << "GetSingleOpRelation for " << op->name();
-  const auto& special_result = CreateOpRelativenessForSpecialOps(op);
-  if (special_result != std::nullopt) {
-    return special_result.value();
-  }
-
-  CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs: " << op->name();
-  const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
-  ValueDimRelation result;
-  if (kind == hlir::framework::kReduction) {
-    result = CreateOpRelativenessForReduce(op);
-  } else if (kind == hlir::framework::kElementWise) {
-    result = CreateOpRelativenessForElementWise(op);
-  } else if (kind == hlir::framework::kBroadcast) {
-    result = CreateOpRelativenessForBroadcast(op);
-  } else {
-    result = CreateOpRelativenessForDefault(op);
-  }
-  return result;
-}
-
-static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
-    const ValueDimRelation& axes_relation) {
-  std::vector<std::pair<ValueDim, ValueDim>> res;
-  for (const auto& in_dim_pair : axes_relation) {
-    for (const auto& out_dim_pair : in_dim_pair.second) {
-      res.emplace_back(in_dim_pair.first, out_dim_pair.first);
-    }
-  }
-  return res;
-}
-
-static ValueDimRelation AnalysisIndexExprRelation(
-    const std::vector<pir::Operation*>& ops) {
-  ValueDimRelation res;
-
-  for (size_t i = ops.size(); i >= 1; --i) {
-    pir::Operation* op = ops[i - 1];
-    if (op->name() == "cf.yield") continue;
-
-    const auto& value_dim_relation = GetSingleOpRelation(op);
-    for (const auto& in_out_pair : FlattenRelation(value_dim_relation)) {
-      for (const auto& out_relation : res[in_out_pair.second]) {
-        res[in_out_pair.first][out_relation.first] = true;
-      }
-      res[in_out_pair.first][in_out_pair.second] = true;
-    }
-  }
-  return res;
-}
-
-struct SplitDims {
-  std::vector<ValueDim> related;
-  std::vector<ValueDim> non_related;
-
-  std::string DebugStr() const {
-    std::stringstream ss;
-    ss << "SplitDims:\nrelated:\n";
-    for (const auto& dim : related) {
-      ss << dim.DebugStr() << "\n";
-    }
-    ss << "non_related:\n";
-    for (const auto& dim : non_related) {
-      ss << dim.DebugStr() << "\n";
-    }
-    return ss.str();
-  }
-};
 
 template <typename T>
 class RelativeJudgePolicy final : public Policy<T> {
@@ -310,36 +41,25 @@ class RelativeJudgePolicy final : public Policy<T> {
       const PatternNodePtr<T>& upstream,
       const PatternNodePtr<T>& downstream) override;
 
-  bool IsRelated(ValueDim in, ValueDim out) {
+  bool IsRelated(DimUsage in, DimUsage out) {
     return index_expr_map_[in].count(out) == 1;
   }
 
  private:
-  ValueDimRelation index_expr_map_;
+  DimUsageRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
                                const PatternNodePtr<T>&);
-  bool IsFlattenDimSmaller(const PatternNodePtr<T>& upstream,
-                           const PatternNodePtr<T>& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
                                  const PatternNodePtr<T>&);
-  SplitDims SplitDimsWithRelationship(
-      const std::vector<ValueDim>& targets,
-      const std::vector<ValueDim>& related_with);
-  std::vector<ValueDim> getDownstreamUnrelatedDims(
-      const PatternNodePtr<T>& upstream,
-      const PatternNodePtr<T>& downstream,
-      ShardableAxesInfoManager& axes_info);  // NOLINT
-  std::vector<ValueDim> getUpstreamReduceDims(
-      const PatternNodePtr<T>& upstream,
-      ShardableAxesInfoManager& axes_info);  // NOLINT
+  std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
+  SplitFirstIfRelatedBySecond(const std::vector<DimUsage>& targets,
+                              const std::vector<DimUsage>& related_with);
   std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
       const ReducePattern<T>& upstream,
       const std::vector<ReducePattern<T>>& candidates);
   bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
                                       const StmtPattern<T>& downstream);
-  bool IsBroadcastEdge(const std::vector<ValueDim>& upstream_out_dims,
-                       const std::vector<ValueDim>&);
 };
 
 }  // namespace cinn::fusion

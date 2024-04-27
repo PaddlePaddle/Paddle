@@ -212,6 +212,47 @@ Tensor reciprocal_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
+  std::size_t x_ndims = x.dims().size();
+  std::size_t y_ndims = y.dims().size();
+  if (x_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received X's shape: [%s].",
+        x_ndims));
+  }
+  if (y_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received Y's shape: [%s].",
+        y_ndims));
+  }
+
+  auto x_shape = phi::vectorize(x.dims());
+  auto y_shape = phi::vectorize(y.dims());
+
+  if (x_shape[0] != y_shape[0]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+        "but received X's batch size: [%s],"
+        "Y's batch size [%s].",
+        x_shape[0],
+        y_shape[0]));
+  }
+
+  if (x_shape[2] != y_shape[1]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+        "but receive X's width: [%s],"
+        "Y's height: [%s].",
+        x_shape[2],
+        y_shape[1]));
+  }
+
+  return matmul<T>(x, y, false, false);
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
@@ -394,11 +435,7 @@ Tensor silu_decomp(const Tensor& x) {
   if (need_cast) {
     x_tmp = cast<T>(x, DataType::FLOAT32);
   }
-
-  // res = x / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-  auto exp_temp = exp<T>(full<T>(empty_shape, -1, x_tmp.dtype()) * x_tmp);
-  auto res = x_tmp / (exp_temp + one);
+  auto res = x_tmp * sigmoid<T>(x_tmp);
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -740,27 +777,6 @@ Tensor hardswish_decomp(const Tensor& x) {
                             full<T>(empty_shape, 0.0, x.dtype())),
                  full<T>(empty_shape, THRESHOLD, x.dtype()));
   return (minimum_out * x) / full<T>(empty_shape, SCALE, x.dtype());
-}
-
-template <typename T>
-Tensor sigmoid_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  // res = 1 / (1 + exp(-x))
-  auto one = full<T>(empty_shape, 1, x_cast.dtype());
-  auto exp_tmp = exp<T>(full<T>(empty_shape, -1, x_cast.dtype()) * x_cast);
-  auto res = one / (one + exp_tmp);
-  if (need_cast) {
-    return cast<T>(res, org_dtype);
-  } else {
-    return res;
-  }
 }
 
 template <typename T>
