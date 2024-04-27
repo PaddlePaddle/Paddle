@@ -854,8 +854,11 @@ class SqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
@@ -905,8 +908,11 @@ class UnsqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
