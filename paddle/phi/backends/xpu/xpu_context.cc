@@ -34,22 +34,27 @@ namespace phi {
 class XHPCBufferManager {
  public:
   void* Alloc(const Place& place, size_t size, XPUStream xpu_stream) {
-    // std::cout << "Buffer Alloc Called!!!!!!\n";
+    VLOG(3) << "Alloc " << size << " bytes from XHPC on stream" << xpu_stream;
     phi::Stream stream(reinterpret_cast<StreamId>(xpu_stream));
     auto allocation = memory_utils::Alloc(place, size, stream);
     void* ret = allocation.get()->ptr();
     allocations_to_free_.back().push_back(std::move(allocation));
     return ret;
   }
+
   void Save() {
-    // std::cout << "Buffer Save Called!!!!!!\n";
     allocations_to_free_.emplace_back();
+    VLOG(3) << "XHPC ctx_guard created, " << allocations_to_free_.size()
+            << " are in use now.";
   }
+
   void Free() {
-    // std::cout << "Buffer Free Called!!!!!!!\n";
-    if (allocations_to_free_.size() > 0) {
-      allocations_to_free_.pop_back();
-    }
+    PADDLE_ENFORCE_GT(allocations_to_free_.size(),
+                      0,
+                      "No ctx_guard when overload_free is called");
+    allocations_to_free_.pop_back();
+    VLOG(3) << "XHPC ctx_guard destropyed, " << allocations_to_free_.size()
+            << " are in use now.";
   }
 
  private:
@@ -163,34 +168,35 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
-    if (std::getenv("XPU_PADDLE_USE_OVERLOAD") != nullptr) {
-      context_->set_option("XPUAPI_DEFAULT_SIZE", "0");
-      VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
-              << "context " << context_ << " set xpuapi_default_size " << 0;
-    } else {
-      context_->set_option("XPUAPI_DEFAULT_SIZE",
-                           std::to_string(gm_default_size).c_str());
-      VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
-              << "context " << context_ << " set xpuapi_default_size "
-              << gm_default_size;
+    if (std::getenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD") == nullptr) {
+      // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
+      auto overload_alloc_fn = std::bind(&XHPCBufferManager::Alloc,
+                                         &xhpc_buf_mgr_,
+                                         place_,
+                                         std::placeholders::_1,
+                                         context_->get_stream());
+      auto overload_free_fn =
+          std::bind(&XHPCBufferManager::Free, &xhpc_buf_mgr_);
+      auto overload_save_fn =
+          std::bind(&XHPCBufferManager::Save, &xhpc_buf_mgr_);
+      context_->set_overload_alloc(
+          overload_alloc_fn, overload_free_fn, overload_save_fn);
+      gm_default_size = 0;
+      VLOG(1) << "XPUAPI_DEFUAULT_SIZE is disabled because you overload the "
+                 "alloc of xhpc. If you want to use XPUAPI_DEFAULT_SIZE, "
+                 "please set XPU_PADDLE_DISABLE_ALLOC_OVERLOAD=1";
     }
+
+    context_->set_option("XPUAPI_DEFAULT_SIZE",
+                         std::to_string(gm_default_size).c_str());
+    VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+            << "context " << context_ << " set xpuapi_default_size "
+            << gm_default_size;
 
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
       XPUStream s;
       xpu_stream_create(&s);
       context_->set_stream(s);
-    }
-    // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
-    auto overload_alloc_fn = std::bind(&XHPCBufferManager::Alloc,
-                                       &xhpc_buf_mgr_,
-                                       place_,
-                                       std::placeholders::_1,
-                                       context_->get_stream());
-    auto overload_free_fn = std::bind(&XHPCBufferManager::Free, &xhpc_buf_mgr_);
-    auto overload_save_fn = std::bind(&XHPCBufferManager::Save, &xhpc_buf_mgr_);
-    if (std::getenv("XPU_PADDLE_USE_OVERLOAD") != nullptr) {
-      context_->set_overload_alloc(
-          overload_alloc_fn, overload_free_fn, overload_save_fn);
     }
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
