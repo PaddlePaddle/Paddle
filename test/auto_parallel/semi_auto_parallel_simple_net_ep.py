@@ -27,8 +27,8 @@ class Config:
     def __init__(self):
         self.batch_num = 5
         self.batch_size = 4
-        self.input_size = 784
-        self.hidden_size = 32
+        self.input_size = 32
+        self.hidden_size = 16
         self.class_num = 10
         self.run_ep = False
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
@@ -149,6 +149,7 @@ class TestSimpleNetForEP:
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.01,
             parameters=model.parameters(),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         )
         return optimizer
 
@@ -196,7 +197,7 @@ class TestSimpleNetForEP:
         return losses
 
     def run_ep(self):
-        self.set_seed(1234)
+        self.set_seed(self._seed)
         config = Config()
         config.run_ep = True
         model, train_dataloader, criterion, optimizer = self.build(config)
@@ -209,7 +210,7 @@ class TestSimpleNetForEP:
         return loss
 
     def run_replicate(self):
-        self.set_seed(1234)
+        self.set_seed(self._seed)
         config = Config()
         config.run_ep = False
         model, train_dataloader, criterion, optimizer = self.build(config)
