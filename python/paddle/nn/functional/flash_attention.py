@@ -323,7 +323,7 @@ def flash_attn_qkvpacked(
     ``d`` represents the size of the last dimension of the three parameters.
 
     Warning:
-        This API is only support inputs with dtype float16 and bfloat16.
+        This API only supports inputs with dtype float16 and bfloat16.
         Don't call this API if flash_attn is not supported.
 
     Args:
@@ -342,9 +342,7 @@ def flash_attn_qkvpacked(
                         :ref:`api_guide_Name`.
 
     Returns:
-        out(Tensor): The attention tensor.
-                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
-                    The dtype can be float16 or bfloat16.
+        out(Tensor): The attention tensor. 4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim]. The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
@@ -355,7 +353,7 @@ def flash_attn_qkvpacked(
 
             >>> paddle.seed(2023)
             >>> q = paddle.rand((1, 128, 2, 16))
-            >>> qkv = paddle.stack([q,q,q], axis=2)
+            >>> qkv = paddle.stack([q, q, q], axis=2)
             >>> output = paddle.nn.functional.flash_attn_qkvpacked(qkv, 0.9, False, False)
             >>> print(output)
             (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -519,6 +517,9 @@ def flash_attn_unpadded(
         out(Tensor): The attention tensor.
                     4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
+        out(Tensor): The attention tensor.
+                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
@@ -621,7 +622,7 @@ def flash_attn_varlen_qkvpacked(
     ``d`` represents the size of the last dimension of the three parameters.
 
     Warning:
-        This API is only support inputs with dtype float16 and bfloat16.
+        This API only supports inputs with dtype float16 and bfloat16.
 
     Args:
         qkv(Tensor): The padded query/key/value packed tensor in the Attention module. The padding part won't be computed
@@ -646,9 +647,7 @@ def flash_attn_varlen_qkvpacked(
                         :ref:`api_guide_Name`.
 
     Returns:
-        out(Tensor): The attention tensor. The tensor is padded by zeros.
-                    3-D tensor with shape: [total_seq_len, num_heads, head_dim].
-                    The dtype can be float16 or bfloat16.
+        out(Tensor): The attention tensor. The tensor is padded by zeros. 3-D tensor with shape: [total_seq_len, num_heads, head_dim]. The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
@@ -660,7 +659,7 @@ def flash_attn_varlen_qkvpacked(
             >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
             >>> cu = paddle.arange(0, 384, 128, dtype='int32')
             >>> qq = paddle.reshape(q, [256, 8, 16])
-            >>> qkv = paddle.stack([qq,qq,qq], axis=2)
+            >>> qkv = paddle.stack([qq, qq, qq], axis=2)
             >>> output = paddle.nn.functional.flash_attn_varlen_qkvpacked(qkv, cu, cu, 128, 128, 0.25, 0.0, False, False)
             >>> # doctest: -SKIP
 
