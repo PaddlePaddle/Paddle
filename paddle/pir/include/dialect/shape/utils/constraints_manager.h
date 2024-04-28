@@ -36,16 +36,31 @@ class IR_API ConstraintsManager {
   bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
 
   template <typename DoEachClusterT>
-  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
+  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const {
+    equals_.VisitCluster(DoEachCluster);
+  }
 
   template <typename DoEachT>
-  void EqualConstraintsVisitor(const DoEachT& DoEach);
+  void EqualConstraintsVisitor(const DoEachT& DoEach) {
+    auto equals_parents = equals_.GetMap();
+    for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
+      DoEach(it);
+    }
+  }
 
   template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach);
+  void GTOneConstraintsVisitor(const DoEachT& DoEach) {
+    for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
+      DoEach(it);
+    }
+  }
 
   template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) {
+    for (auto it = broadcastables_.begin(); it != broadcastables_.end();) {
+      DoEach(it);
+    }
+  }
 
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);

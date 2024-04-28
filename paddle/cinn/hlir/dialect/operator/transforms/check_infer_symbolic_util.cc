@@ -26,8 +26,12 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/pass/pass.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
@@ -258,7 +262,7 @@ struct ShapeSignatureGenerator {
     ConstrainedSymbolNamesList cstr_list;
     auto& cstr_manager = op_shape_analysis->GetConstraintsManager();
 
-    cstr_manager.VisitEqualClusters([&](auto& clusters) {
+    cstr_manager.VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {
         if (dim_expr.isa<std::string>())
@@ -267,12 +271,14 @@ struct ShapeSignatureGenerator {
       if (!equals.symbol_names.empty()) cstr_list.emplace_back(equals);
     });
 
-    cstr_manager.BroadcastableConstraintsVisitor([&](const auto& it) {
-      if (it->data->lhs.isa<std::string>() &&
-          it->data->rhs.isa<std::string>()) {
+    cstr_manager.BroadcastableConstraintsVisitor([&](auto it) {
+      if (it->data->lhs.template isa<std::string>() &&
+          it->data->rhs.template isa<std::string>()) {
         CstrBroadcastableSymbolNames bcables;
-        bcables.symbol_names.push_back(it->data->lhs.Get<std::string>());
-        bcables.symbol_names.push_back(it->data->rhs.Get<std::string>());
+        bcables.symbol_names.push_back(
+            it->data->lhs.template Get<std::string>());
+        bcables.symbol_names.push_back(
+            it->data->rhs.template Get<std::string>());
         cstr_list.emplace_back(bcables);
       }
     });
@@ -327,41 +333,30 @@ struct ShapeSignatureGenerator {
 void CheckByInferMeta(pir::Operation* op,
                       const std::vector<std::vector<int64_t>>& input_shapes,
                       const std::vector<std::vector<int64_t>>& output_shapes) {
-  // DenseTensor inputs =  ConvertToDenseTensor(input_shapes);
-
-  // ir_context
-
-  pir::Program new_program(rewriter.ir_context());
-  pir::Builder builder =
-      pir::Builder(rewriter.ir_context(), new_program->block());
-  pir::Operation new_op = builder.Build<op_type>(inputs);
-
-  PADDLE_ENFORCE_EQ(Has(pir::Pass::kPlaceAttr),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "place attribute is required!"
-                        "Use Set method to set the place attribute."));
-  PADDLE_ENFORCE_EQ(Has(pir::Pass::kParamScopeAttr),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "scope attribute is required!"
-                        "Use Set method to set the scope attribute."));
-
-  auto place = Get<phi::Place>(pir::Pass::kPlaceAttr);
-  auto scope = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
-  paddle::framework::InterpreterCore core(
-      place, {}, new_program, scope, nullptr);
-  core.Run({});
-
-  std::vector<std::vector<int64_t>> infer_meta_result;
-  for (std::size_t i = 0; i < new_op.num_results(); ++i) {
-    const auto& result = common::vectorize(
-        new_op.result(i).type().dyn_cast<pir::DenseTensorType>().dims());
-    infer_meta_result.push_back(result);
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Builder builder = pir::Builder(ctx, op->GetParent());
+  std::vector<paddle::dialect::EmptyOp> empty_op_list;
+  std::vector<pir::Value> input_values;
+  for (int i = 0; i < input_shapes.size(); i++) {
+    paddle::dialect::EmptyOp empty_op =
+        builder.Build<paddle::dialect::EmptyOp>(input_shapes[i]);
+    empty_op_list.push_back(empty_op);
+    input_values.push_back(empty_op.out());
   }
-
+  paddle::dialect::InferMetaInterface interface =
+      op->dyn_cast<paddle::dialect::InferMetaInterface>();
+  pir::AttributeMap attribute_map;
+  const auto& types = interface.InferMeta(input_values, &attribute_map);
+  std::vector<std::vector<int64_t>> infer_meta_result;
+  for (const auto& type : types) {
+    infer_meta_result.push_back(
+        common::vectorize(type.dyn_cast<pir::DenseTensorType>().dims()));
+  }
   CHECK(infer_meta_result == output_shapes)
       << "check " << op->name() << " constraints error";
+  for (const auto& empty_op : empty_op_list) {
+    empty_op.Erase();
+  }
 }
 
 void CheckOpDimExprConstraints(pir::Operation* op,

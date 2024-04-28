@@ -123,12 +123,6 @@ bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
   return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
 }
 
-template <typename DoEachClusterT>
-void ConstraintsManager::VisitEqualClusters(
-    const DoEachClusterT& DoEachCluster) const {
-  equals_.VisitCluster(DoEachCluster);
-}
-
 void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
   gtones_.insert(dim_expr);
 
@@ -259,29 +253,6 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
         Broadcastable<DimExpr>(substituted_lhs, substituted_rhs));
   });
   broadcastables_ = substituted_broadcastables;
-}
-
-template <typename DoEachT>
-void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
-  auto equals_parents = equals_.GetMap();
-  for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
-    DoEach(it);
-  }
-}
-
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
-  for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
-    DoEach(it);
-  }
-}
-
-template <typename DoEachT>
-void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) {
-  for (auto it = broadcastables_.begin(); it != broadcastables_.end();) {
-    DoEach(it);
-  }
 }
 
 std::ostream& operator<<(std::ostream& stream,
