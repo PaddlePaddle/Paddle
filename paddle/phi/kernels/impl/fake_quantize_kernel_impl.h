@@ -36,4 +36,49 @@ void FakeQuantizeAbsMaxKernel(const Context &dev_ctx,
   clip_and_fake_quant_functor(dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
+template <typename T, typename Context>
+void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &in_scale,
+    const paddle::optional<DenseTensor> &in_accum,
+    const paddle::optional<DenseTensor> &in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    DenseTensor *out,
+    DenseTensor *out_scale,
+    DenseTensor *out_state,
+    DenseTensor *out_accum) {
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+  // testing
+  if (is_test) {
+    phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+        dev_ctx, x, in_scale, bin_cnt, round_type, out);
+    return;
+  }
+
+  // training
+  phi::DenseTensor tmp_scale;
+  tmp_scale.Resize(common::make_dim(1));
+  T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+
+  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+      dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
+
+  phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                           in_accum.get(),
+                                                           in_state.get(),
+                                                           cur_scale_data,
+                                                           moving_rate,
+                                                           out_state,
+                                                           out_accum,
+                                                           out_scale);
+
+  phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, out);
+}
+
 }  // namespace phi

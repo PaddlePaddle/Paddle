@@ -338,6 +338,12 @@ phi::DataType GetValueDataType(const pir::Type& type) {
   } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCooTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCsrTensorType>().dtype());
   } else if (type.isa<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<DenseTensorArrayType>().dtype());
@@ -349,6 +355,8 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
                                  "DenseTensorType and SelectedRowsType."));
