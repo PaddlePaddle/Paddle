@@ -74,6 +74,10 @@ def index_sample_net(x, index):
     return paddle.index_sample(x, index)
 
 
+def bce_loss_net(x, label):
+    return paddle._C_ops.bce_loss(x, label)
+
+
 def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
 
@@ -306,6 +310,23 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = index_sample_net
         self.necessary_ops = "pd_op.index_sample"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBceLoss(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [2, 3, 4, 5]
+        self.y_shape = [2, 3, 4, 5]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(0.1, 0.8, self.x_shape).astype(self.dtype_x)
+        self.y = np.random.randint(0, 2, self.x_shape).astype(self.dtype_y)
+        self.net = bce_loss_net
+        self.necessary_ops = "pd_op.bce_loss"
         self.enable_cinn = False
         self.tol = 1e-6
 
