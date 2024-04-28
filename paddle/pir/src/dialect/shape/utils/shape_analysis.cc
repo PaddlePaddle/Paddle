@@ -93,6 +93,10 @@ void InferSymbolicShapeContext::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
       symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
+  if (!val) {
+    LOG(WARNING) << "Set shape or data for null value";
+    return;
+  }
   auto iter = value_id_to_shape_or_data_.find(val.impl()->id());
   if (iter == value_id_to_shape_or_data_.end()) {
     value_id_to_shape_or_data_.emplace(val.impl()->id(),
