@@ -3206,3 +3206,12 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: moe
+  args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
+    str act_type = "gelu")
+  output: Tensor (out)
+  infer_meta:
+    func: MoeInferMeta
+  kernel:
+    func: moe
