@@ -17,9 +17,12 @@
 # 0D Tensor's shape is always [], numel is 1
 # which can be created by paddle.rand([])
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from decorator_helper import prog_scope
 
 import paddle
@@ -378,6 +381,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             prog,
             feed={
+                "x1": np.array(1.0, dtype='float32'),
                 "x2": 100.5,
                 "x3": 200.5,
             },

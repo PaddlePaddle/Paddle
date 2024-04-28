@@ -126,18 +126,6 @@ bool ReshapeOpInferSymbolicShape(
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
 
-  const symbol::ShapeOrDataDimExprs &x_dim_expr =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-  if (x_dim_expr.data().has_value()) {
-    if (shape.size() == 1 && shape.front() == 1) {
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{1},
-                                            x_dim_expr.data().value()));
-      return true;
-    }
-  }
-
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
     for (const auto &dim_expr : dim_exprs) {
@@ -170,8 +158,10 @@ bool ReshapeOpInferSymbolicShape(
     return target_shape;
   }();
 
-  const auto &original_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &original_shape = x_dim_expr.shape();
 
   const auto &out_dims = [&] {
     const auto &numel =
@@ -193,8 +183,14 @@ bool ReshapeOpInferSymbolicShape(
     return out_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  symbol::ShapeOrDataDimExprs shape_data = [&] {
+    if (x_dim_expr.data().has_value()) {
+      return symbol::TensorShapeOrDataDimExprs(out_dims,
+                                               x_dim_expr.data().value());
+    }
+    return symbol::TensorShapeOrDataDimExprs(out_dims);
+  }();
+
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
 
   return true;

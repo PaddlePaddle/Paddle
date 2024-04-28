@@ -109,8 +109,6 @@ class TestLlamaPostProcess(unittest.TestCase):
         return out
 
     def test_eval(self):
-        # TODO(Aurelius84):disable compilation cache
-        paddle.set_flags({"FLAGS_enable_cinn_compile_cache": False})
         dy_out = self.eval(use_cinn=False)
         cinn_out = self.eval(use_cinn=True)
         # TODO(Aurelius84): fix the precision with inf

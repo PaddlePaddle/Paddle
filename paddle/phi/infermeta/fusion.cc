@@ -3858,6 +3858,40 @@ void SinePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Pad2dXPUInferMeta(const MetaTensor& x,
+                       const std::vector<int>& paddings,
+                       const std::string& mode,
+                       float pad_value,
+                       const std::string& data_format,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  phi::DDim out_dim;
+  if (data_format == "NCHW") {
+    out_dim = phi::make_ddim(
+        {x_dims[0],
+         x_dims[1],
+         x_dims[2] + paddings[2] + paddings[3],    // top bootom height
+         x_dims[3] + paddings[0] + paddings[1]});  // left right weight
+  } else if (data_format == "NHWC") {
+    out_dim = phi::make_ddim({x_dims[0],
+                              x_dims[1] + paddings[2] + paddings[3],  // height
+                              x_dims[2] + paddings[0] + paddings[1],  // width
+                              x_dims[3]});
+  } else {
+    PADDLE_THROW(phi::errors::External(
+        "XPU is not support data format in pad2d is %s", data_format));
+  }
+
+  if (data_format == "NHWC") {
+    out->set_layout(phi::DataLayout::NHWC);
+  } else if (data_format == "NCHW") {
+    out->set_layout(phi::DataLayout::NCHW);
+  }
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
 void CrossAttentionXPUInferMeta(
     const MetaTensor& input_q,
     const MetaTensor& input_kv,
