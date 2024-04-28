@@ -53,10 +53,9 @@ class MergeParallelMatmulPattern
       return false;
     }
 
-    auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
-                                const std::vector<std::int64_t>& b) {
-      return std::vector<std::int64_t>(a.begin(), a.end() - 1) ==
-             std::vector<std::int64_t>(b.begin(), b.end() - 1);
+    auto IsDynameShape = [&](const std::vector<int64_t>& dims) {
+      return std::any_of(
+          dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
     };
 
     auto input_x = matmul_op.operand_source(0);
@@ -82,7 +81,10 @@ class MergeParallelMatmulPattern
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
                 .dims());
-        if (VectorPrefixEqual(pre_dim.value(), cur_dim)) {
+        if (IsDynameShape(cur_dim)) {
+          continue;
+        }
+        if (pre_dim.value() == cur_dim) {
           ret.push_back(it->owner());
         }
       }
@@ -119,6 +121,7 @@ class MergeParallelMatmulPattern
             .result(0);
 
     for (size_t i = 0; i < merge_ops.size(); ++i) {
+      rewriter.SetInsertionPointAfter(merge_ops[i]);
       auto split_out = rewriter
                            .Build<paddle::dialect::SliceOp>(
                                matmul_out,
