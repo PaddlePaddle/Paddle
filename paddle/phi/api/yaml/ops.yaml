@@ -3214,4 +3214,5 @@
     func: CrfDecodingInferMeta
   kernel:
     func: crf_decoding
+    data_type: emission
   optional: label, length
