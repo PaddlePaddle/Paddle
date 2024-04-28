@@ -383,11 +383,22 @@ struct And {
   }
 };
 
-template <typename A, typename B>
-struct Or {
+template <typename... Args>
+struct Or {};
+
+template <typename A>
+struct Or<A> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) || B()(graph, node);
+    return A()(graph, node);
+  }
+};
+
+template <typename A, typename... Args>
+struct Or<A, Args...> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node) || Or<Args...>()(graph, node);
   }
 };
 
