@@ -46,7 +46,6 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
 
 void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr) {
-  VLOG(0) << "debug mesh_attr " << mesh_attr;
   for (auto value : inputs) {
     if (auto type = value.type()) {
       if (type.isa<DistTypeInterface>()  || type.isa<pir::VectorType>()) continue;
