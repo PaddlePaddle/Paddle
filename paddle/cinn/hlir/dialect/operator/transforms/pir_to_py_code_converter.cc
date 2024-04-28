@@ -244,7 +244,7 @@ struct PirToPyCodeConverterHelper {
     all_defines.insert(all_defines.end(), func.begin(), func.end());
     const std::string block_lambda_and_free_vars =
         std::string("(self.") + func_op_name +
-        (free_vars_as_args.empty() ? "" : ", ") + free_vars_as_args + ")";
+        (free_vars_as_args.empty() ? "," : ", ") + free_vars_as_args + ")";
     return OpPyCode{all_defines, block_lambda_and_free_vars};
   }
 
