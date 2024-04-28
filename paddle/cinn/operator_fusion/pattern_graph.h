@@ -322,23 +322,23 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+template <typename T>
 struct HorizontalFusionConstrain {
-  template <typename T>
   bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& first,
-                  const PatternNodePtr<T>& second) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, first)) {
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, lhs)) {
       return false;
     }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, second)) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, rhs)) {
       return false;
     }
     const auto& lhs_pattern =
-        std::get<HorizontalFusionPattern<T>>(first->stmt_pattern());
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
     const auto& rhs_pattern =
-        std::get<HorizontalFusionPattern<T>>(second->stmt_pattern());
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
 
-    return graph.topo_manager().CanFuse(first, second) &&
+    return graph.topo_manager().CanFuse(lhs, rhs) &&
            IsLoopFrameworkEqual(lhs_pattern.patterns_.back(),
                                 rhs_pattern.patterns_.back());
   }

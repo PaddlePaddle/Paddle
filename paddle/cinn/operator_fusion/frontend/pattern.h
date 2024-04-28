@@ -75,21 +75,4 @@ struct UnsupportPattern<FrontendStage> {
   static std::string name() { return "Unsupport"; }
 };
 
-template <>
-struct HorizontalFusionPattern<FrontendStage> {
-  explicit HorizontalFusionPattern(
-      const std::vector<StmtPattern<FrontendStage>>& patterns)
-      : patterns_(patterns) {}
-  std::vector<StmtPattern<FrontendStage>> patterns_;
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& pattern : patterns_) {
-      auto ops = GetOpsInPattern(pattern);
-      ExtendVector(&result, ops);
-    }
-    return result;
-  }
-  static std::string name() { return "HorizontalFusionPattern"; }
-};
-
 }  // namespace cinn::fusion

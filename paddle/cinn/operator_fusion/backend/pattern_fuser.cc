@@ -198,6 +198,111 @@ struct FusionOp2Expr {
   }
 };
 
+std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildTensorStores;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+  const auto& tensors =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
+       ChildTensorStores)(op_expr);
+  std::function<ir::Tensor(ir::Expr)> func = [](const ir::Expr& expr) {
+    return expr.As<ir::Store>()->tensor.as_tensor_ref();
+  };
+  return MapVector(tensors, func);
+}
+
+std::vector<ir::Tensor> GetInputTensors(const ir::Expr& op_expr) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildScheduleBlockRealizes;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ChildTensorLoads;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsNotInit;
+  const auto& exprs =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
+       ChildTensorLoads)(op_expr);
+  std::function<ir::Tensor(ir::Expr)> func = [](const ir::Expr& expr) {
+    return expr.As<ir::Load>()->tensor.as_tensor_ref();
+  };
+  const auto& inputs = MapVector(exprs, func);
+  const auto& outputs = GetOutputTensors(op_expr);
+  return FilterVector(inputs, [&outputs](const ir::Tensor& tensor) {
+    return std::find(outputs.begin(), outputs.end(), tensor) == outputs.end();
+  });
+}
+
+std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
+  // Topo Sort is important for CINN GroupSchedule.
+  std::map<ir::Tensor, std::vector<const ir::Expr*>> tensor2defining_op;
+  std::map<ir::Tensor, std::vector<const ir::Expr*>> tensor2used_op;
+  for (const auto& op : op_exprs) {
+    auto inputs = GetInputTensors(op);
+    auto outputs = GetOutputTensors(op);
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "Ir::Expr is: \n" << op;
+      VLOG(4) << "Inputs: ";
+      for (const auto& input : inputs) {
+        VLOG(4) << input->name;
+      }
+      VLOG(4) << "Outputs: ";
+      for (const auto& output : outputs) {
+        VLOG(4) << output->name;
+      }
+    }
+    for (const auto& input : inputs) {
+      tensor2used_op[input].push_back(&op);
+    }
+    for (const auto& output : outputs) {
+      tensor2defining_op[output].push_back(&op);
+    }
+  }
+
+  // Collect Downstreams
+  std::map<const ir::Expr*, std::vector<const ir::Expr*>> op2downstreams;
+  std::map<const ir::Expr*, int> degrees;
+  for (const auto& op : op_exprs) {
+    degrees[&op] = 0;
+    auto outputs = GetOutputTensors(op);
+    std::vector<const ir::Expr*> downstreams;
+    for (const auto& output : outputs) {
+      downstreams = ConcatVector(downstreams, tensor2used_op[output]);
+    }
+    for (const auto& downstream : downstreams) {
+      degrees[downstream]++;
+    }
+    op2downstreams[&op] = downstreams;
+  }
+
+  // Topo Sort
+  std::vector<const ir::Expr*> result;
+  std::queue<const ir::Expr*> q;
+  for (const auto& op : op_exprs) {
+    if (degrees[&op] == 0) {
+      q.push(&op);
+    }
+  }
+  while (!q.empty()) {
+    auto* cur = q.front();
+    q.pop();
+    result.push_back(cur);
+    for (const auto& downstream : op2downstreams[cur]) {
+      degrees[downstream]--;
+      if (degrees[downstream] == 0) {
+        q.push(downstream);
+      }
+    }
+  }
+  CHECK_EQ(result.size(), op_exprs.size());
+  std::vector<ir::Expr> sorted_result;
+  for (const auto& op : result) {
+    sorted_result.push_back(*op);
+  }
+  return sorted_result;
+}
+
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern) {
   const auto& fusion_ops = GetFusionOpFromPattern(pattern);
@@ -205,7 +310,7 @@ std::vector<ir::Expr> GetExprFromPattern(
   for (const auto& op : fusion_ops) {
     results = ConcatVector(results, std::visit(FusionOp2Expr(), op));
   }
-  return results;
+  return TopoSort(results);
 }
 
 }  // namespace cinn::fusion
