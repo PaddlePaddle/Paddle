@@ -247,6 +247,81 @@ bool DiagonalOpInferSymbolicShape(
   return true;
 }
 
+bool DistributeFpnProposalsOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &attributes = op->attributes();
+  int32_t min_level =
+      attributes.at("min_level").dyn_cast<pir::Int32Attribute>().data();
+  int32_t max_level =
+      attributes.at("max_level").dyn_cast<pir::Int32Attribute>().data();
+  int32_t num_levels = max_level - min_level + 1;
+
+  symbol::DimExpr num_rois = [&]() {
+    pir::Value rois_num = op->operand_source(1);
+    const auto &rois_num_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(rois_num);
+
+    PADDLE_ENFORCE_EQ(
+        rois_num_shape_or_data.shape()[0],
+        1,
+        phi::errors::InvalidArgument("DistributeFpnProposalsOp in pir model "
+                                     "only support batch_size=1 now."));
+
+    PADDLE_ENFORCE_EQ(rois_num_shape_or_data.data().has_value(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "InferSymbolicShape of DistributeFpnProposalsdOp "
+                          "only support input with rois_num."));
+
+    const auto &rois_num_value = rois_num_shape_or_data.data().value()[0];
+    CHECK(rois_num_value.isa<int64_t>() || rois_num_value.isa<std::string>())
+        << "rois_num must be int64 or SymName.";
+    if (rois_num_value.isa<int64_t>()) {
+      return symbol::DimExpr(rois_num_value.Get<int64_t>());
+    } else {
+      return symbol::DimExpr(rois_num_value.Get<std::string>());
+    }
+  }();
+
+  const auto &multi_rois_out_shape = [&]() {
+    symbol::TensorListShapeOrDataDimExprs multi_rois_out_shape;
+    if (num_levels == 1) {
+      multi_rois_out_shape.emplace_back(
+          symbol::TensorShapeOrDataDimExprs({num_rois, 4}));
+    } else {
+      symbol::DimExpr last_dim = num_rois;
+      for (int i = 0; i < num_levels - 1; i++) {
+        const auto &next_sym_name = shape_analysis->GetNextSymName();
+        std::vector<symbol::DimExpr> level_dim = {next_sym_name, 4};
+        multi_rois_out_shape.emplace_back(
+            symbol::TensorShapeOrDataDimExprs(level_dim));
+        last_dim = last_dim - level_dim[0];
+      }
+      multi_rois_out_shape.emplace_back(
+          symbol::TensorShapeOrDataDimExprs({last_dim, 4}));
+    }
+
+    return multi_rois_out_shape;
+  }();
+
+  const auto &rois_num_per_level_out_shape = [&]() {
+    symbol::TensorListShapeOrDataDimExprs rois_num_per_level_out_shape;
+    rois_num_per_level_out_shape.resize(num_levels,
+                                        symbol::TensorShapeOrDataDimExprs({1}));
+    return rois_num_per_level_out_shape;
+  }();
+
+  const auto &restore_ind = [&]() {
+    return symbol::TensorShapeOrDataDimExprs({num_levels, 1});
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), multi_rois_out_shape);
+  shape_analysis->SetShapeOrDataForValue(op->result(1),
+                                         rois_num_per_level_out_shape);
+  shape_analysis->SetShapeOrDataForValue(op->result(2), restore_ind);
+  return true;
+}
+
 bool EinsumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(

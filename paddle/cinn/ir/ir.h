@@ -305,6 +305,8 @@ struct Let : public ExprNode<Let> {
 
   Type type() const override;
 
+  void set_type(Type t) override;
+
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Let;
@@ -476,7 +478,9 @@ struct Reduce : public ExprNode<Reduce> {
                    Expr body,
                    const std::vector<Var>& reduce_axis);
 
-  Type type() const override { return body.type().ElementOf(); }
+  Type type() const override;
+
+  void set_type(Type t) override;
 
   std::vector<Expr*> expr_fields() override;
   std::vector<const Expr*> expr_fields() const override;
@@ -509,10 +513,9 @@ struct Select : public ExprNode<Select> {
     return Expr(node);
   }
 
-  Type type() const override {
-    CHECK_EQ(true_value.type(), false_value.type());
-    return true_value.type();
-  }
+  Type type() const override;
+
+  void set_type(Type t) override;
 
   void Verify() const override;
 
@@ -553,6 +556,8 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
 
   Type type() const override;
 
+  void set_type(Type t) override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Load;
 };
 
@@ -573,6 +578,7 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   const std::string& name() const;
 
   Type type() const override;
+  void set_type(Type type) override;
   Expr index() const;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Store;
@@ -899,6 +905,8 @@ struct Broadcast : public ExprNode<Broadcast> {
 
   Type type() const override;
 
+  void set_type(Type type) override;
+
   void Verify() const override;
 
   std::vector<Expr*> expr_fields() override { return {&value}; }
@@ -932,7 +940,9 @@ struct Product : public ExprNode<Product> {
 
   using ExprNode<Product>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
+
+  void set_type(Type t) override;
 
   void Verify() const override;
 
@@ -944,7 +954,9 @@ struct Sum : public ExprNode<Sum> {
 
   using ExprNode<Sum>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
+
+  void set_type(Type t) override;
 
   void Verify() const override;
 
