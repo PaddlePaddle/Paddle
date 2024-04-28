@@ -52,8 +52,36 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
   }
 }
 
+template <typename Context, typename T>
+void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in_accum,
+    const DenseTensor &in_state,
+    const T *cur_scale,
+    const float rate,
+    DenseTensor *out_state,
+    DenseTensor *out_accum,
+    DenseTensor *out_scale) {
+  T accum = in_accum.data<T>()[0];
+  T state = in_state.data<T>()[0];
+  T scale = cur_scale[0];
+
+  state = rate * state + 1;
+  accum = rate * accum + scale;
+  scale = accum / state;
+
+  T *out_state_data = ctx.template Alloc<T>(out_state);
+  T *out_accum_data = ctx.template Alloc<T>(out_accum);
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+
+  out_state_data[0] = state;
+  out_accum_data[0] = accum;
+  out_scale_data[0] = scale;
+}
+
 template class FindAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantFunctor<CPUContext, float>;
+template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi
