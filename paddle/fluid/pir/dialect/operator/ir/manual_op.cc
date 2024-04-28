@@ -3994,7 +3994,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4051,7 +4051,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4069,17 +4069,15 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1) {
+    return rhs;
+  } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
