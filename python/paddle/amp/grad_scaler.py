@@ -117,6 +117,8 @@ class AmpScaler:
 
         self._enable = enable
         self._use_dynamic_loss_scaling = False
+        self._init_loss_scaling = 1.0
+        self._scale = None
 
         if self._enable:
             assert incr_ratio > 1.0, "The incr_ratio must be > 1.0."
@@ -206,6 +208,7 @@ class AmpScaler:
         ):
             self._enable = False
             self._use_dynamic_loss_scaling = False
+            self._init_loss_scaling = 1.0
             warnings.warn(
                 'It is not recommended to use dynamic loss scaling for %s, so GradScaler is disable by default.'
                 % (amp_global_state().amp_dtype)
@@ -295,6 +298,7 @@ class AmpScaler:
         if hasattr(optimizer, "_set_auxiliary_var"):
             optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+            # TODO: Fix to _cache_found_inf after PaddleNLP update
             self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
         else:
             if self._found_inf:
@@ -427,11 +431,7 @@ class AmpScaler:
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.format(
-                        float(self._scale),
-                        float(self._scale),
-                        float(self._decr_ratio),
-                    )
+                    f'Found inf or nan, current scale is: {float(self._scale)}, decrease to: {float(self._scale)}*{float(self._decr_ratio)}'
                 )
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0

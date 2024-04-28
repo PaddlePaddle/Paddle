@@ -148,7 +148,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   }
 }
 
-void GradVarLeafBackwardHookWithGradAccmulatedTest() {
+void GradVarLeafBackwardHookWithGradAccumulatedTest() {
   // 1. prepare
   Tracer tracer;
   std::shared_ptr<VarBase> x(new VarBase(true, "x"));
@@ -268,13 +268,13 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   }
 }
 
-TEST(TestHooks, TestGradVarLeafBackwardHookWithGradAccmulated) {
-  GradVarLeafBackwardHookWithGradAccmulatedTest();
+TEST(TestHooks, TestGradVarLeafBackwardHookWithGradAccumulated) {
+  GradVarLeafBackwardHookWithGradAccumulatedTest();
 }
 
-TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
+TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccumulated) {
   FLAGS_sort_sum_gradient = true;
-  GradVarLeafBackwardHookWithGradAccmulatedTest();
+  GradVarLeafBackwardHookWithGradAccumulatedTest();
   FLAGS_sort_sum_gradient = false;
 }
 

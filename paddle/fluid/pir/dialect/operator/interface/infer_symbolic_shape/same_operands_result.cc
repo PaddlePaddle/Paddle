@@ -16,8 +16,8 @@
 
 #define OP_SAME_OPERANDS_AND_RESULT(name)                                   \
   bool name##OpInferSymbolicShape(                                          \
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) { \
-    const symbol::ShapeOrDataDimExprs& operand_shape_or_data =              \
+      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) { \
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =              \
         shape_analysis->GetShapeOrDataForValue(op->operand_source(0));      \
     shape_analysis->SetShapeOrDataForValue(op->result(0),                   \
                                            operand_shape_or_data);          \
@@ -77,6 +77,8 @@ OP_SAME_OPERANDS_AND_RESULT(Floor_)
 OP_SAME_OPERANDS_AND_RESULT(Imag)
 OP_SAME_OPERANDS_AND_RESULT(Increment)
 OP_SAME_OPERANDS_AND_RESULT(Increment_)
+OP_SAME_OPERANDS_AND_RESULT(Isfinite)
+OP_SAME_OPERANDS_AND_RESULT(IsfiniteSr)
 OP_SAME_OPERANDS_AND_RESULT(Isinf)
 OP_SAME_OPERANDS_AND_RESULT(IsinfSr)
 OP_SAME_OPERANDS_AND_RESULT(Isnan)
@@ -92,19 +94,23 @@ OP_SAME_OPERANDS_AND_RESULT(LogicalNot_)
 OP_SAME_OPERANDS_AND_RESULT(Logit)
 OP_SAME_OPERANDS_AND_RESULT(Logit_)
 OP_SAME_OPERANDS_AND_RESULT(Pow)
+OP_SAME_OPERANDS_AND_RESULT(Poisson)
 OP_SAME_OPERANDS_AND_RESULT(Pow_)
 OP_SAME_OPERANDS_AND_RESULT(Print)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis_)
 OP_SAME_OPERANDS_AND_RESULT(Real)
+OP_SAME_OPERANDS_AND_RESULT(Reciprocal)
+OP_SAME_OPERANDS_AND_RESULT(Reciprocal_)
 OP_SAME_OPERANDS_AND_RESULT(Relu)
+OP_SAME_OPERANDS_AND_RESULT(Relu6)
 OP_SAME_OPERANDS_AND_RESULT(Relu_)
+OP_SAME_OPERANDS_AND_RESULT(Reverse)
 OP_SAME_OPERANDS_AND_RESULT(Roll)
 OP_SAME_OPERANDS_AND_RESULT(Round)
 OP_SAME_OPERANDS_AND_RESULT(Round_)
 OP_SAME_OPERANDS_AND_RESULT(Rsqrt)
 OP_SAME_OPERANDS_AND_RESULT(Rsqrt_)
-OP_SAME_OPERANDS_AND_RESULT(Scale)
 OP_SAME_OPERANDS_AND_RESULT(ScaleSr)
 OP_SAME_OPERANDS_AND_RESULT(ScaleSr_)
 OP_SAME_OPERANDS_AND_RESULT(Scale_)
@@ -124,13 +130,55 @@ OP_SAME_OPERANDS_AND_RESULT(Tanh)
 OP_SAME_OPERANDS_AND_RESULT(Tanh_)
 OP_SAME_OPERANDS_AND_RESULT(Tril)
 OP_SAME_OPERANDS_AND_RESULT(Tril_)
+OP_SAME_OPERANDS_AND_RESULT(Triu)
+OP_SAME_OPERANDS_AND_RESULT(Triu_)
 OP_SAME_OPERANDS_AND_RESULT(Trunc)
 OP_SAME_OPERANDS_AND_RESULT(Trunc_)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
+OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
+
+bool ScaleOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
+
+  if (operand_shape_or_data.data()) {
+    const std::vector<symbol::DimExpr> data = [&] {
+      const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
+        if (op->num_operands() == 2) {
+          return shape_analysis->GetShapeOrDataForValue(op->operand_source(1))
+              .data()
+              ->at(0);
+        }
+        return static_cast<int64_t>(
+            op->attribute("scale").dyn_cast<pir::FloatAttribute>().data());
+      }();
+      int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
+
+      std::vector<symbol::DimExpr> data;
+      for (auto &val : *(operand_shape_or_data.data())) {
+        data.push_back(val * scale + bias);
+      }
+      return data;
+    }();
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
+  } else {
+    shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                           operand_shape_or_data);
+  }
+
+  return true;
+}
 
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
+using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
-}
+}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT

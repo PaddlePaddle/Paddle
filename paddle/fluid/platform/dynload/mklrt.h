@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/mklrt.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace platform {

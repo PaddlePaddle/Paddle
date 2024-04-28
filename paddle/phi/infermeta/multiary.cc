@@ -1577,6 +1577,36 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& in_scale,
+    const MetaTensor& in_accum,
+    const MetaTensor& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    MetaTensor* out,
+    MetaTensor* out_scale,
+    MetaTensor* out_state,
+    MetaTensor* out_accum) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  if (out_state) {
+    out_state->set_dims({1});
+  }
+  if (out_accum) {
+    out_accum->set_dims({1});
+  }
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
+}
+
 void FtrlInferMeta(const MetaTensor& param,
                    const MetaTensor& squared_accumulator,
                    const MetaTensor& linear_accumulator,
@@ -4273,6 +4303,15 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+  if (bias.initialized()) {
+    auto bias_dims = bias.dims();
+    PADDLE_ENFORCE_EQ(
+        bias_dims.size(),
+        1UL,
+        errors::InvalidArgument(
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_dims.size()));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -4554,6 +4593,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4911,10 +4951,10 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+  out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
 }
 

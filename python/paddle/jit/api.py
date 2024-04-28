@@ -60,6 +60,7 @@ from .dy2static.program_translator import (
     SymbolicStaticFunction,
     unwrap_decorators,
 )
+from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_INFO_SUFFIX,
@@ -232,9 +233,7 @@ def to_static(
     build_strategy = build_strategy or BuildStrategy()
     if not isinstance(build_strategy, BuildStrategy):
         raise TypeError(
-            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
-                type(build_strategy).__name__
-            )
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     _check_and_set_backend(backend, build_strategy)
 
@@ -244,9 +243,7 @@ def to_static(
             if isinstance(function.forward, StaticFunction):
                 class_name = function.__class__.__name__
                 logging_utils.warn(
-                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".format(
-                        class_name
-                    )
+                    f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
                 )
             function.forward = decorated(function.forward)
             return function
@@ -454,7 +451,7 @@ def _parse_load_config(configs):
     return inner_config
 
 
-def _get_input_var_names(inputs, input_spec, input_names_after_prune):
+def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
         "When using jit.save, please set InputSpec's name in "
@@ -475,15 +472,20 @@ def _get_input_var_names(inputs, input_spec, input_names_after_prune):
             and x.name in input_names_after_prune
         ]
 
-    result_list = []
+    input_vars = [
+        var
+        for var in paddle.utils.flatten(inputs)
+        if isinstance(var, (Variable, paddle.pir.Value))
+    ]
     input_var_names = [
         var.name
         for var in paddle.utils.flatten(inputs)
-        if isinstance(var, Variable)
+        if isinstance(var, (Variable, paddle.pir.Value))
     ]
+
     if input_spec is None:
         # no prune
-        return input_var_names
+        return input_vars, input_var_names
     else:
         # filter out non-tensor type spec infos.
         input_spec = [
@@ -491,10 +493,12 @@ def _get_input_var_names(inputs, input_spec, input_names_after_prune):
             for spec in input_spec
             if isinstance(spec, paddle.static.InputSpec)
         ]
-
+    result_var_list = []
+    result_name_list = []
     if len(input_spec) == len(input_var_names):
         # no prune
-        result_list = input_var_names
+        result_var_list = input_vars
+        result_name_list = input_var_names
         # if input spec name not in input_var_names, only raise warning
         for spec in input_spec:
             if spec.name is None:
@@ -514,9 +518,10 @@ def _get_input_var_names(inputs, input_spec, input_names_after_prune):
                 # the input_spec can be `InputSpec` or `Tensor`
                 raise ValueError(name_no_exists_error % spec.name)
             else:
-                result_list.append(spec.name)
+                result_var_list.append(spec)
+                result_name_list.append(spec.name)
 
-    return result_list
+    return result_var_list, result_name_list
 
 
 def _get_output_vars(outputs, output_spec, with_hook=False):
@@ -531,23 +536,30 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
             "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
         )
     result_list = []
-    output_vars_dict = OrderedDict()
-    for var in paddle.utils.flatten(outputs):
-        if isinstance(var, Variable):
-            output_vars_dict[var.name] = var
-    if output_spec is None:
-        result_list = list(output_vars_dict.values())
-    elif output_spec is not None and len(output_spec) == len(output_vars_dict):
-        result_list = list(output_vars_dict.values())
-        for var in output_spec:
-            if var.name not in output_vars_dict:
-                warnings.warn(name_no_exists_error % var.name)
+    if use_pir_api():
+        for var in paddle.utils.flatten(outputs):
+            if isinstance(var, paddle.pir.Value):
+                result_list.append(var)
     else:
-        for var in output_spec:
-            if var.name not in output_vars_dict:
-                raise ValueError(name_no_exists_error % var.name)
-            else:
-                result_list.append(output_vars_dict[var.name])
+        output_vars_dict = OrderedDict()
+        for var in paddle.utils.flatten(outputs):
+            if isinstance(var, Variable):
+                output_vars_dict[var.name] = var
+        if output_spec is None:
+            result_list = list(output_vars_dict.values())
+        elif output_spec is not None and len(output_spec) == len(
+            output_vars_dict
+        ):
+            result_list = list(output_vars_dict.values())
+            for var in output_spec:
+                if var.name not in output_vars_dict:
+                    warnings.warn(name_no_exists_error % var.name)
+        else:
+            for var in output_spec:
+                if var.name not in output_vars_dict:
+                    raise ValueError(name_no_exists_error % var.name)
+                else:
+                    result_list.append(output_vars_dict[var.name])
     return result_list
 
 
@@ -564,7 +576,11 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
     # raise error, avoid confusing behavior
-    prefix_format_path = path + INFER_MODEL_SUFFIX
+    if use_pir_api():
+        model_suffix = PIR_INFER_MODEL_SUFFIX
+    else:
+        model_suffix = INFER_MODEL_SUFFIX
+    prefix_format_path = path + model_suffix
     prefix_format_exist = os.path.exists(prefix_format_path)
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
@@ -589,7 +605,7 @@ def _build_load_path_and_config(path, config):
                     "specified file prefix, the ``model_filename`` config does "
                     "not take effect."
                 )
-            config.model_filename = file_prefix + INFER_MODEL_SUFFIX
+            config.model_filename = file_prefix + model_suffix
             if config.params_filename is not None:
                 warnings.warn(
                     "When loading the result saved with the "
@@ -877,12 +893,6 @@ def save(layer, path, input_spec=None, **configs):
 
             >>> save_function()
     """
-
-    if use_pir_api():
-        raise NotImplementedError(
-            "Currently, `paddle.jit.save` is not supported in PIR mode."
-        )
-
     # 1. input build & check
     prog_translator = ProgramTranslator()
     is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
@@ -1092,37 +1102,46 @@ def save(layer, path, input_spec=None, **configs):
 
         # 3. share parameters from Layer to scope & record var info
         with dygraph.guard():
-            for param_or_buffer in concrete_program.parameters:
-                # share to scope
-                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
-                    scr_tensor = param_or_buffer.value().get_map_tensor()
-                    tgt_var = scope.var(param_or_buffer.name)
-                    tgt_var.set_vocab(scr_tensor)
-                else:
-                    param_or_buffer_tensor = scope.var(
-                        param_or_buffer.name
-                    ).get_tensor()
-                    # src_tensor = param_or_buffer.value().get_tensor()
+            if use_pir_api():
+                for tensor, value in zip(*concrete_program.parameters):
+                    param_or_buffer_tensor = scope.var(value.name).get_tensor()
                     src_tensor = (
-                        state_var_dict[param_or_buffer.name]
-                        .value()
-                        .get_tensor()
+                        state_var_dict[tensor.name].value().get_tensor()
                     )
                     param_or_buffer_tensor._share_data_with(src_tensor)
-                # record var info
-                if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = {}
-                    if param_or_buffer.name in state_names_dict:
-                        extra_info_dict['structured_name'] = state_names_dict[
+            else:
+                for param_or_buffer in concrete_program.parameters:
+                    # share to scope
+                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                        scr_tensor = param_or_buffer.value().get_map_tensor()
+                        tgt_var = scope.var(param_or_buffer.name)
+                        tgt_var.set_vocab(scr_tensor)
+                    else:
+                        param_or_buffer_tensor = scope.var(
                             param_or_buffer.name
-                        ]
-                    extra_info_dict[
-                        'stop_gradient'
-                    ] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, EagerParamBase):
-                        extra_info_dict['trainable'] = param_or_buffer.trainable
-                    extra_var_info[param_or_buffer.name] = extra_info_dict
-
+                        ).get_tensor()
+                        # src_tensor = param_or_buffer.value().get_tensor()
+                        src_tensor = (
+                            state_var_dict[param_or_buffer.name]
+                            .value()
+                            .get_tensor()
+                        )
+                        param_or_buffer_tensor._share_data_with(src_tensor)
+                    # record var info
+                    if param_or_buffer.name not in extra_var_info:
+                        extra_info_dict = {}
+                        if param_or_buffer.name in state_names_dict:
+                            extra_info_dict[
+                                'structured_name'
+                            ] = state_names_dict[param_or_buffer.name]
+                        extra_info_dict[
+                            'stop_gradient'
+                        ] = param_or_buffer.stop_gradient
+                        if isinstance(param_or_buffer, EagerParamBase):
+                            extra_info_dict[
+                                'trainable'
+                            ] = param_or_buffer.trainable
+                        extra_var_info[param_or_buffer.name] = extra_info_dict
         # 4. build input & output of save_inference_model
         # NOTE(chenweihang): [ Get input variables name ]
         # There are two cases, whether to prune the inputs or not
@@ -1132,7 +1151,8 @@ def save(layer, path, input_spec=None, **configs):
         # - prune inputs:
         #   - the input_spec length < len((concrete_program.inputs) - 1
         #   - the input_spec's name should be in concrete_program.inputs
-        input_var_names = _get_input_var_names(
+
+        input_vars, input_var_names = _get_input_var_and_names(
             concrete_program.inputs,
             inner_input_spec,
             configs.input_names_after_prune,
@@ -1142,8 +1162,7 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
-        # print(concrete_program.main_program)
-        # print(concrete_program.outputs, configs.output_spec)
+
         output_vars = _get_output_vars(
             concrete_program.outputs, configs.output_spec, with_hook
         )
@@ -1164,17 +1183,27 @@ def save(layer, path, input_spec=None, **configs):
             )
             file_prefix = file_prefix + '.' + attr_func
         file_prefix = os.path.join(model_path, file_prefix)
+
         with scope_guard(scope):
-            input_vars = [
-                concrete_program.main_program.global_block().var(name)
-                for name in input_var_names
-            ]
+            if not use_pir_api():
+                input_vars = [
+                    concrete_program.main_program.global_block().var(name)
+                    for name in input_var_names
+                ]
+                clone_program = concrete_program.main_program.clone()
+                clone_input_vars = input_vars
+                clone_output_vars = output_vars
+            else:
+                value_map = paddle.pir.IrMapping()
+                clone_program = concrete_program.main_program.clone(value_map)
+                clone_input_vars = [value_map.look_up(v) for v in input_vars]
+                clone_output_vars = [value_map.look_up(v) for v in output_vars]
             save_inference_model(
                 path_prefix=file_prefix,
-                feed_vars=input_vars,
-                fetch_vars=output_vars,
+                feed_vars=clone_input_vars,
+                fetch_vars=clone_output_vars,
                 executor=Executor(_current_expected_place()),
-                program=concrete_program.main_program.clone(),
+                program=clone_program,
                 clip_extra=configs.clip_extra,
                 skip_prune_program=configs.skip_prune_program,
             )
@@ -1233,7 +1262,14 @@ def save(layer, path, input_spec=None, **configs):
     contain_parameter = False
     if concrete_program is not None:
         for var in concrete_program.main_program.list_vars():
-            contain_parameter |= isinstance(var, Parameter)
+            if use_pir_api():
+                is_persistable = (
+                    var.get_defining_op().has_attr("persistable")
+                    and var.get_defining_op().attrs()["persistable"] is True
+                )
+                contain_parameter |= is_persistable
+            else:
+                contain_parameter |= isinstance(var, Parameter)
 
     if (isinstance(layer, Layer) or contain_parameter) and extra_var_info:
         with scope_guard(scope):
@@ -1477,15 +1513,14 @@ def load(path, **configs):
                 ...         print("Epoch {} batch {}: loss = {}".format(
                 ...             epoch_id, batch_id, np.mean(loss.numpy())))
     """
-    if use_pir_api():
-        raise NotImplementedError(
-            "Currently, `paddle.jit.load` is not supported in PIR mode."
-        )
     # 1. construct correct config
     config = _parse_load_config(configs)
     model_path, config = _build_load_path_and_config(path, config)
 
-    return TranslatedLayer._construct(model_path, config)
+    if use_pir_api():
+        return PirTranslatedLayer._construct(model_path, config)
+    else:
+        return TranslatedLayer._construct(model_path, config)
 
 
 def set_dynamic_shape(variable, shape_list):

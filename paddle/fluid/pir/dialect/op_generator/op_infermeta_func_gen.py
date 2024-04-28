@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from gen_utils import to_pascal_case
 from op_build_gen import (
     _INFERMETA_NEED_META_CONFIG,
     _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE,
 )
-from utils import to_pascal_case
 
 OP_INFERMETA_DECL_STRING = (
     "  static void InferMeta(phi::InferMetaContext *infer_meta );\n"
@@ -94,11 +94,6 @@ def get_infermeta_inputs_str(
         # add mutable attributes as inputs
         if len(op_mutable_attribute_name_list) > 0:
             for i in range(len(op_mutable_attribute_name_list)):
-                if (
-                    op_mutable_attribute_name_list[i]
-                    not in inuse_infer_meta_args
-                ):
-                    continue
                 infermeta_inputs_str += CREATE_INPUT_VALUE_TEMPLATE.format(
                     input_name=op_mutable_attribute_name_list[i],
                     index=str(i + len(op_input_name_list)),
@@ -116,16 +111,21 @@ def get_infermeta_inputs_str(
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
             if op_input_optional_list[idx] == 'false':
-                infermeta_inputs_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                    name=op_input_name_list[idx]
-                )
+                infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
                 type = op_input_type_list[idx]
-                allocated_type = type.replace(
-                    'DenseTensorType', 'AllocatedDenseTensorType'
-                ).replace("SelectedRowsType", "AllocatedSelectedRowsType")
+                allocated_type = (
+                    type.replace('DenseTensorType', 'AllocatedDenseTensorType')
+                    .replace("SelectedRowsType", "AllocatedSelectedRowsType")
+                    .replace(
+                        "SparseCooTensorType", "AllocatedSparseCooTensorType"
+                    )
+                    .replace(
+                        "SparseCsrTensorType", "AllocatedSparseCsrTensorType"
+                    )
+                )
                 infermeta_inputs_str += GET_INPUT_TYPE_TEMPLATE.format(
                     type=type,
                     name=op_input_name_list[idx],
@@ -163,6 +163,31 @@ def GenBuildOutputsPart2(
   paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
 """
 
+    CREATE_SPARSECOO_INPUT_METATENSOR_TEMPLATE = """
+  VLOG(4) << "Builder construction  sparse_{name}";
+  paddle::dialect::IrSparseCooTensor ir_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                      {name}.dims(),
+                                                      {name}.non_zero_dims(),
+                                                      {name}.data_layout(),
+                                                      {name}.non_zero_elements(),
+                                                      {name}.non_zero_indices(),
+                                                      {name}.coalesced());
+  VLOG(4) << "Builder construction  meta_{name}";
+  paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
+"""
+
+    CREATE_SPARSECSR_INPUT_METATENSOR_TEMPLATE = """
+  VLOG(4) << "Builder construction  dense_{name}";
+  paddle::dialect::IrSparseCsrTensor ir_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                      {name}.dims(),
+                                                      {name}.data_layout(),
+                                                      {name}.non_zero_crows(),
+                                                      {name}.non_zero_cols(),
+                                                      {name}.non_zero_elements());
+  VLOG(4) << "Builder construction  meta_{name}";
+  paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
+"""
+
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
   paddle::dialect::IrMetaTensor meta_{name};
   paddle::dialect::IrTensor ir_tensor_{name};
@@ -185,7 +210,53 @@ def GenBuildOutputsPart2(
   }}
 
 """
+    CREATE_SPARSECOO_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
+  paddle::dialect::IrMetaTensor meta_{name};
+  paddle::dialect::IrSparseCooTensor ir_tensor_{name};
 
+  if ({name}_.impl() != nullptr) {{
+    VLOG(4) << "Builder construction  sparse_{name}";
+    {type} {name};
+    if ({name}_.type().isa<{type}>()) {{
+      {name} = {name}_.type().dyn_cast<{type}>();
+    }} else {{
+      PADDLE_THROW(phi::errors::Unimplemented("Only support {type}"));
+    }}
+    ir_tensor_{name} = paddle::dialect::IrSparseCooTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                        {name}.dims(),
+                                                        {name}.non_zero_dims(),
+                                                        {name}.data_layout(),
+                                                        {name}.non_zero_elements(),
+                                                        {name}.non_zero_indices(),
+                                                        {name}.coalesced());
+    VLOG(4) << "Builder construction  meta_{name}";
+    meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});
+  }}
+
+"""
+    CREATE_SPARSECSR_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
+  paddle::dialect::IrMetaTensor meta_{name};
+  paddle::dialect::IrSparseCsrTensor ir_tensor_{name};
+
+  if ({name}_.impl() != nullptr) {{
+    VLOG(4) << "Builder construction  sparse_{name}";
+    {type} {name};
+    if ({name}_.type().isa<{type}>()) {{
+      {name} = {name}_.type().dyn_cast<{type}>();
+    }} else {{
+      PADDLE_THROW(phi::errors::Unimplemented("Only support {type}"));
+    }}
+    ir_tensor_{name} = paddle::dialect::IrSparseCsrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                        {name}.dims(),
+                                                        {name}.data_layout(),
+                                                        {name}.non_zero_crows(),
+                                                        {name}.non_zero_cols(),
+                                                        {name}.non_zero_elements());
+    VLOG(4) << "Builder construction  meta_{name}";
+    meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});
+  }}
+
+"""
     CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
     if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
@@ -259,7 +330,21 @@ def GenBuildOutputsPart2(
       {name}_size = 1;
     }}
     {name} = std::vector<int64_t>({name}_size, -1);
-  }} else {{
+  }} else if ({name}_.type().isa<paddle::dialect::SparseCooTensorType>()) {{
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::SparseCooTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
+    {name} = std::vector<int64_t>({name}_size, -1);
+  }}else if ({name}_.type().isa<paddle::dialect::SparseCsrTensorType>()) {{
+    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::SparseCsrTensorType>().dims();
+    size_t {name}_size = common::product({name}_dim);
+    if (common::contain_unknown_dim({name}_dim)) {{
+      {name}_size = 1;
+    }}
+    {name} = std::vector<int64_t>({name}_size, -1);
+  }}else {{
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
   }}\n"""
 
@@ -283,6 +368,14 @@ def GenBuildOutputsPart2(
     CREATE_OUTPUT_METASELETEROWS_TEMPLATE = """  paddle::dialect::IrSelectedRows dense_{name};
   paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
 """
+    CREATE_OUTPUT_METASPARSECOOTENSOR_TEMPLATE = """  paddle::dialect::IrSparseCooTensor dense_{name};
+  paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
+"""
+
+    CREATE_OUTPUT_METASPARSECSRTENSOR_TEMPLATE = """  paddle::dialect::IrSparseCsrTensor dense_{name};
+  paddle::dialect::IrMetaTensor meta_{name}(&dense_{name});
+"""
+
     CREATE_OUTPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_dense_{name}(({output_size}), paddle::dialect::IrTensor());
   std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
@@ -297,8 +390,6 @@ def GenBuildOutputsPart2(
     # Prepare mutable attributes
     if mutable_attr_is_input:
         for idx in range(len(op_mutable_attribute_name_list)):
-            if op_mutable_attribute_name_list[idx] not in inuse_infer_meta_args:
-                continue
             attr_dtype = op_mutable_attribute_type_list[idx]
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
@@ -362,32 +453,92 @@ def GenBuildOutputsPart2(
                         op_infer_meta_map['param'][idx]
                     )
                     if op_input_optional_list[input_index] == 'true':
-                        type = op_input_type_list[idx]
-                        allocated_type = type.replace(
-                            'DenseTensorType', 'AllocatedDenseTensorType'
-                        ).replace(
-                            "SelectedRowsType", "AllocatedSelectedRowsType"
+                        type = op_input_type_list[input_index]
+                        allocated_type = (
+                            type.replace(
+                                'DenseTensorType', 'AllocatedDenseTensorType'
+                            )
+                            .replace(
+                                "SelectedRowsType", "AllocatedSelectedRowsType"
+                            )
+                            .replace(
+                                "SparseCooTensorType",
+                                "AllocatedSparseCooTensorType",
+                            )
+                            .replace(
+                                "SparseCsrTensorType",
+                                "AllocatedSparseCsrTensorType",
+                            )
                         )
-                        build_output_str += (
-                            CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
+                        if op_info.is_sparse_op:
+                            if (
+                                op_input_type_list[input_index]
+                                == 'paddle::dialect::SparseCooTensorType'
+                            ):
+                                build_output_str += CREATE_SPARSECOO_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx],
+                                    type=op_input_type_list[input_index],
+                                    allocated_type=allocated_type,
+                                )
+                            elif (
+                                op_input_type_list[input_index]
+                                == 'paddle::dialect::SparseCsrTensorType'
+                            ):
+                                build_output_str += CREATE_SPARSECSR_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx],
+                                    type=op_input_type_list[input_index],
+                                    allocated_type=allocated_type,
+                                )
+                            else:
+                                build_output_str += CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx],
+                                    type=op_input_type_list[input_index],
+                                    allocated_type=allocated_type,
+                                )
+                        else:
+                            build_output_str += CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
                                 name=op_infer_meta_map['param'][idx],
-                                type=op_input_type_list[idx],
+                                type=op_input_type_list[input_index],
                                 allocated_type=allocated_type,
                             )
-                        )
                     else:
-                        build_output_str += (
-                            CREATE_INPUT_METATENSOR_TEMPLATE.format(
-                                name=op_infer_meta_map['param'][idx]
+                        if op_info.is_sparse_op:
+                            if (
+                                op_input_type_list[input_index]
+                                == 'paddle::dialect::SparseCooTensorType'
+                            ):
+                                build_output_str += CREATE_SPARSECOO_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx],
+                                    type=op_input_type_list[input_index],
+                                )
+                            elif (
+                                op_input_type_list[input_index]
+                                == 'paddle::dialect::SparseCsrTensorType'
+                            ):
+                                build_output_str += CREATE_SPARSECSR_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx],
+                                    type=op_input_type_list[input_index],
+                                )
+                            else:
+                                build_output_str += (
+                                    CREATE_INPUT_METATENSOR_TEMPLATE.format(
+                                        name=op_infer_meta_map['param'][idx]
+                                    )
+                                )
+                        else:
+                            build_output_str += (
+                                CREATE_INPUT_METATENSOR_TEMPLATE.format(
+                                    name=op_infer_meta_map['param'][idx]
+                                )
                             )
-                        )
 
             infer_meta_args.append("meta_" + op_infer_meta_map['param'][idx])
         # is attribute
         else:
-            infer_meta_args.append(op_infer_meta_map['param'][idx])
+            infer_meta_args.append(str(op_infer_meta_map['param'][idx]))
 
     # Prepare outputs_meta_tensor for infer meta
+
     for idx in range(len(op_output_name_list)):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_output_type_list[idx]:
@@ -401,6 +552,26 @@ def GenBuildOutputsPart2(
             if op_output_type_list[idx] == "paddle::dialect::DenseTensorType":
                 build_output_str += CREATE_OUTPUT_METATENSOR_TEMPLATE.format(
                     name=op_output_name_list[idx]
+                )
+                infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
+            elif (
+                op_output_type_list[idx]
+                == "paddle::dialect::SparseCooTensorType"
+            ):
+                build_output_str += (
+                    CREATE_OUTPUT_METASPARSECOOTENSOR_TEMPLATE.format(
+                        name=op_output_name_list[idx]
+                    )
+                )
+                infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
+            elif (
+                op_output_type_list[idx]
+                == "paddle::dialect::SparseCsrTensorType"
+            ):
+                build_output_str += (
+                    CREATE_OUTPUT_METASPARSECSRTENSOR_TEMPLATE.format(
+                        name=op_output_name_list[idx]
+                    )
                 )
                 infer_meta_args.append(f"&meta_{op_output_name_list[idx]}")
             else:
@@ -418,6 +589,10 @@ def GenBuildOutputsPart2(
     CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE = """
   phi::{func}({args}, phi::MetaConfig(false, false));
 """
+    infer_meta_args = [
+        arg.lower() if arg in ['False', 'True'] else arg
+        for arg in infer_meta_args
+    ]
     if op_infer_meta_map['func'] in _INFERMETA_NEED_META_CONFIG:
         build_output_str += (
             CREATE_INFER_META_FUNC_WITH_META_CONFIG_TEMPLATE.format(
@@ -616,14 +791,19 @@ def GenDistBranch(args, op_info):
         return ""
     TEMPLATE = """
   // Auto Parallel condition
-  if(HasDistInput(input_values)) {{
-    if(!AllInputAreDist(input_values)) {{
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Mixed inputs with DenseTensor and DistDenseTensor are not supported yet."));
-    }}
-    ProcessMeshAttribute op_mesh = input_values[0].type().dyn_cast<DistDenseTensorType>().process_mesh_attr();
-    std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str = TEMPLATE.format()
+  ProcessMeshAttribute op_mesh;
+  if(HasDistInput(input_values, &op_mesh)) {{
+    {}
+    CvtAllInputsToDist(input_values, op_mesh);
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;"""
+
+    extra_call = ""
+    for name in op_info.spmd_params:
+        if name == "learning_rate":
+            extra_call = "CopyLeafOpToMesh(learning_rate_, op_mesh);"
+            break
+    dist_branch_str = TEMPLATE.format(extra_call)
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
@@ -665,30 +845,48 @@ def GenDistBranch(args, op_info):
                         infer_spmd_args_list[-1] = name + ".GetData()"
     TEMPLATE = """
     auto spmd_info = InferSpmd({args});
+    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
+        "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
-        operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
+        dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
     }}
 """
-    dist_branch_str += TEMPLATE.format(args=', '.join(infer_spmd_args_list))
-    for idx, output_name in enumerate(op_info.output_name_list):
-        # is a vector<Tensor>
-        if 'pir::VectorType' in op_info.output_type_list[idx]:
-            # Todo: support vector<Tensor> case
-            dist_branch_str += ""
-        # is a Tensor
-        else:
-            TEMPLATE = """
-    auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
-    result_dist_attrs.push_back(dist_attr_{name});
-    argument_outputs.push_back(DistDenseTensorType::get(pir::IrContext::Instance(), {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
+    dist_branch_str += TEMPLATE.format(
+        args=', '.join(infer_spmd_args_list),
+        input_size=len(op_info.input_name_list),
+        op_name=op_info.class_name,
+    )
+
+    if len(op_info.mutable_attribute_name_list) > 0:
+        TEMPLATE = """
+    for(int i = {input_size}; i < {all_input_size}; ++i) {{
+        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+            dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
+        }}
+        else {{
+            dist_operand_attrs.push_back(nullptr);
+        }}
+    }}
 """
-            dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
+        dist_branch_str += TEMPLATE.format(
+            input_size=len(op_info.input_name_list),
+            all_input_size=len(op_info.input_name_list)
+            + len(op_info.mutable_attribute_name_list),
+        )
+
+    for idx, output_name in enumerate(op_info.output_name_list):
+        TEMPLATE = """
+    auto dist_attr_{name} = CvtToPirAttr(spmd_info.second[{idx}]);
+    dist_result_attrs.push_back(dist_attr_{name});
+    argument_outputs.push_back(CvtToPirDistType({name}_type, dist_attr_{name}));
+"""
+        dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
     attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
-        pir::IrContext::Instance(),
+        ctx,
         op_mesh,
-        operand_dist_attrs,
-        result_dist_attrs
+        dist_operand_attrs,
+        dist_result_attrs
     );
     return argument_outputs;
   }}
@@ -741,7 +939,6 @@ def gen_infermeta_func_str(args, op_info):
         inuse_infer_meta_args + spmd_params,
         attr_args_is_map,
     )
-
     infermeta_outputs_str = GenBuildOutputsPart2(
         args,
         op_info,
@@ -759,7 +956,6 @@ def gen_infermeta_func_str(args, op_info):
         op_info.inplace_map,
         mutable_attr_is_input,
     )
-
     infermeta_func = OP_INFERMETA_IMPL_TEMPLATE_2.format(
         op_name=op_info.class_name,
         infermeta_inputs=infermeta_inputs_str,

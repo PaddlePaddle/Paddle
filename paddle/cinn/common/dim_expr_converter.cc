@@ -68,7 +68,17 @@ struct DimExprToIrExprVisitor {
     }
     ir::Expr product = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
-      product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
+      // Convert Reciprocal<DimExpr>(S0) to (1 / S0) will result in precision
+      // error. For example, (S0 * S1 / S2) != (S0 * S1 * (1 / S2)). So we
+      // should use Div instead of Reciprocal here.
+      if (operands->at(i).isa<Reciprocal<DimExpr>>()) {
+        product = ir::Div::Make(
+            product,
+            ConvertToIrExpr(
+                operands->at(i).dyn_cast<Reciprocal<DimExpr>>()->data));
+      } else {
+        product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
+      }
     }
     return product;
   }

@@ -21,7 +21,6 @@
 #include "paddle/pir/include/pass/pass_instrumentation.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/pir/src/pass/pass_adaptor.h"
 
 #include "paddle/common/enforce.h"
@@ -31,36 +30,64 @@ namespace pir {
 //===----------------------------------------------------------------------===//
 // Pass
 //===----------------------------------------------------------------------===//
-Pass::~Pass() = default;
+Pass::~Pass() {
+  for (const auto& attr : attrs_) {
+    if (attr_dels_.find(attr.first) != attr_dels_.end()) {
+      attr_dels_[attr.first]();
+    }
+  }
+  attrs_.clear();
+  attr_dels_.clear();
+}
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
-detail::PassExecutionState& Pass::pass_state() {
-  IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
-  return *pass_state_;
+std::optional<detail::PassExecutionState>& Pass::pass_state() {
+  return pass_state_;
 }
 
+void Pass::SignalPassFailure() {
+  PADDLE_ENFORCE_EQ(pass_state_.has_value(),
+                    true,
+                    phi::errors::InvalidArgument("pass state has no value"));
+  pass_state_->pass_failed = true;
+}
+
+AnalysisManager Pass::analysis_manager() {
+  PADDLE_ENFORCE_EQ(pass_state_.has_value(),
+                    true,
+                    phi::errors::InvalidArgument("pass state has no value"));
+  return pass_state_->am;
+}
 //===----------------------------------------------------------------------===//
 // PatternRewritePass
 //===----------------------------------------------------------------------===//
 bool PatternRewritePass::Initialize(IrContext* context) {
   RewritePatternSet ps = InitializePatterns(context);
-  IR_ENFORCE(ps.Empty() == false,
-             "Pass creation failed."
-             "When using PatternRewritePass to create a Pass, the number of "
-             "customized Patterns is required to be greater than zero."
-             "Suggested fix: Check whether Pattern is added to the "
-             "InitializePatterns() function of class [%s]",
-             name());
+  PADDLE_ENFORCE_EQ(
+      ps.Empty(),
+      false,
+      phi::errors::InvalidArgument(
+          "Pass creation failed."
+          "When using PatternRewritePass to create a Pass, the number of "
+          "customized Patterns is required to be greater than zero."
+          "Suggested fix: Check whether Pattern is added to the "
+          "InitializePatterns() function of class [%s]",
+          name()));
   patterns_ = FrozenRewritePatternSet(std::move(ps));
   return true;
 }
 
+GreedyRewriteConfig PatternRewritePass::InitializeConfig() {
+  GreedyRewriteConfig config;
+  config.use_top_down_traversal = true;
+  config.max_iterations = 10;
+  return config;
+}
+
 void PatternRewritePass::Run(Operation* op) {
-  GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+  auto [_, num_rewrites] =
+      ApplyPatternsGreedily(op, patterns_, InitializeConfig());
   AddStatistics(num_rewrites);
 }
 
@@ -138,7 +165,7 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     if (instrumentor) instrumentor->RunAfterPass(pass, op);
   }
 
-  bool pass_failed = pass->pass_state().pass_failed;
+  bool pass_failed = pass->pass_state()->pass_failed;
 
   if (!pass_failed && verify) {
     bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);

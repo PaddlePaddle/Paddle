@@ -42,6 +42,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
@@ -180,6 +181,10 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
+
+void DequantizeLogInferMeta(const MetaTensor& x,
+                            const MetaTensor& dict,
+                            MetaTensor* out);
 
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
@@ -380,6 +385,11 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out);
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out);
@@ -464,6 +474,25 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PullGpupsSparseInferMeta(const MetaTensor& w,
+                              const std::vector<const MetaTensor*>& ids,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out);
+
+void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
+                           const std::vector<const MetaTensor*>& w,
+                           int embedding_dim,
+                           int table_id,
+                           const std::string& accessor_class,
+                           const std::string& ctrlabel_name,
+                           int padding_id,
+                           bool scale_sparse_grad,
+                           const std::vector<std::string>& input_names,
+                           bool is_distributed,
+                           std::vector<MetaTensor*> out);
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
@@ -510,6 +539,10 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            DataType out_dtype,
                            MetaTensor* y);
 
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out);
+
 void ShuffleBatchInferMeta(const MetaTensor& x,
                            const MetaTensor& seed,
                            int startup_seed,
@@ -518,6 +551,10 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
                            MetaTensor* seed_out
 
 );
+
+void ReduceAsInferMeta(const MetaTensor& x,
+                       const MetaTensor& target,
+                       MetaTensor* out);
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,

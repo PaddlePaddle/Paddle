@@ -3,6 +3,8 @@
 - multiply
 - divide
 - elementwise_pow
+- rsqrt
+- sqrt
 - sin
 - sinh
 - asin
@@ -52,6 +54,7 @@
 - scale
 - matmul
 - assign
+- assign_out_
 - max
 - min
 - maximum
@@ -119,3 +122,4 @@
 - randint
 - uniform
 - unique_consecutive
+- sigmoid

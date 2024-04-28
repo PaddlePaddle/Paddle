@@ -15,9 +15,9 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
 

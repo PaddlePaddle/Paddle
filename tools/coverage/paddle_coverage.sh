@@ -33,7 +33,7 @@ make install
 
 cd /paddle/build
 
-
+python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
 lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 

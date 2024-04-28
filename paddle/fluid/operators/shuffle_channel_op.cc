@@ -9,10 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/shuffle_channel_op.h"
-
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +28,7 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        platform::errors::InvalidArgument("The layout of input is NCHW."));
+        phi::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim("Out", input_dims);
   }
@@ -55,10 +54,10 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group,
-                            1,
-                            platform::errors::InvalidArgument(
-                                "group should be larger than 0."));
+          PADDLE_ENFORCE_GE(
+              group,
+              1,
+              phi::errors::InvalidArgument("group should be larger than 0."));
         });
     AddComment(R"DOC(
     Shuffle Channel operator
@@ -83,7 +82,7 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        platform::errors::InvalidArgument("The layout of input is NCHW."));
+        phi::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
   }
@@ -122,16 +121,3 @@ REGISTER_OPERATOR(shuffle_channel,
                   ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
-
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelOpKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelGradOpKernel,
-                          float,
-                          double) {}

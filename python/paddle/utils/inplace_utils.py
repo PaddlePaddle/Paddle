@@ -29,9 +29,7 @@ def _inplace_apis_in_dygraph_only_(func):
         if not in_dynamic_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
-                "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                    func.__name__, origin_api_name
-                )
+                f"In static graph mode, {func.__name__}() is the same as {origin_api_name}() and does not perform inplace operation."
             )
             from ..base.dygraph.base import in_to_static_mode
 

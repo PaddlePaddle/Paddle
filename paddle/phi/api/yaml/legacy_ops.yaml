@@ -77,7 +77,6 @@
     backend : place
   data_transform :
     support_trans_dtype : start, end, step
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign
   args : (Tensor x)
@@ -324,6 +323,15 @@
     data_type : x
   backward : depthwise_conv2d_transpose_grad
 
+- op : dequantize_log
+  args: (Tensor x, Tensor dict)
+  output: Tensor(out)
+  infer_meta:
+    func: DequantizeLogInferMeta
+  kernel:
+    func: dequantize_log
+    data_type: x
+
 - op : disable_check_model_nan_inf
   args: (Tensor x, int flag = 0)
   output: Tensor(out)
@@ -551,7 +559,7 @@
     skip_transform : x
 
 - op : full_with_tensor
-  args : (Tensor shape, Tensor value, DataType dtype=DataType::FLOAT32)
+  args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
   output: Tensor(out)
   infer_meta :
     func : FullWithTensorInferMeta
@@ -1006,6 +1014,7 @@
     func : ReshapeWithXShapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
     local_shape: shape
+    global_shape: out
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1070,6 +1079,15 @@
     func: set_value_with_tensor
   backward: set_value_with_tensor_grad
 
+- op : shuffle_channel
+  args : (Tensor x, int group=1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShuffleChannelInferMeta
+  kernel :
+    func : shuffle_channel
+  backward : shuffle_channel_grad
+
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor
@@ -1099,7 +1117,6 @@
   kernel :
     func : split
   backward : split_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)

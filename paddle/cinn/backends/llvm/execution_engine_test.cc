@@ -108,7 +108,7 @@ auto CreateTestCinnModule() {
   C->Bind(C_buf);
 
   cinn::common::Target target;
-  target.arch = cinn::common::Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   target.bits = cinn::common::Target::Bit::k32;
   target.os = cinn::common::Target::OS::Linux;
   ir::Module::Builder builder("module1", target);

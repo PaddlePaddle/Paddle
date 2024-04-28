@@ -13,13 +13,10 @@
 # limitations under the License.
 
 import re
-import string
-from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
 
 from ..base.data_feeder import check_variable_and_dtype
-from ..base.proto import framework_pb2
 from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
@@ -47,92 +44,6 @@ def _convert_(name):
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-def _type_to_str_(tp):
-    return framework_pb2.AttrType.Name(tp)
-
-
-_two_dollar_pattern_ = re.compile(r"\$\$([^\$]+)\$\$")
-_single_dollar_pattern_ = re.compile(r"\$([^\$]+)\$")
-_two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
-
-
-def escape_math(text):
-    # return _two_bang_pattern_.sub(
-    #    r'$$\1$$',
-    #    _single_dollar_pattern_.sub(r':math:\n`\1`',
-    #                                _two_dollar_pattern_.sub(r"!!\1!!", text)))
-    return _two_dollar_pattern_.sub(r':math:`\1`', text)
-
-
-def _generate_doc_string_(
-    op_proto, additional_args_lines=None, skip_attrs_set=None
-):
-    """
-    Generate docstring by OpProto
-
-    Args:
-        op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
-
-    Returns:
-        str: the document string
-    """
-
-    if not isinstance(op_proto, framework_pb2.OpProto):
-        raise TypeError("OpProto should be `framework_pb2.OpProto`")
-
-    buf = StringIO()
-    buf.write(escape_math(op_proto.comment))
-    buf.write('\nArgs:\n')
-    for each_input in op_proto.inputs:
-        line_begin = f'    {_convert_(each_input.name)}'
-        buf.write(line_begin)
-        buf.write(" (Tensor): ")
-        buf.write(escape_math(each_input.comment))
-        if each_input.duplicable:
-            buf.write("  Duplicatable.")
-        if each_input.dispensable:
-            buf.write("  Optional.")
-        buf.write('\n')
-
-    skip_attrs = OpProtoHolder.generated_op_attr_names()
-    skip_attrs.add("is_test")
-    skip_attrs.add("use_cudnn")
-
-    if skip_attrs_set:
-        for t in skip_attrs_set:
-            skip_attrs.add(t)
-
-    for each_attr in op_proto.attrs:
-        if each_attr.name in skip_attrs:
-            continue
-        buf.write('    ')
-        buf.write(each_attr.name)
-        buf.write(' (')
-        buf.write(_type_to_str_(each_attr.type))
-        buf.write('): ')
-        buf.write(escape_math(each_attr.comment))
-        buf.write('\n')
-
-    if additional_args_lines is not None:
-        for line in additional_args_lines:
-            line = line.strip()
-            buf.write('    ')
-            buf.write(line)
-            buf.write('\n')
-
-    if len(op_proto.outputs) != 0:
-        buf.write('\nReturns:\n')
-        buf.write('    ')
-        for each_opt in op_proto.outputs:
-            if not each_opt.intermediate:
-                break
-        buf.write(_convert_(each_opt.name))
-        buf.write(' (Tensor): ')
-        buf.write(escape_math(each_opt.comment))
-
-    return buf.getvalue()
 
 
 def generate_layer_fn(op_type):
@@ -199,9 +110,7 @@ def generate_layer_fn(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {} must input same dtype. {} vs {}".format(
-                            op_type, dtype, each.dtype
-                        )
+                        f"operator {op_type} must input same dtype. {dtype} vs {each.dtype}"
                     )
 
         if dtype is None:
@@ -248,7 +157,6 @@ def generate_layer_fn(op_type):
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
     return func
 
 
@@ -262,7 +170,6 @@ def generate_activation_fn(op_type):
     creates the operator functionality.
 
     """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
         if in_dynamic_or_pir_mode():
@@ -305,29 +212,6 @@ def generate_activation_fn(op_type):
             )
             return output
 
-    func.__name__ = op_type
-    if op_type == 'abs':
-        func.__doc__ = r"""
-
-Abs Operator.
-Perform elementwise abs for input `X`.
-
-.. math::
-
-    out = |x|
-
-Args:
-    x (Tensor): The input tensor of abs op.
-    out (Tensor): The output tensor of abs op.
-    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-"""
-    else:
-        func.__doc__ = _generate_doc_string_(
-            op_proto,
-            additional_args_lines=[
-                "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
-            ],
-        )
     return func
 
 
@@ -352,76 +236,8 @@ def generate_inplace_fn(inplace_op_type):
                 return op(x)
 
     func.__name__ = inplace_op_type
-    func.__doc__ = """
-Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_paddle_{}`.
-""".format(
-        origin_op_type, origin_op_type
-    )
+    func.__doc__ = f"""
+Inplace version of ``{origin_op_type}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_paddle_{origin_op_type}`.
+"""
     return func
-
-
-def templatedoc(op_type=None):
-    """
-    Decorator of layer function. It will use the docstring from the layer
-    function as the template. The template arguments are:
-
-    * ${comment}: The operator comment written in CPP.
-    * ${{name}_comment}: The comment of ${name} written with AddAttr, AddOutput,
-        and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
-    * ${{name}_type}: The type of ${name}.
-
-    Returns:
-        Decorated function.
-    """
-
-    def trim_ending_dot(msg):
-        return msg.rstrip('.')
-
-    def __impl__(func):
-        if op_type is None:
-            op_type_name = func.__name__
-        else:
-            op_type_name = op_type
-        op_proto = OpProtoHolder.instance().get_op_proto(op_type_name)
-        tmpl = string.Template(func.__doc__)
-
-        comment_lines = op_proto.comment.split("\n")
-        comment = ""
-        for line in comment_lines:
-            line = line.strip()
-            if len(line) != 0:
-                comment += escape_math(line)
-                comment += " "
-            elif len(comment) != 0:
-                comment += "\n    \n    "
-
-        args = {"comment": trim_ending_dot(comment)}
-        for each_input in op_proto.inputs:
-            input_name = _convert_(each_input.name)
-            args[f"{input_name}_comment"] = trim_ending_dot(each_input.comment)
-            args[f"{input_name}_type"] = "Variable"
-        for each_attr in op_proto.attrs:
-            input_name = _convert_(each_attr.name)
-            args[f"{input_name}_comment"] = trim_ending_dot(each_attr.comment)
-            args[f"{input_name}_type"] = _type_to_str_(each_attr.type)
-
-        for each_opt in op_proto.outputs:
-            output_name = _convert_(each_opt.name)
-            args[f"{output_name}_comment"] = trim_ending_dot(each_opt.comment)
-            args[f"{output_name}_type"] = "Variable"
-        func.__doc__ = tmpl.substitute(args)
-        return func
-
-    return __impl__
-
-
-def add_sample_code(func, sample_code):
-    """
-    Append sample code for dynamically generated functions.
-
-    Args:
-       func: The function of the function to be append sample code to.
-       sample_code: sample code session in rst format.
-    """
-    func.__doc__ = func.__doc__ + sample_code

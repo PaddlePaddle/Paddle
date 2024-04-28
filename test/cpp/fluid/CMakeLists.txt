@@ -7,25 +7,17 @@ if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
 add_subdirectory(controlflow)
-add_subdirectory(detection)
+
 if(WITH_DLNNE)
   add_subdirectory(dlnne)
 endif()
 add_subdirectory(elementwise)
 add_subdirectory(fused)
-if(WITH_LITE)
-  add_subdirectory(lite)
-endif()
 add_subdirectory(math)
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_subdirectory(mkldnn)
 endif()
 add_subdirectory(nccl)
-
-if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed)
-endif()
-
 if(WITH_PSCORE)
   add_subdirectory(pscore)
 endif()
@@ -67,7 +59,7 @@ if(WITH_GPU)
   nv_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi common)
+    DEPS dropout_op tensor phi common global_utils)
   nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
@@ -103,10 +95,6 @@ if(WITH_CINN)
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 else()
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
-endif()
-
-if(WITH_GPU)
-  paddle_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

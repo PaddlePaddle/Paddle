@@ -1618,7 +1618,7 @@ def poisson_nll_loss(
     return loss_out
 
 
-def kl_div(input, label, reduction='mean', name=None):
+def kl_div(input, label, reduction='mean', log_target=False, name=None):
     r"""
     Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
@@ -1626,7 +1626,13 @@ def kl_div(input, label, reduction='mean', name=None):
 
     KL divergence loss is calculated as follows:
 
+    If `log_target` is False:
+
     $$l(x, y) = y * (\log(y) - x)$$
+
+    If `log_target` is True:
+
+    $$l(x, y) = \exp(y) * (y - x)$$
 
     Here :math:`x` is input and :math:`y` is label.
 
@@ -1649,6 +1655,7 @@ def kl_div(input, label, reduction='mean', name=None):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
+        log_target (bool, optional): Indicate whether `label` is passed in log space. Default is False.
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -1689,6 +1696,15 @@ def kl_div(input, label, reduction='mean', name=None):
             >>> print(pred_loss.shape)
             [5, 20]
 
+            >>> # if label is in the log space, set log_target = True
+            >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
+            >>> log_target = paddle.log(target)
+            >>> pred_loss_1 = F.kl_div(x, target, reduction='none')
+            >>> pred_loss_2 = F.kl_div(x, log_target, reduction='none', log_target=True)
+            >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+
     """
     # ugly type promotion
     if (
@@ -1703,7 +1719,7 @@ def kl_div(input, label, reduction='mean', name=None):
         label = paddle.cast(label, 'float64')
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.kldiv_loss(input, label, 'none')
+        out = _C_ops.kldiv_loss(input, label, 'none', log_target)
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1729,7 +1745,7 @@ def kl_div(input, label, reduction='mean', name=None):
             type='kldiv_loss',
             inputs={'X': input, 'Target': label},
             outputs={'Loss': loss},
-            attrs={'reduction': 'none'},
+            attrs={'reduction': 'none', 'log_target': log_target},
         )
 
         if reduction == 'mean':
@@ -2293,10 +2309,8 @@ def margin_cross_entropy(
     assert reduction in ['mean', 'sum', 'none', None]
     if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
-            'Expected group is False, None or instance of paddle.distributed.collective.Group \
-             (got group: {})'.format(
-                group
-            )
+            f'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {group})'
         )
         return
 
@@ -3185,9 +3199,7 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
-                "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
-                    normalizer_dims
-                )
+                f"Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {normalizer_dims}."
             )
 
     if in_dynamic_or_pir_mode():
@@ -3968,9 +3980,7 @@ def multi_margin_loss(
     if not (input.shape[0] == label.shape[0]):
         raise ValueError(
             "The label's shape[0] should be equal to input's shape[0], "
-            "but received input's shape[0] {} and label's shape[0]:{}. ".format(
-                input.shape[0], label.shape[0]
-            )
+            f"but received input's shape[0] {input.shape[0]} and label's shape[0]:{label.shape[0]}. "
         )
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
@@ -3982,9 +3992,7 @@ def multi_margin_loss(
         if not (input.shape[1] == weight.shape[0]):
             raise ValueError(
                 "The weight's shape[0] should be equal to input's shape[1]"
-                "but received weight's shape[0]: {} and input's shape[1]: {}".format(
-                    weight.shape[0], input.shape[1]
-                )
+                f"but received weight's shape[0]: {weight.shape[0]} and input's shape[1]: {input.shape[1]}"
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(

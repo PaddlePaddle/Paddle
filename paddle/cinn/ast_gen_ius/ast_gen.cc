@@ -28,6 +28,10 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace ast_gen_ius {
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
+  return lhs.type().is_bool() || rhs.type().is_bool();
+}
+
 ir::Expr ConvertReduceBody(ir::Expr body,
                            ir::Tensor tensor,
                            const std::vector<Expr>& axis_exprs) {
@@ -38,9 +42,17 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 
   switch (reduce_node->reduce_type) {
     case ir::Reduce::kSum:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) || reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) + reduce_node->body, axis_exprs);
     case ir::Reduce::kMul:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) && reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) * reduce_node->body, axis_exprs);
     case ir::Reduce::kMax:
@@ -68,8 +80,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();
-  CHECK_EQ(shape.size(), axis_len) << "Internal Error: Tensor has different "
-                                      "shape and axis length in AstGen";
+  PADDLE_ENFORCE_EQ(
+      shape.size(),
+      axis_len,
+      phi::errors::InvalidArgument("Internal Error: Tensor has different "
+                                   "shape and axis length in AstGen"));
   std::vector<ir::Expr> axis_exprs;
   for (const auto& a : axis) {
     axis_exprs.push_back(a);
@@ -100,13 +115,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     VLOG(4) << "ast gen: tensor init_body is " << init_body;
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        // if tiling first, we need to replace the reduce axis with 0, but don't
-        // deal with the non-reduce axis
-        optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
-        continue;
-      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -144,13 +152,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // for same axis so we re-create objects
     std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        // if tiling first, we need to replace the reduce axis with 0, but don't
-        // deal with the non-reduce axis
-        optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
-        continue;
-      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -185,10 +186,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       std::vector<ir::Var> non_reduce_axis_vars = [&]() {
         std::vector<ir::Var> res;
         for (int i = 0; i < shape.size(); ++i) {
-          bool is_keep_dim = axis[i]->is_keepdim;
-          if (!is_keep_dim) {
-            res.push_back(axis[i]);
-          }
+          res.push_back(axis[i]);
         }
         return res;
       }();
@@ -240,10 +238,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        continue;
-      }
       if ((!FLAGS_group_schedule_tiling_first || !FLAGS_cinn_bucket_compile) &&
           shape[i] == Expr(1)) {
         continue;
