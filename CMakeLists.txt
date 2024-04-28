@@ -643,7 +643,7 @@ endif()
 include_directories("${PADDLE_SOURCE_DIR}")
 # set(CMAKE_CUDA_STANDARD 17)
 include_directories("/usr/include")
-include_directories("/home/wangzhe24/cutlass/include")
+include_directories("/home/sunxin20/cutlass/include")
 
 if(WITH_NV_JETSON)
   set(WITH_ARM

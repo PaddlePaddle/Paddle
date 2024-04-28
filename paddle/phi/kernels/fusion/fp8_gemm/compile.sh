@@ -25,11 +25,11 @@ if [ ! -d "$build_directory" ]; then
     mkdir $build_directory
 fi
 
-python_exe_path="/usr/bin/python"
+python_exe_path="/root/anaconda3/envs/sx_fp8/bin/python"
 cuda_root_path="/usr/local/cuda"
 gpu_cc="89"
 
 cd $build_directory
-cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc -DPADDLE_LIB=/home/wangzhe24/paddle/fp8/Paddle/build/paddle_inference_install_dir
+cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc -DPADDLE_LIB=/home/sunxin20/paddle_sx/Paddle/build_cutlass/paddle_inference_install_dir
 make -j 
 cd -
