@@ -584,6 +584,7 @@ MemEventRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
     : place_(place),
       bytes_(bytes),
       start_ns_(PosixInNsec()),
+      end_ns_(0),
       alloc_in_(phi::CurAnnotationName()) {
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
 }
