@@ -174,8 +174,12 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     // scale_op对应的是177,175对应的是slice,176对应的是pd_op.full
     scale_op({&pat.Tensor("q_slice_out2"), &full_op()},
              {{&pat.Tensor("scale_out")}});
+
+    std::vector<const paddle::drr::Tensor *> combine_in;
+    combine_in.push_back(&pat.Tensor("scale_out"));
+    combine_in.push_back(&pat.Tensor("q_slice_out1"));
     // combine对应的是178,177是pd_op.scale,172是pd_op.slice
-    combine({&pat.Tensor("scale_out")}, {&pat.Tensor("combine_out")});
+    combine(combine_in, {&pat.Tensor("combine_out")});
 
     // concat_op对应的是180,178是builtion.combine,179对应的是pd_op.full
     concat_op({&pat.Tensor("combine_out"), &full_op_3()},
@@ -203,7 +207,10 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                {{&pat.Tensor("scale_out_k")}});
 
     // 192是combine_k,191对应的是pd_scale.combine,186是pd_op.slice
-    combine_k({&pat.Tensor("scale_out_k")}, {&pat.Tensor("combine_out_k")});
+    std::vector<const paddle::drr::Tensor *> combine_in_k;
+    combine_in_k.push_back(&pat.Tensor("scale_out_k"));
+    combine_in_k.push_back(&pat.Tensor("k_slice_out1"));
+    combine_k(combine_in_k, {&pat.Tensor("combine_out_k")});
 
     // concat_op_k对应的是194,192为conbine,193位pd_op.full
     concat_op_k({&pat.Tensor("combine_out_k"), &full_op_2()},
