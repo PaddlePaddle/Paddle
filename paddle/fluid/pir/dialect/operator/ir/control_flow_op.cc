@@ -738,9 +738,10 @@ bool WhileOp::InferSymbolicShape(
   }
 
   // add GreaterThanOne constraint
-  for (size_t i = 0; i < block_args().size(); ++i) {
+  const auto &body_args = block_args();
+  for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &args_i =
-        shape_analysis->GetShapeOrDataForValue(operand_source(i)).shape();
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
     for (const auto &dim_expr : args_i) {
       if (shape_analysis->IsGreatThanOne(dim_expr)) {
         shape_analysis->AddGreatThanOneCstr(dim_expr);
@@ -751,7 +752,6 @@ bool WhileOp::InferSymbolicShape(
   pir::InferSymExprForBlock(body(), shape_analysis);
 
   // add constraints for args
-  const auto &body_args = block_args();
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
