@@ -321,8 +321,8 @@ class TestPrimTwoIndexSample(TestPrimTwo):
 class TestPrimBceLoss(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
-        self.x_shape = [2, 3, 4, 5]
-        self.y_shape = [2, 3, 4, 5]
+        self.x_shape = [20, 30, 40, 50]
+        self.y_shape = [20, 30, 40, 50]
         self.dtype_x = "float32"
         self.dtype_y = "float32"
         self.init_x_shape = [None, None]
