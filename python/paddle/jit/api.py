@@ -537,9 +537,26 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         )
     result_list = []
     if use_pir_api():
+        from paddle.autograd.backward_utils import ValueSet
+
         for var in paddle.utils.flatten(outputs):
             if isinstance(var, paddle.pir.Value):
                 result_list.append(var)
+
+        if output_spec is not None:
+            if len(output_spec) == len(result_list):
+                for var in output_spec:
+                    if var not in ValueSet(result_list):
+                        warnings.warn(name_no_exists_error % var.name)
+            else:
+                result_set = ValueSet(result_list)
+                result_list = []
+                for var in output_spec:
+                    if var not in result_set:
+                        raise ValueError(name_no_exists_error % var.name)
+                    else:
+                        result_list.append(var)
+
     else:
         output_vars_dict = OrderedDict()
         for var in paddle.utils.flatten(outputs):
@@ -560,6 +577,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
                     raise ValueError(name_no_exists_error % var.name)
                 else:
                     result_list.append(output_vars_dict[var.name])
+
     return result_list
 
 
@@ -960,7 +978,9 @@ def save(layer, path, input_spec=None, **configs):
         for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.eager.Tensor, Variable)):
+            elif isinstance(
+                var, (core.eager.Tensor, Variable, paddle.pir.Value)
+            ):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
@@ -1193,11 +1213,25 @@ def save(layer, path, input_spec=None, **configs):
                 clone_program = concrete_program.main_program.clone()
                 clone_input_vars = input_vars
                 clone_output_vars = output_vars
+
             else:
                 value_map = paddle.pir.IrMapping()
                 clone_program = concrete_program.main_program.clone(value_map)
-                clone_input_vars = [value_map.look_up(v) for v in input_vars]
+                clone_input_vars = []
+                for v in input_vars:
+                    if type(v) is paddle.static.InputSpec:
+                        name = v.name
+                        for op in clone_program.global_block().ops:
+                            if (
+                                op.name() == 'pd_op.data'
+                                and op.attrs()["name"] == name
+                            ):
+                                clone_input_vars.append(op.result(0))
+                    else:
+                        clone_input_vars.append(value_map.look_up(v))
+
                 clone_output_vars = [value_map.look_up(v) for v in output_vars]
+
             save_inference_model(
                 path_prefix=file_prefix,
                 feed_vars=clone_input_vars,

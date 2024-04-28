@@ -27,6 +27,7 @@ from paddle.base import unique_name
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
+from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
 
 BATCH_SIZE = 32
@@ -155,12 +156,6 @@ class LinearNetMultiInput(paddle.nn.Layer):
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
-    @to_static(
-        input_spec=[
-            InputSpec([None, 8], dtype='float32'),
-            InputSpec([None, 8], dtype='float32'),
-        ]
-    )
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
@@ -174,12 +169,6 @@ class LinearNetMultiInput1(paddle.nn.Layer):
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
-    @to_static(
-        input_spec=(
-            InputSpec([None, 8], dtype='float32'),
-            InputSpec([None, 8], dtype='float32'),
-        )
-    )
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
@@ -237,12 +226,6 @@ class LinearNetWithDictInput(paddle.nn.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @paddle.jit.to_static(
-        input_spec=[
-            {'img': InputSpec(shape=[None, 8], dtype='float32', name='img')},
-            {'label': InputSpec(shape=[None, 1], dtype='int64', name='label')},
-        ]
-    )
     def forward(self, img, label):
         out = self._linear(img['img'])
         # not return loss to avoid prune output
@@ -376,14 +359,16 @@ class TestJitSaveLoad(unittest.TestCase):
         self.assertEqual(orig_input_types, new_input_types)
         return layer
 
+    @test_with_dygraph_pir
     def test_save_load(self):
         # train and save model
         train_layer = self.train_and_save_model()
         # load model
         loaded_layer = paddle.jit.load(self.model_path)
         self.load_and_inference(train_layer, loaded_layer)
-        self.load_dygraph_state_dict(train_layer)
         self.load_and_finetune(train_layer, loaded_layer)
+        if not paddle.framework.use_pir_api():
+            self.load_dygraph_state_dict(train_layer)
 
     def load_and_inference(self, train_layer, infer_layer):
         train_layer.eval()
@@ -427,6 +412,7 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_dict = paddle.load(model_path)
 
+    @test_with_dygraph_pir
     def test_jit_load_no_path(self):
         path = os.path.join(
             self.temp_dir.name, "test_jit_save_load.no_path/model_path"
@@ -444,6 +430,7 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_nest_output(self):
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
@@ -465,11 +452,28 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
+    @test_with_dygraph_pir
     def test_dict_input(self):
         # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
         # We DO NOT recommend this writing way of Layer
         net = LinearNetWithDictInput(8, 8)
+        net = paddle.jit.to_static(
+            net,
+            input_spec=[
+                {
+                    'img': InputSpec(
+                        shape=[None, 8], dtype=paddle.float32, name='img'
+                    )
+                },
+                {
+                    'label': InputSpec(
+                        shape=[None, 1], dtype=paddle.int64, name='label'
+                    )
+                },
+            ],
+            full_graph=True,
+        )
         # net.forward.concrete_program.inputs:
         # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>,
         #  {'img': var img : base.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)},
@@ -484,7 +488,11 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
             layer=net,
             path=path,
             input_spec=[
-                {'img': InputSpec(shape=[None, 8], dtype='float32', name='img')}
+                {
+                    'img': InputSpec(
+                        shape=[None, 8], dtype=paddle.float32, name='img'
+                    )
+                }
             ],
         )
 
@@ -495,10 +503,12 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         # loaded_net._input_spec():
         # [InputSpec(shape=(-1, 8), dtype=VarType.FP32, name=img)]
         self.assertEqual(len(loaded_net._input_spec()), 1)
+        self.assertEqual(len(loaded_net._output_spec()), 1)
         temp_dir.cleanup()
 
 
 class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
+    @test_with_dygraph_pir
     def test_dict_input(self):
         net = LinearNetWithDictInputNoPrune(8, 8)
         temp_dir = tempfile.TemporaryDirectory()
@@ -539,11 +549,14 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_with_input_spec(self):
         net = LinearNetReturnLoss(8, 8)
         # set x.shape = [None, 8]
         net.forward = to_static(
-            net.forward, input_spec=[InputSpec([None, 8], name='x')]
+            net.forward,
+            input_spec=[InputSpec([None, 8], name='x')],
+            full_graph=True,
         )
 
         model_path = os.path.join(
@@ -552,7 +565,10 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         # check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 1)
         input_x = net.forward.inputs[0]
-        self.assertTrue(input_x.shape == (-1, 8))
+        if paddle.framework.use_pir_api():
+            self.assertTrue(input_x.shape == [-1, 8])
+        else:
+            self.assertTrue(input_x.shape == (-1, 8))
         self.assertTrue(input_x.name == 'x')
 
         # 1. prune loss
@@ -564,8 +580,17 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         pred = infer_layer(x)
 
+    @test_with_dygraph_pir
     def test_multi_in_out(self):
         net = LinearNetMultiInput(8, 8)
+        net = paddle.jit.to_static(
+            net,
+            input_spec=[
+                InputSpec([None, 8], dtype='float32'),
+                InputSpec([None, 8], dtype='float32'),
+            ],
+            full_graph=True,
+        )
 
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout.output_spec1/model"
@@ -574,8 +599,12 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
         input_y = net.forward.inputs[1]
-        self.assertTrue(input_x.shape == (-1, 8))
-        self.assertTrue(input_y.shape == (-1, 8))
+        if paddle.framework.use_pir_api():
+            self.assertTrue(input_x.shape == [-1, 8])
+            self.assertTrue(input_y.shape == [-1, 8])
+        else:
+            self.assertTrue(input_x.shape == (-1, 8))
+            self.assertTrue(input_y.shape == (-1, 8))
 
         # 2. prune loss
         output_spec = net.forward.outputs[:2]
@@ -602,9 +631,17 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         # 4. assert pred_x == pred_xx
         np.testing.assert_allclose(pred_x.numpy(), pred_xx.numpy(), rtol=1e-05)
 
+    @test_with_dygraph_pir
     def test_multi_in_out1(self):
         net = LinearNetMultiInput1(8, 8)
-
+        net = paddle.jit.to_static(
+            net,
+            input_spec=(
+                InputSpec([None, 8], dtype='float32'),
+                InputSpec([None, 8], dtype='float32'),
+            ),
+            full_graph=True,
+        )
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout1.output_spec1/model"
         )
@@ -612,8 +649,12 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
         input_y = net.forward.inputs[1]
-        self.assertTrue(input_x.shape == (-1, 8))
-        self.assertTrue(input_y.shape == (-1, 8))
+        if paddle.framework.use_pir_api():
+            self.assertTrue(input_x.shape == [-1, 8])
+            self.assertTrue(input_y.shape == [-1, 8])
+        else:
+            self.assertTrue(input_x.shape == (-1, 8))
+            self.assertTrue(input_y.shape == (-1, 8))
 
         # 2. prune loss
         output_spec = net.forward.outputs[:2]

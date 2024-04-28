@@ -326,7 +326,8 @@ def _run_dygraph(instance, input, program_holder):
         else:
             layer.training = True
 
-    return instance.layer(input_tensors)
+    out = instance.layer(input_tensors)
+    return out
 
 
 def _run_static_graph(program_holder, trace_program):
@@ -558,3 +559,47 @@ class PirTranslatedLayer(layers.Layer):
     def eval(self):
         self._is_test = True
         self.training = False
+
+    def _get_program_holder(self, method_name='forward'):
+        program_holder = self._program_holder_dict.get(method_name, None)
+        if program_holder is None:
+            raise ValueError(
+                "The method `%s` does not exist in loaded PirTranslatedLayer."
+                % method_name
+            )
+        return program_holder
+
+    def _input_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build input spec by input desc
+        input_spec = []
+        for var in program_holder.input_vars:
+            spec = paddle.static.InputSpec(
+                shape=var.shape,
+                dtype=var.dtype,
+                name=var.name,
+            )
+            input_spec.append(spec)
+
+        return input_spec
+
+    def _output_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build output spec by output desc
+        output_spec = []
+        for var in program_holder.output_vars:
+            # NOTE(chenweihang): InputSpec describes a tensor, not just input.
+            # Maybe the name is not good enough. Here we use InputSpec to
+            # construct the description of Output tensor
+            spec = paddle.static.InputSpec(
+                shape=var.shape,
+                dtype=var.dtype,
+                name=var.name,
+            )
+            output_spec.append(spec)
+
+        return output_spec
