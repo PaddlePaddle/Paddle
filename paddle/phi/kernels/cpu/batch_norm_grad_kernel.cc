@@ -209,7 +209,7 @@ void BatchNormGradFunctor(const Context& ctx,
     case DataLayout::kNCHW: {
       if (is_inplace) {
         auto px = x;
-               EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), sample_size, N * C);
+        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), sample_size, N * C);
         ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
@@ -256,7 +256,8 @@ void BatchNormGradFunctor(const Context& ctx,
     }
     case DataLayout::kNHWC: {
       if (is_inplace) {
-               EigenArrayMap<T> x_data(ctx.template Alloc<T>(&x), C, N * sample_size);
+        auto px = x;
+        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), C, N * sample_size);
         ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
         for (int nhw = 0; nhw < N * sample_size; nhw++) {
           x_data.col(nhw) =
