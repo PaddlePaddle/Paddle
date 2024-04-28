@@ -36,10 +36,12 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     const auto &squeeze_1 = pat.Op(paddle::dialect::SqueezeOp::name());
 
     const auto &gather_nd = pat.Op(paddle::dialect::GatherNdOp::name());
+    const auto &gather_nd_1 = pat.Op(paddle::dialect::GatherNdOp::name());
     const auto &unsqueeze = pat.Op(paddle::dialect::UnsqueezeOp::name());
     const auto &unsqueeze_1 = pat.Op(paddle::dialect::UnsqueezeOp::name());
     const auto &unsqueeze_2 = pat.Op(paddle::dialect::UnsqueezeOp::name());
     const auto &unsqueeze_4 = pat.Op(paddle::dialect::UnsqueezeOp::name());
+
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &add_1 = pat.Op(paddle::dialect::AddOp::name());
     const auto &multiply1 = pat.Op(paddle::dialect::MultiplyOp::name());
@@ -66,31 +68,6 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                {{"axes", pat.Attr("axes_2")},
                 {"decrease_axis", pat.Attr("decrease_axis_2")}});
 
-    const auto &full_int_array_q1 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q1")}});
-    const auto &full_int_array_q2 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q2")}});
-    const auto &full_int_array_q3 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q3")}});
-    const auto &full_int_array_q4 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q4")}});
-    const auto &full_int_array_q5 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q5")}});
-    const auto &full_int_array_q6 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q6")}});
-    const auto &full_int_array_q7 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q7")}});
-    const auto &full_int_array_q8 =
-        pat.Op(paddle::dialect::SliceOp::name(),
-               {{"value", pat.Attr("full_int_array_q8")}});
-
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -98,7 +75,17 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                                   {"place", pat.Attr("place")}});
     const auto &full_op_1 = pat.Op(paddle::dialect::FullOp::name(),
                                    {{"shape", pat.Attr("shape_1")},
-                                    {"value", pat.Attr("value_1")},
+                                    {"value", pat.Attr("full_op_1")},
+                                    {"dtype", pat.Attr("dtype_1")},
+                                    {"place", pat.Attr("place_1")}});
+    const auto &full_op_2 = pat.Op(paddle::dialect::FullOp::name(),
+                                   {{"shape", pat.Attr("shape_1")},
+                                    {"value", pat.Attr("full_op_2")},
+                                    {"dtype", pat.Attr("dtype_1")},
+                                    {"place", pat.Attr("place_1")}});
+    const auto &full_op_3 = pat.Op(paddle::dialect::FullOp::name(),
+                                   {{"shape", pat.Attr("shape_1")},
+                                    {"value", pat.Attr("full_op_3")},
                                     {"dtype", pat.Attr("dtype_1")},
                                     {"place", pat.Attr("place_1")}});
 
@@ -128,70 +115,105 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                                 {{"value", pat.Attr("full_7_value")}});
     const auto &full_8 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
                                 {{"value", pat.Attr("full_8_value")}});
+    const auto &full_9 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                {{"value", pat.Attr("full_9_value")}});
+    const auto &full_10 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                 {{"value", pat.Attr("full_10_value")}});
+    const auto &full_11 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                 {{"value", pat.Attr("full_11_value")}});
+    const auto &full_12 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                 {{"value", pat.Attr("full_12_value")}});
+    const auto &full_13 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                 {{"value", pat.Attr("full_13_value")}});
 
     const auto &concat_op = pat.Op(paddle::dialect::ConcatOp::name());
     const auto &combine = pat.Op(pir::CombineOp::name());
     const auto &concat_op_k = pat.Op(paddle::dialect::ConcatOp::name());
     const auto &combine_k = pat.Op(pir::CombineOp::name());
 
-    squeeze({&pat.Tensor("cos"), &full_1()},
+    // squeeze对应的是150,151,147是输入,149是pd_op.full_int_array
+    squeeze({&pat.Tensor("cos"), &full_13()},
             {&pat.Tensor("squeeze_out_cos"), &pat.Tensor("xshape")});
-    squeeze_1({&pat.Tensor("sin"), &full_2()},
+
+    // squeeze_1对应的是153,154,148是输入,152是pd_op.full_int_array
+    squeeze_1({&pat.Tensor("sin"), &full_12()},
               {&pat.Tensor("squeeze_out_sin"), &pat.Tensor("xshape")});
 
-    unsqueeze({&pat.Tensor("position_ids"), &full_3()},
+    // unsqueeze对应的是156,157,17是position_ids,155是pd_op.full_int_array
+    unsqueeze({&pat.Tensor("position_ids"), &full_11()},
               {&pat.Tensor("unsqueeze_s_out_cos"), &pat.Tensor("xshape")});
-    unsqueeze_4({&pat.Tensor("position_ids"), &full_8()},
-                {&pat.Tensor("unsqueeze_s_out_sin"), &pat.Tensor("xshape")});
 
+    // gather_nd对应的158,150是pd_op.squeeze,156对应的是pd_op.unsqueeze
     pat.Tensor("gather_nd_out_cos") = gather_nd(
         pat.Tensor("squeeze_out_cos"), pat.Tensor("unsqueeze_s_out_cos"));
-    pat.Tensor("gather_nd_out_sin") = gather_nd(
-        pat.Tensor("squeeze_out_sin"), pat.Tensor("unsqueeze_s_out_sin"));
 
-    unsqueeze_1({&pat.Tensor("gather_nd_out_cos"), &full_4()},
+    // unsqueeze_1对应的是160,161,158是pd_op_gather_nd,159是pd_op.full_int_array
+    unsqueeze_1({&pat.Tensor("gather_nd_out_cos"), &full_10()},
                 {&pat.Tensor("unsqueeze_out_cos"), &pat.Tensor("xshape")});
 
-    unsqueeze_2({&pat.Tensor("gather_nd_out_sin"), &full_5()},
+    // unsqueeze_4对应的是163,164,17是position_ids,162是pd_op.full_int_array
+    unsqueeze_4({&pat.Tensor("position_ids"), &full_8()},
+                {&pat.Tensor("unsqueeze_s_out_sin"), &pat.Tensor("xshape")});
+    pat.Tensor("gather_nd_out_sin") = gather_nd_1(
+        pat.Tensor("squeeze_out_sin"), pat.Tensor("unsqueeze_s_out_sin"));
+
+    // unsqueeze_2对应的是167,168,165是pd.gather)nd和pd_op.full_int_array
+    unsqueeze_2({&pat.Tensor("gather_nd_out_sin"), &full_9()},
                 {&pat.Tensor("unsqueeze_out_sin"), &pat.Tensor("xshape")});
 
-    // 160是unsqueeze_out_cos
+    // multiply1对应的是169,第一个参数是q,第二个参数是pd_op.unsqueeze
     pat.Tensor("tmp_25") =
-        multiply1(pat.Tensor("unsqueeze_out_cos"), pat.Tensor("q"));
+        multiply1(pat.Tensor("q"), pat.Tensor("unsqueeze_out_cos"));
 
-    pat.Tensor("q_slice_out1") =
-        slice_q(pat.Tensor("q"), full_int_array_q1(), full_int_array_q2());
-    // 129是q
-    pat.Tensor("q_slice_out2") =
-        slice_q_1(pat.Tensor("q"), full_int_array_q3(), full_int_array_q4());
+    // slice_q对应的是172,129是q,170和171对应的是pd_op.full_int_array
+    pat.Tensor("q_slice_out1") = slice_q(pat.Tensor("q"), full_1(), full_2());
+
+    // slice_q_1对应的是175,129是q,173和174是pd_op.full_int_array
+    pat.Tensor("q_slice_out2") = slice_q_1(pat.Tensor("q"), full_3(), full_4());
+
+    // scale_op对应的是177,175对应的是slice,176对应的是pd_op.full
     scale_op({&pat.Tensor("q_slice_out2"), &full_op()},
              {{&pat.Tensor("scale_out")}});
-
+    // combine对应的是178,177是pd_op.scale,172是pd_op.slice
     combine({&pat.Tensor("scale_out")}, {&pat.Tensor("combine_out")});
-    concat_op({&pat.Tensor("combine_out"), &full_6()},
+
+    // concat_op对应的是180,178是builtion.combine,179对应的是pd_op.full
+    concat_op({&pat.Tensor("combine_out"), &full_op_3()},
               {&pat.Tensor("concat_out")});
-    // 167是unsqueeze_out_sin
+
+    // multiply对应的是181,180对应的是concat,167对应的是pd_op.unsqueeze
     pat.Tensor("tmp_27") =
-        multiply3(pat.Tensor("unsqueeze_out_sin"), pat.Tensor("concat_out"));
+        multiply3(pat.Tensor("concat_out"), pat.Tensor("unsqueeze_out_sin"));
 
+    // add对应182,169对应的multiply,181对应的是multiply
     pat.Tensor("tmp_28") = add(pat.Tensor("tmp_27"), pat.Tensor("tmp_25"));
-    // 132是k
-    pat.Tensor("tmp_29") =
-        multiply2(pat.Tensor("unsqueeze_out_cos"), pat.Tensor("k"));
 
-    pat.Tensor("k_slice_out1") =
-        slice_k(pat.Tensor("k"), full_int_array_q5(), full_int_array_q6());
-    pat.Tensor("k_slice_out2") =
-        slice_k_1(pat.Tensor("k"), full_int_array_q7(), full_int_array_q8());
+    // multiply2对应的是183,132是k,160是pd.op.unsqueeze
+    pat.Tensor("tmp_29") =
+        multiply2(pat.Tensor("k"), pat.Tensor("unsqueeze_out_cos"));
+
+    // slice_k对应的是186,132对应的是k,184和185对应的是pd.op.full_int_array
+    pat.Tensor("k_slice_out1") = slice_k(pat.Tensor("k"), full_5(), full_6());
+
+    // slice_k_1对应的是189,132对应的是k,然后两个pd_op.full_int_array
+    pat.Tensor("k_slice_out2") = slice_k_1(pat.Tensor("k"), full_7(), full_8());
+
+    // 191是scale_op_k,189对应的是slice,190对应的是pd_op.full
     scale_op_k({&pat.Tensor("k_slice_out2"), &full_op_1()},
                {{&pat.Tensor("scale_out_k")}});
+
+    // 192是combine_k,191对应的是pd_scale.combine,186是pd_op.slice
     combine_k({&pat.Tensor("scale_out_k")}, {&pat.Tensor("combine_out_k")});
-    concat_op_k({&pat.Tensor("combine_out_k"), &full_7()},
+
+    // concat_op_k对应的是194,192为conbine,193位pd_op.full
+    concat_op_k({&pat.Tensor("combine_out_k"), &full_op_2()},
                 {&pat.Tensor("concat_out_k")});
 
+    // tmp_31是195,concat_out_k是194,unsqueeze_out_sin是167
     pat.Tensor("tmp_31") =
-        multiply4(pat.Tensor("unsqueeze_out_sin"), pat.Tensor("concat_out_k"));
-    pat.Tensor("tmp_32") = add_1(pat.Tensor("tmp_31"), pat.Tensor("tmp_29"));
+        multiply4(pat.Tensor("concat_out_k"), pat.Tensor("unsqueeze_out_sin"));
+    // tmp_29对应的%183,tmp_31对应的是%195
+    pat.Tensor("tmp_32") = add_1(pat.Tensor("tmp_29"), pat.Tensor("tmp_31"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto check_axes = [&](const std::vector<int64_t> &axes) {
@@ -206,8 +228,8 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         }
         return true;
       };
-      auto axis = match_ctx.Attr<std::vector<int64_t>>("full_1_value");
-      auto axis_2 = match_ctx.Attr<std::vector<int64_t>>("full_2_value");
+      auto axis = match_ctx.Attr<std::vector<int64_t>>("full_13_value");
+      auto axis_2 = match_ctx.Attr<std::vector<int64_t>>("full_12_value");
       return check_axes(axis) && check_axes(axis_2);
 
       auto check_unsqueeze_axes = [&](const std::vector<int64_t> &axes) {
@@ -223,14 +245,18 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         return true;
       };
       auto unsqueeze_axis =
-          match_ctx.Attr<std::vector<int64_t>>("full_3_value");
+          match_ctx.Attr<std::vector<int64_t>>("full_11_value");
       auto unsqueeze_axis_1 =
-          match_ctx.Attr<std::vector<int64_t>>("full_4_value");
+          match_ctx.Attr<std::vector<int64_t>>("full_10_value");
       auto unsqueeze_axis_2 =
-          match_ctx.Attr<std::vector<int64_t>>("full_5_value");
+          match_ctx.Attr<std::vector<int64_t>>("full_8_value");
+      auto unsqueeze_axis_3 =
+          match_ctx.Attr<std::vector<int64_t>>("full_9_value");
+
       return check_unsqueeze_axes(unsqueeze_axis) &&
              check_unsqueeze_axes(unsqueeze_axis_1) &&
-             check_unsqueeze_axes(unsqueeze_axis_2);
+             check_unsqueeze_axes(unsqueeze_axis_2) &&
+             check_unsqueeze_axes(unsqueeze_axis_3);
 
       auto check_concat_axes = [&](const std::vector<int64_t> &axes) {
         std::vector<int64_t> expected_axes = {-1};
@@ -244,11 +270,19 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         }
         return true;
       };
-      auto concat_axis = match_ctx.Attr<std::vector<int64_t>>("full_6_value");
-      auto concat_axis_1 = match_ctx.Attr<std::vector<int64_t>>("full_7_value");
+      auto concat_axis = match_ctx.Attr<std::vector<int64_t>>("full_op_3");
+      auto concat_axis_1 = match_ctx.Attr<std::vector<int64_t>>("full_op_2");
       return check_concat_axes(concat_axis) && check_concat_axes(concat_axis_1);
     });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    // const auto &combine_1 = res.Op("builtin.combine");
+    // combine_1({&res.Tensor("scale_out"), &res.Tensor("q_slice_out1")},
+    //           {&res.Tensor("combine_out")});
+    // const auto &combine_2 = res.Op("builtin.combine");
+    // combine_1({&res.Tensor("scale_out_k"), &res.Tensor("k_slice_out1")},
+    //           {&res.Tensor("combine_out")});
+
     const auto &fused_rotary_position_embedding =
         res.Op(paddle::dialect::FusedRotaryPositionEmbeddingOp::name(),
                {
