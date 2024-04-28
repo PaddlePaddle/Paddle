@@ -253,17 +253,10 @@ Tensor reciprocal_decomp(const Tensor& x) {
 
 template <typename T>
 Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
-  if (has_dynamic_shape(x.shape())) {
-    auto one = backend::full_with_tensor<T>(shape<T>(x), 1, x.dtype());
-    auto ans = backend::full_with_tensor<T>(shape<T>(x), -1, x.dtype()) *
+  auto one = full<T>(empty_shape, 1, x.dtype());
+  auto ans = full<T>(empty_shape, -1, x.dtype()) *
                (label * log<T>(x) + (one - label) * log<T>(one - x));
-    return ans;
-  } else {
-    auto one = full<T>(x.shape(), 1, x.dtype());
-    auto ans = full<T>(x.shape(), -1, x.dtype()) *
-               (label * log<T>(x) + (one - label) * log<T>(one - x));
-    return ans;
-  }
+  return ans;
 }
 
 template <typename T>
