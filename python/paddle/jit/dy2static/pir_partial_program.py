@@ -378,6 +378,8 @@ class RunnableProgram:
                 ):
                     old_name = name_defining_op.attrs()['output_name']
                     new_name = value2name[ufset.find_root(value)]
+                    if old_name == new_name:
+                        continue
                     paddle.core.pir.reset_shadow_output_name(
                         name_defining_op, new_name
                     )
