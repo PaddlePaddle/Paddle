@@ -37,6 +37,7 @@ class HOOK_ACTION:
 alignment = {
     "gpu": 256,
     "npu": 256,
+    "xpu": 256,
 }
 
 align = {

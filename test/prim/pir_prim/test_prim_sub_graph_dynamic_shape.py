@@ -86,6 +86,10 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def dropout_net1(x):
+    return paddle.nn.functional.dropout(x, 0.5)
+
+
 group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
 
 
@@ -489,6 +493,25 @@ class TestPrimGroupNorm7(TestPrimBase):
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 5e-6
+
+
+class TestPrimDropout(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.ones(self.shape_x).astype(self.dtype_x)
+        self.net = dropout_net1
+        self.necessary_ops = "pd_op.dropout"
+        self.enable_cinn = False
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=0.08)
 
 
 if __name__ == "__main__":

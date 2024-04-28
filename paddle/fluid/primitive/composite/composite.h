@@ -207,6 +207,46 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 }
 
 template <typename T>
+Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
+  auto num_classes_tensor =
+      backend::full_with_tensor<T>(num_classes, 0, x.dtype());
+
+  std::vector<int64_t> input_dim;
+  input_dim.push_back(x.shape()[0]);
+  input_dim.push_back(num_classes_tensor.shape()[0]);
+  auto input_tensor = full<T>(input_dim, 0, x.dtype());
+
+  std::vector<int64_t> output_dim;
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    output_dim.push_back(x.shape()[i]);
+  }
+  output_dim.push_back(num_classes_tensor.shape()[0]);
+
+  auto end = full<T>({1}, x.shape()[0], x.dtype());
+  auto start = full<T>({1}, 0, x.dtype());
+  auto step = full<T>({1}, 1, x.dtype());
+  auto arange_tensor =
+      backend::arange_with_tensor<T>(start, end, step, x.dtype());
+
+  std::vector<int64_t> reshape_dim{x.shape()[0], 1};
+  auto x_reshape = reshape<T>(x, reshape_dim);
+  auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
+
+  std::vector<Tensor> index_concat;
+  index_concat.push_back(arange_tensor_reshape);
+  index_concat.push_back(x_reshape);
+  auto index_tensor = concat<T>(index_concat, 1);
+
+  auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
+
+  auto ans = reshape<T>(
+      cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
+              DataType::FLOAT32),
+      output_dim);
+  return ans;
+}
+
+template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
   return full<T>(empty_shape, 1.0, x.dtype()) / x;
 }
@@ -224,6 +264,47 @@ Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
                (label * log<T>(x) + (one - label) * log<T>(one - x));
     return ans;
   }
+}
+
+template <typename T>
+Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
+  std::size_t x_ndims = x.dims().size();
+  std::size_t y_ndims = y.dims().size();
+  if (x_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received X's shape: [%s].",
+        x_ndims));
+  }
+  if (y_ndims != 3) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+        "but received Y's shape: [%s].",
+        y_ndims));
+  }
+
+  auto x_shape = phi::vectorize(x.dims());
+  auto y_shape = phi::vectorize(y.dims());
+
+  if (x_shape[0] != y_shape[0]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+        "but received X's batch size: [%s],"
+        "Y's batch size [%s].",
+        x_shape[0],
+        y_shape[0]));
+  }
+
+  if (x_shape[2] != y_shape[1]) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+        "but receive X's width: [%s],"
+        "Y's height: [%s].",
+        x_shape[2],
+        y_shape[1]));
+  }
+
+  return matmul<T>(x, y, false, false);
 }
 
 template <typename T>
@@ -630,9 +711,17 @@ std::tuple<Tensor, Tensor> dropout_decomp(
   if (is_half_dtype(org_dtype)) {
     dtype_tmp = DataType::FLOAT32;
   }
-
-  auto uniform_tensor =
-      uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  Tensor uniform_tensor;
+  if (has_dynamic_shape(x.shape())) {
+    auto shape_tensor = shape<T>(x);
+    auto zero = full<T>(empty_shape, 0.0, dtype_tmp);
+    auto one = full<T>(empty_shape, 1.0, dtype_tmp);
+    uniform_tensor =
+        backend::uniform<T>(shape_tensor, zero, one, dtype_tmp, seed_tmp);
+  } else {
+    uniform_tensor =
+        uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  }
   auto mask = cast<T>(
       greater_equal<T>(uniform_tensor, full<T>(empty_shape, p, dtype_tmp)),
       org_dtype);

@@ -74,6 +74,11 @@ class OpLoweringGroup {
     }
   }
 
+  bool IsBroadcastLeaf() const { return is_broadcast_leaf_; }
+  void SetIsBroadcastLeaf(bool is_broadcast_leaf) {
+    is_broadcast_leaf_ = is_broadcast_leaf;
+  }
+
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
   std::vector<::pir::Operation*>& mut_ops() { return ops_; }
   void SetOps(const std::vector<::pir::Operation*>& new_ops) { ops_ = new_ops; }
@@ -198,6 +203,7 @@ class OpLoweringGroup {
   std::unordered_set<::pir::Operation*> output_ops_;
   // op pattern kind.
   OpPatternKind op_pattern_kind_{kElementWise};
+  bool is_broadcast_leaf_{false};
 
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
