@@ -111,22 +111,9 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
     graph_ = graph;
 
     // Do reverse topological sort, and store the results in reverse_topo_nodes.
-    std::unordered_map<PatternNodePtr<Phrase>, int>
-        unvisited_nodes_to_out_degree;
-    for (const auto& node_ptr : graph->all_pattern_nodes()) {
-      unvisited_nodes_to_out_degree[node_ptr] = node_ptr->downstream().size();
-    }
-
-    while (!unvisited_nodes_to_out_degree.empty()) {
-      const auto& it =
-          std::find_if(unvisited_nodes_to_out_degree.begin(),
-                       unvisited_nodes_to_out_degree.end(),
-                       [&](const auto& pair) { return pair.second == 0; });
-      reverse_topo_nodes.push(it->first);
-      for (const auto& upstream : it->first->upstream()) {
-        --unvisited_nodes_to_out_degree[upstream];
-      }
-      unvisited_nodes_to_out_degree.erase(it);
+    auto reverse_topo_sort_result = graph->SortByReverseTopoOrder();
+    for (const auto& node : reverse_topo_sort_result) {
+      reverse_topo_nodes.push(node);
     }
   }
 
