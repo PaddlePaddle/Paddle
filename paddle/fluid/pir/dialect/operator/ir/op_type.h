@@ -75,8 +75,10 @@ class DenseTensorArrayType
 };
 
 class IR_API SparseCooTensorType
-    : public pir::Type::
-          TypeBase<SparseCooTensorType, pir::Type, SparseCooTensorTypeStorage> {
+    : public pir::Type::TypeBase<SparseCooTensorType,
+                                 pir::Type,
+                                 SparseCooTensorTypeStorage,
+                                 pir::ShapedTypeInterface> {
  public:
   using Base::Base;
 
@@ -116,8 +118,10 @@ class IR_API SparseCooTensorType
 };
 
 class IR_API SparseCsrTensorType
-    : public pir::Type::
-          TypeBase<SparseCsrTensorType, pir::Type, SparseCsrTensorTypeStorage> {
+    : public pir::Type::TypeBase<SparseCsrTensorType,
+                                 pir::Type,
+                                 SparseCsrTensorTypeStorage,
+                                 pir::ShapedTypeInterface> {
  public:
   using Base::Base;
 
