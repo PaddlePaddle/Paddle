@@ -53,13 +53,14 @@ void WriteModule(const pir::Program& program,
  * deserilize program will be stored.
  * @param[in] pir_version  The current version of the PIR program format.
  *
- * @return Void. The function modifies the 'program' object to contain the data
- * read from the file.
+ * @return bool. The function modifies the 'program' object to contain the data
+ * read from the file. return bool indicates whether the program can use to
+ * funtune.
  *
  * @note If 'pir_version' is larger than the version of file, will trigger
  * version compatibility modification rule.
  */
-void ReadModule(const std::string& file_path,
+bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version);
 
