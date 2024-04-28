@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import pickle
 import shutil
@@ -298,6 +299,57 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
         return self._linear_0(x) + self._linear_1(x) * self._scale
 
 
+class LinearNetWithNonLexicographicalOrderDict(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self._linear_u = Linear(in_size, out_size)
+        self._linear_v = Linear(in_size, out_size)
+        self._linear_w = Linear(in_size, out_size)
+        self._linear_p = Linear(in_size, out_size)
+
+    def forward(self, x):
+        u = self._linear_u(x)
+        v = self._linear_v(x)
+        w = self._linear_w(x)
+        p = self._linear_p(x)
+        return {
+            "u": u,
+            "v": v,
+            "w": w,
+            "p": p,
+        }
+
+
+class LinearNetWithNestedNonLexicographicalOrderDict(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self._linear_u = Linear(in_size, out_size)
+        self._linear_v = Linear(in_size, out_size)
+        self._linear_w = Linear(in_size, out_size)
+        self._linear_p = Linear(in_size, out_size)
+        self._linear_y = Linear(in_size, out_size)
+        self._linear_x = Linear(in_size, out_size)
+
+    def forward(self, x_):
+        u = self._linear_u(x_)
+        v = self._linear_v(x_)
+        w = self._linear_w(x_)
+        p = self._linear_p(x_)
+
+        x = self._linear_p(x_)
+        y = self._linear_p(x_)
+        return {
+            "u": u,
+            "v": v,
+            "w": w,
+            "p": p,
+            "a": {
+                "x": x,
+                "y": y,
+            },
+        }
+
+
 def train(layer, input_size=784, label_size=1):
     # create optimizer
     sgd = paddle.optimizer.SGD(
@@ -462,6 +514,226 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
             np.testing.assert_allclose(
                 dy_out.numpy(), load_out.numpy(), rtol=1e-05
             )
+
+
+class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        base.enable_dygraph()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_output_same_order(self):
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
+
+        model = LinearNetWithNonLexicographicalOrderDict(8, 8)
+
+        dy_output_dict = model(x)
+
+        st_model = paddle.jit.to_static(model)
+        st_output_dict = st_model(x)
+
+        paddle.jit.save(st_model, "./test_jit_save_load")
+        loaded_model = paddle.jit.load("./test_jit_save_load")
+        loaded_output_seq = loaded_model(x)
+
+        self.assertTrue(len(dy_output_dict) == 4)
+        self.assertTrue(len(st_output_dict) == 4)
+        self.assertTrue(len(loaded_output_seq) == 4)
+
+        # 1. check whether output dict of dygraph and static graph is same
+        for (dy_key, dy_out), (st_key, st_out) in zip(
+            dy_output_dict.items(), st_output_dict.items()
+        ):
+            self.assertTrue(dy_key == st_key)
+            np.testing.assert_allclose(
+                dy_out.numpy(), st_out.numpy(), rtol=1e-05
+            )
+
+        # 2. check whether flattened output has same order of original dict
+        dy_output_seq = paddle.utils.flatten(dy_output_dict)
+
+        self.assertTrue(len(dy_output_seq) == 4)
+        for dy_out, flattened_dy_out in zip(
+            dy_output_dict.values(), dy_output_seq
+        ):
+            np.testing.assert_allclose(
+                dy_out.numpy(), flattened_dy_out.numpy(), rtol=1e-05
+            )
+
+        # 3. check whether flattened output of loaded static graph has same order of dynamic's
+        for dy_out, loaded_out in zip(
+            dy_output_dict.values(), loaded_output_seq
+        ):
+            np.testing.assert_allclose(
+                dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
+            )
+
+
+class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        base.enable_dygraph()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_nested_output_same_order(self):
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
+
+        model = LinearNetWithNestedNonLexicographicalOrderDict(8, 8)
+
+        dy_output_dict = model(x)
+
+        st_model = paddle.jit.to_static(model)
+        st_output_dict = st_model(x)
+
+        paddle.jit.save(st_model, "./test_jit_save_load2")
+        loaded_model = paddle.jit.load("./test_jit_save_load2")
+        loaded_output_seq = loaded_model(x)
+
+        self.assertTrue(len(dy_output_dict) == 5)
+        self.assertTrue(len(st_output_dict) == 5)
+        self.assertTrue(len(loaded_output_seq) == 6)
+
+        # check whether flattened output of loaded static graph has same order of dynamic's
+        dy_output_tensors = []
+        for v in dy_output_dict.values():
+            if isinstance(v, dict):
+                dy_output_tensors.extend(list(v.values()))
+            else:
+                dy_output_tensors.append(v)
+
+        for dy_out, loaded_out in zip(dy_output_tensors, loaded_output_seq):
+            np.testing.assert_allclose(
+                dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
+            )
+
+
+class TestUtilsMapAndPack(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        base.enable_dygraph()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_utils_map_structure(self):
+        nested_list = [
+            {
+                "d": paddle.to_tensor([1.0]),
+                "a": paddle.to_tensor([2.0]),
+                "c": paddle.to_tensor([3.0]),
+                "tmp": {
+                    "b": paddle.to_tensor([4.0]),
+                },
+            },
+            [paddle.to_tensor([5.0]), paddle.to_tensor([6.0])],
+            [],
+            [
+                paddle.to_tensor([7.0]),
+                [
+                    paddle.to_tensor([8.0]),
+                    [paddle.to_tensor([9.0]), [paddle.to_tensor([10.0])]],
+                ],
+            ],
+        ]
+        FACTOR = 2
+        expected_list = [
+            {
+                "d": paddle.to_tensor([1.0]) * FACTOR,
+                "a": paddle.to_tensor([2.0]) * FACTOR,
+                "c": paddle.to_tensor([3.0]) * FACTOR,
+                "tmp": {
+                    "b": paddle.to_tensor([4.0]) * FACTOR,
+                },
+            },
+            [
+                paddle.to_tensor([5.0]) * FACTOR,
+                paddle.to_tensor([6.0]) * FACTOR,
+            ],
+            [],
+            [
+                paddle.to_tensor([7.0]) * FACTOR,
+                [
+                    paddle.to_tensor([8.0]) * FACTOR,
+                    [
+                        paddle.to_tensor([9.0]) * FACTOR,
+                        [paddle.to_tensor([10.0]) * FACTOR],
+                    ],
+                ],
+            ],
+        ]
+        mapped_list = paddle.utils.map_structure(
+            lambda x: x * FACTOR, nested_list
+        )
+
+        # test paddle.utils.
+        def dfs(obj1, obj2):
+            self.assertTrue(type(obj1) == type(obj2))
+            if isinstance(obj1, list):
+                for i in range(len(obj1)):
+                    dfs(obj1[i], obj2[i])
+            elif isinstance(obj1, dict):
+                self.assertTrue(list(obj1.keys()) == list(obj2.keys()))
+                for k in obj1:
+                    dfs(obj1[k], obj2[k])
+            elif isinstance(obj1, paddle.Tensor):
+                np.testing.assert_allclose(
+                    obj1.numpy(), obj2.numpy(), rtol=1e-05
+                )
+            else:
+                raise ValueError(f"Unsupported type: {type(obj1)} in dfs")
+
+        dfs(expected_list, mapped_list)
+
+    def test_utils_pack_sequence_as(self):
+        nested_list = [
+            {
+                "d": paddle.to_tensor([1.0]),
+                "a": paddle.to_tensor([2.0]),
+                "c": paddle.to_tensor([3.0]),
+                "tmp": {
+                    "b": paddle.to_tensor([4.0]),
+                },
+            },
+            [paddle.to_tensor([5.0]), paddle.to_tensor([6.0])],
+            [],
+            [
+                paddle.to_tensor([7.0]),
+                [
+                    paddle.to_tensor([8.0]),
+                    [paddle.to_tensor([9.0]), [paddle.to_tensor([10.0])]],
+                ],
+            ],
+        ]
+
+        def dfs(obj1, obj2):
+            self.assertTrue(type(obj1) == type(obj2))
+            if isinstance(obj1, list):
+                for i in range(len(obj1)):
+                    dfs(obj1[i], obj2[i])
+            elif isinstance(obj1, dict):
+                self.assertTrue(list(obj1.keys()) == list(obj2.keys()))
+                for k in obj1:
+                    dfs(obj1[k], obj2[k])
+            elif isinstance(obj1, paddle.Tensor):
+                np.testing.assert_allclose(
+                    obj1.numpy(), obj2.numpy(), rtol=1e-05
+                )
+            else:
+                raise ValueError(f"Unsupported type: {type(obj1)} in dfs")
+
+        nested_list_copy = copy.deepcopy(nested_list)
+        nested_list_copy_pack_back = paddle.utils.pack_sequence_as(
+            nested_list_copy, paddle.utils.flatten(nested_list)
+        )
+
+        dfs(nested_list_copy, nested_list_copy_pack_back)
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):

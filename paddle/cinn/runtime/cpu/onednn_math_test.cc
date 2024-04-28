@@ -93,7 +93,7 @@ TEST(cinn_cpu_onednn_conv2d_nchw_fp32, test) {
   auto stages = CreateStages({call, out});
 
   auto target = cinn::common::DefaultHostTarget();
-  target.arch = Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   ir::Module::Builder builder("module0", target);
 
   auto func = Lower("fn", stages, {input, weights, out, call});

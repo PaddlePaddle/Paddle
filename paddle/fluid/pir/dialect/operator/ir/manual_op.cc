@@ -3158,15 +3158,7 @@ bool ExpandOp::InferSymbolicShape(
   const auto &expand_shape_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
@@ -3959,6 +3951,29 @@ phi::DataType AssignOut_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+OpInfoTuple ShapeBroadcastOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("ElementwiseInferMeta",
+                                     {"x", "y"},
+                                     "shape_broadcast",
+                                     {"x", "y"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "shape_broadcast");
+}
+
 void ShapeBroadcastOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value x_,
@@ -3979,7 +3994,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4036,7 +4051,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4054,17 +4069,15 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1) {
+    return rhs;
+  } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }

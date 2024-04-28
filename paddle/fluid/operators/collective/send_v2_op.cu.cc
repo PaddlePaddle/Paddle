@@ -73,12 +73,12 @@ void send_shape_info(const phi::DenseTensor& x,
       comm_ctx->Send(*gpu_shape_size_tensor, 1, peer, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclSend(gpu_shape_size_tensor->data<int>(),
-                                      1,
-                                      nccl_dtype,
-                                      peer,
-                                      comm->comm(),
-                                      stream));
+          phi::dynload::ncclSend(gpu_shape_size_tensor->data<int>(),
+                                 1,
+                                 nccl_dtype,
+                                 peer,
+                                 comm->comm(),
+                                 stream));
     }
   }
   VLOG(3) << "send the shape size: " << shape_size << " to peer";
@@ -106,12 +106,12 @@ void send_shape_info(const phi::DenseTensor& x,
       comm_ctx->Send(*gpu_shape_tensor, shape_size, peer, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclSend(gpu_shape_tensor->data<int>(),
-                                      shape_size,
-                                      nccl_dtype,
-                                      peer,
-                                      comm->comm(),
-                                      stream));
+          phi::dynload::ncclSend(gpu_shape_tensor->data<int>(),
+                                 shape_size,
+                                 nccl_dtype,
+                                 peer,
+                                 comm->comm(),
+                                 stream));
     }
   }
   VLOG(3) << "send the shape: (" << dims << ") to peer";
@@ -222,7 +222,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         if (comm_ctx) {
           comm_ctx->Send(x, numel, peer, stream);
         } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         }
         VLOG(3) << "rank " << comm->rank() << " send "
@@ -249,7 +249,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     } else {
       ncclDataType_t dtype =
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
           x->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " send "
               << common::product(x->dims()) << " to " << peer;
@@ -266,7 +266,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(send_v2,
                           GPU,
@@ -275,7 +274,7 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,

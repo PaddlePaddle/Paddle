@@ -56,7 +56,7 @@ class OpLoweringGroup {
   ::pir::Block* GetParentBlock() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;
-  std::unordered_set<::pir::Value> GetInputOpValues() const;
+  std::vector<::pir::Value> GetInputOpValues() const;
   std::unordered_set<::pir::Value> GetOutputOpValues() const;
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const;
@@ -72,6 +72,11 @@ class OpLoweringGroup {
     for (const auto& op : ops_) {
       VisitOp(op);
     }
+  }
+
+  bool IsBroadcastLeaf() const { return is_broadcast_leaf_; }
+  void SetIsBroadcastLeaf(bool is_broadcast_leaf) {
+    is_broadcast_leaf_ = is_broadcast_leaf;
   }
 
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
@@ -198,6 +203,7 @@ class OpLoweringGroup {
   std::unordered_set<::pir::Operation*> output_ops_;
   // op pattern kind.
   OpPatternKind op_pattern_kind_{kElementWise};
+  bool is_broadcast_leaf_{false};
 
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;

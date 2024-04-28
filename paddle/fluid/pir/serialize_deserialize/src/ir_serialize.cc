@@ -93,14 +93,19 @@ Json ProgramWriter::WriteBlockArg(const pir::Value& value) {
 
 Json ProgramWriter::WriteValue(const pir::Value& value) {
   Json var_json;
-  // Json var = value;
-  Json var = WriteType(value.type());
-  value_id_map[value] = value_id_;
-  var_json[ID] = value_id_;
-  var_json[TYPE_TYPE] = var;
-  VLOG(6) << "Finish write value " << value_id_;
+  if (value) {
+    value_id_map[value] = value_id_;
+    var_json[ID] = value_id_;
+    VLOG(6) << "Finish write value " << value_id_;
+    value_id_++;
+  } else {
+    var_json[ID] = 0;  // NULL_TYPE
+    VLOG(6) << "Finish write NULL_TYPE value.";
+  }
 
-  value_id_++;
+  Json var = WriteType(value.type());
+  var_json[TYPE_TYPE] = var;
+
   return var_json;
 }
 
@@ -136,9 +141,15 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
 
 Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   Json operand_json = Json::object();
-  int64_t id = value_id_map[op_operand.source()];
-  operand_json[ID] = id;
-  VLOG(6) << "Finish write OpOperand " << id;
+  if (op_operand.source()) {
+    int64_t id = value_id_map[op_operand.source()];
+    operand_json[ID] = id;
+    VLOG(6) << "Finish write OpOperand " << id;
+  } else {
+    operand_json[ID] = 0;  // NULL_VALUE
+    VLOG(6) << "Finish write NULL_VALUE OpOperand.";
+  }
+
   return operand_json;
 }
 

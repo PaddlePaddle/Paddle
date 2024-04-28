@@ -19,7 +19,7 @@ from ..auto_parallel.static.utils import (
     get_logger,
 )
 from .pass_base import PassBase, register_pass
-from .pass_utils import split_matmul_grad_to_matmul
+from .pass_utils import AutoParallelStreamType, split_matmul_grad_to_matmul
 
 logger = get_logger(logging.INFO)
 
@@ -115,6 +115,10 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             # matmul_grad_op => matmul_v2 + reshape + reshape + matmul_v2 + reshape
             split_matmul_grad_to_matmul(
                 block, matmul_grad_id, self.dist_context, self.op_namescope
+            )
+
+            allreduce_op.dist_attr.execution_stream = (
+                AutoParallelStreamType.MP_STREAM.value
             )
 
             # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
