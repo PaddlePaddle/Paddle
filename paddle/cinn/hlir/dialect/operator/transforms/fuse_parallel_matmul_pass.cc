@@ -53,7 +53,7 @@ class MergeParallelMatmulPattern
       return false;
     }
 
-    auto IsDynameShape = [&](const std::vector<int64_t>& dims) {
+    auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
       return std::any_of(
           dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
     };
@@ -81,7 +81,7 @@ class MergeParallelMatmulPattern
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
                 .dims());
-        if (IsDynameShape(cur_dim)) {
+        if (IsDynamicShape(cur_dim)) {
           continue;
         }
         if (pre_dim.value() == cur_dim) {
