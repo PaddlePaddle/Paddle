@@ -18,6 +18,7 @@
 #include <variant>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -82,9 +83,6 @@ template <typename T>
 class UnsupportPattern {};
 
 template <typename T>
-struct AnchorPattern {};
-
-template <typename T>
 class HorizontalFusionPattern {};
 
 template <typename T>
@@ -102,4 +100,20 @@ struct StmtPattern final : public StmtPatternBase<T> {
     return static_cast<const StmtPatternBase<T>&>(*this);
   }
 };
+
+template <typename T>
+struct AnchorPattern {
+  explicit AnchorPattern(
+      const std::vector<pir::Operation*>& ops,
+      const pir::Value& anchor const AnchorState<T>& anchor_state)
+      : ops_(ops), anchor_(anchor), {}
+  std::vector<pir::Operation*> ops_;
+  pir::Value anchor_;  // Choose only one anchor
+  AnchorState<T> anchor_state;
+  std::vector<pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Value> outputs() const { return outputs_; }
+  pir::Value anchor() const { return anchor_; }
+  static std::string name() { return "AnchorPattern"; }
+};
+
 }  // namespace cinn::fusion

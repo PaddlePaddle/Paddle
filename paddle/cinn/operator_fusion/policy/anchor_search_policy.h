@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/policy/policy_base.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"

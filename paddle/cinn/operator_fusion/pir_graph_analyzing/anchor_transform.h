@@ -13,3 +13,49 @@
 // limitations under the License.
 
 #pragma once
+
+#include <variant>
+#include "paddle/cinn/operator_fusion/utils.h"
+
+namespace cinn::fusion {
+struct TransformInfo {
+  pir::Operation* op;
+  size_t input_idx;
+  size_t output_idx;
+  bool is_upstream_anchor;
+  pir::Value InputValue() { return op->operand_source(input_idx); }
+  pir::Value OutputValue() { return op->result(output_idx); }
+};
+
+struct UnsupportTransform {
+  TransformInfo info;
+};
+
+struct IdentityTransform {
+  TransformInfo info;
+};
+
+struct AppendDimTransform {
+  TransformInfo info;
+};
+
+struct DeleteDimTransform {
+  TransformInfo info;
+};
+
+using AnchorTransform = std::variant<UnsupportTransform,
+                                     IdentityTransform,
+                                     AppendDimTransform,
+                                     DeleteDimTransform>;
+using AnchorTransformRoute = std::vector<AnchorTransform>;
+
+template <typename T>
+struct ValueExpr {};
+
+template <typename T>
+struct AnchorState {
+  std::vector<ValueExpr<T>> output_exprs;
+};
+
+AnchorTransform CreateAnchorTransform(TransformInfo info);
+}  // namespace cinn::fusion

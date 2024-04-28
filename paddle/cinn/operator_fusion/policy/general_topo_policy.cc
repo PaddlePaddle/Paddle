@@ -14,9 +14,7 @@
 
 #include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
 #include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
 
 namespace cinn::fusion {
 

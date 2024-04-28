@@ -13,3 +13,23 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/policy/anchor_search_policy.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+
+namespace cinn::fusion {
+
+std::vector<AnchorTransformRoute> FindAnchorTransformRoute(
+    pir::Value begin, pir::Value end, std::unordered_set<pir::Operation*> ops) {
+}
+bool IsLegalRoute(AnchorTransformRoute route) {}
+
+template <typename T>
+bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {}
+template <typename T>
+bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {}
+
+template class AnchorSearchPolicy<FrontendStage>;
+template class AnchorSearchPolicy<BackendStage>;
+}  // namespace cinn::fusion

@@ -13,3 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
+
+namespace cinn::fusion {
+AnchorTransform CreateAnchorTransform(TransformInfo info) {}
+}  // namespace cinn::fusion

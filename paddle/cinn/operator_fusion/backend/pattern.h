@@ -17,6 +17,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -69,23 +70,6 @@ struct UnsupportPattern<BackendStage> {
 };
 
 template <>
-struct AnchorPattern<BackendStage> {
-  explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
-                         const std::vector<pir::Value>& outputs,
-                         const pir::Value& anchor,
-                         const FusionOp& fusion_op)
-      : ops_(ops), outputs_(outputs), anchor_(anchor), fusion_op_(fusion_op) {}
-  std::vector<pir::Operation*> ops_;
-  std::vector<pir::Value> outputs_;
-  pir::Value anchor_;  // Choose only one anchor
-  FusionOp fusion_op_;
-  std::vector<pir::Operation*> ops() const { return ops_; }
-  std::vector<pir::Value> outputs() const { return outputs_; }
-  pir::Value anchor() const { return anchor_; }
-  static std::string name() { return "AnchorPattern"; }
-};
-
-template <>
 struct HorizontalFusionPattern<BackendStage> {
   explicit HorizontalFusionPattern(
       const std::vector<StmtPattern<BackendStage>>& patterns)
@@ -100,6 +84,13 @@ struct HorizontalFusionPattern<BackendStage> {
     return result;
   }
   static std::string name() { return "HorizontalFusionPattern"; }
+};
+
+template <>
+struct ValueExpr<BackendStage> {
+  AnchorTransformRoute transform_route;
+  pir::Value root_value;
+  FusionOp root_fusion_op;
 };
 
 }  // namespace cinn::fusion
