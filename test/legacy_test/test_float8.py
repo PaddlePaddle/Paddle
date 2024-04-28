@@ -16,6 +16,8 @@ import os
 import re
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.base import core
 
@@ -105,6 +107,50 @@ class TestFP8FullOp(unittest.TestCase):
                 expect = paddle.to_tensor([[0, 0]]).astype("float32")
                 if self.device == "gpu":
                     self.assertTrue(paddle.equal_all(expect, input_fp32))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11800,
+    "fp8 support in CUDA need CUDA version >= 11.8.",
+)
+class TestFP8MatmulOp(unittest.TestCase):
+    def setUp(self):
+        paddle.device.set_device("gpu")
+        self.dtype_dict = {
+            "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+            "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+        }
+
+    def test_matmul(self):
+        for self.device in ["gpu"]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([16, 32], dtype=self.dtype)
+                input2 = paddle.ones([64, 32], dtype=self.dtype)
+                input3 = paddle.ones([16, 32], dtype=self.dtype)
+                input4 = paddle.ones([64, 32], dtype=self.dtype)
+                input5 = np.ones((16, 32)).astype("float32")
+                input6 = np.ones((32, 64)).astype("float32")
+                output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                    input1, input2, transpose_x=False, transpose_y=True
+                )
+                output_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+                    input3, input4, transpose_x=False, transpose_y=True
+                )
+                expect_result = np.matmul(input5, input6)
+
+                paddle.set_printoptions(4, 1000, 50)
+                print("output_fp16: ", output_fp16)
+                print("output_bf16: ", output_bf16)
+
+                if self.device == "gpu":
+                    self.assertTrue(
+                        paddle.equal_all(
+                            paddle.cast(output_fp16, "float32"),
+                            paddle.cast(output_bf16, "float32"),
+                            paddle.to_tensor(expect_result),
+                        )
+                    )
 
 
 if __name__ == "__main__":

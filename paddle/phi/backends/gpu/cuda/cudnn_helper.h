@@ -105,6 +105,25 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
 template <typename T>
 class CudnnDataType;
 
+// CUDNN_DATA_FLOAT8 is not valid before cudnn8.6
+#if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11800
+template <>
+class CudnnDataType<phi::dtype::float8_e4m3fn> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_FP8_E4M3;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+#endif
+
 // CUDNN_DATA_BFLOAT16 is not valid before cudnn8.1
 #if CUDNN_VERSION_MIN(8, 1, 0)
 template <>

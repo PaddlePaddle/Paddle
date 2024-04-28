@@ -249,6 +249,8 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                        const phi::DenseTensor& mat_b,
                        phi::DenseTensor* workspace,
                        phi::DenseTensor* out) {
+
+std::cout<< "test::::CublasLtMatmulFP8 " << mat_a.dims()[0]<<std::endl;
   int m = mat_a.dims()[0];
   int k = mat_a.dims()[1];
   int n = mat_b.dims()[1];
