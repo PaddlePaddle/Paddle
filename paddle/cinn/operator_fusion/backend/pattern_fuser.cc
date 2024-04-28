@@ -264,6 +264,8 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
   std::map<const ir::Expr*, int> degrees;
   for (const auto& op : op_exprs) {
     degrees[&op] = 0;
+  }
+  for (const auto& op : op_exprs) {
     auto outputs = GetOutputTensors(op);
     std::vector<const ir::Expr*> downstreams;
     for (const auto& output : outputs) {
@@ -285,6 +287,7 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
   }
   while (!q.empty()) {
     auto* cur = q.front();
+    VLOG(4) << "Topo Sort Visit Order is:" << GetOutputTensors(*cur)[0]->name;
     q.pop();
     result.push_back(cur);
     for (const auto& downstream : op2downstreams[cur]) {

@@ -36,7 +36,7 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  // tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
   VLOG(4) << "CreateLoopReorderAlignmentTactic End";
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
   VLOG(4) << "CreateTileFirstGeneralTactic End";
