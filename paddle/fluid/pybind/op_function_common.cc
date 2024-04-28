@@ -56,7 +56,7 @@ class OpAttrTypeMap {
   }
 
  private:
-  OpAttrTypeMap() = default;
+  OpAttrTypeMap() : ops_attrtype_map_() {}
   std::unordered_map<
       std::string,
       std::unordered_map<std::string, paddle::framework::proto::AttrType>>

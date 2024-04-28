@@ -50,7 +50,12 @@ WhileInstruction::WhileInstruction(
     pir::Operation* op,
     ValueExecutionInfo* parent_exe_info,
     interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place),
+      inputs_(),
+      outputs_(),
+      body_inter_(nullptr),
+      body_outputs_(),
+      external_input_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
                  phi::errors::PreconditionNotMet(
                      "While instruction only support While op"));

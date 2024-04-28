@@ -956,9 +956,9 @@ void gpc_polygon_clip(gpc_op op,
   polygon_node *cf = nullptr;
   vertex_node *vtx = nullptr;
   vertex_node *nv = nullptr;
-  std::array<h_state, 2> horiz;
-  std::array<int, 2> in;
-  std::array<int, 2> exists;
+  std::array<h_state, 2> horiz = {};
+  std::array<int, 2> in = {};
+  std::array<int, 2> exists = {};
   std::array<int, 2> parity = {LEFT, LEFT};
   int c = 0;
   int v = 0;
@@ -1603,10 +1603,10 @@ void gpc_tristrip_clip(gpc_op op,
   vertex_node *ltn = nullptr;
   vertex_node *rt = nullptr;
   vertex_node *rtn = nullptr;
-  std::array<h_state, 2> horiz;
+  std::array<h_state, 2> horiz = {};
   vertex_type cft = NUL;
-  std::array<int, 2> in;
-  std::array<int, 2> exists;
+  std::array<int, 2> in = {};
+  std::array<int, 2> exists = {};
   std::array<int, 2> parity = {LEFT, LEFT};
   int s = 0;
   int v = 0;

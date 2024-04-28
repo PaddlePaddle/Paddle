@@ -33,12 +33,18 @@ using phi::SelectedRows;
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
 inline double GetCurrentUS() {
-  struct timeval time;
+  struct timeval time = {0, 0};
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-Communicator::Communicator() = default;
+Communicator::Communicator()
+    : envs(),
+      trainers_(0),
+      send_varname_to_ctx_(),
+      recv_varname_to_ctx_(),
+      recv_scope_(nullptr),
+      xpu_temp_scope_(nullptr) {}
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
