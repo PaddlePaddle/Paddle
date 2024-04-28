@@ -116,6 +116,7 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/delete_quant_dequant_linear_op_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
@@ -920,6 +921,11 @@ bool AnalysisPredictor::PrepareExecutor() {
           pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
         }
       }
+      auto delete_quant_dequant_linear_op_pass =
+          pir::CreateDeleteQuantDequantLinearOpPass();
+      delete_quant_dequant_linear_op_pass->SetNotOwned(
+          pir::Pass::kParamScopeAttr, sub_scope_);
+      pass_pm.AddPass(std::move(delete_quant_dequant_linear_op_pass));
       if (config_.use_gpu()) {
         // gpu
         if (!config_.custom_pass_only_) {
