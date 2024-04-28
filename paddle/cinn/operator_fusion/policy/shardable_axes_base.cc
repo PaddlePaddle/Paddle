@@ -121,10 +121,12 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
       return axes;
     }
     for (size_t i = 0; i < input_rank; i++) {
-      if (reduce_axis_idx.count(i) && keep_dim) {
+      if (!reduce_axis_idx.count(i)) {
+        axes.emplace_back(input_axes[i]);
+      } else if (keep_dim) {
         axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       } else {
-        axes.emplace_back(input_axes[i]);
+        // do nothing
       }
     }
     return axes;
@@ -239,6 +241,8 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
 
   const auto CombineAxes = [&](const ShardableAxes& root,
                                const ShardableAxes& non_root) {
+    VLOG(4) << "start CombineAxes: " << root.DebugStr() << " with "
+            << non_root.DebugStr();
     CHECK_EQ(root.axis_names.size(), non_root.axis_names.size());
     for (int i = 0; i < non_root.axis_names.size(); i++) {
       name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
@@ -249,6 +253,8 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_operands(); ++i) {
       auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
+      VLOG(4) << op->name() << " " << i << "-th input " << value.impl()
+              << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
         for (auto& axis_name : axes.axis_names) {
@@ -261,6 +267,8 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_results(); ++i) {
       auto value = op->result(i);
       auto axes = axes_signature.outputs[i];
+      VLOG(4) << op->name() << " " << i << "-th output " << value.impl()
+              << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
         for (auto& axis_name : axes.axis_names) {
