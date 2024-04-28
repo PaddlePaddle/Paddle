@@ -14,7 +14,9 @@
 
 #include "paddle/cinn/lang/placeholder.h"
 
+#include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace lang {
@@ -29,12 +31,17 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
   for (int s : shape) {
     expr_shape.push_back(Expr(s));
   }
-  return CreatePlaceHolder(expr_shape, type, name);
+  return CreatePlaceHolder(
+      ir::utils::GetCompitableShape(expr_shape), type, name);
 }
 
 ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
                              Type type,
                              const std::string &name) {
+  PADDLE_ENFORCE_GT(shape.size(),
+                    0,
+                    ::common::errors::PreconditionNotMet(
+                        "The shape of Placeholder should not be empty."));
   if (type.is_float(32)) {
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {
@@ -65,9 +72,10 @@ ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
   CINN_NOT_IMPLEMENTED
 }
 
-ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
+ir::Tensor CreatePlaceHolder(const std::vector<Expr> &origin_shape,
                              Type type,
                              const std::string &name) {
+  const auto shape = ir::utils::GetCompitableShape(origin_shape);
   if (type.is_float(32)) {
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {
