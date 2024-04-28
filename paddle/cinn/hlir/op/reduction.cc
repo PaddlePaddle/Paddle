@@ -374,6 +374,8 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       } else if (absl::holds_alternative<std::vector<int>>(
                      attrs.attr_store.at("dim"))) {
         return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
@@ -389,7 +391,6 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       });
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
-    // check reduce_axes
     CHECK_LE(reduce_axes.size(), ndim);
     CHECK_LT(reduce_axes.back(), ndim);
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
