@@ -183,7 +183,8 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
     os << "}";
   };
   ::pir::IrPrinter printer(os);
-  os << "Group " << group.group_id() << " :\n";
+  os << "Group id: " << group.group_id() << ", func_name: " << group.FuncName()
+     << "\n";
   for (auto* op : group.ops()) {
     printer.PrintOperation(op);
     PrintSymbolDims(*op);

@@ -1362,6 +1362,16 @@
   optional : w
   backward: push_gpups_sparse
 
+- op : pull_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
+  output : Tensor[](out){w.size()}
+  infer_meta :
+    func : PullSparseV2InferMeta
+  kernel :
+    func : pull_sparse_v2
+    data_type : DataType::FLOAT32
+  backward : pull_sparse_v2_grad
+
 - op : push_dense
   args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
   output :
@@ -1373,7 +1383,7 @@
     data_type : DataType::FLOAT32
 
 - op : push_sparse_v2
-  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
   infer_meta :
     func : UnchangedMultiInferMeta
