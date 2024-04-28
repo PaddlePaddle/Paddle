@@ -288,7 +288,7 @@ class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
                       int bin_cnt,
                       int round_type,
                       phi::DenseTensor *out) const override {
-    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
+    phi::funcs::ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, in_scale, bin_cnt, round_type, out);
   }
 };
