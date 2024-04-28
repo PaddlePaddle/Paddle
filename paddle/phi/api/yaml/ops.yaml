@@ -776,16 +776,6 @@
     data_type : input
   backward : depthwise_conv2d_grad
 
-- op : dequantize
-  args : (Tensor input, float scale = 1.0, float shift = 0.0)
-  output : Tensor(output)
-  infer_meta :
-    func :  DeQuantizeInferMeta
-    param : [input]
-  kernel :
-    func : dequantize
-    data_type : input
-
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -2331,16 +2321,6 @@
   kernel :
     func : qr
   backward : qr_grad
-
-- op : quantize
-  args : (Tensor input, bool is_negative_input = false, float scale = 1.0, float shift = 0.0, str output_format = "NHWC", bool bfloat16 = false)
-  output : Tensor(output)
-  infer_meta :
-    func : QuantizeInferMeta
-    param : [input]
-  kernel :
-    func : quantize
-    data_type : input
 
 - op : real
   args : (Tensor x)

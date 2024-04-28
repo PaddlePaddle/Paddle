@@ -114,6 +114,4 @@ void QuantOpKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(quantize, OneDNN, ONEDNN, phi::QuantOpKernel, float) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
-}
+PD_REGISTER_KERNEL(quantize, OneDNN, ONEDNN, phi::QuantOpKernel, float) {}
