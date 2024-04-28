@@ -22,9 +22,11 @@
 
 namespace phi {
 
-void Decode(const phi::DenseTensor& emission_weights,
+template <typename T, typename Context>
+void Decode(const Context& dev_ctx,
+            const phi::DenseTensor& emission_weights,
             const phi::DenseTensor& transition_weights,
-            phi::DenseTensor* decoded_path) const {
+            phi::DenseTensor* decoded_path) {
   auto emission_dims = emission_weights.dims();
   const size_t seq_len = emission_dims[0];
   const size_t tag_num = emission_dims[1];
@@ -36,9 +38,11 @@ void Decode(const phi::DenseTensor& emission_weights,
   // best sequence of tags from position 1 to position k with v being the end
   // tag.
   phi::DenseTensor alpha;
-  T* alpha_value = alpha.mutable_data<T>(emission_dims, phi::CPUPlace());
+  alpha.Resize(emission_dims);
+  T* alpha_value = dev_ctx.template Alloc<T>(&alpha);
   phi::DenseTensor track;
-  int* track_value = track.mutable_data<int>(emission_dims, phi::CPUPlace());
+  track.Resize(emission_dims);
+  int* track_value = dev_ctx.template Alloc<int>(&track);
   auto ker = phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>,
                                    phi::CPUPlace>::Cache()
                  .At(tag_num);
@@ -63,41 +67,43 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
                          const DenseTensor& emission,
                          const DenseTensor& transition,
                          const paddle::optional<DenseTensor>& label,
-                         const paddle::optional<DenseTensor>& length
-                             DenseTensor* viterbi_path) {
-  auto* emission_weights = emission;
-  auto* transition_weights = transition;
-  auto* label = label.get_ptr();
+                         const paddle::optional<DenseTensor>& length,
+                         DenseTensor* viterbi_path) {
+  auto* emission_weights = &emission;
+  auto* transition_weights = &transition;
+  auto* label_p = label.get_ptr();
   auto* decoded_path = viterbi_path;
 
   int64_t* path = dev_ctx.template Alloc<int64_t>(decoded_path);
   phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, decoded_path, 0);
 
-  bool has_length = length.get_ptr() != null;
+  bool has_length = length.get_ptr() != nullptr;
   if (has_length) {
-    auto* length = length.get_ptr();
-    const size_t seq_num = length->numel();
-    const int64_t* length_data = length->data<int64_t>();
+    auto* length_p = length.get_ptr();
+    const size_t seq_num = length_p->numel();
+    const int64_t* length_data = length_p->data<int64_t>();
     auto in_dims = emission_weights->dims();
 
     phi::DenseTensor emission_weights_tmp = *emission_weights;
-    emission_weights_tmp.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+    emission_weights_tmp.Resize(
+        common::make_ddim({in_dims[0] * in_dims[1], in_dims[2]}));
 
-    decoded_path->Resize({in_dims[0] * in_dims[1], 1});
+    decoded_path->Resize(common::make_ddim({in_dims[0] * in_dims[1], 1}));
     for (size_t i = 0; i < seq_num; ++i) {
       if (length_data[i] == 0) continue;
       int64_t start_pos = i * in_dims[1];
       int64_t end_pos = start_pos + static_cast<int64_t>(length_data[i]);
       phi::DenseTensor decoded_path_one_seq =
           decoded_path->Slice(start_pos, end_pos);
-      Decode(emission_weights_tmp.Slice(start_pos, end_pos),
-             *transition_weights,
-             &decoded_path_one_seq);
+      Decode<T, Context>(dev_ctx,
+                         emission_weights_tmp.Slice(start_pos, end_pos),
+                         *transition_weights,
+                         &decoded_path_one_seq);
     }
-    decoded_path->Resize({in_dims[0], in_dims[1]});
+    decoded_path->Resize(common::make_ddim({in_dims[0], in_dims[1]}));
 
     if (label) {
-      const int64_t* label_value = label->data<int64_t>();
+      const int64_t* label_value = label_p->data<int64_t>();
       for (size_t i = 0; i < seq_num; ++i) {
         for (int64_t j = 0; j < in_dims[1]; ++j) {
           int64_t start_pos = i * in_dims[1];
@@ -133,18 +139,19 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
       int64_t end_pos = static_cast<int64_t>(lod[level][i + 1]);
       phi::DenseTensor decoded_path_one_seq =
           decoded_path->Slice(start_pos, end_pos);
-      Decode(emission_weights->Slice(start_pos, end_pos),
-             *transition_weights,
-             &decoded_path_one_seq);
+      Decode<T, Context>(dev_ctx,
+                         emission_weights->Slice(start_pos, end_pos),
+                         *transition_weights,
+                         &decoded_path_one_seq);
     }
     if (label) {
-      PADDLE_ENFORCE_EQ(label->NumLevels(),
+      PADDLE_ENFORCE_EQ(label_p->NumLevels(),
                         1UL,
                         phi::errors::InvalidArgument(
                             "The Input(label) should be a sequence with lod "
                             "level 1. But received: lod level %u.",
-                            label->NumLevels()));
-      const int64_t* label_value = label->data<int64_t>();
+                            label_p->NumLevels()));
+      const int64_t* label_value = label_p->data<int64_t>();
       size_t numel = label->numel();
       for (size_t i = 0; i < numel; ++i) {
         path[i] = label_value[i] == path[i] ? 1 : 0;
