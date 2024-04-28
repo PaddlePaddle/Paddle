@@ -1768,6 +1768,16 @@
   no_need_buffer : x
   backward : pad3d_double_grad
 
+- backward_op : partial_concat_grad
+  forward : partial_concat (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : PartialConcatGradInferMeta
+    param : [x]
+  kernel :
+    func : partial_concat_grad
+
 - backward_op : pixel_shuffle_grad
   forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
   args : (Tensor out_grad, int upscale_factor, str data_format)

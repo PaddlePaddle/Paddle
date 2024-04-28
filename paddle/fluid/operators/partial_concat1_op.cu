@@ -13,13 +13,30 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/partial_concat_op.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
+
+static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
+  PADDLE_ENFORCE_EQ(
+      start_index >= -size && start_index < size,
+      true,
+      phi::errors::InvalidArgument(
+          "The start_index is expected to be in range of [%d, %d), but got %d",
+          -size,
+          size,
+          start_index));
+  if (start_index < 0) {
+    start_index += size;
+  }
+  return start_index;
+}
 
 template <class T>
 __global__ void ConcatPartialCUDAKernel(T **in,
