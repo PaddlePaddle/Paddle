@@ -20,6 +20,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.base import core
 
+
 class TestReshardSToR:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
@@ -47,6 +48,7 @@ class TestReshardSToR:
         assert np.equal(out.shape, out._local_shape).all()
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out.numpy(), a.numpy())
+
 
 if __name__ == '__main__':
     TestReshardSToR().run_test_case()

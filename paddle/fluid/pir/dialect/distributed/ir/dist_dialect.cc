@@ -102,7 +102,6 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
               phi::distributed::auto_parallel::str_join(
                   op_dist_attr.process_mesh_attr().process_ids()) +
               "]}";
-
     for (uint32_t i = 0; i < op_dist_attr.num_operands(); ++i) {
       os << ",operand(" + std::to_string(i) + "):{" << op_dist_attr.operand(i)
          << "}";
