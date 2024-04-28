@@ -128,6 +128,19 @@ MaybeLoopFramework GetLoopFramework(const StmtPattern<T>& pattern) {
   return std::visit(LoopFrameworkVisitor<T>(), pattern.variant());
 }
 
+static MaybeLoopFramework SqueezeLoopFramework(
+    const MaybeLoopFramework& loop_framework) {
+  MaybeLoopFramework result;
+  for (int i = 0; i < loop_framework.size(); i++) {
+    if (loop_framework[i] == 1) {
+      continue;  // skip 1
+    } else {
+      result.push_back(loop_framework[i]);
+    }
+  }
+  return result;
+}
+
 template <typename T>
 bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
                           const StmtPattern<T>& rhs) {
@@ -135,7 +148,7 @@ bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
   auto rhs_loop = GetLoopFramework(rhs);
   VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
   VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loop, ",");
-  return lhs_loop == rhs_loop;
+  return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
 }
 
 template <typename T>
