@@ -79,34 +79,47 @@ struct LiftReduceToReduceTreeOperation {
 };
 
 struct MergeTrivialPatternOperation {
-  // TOOD(@wuzhanfei)
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
                   PatternNodePtr<Phrase> upstream) {
-    std::vector<PatternNodePtr<Phrase>> fusion_candidate =
-        upstream->downstream();
-    upstream->ClearDownstream();
-    for (const auto& downstream : fusion_candidate) {
-      if (std::holds_alternative<ReducePattern<Phrase>>(
-              downstream->stmt_pattern()) ||
-          std::holds_alternative<TrivialPattern<Phrase>>(
-              downstream->stmt_pattern())) {
-        auto merged_node =
-            graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
-        graph->RemoveNode(downstream);
-        VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
-                << upstream->DebugStr() << "\ndownstream "
-                << downstream->DebugStr() << "\nmerged "
-                << merged_node->DebugStr();
-      } else {
-        upstream->AddNodeToDownstream(downstream);
-      }
-    }
-    if (upstream->downstream().empty()) {
-      graph->RemoveNode(upstream);
-    }
+    const auto& downstream = node->downstream().at(0);
+    auto merged_node =
+        graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+    graph->RemoveNode(downstream);
+    VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
+            << upstream->DebugStr() << "\ndownstream " << downstream->DebugStr()
+            << "\nmerged " << merged_node->DebugStr();
   }
 };
+
+// struct MergeTrivialPatternOperation {
+//   template <typename Phrase>
+//   void operator()(PatternGraph<Phrase>* graph,
+//                   PatternNodePtr<Phrase> upstream) {
+//     std::vector<PatternNodePtr<Phrase>> fusion_candidate =
+//         upstream->downstream();
+//     upstream->ClearDownstream();
+//     for (const auto& downstream : fusion_candidate) {
+//       if (std::holds_alternative<ReducePattern<Phrase>>(
+//               downstream->stmt_pattern()) ||
+//           std::holds_alternative<TrivialPattern<Phrase>>(
+//               downstream->stmt_pattern())) {
+//         auto merged_node =
+//             graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+//         graph->RemoveNode(downstream);
+//         VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
+//                 << upstream->DebugStr() << "\ndownstream "
+//                 << downstream->DebugStr() << "\nmerged "
+//                 << merged_node->DebugStr();
+//       } else {
+//         upstream->AddNodeToDownstream(downstream);
+//       }
+//     }
+//     if (upstream->downstream().empty()) {
+//       graph->RemoveNode(upstream);
+//     }
+//   }
+// };
 
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
