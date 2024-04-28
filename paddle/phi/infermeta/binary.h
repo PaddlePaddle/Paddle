@@ -538,6 +538,10 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            DataType out_dtype,
                            MetaTensor* y);
 
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out);
+
 void ShuffleBatchInferMeta(const MetaTensor& x,
                            const MetaTensor& seed,
                            int startup_seed,

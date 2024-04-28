@@ -3110,6 +3110,30 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of x must be 1. But received: %d",
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of y must be 1. But received: %d",
+                                   y_dims.size()));
+
+  if (x_dims[0] <= y_dims[0]) {
+    out->set_dims(y_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
+}
+
 void ShuffleBatchInferMeta(const MetaTensor& x,
                            const MetaTensor& seed,
                            int startup_seed,

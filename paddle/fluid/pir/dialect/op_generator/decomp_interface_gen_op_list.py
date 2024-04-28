@@ -40,6 +40,7 @@ decomp_interface_declare_gen_op_list = [
     "log_softmax",
     "mean",
     "meshgrid",
+    "one_hot",
     "p_norm",
     "pow",
     "reciprocal",

@@ -207,6 +207,46 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 }
 
 template <typename T>
+Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
+  auto num_classes_tensor =
+      backend::full_with_tensor<T>(num_classes, 0, x.dtype());
+
+  std::vector<int64_t> input_dim;
+  input_dim.push_back(x.shape()[0]);
+  input_dim.push_back(num_classes_tensor.shape()[0]);
+  auto input_tensor = full<T>(input_dim, 0, x.dtype());
+
+  std::vector<int64_t> output_dim;
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    output_dim.push_back(x.shape()[i]);
+  }
+  output_dim.push_back(num_classes_tensor.shape()[0]);
+
+  auto end = full<T>({1}, x.shape()[0], x.dtype());
+  auto start = full<T>({1}, 0, x.dtype());
+  auto step = full<T>({1}, 1, x.dtype());
+  auto arange_tensor =
+      backend::arange_with_tensor<T>(start, end, step, x.dtype());
+
+  std::vector<int64_t> reshape_dim{x.shape()[0], 1};
+  auto x_reshape = reshape<T>(x, reshape_dim);
+  auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
+
+  std::vector<Tensor> index_concat;
+  index_concat.push_back(arange_tensor_reshape);
+  index_concat.push_back(x_reshape);
+  auto index_tensor = concat<T>(index_concat, 1);
+
+  auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
+
+  auto ans = reshape<T>(
+      cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
+              DataType::FLOAT32),
+      output_dim);
+  return ans;
+}
+
+template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
   return full<T>(empty_shape, 1.0, x.dtype()) / x;
 }
