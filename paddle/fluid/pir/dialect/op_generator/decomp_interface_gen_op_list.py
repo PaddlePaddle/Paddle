@@ -39,6 +39,7 @@ decomp_interface_declare_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "one_hot",
     "p_norm",
     "pow",
     "reciprocal",
