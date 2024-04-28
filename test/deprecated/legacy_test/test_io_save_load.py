@@ -97,33 +97,39 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_when_train_with_no_grad(self):
-        with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
-            net = paddle.nn.Linear(1024, 1)
-            net = paddle.jit.to_static(net, full_graph=True)
-            x = paddle.rand([1024], 'float32')
-            x.stop_gradient = False
-            out = net(x)
-            out.backward()
-            x_grad = x.grad.mean()
-            save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
+        paddle.disable_static()
+        net = paddle.nn.Linear(1024, 1)
+        net = paddle.jit.to_static(net, full_graph=True)
+        x = paddle.rand([1024], 'float32')
+        x.stop_gradient = False
+        out = net(x)
+        out.backward()
+        x_grad = x.grad.mean()
+        x.clear_grad()
 
-            paddle.jit.save(net, save_path)
-            net1 = paddle.jit.load(save_path)
-            net1.eval()
+        # jit.save
+        save_path = os.path.join(self.temp_dir.name, 'train_with_no_grad')
+        paddle.jit.save(net, save_path)
 
-            with paddle.no_grad():
-                out1 = net1(x)
-                self.assertEqual(out, out1)
+        # test eval mode
+        net1 = paddle.jit.load(save_path)
+        net1.eval()
 
-            net2 = paddle.jit.load(save_path)
-            net2.train()
-            out2 = net2(x)
-            out2.backward()
-            self.assertEqual(out, out2)
-            x_grad2 = x.grad.mean()
+        with paddle.no_grad():
+            out1 = net1(x)
+            self.assertEqual(out, out1)
+
+        # test train mode
+        net2 = paddle.jit.load(save_path)
+        net2.train()
+        out2 = net2(x)
+        out2.backward()
+        self.assertEqual(out, out2)
+        x_grad2 = x.grad.mean()
+        if paddle.framework.in_pir_mode():
+            self.assertEqual(x_grad, x_grad2)
 
 
 if __name__ == '__main__':

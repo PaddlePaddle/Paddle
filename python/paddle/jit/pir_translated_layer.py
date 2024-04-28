@@ -17,7 +17,6 @@ import os
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
 from paddle.base import core, framework, unique_name
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import in_dynamic_mode
@@ -69,15 +68,10 @@ class _PirProgramHolder:
         self._persistable_vars = []
         self._persistable_names = []
 
-        # execution scope
-        self._inner_scope = core.Scope()
-
         self.support_train = trainable
         self._infer_program = program
 
         self._preprocess()
-
-        self.prepare_train_program = False
 
     def _preprocess(self):
         (
@@ -129,10 +123,6 @@ class _PirProgramHolder:
     @property
     def persistable_vars(self):
         return self._persistable_vars
-
-    @property
-    def scope(self):
-        return self._inner_scope
 
 
 # [ PirTranslatedLayer : Run program in dygraph mode ]
@@ -271,10 +261,6 @@ def _construct_params_and_buffers(
         return var_dict
 
 
-def _valid_vars(vars):
-    return vars if vars else None
-
-
 def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_tensors = []
@@ -302,10 +288,6 @@ def _run_dygraph(instance, input, program_holder):
             tensor.name = program_holder.input_vars[i].name
         input_tensor_names.append(tensor.name)
         input_tensors.append(tensor)
-    if instance._input_args_names is None:
-        instance._input_args_names = [
-            ins.name for ins in program_holder.input_vars
-        ]
 
     persistable_tensors = []
     for var_name in program_holder.persistable_names:
@@ -320,73 +302,31 @@ def _run_dygraph(instance, input, program_holder):
                 % var_name
             )
 
-    output_tensors = []
+    from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
 
-    for i, var in enumerate(program_holder.output_vars):
-        tensor = core.eager.Tensor(
-            dtype=datatype_to_vartype[var.dtype],
-            dims=var.shape,
-            name=var.name,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-        )
-        output_tensors.append(tensor)
+    inputs = program_holder.input_vars
+    outputs = program_holder.output_vars
+    parameters = (persistable_tensors, program_holder.persistable_vars)
 
-    # hold forward variables
-    tmp_scope_vec = [program_holder.scope]
+    layer = PartialProgramLayer(
+        program_holder.infer_program,
+        inputs,
+        outputs,
+        parameters,
+    )
+    instance.layer = layer
 
-    # 2. run program by op
     if instance._is_test:
-        attrs = [
-            'forward_global_block',
-            program_holder.infer_program.global_block(),
-            'backward_global_block',
-            paddle.pir.Program().global_block(),
-            'is_test',
-            instance._is_test,
-            'program_id',
-            paddle.utils._hash_with_id(program_holder._infer_program, instance),
-            'fx',
-            program_holder.input_vars,
-            'fo',
-            program_holder.output_vars,
-            'fp',
-            program_holder.persistable_vars,
-            'fm',
-            [],
-            'no_need_buffers',
-            [],
-        ]
-
-        _legacy_C_ops.pir_run_program(
-            _valid_vars(input_tensors),
-            _valid_vars(persistable_tensors),
-            _valid_vars(output_tensors),
-            tmp_scope_vec,
-            None,
-            *attrs,
-        )
-
-        outs = output_tensors
-        if len(output_tensors) == 1:
-            outs = output_tensors[0]
-        return outs
-
+        layer.training = False
     else:
-        from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
+        if not program_holder.support_train:
+            raise ValueError(
+                "The model is not trainable, please check model_file of jit.save."
+            )
+        else:
+            layer.training = True
 
-        inputs = program_holder.input_vars
-        outputs = program_holder.output_vars
-        parameters = (persistable_tensors, program_holder.persistable_vars)
-
-        layer = PartialProgramLayer(
-            program_holder.infer_program,
-            inputs,
-            outputs,
-            parameters,
-        )
-        instance.layer = layer
-        return instance.layer(input_tensors)
+    return instance.layer(input_tensors)
 
 
 def _run_static_graph(program_holder, trace_program):
