@@ -129,10 +129,17 @@ class TestFP8MatmulOp(unittest.TestCase):
                 input2 = paddle.ones([64, 32], dtype=self.dtype)
                 input3 = paddle.ones([16, 32], dtype=self.dtype)
                 input4 = paddle.ones([64, 32], dtype=self.dtype)
+
+                bias = paddle.ones([64], dtype="float32")
+
                 input5 = np.ones((16, 32)).astype("float32")
                 input6 = np.ones((32, 64)).astype("float32")
                 output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
-                    input1, input2, transpose_x=False, transpose_y=True
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    bias=bias,
                 )
                 output_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
                     input3, input4, transpose_x=False, transpose_y=True

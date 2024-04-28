@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "fp8_common.h"
+#include "fp8_fp8_gemm_scale_bias_act.h"
+
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm_universal.h"
-
 #include "cutlass/float8.h"
 
 
@@ -23,8 +23,8 @@ namespace phi{
 namespace fusion{
 namespace cutlass_internal{
 
-template <typename InputType, typename OutType >
-bool dispatch_gemm_to_cutlass(GemmEpilogueAllParams params){
+template <typename InputType, typename OutType>
+bool dispatch_gemm_scale(GemmEpilogueAllParams params){
 
 using ElementInputA =
     typename std::conditional_t<std::is_same_v<InputType, phi::dtype::float8_e4m3fn>,
@@ -163,18 +163,6 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
     return true;
 }
 
-bool FP8FP8GemmScale(GemmEpilogueAllParams params){
-    if((params.input_dtype == "e4m3")&&(params.output_dtype == "bf16")){
-        dispatch_gemm_to_cutlass<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
-    }else if((params.input_dtype == "e4m3")&&(params.output_dtype == "fp16")){
-        dispatch_gemm_to_cutlass<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
-    }else if((params.input_dtype == "e5m2")&&(params.output_dtype == "bf16")){
-        dispatch_gemm_to_cutlass<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
-    }else if((params.input_dtype == "e5m2")&&(params.output_dtype == "fp16")){
-        dispatch_gemm_to_cutlass<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
-    }
-    return false;
-}
 
 }  // namespace cutlass_internal
 }  // namespace fusion

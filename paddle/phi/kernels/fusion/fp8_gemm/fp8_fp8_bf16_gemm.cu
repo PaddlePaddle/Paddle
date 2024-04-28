@@ -15,6 +15,8 @@
 #include <iostream>
 
 #include "fp8_common.h"
+#include "./cutlass_kernels/fp8_fp8_gemm_scale_bias_act.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -27,7 +29,7 @@ namespace fusion{
 namespace cutlass_internal{
 
 template <typename InputType, typename Context>
-void FP8FP8BF16Gemm(
+void fp8_fp8_bf16_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
@@ -68,7 +70,6 @@ void FP8FP8BF16Gemm(
   }
 
   void* dlhandler = phi::dynload::GetFP8FP8GemmFusedHandle();
-  func fp8_gemm_func = NULL;
   if (!dlhandler) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The library of fp8 phi kernels has not been compiled. Please run the "
@@ -84,72 +85,35 @@ void FP8FP8BF16Gemm(
   }
   std::string output_dtype = "bf16";
 
+  void *bias_data = nullptr;
+  std::vector<int64_t> bias_dims{};
   if(bias){
-    auto* bias_data = bias.get().data<float>();
-    auto bias_dims = common::vectorize(bias.get().dims());
-
-    GemmEpilogueAllParams params = {
-        reinterpret_cast<const void*>(x.data<InputType>()),
-        reinterpret_cast<const void*>(y.data<InputType>()),
-        reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>()),
-        scale,
-        M,
-        N,
-        K,
-        lda,
-        ldb,
-        ldd,
-        place,
-        stream,
-        sm_version,
-        0.01,  // for leaky_relu
-        reinterpret_cast<const void*>(bias_data),
-        &bias_dims,
-        input_dtype,
-        output_dtype
-    };
-    if (activation_type == "identity" || activation_type == "") {
-      fp8_gemm_func = (func)(dlsym(dlhandler, "FP8FP8GemmScaleBias"));
-    } else if (activation_type == "relu") {
-      fp8_gemm_func = (func)(dlsym(dlhandler, "FP8FP8GemmScaleBiasRelu"));
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "fp8_fp8_gemm does not support this activation_type: %s.",
-          activation_type.c_str()));
-    }
-    fp8_gemm_func(params);
-  } else {
-    GemmEpilogueAllParams params = {
-        reinterpret_cast<const void*>(x.data<InputType>()),
-        reinterpret_cast<const void*>(y.data<InputType>()),
-        reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>()),
-        scale,
-        M,
-        N,
-        K,
-        lda,
-        ldb,
-        ldd,
-        place,
-        stream,
-        sm_version,
-        0.01,  // for leaky_relu
-        nullptr,
-        nullptr,
-        input_dtype,
-        output_dtype
-    };
-    if (activation_type == "identity" || activation_type == "") {
-      fp8_gemm_func = (func)(dlsym(dlhandler, "FP8FP8GemmScale"));
-    } else if (activation_type == "relu") {
-      fp8_gemm_func = (func)(dlsym(dlhandler, "FP8FP8GemmScaleRelu"));
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "fp8_fp8_gemm does not support this activation_type: %s.",
-          activation_type.c_str()));
-    }
-    fp8_gemm_func(params);
+    bias_data = reinterpret_cast<void*>(const_cast<float*>(bias.get().data<float>()));
+    bias_dims = common::vectorize(bias.get().dims());
   }
+  GemmEpilogueAllParams params = {
+      reinterpret_cast<const void*>(x.data<InputType>()),
+      reinterpret_cast<const void*>(y.data<InputType>()),
+      reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>()),
+      scale,
+      M,
+      N,
+      K,
+      lda,
+      ldb,
+      ldd,
+      place,
+      stream,
+      sm_version,
+      0.01,  // for leaky_relu
+      bias_data,
+      &bias_dims,
+      input_dtype,
+      output_dtype,
+      activation_type,
+  };
+  func fp8_gemm_func = (func)(dlsym(dlhandler, "fp8_fp8_gemm_scale_bias_act"));
+  fp8_gemm_func(params);
 }
 
 }  // namespace cutlass_internal
@@ -159,6 +123,6 @@ void FP8FP8BF16Gemm(
 PD_REGISTER_KERNEL(fp8_fp8_bf16_gemm_fused,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::FP8FP8BF16Gemm,
+                   phi::fusion::cutlass_internal::fp8_fp8_bf16_gemm,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2) {}

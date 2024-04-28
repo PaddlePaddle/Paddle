@@ -14,41 +14,13 @@
 
 #pragma once
 
-#include <iostream>
-#include "cuda.h"
-
-#include "paddle/phi/api/include/context_pool.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/allocator.h"
+#include "../fp8_common.h"
 
 namespace phi{
 namespace fusion{
 namespace cutlass_internal{
 
-typedef struct {
-  const void *A;
-  const void *B;
-  void *D;
-  float scale = 1.0;
-  int M;
-  int N;
-  int K;
-  int lda;
-  int ldb;
-  int ldd;
-  const phi::GPUPlace& place;
-  cudaStream_t stream;
-  int sm_version = 80;
-  float leaky_alpha = 1.0;
-  const void *bias;
-  std::vector<int64_t>* bias_dims;
-  std::string& input_dtype;
-  std::string& output_dtype;
-  const std::string& activation_type;
-} GemmEpilogueAllParams;
-
-typedef bool (*func)(GemmEpilogueAllParams);
+extern "C" bool fp8_fp8_gemm_scale_bias_act(GemmEpilogueAllParams params);
 
 }  // namespace cutlass_internal
 }  // namespace fusion
