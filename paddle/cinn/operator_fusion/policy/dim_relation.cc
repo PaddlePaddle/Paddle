@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/operator_fusion/policy/dim_relation.h"
 
+#include "paddle/common/enforce.h"
+
 namespace cinn::fusion {
 
 const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
@@ -88,7 +90,11 @@ static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
 
   for (auto in_value_dim : input_value_dims) {
     for (auto out_value_dim : output_value_dims) {
-      CHECK_EQ(in_value_dim.size(), out_value_dim.size());
+      PADDLE_ENFORCE_EQ(
+          in_value_dim.size(),
+          out_value_dim.size(),
+          ::common::errors::PreconditionNotMet(
+              "Required in_value_dim and out_value_dim have same size."));
       for (int i = 0; i < in_value_dim.size(); ++i) {
         res[in_value_dim[i]][out_value_dim[i]] = true;
       }
@@ -104,12 +110,18 @@ static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
       &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  CHECK(broad_cast_value.has_value());
-
+  PADDLE_ENFORCE_EQ(broad_cast_value.has_value(),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Required broad_cast_value is not empty."));
   const auto& [input_value, output_value] = broad_cast_value.value();
   const int input_rank = GetCompitableRank(input_value);
   const int output_rank = GetCompitableRank(output_value);
-  CHECK_GE(output_rank, input_rank);
+  PADDLE_ENFORCE_GE(
+      output_rank,
+      input_rank,
+      ::common::errors::PreconditionNotMet(
+          "Required output rank shall be greater than or equal input rank."));
 
   // Compare axis one by one, from back to front.
   // The rule of broadcasting:

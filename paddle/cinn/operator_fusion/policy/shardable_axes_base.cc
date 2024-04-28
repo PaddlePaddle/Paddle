@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
+
+#include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
@@ -101,8 +102,15 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
 }
 
 ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
-  CHECK_EQ(reduce_op->num_operands(), 1);
-  CHECK_EQ(reduce_op->num_results(), 1);
+  PADDLE_ENFORCE_EQ(
+      reduce_op->num_operands(),
+      1,
+      ::common::errors::PreconditionNotMet(
+          "Required reduce_op->num_operands() shall be equal 1."));
+  PADDLE_ENFORCE_EQ(reduce_op->num_results(),
+                    1,
+                    ::common::errors::PreconditionNotMet(
+                        "Required reduce_op->num_results() shall be equal 1."));
   ShardableAxesSignature result = ShardableAxesSignature();
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   auto input_axes = CreateNewNamesWithRank(input_rank);
@@ -111,7 +119,11 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
     const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
     return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
   }();
-  CHECK_NE(reduce_axis_idx.size(), 0);
+  PADDLE_ENFORCE_NE(
+      reduce_axis_idx.size(),
+      0,
+      ::common::errors::PreconditionNotMet(
+          "Required reduce_axis_idx.size() shall not be equal 0."));
   bool keep_dim = GetReduceOpKeepDims(reduce_op);
   const auto output_axes = [&]() -> decltype(auto) {
     std::vector<std::string> axes;
@@ -145,11 +157,19 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   auto same_axes = CreateNewNamesWithRank(rank);
 
   for (int i = 0; i < op->num_operands(); ++i) {
-    CHECK(rank == GetCompitableRank(op->operand_source(i)));
+    PADDLE_ENFORCE_EQ(rank,
+                      GetCompitableRank(op->operand_source(i)),
+                      ::common::errors::PreconditionNotMet(
+                          "Required all inputs rank shall be equal output in "
+                          "elementwise op."));
     result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    CHECK(rank == GetCompitableRank(op->result(i)));
+    PADDLE_ENFORCE_EQ(rank,
+                      GetCompitableRank(op->operand_source(i)),
+                      ::common::errors::PreconditionNotMet(
+                          "Required all outputs rank shall be equal each other "
+                          "in elementwise op."));
     result.outputs.emplace_back(same_axes);
   }
   return result;
@@ -160,12 +180,19 @@ ShardableAxesSignature CreateSignatureForBroadcast(
   ShardableAxesSignature result = ShardableAxesSignature();
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  CHECK(broad_cast_value.has_value());
+  PADDLE_ENFORCE_EQ(broad_cast_value.has_value(),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Required broad_cast_value is not empty."));
 
   const auto& [input_value, output_value] = broad_cast_value.value();
   const int input_rank = GetCompitableRank(input_value);
   const int output_rank = GetCompitableRank(output_value);
-  CHECK_GE(output_rank, input_rank);
+  PADDLE_ENFORCE_GE(
+      output_rank,
+      input_rank,
+      ::common::errors::PreconditionNotMet(
+          "Required output rank shall be greater than or equal input rank."));
 
   // Create axes for operands. For expand op, the second operand is the shape of
   // output.
@@ -243,7 +270,11 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
                                const ShardableAxes& non_root) {
     VLOG(4) << "start CombineAxes: " << root.DebugStr() << " with "
             << non_root.DebugStr();
-    CHECK_EQ(root.axis_names.size(), non_root.axis_names.size());
+    PADDLE_ENFORCE_EQ(
+        root.axis_names.size(),
+        non_root.axis_names.size(),
+        ::common::errors::PreconditionNotMet(
+            "Required root and non_root shall have same size of axis_names."));
     for (int i = 0; i < non_root.axis_names.size(); i++) {
       name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
     }

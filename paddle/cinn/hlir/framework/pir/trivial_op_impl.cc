@@ -33,6 +33,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -564,9 +565,11 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
-  CHECK(FLAGS_group_schedule_tiling_first)
-      << "TrivialFusion must be used with tiling first, set "
-         "FLAGS_group_schedule_tiling_first=1";
+  PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "TrivialFusion must be used with tiling first, set "
+                        "FLAGS_group_schedule_tiling_first=1"));
   const auto& ops = trivial_fusion_detail::FilterVector(
       original_ops, [](const ::pir::Operation* op) {
         if (op->name() == "cinn_op.generate_shape") {
@@ -583,8 +586,10 @@ std::vector<ir::Expr> OperationFusion(
   const auto& fusion_nodes =
       cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents);
 
-  CHECK(fusion_nodes.size() == 1)
-      << "Only support one fusion node in backend now.";
+  PADDLE_ENFORCE_EQ(fusion_nodes.size(),
+                    1,
+                    ::common::errors::Unimplemented(
+                        "Only support one fusion node in backend now."));
 
   const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
