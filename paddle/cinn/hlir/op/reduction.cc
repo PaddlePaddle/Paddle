@@ -79,6 +79,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       } else if (absl::holds_alternative<std::vector<int>>(
                      attrs.attr_store.at("dim"))) {
         return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
