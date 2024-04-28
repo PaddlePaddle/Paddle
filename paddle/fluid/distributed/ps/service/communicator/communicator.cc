@@ -44,12 +44,7 @@ Communicator::Communicator()
       send_varname_to_ctx_(),
       recv_varname_to_ctx_(),
       recv_scope_(nullptr),
-      xpu_temp_scope_(nullptr) {
-  gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
-}
-
-Communicator::Communicator() = default;
+      xpu_temp_scope_(nullptr) {}
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
