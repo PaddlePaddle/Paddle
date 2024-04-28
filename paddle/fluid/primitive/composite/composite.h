@@ -255,7 +255,7 @@ template <typename T>
 Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
   auto one = full<T>(empty_shape, 1, x.dtype());
   auto ans = full<T>(empty_shape, -1, x.dtype()) *
-               (label * log<T>(x) + (one - label) * log<T>(one - x));
+             (label * log<T>(x) + (one - label) * log<T>(one - x));
   return ans;
 }
 
