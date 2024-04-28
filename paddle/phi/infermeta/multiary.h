@@ -255,8 +255,8 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
 
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
-                          const paddle::optional<MetaTensor>& label,
-                          const paddle::optional<MetaTensor>& length,
+                          const MetaTensor& label,
+                          const MetaTensor& length,
                           MetaTensor* viterbi_path,
                           MetaConfig config = MetaConfig());
 
