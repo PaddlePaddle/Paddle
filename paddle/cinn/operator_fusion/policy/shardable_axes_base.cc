@@ -166,7 +166,7 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   }
   for (int i = 0; i < op->num_results(); ++i) {
     PADDLE_ENFORCE_EQ(rank,
-                      GetCompitableRank(op->operand_source(i)),
+                      GetCompitableRank(op->result(i)),
                       ::common::errors::PreconditionNotMet(
                           "Required all outputs rank shall be equal each other "
                           "in elementwise op."));
