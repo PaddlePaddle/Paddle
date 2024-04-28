@@ -1101,6 +1101,116 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void CrfDecodingInferMeta(const MetaTensor& emission,
+                          const MetaTensor& transition,
+                          const paddle::optional<MetaTensor>& label,
+                          const paddle::optional<MetaTensor>& length,
+                          MetaTensor* viterbi_path,
+                          MetaConfig config) {
+  auto emission_dims = emission.dims();
+  bool has_length = length.get_ptr() != nullptr;
+
+  if (has_length) {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The Input(Emission) should be a 3-D tensor. But "
+                          "received: input rank %u, input shape [%s]. ",
+                          emission_dims.size(),
+                          emission_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The Input(Emission) should be a 2-D tensor. But "
+                          "received: input rank %u, input shape [%s].",
+                          emission_dims.size(),
+                          emission_dims));
+  }
+
+  auto transition_dims = transition.dims();
+  PADDLE_ENFORCE_EQ(transition_dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(Transition) should be a 2-D tensor. But "
+                        "received: input rank %u, input shape [%s].",
+                        transition_dims.size(),
+                        transition_dims));
+  PADDLE_ENFORCE_EQ(
+      transition_dims[0] - 2,
+      transition_dims[1],
+      phi::errors::InvalidArgument(
+          "An invalid dimension for the Input(Transition), which should "
+          "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
+          "rank %u, "
+          "input shape [%s].",
+          transition_dims.size(),
+          transition_dims));
+  if (config.is_runtime || (emission_dims[emission_dims.size() - 1] > 0 &&
+                            transition_dims[transition_dims.size() - 1] > 0)) {
+    PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
+                      transition_dims[transition_dims.size() - 1],
+                      phi::errors::InvalidArgument(
+                          "The last dimension of the Input(Emission) and the "
+                          "Input(Transition) "
+                          "should be equal to the tag number. But received "
+                          "Input(Emission): rank "
+                          "%u, shape [%s]; received Input(Transition): rank "
+                          "%u, shape [%s].",
+                          emission_dims.size(),
+                          emission_dims,
+                          transition_dims.size(),
+                          transition_dims));
+  }
+  if (label.get_ptr() != nullptr) {
+    auto label_dims = label.get().dims();
+    if (length.get_ptr() != nullptr) {
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 3UL && label_dims[2] == 1) ||
+              label_dims.size() == 2UL,
+          true,
+          phi::errors::InvalidArgument(
+              "The Input(Label) should be a 3-D tensor with last dimension "
+              "fixed to 1 or a 2-D tensor in padding mode. But received: "
+              "input "
+              "rank %u, input shape [%s].",
+              label_dims.size(),
+              label_dims));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 2UL && label_dims[1] == 1) ||
+              label_dims.size() == 1UL,
+          true,
+          phi::errors::InvalidArgument(
+              "The Input(Label) should be a 2-D tensor with last "
+              "dimension fixed to 1 or a 1-D tensor. But received: "
+              "input rank %u, input shape [%s].",
+              label_dims.size(),
+              label_dims));
+    }
+    if (config.is_runtime || (emission_dims[0] > 0 && label_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          emission_dims[0],
+          label_dims[0],
+          phi::errors::InvalidArgument(
+              "The first dimension of Input(Emission) and Input(Label) "
+              "should be the same. But received Input(Emission): rank %u, "
+              "shape [%s]; received Input(Label): rank %u, shape [%s].",
+              emission_dims.size(),
+              emission_dims,
+              label_dims.size(),
+              label_dims));
+    }
+  }
+
+  viterbi_path->share_lod(emission);
+  if (has_length) {
+    viterbi_path->set_dims({emission_dims[0], emission_dims[1]});
+  } else {
+    viterbi_path->set_dims({emission_dims[0], 1});
+  }
+}
+
 void CudnnLSTMInferMeta(
     const MetaTensor& x,
     const MetaTensor& init_h,

@@ -3206,3 +3206,12 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: crf_decoding
+  args: (Tensor emission, Tensor transition, Tensor label, Tensor length)
+  output: Tensor (viterbi_path)
+  infer_meta:
+    func: CrfDecodingInferMeta
+  kernel:
+    func: crf_decoding
+  optional: label, length

@@ -3772,6 +3772,15 @@
   outputs:
     {out: Out}
 
+- op: crf_decoding
+  inputs:
+    emission: Emission
+    transition: Transition
+    label: Label
+    length: Length
+  outputs:
+    viterbi_path: ViterbiPath
+
 - op: decayed_adagrad
   inputs:
     {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
