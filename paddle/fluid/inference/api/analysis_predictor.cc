@@ -3496,11 +3496,11 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
       paddle::platform::errors::InvalidArgument(
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
-  Config copy_config(config);
+  const Config& copy_config(config);
   main_pred_ = std::make_unique<Predictor>(config);
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
-      Config config_tmp(copy_config);
+      const Config& config_tmp(copy_config);
       preds_.emplace_back(new Predictor(config_tmp));
     } else {
       preds_.emplace_back(main_pred_->Clone());

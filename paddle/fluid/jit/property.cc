@@ -209,8 +209,7 @@ std::vector<float> Property::GetFloats(const std::string &name) {
           phi::errors::PreconditionNotMet(
               "JIT::Property GetFloats: idx=%d type is not floats.", i));
 
-      auto items = e.floats();
-      return std::vector<float>(items.begin(), items.end());
+           return std::vector<float>(e.floats().begin(), e.floats().end());
     }
   }
 
@@ -368,8 +367,7 @@ std::vector<std::string> Property::GetStrings(const std::string &name) {
           phi::errors::PreconditionNotMet(
               "JIT::Property GetStrings: idx=%d type is not strings.", i));
 
-      auto items = e.strings();
-      return std::vector<std::string>(items.begin(), items.end());
+           return std::vector<std::string>(e.strings().begin(), e.strings().end());
     }
   }
 
