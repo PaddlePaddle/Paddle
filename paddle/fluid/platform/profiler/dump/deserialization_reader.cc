@@ -281,12 +281,12 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
   op_supplement_event.thread_id = op_supplement_event_proto.thread_id();
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
-  const auto& input_shape_proto = op_supplement_event_proto.input_shapes();
+  auto input_shape_proto = op_supplement_event_proto.input_shapes();
   for (int i = 0; i < input_shape_proto.key_size(); i++) {
     auto input_shape_vec = input_shapes[input_shape_proto.key(i)];
-    const auto& shape_vectors_proto = input_shape_proto.shape_vecs(i);
+    auto shape_vectors_proto = input_shape_proto.shape_vecs(i);
     for (int j = 0; j < shape_vectors_proto.shapes_size(); j++) {
-      const auto& shape_vector_proto = shape_vectors_proto.shapes(j);
+      auto shape_vector_proto = shape_vectors_proto.shapes(j);
       std::vector<int64_t> shape;
       for (int k = 0; k < shape_vector_proto.size_size(); k++) {
         shape.push_back(shape_vector_proto.size(k));  // NOLINT
@@ -295,12 +295,12 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
     }
   }
   op_supplement_event.input_shapes = input_shapes;
-  const auto& dtype_proto = op_supplement_event_proto.dtypes();
+  auto dtype_proto = op_supplement_event_proto.dtypes();
   for (int i = 0; i < dtype_proto.key_size(); i++) {
     auto dtype_vec = dtypes[dtype_proto.key(i)];
-    const auto& dtype_vec_proto = dtype_proto.dtype_vecs(i);
+    auto dtype_vec_proto = dtype_proto.dtype_vecs(i);
     for (int j = 0; j < dtype_vec_proto.dtype_size(); j++) {
-      const auto& dtype_string = dtype_vec_proto.dtype(j);
+      auto dtype_string = dtype_vec_proto.dtype(j);
       dtype_vec.push_back(dtype_string);
     }
   }

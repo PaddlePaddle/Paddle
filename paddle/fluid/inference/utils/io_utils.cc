@@ -233,7 +233,7 @@ void DeserializeShapeRangeInfo(
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   DeserializeShapeRangeInfo(path, &shape_range_infos);
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
-    const auto& info = shape_range_infos.shape_range_info(i);
+    auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
     if (min_shape->count(name) || max_shape->count(name) ||
         opt_shape->count(name)) {
@@ -256,7 +256,7 @@ void DeserializeShapeRangeInfo(
     }
   }
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
-    const auto& info = shape_range_infos.shape_range_info(static_cast<int>(i));
+    auto info = shape_range_infos.shape_range_info(static_cast<int>(i));
     auto name = info.name();
     if (min_value->count(name) || max_value->count(name) ||
         opt_value->count(name)) {
