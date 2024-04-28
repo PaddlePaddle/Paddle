@@ -1122,9 +1122,8 @@ def split_matmul_grad_to_matmul(
 
 
 class PipelineMemoryEstimator:
-    def __init__(self, rank):
+    def __init__(self):
         self.type_to_skip_gc_vars = {}
-        self.rank = rank
         self.program_types = []
         self.logger = logging.getLogger(__name__)
 
@@ -1170,14 +1169,13 @@ class PipelineMemoryEstimator:
         # Step1: Process operations to get the var info
         var_info = self._get_program_var_info(ordered_ops, dist_context)
         for var_name in self.type_to_skip_gc_vars[program_type]:
+            if var_name not in var_info:
+                continue
             self.type_to_skip_gc_vars[program_type][var_name] = var_info[
                 var_name
             ]["size"]
 
-        # Step2: Estimate the increase memory usage
-        increase_memory = self._get_increase_memory(program_type)
-
-        # Step3: Estimate the max memory usage during the program execution
+        # Step2: Record the visited vars in the previous program
         visited_vars = {}
         skip_gc_vars = self.type_to_skip_gc_vars[program_type]
         if self.program_types.index(program_type) >= 1:
@@ -1185,11 +1183,13 @@ class PipelineMemoryEstimator:
                 self.program_types.index(program_type) - 1
             ]
             visited_vars = self.type_to_skip_gc_vars[prev_program_type]
-        max_memory = self._estimate_max_memory(
+
+        # Step3: Estimate the max memory usage during the program execution
+        mem_usage, max_memory = self._estimate_max_memory(
             ordered_ops, var_info, skip_gc_vars, visited_vars
         )
 
-        return increase_memory, max_memory
+        return mem_usage, max_memory
 
     def _estimate_max_memory(
         self, ordered_ops, var_info, skip_gc_vars, visited_vars
@@ -1241,23 +1241,7 @@ class PipelineMemoryEstimator:
                         )
                         mem_usage -= var_info[var_name]["size"]
                 max_memory = max(max_memory, mem_usage)
-        return max_memory
-
-    def _get_increase_memory(self, program_type):
-        """
-        For a given type of program, calculate the increase memory usage.
-
-        The increase memory usage is the memory usage of the variables that are setting to skip_gc_vars.
-        Persistable variables are not included in the increase memory usage because they are allocated when
-        running the startup program.
-        """
-        skip_gc_vars = self.type_to_skip_gc_vars[program_type]
-        increase_memory = sum([mem for _, mem in skip_gc_vars.items()])
-        if increase_memory < 0:
-            raise ValueError(
-                "No size info for skip_gc_vars, please run estimate_memory to get var size info."
-            )
-        return increase_memory
+        return mem_usage, max_memory
 
     def _get_program_var_info(self, ordered_ops, dist_context):
         var_info = {}
