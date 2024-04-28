@@ -63,74 +63,118 @@ class TestReshardSToRCrossMesh:
                 )
             print(f'debug main_program: {main_program}')
             dist_program = apply_reshard_pass(main_program)
-
         print(f'debug dist_program: {dist_program}')
+
         ops = [op.name() for op in dist_program.global_block().ops]
-        if paddle.distributed.get_rank() == 0:
-            np.testing.assert_equal(dist_program.num_ops(), 4)
-            std_ops = [
-                'builtin.parameter',
-                'pd_op.data',
-                'dist_op.shard_tensor',
-                'pd_op.send_v2',
-            ]
-        else:
-            np.testing.assert_equal(dist_program.num_ops(), 5)
-            std_ops = [
-                'builtin.parameter',
-                'pd_op.data',
-                'dist_op.shard_tensor',
-                'pd_op.recv_v2',
-                'pd_op.c_allreduce_sum_',
-            ]
-        np.testing.assert_equal(
-            ops,
-            std_ops,
-        )
+        if self._shard == 0:
+            if paddle.distributed.get_rank() == 0:
+                np.testing.assert_equal(dist_program.num_ops(), 4)
+                std_ops = [
+                    'builtin.parameter',
+                    'pd_op.data',
+                    'dist_op.shard_tensor',
+                    'pd_op.send_v2',
+                ]
+                np.testing.assert_equal(
+                    ops,
+                    std_ops,
+                )
+            elif paddle.distributed.get_rank() == 1:
+                np.testing.assert_equal(dist_program.num_ops(), 5)
+                std_ops = [
+                    'builtin.parameter',
+                    'pd_op.data',
+                    'dist_op.shard_tensor',
+                    'pd_op.recv_v2',
+                    'pd_op.c_allgather'
+                ]
+                np.testing.assert_equal(
+                    ops,
+                    std_ops,
+                )
+        elif self._shard == 1:
+            if paddle.distributed.get_rank() == 0:
+                np.testing.assert_equal(dist_program.num_ops(), 4)
+                std_ops = [
+                    'builtin.parameter',
+                    'pd_op.data',
+                    'dist_op.shard_tensor',
+                    'pd_op.send_v2',
+                ]
+                np.testing.assert_equal(
+                    ops,
+                    std_ops,
+                )
+            elif paddle.distributed.get_rank() == 1:
+                np.testing.assert_equal(dist_program.num_ops(), 11)
+                std_ops = [
+                    'builtin.parameter',
+                    'pd_op.data',
+                    'dist_op.shard_tensor',
+                    'pd_op.recv_v2',
+                    'pd_op.c_allgather',
+                    'pd_op.full',
+                    'pd_op.split_with_num',
+                    'builtin.split',
+                    'pd_op.full',
+                    'builtin.combine',
+                    'pd_op.concat',
+                ]
+
+            np.testing.assert_equal(
+                ops,
+                std_ops,
+            )
+
         for op in dist_program.global_block().ops:
             if op.name() == 'pd_op.send_v2':
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 0
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._in_mesh
                 assert op_operand_dist_attr.process_mesh == self._in_mesh
-                assert op_operand_dist_attr.dims_mapping == [-1, -1]
-                assert op_operand_dist_attr.partial_status == {
-                    0: paddle.distributed.ReduceType.kRedSum
-                }
-
+                if self._shard == 0:
+                    assert op_operand_dist_attr.dims_mapping == [0, -1]
+                elif self._shard == 1:
+                    assert op_operand_dist_attr.dims_mapping == [-1, 0]
+                assert op_operand_dist_attr.partial_status == {}
             elif op.name() == 'pd_op.recv_v2':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 0
                 assert op.dist_attr.num_results() == 1
 
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op_result_dist_attr.process_mesh == self._out_mesh
-                assert op_result_dist_attr.dims_mapping == [-1, -1]
-                assert op_result_dist_attr.partial_status == {
-                    0: paddle.distributed.ReduceType.kRedSum
-                }
-            elif op.name() == 'pd_op.c_allreduce_sum_':
-                continue
+                if self._shard == 0:
+                    assert op_result_dist_attr.dims_mapping == [0, -1]
+                elif self._shard == 1:
+                    assert op_result_dist_attr.dims_mapping == [-1, 0]
+                assert op_result_dist_attr.partial_status == {}
+            elif op.name() == 'pd_op.c_allgather':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                operand_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+                result_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
 
-                assert op.dist_attr.process_mesh == self._in_mesh
-                assert op_operand_dist_attr.process_mesh == self._in_mesh
-                assert op_operand_dist_attr.dims_mapping == [-1, -1]
-                assert op_operand_dist_attr.partial_status == {
-                    0: paddle.distributed.ReduceType.kRedSum
-                }
+                assert op.dist_attr.process_mesh == self._out_mesh
+                assert operand_dist_attr.process_mesh == self._out_mesh
+                if self._shard == 0:
+                    assert operand_dist_attr.dims_mapping == [0, -1]
+                elif self._shard == 1:
+                    assert operand_dist_attr.dims_mapping == [-1, 0]
+                assert operand_dist_attr.partial_status == {}
 
-                assert op_result_dist_attr.process_mesh == self._out_mesh
-                assert op_result_dist_attr.dims_mapping == [-1, -1]
-                assert op_result_dist_attr.partial_status == {}
+                assert result_dist_attr.process_mesh == self._out_mesh
+                assert result_dist_attr.dims_mapping == [-1, -1]
+                assert result_dist_attr.partial_status == {}
 
                 # check op_value dist_attr
                 assert op.num_results() == 1
@@ -141,7 +185,76 @@ class TestReshardSToRCrossMesh:
                 assert op_value.dist_attr().process_mesh == self._out_mesh
                 assert op_value.dist_attr().dims_mapping == [-1, -1]
                 assert op_value.dist_attr().partial_status == {}
+            elif op.name() == 'pd_op.split_with_num':
+                # check op dist_attr
+                assert op.dist_attr.num_operands() == 2
+                assert op.dist_attr.num_results() == 1
 
+                operand_1_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+                operand_2_dist_attr = op.dist_attr.operand(1).as_tensor_dist_attr()
+
+                assert op.dist_attr.process_mesh == self._out_mesh
+                assert operand_1_dist_attr.process_mesh == self._out_mesh
+                assert operand_2_dist_attr.process_mesh == self._out_mesh
+
+                assert operand_1_dist_attr.dims_mapping == [-1, -1]
+                assert operand_2_dist_attr.dims_mapping == [-1]
+
+                assert operand_dist_attr.partial_status == {}
+
+                result_dist_attrs = op.dist_attr.result(0).as_array_attr()
+                assert len(result_dist_attrs) == 2
+                result_dist_attr_1 =  result_dist_attrs[0].as_tensor_dist_attr()
+                result_dist_attr_2 =  result_dist_attrs[1].as_tensor_dist_attr()
+                assert result_dist_attr_1.process_mesh == self._out_mesh
+                assert result_dist_attr_1.dims_mapping == [-1, -1]
+                assert result_dist_attr_1.partial_status == {}
+
+                assert result_dist_attr_2.process_mesh == self._out_mesh
+                assert result_dist_attr_2.dims_mapping == [-1, -1]
+                assert result_dist_attr_2.partial_status == {}
+
+                # check op_value dist_attr
+                assert op.num_results() == 1
+                op_value = op.result(0)
+                assert op_value.is_combine()
+                values = op_value.first_use().owner().results()
+                for value in values:
+                   assert value.dist_attr().process_mesh == self._out_mesh
+                   assert value.dist_attr().dims_mapping == [-1, -1]
+                   assert value.dist_attr().partial_status == {}
+            elif op.name() == 'pd_op.concat':
+                # check op dist_attr
+                assert op.dist_attr.num_operands() == 2
+                assert op.dist_attr.num_results() == 1
+
+                operand_1_dist_attrs = op.dist_attr.operand(0).as_array_attr()
+                assert len(operand_1_dist_attrs) == 2
+
+                operand_1_dist_attr_1 =  operand_1_dist_attrs[0].as_tensor_dist_attr()
+                operand_1_dist_attr_2 =  operand_1_dist_attrs[1].as_tensor_dist_attr()
+                assert operand_1_dist_attr_1.process_mesh == self._out_mesh
+                assert operand_1_dist_attr_1.dims_mapping == [-1, -1]
+                assert operand_1_dist_attr_1.partial_status == {}
+
+                assert operand_1_dist_attr_2.process_mesh == self._out_mesh
+                assert operand_1_dist_attr_2.dims_mapping == [-1, -1]
+                assert operand_1_dist_attr_2.partial_status == {}
+
+                result_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
+                assert result_dist_attr.process_mesh == self._out_mesh
+                assert result_dist_attr.dims_mapping == [-1, -1]
+                assert result_dist_attr.partial_status == {}
+
+                # check op_value dist_attr
+                assert op.num_results() == 1
+                op_value = op.result(0)
+                assert op_value.is_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.is_dist_dense_tensor_type()
+                assert op_value.dist_attr().process_mesh == self._out_mesh
+                assert op_value.dist_attr().dims_mapping == [-1, -1]
+                assert op_value.dist_attr().partial_status == {}
 
 if __name__ == '__main__':
     TestReshardSToRCrossMesh().run_pir_test_case()
