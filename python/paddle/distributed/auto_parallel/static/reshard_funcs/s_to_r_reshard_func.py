@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 
-from ..process_group import new_process_group
-from .base_reshard_func import ReshardFunction, is_replicated, is_shard
-from .same_status_reshard_func import SameStatusReshardFunction
+import paddle
 from paddle.distributed.auto_parallel.placement_type import (
     to_placements,
 )
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+
+from ..process_group import new_process_group
+from .base_reshard_func import ReshardFunction, is_replicated, is_shard
+from .same_status_reshard_func import SameStatusReshardFunction
+
 
 class SToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
@@ -72,7 +73,14 @@ class SToRReshardFunction(ReshardFunction):
 
         if is_balanced_split:
             new_value = self.reshard_s_to_r_with_padding(
-                program, op, op_value, split_axis, src_dist_attr, dst_dist_attr, num_of_padding, reshard_op
+                program,
+                op,
+                op_value,
+                split_axis,
+                src_dist_attr,
+                dst_dist_attr,
+                num_of_padding,
+                reshard_op,
             )
             return new_value, dst_dist_attr
         else:
@@ -80,7 +88,15 @@ class SToRReshardFunction(ReshardFunction):
             pass
 
     def reshard_s_to_r_with_padding(
-        self, program, op, op_value, split_axis, src_dist_attr, dst_dist_attr, padding_num=0, reshard_op=True
+        self,
+        program,
+        op,
+        op_value,
+        split_axis,
+        src_dist_attr,
+        dst_dist_attr,
+        padding_num=0,
+        reshard_op=True,
     ):
         src_mesh = src_dist_attr.process_mesh
         num_of_process = len(src_mesh.process_ids)
@@ -96,9 +112,15 @@ class SToRReshardFunction(ReshardFunction):
         )
 
         dst_mesh = dst_dist_attr.process_mesh
-        mesh = ProcessMesh(shape=dst_mesh.shape, process_ids=dst_mesh.process_ids)
+        mesh = ProcessMesh(
+            shape=dst_mesh.shape, process_ids=dst_mesh.process_ids
+        )
         placements = to_placements(dst_dist_attr.dims_mapping, mesh)
-        allgather_value = paddle.distributed.auto_parallel.api.dtensor_from_local(allgather_value, mesh, placements)
+        allgather_value = (
+            paddle.distributed.auto_parallel.api.dtensor_from_local(
+                allgather_value, mesh, placements
+            )
+        )
 
         # set op_dist_attr
         new_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
@@ -125,7 +147,8 @@ class SToRReshardFunction(ReshardFunction):
             concat_value = paddle._pir_ops.concat(split_value, split_axis)
             return concat_value.get_defining_op()
         return allgather_value.get_defining_op()
-        
+
+
 class SToRReshardFunctionCrossMesh(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
         if not is_shard(src_dist_attr):

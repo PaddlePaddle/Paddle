@@ -18,11 +18,10 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.base import core
-
 from paddle.distributed.auto_parallel.static.pir_pass import (
     apply_reshard_pass,
 )
+
 
 class TestReshardSToRCrossMesh:
     def __init__(self):
@@ -84,7 +83,7 @@ class TestReshardSToRCrossMesh:
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.recv_v2',
-                    'pd_op.c_allgather'
+                    'pd_op.c_allgather',
                 ]
                 np.testing.assert_equal(
                     ops,
@@ -159,7 +158,9 @@ class TestReshardSToRCrossMesh:
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                operand_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+                operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
                 result_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._out_mesh
@@ -188,8 +189,12 @@ class TestReshardSToRCrossMesh:
                 assert op.dist_attr.num_operands() == 2
                 assert op.dist_attr.num_results() == 1
 
-                operand_1_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
-                operand_2_dist_attr = op.dist_attr.operand(1).as_tensor_dist_attr()
+                operand_1_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
+                operand_2_dist_attr = op.dist_attr.operand(
+                    1
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._out_mesh
                 assert operand_1_dist_attr.process_mesh == self._out_mesh
@@ -202,8 +207,8 @@ class TestReshardSToRCrossMesh:
 
                 result_dist_attrs = op.dist_attr.result(0).as_array_attr()
                 assert len(result_dist_attrs) == 2
-                result_dist_attr_1 =  result_dist_attrs[0].as_tensor_dist_attr()
-                result_dist_attr_2 =  result_dist_attrs[1].as_tensor_dist_attr()
+                result_dist_attr_1 = result_dist_attrs[0].as_tensor_dist_attr()
+                result_dist_attr_2 = result_dist_attrs[1].as_tensor_dist_attr()
                 assert result_dist_attr_1.process_mesh == self._out_mesh
                 assert result_dist_attr_1.dims_mapping == [-1, -1]
                 assert result_dist_attr_1.partial_status == {}
@@ -218,9 +223,9 @@ class TestReshardSToRCrossMesh:
                 assert op_value.is_combine()
                 values = op_value.first_use().owner().results()
                 for value in values:
-                   assert value.dist_attr().process_mesh == self._out_mesh
-                   assert value.dist_attr().dims_mapping == [-1, -1]
-                   assert value.dist_attr().partial_status == {}
+                    assert value.dist_attr().process_mesh == self._out_mesh
+                    assert value.dist_attr().dims_mapping == [-1, -1]
+                    assert value.dist_attr().partial_status == {}
             elif op.name() == 'pd_op.concat':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 2
@@ -229,8 +234,12 @@ class TestReshardSToRCrossMesh:
                 operand_1_dist_attrs = op.dist_attr.operand(0).as_array_attr()
                 assert len(operand_1_dist_attrs) == 2
 
-                operand_1_dist_attr_1 =  operand_1_dist_attrs[0].as_tensor_dist_attr()
-                operand_1_dist_attr_2 =  operand_1_dist_attrs[1].as_tensor_dist_attr()
+                operand_1_dist_attr_1 = operand_1_dist_attrs[
+                    0
+                ].as_tensor_dist_attr()
+                operand_1_dist_attr_2 = operand_1_dist_attrs[
+                    1
+                ].as_tensor_dist_attr()
                 assert operand_1_dist_attr_1.process_mesh == self._out_mesh
                 assert operand_1_dist_attr_1.dims_mapping == [-1, -1]
                 assert operand_1_dist_attr_1.partial_status == {}
@@ -253,6 +262,7 @@ class TestReshardSToRCrossMesh:
                 assert op_value.dist_attr().process_mesh == self._out_mesh
                 assert op_value.dist_attr().dims_mapping == [-1, -1]
                 assert op_value.dist_attr().partial_status == {}
+
 
 if __name__ == '__main__':
     TestReshardSToRCrossMesh().run_pir_test_case()

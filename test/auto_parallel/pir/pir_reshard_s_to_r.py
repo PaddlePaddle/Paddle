@@ -106,7 +106,9 @@ class TestReshardSToR:
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                operand_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+                operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
                 result_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._mesh
@@ -135,8 +137,12 @@ class TestReshardSToR:
                 assert op.dist_attr.num_operands() == 2
                 assert op.dist_attr.num_results() == 1
 
-                operand_1_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
-                operand_2_dist_attr = op.dist_attr.operand(1).as_tensor_dist_attr()
+                operand_1_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
+                operand_2_dist_attr = op.dist_attr.operand(
+                    1
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._mesh
                 assert operand_1_dist_attr.process_mesh == self._mesh
@@ -149,8 +155,8 @@ class TestReshardSToR:
 
                 result_dist_attrs = op.dist_attr.result(0).as_array_attr()
                 assert len(result_dist_attrs) == 2
-                result_dist_attr_1 =  result_dist_attrs[0].as_tensor_dist_attr()
-                result_dist_attr_2 =  result_dist_attrs[1].as_tensor_dist_attr()
+                result_dist_attr_1 = result_dist_attrs[0].as_tensor_dist_attr()
+                result_dist_attr_2 = result_dist_attrs[1].as_tensor_dist_attr()
                 assert result_dist_attr_1.process_mesh == self._mesh
                 assert result_dist_attr_1.dims_mapping == [-1, -1]
                 assert result_dist_attr_1.partial_status == {}
@@ -165,9 +171,9 @@ class TestReshardSToR:
                 assert op_value.is_combine()
                 values = op_value.first_use().owner().results()
                 for value in values:
-                   assert value.dist_attr().process_mesh == self._mesh
-                   assert value.dist_attr().dims_mapping == [-1, -1]
-                   assert value.dist_attr().partial_status == {}
+                    assert value.dist_attr().process_mesh == self._mesh
+                    assert value.dist_attr().dims_mapping == [-1, -1]
+                    assert value.dist_attr().partial_status == {}
             elif op.name() == 'pd_op.concat':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 2
@@ -176,8 +182,12 @@ class TestReshardSToR:
                 operand_1_dist_attrs = op.dist_attr.operand(0).as_array_attr()
                 assert len(operand_1_dist_attrs) == 2
 
-                operand_1_dist_attr_1 =  operand_1_dist_attrs[0].as_tensor_dist_attr()
-                operand_1_dist_attr_2 =  operand_1_dist_attrs[1].as_tensor_dist_attr()
+                operand_1_dist_attr_1 = operand_1_dist_attrs[
+                    0
+                ].as_tensor_dist_attr()
+                operand_1_dist_attr_2 = operand_1_dist_attrs[
+                    1
+                ].as_tensor_dist_attr()
                 assert operand_1_dist_attr_1.process_mesh == self._mesh
                 assert operand_1_dist_attr_1.dims_mapping == [-1, -1]
                 assert operand_1_dist_attr_1.partial_status == {}
@@ -200,6 +210,7 @@ class TestReshardSToR:
                 assert op_value.dist_attr().process_mesh == self._mesh
                 assert op_value.dist_attr().dims_mapping == [-1, -1]
                 assert op_value.dist_attr().partial_status == {}
+
 
 if __name__ == '__main__':
     TestReshardSToR().run_pir_test_case()

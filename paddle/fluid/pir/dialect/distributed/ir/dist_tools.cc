@@ -29,16 +29,16 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
       }
       return true;
     } else {
-        auto vec_type = value.type().dyn_cast<pir::VectorType>();
-        for(size_t idx = 0; idx < vec_type.size(); ++idx) {
-            if(auto dist_type = vec_type[idx].dyn_cast<DistTypeInterface>()) {
-                if (p_mesh_attr) {
-                    *p_mesh_attr = dist_type.process_mesh_attr();
-                }
-                return true;
-            }
+      auto vec_type = value.type().dyn_cast<pir::VectorType>();
+      for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+        if (auto dist_type = vec_type[idx].dyn_cast<DistTypeInterface>()) {
+          if (p_mesh_attr) {
+            *p_mesh_attr = dist_type.process_mesh_attr();
+          }
+          return true;
         }
-        return false;
+      }
+      return false;
     }
   }
   return false;
@@ -48,7 +48,8 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr) {
   for (auto value : inputs) {
     if (auto type = value.type()) {
-      if (type.isa<DistTypeInterface>()  || type.isa<pir::VectorType>()) continue;
+      if (type.isa<DistTypeInterface>() || type.isa<pir::VectorType>())
+        continue;
       auto dense_type = type.dyn_cast<pir::DenseTensorType>();
       if (!dense_type) {
         PADDLE_THROW(common::errors::Unimplemented(
