@@ -99,6 +99,34 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
 }
 
 template <typename T>
+std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByReverseTopoOrder() {
+  // sort all_pattern_nodes_ by reverse topo order.
+  std::vector<PatternNodePtr<T>> res;
+  std::list<PatternNodePtr<T>> reverse_topo_queue;
+  std::map<PatternNodePtr<T>, int> degree;
+
+  for (const auto& node : all_pattern_nodes_) {
+    degree[node] = node->downstream().size();
+    if (degree[node] == 0) {
+      reverse_topo_queue.push_back(node);
+    }
+  }
+
+  while (!reverse_topo_queue.empty()) {
+    PatternNodePtr<T> node = reverse_topo_queue.front();
+    reverse_topo_queue.pop_front();
+    res.push_back(node);
+    for (const auto& upstream : node->upstream()) {
+      degree[upstream]--;
+      if (degree[upstream] == 0) {
+        reverse_topo_queue.push_back(upstream);
+      }
+    }
+  }
+  return res;
+}
+
+template <typename T>
 void PatternGraph<T>::SinkTrivialPattern() {
   // TODO(@wuzhanfei) change sink trivial pattern algorithm, skip pattern with
   // multi downstream
