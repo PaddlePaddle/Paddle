@@ -164,10 +164,10 @@ def apply_reshard_pass(program):
 # We found that, when bs=1, which is the common case in llm
 # training, the transpose is equal to reshape.
 # So, this pass is to haddle the specific case.
-def replace_transpose_by_reshape(program):
+def eliminate_transpose_by_reshape(program):
     with paddle.static.program_guard(program):
         for op in program.global_block().ops:
-            if op.name() == 'pd_op.transpose':
+            if op.name() == 'pd_op.transpose' or op.name() == 'pd_op.transpose':
                 var = op.operand(0).source()
                 rank = len(var.shape)
                 perm = op.attrs()['perm']
