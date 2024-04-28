@@ -170,6 +170,14 @@ struct MemoryInterface {
   phi::Allocator* (*get_pinned_allocator)();
   std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> (
       *get_new_cuda_event)(int device_id);
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+  phi::Allocator* (*get_allocator)(int device_id, XPUStream stream);
+  phi::Allocator* (*get_host_allocator)();
+  phi::Allocator* (*get_zero_allocator)(int device_id);
+  phi::Allocator* (*get_host_zero_allocator)();
+  // phi::Allocator* (*get_pinned_allocator)();
+  std::shared_ptr<std::remove_pointer<XPUEvent>::type> (*get_new_xpu_event)(
+      int device_id);
 #endif
 };
 
@@ -370,6 +378,27 @@ class MemoryUtils {
       int device_id) {
     return memory_method_->get_new_cuda_event(device_id);
   }
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+  const phi::Allocator* GetAllocator(int device_id, XPUStream stream) {
+    return memory_method_->get_allocator(device_id, stream);
+  }
+
+  const phi::Allocator* GetHostAllocator() {
+    return memory_method_->get_host_allocator();
+  }
+
+  const phi::Allocator* GetZeroAllocator(int device_id) {
+    return memory_method_->get_zero_allocator(device_id);
+  }
+
+  const phi::Allocator* GetHostZeroAllocator() {
+    return memory_method_->get_host_zero_allocator();
+  }
+
+  std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
+      int device_id) {
+    return memory_method_->get_new_xpu_event(device_id);
+  }
 #endif
 
  private:
@@ -448,6 +477,18 @@ const Allocator* GetPinnedAllocator();
 
 std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
     int device_id);
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+const Allocator* GetAllocator(int device_id, XPUStream stream);
+
+const Allocator* GetHostAllocator();
+
+const Allocator* GetZeroAllocator(int device_id);
+
+const Allocator* GetHostZeroAllocator();
+
+// XPUs do not have the concept of pinned memory,
+// so the get_pinned_allocator function is not set.
+std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(int device_id);
 #endif
 
 class Buffer {

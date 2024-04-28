@@ -846,6 +846,26 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+static PyObject *builtin_combine_op(PyObject *self,
+                                    PyObject *args,
+                                    PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add buitin_combine op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2VectorOfValue(x_obj, "builtin_combine", 0);
+    CallStackRecorder callstack_recoder("builtin_combine_op");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::builtin_combine(x);
+    callstack_recoder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
                                                 PyObject *args,
                                                 PyObject *kwargs) {
@@ -981,6 +1001,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
+    {"builtin_combine",
+     (PyCFunction)(void (*)(void))builtin_combine_op,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for builtin_combine_op."},
     {"array_pop",
      (PyCFunction)(void (*)(void))static_api_array_pop,
      METH_VARARGS | METH_KEYWORDS,

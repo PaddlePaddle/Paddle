@@ -326,8 +326,7 @@ def _run_dygraph(instance, input, program_holder):
         else:
             layer.training = True
 
-    out = instance.layer(input_tensors)
-    return out
+    return instance.layer(input_tensors)
 
 
 def _run_static_graph(program_holder, trace_program):

@@ -60,27 +60,11 @@ void BindOperationDistAttribute(py::module *m) {
                                return self.process_mesh_attr().process_mesh();
                              })
       .def("num_operands", &OperationDistAttribute::num_operands)
-      .def(
-          "operand_dist_attrs",
-          [](OperationDistAttribute &self) -> std::vector<TensorDistAttribute> {
-            std::vector<TensorDistAttribute> operand_dist_attrs;
-            for (size_t idx = 0; idx < self.num_operands(); ++idx) {
-              operand_dist_attrs.emplace_back(self.operand_dist_attr(idx));
-            }
-            return operand_dist_attrs;
-          })
-      .def("operand_dist_attr", &OperationDistAttribute::operand_dist_attr)
+      .def("operands", &OperationDistAttribute::operands)
+      .def("operand", &OperationDistAttribute::operand)
       .def("num_results", &OperationDistAttribute::num_results)
-      .def(
-          "result_dist_attrs",
-          [](OperationDistAttribute &self) -> std::vector<TensorDistAttribute> {
-            std::vector<TensorDistAttribute> result_dist_attrs;
-            for (size_t idx = 0; idx < self.num_results(); ++idx) {
-              result_dist_attrs.emplace_back(self.result_dist_attr(idx));
-            }
-            return result_dist_attrs;
-          })
-      .def("result_dist_attr", &OperationDistAttribute::result_dist_attr);
+      .def("results", &OperationDistAttribute::results)
+      .def("result", &OperationDistAttribute::result);
 }
 
 void BindTensorDistAttribute(py::module *m) {
@@ -92,10 +76,6 @@ void BindTensorDistAttribute(py::module *m) {
              std::ostringstream print_stream;
              print_stream << self;
              return print_stream.str();
-           })
-      .def("__eq__",
-           [](TensorDistAttribute &self, const TensorDistAttribute &other) {
-             return self == other;
            })
       .def_property_readonly("process_mesh",
                              [](TensorDistAttribute &self) {
@@ -133,10 +113,10 @@ TensorDistAttribute CreateTensorDistAttribute(
 
 OperationDistAttribute CreateOperationDistAttribute(
     const phi::distributed::ProcessMesh &mesh,
-    const std::vector<pir::Attribute> &operand_attrs,
-    const std::vector<pir::Attribute> &result_attrs) {
+    const std::vector<pir::Attribute> &operands,
+    const std::vector<pir::Attribute> &results) {
   return OperationDistAttribute::get(
-      pir::IrContext::Instance(), mesh, operand_attrs, result_attrs);
+      pir::IrContext::Instance(), mesh, operands, results);
 }
 
 void BindDistUtils(pybind11::module *m) {
