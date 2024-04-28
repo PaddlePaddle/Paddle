@@ -77,40 +77,6 @@ struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
 template struct FindChannelAbsMaxFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  const int round_type,
-                  phi::DenseTensor *out) {
-    T s = scale.data<T>()[0];
-    T inv_s = phi::funcs::inverse(s);
-
-    phi::Transform<phi::CPUContext> trans;
-    if (round_type == 0) {
-      trans(ctx,
-            in.data<T>(),
-            in.data<T>() + in.numel(),
-            out->mutable_data<T>(ctx.GetPlace()),
-            phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-      auto out_e = phi::EigenVector<T>::Flatten(*out);
-      out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
-    } else {
-      trans(ctx,
-            in.data<T>(),
-            in.data<T>() + in.numel(),
-            out->mutable_data<T>(ctx.GetPlace()),
-            phi::ClipFunctor<T>(-s, s));
-      auto out_e = phi::EigenVector<T>::Flatten(*out);
-      out_e.device(*ctx.eigen_device()) =
-          (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
-    }
-  }
-};
-template struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, float>;
-
-template <typename T>
 struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &in,

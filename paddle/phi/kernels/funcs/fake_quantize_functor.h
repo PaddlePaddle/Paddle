@@ -102,5 +102,16 @@ class FindMovingAverageAbsMaxFunctor {
                   DenseTensor *out_scale);
 };
 
+template <typename Context, typename T>
+class ClipAndFakeQuantDequantFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &in,
+                  const DenseTensor &scale,
+                  const int bin_cnt,
+                  int round_type,
+                  DenseTensor *out);
+};
+
 }  // namespace funcs
 }  // namespace phi

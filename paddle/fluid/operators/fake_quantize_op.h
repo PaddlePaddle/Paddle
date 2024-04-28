@@ -27,15 +27,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
-struct ClipAndFakeQuantDequantFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  int round_type,
-                  phi::DenseTensor *out);
-};
 
 template <typename DeviceContext, typename T>
 struct FindRangeAbsMaxFunctor {
@@ -119,7 +110,7 @@ class FakeQuantizeDequantizeAbsMaxKernel
                       int bin_cnt,
                       int round_type,
                       phi::DenseTensor *out) const override {
-    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
+    phi::funcs::ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, scale, bin_cnt, round_type, out);
   }
 };
