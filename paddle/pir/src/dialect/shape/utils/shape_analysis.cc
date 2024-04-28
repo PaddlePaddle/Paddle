@@ -19,6 +19,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+#include "paddle/pir/src/core/value_impl.h"
 
 namespace pir {
 
@@ -31,7 +32,7 @@ static std::string GetValueId(Value val) {
 }
 
 void InferSymbolicShapeContext::Init() {
-  value_to_shape_or_data_.clear();
+  value_id_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
   constraints_manager_.SetEqualCallbackFunc(
       [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
@@ -44,7 +45,10 @@ const std::string InferSymbolicShapeContext::GetNextSymName() {
 }
 
 bool InferSymbolicShapeContext::HasShapeOrDataForValue(Value val) const {
-  return value_to_shape_or_data_.count(val) > 0;
+  if (!val) {
+    return false;
+  }
+  return value_id_to_shape_or_data_.count(val.impl()->id()) > 0;
 }
 
 const symbol::ShapeOrDataDimExprs&
@@ -60,10 +64,18 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
         "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
   }
 
-  return value_to_shape_or_data_.at(val);
+  return value_id_to_shape_or_data_.at(val.impl()->id());
 }
 
 void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
+  if (!val) {
+    PADDLE_THROW(
+        phi::errors::Fatal("Set static shape for null value is FOBBIDEN!"));
+  }
+  if (!val.type().isa<DenseTensorType>()) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Set static shape for non-tensor value is FOBBIDEN!"));
+  }
   auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
   std::vector<symbol::DimExpr> static_shape;
   for (int i = 0; i < type_info.dims().size(); ++i) {
@@ -81,9 +93,10 @@ void InferSymbolicShapeContext::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
       symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
-  auto iter = value_to_shape_or_data_.find(val);
-  if (iter == value_to_shape_or_data_.end()) {
-    value_to_shape_or_data_.emplace(val, substituted_shape_or_data);
+  auto iter = value_id_to_shape_or_data_.find(val.impl()->id());
+  if (iter == value_id_to_shape_or_data_.end()) {
+    value_id_to_shape_or_data_.emplace(val.impl()->id(),
+                                       substituted_shape_or_data);
   } else {
     iter->second = substituted_shape_or_data;
   }
@@ -146,24 +159,22 @@ void InferSymbolicShapeContext::SubstituteDimExpr(
     if (it->second == origin) it->second = substituted;
   }
 
-  for (auto it = value_to_shape_or_data_.begin();
-       it != value_to_shape_or_data_.end();
+  for (auto it = value_id_to_shape_or_data_.begin();
+       it != value_id_to_shape_or_data_.end();
        it++) {
     const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
         symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
-    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+    it->second = substituted_shape_or_data;
   }
 }
 
 void InferSymbolicShapeContext::PrintShapeOrDatas() const {
   LOG(INFO) << "shape analysis : @" << this
-            << " value_to_shape_or_data_ size : "
-            << value_to_shape_or_data_.size();
+            << " value_id_to_shape_or_data_ size : "
+            << value_id_to_shape_or_data_.size();
   LOG(INFO) << "----------- ShapeOrData for Values ------------";
-  for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
-    if (value) {
-      LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
-    }
+  for (const auto& [value_id, shape_or_data] : value_id_to_shape_or_data_) {
+    LOG(INFO) << value_id << " : " << shape_or_data;
   }
 }
 
@@ -251,7 +262,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
       // PADDLE_THROW(phi::errors::Unimplemented(
       //     val.defining_op()->name() +
       //     " DOES NOT have InferSymbolicShapeInterface!"));
-      LOG(WARNING) << op->name() << " HAS ERROR on InferSymbolicShape!";
+      LOG(WARNING) << op->name()
+                   << " DOES NOT have InferSymbolicShapeInterface!";
       for (auto& result_value : op->results()) {
         if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
           SetStaticShapeForValue(result_value);

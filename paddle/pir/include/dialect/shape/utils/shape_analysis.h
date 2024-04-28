@@ -65,8 +65,8 @@ class IR_API InferSymbolicShapeContext {
  private:
   int64_t next_sym_idx_ = 0;
 
-  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_;
+  std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
+      value_id_to_shape_or_data_;
 
   symbol::ConstraintsManager constraints_manager_;
 
@@ -142,7 +142,6 @@ class IR_API ShapeConstraintIRAnalysis final
   void InferShapeOrDataForValue(Value val);
 
  private:
-  ModuleOp m_;
   InferSymbolicShapeContext context_;
 };
 
