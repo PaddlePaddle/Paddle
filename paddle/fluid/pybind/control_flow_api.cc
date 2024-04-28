@@ -206,7 +206,7 @@ void BuildPipeForPyLayer(Block* block, const std::vector<pir::Value>& values) {
     --iter;
   }
   builder.set_insertion_point(block, iter);
-  auto tuple_push_op = builder.Build<TuplePushOp>(inlet, values);
+  builder.Build<TuplePushOp>(inlet, values);
   builder.set_insertion_point(original_position);
 }
 
