@@ -3374,7 +3374,7 @@ int32_t GraphTable::Initialize(const TableParameter &config,
     LOG(WARNING) << "Table fs_client initialize failed";
     // return -1;
   }
-  auto graph = config.graph_parameter();
+  const auto& graph = config.graph_parameter();
   shard_num = _config.shard_num();
   LOG(INFO) << "in graphTable initialize over";
   return Initialize(graph);

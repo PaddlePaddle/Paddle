@@ -59,7 +59,6 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
@@ -93,7 +92,7 @@ namespace framework {
 
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
-    std::string op_name = instr_node->Name();
+    const std::string& op_name = instr_node->Name();
     ::pir::Operation* op = instr_node->Operation();
     if (op->HasAttribute("kernel_key")) {
       phi::KernelKey kernel_key =
@@ -757,32 +756,8 @@ void PirInterpreter::BuildInstruction() {
                                                &op,
                                                value_exe_info_.get(),
                                                execution_config_);
-
         while_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         while_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
-
-        while_instr_ptr->CheckGCEarly([this](InstructionBase* instr) {
-          std::unordered_map<pir::Value, std::vector<int>> inputs;
-          GetInputIds(instr->Operation(), *this->value_exe_info_, &inputs);
-          for (const auto& kv : inputs) {
-            if (kv.first ==
-                instr->Operation()->operand_source(0 /*cond var*/)) {
-              // CheckGCEarly should not gc cond var
-              continue;
-            }
-            if (kv.first.isa<pir::BlockArgument>()) {
-              continue;
-            }
-            auto var_id = this->value_exe_info_->GetVarId(kv.first);
-            bool is_ready = this->refs_[var_id]->DynamicRef() == 1;
-            if (is_ready) {
-              VLOG(4) << "early gc: " << this->GetNameByValue(kv.first);
-              this->refs_[var_id]->CheckAndDecrease();
-              this->gc_->Add(this->refs_[var_id]->Var(), instr);
-            }
-          }
-        });
-
         vec_instruction_base_.emplace_back(std::move(while_instr_ptr));
 
         sub_blocks_.insert(

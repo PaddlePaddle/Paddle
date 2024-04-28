@@ -97,7 +97,7 @@ AttrCompat& AttrCompat::IsLeftDefault() {
       return false;
     });
   } else {
-    Attribute default_attr = attrs.at(attr_name_);
+    const Attribute& default_attr = attrs.at(attr_name_);
     conditions_.emplace_back([=](const Attribute& attr) -> bool {
       if (attr == default_attr) {
         return true;
