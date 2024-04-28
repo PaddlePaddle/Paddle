@@ -2973,6 +2973,7 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
     out_dim.push_back(hidden_size);
     output->set_dims(common::make_ddim(out_dim));
     output->share_lod(*ids[i]);
+    output->set_dtype(w.dtype());
   }
 }
 
