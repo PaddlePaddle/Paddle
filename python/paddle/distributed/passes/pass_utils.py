@@ -1266,14 +1266,13 @@ class PipelineMemoryEstimator:
         # Step1: Process operations to get the var info
         var_info = self._get_program_var_info(ordered_ops, dist_context)
         for var_name in self.type_to_skip_gc_vars[program_type]:
+            if var_name not in var_info:
+                continue
             self.type_to_skip_gc_vars[program_type][var_name] = var_info[
                 var_name
             ]["size"]
 
-        # Step2: Estimate the increase memory usage
-        increase_memory = self._get_increase_memory(program_type)
-
-        # Step3: Estimate the max memory usage during the program execution
+        # Step2: Record the visited vars in the previous program
         visited_vars = {}
         skip_gc_vars = self.type_to_skip_gc_vars[program_type]
         if self.program_types.index(program_type) >= 1:
@@ -1281,11 +1280,13 @@ class PipelineMemoryEstimator:
                 self.program_types.index(program_type) - 1
             ]
             visited_vars = self.type_to_skip_gc_vars[prev_program_type]
-        max_memory = self._estimate_max_memory(
+
+        # Step3: Estimate the max memory usage during the program execution
+        mem_usage, max_memory = self._estimate_max_memory(
             ordered_ops, var_info, skip_gc_vars, visited_vars
         )
 
-        return increase_memory, max_memory
+        return mem_usage, max_memory
 
     def _estimate_max_memory(
         self, ordered_ops, var_info, skip_gc_vars, visited_vars
@@ -1337,7 +1338,7 @@ class PipelineMemoryEstimator:
                         )
                         mem_usage -= var_info[var_name]["size"]
                 max_memory = max(max_memory, mem_usage)
-        return max_memory
+        return mem_usage, max_memory
 
     def _get_increase_memory(self, program_type):
         """

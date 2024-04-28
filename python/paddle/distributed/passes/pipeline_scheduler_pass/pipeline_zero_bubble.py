@@ -196,14 +196,13 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             mem_usages.append(mem_usage)
             max_mem_usages.append(max_mem_usage)
 
-        mem_usages = paddle.to_tensor(mem_usages)
-        max_mem_usages = paddle.to_tensor(max_mem_usages)
-
         # Get program memory usage from all devices
+        paddle.disable_static()
         all_mem_usages = []
         all_max_usages = []
         paddle.distributed.all_gather_object(all_mem_usages, mem_usages)
         paddle.distributed.all_gather_object(all_max_usages, max_mem_usages)
+        paddle.enable_static()
 
         self.program_mem_usages = [{} for _ in range(len(all_mem_usages))]
         self.program_max_mem_usages = [{} for _ in range(len(all_max_usages))]
@@ -214,9 +213,9 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
                 self.program_max_mem_usages[id][type] = all_max_usages[id][i]
 
     def _get_all_device_base_memory(self):
+        paddle.disable_static()
         self.base_memory = []
         rank = self.get_attr("pp_stage")
         base_memory = paddle.device.cuda.memory_allocated(rank)
-        base_memory = paddle.to_tensor(base_memory)
-        paddle.distributed.all_gather(self.base_memory, base_memory)
-        self.base_memory = []
+        paddle.distributed.all_gather_object(self.base_memory, base_memory)
+        paddle.enable_static()
