@@ -1024,15 +1024,21 @@ class Engine:
                     process_group.instantiate()
 
     def _init_lr(self):
-        buffer_tensor = global_scope().var("learning_rate_0").get_tensor()
-        if not isinstance(self._optimizer._learning_rate, float):
-            raise TypeError(
-                "learning rate should be float, got %s here"
-                % type(self._optimizer._learning_rate)
+        # hack to find learning_rate op
+        lr_name = None
+        for op in self.main_program.global_block().ops:
+            if (
+                op.name() == "pd_op.data"
+                and 'learning_rate' in op.attrs()["name"]
+            ):
+                lr_name = op.attrs()["name"]
+                break
+
+        if lr_name is not None:
+            buffer_tensor = global_scope().var(lr_name).get_tensor()
+            buffer_tensor.set(
+                np.float32(self._optimizer._learning_rate), self._place
             )
-        buffer_tensor.set(
-            np.float32(self._optimizer._learning_rate), self._place
-        )
 
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()

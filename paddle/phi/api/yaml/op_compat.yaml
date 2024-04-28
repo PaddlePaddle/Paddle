@@ -2686,6 +2686,14 @@
   outputs :
     out : Out
 
+- op : pull_sparse_v2
+  inputs :
+    { ids : Ids, w : W}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
+
 - op : push_dense
   inputs :
     ids : Ids
@@ -2698,7 +2706,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, 'str[] inputnames = {}', bool is_distributed = true]
+    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_labe_lname = "", int padding_id = 0, bool scales_parse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -3207,6 +3215,14 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : sparse_batch_norm
+  attrs:
+    data_format: data_layout
+
+- op : sparse_sync_batch_norm
+  attrs:
+    data_format: data_layout
 
 - op : spectral_norm
   backward : spectral_norm_grad

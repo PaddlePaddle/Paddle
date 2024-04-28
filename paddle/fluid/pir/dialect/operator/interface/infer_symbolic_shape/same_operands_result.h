@@ -96,6 +96,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reciprocal_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Relu)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Relu6)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Relu_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Reverse)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Roll)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Round)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Round_)
@@ -131,5 +132,6 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sigmoid_)
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
+using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
-}
+}  // namespace cinn::dialect

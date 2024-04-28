@@ -14,10 +14,13 @@
 
 import unittest
 
+from utils import compare_legacy_with_pt
+
 import paddle
 
 
 class TestSparseEmbeddingAPIError(unittest.TestCase):
+    @compare_legacy_with_pt
     def test_errors(self):
         with paddle.base.dygraph.guard():
             # The size of input in sparse_embedding should not be 0.
