@@ -53,6 +53,12 @@ class MergeParallelMatmulPattern
       return false;
     }
 
+    auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
+                                const std::vector<std::int64_t>& b) {
+      return std::vector<std::int64_t>(a.begin(), a.end() - 1) ==
+             std::vector<std::int64_t>(b.begin(), b.end() - 1);
+    };
+
     auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
       return std::any_of(
           dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
@@ -84,7 +90,7 @@ class MergeParallelMatmulPattern
         if (IsDynamicShape(cur_dim)) {
           continue;
         }
-        if (pre_dim.value() == cur_dim) {
+        if (VectorPrefixEqual(pre_dim.value(), cur_dim)) {
           ret.push_back(it->owner());
         }
       }
