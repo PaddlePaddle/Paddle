@@ -81,9 +81,6 @@ template <>
 StmtPattern<BackendStage> MergePatternImpl(
     const HorizontalFusionPattern<BackendStage>& first,
     const HorizontalFusionPattern<BackendStage>& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
-                         GetOpsInPattern<BackendStage>(second));
   return HorizontalFusionPattern<BackendStage>({first, second});
 }
 
@@ -170,6 +167,8 @@ struct FusionOpGetter {
   std::vector<FusionOp> operator()(
       const HorizontalFusionPattern<BackendStage>& pattern) {
     std::vector<FusionOp> result;
+    VLOG(4) << "Get Fusion Ops from HorizontalFusionPattern: "
+            << pattern.patterns_.size();
     for (const auto& sub_pattern : pattern.patterns_) {
       result = ConcatVector(result, GetFusionOpFromPattern(sub_pattern));
     }
@@ -306,6 +305,8 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern) {
   const auto& fusion_ops = GetFusionOpFromPattern(pattern);
+  VLOG(4) << "GetExprFromPattern from " << GetPatternName(pattern)
+          << " : get fusion op number : " << fusion_ops.size();
   std::vector<ir::Expr> results;
   for (const auto& op : fusion_ops) {
     results = ConcatVector(results, std::visit(FusionOp2Expr(), op));

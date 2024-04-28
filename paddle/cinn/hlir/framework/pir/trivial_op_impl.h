@@ -180,7 +180,8 @@ FusionGroupInfo GetFusionGroupInfo(
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies);
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs);
 
 }  // namespace pir
 }  // namespace framework

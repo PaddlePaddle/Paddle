@@ -563,7 +563,8 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
-    const std::vector<ir::Expr>& op_compute_bodies) {
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs) {
   CHECK(FLAGS_group_schedule_tiling_first)
       << "TrivialFusion must be used with tiling first, set "
          "FLAGS_group_schedule_tiling_first=1";
@@ -578,10 +579,9 @@ std::vector<ir::Expr> OperationFusion(
   std::vector<cinn::fusion::BackendContent> contents;
   for (int i = 0; i < ops.size(); i++) {
     contents.emplace_back(ops[i], op_compute_bodies[i]);
-    // contents.emplace_back(ops[i]);
   }
   const auto& fusion_nodes =
-      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents);
+      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
 
   CHECK(fusion_nodes.size() == 1)
       << "Only support one fusion node in backend now.";
