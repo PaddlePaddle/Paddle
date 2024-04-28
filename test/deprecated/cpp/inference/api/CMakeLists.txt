@@ -313,6 +313,12 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR}
                               analyzer_rnn2_tester.cc EXTRA_DEPS common)
 
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_analyzer_rnn2)
+  endif()
+
   # small DAM
   set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
   download_model_and_data_without_verify(
