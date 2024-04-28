@@ -22,6 +22,7 @@ set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
 include_directories(${PYBIND_INCLUDE_DIR})
 
+# It can be safely removed in gcc9.1+
 set(PYBIND_PATCH_COMMAND "")
 if(LINUX
    AND WITH_ARM
@@ -36,7 +37,7 @@ if(LINUX
   # 2. Patch twice: the tag version of cache == PYBIND_TAG, but patch has already applied to cache.
   set(PYBIND_PATCH_COMMAND
       git checkout -- . && git checkout ${PYBIND_TAG} && patch -Nd
-      ${SOURCE_INCLUDE_DIR}/pybind11 < ${native_dst})
+      ${SOURCE_INCLUDE_DIR}/pybind11/detail < ${native_dst})
 endif()
 
 ExternalProject_Add(
