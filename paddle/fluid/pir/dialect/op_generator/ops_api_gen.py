@@ -241,8 +241,22 @@ class OpsAPIGen(CodeGen):
             for op_name in op_info.op_phi_name:
                 if self._need_skip(op_info, op_name):
                     continue
-                function_impl_str += self._gen_one_function_impl(op_name)
-                ops_api_str += self._gen_one_ops_api(op_name)
+                sparse_op_inplace_name_suffix = ''
+                sparse_op_name_suffix = ''
+                if op_name[-1] == "_":
+                    function_impl_str += self._gen_one_function_impl(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                    ops_api_str += self._gen_one_ops_api(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    function_impl_str += self._gen_one_function_impl(
+                        op_name + sparse_op_name_suffix
+                    )
+                    ops_api_str += self._gen_one_ops_api(
+                        op_name + sparse_op_name_suffix
+                    )
 
         inner_body = NAMESPACE_INNER_TEMPLATE.format(
             function_impl=function_impl_str, ops_api=ops_api_str
