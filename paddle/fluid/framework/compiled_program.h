@@ -50,7 +50,6 @@ class CompiledProgram {
                                     const std::string &loss_var_name,
                                     Scope *scope,
                                     const std::vector<Scope *> &local_scopes,
-                                    //  const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy,
                                     ir::Graph *graph);
 

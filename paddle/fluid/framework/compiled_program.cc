@@ -551,7 +551,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
                                  const std::string &loss_var_name,
                                  Scope *scope,
                                  const std::vector<Scope *> &local_scopes,
-                                 //  const ExecutionStrategy &exec_strategy,
                                  const BuildStrategy &build_strategy,
                                  ir::Graph *graph)
     : member_(new CompiledProgramPrivate(places, scope)) {
