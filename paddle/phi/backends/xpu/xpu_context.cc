@@ -51,7 +51,8 @@ class XHPCBufferManager {
   void Free() {
     PADDLE_ENFORCE_GT(allocations_to_free_.size(),
                       0,
-                      "No ctx_guard when overload_free is called");
+                      errors::PreconditionNotMet(
+                          "No ctx_guard when overload_free is called"));
     allocations_to_free_.pop_back();
     VLOG(3) << "XHPC ctx_guard destropyed, " << allocations_to_free_.size()
             << " are in use now.";
