@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
@@ -49,7 +48,7 @@ struct CSEAnalyzer {
 };
 
 size_t CalcValueHash(const pir::Value& value, CSEAnalyzer* cse_analyzer);
-size_t CalcOperationHash(const pir::Operation* op, CSEAnalyzer* cse_analyzer);
+size_t CalcOperationHash(pir::Operation* op, CSEAnalyzer* cse_analyzer);
 
 bool IsTerminateOp(pir::Operation* op) { return op->num_operands() == 0; }
 
@@ -99,6 +98,9 @@ void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
     auto value = op->result(i);
     auto new_value = new_op->result(i);
     for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+      // NOTE(SigureMo): If the value has a shadow output, we could not replace
+      // it directly. It will cause a value has two shadow outputs. It is
+      // invalid for executor, so we make a copy by inserting a assign op.
       if (it->owner()->isa<pir::ShadowOutputOp>()) {
         value = CreateAssignOp(value, it->owner(), op->GetParent());
         break;
@@ -173,19 +175,6 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     VLOG(6) << "apply common_subexpression_elimination_pass";
     int64_t num_erasers{0};
     std::vector<std::string> deleted_vars;
-    // bool updated{true};
-    // while (updated) {
-    //   int64_t pre_num_erasers = num_erasers;
-    //   EraseOp(*op->GetParentProgram()->block(), &num_erasers, &deleted_vars);
-    //   updated = pre_num_erasers != num_erasers;
-    // }
-    // if (Has(pir::Pass::kParamScopeAttr)) {
-    //   auto scope =
-    //   &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr); if
-    //   (deleted_vars.size() > 0) {
-    //     scope->EraseVars(deleted_vars);
-    //   }
-    // }
     CSEAnalyzer cse_analyzer;
     SimplifyBlock(op->GetParentProgram()->block(), &cse_analyzer);
     for (auto* op : cse_analyzer.to_erase_ops) {
