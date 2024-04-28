@@ -18,7 +18,7 @@
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/data_type.h"
-#include "/home/wangzhe24/paddle/fp8/Paddle/paddle/phi/core/allocator.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace phi{
 namespace fusion{

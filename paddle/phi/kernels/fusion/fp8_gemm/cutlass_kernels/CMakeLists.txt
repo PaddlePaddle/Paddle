@@ -16,6 +16,7 @@ add_definitions("-DPADDLE_WITH_CUDA")
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../build/paddle_inference_install_dir/paddle/include"
 )
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/..")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include")
 
