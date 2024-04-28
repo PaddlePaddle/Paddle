@@ -40,6 +40,7 @@ decomp_interface_declare_gen_op_list = [
     "log_softmax",
     "mean",
     "mean_all",
+    "one_hot",
     "p_norm",
     "pow",
     "reciprocal",
