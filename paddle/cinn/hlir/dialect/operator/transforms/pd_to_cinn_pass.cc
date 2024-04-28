@@ -238,6 +238,35 @@ class ReshapeOpPattern
   }
 };
 
+class FlipOpPattern : public pir::OpRewritePattern<paddle::dialect::FlipOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FlipOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::FlipOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied;
+  }
+
+  void Rewrite(paddle::dialect::FlipOp op,
+               pir::PatternRewriter &rewriter) const override {
+    std::vector<int> axis_value;
+    auto axis_attr =
+        op.attribute("axis").dyn_cast<pir::ArrayAttribute>().AsVector();
+    if (axis_attr.size() > 0) {
+      for (size_t i = 0; i < axis_attr.size(); ++i) {
+        PADDLE_ENFORCE(axis_attr[i].dyn_cast<::pir::Int32Attribute>(),
+                       ::common::errors::PreconditionNotMet(
+                           "Reqiured attr element must be Int32Attribute."));
+        axis_value.push_back(
+            axis_attr[i].dyn_cast<::pir::Int32Attribute>().data());
+      }
+    }
+    auto cinn_reverse = rewriter.Build<cinn::dialect::ReverseOp>(
+        op->operand_source(0), axis_value);
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reverse.result(0));
+    rewriter.EraseOp(op);
+  }
+};
 class Pool2dOpPattern
     : public pir::OpRewritePattern<paddle::dialect::Pool2dOp> {
  public:
@@ -825,8 +854,11 @@ class SqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
@@ -876,8 +908,11 @@ class UnsqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
@@ -1004,6 +1039,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
+  ps.Add<FlipOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
   ps.Add<FullWithTensorOpPattern>(context);
