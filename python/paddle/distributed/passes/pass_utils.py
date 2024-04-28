@@ -1307,6 +1307,8 @@ class PipelineMemoryEstimator:
                 "read",
             ]:
                 continue
+
+            last_use_vars = []
             for var_name in op.input_arg_names + op.output_arg_names:
                 if var_name not in var_info:
                     continue
@@ -1330,14 +1332,25 @@ class PipelineMemoryEstimator:
                         not self._is_perisitable(var_name, var_info)
                         and var_name not in skip_gc_vars
                     ):
-                        self.logger.debug(
-                            f"remove {var_name}, var size: {var_info[var_name]['size']},"
-                            f"count: {var_info[var_name]['count']},"
-                            f"mem_usage: {mem_usage} -> {mem_usage - var_info[var_name]['size']},"
-                            f"op type: {op.type}, input_arg_names: {op.input_arg_names}, output_arg_names: {op.output_arg_names}"
-                        )
-                        mem_usage -= var_info[var_name]["size"]
+                        last_use_vars.append(var_name)
+
                 max_memory = max(max_memory, mem_usage)
+
+            # Release the memory of the variables that are not used anymore
+            for var_name in set(last_use_vars):
+                self.logger.debug(
+                    f"remove {var_name}, var size: {var_info[var_name]['size']},"
+                    f"count: {var_info[var_name]['count']},"
+                    f"mem_usage: {mem_usage} -> {mem_usage - var_info[var_name]['size']},"
+                    f"op type: {op.type}, input_arg_names: {op.input_arg_names}, output_arg_names: {op.output_arg_names}"
+                )
+                mem_usage -= var_info[var_name]["size"]
+                if var_name in visited_vars:
+                    visited_vars[var_name] -= var_info[var_name]["size"]
+
+        for var_name in visited_vars:
+            mem_usage -= visited_vars[var_name]
+
         return mem_usage, max_memory
 
     def _get_increase_memory(self, program_type):
@@ -1386,27 +1399,44 @@ class PipelineMemoryEstimator:
         return var_info
 
     def _update_var_info(self, var_name, dist_op, var_info, is_input):
+        var = (
+            dist_op.get_serial_input(var_name)
+            if is_input
+            else dist_op.get_serial_output(var_name)
+        )
+
+        process_mesh = dist_op.dist_attr.process_mesh
+        dims_mapping = (
+            dist_op.dist_attr.get_input_dims_mapping(var_name)
+            if is_input
+            else dist_op.dist_attr.get_output_dims_mapping(var_name)
+        )
+
         if var_name not in var_info:
-            var_info[var_name] = {"count": 1, "persistable": False, "size": 0}
-            var = (
-                dist_op.get_serial_input(var_name)
-                if is_input
-                else dist_op.get_serial_output(var_name)
+            var_info.setdefault(
+                var_name, {"size": 0, "count": 1, "persistable": False}
             )
             if var.persistable:
                 var_info[var_name]["persistable"] = True
                 return
-
-            process_mesh = dist_op.dist_attr.process_mesh
-            dims_mapping = (
-                dist_op.dist_attr.get_input_dims_mapping(var_name)
-                if is_input
-                else dist_op.dist_attr.get_output_dims_mapping(var_name)
-            )
             var_size = self._get_local_var_size(var, dims_mapping, process_mesh)
             var_info[var_name]["size"] = var_size
+            var_info[var_name]["process_mesh"] = process_mesh
+            var_info[var_name]["dims_mapping"] = dims_mapping
         else:
             var_info[var_name]["count"] += 1
+            if var_info[var_name]["persistable"]:
+                return
+
+            if (
+                process_mesh != var_info[var_name]["process_mesh"]
+                or dims_mapping != var_info[var_name]["dims_mapping"]
+            ):
+                var_info[var_name]["size"] = self._get_local_var_size(
+                    var, dims_mapping, process_mesh
+                )
+                var_info[var_name]["process_mesh"] = process_mesh
+                var_info[var_name]["dims_mapping"] = dims_mapping
 
     def _get_local_var_size(self, var, dims_mapping, process_mesh):
         var_shape = [1 if dim == -1 else dim for dim in var.shape]
