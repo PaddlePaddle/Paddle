@@ -45,6 +45,18 @@ struct CanFuseRxTMatcher {
   }
 };
 
+struct SinkTrivialMatcher {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return StmtPatternGraphMatcher<TrivialPattern<T>>()(graph, node) &&
+           node->downstream().size() == 1 &&
+           (std::holds_alternative<ReducePattern<Phrase>>(
+                node->downstream().at(0)->stmt_pattern()) ||
+            std::holds_alternative<TrivialPattern<Phrase>>(
+                node->downstream().at(0)->stmt_pattern()));
+  }
+};
+
 struct CanFuseReduceTreeMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
@@ -130,13 +142,6 @@ struct HorizontalFusionMatcher {
                .template GetPolicy<GeneralTopoPolicy>()
                ->CanFuse(first, second) &&
            first_dim == second_dim;
-  }
-};
-
-struct NonSinkNodeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return !node->downstream().empty();
   }
 };
 

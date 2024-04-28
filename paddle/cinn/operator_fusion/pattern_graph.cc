@@ -28,8 +28,6 @@ template <typename T>
 std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps() {
   VLOG(4) << "[Group Cluster] Initial Condition: " << GraphInfo();
 
-  // TODO(@wuzhanfei) Remove All IsOutputPattern Check
-
   VLOG(4) << "[Group Cluster] Start SinkTrivialPattern";
   SinkTrivialPattern();
   VLOG(4) << "[Group Cluster] After SinkTrivialPattern: " << GraphInfo();
@@ -128,13 +126,10 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByReverseTopoOrder() {
 
 template <typename T>
 void PatternGraph<T>::SinkTrivialPattern() {
-  // TODO(@wuzhanfei) change sink trivial pattern algorithm, skip pattern with
-  // multi downstream
-  GraphTransformer<
-      NodePattern,
-      T,
-      And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern<T>>>,
-      MergeTrivialPatternOperation>(this);
+  GraphTransformer<NodePattern,
+                   T,
+                   SinkTrivialMatcher,
+                   MergeTrivialPatternOperation>(this);
 }
 
 template <typename T>
