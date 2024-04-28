@@ -533,7 +533,7 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* r);
 
 void QuantizeInferMeta(const MetaTensor& input,
-                       bool is_negative,
+                       bool is_negative_input,
                        float scale,
                        float shift,
                        const std::string& output_format,

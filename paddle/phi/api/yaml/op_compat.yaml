@@ -806,6 +806,8 @@
     input : Input
   outputs :
     output : Output
+  extra:
+    attrs : [float scale = 1.0f, float shift = 0.0f]
 
 - op : dequantize_linear
   inputs :
@@ -2732,6 +2734,8 @@
     input : Input
   outputs :
     output : Output
+  extra:
+    attrs : [bool is_negative_input = false, float scale = 1.0f, float shift = 0.0f, str output_format = "NHWC", bool bfloat16 = false]
 
 - op : quantize_linear
   inputs :
