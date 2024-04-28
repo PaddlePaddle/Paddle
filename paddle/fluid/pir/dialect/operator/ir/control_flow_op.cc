@@ -740,11 +740,13 @@ bool WhileOp::InferSymbolicShape(
   // add GreaterThanOne constraint
   const auto &body_args = block_args();
   for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_i =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     const auto &args_i =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
-    for (const auto &dim_expr : args_i) {
-      if (shape_analysis->IsGreatThanOne(dim_expr)) {
-        shape_analysis->AddGreatThanOneCstr(dim_expr);
+    for (size_t j = 0; j < body_args.size(); ++j) {
+      if (shape_analysis->IsGreatThanOne(input_i[j])) {
+        shape_analysis->AddGreatThanOneCstr(args_i[j]);
       }
     }
   }
