@@ -806,8 +806,6 @@
     input : Input
   outputs :
     output : Output
-  extra :
-    attrs : [scale : Scale, shift : Shift]
 
 - op : dequantize_linear
   inputs :
@@ -2734,8 +2732,6 @@
     input : Input
   outputs :
     output : Output
-  extra :
-    attrs : [scale : Scale, shift : Shift]
 
 - op : quantize_linear
   inputs :
