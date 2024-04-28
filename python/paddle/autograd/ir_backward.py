@@ -18,6 +18,7 @@ import logging
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
+    ALLOW_NO_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -32,6 +33,7 @@ from paddle.autograd.backward_utils import (
     get_real_op_inputs,
     get_split_op,
     inverse_sort_op,
+    is_builtin_op,
     is_control_flow,
     is_inplace_net,
     parent_total_ops,
@@ -54,78 +56,6 @@ from paddle.base.libpaddle.pir import (
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
-
-# TODO: Consider a better way to mark these ops has no grad op.
-# Such as use a new trait to mark these ops.
-ALLOW_NO_GRAD_OPS = [
-    # Compare ops
-    "pd_op.equal",
-    "pd_op.equal_",
-    "pd_op.not_equal",
-    "pd_op.not_equal_",
-    "pd_op.less_than",
-    "pd_op.less_than_",
-    "pd_op.less_equal",
-    "pd_op.less_equal_",
-    "pd_op.greater_than",
-    "pd_op.greater_than_",
-    "pd_op.greater_equal",
-    "pd_op.greater_equal_",
-    # Logical ops
-    "pd_op.logical_and",
-    "pd_op.logical_and_",
-    "pd_op.logical_not",
-    "pd_op.logical_not_",
-    "pd_op.logical_or",
-    "pd_op.logical_or_",
-    "pd_op.logical_xor",
-    "pd_op.logical_xor_",
-    # Bitwise ops
-    "pd_op.bitwise_and",
-    "pd_op.bitwise_and_",
-    "pd_op.bitwise_left_shift",
-    "pd_op.bitwise_left_shift_",
-    "pd_op.bitwise_not",
-    "pd_op.bitwise_not_",
-    "pd_op.bitwise_or",
-    "pd_op.bitwise_or_",
-    "pd_op.bitwise_right_shift",
-    "pd_op.bitwise_right_shift_",
-    "pd_op.bitwise_xor",
-    "pd_op.bitwise_xor_",
-    # Array ops
-    "pd_op.assign_array",
-    "pd_op.array_length",
-    "pd_op.slice_array",
-    "pd_op.slice_array_dense",
-    "pd_op.assign_array",
-    "pd_op.assign_array_",
-    "pd_op.create_array",
-    "pd_op.create_array_like",
-    "pd_op.array_read",
-    "pd_op.array_write_",
-    "pd_op.array_pop",
-    # Others
-    "pd_op.remainder",
-    "pd_op.argmax",
-    "pd_op.print",
-    "pd_op.accuracy",
-    "pd_op.uniform",
-    "pd_op.gaussian",
-    "pd_op.bernoulli",
-    "pd_op.full_like",
-    "pd_op.assign_value_",
-    "pd_op.nextafter",
-    "pd_op.isnan",
-    "pd_op.isinf",
-    "pd_op.all",
-    "pd_op.any",
-]
-
-
-def is_builtin_op(op):
-    dialect_name, opname = op.name().split(".")
-    return dialect_name == "builtin"
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
