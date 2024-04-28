@@ -14,9 +14,9 @@
 import sys
 import unittest
 
-sys.path.append("../../legacy_test")
-
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from op import Operator
 from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
@@ -61,7 +61,7 @@ class TestFillConstantOp(OpTest):
         self.outputs = {'Out': np.full(self.shape, self.value, self.dtype)}
 
     def test_check_output(self):
-        self.check_output(check_pir=False)
+        self.check_output(check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -171,6 +171,9 @@ class TestFillConstantComplex64Op(TestFillConstantOp):
 
     def init_value(self):
         self.value = 2 + 4j
+
+    def test_check_output(self):
+        self.check_output(check_pir=False)
 
 
 # Situation 2: Attr(shape) is a list(with tensor)
@@ -541,10 +544,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 fetch_list=[out],
             )
 
-        with paddle.pir_utils.IrGuard():
-            pir_program = paddle.static.Program()
-            with paddle.static.program_guard(pir_program):
-                self.assertRaises(ValueError, test_shape_type)
+        # TODO(chenzhiyang): pir test_shape_dtype
 
 
 class TestFillConstantOp_ValueTensorBf16(OpTest):

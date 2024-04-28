@@ -30,6 +30,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
                      bool time_major,
+                     float rotary_emb_base,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
