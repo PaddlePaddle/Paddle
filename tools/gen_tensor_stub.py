@@ -29,6 +29,7 @@ INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
 
 MemberType: TypeAlias = Literal[
+    "doc",
     "attribute",
     "method",
 ]
@@ -49,19 +50,20 @@ class Member:
 
 
 class TensorGen:
-    _future_features: list[str]
-    _import_stmts: list[str]
-    _attributes: dict[str, str]
-    _methods: list[Member]
-    _aliases: dict[str, str]
-
     def __init__(self):
+        self._tensor_doc: str = ''
         self._future_features: list[str] = []
         self._import_stmts: list[str] = []
         self._attributes: dict[str, str] = {}
         self._methods: list[Member] = []
-        self._aliases: dict[str, str] = {}
+        self._aliases: dict[str, str] = {'__qualname__': '"Tensor"'}
         self.add_future("annotations")
+
+    def add_doc(self, doc: str):
+        self._tensor_doc += f'{INDENT}r"""\n'
+        self._tensor_doc += with_indent(doc, 1)
+        self._tensor_doc += "\n"
+        self._tensor_doc += f'{INDENT}"""\n'
 
     def add_future(self, feature: str):
         self._future_features.append(feature)
@@ -92,6 +94,10 @@ class TensorGen:
     @property
     def tensor_spec(self) -> str:
         return """class Tensor:"""
+
+    @property
+    def tensor_doc(self) -> str:
+        return self._tensor_doc
 
     @property
     def tensor_attributes(self) -> str:
@@ -129,6 +135,7 @@ class TensorGen:
 {self.future_imports}
 {self.imports}
 {self.tensor_spec}
+{self.tensor_doc}
 {self.tensor_attributes}
 {self.tensor_methods}
 {self.tensor_aliases}
@@ -165,14 +172,6 @@ def is_classmethod(member: Any) -> bool:
     """Check if the member is a classmethod"""
 
     return isinstance(member, classmethod)
-
-
-# def get_signature(obj: Any):
-
-#     try:
-#         return inspect.signature(obj)
-#     except ValueError:
-#         return
 
 
 def process_lines(code: str, callback: Callable[[str], str]) -> str:
@@ -215,7 +214,7 @@ def with_indent(code: str, level: int) -> str:
 
 def func_sig_to_method_sig(func_sig: str) -> str:
     regex_func_sig = re.compile(
-        r"^(?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,)]+(:.+)?)(?P<rest_args>.*)\)",
+        r"^(?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,*)]+(:.+)?)?(?P<rest_args>.*)?\)",
         re.DOTALL,
     )
     matched = regex_func_sig.search(func_sig)
@@ -223,9 +222,17 @@ def func_sig_to_method_sig(func_sig: str) -> str:
         # TODO: resolve this case
         print(f"[Warning] Cannot parse function signature: {func_sig}")
         return "_(self)"
-    method_sig = regex_func_sig.sub(
-        r"\g<method_name>(self\g<rest_args>)", func_sig
-    )
+
+    if matched.group('rest_args').startswith('*'):
+        method_sig = regex_func_sig.sub(
+            r"\g<method_name>(self, \g<rest_args>)", func_sig
+        )
+
+    else:
+        method_sig = regex_func_sig.sub(
+            r"\g<method_name>(self\g<rest_args>)", func_sig
+        )
+
     return method_sig
 
 
@@ -285,7 +292,17 @@ def get_tensor_members():
             members[member_id].add_alias(name)
             continue
 
-        if is_property(member):
+        if name == '__doc__':
+            members[member_id] = Member(
+                member_id,
+                name,
+                "doc",
+                [],
+                [],
+                "__doc__",
+                member,
+            )
+        elif is_property(member) or inspect.isdatadescriptor(member):
             members[member_id] = Member(
                 member_id,
                 name,
@@ -329,16 +346,6 @@ def get_tensor_members():
                 func_sig_to_method_sig(member_signature),
                 member_doc_cleaned,
             )
-        elif inspect.isdatadescriptor(member):
-            members[member_id] = Member(
-                member_id,
-                name,
-                "attribute",
-                [],
-                [],
-                member_signature,
-                None,
-            )
         else:
             print(name, member)
     return members
@@ -365,6 +372,7 @@ def main():
     tensor_gen = TensorGen()
     tensor_gen.add_import("import numpy as np")
     tensor_gen.add_import("from typing import Any")
+    tensor_gen.add_import("import paddle")
 
     for member in tensor_members.values():
         if member.type == "method":
@@ -373,6 +381,8 @@ def main():
                 tensor_gen.add_alias(alias, member.name)
         elif member.type == "attribute":
             tensor_gen.add_attribute(member.name, "Any")
+        elif member.type == "doc":
+            tensor_gen.add_doc(member.doc)
 
     # Write to target file
     with open(args.output_file, "w", encoding="utf-8") as f:
