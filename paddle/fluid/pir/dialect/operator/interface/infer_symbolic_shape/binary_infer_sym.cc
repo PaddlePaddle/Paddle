@@ -235,8 +235,16 @@ bool GatherOpInferSymbolicShape(
     return numel;
   }();
 
-  const auto &axis_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  int axis = 0;
+  const auto &attributes = op->attributes();
+  if (op->HasAttribute("axis")) {  // CINN Dialect
+    int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  } else {
+    const auto &axis_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+    axis =
+        static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+  }
 
   const std::vector<symbol::DimExpr> &input_sym_shape =
       input_shape_or_data.data().has_value()
@@ -248,8 +256,6 @@ bool GatherOpInferSymbolicShape(
           ? index_shape_or_data.data().value()
           : index_shape_or_data.shape();
 
-  int axis =
-      static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   if (axis < 0) axis += input_sym_shape.size();
 
   const auto &out_sym_shape = [&] {
