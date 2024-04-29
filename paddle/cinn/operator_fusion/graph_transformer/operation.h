@@ -132,7 +132,7 @@ struct LiftToHorizontalFusionPatternOperation {
 struct LiftToAnchorPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    // TODO(@wuzhanfei)
+    node->set_stmt_pattern(AnchorPattern<Phrase>(node->stmt_pattern()));
   }
 };
 
