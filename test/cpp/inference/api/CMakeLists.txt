@@ -991,6 +991,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${INT8_DATA_DIR}/resnet50/model)
   endif()
 
+  # resnet50
+  set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+  download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
+
   if(WITH_GPU)
     inference_analysis_test(
       paddle_infer_api_test
