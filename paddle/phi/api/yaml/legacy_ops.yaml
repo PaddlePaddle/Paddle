@@ -323,6 +323,19 @@
     data_type : x
   backward : depthwise_conv2d_transpose_grad
 
+- op : dequantize_linear
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false, float moving_rate=0.9f)
+  output : Tensor(y), Tensor(out_scale), Tensor(out_accum), Tensor(out_state)
+  infer_meta :
+    func : QuantizeLinearInferMeta
+    param : [x, scale, in_accum, in_state, quant_axis]
+  kernel :
+    func : quantize_linear
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer, moving_rate]
+    data_type : x
+  optional : in_accum, in_state, out_scale, out_accum, out_state
+  inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
+
 - op : dequantize_log
   args: (Tensor x, Tensor dict)
   output: Tensor(out)
@@ -941,6 +954,19 @@
   kernel :
     func : prod
   backward : prod_grad
+
+- op : quantize_linear
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false, float moving_rate=0.9f)
+  output : Tensor(y), Tensor(out_scale), Tensor(out_accum), Tensor(out_state)
+  infer_meta :
+    func : QuantizeLinearInferMeta
+    param : [x, scale, in_accum, in_state, quant_axis]
+  kernel :
+    func : quantize_linear
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer, moving_rate]
+    data_type : x
+  optional : in_accum, in_state, out_scale, out_accum, out_state
+  inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
