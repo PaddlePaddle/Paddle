@@ -2580,15 +2580,15 @@
 
 - backward_op : rms_norm_grad
   forward : rms_norm (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound) -> Tensor(out), Tensor(residual_out), Tensor(inv_var)
-  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad,float epsilon, int begin_norm_axis, float quant_scale)
-  output : Tensor(x_grad), Tensor(norm_weight_grad)
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad, float epsilon, int begin_norm_axis, float quant_scale)
+  output : Tensor(x_grad), Tensor(norm_weight_grad), Tensor(norm_bias_grad)
   infer_meta :
     func: RmsNormGradInferMeta
-    param: [x, norm_weight]
+    param: [x, norm_weight, norm_bias]
   kernel :
     func : rms_norm_grad
     data_type : x
-  optional : bias, residual, norm_bias
+  optional : bias, residual, norm_bias, norm_bias_grad
 
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)

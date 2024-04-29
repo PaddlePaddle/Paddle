@@ -910,8 +910,10 @@ void RmsNormInferMeta(const MetaTensor& x,
 
 void RmsNormGradInferMeta(const MetaTensor& x,
                           const MetaTensor& norm_weight,
+                          const MetaTensor& norm_bias,
                           MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad);
+                          MetaTensor* norm_weight_grad,
+                          MetaTensor* norm_bias_grad);
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
