@@ -42,7 +42,7 @@ struct RPCOpHandle : public OpHandleBase {
   RPCOpHandle(ir::Node* node,
               const framework::OpDesc& op_desc,
               Scope* local_scope,
-              std::string  name,
+              const std::string& name,
               const platform::Place& place);
 
   std::string Name() const override;

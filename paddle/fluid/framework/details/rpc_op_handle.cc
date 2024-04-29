@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 
-#include <utility>
-
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -26,12 +24,12 @@ namespace details {
 RPCOpHandle::RPCOpHandle(ir::Node *node,
                          const framework::OpDesc &op_desc,
                          Scope *local_scope,
-                         std::string name,
+                         const std::string &name,
                          const platform::Place &place)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
-      name_(std::move(name)),
+      name_(name),
       place_(place) {}
 
 void RPCOpHandle::RunImpl() {
