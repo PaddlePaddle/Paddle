@@ -80,6 +80,24 @@ struct ReduceTreePlusTrivialPattern {
 };
 
 template <typename T>
+struct AnchorPattern {
+  explicit AnchorPattern(const StmtPattern<T>& pattern) : pattern_(pattern) {
+    ExtendVector(ops_, GetOpsInPattern(pattern));
+    // TODO(@wuzhanfei): initialize anchor_ and anchor_state using ops_ and
+    // pattern
+  }
+
+  StmtPattern<T> pattern_;
+  std::vector<pir::Operation*> ops_;
+  pir::Value anchor_;  // Choose only one anchor
+  AnchorState<T> anchor_state;
+  std::vector<pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Value> outputs() const { return outputs_; }
+  pir::Value anchor() const { return anchor_; }
+  static std::string name() { return "AnchorPattern"; }
+};
+
+template <typename T>
 class UnsupportPattern {};
 
 template <typename T>
@@ -90,6 +108,7 @@ using StmtPatternBase = std::variant<TrivialPattern<T>,
                                      ReducePattern<T>,
                                      ReduceTreePattern<T>,
                                      ReduceTreePlusTrivialPattern<T>,
+                                     AnchorPattern<T>,
                                      HorizontalFusionPattern<T>,
                                      UnsupportPattern<T>>;
 
@@ -100,20 +119,4 @@ struct StmtPattern final : public StmtPatternBase<T> {
     return static_cast<const StmtPatternBase<T>&>(*this);
   }
 };
-
-template <typename T>
-struct AnchorPattern {
-  explicit AnchorPattern(
-      const std::vector<pir::Operation*>& ops,
-      const pir::Value& anchor const AnchorState<T>& anchor_state)
-      : ops_(ops), anchor_(anchor), {}
-  std::vector<pir::Operation*> ops_;
-  pir::Value anchor_;  // Choose only one anchor
-  AnchorState<T> anchor_state;
-  std::vector<pir::Operation*> ops() const { return ops_; }
-  std::vector<pir::Value> outputs() const { return outputs_; }
-  pir::Value anchor() const { return anchor_; }
-  static std::string name() { return "AnchorPattern"; }
-};
-
 }  // namespace cinn::fusion
