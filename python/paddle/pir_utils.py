@@ -73,6 +73,7 @@ class IrGuard:
             paddle.enable_static()
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
+            paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
             paddle.base.framework.global_var._use_pir_api_ = True
             bind_datatype()
             self._switch_to_pir()
