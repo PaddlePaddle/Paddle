@@ -232,10 +232,8 @@ struct ExpressionTable {
       return false;
     }
     for (auto& value : op->operands_source()) {
-      if (IsTerminateValue(value)) {
-        continue;
-      }
-      if (!GetOperationCanBeSafeToReplace(value.defining_op())) {
+      if (!IsTerminateValue(value) &&
+          !GetOperationCanBeSafeToReplace(value.defining_op())) {
         VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
                 << " has operand " << value.defining_op()->name()
                 << " which can not be safe to replace";
