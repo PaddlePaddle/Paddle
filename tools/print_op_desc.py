@@ -115,6 +115,12 @@ def get_all_ops_desc():
     return all_op_protos_dict
 
 
+def custom_scalar_serializer(obj):
+    if isinstance(obj, core.Scalar):
+        return obj.value()
+    return super().default(obj)
+
+
 all_op_protos_dict = get_all_ops_desc()
-result = json.dumps(str(all_op_protos_dict))
+result = json.dumps(all_op_protos_dict, default=custom_scalar_serializer)
 print(result)
