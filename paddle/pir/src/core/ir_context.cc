@@ -296,7 +296,7 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                VerifyPtr verify_sig,
                                VerifyPtr verify_region) {
   if (impl().IsOpInfoRegistered(name)) {
-    LOG(WARNING) << name << " op already registered.";
+    VLOG(1) << name << " op already registered.";
   } else {
     OpInfo info = OpInfoImpl::Create(dialect,
                                      op_id,
