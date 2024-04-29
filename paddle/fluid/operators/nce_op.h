@@ -22,10 +22,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -38,7 +38,7 @@ using DDim = framework::DDim;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,

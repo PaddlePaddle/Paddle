@@ -1577,6 +1577,36 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& in_scale,
+    const MetaTensor& in_accum,
+    const MetaTensor& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    MetaTensor* out,
+    MetaTensor* out_scale,
+    MetaTensor* out_state,
+    MetaTensor* out_accum) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  if (out_state) {
+    out_state->set_dims({1});
+  }
+  if (out_accum) {
+    out_accum->set_dims({1});
+  }
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
+}
+
 void FtrlInferMeta(const MetaTensor& param,
                    const MetaTensor& squared_accumulator,
                    const MetaTensor& linear_accumulator,

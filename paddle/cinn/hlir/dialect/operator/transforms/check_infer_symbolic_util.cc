@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
 PD_DECLARE_bool(prim_all);
@@ -37,10 +37,15 @@ DimExprs4ValueT MakeDimExprs4Value(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
-  const auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(program);
+  auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
   return
       [shape_analysis](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+        // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprss
+        if (!value) {
+          static symbol::ShapeOrDataDimExprs empty{
+              symbol::TensorShapeOrDataDimExprs{}};
+          return empty;
+        }
         return shape_analysis->GetShapeOrDataForValue(value);
       };
 }

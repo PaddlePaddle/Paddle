@@ -15,10 +15,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
@@ -114,7 +114,7 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
         *ctx.template device_context<phi::CPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
-      auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
+      auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
       dxt.device(place) = dxt.constant(static_cast<T>(0));
     }
 

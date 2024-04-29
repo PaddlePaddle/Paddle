@@ -1037,21 +1037,17 @@ PHI_DEFINE_EXPORTED_bool(
     enable_cinn_compile_cache,
     true,
     "It controls whether to enable cinn compilation cache.");
-
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
- * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=-1
+ * Example: FLAGS_cinn_compile_thread_nume=8
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
-
+PHI_DEFINE_EXPORTED_int64(
+    cinn_compile_thread_num,
+    -1,
+    "It controls how many thread numbers applying compilation cache.");
 /*
  * CINN related FLAG
  * Name: FLAGS_enable_interpretercore_launch_cinn
@@ -1271,6 +1267,17 @@ PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
                          false,
                          "Whether disable dyshape in training.");
+
+/**
+ * CINN accuracy check related FLAG
+ * Name: FLAGS_enable_cinn_accuracy_check
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
+                         false,
+                         "Whether enable accuracy check in cinn.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1503,6 +1510,10 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
+PHI_DEFINE_EXPORTED_bool(pir_debug,
+                         false,
+                         "Whether print more pir debug info.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
                          "Whether to skip decomposing op with dynamic shape.");

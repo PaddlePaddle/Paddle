@@ -741,6 +741,7 @@ XPUOpMap& get_kl2_ops() {
       {"reciprocal", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reciprocal_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"reduce_all", XPUKernelSet({phi::DataType::BOOL})},
       {"reduce_any", XPUKernelSet({phi::DataType::BOOL})},
       {"reduce_max_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_max",
@@ -1226,6 +1227,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32})},
       {"sine_pos_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"pad2d_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"roformer_relative_embedding_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"cross_attention_xpu",
@@ -1233,6 +1235,10 @@ XPUOpMap& get_kl2_ops() {
       {"variable_length_memory_efficient_attention",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"flash_attn_unpadded",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"mask_adaptive_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"sequence_unpad_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
   };
 
