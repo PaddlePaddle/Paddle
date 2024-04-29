@@ -647,8 +647,8 @@ def flash_attn_varlen_qkvpacked(
                         :ref:`api_guide_Name`.
 
     Returns:
-        out(Tensor): The attention tensor. The tensor is padded by zeros. 3-D tensor with shape: [total_seq_len, num_heads, head_dim]. The dtype can be float16 or bfloat16.
-        softmax(Tensor): The softmax tensor. None if return_softmax is False.
+        - out(Tensor). The attention tensor. The tensor is padded by zeros. 3-D tensor with shape: [total_seq_len, num_heads, head_dim]. The dtype can be float16 or bfloat16.
+        - softmax(Tensor). The softmax tensor. None if return_softmax is False.
 
     Examples:
         .. code-block:: python
