@@ -120,7 +120,9 @@ void OpMapper::RegisterMapRules() {
   REGISTER_OPERAND_RULE(MinOp, 0);
   REGISTER_OPERAND_RULE(ProdOp, 0);
   REGISTER_ATTR_RULE(ReduceMaxOp, AppendAttrForReduceOp);
+  REGISTER_ATTR_RULE(ReduceMinOp, AppendAttrForReduceOp);
   REGISTER_ATTR_RULE(ReduceSumOp, AppendAttrForReduceOp);
+  REGISTER_ATTR_RULE(ReduceProdOp, AppendAttrForReduceOp);
   REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBroadcastToOp);
   REGISTER_ATTR_RULE(UniformRandomOp, AppendAttrForUniformOp);
   REGISTER_PD_ATTR_RULE(TransposeOp, AppendAttrForTransposeOp);
