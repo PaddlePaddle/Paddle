@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 
-#include "build_gpu/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
