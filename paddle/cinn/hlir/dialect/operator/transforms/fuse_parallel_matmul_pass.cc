@@ -59,11 +59,6 @@ class MergeParallelMatmulPattern
              std::vector<std::int64_t>(b.begin(), b.end() - 1);
     };
 
-    auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
-      return std::any_of(
-          dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
-    };
-
     auto input_x = matmul_op.operand_source(0);
     const std::vector<pir::Operation*> merge_ops = [&]() {
       std::vector<pir::Operation*> ret;
@@ -87,9 +82,6 @@ class MergeParallelMatmulPattern
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
                 .dims());
-        if (IsDynamicShape(cur_dim)) {
-          continue;
-        }
         if (VectorPrefixEqual(pre_dim.value(), cur_dim)) {
           ret.push_back(it->owner());
         }
@@ -127,7 +119,6 @@ class MergeParallelMatmulPattern
             .result(0);
 
     for (size_t i = 0; i < merge_ops.size(); ++i) {
-      rewriter.SetInsertionPointAfter(merge_ops[i]);
       auto split_out = rewriter
                            .Build<paddle::dialect::SliceOp>(
                                matmul_out,

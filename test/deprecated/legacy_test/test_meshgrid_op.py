@@ -42,15 +42,11 @@ class TestMeshgridOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['x0'],
-            ['out0', 'out1'],
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+            ['x0'], ['out0', 'out1'], check_prim=True, check_pir=True
         )
 
     def init_inputs_and_outputs(self):
@@ -129,9 +125,7 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(
-            place=paddle.CUDAPlace(0), check_pir=True, check_prim_pir=True
-        )
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -140,7 +134,6 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
             ['out0', 'out1'],
             check_prim=True,
             check_pir=True,
-            check_prim_pir=True,
         )
 
 

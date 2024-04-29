@@ -78,7 +78,6 @@ class InferXPUContext : public phi::XPUContext {
                          int fc_autotune_level,
                          bool fc_autotune_file_writeback,
                          const phi::Place& place);
-  void SetContextOption(const char* name, const char* value);
 
  private:
   size_t l3_size_{0};

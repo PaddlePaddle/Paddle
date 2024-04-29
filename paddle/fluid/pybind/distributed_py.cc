@@ -564,7 +564,7 @@ void BindDistributed(py::module *m) {
           .def(
               "barrier",
               [](distributed::ProcessGroup &self, int8_t device_id) {
-                distributed::BarrierOptions opts;
+                distributed::BarrierOptions opts{0};
                 opts.device_id = device_id;
                 return self.Barrier(opts);
               },

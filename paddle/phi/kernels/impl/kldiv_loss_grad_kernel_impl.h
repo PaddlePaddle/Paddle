@@ -23,19 +23,13 @@ namespace phi {
 using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T>
 struct KLDivLossBackward {
-  bool log_target = false;
-
-  HOSTDEVICE KLDivLossBackward(bool logTarget) : log_target(logTarget) {}
+  HOSTDEVICE KLDivLossBackward() {}
 
   HOSTDEVICE T operator()(const T& target, const T& grad) const {
-    if (log_target) {
-      return static_cast<T>(-1.) * std::exp(target) * grad;
+    if (target <= 0) {
+      return 0;
     } else {
-      if (target <= 0) {
-        return 0;
-      } else {
-        return static_cast<T>(-1.) * target * grad;
-      }
+      return static_cast<T>(-1.) * grad;
     }
   }
 };
@@ -46,7 +40,6 @@ void KLDivLossGradKernel(const Context& dev_ctx,
                          const DenseTensor& label,
                          const DenseTensor& d_out,
                          const std::string& reduction,
-                         bool log_target,
                          DenseTensor* d_x) {
   auto& place = *dev_ctx.eigen_device();
   auto* target = &label;
@@ -65,9 +58,9 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   auto loss_grad_t = phi::EigenVector<T>::Flatten(*loss_grad);
 
   auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
-  auto grad_t = loss_grad_expand;
+  auto grad_t = target_t * loss_grad_expand;
   input_grad_t.device(place) =
-      target_t.binaryExpr(grad_t, KLDivLossBackward<T>(log_target));
+      target_t.binaryExpr(grad_t, KLDivLossBackward<T>());
 
   if ("mean" == reduction) {
     input_grad_t.device(place) = input_grad_t / static_cast<T>(numel);

@@ -24,7 +24,6 @@
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -37,6 +36,8 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
+  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  VLOG(4) << "CreateLoopReorderAlignmentTactic End";
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
   VLOG(4) << "CreateTileFirstGeneralTactic End";
 }
@@ -192,10 +193,7 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
           return find_reduce_var;
         },
         /* uniq_target = */ true);
-    PADDLE_ENFORCE_EQ(reduce_loads.size(),
-                      1,
-                      ::common::errors::PreconditionNotMet(
-                          "Required reduce_loads shall be 1."));
+    CHECK_EQ(reduce_loads.size(), 1);
 
     std::vector<ir::Expr> reduce_load_indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
@@ -203,16 +201,10 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     for (int i = 0; i < reduce_load_indices.size(); ++i) {
       ir::Expr& index = reduce_load_indices[i];
       if (index.is_constant()) continue;
-      PADDLE_ENFORCE_NOT_NULL(index.as_var(),
-                              ::common::errors::PreconditionNotMet(
-                                  "Required index shall be var type."));
+      CHECK_NOTNULL(index.as_var());
       ir::Var iter_var = index.as_var_ref();
       ir::Expr iter_value = iter_var2value.at(iter_var);
-      PADDLE_ENFORCE_EQ(
-          iter_value.as_var() || iter_value.is_constant(),
-          true,
-          ::common::errors::PreconditionNotMet(
-              "Required iter_value shall be var or constant type."));
+      CHECK(iter_value.as_var() || iter_value.is_constant());
       ir::For* for_node;
       if (iter_value.as_var()) {
         for (ir::Expr& loop : loops) {
@@ -223,9 +215,7 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       } else if (iter_value.is_constant()) {
         for_node = loops.at(loop_idx).As<ir::For>();
       }
-      PADDLE_ENFORCE_NOT_NULL(for_node,
-                              ::common::errors::PreconditionNotMet(
-                                  "Required for_node shall not be nullptr."));
+      CHECK_NOTNULL(for_node);
       bool is_reduce_iter_var = reduce_iter_vars.count(iter_var) > 0;
       if (is_reduce_iter_var) {
         info.rb_space.emplace_back(for_node->extent,

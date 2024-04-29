@@ -705,7 +705,6 @@ class TestProgramStatePartial(unittest.TestCase):
             else base.CUDAPlace(0)
         )
 
-    @test_with_pir_api
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -798,11 +797,6 @@ class TestProgramStatePartial(unittest.TestCase):
             base_map = {}
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -817,11 +811,6 @@ class TestProgramStatePartial(unittest.TestCase):
             # set var to zero
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -852,11 +841,6 @@ class TestProgramStatePartial(unittest.TestCase):
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -866,11 +850,6 @@ class TestProgramStatePartial(unittest.TestCase):
             # check 1
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -884,11 +863,6 @@ class TestProgramStatePartial(unittest.TestCase):
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -898,11 +872,6 @@ class TestProgramStatePartial(unittest.TestCase):
             # check 2
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -916,11 +885,6 @@ class TestProgramStatePartial(unittest.TestCase):
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -930,11 +894,6 @@ class TestProgramStatePartial(unittest.TestCase):
             # check 3
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     ten = base.global_scope().find_var(var.name).get_tensor()
                     ten.set(np.zeros_like(np.array(ten)), place)
 
@@ -948,11 +907,6 @@ class TestProgramStatePartial(unittest.TestCase):
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    if (
-                        in_pir_mode()
-                        and var.get_defining_op().name() == "pd_op.fetch"
-                    ):
-                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
