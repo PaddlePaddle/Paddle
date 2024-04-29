@@ -18,17 +18,86 @@
 
 namespace cinn::fusion {
 
-std::vector<AnchorTransformRoute> FindAnchorTransformRoute(
-    pir::Value begin, pir::Value end, std::unordered_set<pir::Operation*> ops) {
+bool IsLegalRoute(const AnchorTransformRoute& route) {
+  // TODO(@wuzhanfei) we need to judge if this tranform route will reduce
+  // performance
+  return True;
 }
-bool IsLegalRoute(AnchorTransformRoute route) {}
+
+std::optional<AnchorTransformRoute> SearchAnchorTransformRecursively(
+    const pir::Value& begin,
+    const pir::Value& end,
+    AnchorTransformRoute* cur_route,
+    std::unordered_set<pir::Value>* visited,
+    const std::unordered_set<pir::Operation*>& ops) {
+  auto transforms = PossibleTransform(begin);
+  for (auto anchor_transform : transforms) {
+    auto info = GetTransformInfo(anchor_transform);
+    auto dst_value = info.DstValue();
+    cur_route->emplace_back(anchor_transform);
+
+    if (std::holds_alternative<UnsupportTransformPtr>(anchor_transform) ||
+        ops.find(info.op) == ops.end() ||
+        visited->find(dst_value) != visited->end() || !IsLegalRoute(*cur_route))
+      continue;
+
+    visited->emplace(dst_value);
+    if (dst_value == end) {
+      return *cur_route;
+    }
+
+    auto recursive_result = SearchAnchorTransformRecursively(
+        dst_value, end, cur_route, visited, ops);
+    if (recursive_result != std::nullopt) {
+      return recursive_result;
+    }
+
+    cur_route->pop_back();
+  }
+
+  return std::nullopt;
+}
+
+std::optional<AnchorTransformRoute> FindAnchorTransformRoute(
+    pir::Value begin, pir::Value end, std::unordered_set<pir::Operation*> ops) {
+  AnchorTransformRoute cur_route;
+  std::unordered_set<pir::Value> visited;
+  visited.emplace(begin);
+
+  return SearchAnchorTransformRecursively(
+      begin, end, &cur_route, &visited, ops);
+}
 
 template <typename T>
 bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {}
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  const auto& upstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
+  const auto& downstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
+
+  return FindAnchorTransformRoute(
+             upstream_anchor_pattern.anchor(),
+             downstream_anchor_pattern.anchor(),
+             ToSet(ConcatVector(upstream_anchor_pattern.ops(),
+                                downstream_anchor_pattern.ops()))) !=
+         std::nullopt;
+}
 template <typename T>
 bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {}
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  const auto& upstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
+  const auto& downstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
+
+  return FindAnchorTransformRoute(
+             downstream_anchor_pattern.anchor(),
+             upstream_anchor_pattern.anchor(),
+             ToSet(ConcatVector(upstream_anchor_pattern.ops(),
+                                downstream_anchor_pattern.ops()))) !=
+         std::nullopt;
+}
 
 template class AnchorSearchPolicy<FrontendStage>;
 template class AnchorSearchPolicy<BackendStage>;

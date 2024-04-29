@@ -17,11 +17,11 @@
 namespace cinn::fusion {
 
 AnchorTransform CreateDefaultAnchorTransform(const TransformInfo& info) {
-  return UnsupportTransform(info);
+  return std::make_shared<UnsupportTransform>(info);
 }
 
 AnchorTransform CreateAnchorTransformForElementWise(const TransformInfo& info) {
-  return IdentityTransform(info);
+  return std::make_shared<IdentityTransform>(info);
 }
 
 AnchorTransform CreateAnchorTransformForReduce(const TransformInfo& info) {
@@ -30,8 +30,8 @@ AnchorTransform CreateAnchorTransformForReduce(const TransformInfo& info) {
   }
 
   if (info.is_upstream_anchor) {
-    return AppendDimTransform(info,
-                              GetReduceAxisIdx(pir::Operation * reduce_op))
+    return std::make_shared<AppendDimTransform>(
+        info, GetReduceAxisIdx(pir::Operation * reduce_op))
   } else {
     return CreateDefaultAnchorTransform(info);
   }
@@ -55,13 +55,14 @@ AnchorTransform CreateAnchorTransformForBroadcast(const TransformInfo& info) {
         delete_dim_idx.emplace_back();
       }
     }
-    return DeleteDimTransform(info, delete_dim_idx);
+    return std::make_shared<DeleteDimTransform>(info, delete_dim_idx);
   } else {
     return CreateDefaultAnchorTransform(info);
   }
 }
 
-AnchorTransform CreateAnchorTransformForSpecialOps(const TransformInfo& info) {
+std::optional<AnchorTransform> CreateAnchorTransformForSpecialOps(
+    const TransformInfo& info) {
   if (info.op->num_results() != 1) {
     VLOG(4) << "Now we do not support op with multi outputs, create default: "
             << info.op->name();
@@ -103,6 +104,35 @@ AnchorTransform CreateAnchorTransform(const TransformInfo& info) {
   }
 
   return result;
+}
+
+std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
+  std::vector<AnchorTransform> result;
+
+  // Transform to Upstream
+  auto defining_op = v.defining_op();
+  size_t output_idx = GetResultIdx(v, defining_op);
+  for (size_t i = 0; i < defining_op->num_operands(); ++i) {
+    result.emplace_back(
+        CreateAnchorTransform(TransformInfo(defining_op, i, output_idx, true)));
+  }
+
+  // Transform to Downstream
+  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+       ++consumer_it) {
+    auto downstream_op = consumer_it->owner();
+    size_t input_idx = GetOperandIdx(v, downstream_op);
+    for (size_t i = 0; i < downstream_op.num_results(); i++) {
+      result.emplace_back(CreateAnchorTransform(
+          TransformInfo(downstream_op, input_idx, i, false)));
+    }
+  }
+
+  return results;
+}
+
+TransformInfo GetTransformInfo(AnchorTransform trans) {
+  return std::visit([](auto&& arg{}) { return arg->info; }, trans);
 }
 
 }  // namespace cinn::fusion

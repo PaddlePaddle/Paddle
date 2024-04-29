@@ -16,18 +16,6 @@
 
 namespace cinn::fusion {
 
-const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
-  size_t i = 0;
-  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
-       ++consumer_it, ++i) {
-    if (consumer_it->owner() == op) {
-      return i;
-    }
-  }
-  PADDLE_THROW(phi::errors::NotFound(
-      "Can not find the usage of value %s in op %s", v.impl(), op->name()));
-}
-
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
   ValueUsage valud_dim;
   size_t rank = GetRank(v);

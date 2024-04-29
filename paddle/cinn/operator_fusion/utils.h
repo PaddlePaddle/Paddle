@@ -238,4 +238,37 @@ std::vector<T> GatherVectorExcept(const std::vector<T>& source,
   return result;
 }
 
+static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+       ++consumer_it, ++i) {
+    if (consumer_it->owner() == op) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the usage of value %s in op %s", v.impl(), op->name()));
+}
+
+static const size_t GetOperandIdx(const pir::Value& v, pir::Operation* op) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    if (op->operand(i) == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the value %s as operand of op %s", v.impl(), op->name()));
+}
+
+static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    if (op->result(i) == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the value %s as result of op %s", v.impl(), op->name()));
+}
+
 }  // namespace cinn::fusion

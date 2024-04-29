@@ -86,22 +86,6 @@ template <typename T>
 class HorizontalFusionPattern {};
 
 template <typename T>
-using StmtPatternBase = std::variant<TrivialPattern<T>,
-                                     ReducePattern<T>,
-                                     ReduceTreePattern<T>,
-                                     ReduceTreePlusTrivialPattern<T>,
-                                     HorizontalFusionPattern<T>,
-                                     UnsupportPattern<T>>;
-
-template <typename T>
-struct StmtPattern final : public StmtPatternBase<T> {
-  using StmtPatternBase<T>::StmtPatternBase;
-  const StmtPatternBase<T>& variant() const {
-    return static_cast<const StmtPatternBase<T>&>(*this);
-  }
-};
-
-template <typename T>
 struct AnchorPattern {
   explicit AnchorPattern(
       const std::vector<pir::Operation*>& ops,
@@ -114,6 +98,23 @@ struct AnchorPattern {
   std::vector<pir::Value> outputs() const { return outputs_; }
   pir::Value anchor() const { return anchor_; }
   static std::string name() { return "AnchorPattern"; }
+};
+
+template <typename T>
+using StmtPatternBase = std::variant<TrivialPattern<T>,
+                                     ReducePattern<T>,
+                                     ReduceTreePattern<T>,
+                                     ReduceTreePlusTrivialPattern<T>,
+                                     HorizontalFusionPattern<T>,
+                                     UnsupportPattern<T>,
+                                     AnchorPattern<T>>;
+
+template <typename T>
+struct StmtPattern final : public StmtPatternBase<T> {
+  using StmtPatternBase<T>::StmtPatternBase;
+  const StmtPatternBase<T>& variant() const {
+    return static_cast<const StmtPatternBase<T>&>(*this);
+  }
 };
 
 }  // namespace cinn::fusion

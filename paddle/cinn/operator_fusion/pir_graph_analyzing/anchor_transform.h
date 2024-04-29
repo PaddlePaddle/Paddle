@@ -25,6 +25,20 @@ struct TransformInfo {
   bool is_upstream_anchor;
   pir::Value InputValue() { return op->operand_source(input_idx); }
   pir::Value OutputValue() { return op->result(output_idx); }
+  pir::Value SrcValue() {
+    if (is_upstream_anchor) {
+      return OutputValue();
+    } else {
+      return InputValue();
+    }
+  }
+  pir::Value DstValue() {
+    if (is_upstream_anchor) {
+      return InputValue();
+    } else {
+      return OutputValue();
+    }
+  }
 };
 
 struct UnsupportTransform {
@@ -45,10 +59,15 @@ struct DeleteDimTransform {
   std::vector<size_t> delete_dims;
 };
 
-using AnchorTransform = std::variant<UnsupportTransform,
-                                     IdentityTransform,
-                                     AppendDimTransform,
-                                     DeleteDimTransform>;
+using UnsupportTransformPtr = std::shared_ptr<UnsupportTransform>;
+using IdentityTransformPtr = std::shared_ptr<IdentityTransform>;
+using AppendDimTransformPtr = std::shared_ptr<AppendDimTransform>;
+using DeleteDimTransformPtr = std::shared_ptr<DeleteDimTransform>;
+
+using AnchorTransform = std::variant<UnsupportTransformPtr,
+                                     IdentityTransformPtr,
+                                     AppendDimTransformPtr,
+                                     DeleteDimTransformPtr>;
 using AnchorTransformRoute = std::vector<AnchorTransform>;
 
 template <typename T>
@@ -60,4 +79,6 @@ struct AnchorState {
 };
 
 AnchorTransform CreateAnchorTransform(const TransformInfo& info);
+std::vector<AnchorTransform> PossibleTransform(pir::Value v);
+TransformInfo GetTransformInfo(AnchorTransform trans);
 }  // namespace cinn::fusion
