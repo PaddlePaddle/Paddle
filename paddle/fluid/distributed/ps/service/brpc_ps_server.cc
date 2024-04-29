@@ -417,7 +417,7 @@ int32_t BrpcPsService::Barrier(Table *table,
   }
 
   auto trainer_id = request.client_id();
-  const auto& barrier_type = request.params(0);
+  auto barrier_type = request.params(0);
   table->Barrier(trainer_id, barrier_type);
   return 0;
 }
