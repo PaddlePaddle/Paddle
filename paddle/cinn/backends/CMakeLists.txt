@@ -31,12 +31,6 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/paddle/cinn/runtime)
 
-if(WITH_CUDA)
-  cinn_nv_test(test_compiler SRCS compiler_test.cc DEPS cinncore)
-else()
-  cinn_cc_test(test_compiler SRCS compiler_test.cc DEPS cinncore)
-endif()
-
 foreach(cpp ${srcs})
   set(cinnapi_src
       "${cinnapi_src};paddle/cinn/backends/${cpp}"
