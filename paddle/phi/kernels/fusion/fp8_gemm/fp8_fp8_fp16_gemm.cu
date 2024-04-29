@@ -86,7 +86,7 @@ void fp8_fp8_fp16_gemm(const Context& dev_ctx,
   void *bias_data = nullptr;
   std::vector<int64_t> bias_dims{};
   if(bias){
-    bias_data = reinterpret_cast<void*>(const_cast<float*>(bias.get().data<float>()));
+    bias_data = reinterpret_cast<void*>(const_cast<phi::dtype::float16*>(bias.get().data<phi::dtype::float16>()));
     bias_dims = common::vectorize(bias.get().dims());
   }
   GemmEpilogueAllParams params = {

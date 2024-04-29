@@ -18,7 +18,6 @@
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/float8.h"
 
-
 namespace phi{
 namespace fusion{
 namespace cutlass_internal{
@@ -40,7 +39,9 @@ using ElementOutput =
                                 cutlass::half_t>;
 
 using ElementAccumulator = float;
-using ElementComputeEpilogue = ElementAccumulator;
+using ElementCompute = float;
+using ElementComputeEpilogue = float;
+
 using LayoutInputA = cutlass::layout::RowMajor;
 using LayoutInputB = cutlass::layout::ColumnMajor;
 using LayoutOutput = cutlass::layout::RowMajor;
@@ -97,7 +98,6 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
                                          kAlignmentB,
                                          cutlass::arch::OpMultiplyAdd>;
 
-  using ElementCompute = typename Gemm::GemmKernel::Epilogue::OutputOp::ElementCompute;
   cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
   cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoord{params.M, params.N, params.K};
 
@@ -110,11 +110,11 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
       epilogue_op,
       reinterpret_cast<ElementInputA*>(const_cast<void*>(params.A)),
       reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B)),
-      reinterpret_cast<ElementComputeEpilogue*>(const_cast<void*>(params.bias)),
+      reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias)),
       reinterpret_cast<ElementOutput*>(params.D),
       params.M* params.K,
       params.K* params.N,
-      params.M,
+      params.N,
       params.M* params.N,
       params.lda,
       params.ldb,

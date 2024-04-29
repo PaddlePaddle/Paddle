@@ -18,7 +18,6 @@
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/float8.h"
 
-
 namespace phi{
 namespace fusion{
 namespace cutlass_internal{
