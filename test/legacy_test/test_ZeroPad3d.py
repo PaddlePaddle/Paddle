@@ -45,7 +45,16 @@ class TestZeroPad3DAPI(unittest.TestCase):
         pad = [1, 2, 3, 4, 5, 6]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[4], pad[5]], [pad[2], pad[3]], [pad[0], pad[1]]], mode='constant', constant_values=0
+            x,
+            [
+                [0, 0],
+                [0, 0],
+                [pad[4], pad[5]],
+                [pad[2], pad[3]],
+                [pad[0], pad[1]],
+            ],
+            mode='constant',
+            constant_values=0,
         )
 
         x_tensor = to_tensor(x)
@@ -57,8 +66,14 @@ class TestZeroPad3DAPI(unittest.TestCase):
         pad = (1, 2, 3, 4, 5, 6)
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[4], pad[5]], [
-                pad[2], pad[3]], [pad[0], pad[1]]]
+            x,
+            [
+                [0, 0],
+                [0, 0],
+                [pad[4], pad[5]],
+                [pad[2], pad[3]],
+                [pad[0], pad[1]],
+            ],
         )
 
         x_tensor = to_tensor(x)
@@ -70,8 +85,14 @@ class TestZeroPad3DAPI(unittest.TestCase):
         pad = [1, 2, 3, 4, 5, 6]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[4], pad[5]], [
-                pad[2], pad[3]], [pad[0], pad[1]]]
+            x,
+            [
+                [0, 0],
+                [0, 0],
+                [pad[4], pad[5]],
+                [pad[2], pad[3]],
+                [pad[0], pad[1]],
+            ],
         )
 
         x_tensor = to_tensor(x)
@@ -83,7 +104,8 @@ class TestZeroPad3DAPI(unittest.TestCase):
     def test_repr(self):
         pad = pad = [1, 2, 3, 4, 5, 6]
         zeropad3d = ZeroPad3D(padding=pad)
-        zeropad3d.extra_repr()
+        name_str = zeropad3d.extra_repr()
+        assert name_str == 'padding=[1, 2, 3, 4, 5, 6], data_format=NCDHW'
 
 
 if __name__ == '__main__':

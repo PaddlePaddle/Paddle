@@ -56,9 +56,7 @@ class TestZeroPad1dAPI(unittest.TestCase):
     def test_support_pad3(self):
         pad = (1, 2)
         x = np.random.randint(-255, 255, size=self.shape)
-        expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[0], pad[1]]]
-        )
+        expect_res = np.pad(x, [[0, 0], [0, 0], [pad[0], pad[1]]])
 
         x_tensor = to_tensor(x)
         zeropad1d = ZeroPad1D(padding=pad)
@@ -68,20 +66,19 @@ class TestZeroPad1dAPI(unittest.TestCase):
     def test_support_pad4(self):
         pad = [1, 2]
         x = np.random.randint(-255, 255, size=self.shape)
-        expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[0], pad[1]]]
-        )
+        expect_res = np.pad(x, [[0, 0], [0, 0], [pad[0], pad[1]]])
 
         x_tensor = to_tensor(x)
         pad_tensor = to_tensor(pad, dtype='int32')
         zeropad1d = ZeroPad1D(padding=pad_tensor)
         ret_res = zeropad1d(x_tensor).numpy()
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
-    
+
     def test_repr(self):
         pad = [1, 2]
         zeropad1d = ZeroPad1D(padding=pad)
-        zeropad1d.extra_repr()
+        name_str = zeropad1d.extra_repr()
+        assert name_str == 'padding=[1, 2], data_format=NCL'
 
 
 if __name__ == '__main__':
