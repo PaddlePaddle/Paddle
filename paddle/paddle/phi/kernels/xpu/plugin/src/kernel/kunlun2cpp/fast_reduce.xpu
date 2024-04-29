@@ -1,0 +1,260 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+
+namespace xpu2 {
+namespace plugin {
+
+__device__ float do_sum_align16(float* lmptr, int size) {
+  __simd__ float sum_buf[16];
+  float32x16_t vsum = vset_zero();
+  for (int i = 0; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vsum = vvadd_float32x16(vsum, v0);
+  }
+  vstore_lm_float32x16(sum_buf, vsum);
+  mfence_lm();
+  float sum = 0.0f;
+  for (int i = 0; i < 16; i++) {
+    sum = sum + sum_buf[i];
+  }
+  return sum;
+}
+
+__device__ float do_sum(float* lmptr, int size) {
+  float sum = 0.0f;
+  for (int i = 0; i < size; i++) {
+    sum += lmptr[i];
+  }
+  return sum;
+}
+
+__device__ float do_max_align16(float* lmptr, int size) {
+  __simd__ float max_buf[16];
+  float32x16_t vmax = vload_lm_float32x16(lmptr);
+  for (int i = 16; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vmax = vvmax_float32x16(vmax, v0);
+  }
+  vstore_lm_float32x16(max_buf, vmax);
+  mfence_lm();
+  float max_val = max_buf[0];
+  for (int i = 1; i < 16; i++) {
+    max_val = fmax(max_val, max_buf[i]);
+  }
+  return max_val;
+}
+
+__device__ float do_max(float* lmptr, int size) {
+  float max_val = lmptr[0];
+  for (int i = 1; i < size; i++) {
+    max_val = fmax(max_val, lmptr[i]);
+  }
+  return max_val;
+}
+
+__device__ float do_min_align16(float* lmptr, int size) {
+  __simd__ float min_buf[16];
+  float32x16_t vmin = vload_lm_float32x16(lmptr);
+  for (int i = 16; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vmin = vvmin_float32x16(vmin, v0);
+  }
+  vstore_lm_float32x16(min_buf, vmin);
+  mfence_lm();
+  float min_val = min_buf[0];
+  for (int i = 1; i < 16; i++) {
+    min_val = fmin(min_val, min_buf[i]);
+  }
+  return min_val;
+}
+
+__device__ float do_min(float* lmptr, int size) {
+  float min_val = lmptr[0];
+  for (int i = 1; i < size; i++) {
+    min_val = fmin(min_val, lmptr[i]);
+  }
+  return min_val;
+}
+
+template <typename T>
+__global__ void fast_reduce_sum_tiny(const T* x, T* y, int m, int t) {
+  int cid = core_id();
+  const int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = cluster_num() * ncores;
+
+  const int64_t max_tt = 832;
+  const int64_t buffer_len = max_tt * 4 / sizeof(float);
+  int mstart = 0;
+  int mend = 0;
+  __simd__ float xlm[buffer_len];
+  __simd__ float ylm[buffer_len];
+  int block_cnt = buffer_len / t;
+  partition(tid, nthreads, m, 1, &mstart, &mend);
+  for (int i = mstart; i < mend; i += block_cnt) {
+    int readlen = min((mend - i) * t, block_cnt * t);
+    GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
+    if (t % 16 == 0 && t >= 32) {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_sum_align16(xlm + j, t);
+      }
+    } else {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_sum(xlm + j, t);
+      }
+    }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
+  }
+  return;
+}
+
+template <typename T>
+__global__ void fast_reduce_mean_tiny(const T* x, T* y, int m, int t) {
+  int cid = core_id();
+  const int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = cluster_num() * ncores;
+
+  const int64_t max_tt = 832;
+  const int64_t buffer_len = max_tt * 4 / sizeof(float);
+  int mstart = 0;
+  int mend = 0;
+  __simd__ float xlm[buffer_len];
+  __simd__ float ylm[buffer_len];
+  int block_cnt = buffer_len / t;
+  partition(tid, nthreads, m, 1, &mstart, &mend);
+  for (int i = mstart; i < mend; i += block_cnt) {
+    int readlen = min((mend - i) * t, block_cnt * t);
+    GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
+    if (t % 16 == 0 && t >= 32) {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_sum_align16(xlm + j, t) / t;
+      }
+    } else {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_sum(xlm + j, t) / t;
+      }
+    }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
+  }
+  return;
+}
+
+template <typename T>
+__global__ void fast_reduce_max_tiny(const T* x, T* y, int m, int t) {
+  int cid = core_id();
+  const int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = cluster_num() * ncores;
+
+  const int64_t max_tt = 832;
+  const int64_t buffer_len = max_tt * 4 / sizeof(float);
+  int mstart = 0;
+  int mend = 0;
+  __simd__ float xlm[buffer_len];
+  __simd__ float ylm[buffer_len];
+  int block_cnt = buffer_len / t;
+  partition(tid, nthreads, m, 1, &mstart, &mend);
+  for (int i = mstart; i < mend; i += block_cnt) {
+    int readlen = min((mend - i) * t, block_cnt * t);
+    GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
+    if (t % 16 == 0 && t >= 32) {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_max_align16(xlm + j, t);
+      }
+    } else {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_max(xlm + j, t);
+      }
+    }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
+  }
+  return;
+}
+
+template <typename T>
+__global__ void fast_reduce_min_tiny(const T* x, T* y, int m, int t) {
+  int cid = core_id();
+  const int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = cluster_num() * ncores;
+
+  const int64_t max_tt = 832;
+  const int64_t buffer_len = max_tt * 4 / sizeof(float);
+  int mstart = 0;
+  int mend = 0;
+  __simd__ float xlm[buffer_len];
+  __simd__ float ylm[buffer_len];
+  int block_cnt = buffer_len / t;
+  partition(tid, nthreads, m, 1, &mstart, &mend);
+  for (int i = mstart; i < mend; i += block_cnt) {
+    int readlen = min((mend - i) * t, block_cnt * t);
+    GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
+    primitive_cast<T, float>((T*)xlm, xlm, readlen);
+    if (t % 16 == 0 && t >= 32) {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_min_align16(xlm + j, t);
+      }
+    } else {
+      for (int j = 0; j < readlen; j += t) {
+        ylm[j / t] = do_min(xlm + j, t);
+      }
+    }
+    primitive_cast<float, T>(ylm, (T*)ylm, readlen / t);
+    LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
+  }
+  return;
+}
+
+#define _XPU_DEF__FAST_REDUCE_SUM_TINY_(DTYPE)          \
+  template __global__ void fast_reduce_sum_tiny<DTYPE>( \
+      const DTYPE* x, DTYPE* y, int m, int t);
+_XPU_DEF__FAST_REDUCE_SUM_TINY_(float);
+_XPU_DEF__FAST_REDUCE_SUM_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_SUM_TINY_(bfloat16);
+
+#define _XPU_DEF__FAST_REDUCE_MEAN_TINY_(DTYPE)          \
+  template __global__ void fast_reduce_mean_tiny<DTYPE>( \
+      const DTYPE* x, DTYPE* y, int m, int t);
+_XPU_DEF__FAST_REDUCE_MEAN_TINY_(float);
+_XPU_DEF__FAST_REDUCE_MEAN_TINY_(float16);
+_XPU_DEF__FAST_REDUCE_MEAN_TINY_(bfloat16);
+
+#define _XPU_DEF__FAST_REDUCE_MAX_TINY_(DTYPE)          \
+  template __global__ void fast_reduce_max_tiny<DTYPE>( \
+      const DTYPE* x, DTYPE* y, int m, int t);
+_XPU_DEF__FAST_REDUCE_MAX_TINY_(float);
+_XPU_DEF__FAST_REDUCE_MAX_TINY_(float16);
+
+#define _XPU_DEF__FAST_REDUCE_MIN_TINY_(DTYPE)          \
+  template __global__ void fast_reduce_min_tiny<DTYPE>( \
+      const DTYPE* x, DTYPE* y, int m, int t);
+_XPU_DEF__FAST_REDUCE_MIN_TINY_(float);
+_XPU_DEF__FAST_REDUCE_MIN_TINY_(float16);
+
+}  // namespace plugin
+}  // namespace xpu2

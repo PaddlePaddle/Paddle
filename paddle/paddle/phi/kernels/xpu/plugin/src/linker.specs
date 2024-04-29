@@ -1,0 +1,6 @@
+# overwrite incorrect rpath arguments
+# its original value is:
+# -rpath $ORIGIN:$ORIGIN/lib:$ORIGIN/lib64:$ORIGIN/../lib:$ORIGIN/../lib64:/opt/compiler/gcc-4.8.2/lib:/opt/compiler/gcc-4.8.2/lib64
+# specify your own rpath if needed.
+*linker:
+collect2 -rpath $ORIGIN

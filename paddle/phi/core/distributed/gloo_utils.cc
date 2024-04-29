@@ -48,7 +48,7 @@ std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
 }
 
 std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
-  std::array<char, HOST_NAME_MAX> hostname;
+  std::array<char, HOST_NAME_MAX> hostname = {};
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
   PADDLE_ENFORCE_EQ(
       ret,

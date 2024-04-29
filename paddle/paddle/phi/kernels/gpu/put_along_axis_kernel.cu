@@ -1,0 +1,112 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/phi/kernels/put_along_axis_kernel.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void PutAlongAxisKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& index,
+                        const DenseTensor& value,
+                        int axis,
+                        const std::string& reduce,
+                        bool include_self,
+                        DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+                    true,
+                    errors::PreconditionNotMet(
+                        "PutAlongAxisCUDAKernel only runs on GPU device."));
+
+  const auto& index_type = index.dtype();
+
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  if (reduce == "add") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "multiply" || reduce == "mul") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_mul_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_mul_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "assign") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_assign_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_assign_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "mean") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_mean_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_mean_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "amax") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_max_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_max_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "amin") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::gpu_scatter_min_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::gpu_scatter_min_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else {
+    PADDLE_THROW(errors::InvalidArgument(
+        "can not support reduce: '%s' for scatter kernel, only "
+        "support reduce op: 'add', 'assign', 'mul', 'mean', 'amin', 'amax' and "
+        "'multiply', the "
+        "default reduce op is 'assign' ",
+        reduce));
+    return;
+  }
+}
+}  // namespace phi
+
+PD_REGISTER_KERNEL(put_along_axis,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PutAlongAxisKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

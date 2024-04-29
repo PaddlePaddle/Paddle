@@ -1,0 +1,25 @@
+type: "quantize_linear"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Scale"
+  }
+  inputs {
+    name: "ZeroPoint"
+  }
+  outputs {
+    name: "Y"
+  }
+  attrs {
+    name: "bit_length"
+    type: INT
+  }
+  attrs {
+    name: "quant_axis"
+    type: INT
+  }
+}
+extra {
+}
