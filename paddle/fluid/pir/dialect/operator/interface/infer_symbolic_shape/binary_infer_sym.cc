@@ -238,8 +238,14 @@ bool GatherOpInferSymbolicShape(
   int axis = 0;
   const auto &attributes = op->attributes();
   if (op->HasAttribute("axis")) {  // CINN Dialect
-    int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+    axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
   } else {
+    PADDLE_ENFORCE_EQ(
+        op->num_operands() == 3,
+        true,
+        phi::errors::InvalidArgument(
+            "in GatherOpInferSymbolicShape: The number of operands should be "
+            "3 when the axis is not set."));
     const auto &axis_shape_or_data =
         shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
     axis =
