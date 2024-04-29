@@ -30,6 +30,8 @@ class GroupInfoAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
+  static std::string name() { return "a_group_info"; }
+
   const GroupInfo& data() const;
 };
 
@@ -43,6 +45,8 @@ class CINNKernelInfoAttribute : public pir::Attribute {
   bool operator<(const CINNKernelInfoAttribute& right) const {
     return storage() < right.storage();
   }
+
+  static std::string name() { return "a_cinn_kernel_info"; }
 
   const cinn::hlir::framework::pir::CINNKernelInfo& data() const;
 };

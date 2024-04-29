@@ -193,52 +193,37 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
   return res;
 }
 
-std::vector<std::vector<pir::Value>> AnyOp::Decomp(pir::Operation* op) {
-  VLOG(4) << "Decomp call any's decomp interface begin";
+std::vector<std::vector<pir::Value>> OneHotOp::Decomp(pir::Operation* op) {
+  VLOG(4) << "Decomp call one_hot's decomp interface begin";
 
-  AnyOp op_obj = op->dyn_cast<AnyOp>();
+  OneHotOp op_obj = op->dyn_cast<OneHotOp>();
   (void)op_obj;
 
   FLAGS_tensor_operants_mode = "static";
 
-  VLOG(6) << "Decomp Prepare inputs of any";
+  VLOG(6) << "Decomp Prepare inputs of one_hot";
 
   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+  Tensor num_classes(
+      std::make_shared<primitive::LazyTensor>(op_obj.num_classes()));
 
-  VLOG(6) << "Decomp prepare attributes of any";
-  // const std::vector<int64_t>& axis =
-  // op->attribute("axis").dyn_cast<pir::ArrayAttribute<pir::Int64Attribute>>().data();
-  auto array_list =
-      op->attribute("axis").dyn_cast<pir::ArrayAttribute>().AsVector();
+  VLOG(6) << "Decomp prepare attributes of one_hot";
 
-  std::vector<int64_t> axis;
-  if (array_list.size() > 0) {
-    PADDLE_ENFORCE_EQ(
-        array_list[0].isa<pir::Int64Attribute>(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "Element in array list MUST be pir::Int64Attribute "));
-
-    for (size_t i = 0; i < array_list.size(); ++i) {
-      axis.push_back(array_list[i].dyn_cast<pir::Int64Attribute>().data());
-    }
-  }
-  bool keepdim = op->attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
-
-  VLOG(6) << "Decomp call any's forward composite rule prepare";
+  VLOG(6) << "Decomp call one_hot's forward composite rule prepare";
 
   auto org_res = op->results();
   std::vector<std::vector<pir::Value>> res(org_res.size());
 
-  VLOG(6) << "Decomp call any's forward composite rule begin";
-  Tensor op_res = paddle::primitive::details::any_decomp<primitive::LazyTensor>(
-      x, axis, keepdim);
-  VLOG(6) << "Decomp call any's forward composite rule end";
+  VLOG(6) << "Decomp call one_hot's forward composite rule begin";
+  Tensor op_res =
+      paddle::primitive::details::one_hot_decomp<primitive::LazyTensor>(
+          x, num_classes);
+  VLOG(6) << "Decomp call one_hot's forward composite rule end";
 
   res[0].push_back(
       std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())->value());
 
-  VLOG(4) << "Decomp call any's decomp interface end";
+  VLOG(4) << "Decomp call one_hot's decomp interface end";
   return res;
 }
 

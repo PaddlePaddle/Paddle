@@ -941,6 +941,15 @@ void MultiGruInferMeta(
     bool force_fp32_output,
     MetaTensor* hidden);
 
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len);
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out);
+
 void FusionLstmInferMeta(const MetaTensor& x,
                          const MetaTensor& weight_x,
                          const MetaTensor& weight_h,
