@@ -528,6 +528,7 @@
     param : [x, init_h, init_c, weight_list]
   kernel:
     func: cudnn_lstm_grad
+    data_type : out_grad
   optional: weight_list, sequence_length, weight_list_grad
 
 - backward_op : cummax_grad

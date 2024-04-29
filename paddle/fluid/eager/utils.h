@@ -152,8 +152,6 @@ class TEST_API EagerUtils {
       const paddle::optional<std::vector<paddle::Tensor>>& targets);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::Tensor*>& targets);
-  static std::vector<AutogradMeta*> nullable_autograd_meta(
-      const paddle::optional<std::vector<paddle::Tensor*>>& targets);
   static AutogradMeta* unsafe_autograd_meta(const paddle::Tensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
       const std::vector<paddle::Tensor>& targets);
