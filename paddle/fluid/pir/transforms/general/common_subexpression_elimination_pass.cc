@@ -307,7 +307,7 @@ pir::Value CreateAssignOp(const pir::Value& value,
                           pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Builder builder(ctx, block);
-  builder.set_insertion_point(op);
+  builder.SetInsertionPointAfter(op);
   auto assign_op = builder.Build<paddle::dialect::AssignOp>(value);
   return assign_op.result(0);
 }
@@ -327,7 +327,7 @@ void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
       // it directly. It will cause a value has two shadow outputs. It is
       // invalid for executor, so we make a copy by inserting a assign op.
       if (it->owner()->isa<pir::ShadowOutputOp>()) {
-        value = CreateAssignOp(value, it->owner(), op->GetParent());
+        new_value = CreateAssignOp(new_value, new_op, op->GetParent());
         break;
       }
     }
