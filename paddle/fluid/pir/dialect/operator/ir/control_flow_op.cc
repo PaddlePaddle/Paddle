@@ -739,6 +739,10 @@ bool WhileOp::InferSymbolicShape(
 
   // add GreaterThanOne constraint
   const auto &body_args = block_args();
+  PADDLE_ENFORCE_EQ(num_operands() - 1,
+                    body_args.size(),
+                    phi::errors::InvalidArgument(
+                        "The num_operands-1 and body_args.size is not equal"));
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_i =
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
@@ -803,10 +807,6 @@ bool WhileOp::InferSymbolicShape(
         shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
   }
 
-  PADDLE_ENFORCE_EQ(num_operands() - 1,
-                    num_results(),
-                    phi::errors::InvalidArgument(
-                        "The num_operands-1 and num_results is not equal"));
   PADDLE_ENFORCE_EQ(body_args.size(),
                     num_results(),
                     phi::errors::InvalidArgument(
