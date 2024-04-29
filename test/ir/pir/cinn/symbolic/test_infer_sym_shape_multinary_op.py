@@ -20,7 +20,6 @@ import numpy as np
 from scipy.special import logit
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
@@ -30,7 +29,7 @@ from paddle import _C_ops
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-# from utils import apply_to_static
+from utils import apply_to_static
 
 
 class ExpandNet(paddle.nn.Layer):
