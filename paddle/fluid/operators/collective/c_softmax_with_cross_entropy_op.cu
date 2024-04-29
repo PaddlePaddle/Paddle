@@ -212,7 +212,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     } else {
       void* logits_max_buff = logits_max.mutable_data<T>(place);
 
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           logits_max_buff,
           logits_max_buff,
           logits_max.numel(),
@@ -276,7 +276,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
       comm_ctx->AllReduce(&predicted_logits, predicted_logits, ncclSum, stream);
     } else {
       void* predict_logits_buff = predicted_logits.data();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           predict_logits_buff,
           predict_logits_buff,
           predicted_logits.numel(),
@@ -302,7 +302,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
       comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
     } else {
       void* sum_exp_logits_buff = sum_exp_logits.data();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),

@@ -113,7 +113,9 @@ class TestReshardPToRCrossMesh:
             if op.name() == 'pd_op.send_v2':
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 0
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._in_mesh
                 assert op_operand_dist_attr.process_mesh == self._in_mesh
@@ -127,7 +129,9 @@ class TestReshardPToRCrossMesh:
                 assert op.dist_attr.num_operands() == 0
                 assert op.dist_attr.num_results() == 1
 
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op_result_dist_attr.process_mesh == self._out_mesh
                 assert op_result_dist_attr.dims_mapping == [-1, -1]
@@ -140,8 +144,12 @@ class TestReshardPToRCrossMesh:
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._in_mesh
                 assert op_operand_dist_attr.process_mesh == self._in_mesh
