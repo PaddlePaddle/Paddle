@@ -446,5 +446,129 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             _ = model(x, y)
 
 
+    def test_gard(self):
+        n_classes = 4
+        in_features = 8
+        cutoffs = [2]
+
+        x = paddle.to_tensor(
+            [
+                [
+                    0.99785769,
+                    -1.14492130,
+                    0.62956816,
+                    0.77550924,
+                    -1.97198308,
+                    0.50906199,
+                    0.76702958,
+                    1.31143034,
+                ],
+                [
+                    0.17371807,
+                    2.68322444,
+                    1.90870595,
+                    0.58601201,
+                    -0.78898108,
+                    0.42098731,
+                    -0.74253917,
+                    -0.37492049,
+                ],
+                [
+                    -0.77694625,
+                    -0.11529812,
+                    0.38232428,
+                    0.70575434,
+                    0.73429769,
+                    0.81399834,
+                    0.14212975,
+                    0.12567955,
+                ],
+                [
+                    0.44165909,
+                    0.23613696,
+                    0.81143701,
+                    0.60473150,
+                    0.77017546,
+                    0.27865678,
+                    -0.03236491,
+                    0.31634274,
+                ],
+                [
+                    0.15336825,
+                    -0.66177142,
+                    -0.01784009,
+                    0.08901446,
+                    0.85228783,
+                    1.49427640,
+                    -1.66938102,
+                    0.86154014,
+                ],
+                [
+                    -0.60814697,
+                    1.26191938,
+                    -0.21735200,
+                    -0.88890392,
+                    0.49093658,
+                    -1.28960681,
+                    1.06943762,
+                    0.15803306,
+                ],
+                [
+                    -0.12136814,
+                    -0.16133699,
+                    0.15643604,
+                    0.79464215,
+                    -1.02201688,
+                    0.26957786,
+                    -0.31038952,
+                    0.93334937,
+                ],
+                [
+                    0.66997373,
+                    0.95807010,
+                    -0.66944563,
+                    -0.89887059,
+                    1.00404060,
+                    0.69594669,
+                    -0.82105070,
+                    1.15200853,
+                ],
+            ],
+            dtype='float32',
+        )
+        labels = paddle.to_tensor([3, 3, 3, 2, 3, 0, 0, 0], dtype='int64')
+        model = SimpleModel(in_features, n_classes, cutoffs, div_value=2.0)
+
+        _, loss = model(x, labels)
+
+        weights = model.adaptive_softmax.head_weight
+        loss.backward()
+        analytic_grads = weights.grad.numpy()
+
+        h = 1e-5
+        weights_np = weights.numpy().copy()
+        grad_numerical = np.zeros_like(weights_np)
+
+        it = np.nditer(weights_np, flags=['multi_index'], op_flags=['readwrite'])
+        while not it.finished:
+            ix = it.multi_index
+            oldval = weights_np[ix]
+            weights_np[ix] = oldval + h
+            model.adaptive_softmax.head_weight.set_value(paddle.to_tensor(weights_np))
+            _, y_pos = model(x, labels)
+            loss_pos = y_pos.mean()
+
+            weights_np[ix] = oldval - h
+            model.adaptive_softmax.head_weight.set_value(paddle.to_tensor(weights_np))
+            _, y_neg = model(x, labels)
+            loss_neg = y_neg.mean()
+
+            grad_numerical[ix] = (loss_pos - loss_neg) / (2 * h)
+            weights_np[ix] = oldval
+            it.iternext()
+        
+        np.allclose(analytic_grads, grad_numerical, rtol=1e-5, atol=1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()
