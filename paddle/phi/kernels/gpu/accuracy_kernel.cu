@@ -54,8 +54,9 @@ __global__ void AccuracyCudaKernel(const int N,
 
 // reduce the count with init value 0, and output accuracy.
 #ifdef PADDLE_WITH_CUDA
-  int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
-#else
+// //#if 0
+//   int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
+// #else
   // HIP thrust::reduce not support __device__
   for (int s = BlockSize / 2; s > 0; s >>= 1) {
     if (threadIdx.x < s) {

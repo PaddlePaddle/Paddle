@@ -2402,7 +2402,7 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
-  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
       .def_property_readonly(

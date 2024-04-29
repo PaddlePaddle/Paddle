@@ -303,7 +303,7 @@ struct CUBlas<phi::dtype::float16> {
                          cudaDataType_t Ctype,
                          int ldc,
                          int batchCount,
-                         cudaDataType_t computeType) {
+                         cublasComputeType_t computeType) {
 #if CUDA_VERSION >= 8000
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
@@ -619,7 +619,7 @@ struct CUBlas<phi::dtype::complex<float>> {
                       void *C,
                       cudaDataType_t Ctype,
                       int ldc,
-                      cudaDataType_t computeType) {
+                      cublasComputeType_t computeType) {
 #if CUDA_VERSION >= 8000
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
@@ -886,7 +886,7 @@ struct CUBlas<phi::dtype::complex<double>> {
                       void *C,
                       cudaDataType_t Ctype,
                       int ldc,
-                      cudaDataType_t computeType) {
+                      cublasComputeType_t computeType) {
 #if CUDA_VERSION >= 8000
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
@@ -1047,7 +1047,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                        C,
                                        CUDA_R_16F,
                                        N,
-                                       CUBLAS_COMPUTE_16F);
+                                       CUBLAS_COMPUTE_32F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
@@ -1128,7 +1128,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                                           C,
                                                           CUDA_R_16BF,
                                                           N,
-                                                          CUDA_R_32F,
+                                                          CUBLAS_COMPUTE_32F,
                                                           algo));
   });
 #else
@@ -1196,7 +1196,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                               C,
                                               CUDA_C_32F,
                                               N,
-                                              CUDA_C_32F);
+                                              CUBLAS_COMPUTE_32F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
@@ -1277,7 +1277,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                                C,
                                                CUDA_C_64F,
                                                N,
-                                               CUDA_C_64F);
+                                               CUBLAS_COMPUTE_64F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
@@ -1460,7 +1460,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                                           C,
                                                           CUDA_R_16BF,
                                                           ldc,
-                                                          CUDA_R_32F,
+                                                          CUBLAS_COMPUTE_32F,
                                                           algo));
   });
 #else
@@ -1594,7 +1594,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #if CUDA_VERSION >= 11000
     auto compute_type = CUBLAS_COMPUTE_32F;
 #else
-    auto compute_type = CUBLAS_COMPUTE_32F;
+    auto compute_type = CUDA_R_32F;
 #endif
 
     float h_alpha = static_cast<float>(alpha);
@@ -1609,7 +1609,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #if CUDA_VERSION >= 11000
       compute_type = CUBLAS_COMPUTE_16F;
 #else
-      compute_type = CUBLAS_COMPUTE_16F;
+      compute_type = CUDA_R_16F;
 #endif
     }
 
@@ -1700,24 +1700,24 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   context_.CublasCall([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasDgemmStridedBatched(handle,
-                                                             cuTransB,
-                                                             cuTransA,
-                                                             N,
-                                                             M,
-                                                             K,
-                                                             &alpha,
-                                                             B,
-                                                             ldb,
-                                                             strideB,
-                                                             A,
-                                                             lda,
-                                                             strideA,
-                                                             &beta,
-                                                             C,
-                                                             ldc,
-                                                             strideC,
-                                                             batchCount));
-  });
+                                                cuTransB,
+                                                cuTransA,
+                                                N,
+                                                M,
+                                                K,
+                                                &alpha,
+                                                B,
+                                                ldb,
+                                                strideB,
+                                                A,
+                                                lda,
+                                                strideA,
+                                                &beta,
+                                                C,
+                                                ldc,
+                                                strideC,
+                                                batchCount));
+});
 }
 
 template <>
@@ -1952,7 +1952,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                           CUDA_R_16F,
                                           ldc,
                                           batchCount,
-                                          CUDA_R_32F);
+                                          CUBLAS_COMPUTE_32F);
 }
 
 template <>
@@ -2020,7 +2020,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                           CUDA_R_16BF,
                                           ldc,
                                           batchCount,
-                                          CUDA_R_32F,
+                                          CUBLAS_COMPUTE_32F,
                                           algo));
   });
 #else

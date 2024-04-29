@@ -115,34 +115,34 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
-    LOG "[INFO] Uninstall PaddlePaddle ..."
-    pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install PaddlePaddle ..."
-    pip install build/pr_whl/*.whl
-    collect_kernel_registry_info
-    LOG "[INFO] No op to test, skip this ci." && exit 0
-  fi
+  # if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
+  #   LOG "[INFO] Uninstall PaddlePaddle ..."
+  #   pip uninstall -y paddlepaddle paddlepaddle_gpu
+  #   LOG "[INFO] Install PaddlePaddle ..."
+  #   pip install build/pr_whl/*.whl
+  #   collect_kernel_registry_info
+  #   LOG "[INFO] No op to test, skip this ci." && exit 0
+  # fi
 }
 
 # Clone benchmark repo
 function clone_and_collect_op_info {
   LOG "[INFO] Clone benchmark repo ..."
-  git clone https://github.com/PaddlePaddle/benchmark.git
-  [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
+  # git clone http://pdegit.metax-internal.com/pde-ai/paddle-benchmark.git
+  # [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
-  python benchmark/api/deploy/collect_api_info.py \
+  python paddle-benchmark/api/deploy/collect_api_info.py \
       --test_module_name tests                    \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
-  [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
+  [ ! -f paddle-benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
 }
 
 # Load unique op name from CHANGE_OP_FILES
 function load_CHANGE_OP_MAP {
   LOG "[INFO] run function load_CHANGE_OP_MAP"
   local op_name change_file change_file_name
-  source benchmark/ci/scripts/op_benchmark.config
+  source paddle-benchmark/ci/scripts/op_benchmark.config
   for change_file in ${CHANGE_OP_FILES[@]}
   do
     change_file_name=${change_file#*paddle/fluid/operators/}
@@ -172,7 +172,7 @@ function load_CHANGE_OP_MAP {
 function load_BENCHMARK_OP_MAP {
   LOG "[INFO] run function load_BENCHMARK_OP_MAP"
   local line op_name api_name
-  source benchmark/ci/scripts/op_benchmark.config
+  source paddle-benchmark/ci/scripts/op_benchmark.config
   for line in $(cat api_info.txt)
   do
     api_name=${line%%,*}
@@ -206,15 +206,15 @@ function run_op_benchmark_test {
   done
   # install tensorflow for testing accuary
   # pip install tensorflow==2.3.0 tensorflow-probability
-  for branch_name in "dev_whl" "pr_whl"
-  do
-    LOG "[INFO] Uninstall PaddlePaddle ..."
-    pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install PaddlePaddle ..."
-    pip install build/${branch_name}/*.whl
-    logs_dir="$(pwd)/logs-${branch_name}"
-    [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
-    pushd benchmark/api > /dev/null
+  # for branch_name in "dev_whl" "pr_whl"
+  # do
+    # LOG "[INFO] Uninstall PaddlePaddle ..."
+    # pip uninstall -y paddlepaddle paddlepaddle_gpu
+    # LOG "[INFO] Install PaddlePaddle ..."
+    # pip install build/${branch_name}/*.whl
+  logs_dir="$(pwd)/logs-maca"
+  [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
+    pushd paddle-benchmark/api > /dev/null
     bash deploy/main_control.sh tests \
                                 tests_v2/configs \
                                 $logs_dir \
@@ -224,7 +224,7 @@ function run_op_benchmark_test {
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null
-  done
+  # done
 }
 
 # check benchmark result
@@ -241,7 +241,7 @@ function check_op_benchmark_result {
       # run op benchmark speed test
       # there is no need to recompile and install paddle
       LOG "[INFO] retry ${retry_time} times ..."
-      pushd benchmark/api > /dev/null
+      pushd paddle-benchmark/api > /dev/null
       bash deploy/main_control.sh tests \
                                   tests_v2/configs \
                                   ${logs_dir} \
@@ -319,17 +319,17 @@ function gpu_op_benchmark {
 # The PR will pass quickly when get approval from specific person.
 # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
 set +x
-approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
-if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
-  LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-  if [ "${APPROVALS}" == "TRUE" ]; then
-    LOG "[INFO] ==================================="
-    LOG "[INFO] current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!"
-    LOG "[INFO] ==================================="
-    exit 0
-  fi
-fi
+# approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
+# if [ -n "${approval_line}" ]; then
+#   APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
+#   LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+#   if [ "${APPROVALS}" == "TRUE" ]; then
+#     LOG "[INFO] ==================================="
+#     LOG "[INFO] current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!"
+#     LOG "[INFO] ==================================="
+#     exit 0
+#   fi
+# fi
 
 case $1 in
   run_op_benchmark)

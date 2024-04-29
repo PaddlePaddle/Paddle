@@ -108,7 +108,7 @@ class Watcher:
         except:
             self.ctx.logger.warning("save gpu info failed")
 
-    def _save_gpu_log(self, util_key):
+    def _save_gpu_log(self):
         try:
             # for line in get_gpu_util(self.gpus):
             #     self.gpu_fd.write(line.str(util_key))

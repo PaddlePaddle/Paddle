@@ -43,9 +43,9 @@ if (NOT WIN32)
     add_subdirectory(nccl)
 endif()
 
-if (WITH_GPU AND TENSORRT_FOUND)
-    add_subdirectory(tensorrt)
-endif()
+# if (WITH_GPU AND TENSORRT_FOUND)
+#     add_subdirectory(tensorrt)
+# endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)

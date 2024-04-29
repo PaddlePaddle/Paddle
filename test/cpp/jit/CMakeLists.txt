@@ -3,7 +3,7 @@ if(WITH_TESTING AND NOT WIN32)
     jit_download_program
     COMMAND
       wget -nc -q --no-check-certificate
-      https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
+      http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/dda938717061e049102e88d2f3d93baa/multi_program_load_with_property.tar.gz
     COMMAND tar zxf multi_program_load_with_property.tar.gz
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
   set(JIT_DEPS
