@@ -20,7 +20,7 @@ if(WITH_TESTING)
     SRCS paddle_gtest_main.cc
     DEPS ${paddle_gtest_main_deps})
 
-  if(LINUX)
+  if(LINUX AND (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2))
     cc_library(
       paddle_gtest_main_new
       SRCS paddle_gtest_main.cc

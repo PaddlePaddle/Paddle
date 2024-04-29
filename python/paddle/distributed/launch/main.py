@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distributed.launch.context import Context
 
 ctx = None
@@ -1231,9 +1232,14 @@ def launch():
 
             # per task launch interval
             self_pid = str(os.getpid())
-            processes = os.popen(
-                "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
-            ).readlines()
+            if paddle.device.is_compiled_with_custom_device('npu'):
+                processes = os.popen(
+                    "fuser -v /dev/davinci* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+                ).readlines()
+            else:
+                processes = os.popen(
+                    "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+                ).readlines()
             for process in processes:
                 pid = str(process.strip())
                 if pid != self_pid:

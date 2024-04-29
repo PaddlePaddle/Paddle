@@ -84,11 +84,11 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined WIN_UNITTEST_LEVEL set WIN_UNITTEST_LEVEL=2
-rem LEVEL 0: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on 
+rem LEVEL 0: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on
 rem          PR-CI-Windows-Infernece(CUDA 11.2), skip them on PR-CI-Windows(CUDA 12.0)
-rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on PR-CI-Windows-Infernece(CUDA 11.2), 
+rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on PR-CI-Windows-Infernece(CUDA 11.2),
 rem          skip them on PR-CI-Windows(CUDA 12.0)
-rem LEVEL 2: run all test 
+rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python38
@@ -376,7 +376,7 @@ if "%WITH_GPU%"=="ON" (
     if "!cuda_version!"=="12.0" (
         set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64;%PATH%"
     )
-) 
+)
 echo %PATH%
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
 set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
@@ -384,7 +384,7 @@ set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
-    rem Set the default generator for cmake to Ninja 
+    rem Set the default generator for cmake to Ninja
     setx CMAKE_GENERATOR Ninja
     pip install ninja
     if %errorlevel% NEQ 0 (
@@ -503,9 +503,8 @@ echo %task_name%|findstr build >nul && (
 :cmake_impl
 cd /d %work_dir%\%BUILD_DIR%
 rem whether to run cpp test
-python -m pip install github
 python -m pip install PyGithub
-python %work_dir%\tools\windows\check_only_change_python_files.py
+python %work_dir%\tools\check_only_change_python_files.py
 if exist %work_dir%\%BUILD_DIR%\only_change_python_file.txt set WITH_CPP_TEST=OFF
 echo WITH_CPP_TEST: %WITH_CPP_TEST%
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^

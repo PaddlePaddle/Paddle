@@ -384,7 +384,7 @@ class TestParameter:
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()

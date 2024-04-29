@@ -103,12 +103,12 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       comm_ctx->AllGather(out, *in, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(send_buff,
-                                           recv_buff,
-                                           send_numel,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           comm->comm(),
-                                           stream));
+          phi::dynload::ncclAllGather(send_buff,
+                                      recv_buff,
+                                      send_numel,
+                                      static_cast<ncclDataType_t>(dtype),
+                                      comm->comm(),
+                                      stream));
     }
 
 #else
