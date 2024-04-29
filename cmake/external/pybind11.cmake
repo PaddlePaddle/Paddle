@@ -25,7 +25,6 @@ include_directories(${PYBIND_INCLUDE_DIR})
 # It can be safely removed in gcc9.1+
 set(PYBIND_PATCH_COMMAND "")
 if(LINUX
-   AND WITH_ARM
    AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
   set(PYBIND_TAG v2.12.0)
