@@ -7745,11 +7745,24 @@ def sinc(x, name=None):
         \right.
 
     Args:
-        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The Tensor of elementwise computed normalized sinc result.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+            >>> x = paddle.rand([2,3], dtype='float32')
+            >>> res = paddle.sinc(x)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.56691176, 0.93089867, 0.99977750],
+             [0.61639023, 0.79618412, 0.89171958]])
     """
     if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
@@ -7758,6 +7771,7 @@ def sinc(x, name=None):
         x,
         "x",
         [
+            'bfloat16',
             'float16',
             'float32',
             'float64',
@@ -7767,7 +7781,8 @@ def sinc(x, name=None):
 
     tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
     tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
-    return paddle.divide(tmp.sin(), tmp)
+    tmp = paddle.divide(tmp.sin(), tmp)
+    return paddle.where(~paddle.isnan(tmp), tmp, paddle.full_like(x, 1.0))
 
 
 @inplace_apis_in_dygraph_only
@@ -7783,6 +7798,7 @@ def sinc_(x, name=None):
         x,
         "x",
         [
+            'bfloat16',
             'float16',
             'float32',
             'float64',
@@ -7794,4 +7810,5 @@ def sinc_(x, name=None):
     paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))
     tmp = paddle.clone(x)
     paddle.sin_(x)
-    return paddle.divide_(x, tmp)
+    paddle.divide_(x, tmp)
+    return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -22,7 +23,8 @@ from paddle.base import core
 
 
 def np_sinc(x: np.ndarray):
-    return np.sinc(x)
+    tmp = np.sinc(x)
+    return np.where(~np.isnan(tmp), tmp, np.full_like(x, 1.0))
 
 
 class TestSincAPI(unittest.TestCase):
@@ -215,6 +217,101 @@ class TestSincAPIFP16(unittest.TestCase):
                         feed={'x': x_data}, fetch_list=[res]
                     )[0]
                     out_expected = np_sinc(x_data)
+                np.testing.assert_allclose(
+                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        run_static(self.place)
+
+    def test_zero(self):
+        def run_static(place):
+            paddle.enable_static()
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype(self.dtype)
+                mask = (
+                    (np.random.rand(*shape) > 0.5)
+                    .astype('int')
+                    .astype(self.dtype)
+                )
+                x_data = x_data * mask
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=shape, dtype=self.dtype
+                    )
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                    out_expected = np_sinc(x_data)
+                np.testing.assert_allclose(
+                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        run_static(self.place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestSincAPIBFP16(unittest.TestCase):
+    def setUp(self):
+        self.shapes = [[6], [16, 64]]
+        self.dtype = 'bfloat16'
+        self.place = paddle.CUDAPlace(0)
+
+    def test_dtype(self):
+        def run_static(place):
+            paddle.enable_static()
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype('float32')
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=shape, dtype=self.dtype
+                    )
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                    out_expected = np_sinc(x_data)
+                static_result = convert_uint16_to_float(static_result)
+                np.testing.assert_allclose(
+                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        run_static(self.place)
+
+    def test_zero(self):
+        def run_static(place):
+            paddle.enable_static()
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype('float32')
+                mask = (
+                    (np.random.rand(*shape) > 0.5)
+                    .astype('int')
+                    .astype('float32')
+                )
+                x_data = x_data * mask
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=shape, dtype=self.dtype
+                    )
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                    out_expected = np_sinc(x_data)
+                static_result = convert_uint16_to_float(static_result)
                 np.testing.assert_allclose(
                     static_result, out_expected, rtol=1e-6, atol=1e-6
                 )
