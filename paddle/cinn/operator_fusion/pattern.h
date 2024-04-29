@@ -91,7 +91,7 @@ struct AnchorPattern {
       const std::vector<pir::Operation*>& ops,
       const pir::Value& anchor const AnchorState<T>& anchor_state)
       : ops_(ops), anchor_(anchor), {
-    // TODO(@wuzhanfei)
+    // TODO(@wuzhanfei): Initialize anchor state
   }
   std::vector<pir::Operation*> ops_;
   pir::Value anchor_;  // Choose only one anchor
