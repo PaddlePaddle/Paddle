@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 
-#include <utility>
-
 #include "paddle/common/enforce.h"
 
 namespace paddle {
@@ -23,9 +21,9 @@ namespace dialect {
 IrTensor::IrTensor(phi::DataType dtype,
                    const phi::DDim& dims,
                    phi::DataLayout layout,
-                   LoD  lod,
+                   const LoD& lod,
                    size_t offset)
-    : dims_(dims), dtype_(dtype), layout_(layout), lod_(std::move(lod)), offset_(offset) {}
+    : dims_(dims), dtype_(dtype), layout_(layout), lod_(lod), offset_(offset) {}
 
 IrTensor::IrTensor(const IrTensor& other) {
   dims_ = other.dims();

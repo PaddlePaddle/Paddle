@@ -14,8 +14,6 @@
 
 #include <glog/logging.h>
 
-#include <utility>
-
 #include "paddle/pir/include/core/block_argument.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation_utils.h"
@@ -61,11 +59,11 @@ class BlockArgumentImpl : public ValueImpl {
         owner_(owner),
         index_(index),
         is_kwarg_(false) {}
-  BlockArgumentImpl(Type type, Block *owner, std::string keyword)
+  BlockArgumentImpl(Type type, Block *owner, const std::string &keyword)
       : ValueImpl(type, BLOCK_ARG_IDX),
         owner_(owner),
         is_kwarg_(true),
-        keyword_(std::move(keyword)) {}
+        keyword_(keyword) {}
 
   ~BlockArgumentImpl();
   // access construction and owner

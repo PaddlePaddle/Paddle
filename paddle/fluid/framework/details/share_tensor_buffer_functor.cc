@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 #include <string>
-#include <utility>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -42,14 +41,14 @@ namespace details {
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope,
     size_t scope_idx,
-    std::string op_type,
+    const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
     const std::vector<std::string> &out_var_names,
     const bool &is_variant_scope,
     bool share_dims_and_dtype)
     : scope_(scope),
       scope_idx_(scope_idx),
-      op_type_(std::move(op_type)),
+      op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
       is_variant_scope_(is_variant_scope),

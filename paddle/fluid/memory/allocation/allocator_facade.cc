@@ -31,7 +31,6 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
-#include <utility>
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
@@ -142,8 +141,8 @@ class CUDAGraphAllocator
     DecoratedAllocationPtr underlying_allocation_;
   };
 
-  explicit CUDAGraphAllocator(std::shared_ptr<Allocator>  allocator)
-      : underlying_allocator_(std::move(allocator)) {}
+  explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
+      : underlying_allocator_(allocator) {}
 
  public:
   ~CUDAGraphAllocator() override = default;

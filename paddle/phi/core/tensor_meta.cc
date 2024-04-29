@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
-
-#include <utility>
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -147,9 +145,9 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 LoD  lod,
+                                 const LoD& lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(std::move(lod)), offset(offset) {
+    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
   strides = calc_strides(dims);
   use_gpudnn = true;
 }

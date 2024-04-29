@@ -11,8 +11,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_python.h"
 
-#include <utility>
-
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
@@ -133,10 +131,10 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 ProfilerResult::ProfilerResult(
     std::unique_ptr<NodeTrees> tree,
-    ExtraInfo  extra_info,
+    const ExtraInfo& extra_info,
     const std::map<uint32_t, gpuDeviceProp> device_property_map)
     : tree_(tree.release()),
-      extra_info_(std::move(extra_info)),
+      extra_info_(extra_info),
       device_property_map_(device_property_map) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
@@ -148,8 +146,8 @@ ProfilerResult::ProfilerResult(
 #endif
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
-                               ExtraInfo  extra_info)
-    : tree_(tree.release()), extra_info_(std::move(extra_info)) {
+                               const ExtraInfo& extra_info)
+    : tree_(tree.release()), extra_info_(extra_info) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto& nodetree : nodetrees) {

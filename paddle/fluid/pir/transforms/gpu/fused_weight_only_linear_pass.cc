@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
 
-#include <utility>
-
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -48,9 +46,9 @@ class FusedWeightOnlyLinearWithBiasPattern
 
  public:
   FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
-                                       std::string algo,
+                                       const std::string &algo,
                                        int sm_version)
-      : reverse_add_(reverse_add), algo_(std::move(algo)), sm_version_(sm_version) {}
+      : reverse_add_(reverse_add), algo_(algo), sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -167,8 +165,8 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
   int sm_version_;
 
  public:
-  FusedWeightOnlyLinearNoBiasPattern(std::string algo, int sm_version)
-      : algo_(std::move(algo)), sm_version_(sm_version) {}
+  FusedWeightOnlyLinearNoBiasPattern(const std::string &algo, int sm_version)
+      : algo_(algo), sm_version_(sm_version) {}
 
  public:
   std::string name() const override {

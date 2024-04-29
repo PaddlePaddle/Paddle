@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 
-#include <utility>
-
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -31,9 +29,9 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
   std::string fused_bn_name_;
 
  public:
-  BatchNormActFusePattern(std::string bn_name,
-                          std::string fused_bn_name)
-      : bn_name_(std::move(bn_name)), fused_bn_name_(std::move(fused_bn_name)) {}
+  BatchNormActFusePattern(const std::string &bn_name,
+                          const std::string &fused_bn_name)
+      : bn_name_(bn_name), fused_bn_name_(fused_bn_name) {}
 
   std::string name() const override { return "BatchNormActFusePattern"; }
 

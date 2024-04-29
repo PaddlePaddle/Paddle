@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/jit/engine/predictor_engine.h"
 
-#include <utility>
-
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/jit/function_utils.h"
@@ -26,10 +24,10 @@ namespace jit {
 
 PredictorEngine::PredictorEngine(
     const std::shared_ptr<FunctionInfo> &info,
-    std::shared_ptr<VariableMap> params_dict,
+    const std::shared_ptr<VariableMap> &params_dict,
     const phi::Place &place)
     : info_(info),
-      params_dict_(std::move(params_dict)),
+      params_dict_(params_dict),
       scope_(new framework::Scope()),
       place_(place) {
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, scope_.get());
@@ -57,12 +55,12 @@ PredictorEngine::PredictorEngine(
 }
 
 PredictorEngine::PredictorEngine(
-    std::shared_ptr<FunctionInfo> info,
-    std::shared_ptr<framework::Scope> scope,
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<framework::Scope> &scope,
     const phi::Place &place,
     const std::shared_ptr<PaddlePredictor> &predictor)
-    : info_(std::move(info)),
-      scope_(std::move(scope)),
+    : info_(info),
+      scope_(scope),
       place_(place),
       predictor_(std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(
           predictor)) {}

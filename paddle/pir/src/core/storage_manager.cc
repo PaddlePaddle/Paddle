@@ -17,7 +17,6 @@
 #include <glog/logging.h>
 #include <memory>
 #include <unordered_map>
-#include <utility>
 
 #include "paddle/common/enforce.h"
 
@@ -28,7 +27,7 @@ struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
   explicit ParametricStorageManager(std::function<void(StorageBase *)> destroy)
-      : destroy_(std::move(destroy)) {}
+      : destroy_(destroy) {}
 
   ~ParametricStorageManager() {  // NOLINT
     for (const auto &instance : parametric_instances_) {

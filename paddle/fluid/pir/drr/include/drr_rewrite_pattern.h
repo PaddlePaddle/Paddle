@@ -44,7 +44,7 @@ class DrrRewritePattern : public pir::RewritePattern {
       const DrrPatternContext& drr_context,
       pir::IrContext* context,
       pir::PatternBenefit benefit,
-      std::shared_ptr<const DrrPatternBase>  drr_pattern_owner);
+      const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner);
 
   bool MatchAndRewrite(
       pir::Operation* op,

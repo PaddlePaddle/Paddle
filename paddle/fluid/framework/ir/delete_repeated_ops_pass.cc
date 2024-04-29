@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <string>
-#include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -51,7 +50,7 @@ namespace patterns {
 struct VarWithRepeatedOpsPattern : public PatternBase {
   VarWithRepeatedOpsPattern(PDPattern* pattern,
                             const std::string& name_scope,
-                            std::string  op_type);
+                            const std::string& op_type);
 
   // declare variable node's name
   PATTERN_DECL_NODE(in_var);
@@ -62,8 +61,8 @@ struct VarWithRepeatedOpsPattern : public PatternBase {
 VarWithRepeatedOpsPattern::VarWithRepeatedOpsPattern(
     PDPattern* pattern,
     const std::string& name_scope,
-    std::string  op_type)
-    : PatternBase(pattern, name_scope, name_scope), op_type_(std::move(op_type)) {
+    const std::string& op_type)
+    : PatternBase(pattern, name_scope, name_scope), op_type_(op_type) {
   pattern->NewNode(in_var_repr())
       ->assert_is_var()
       ->assert_more([&](Node* node) {

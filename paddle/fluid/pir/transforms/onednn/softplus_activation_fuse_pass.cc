@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/onednn/softplus_activation_fuse_pass.h"
 
-#include <utility>
-
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -60,14 +58,14 @@ class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
   std::string act_type_;
 
  public:
-  SoftplusActivationFusePattern(std::string softplus_name,
-                                std::string fused_softplus_name,
+  SoftplusActivationFusePattern(const std::string &softplus_name,
+                                const std::string &fused_softplus_name,
                                 uint32_t benefit,
-                                std::string act_type)
-      : softplus_name_(std::move(softplus_name)),
-        fused_softplus_name_(std::move(fused_softplus_name)),
+                                const std::string &act_type)
+      : softplus_name_(softplus_name),
+        fused_softplus_name_(fused_softplus_name),
         benefit_(benefit),
-        act_type_(std::move(act_type)) {}
+        act_type_(act_type) {}
 
   std::string name() const override { return "SoftplusActivationFusePattern"; }
 
@@ -140,11 +138,11 @@ class SoftplusGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit_;
 
  public:
-  SoftplusGeluTanhFusePattern(std::string softplus_name,
-                              std::string fused_softplus_name,
+  SoftplusGeluTanhFusePattern(const std::string &softplus_name,
+                              const std::string &fused_softplus_name,
                               uint32_t benefit)
-      : softplus_name_(std::move(softplus_name)),
-        fused_softplus_name_(std::move(fused_softplus_name)),
+      : softplus_name_(softplus_name),
+        fused_softplus_name_(fused_softplus_name),
         benefit_(benefit) {}
 
   std::string name() const override { return "SoftplusActivationFusePattern"; }
@@ -192,11 +190,11 @@ class SoftplusClipFusePattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit_;
 
  public:
-  SoftplusClipFusePattern(std::string softplus_name,
-                          std::string fused_softplus_name,
+  SoftplusClipFusePattern(const std::string &softplus_name,
+                          const std::string &fused_softplus_name,
                           uint32_t benefit)
-      : softplus_name_(std::move(softplus_name)),
-        fused_softplus_name_(std::move(fused_softplus_name)),
+      : softplus_name_(softplus_name),
+        fused_softplus_name_(fused_softplus_name),
         benefit_(benefit) {}
 
   std::string name() const override { return "SoftplusActivationFusePattern"; }

@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 
-#include <utility>
-
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -32,9 +30,9 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
   std::string fused_conv_name_;
 
  public:
-  ConvBiasFusePattern(std::string conv_name,
-                      std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+  ConvBiasFusePattern(const std::string &conv_name,
+                      const std::string &fused_conv_name)
+      : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
 
   std::string name() const override { return "ConvBiasFusePattern"; }
 

@@ -11,15 +11,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 
 #include <cstring>
-#include <utility>
 
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
 
-DeserializationReader::DeserializationReader(std::string  filename)
-    : filename_(std::move(filename)) {
+DeserializationReader::DeserializationReader(const std::string& filename)
+    : filename_(filename) {
   OpenFile();
   node_trees_proto_ = new NodeTreesProto();
 }

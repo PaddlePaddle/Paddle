@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/onednn/depthwise_conv_onednn_pass.h"
 
-#include <utility>
-
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -30,8 +28,8 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
   std::string depthwise_conv_name_;
 
  public:
-  explicit DepthwiseConvPattern(std::string conv_name)
-      : depthwise_conv_name_(std::move(conv_name)) {}
+  explicit DepthwiseConvPattern(const std::string &conv_name)
+      : depthwise_conv_name_(conv_name) {}
 
   std::string name() const override { return "DepthwiseConvPattern"; }
 

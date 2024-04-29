@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <string>
-#include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -39,7 +38,7 @@ namespace patterns {
 struct ContinuousSameOpsPattern : public PatternBase {
   ContinuousSameOpsPattern(PDPattern* pattern,
                            const std::string& name_scope,
-                           std::string  op_type);
+                           const std::string& op_type);
   PATTERN_DECL_NODE(first_in_var_node);
   PATTERN_DECL_NODE(first_out_var_node);
   PATTERN_DECL_NODE(second_out_var_node);
@@ -52,8 +51,8 @@ struct ContinuousSameOpsPattern : public PatternBase {
 ContinuousSameOpsPattern::ContinuousSameOpsPattern(
     PDPattern* pattern,
     const std::string& name_scope,
-    std::string  op_type)
-    : PatternBase(pattern, name_scope, name_scope), op_type_(std::move(op_type)) {
+    const std::string& op_type)
+    : PatternBase(pattern, name_scope, name_scope), op_type_(op_type) {
   auto* first_in_var_node =
       pattern->NewNode(first_in_var_node_repr())
           ->assert_var_not_persistable()

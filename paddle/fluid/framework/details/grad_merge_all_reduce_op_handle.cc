@@ -13,8 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
-#include <utility>
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -31,10 +29,10 @@ GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::string grad_merge_cond_name,
+    const std::string &grad_merge_cond_name,
     const platform::NCCLCommunicator *ctxs)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
-      grad_merge_cond_name_(std::move(grad_merge_cond_name)) {}
+      grad_merge_cond_name_(grad_merge_cond_name) {}
 #elif defined(PADDLE_WITH_XPU_BKCL)
 GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
     ir::Node *node,
@@ -85,11 +83,11 @@ FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
     const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     const size_t num_of_all_reduce,
-    std::string grad_merge_cond_name,
+    const std::string &grad_merge_cond_name,
     const platform::NCCLCommunicator *ctxs)
     : FusedAllReduceOpHandle(
           node, local_scopes, places, num_of_all_reduce, ctxs),
-      grad_merge_cond_name_(std::move(grad_merge_cond_name)) {}
+      grad_merge_cond_name_(grad_merge_cond_name) {}
 #elif defined(PADDLE_WITH_XPU_BKCL)
 FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
     ir::Node *node,
