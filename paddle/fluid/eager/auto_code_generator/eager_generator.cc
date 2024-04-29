@@ -621,7 +621,7 @@ static bool BeSameAsInput(const std::string& output_name,
 static void PurifyForwardOpProto(const proto::OpProto& op_proto,
                                  ForwardGenerationInfo* fwd_info) {
   // Op Name
-  const std::string op_name = op_proto.type();
+  const std::string& op_name = op_proto.type();
 
   auto* in_vars = fwd_info->GetMutableInVars();
   auto* out_vars = fwd_info->GetMutableOutVars();
