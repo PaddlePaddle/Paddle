@@ -273,7 +273,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.to_tensor([0, 5, 10])
             model(x, y)
 
-    def test_forwadr(self):
+    def test_forward(self):
         n_classes = 4
         in_features = 8
         cutoffs = [2]

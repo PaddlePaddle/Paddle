@@ -4267,7 +4267,7 @@ def gaussian_nll_loss(
 
 
 def adaptive_log_softmax_with_loss(
-    input, label, head_weight, tail_weights, cutoffs, head_bias=None
+    input, label, head_weight, tail_weights, cutoffs, head_bias=None, name=None
 ):
     r"""Compute adaptive logsoftmax result and negative log likelihood between ``input`` and ``label``.
     Parameter ``head``, ``tail_weights``, ``cutoffs`` are inner members of AdaptiveLogSoftmaxWithLoss
@@ -4280,6 +4280,7 @@ def adaptive_log_softmax_with_loss(
         tail_weights (Tensor): weight tensor for linear computation, the data type should be float32 or float64.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
         head_bias (Tensor, optional): bias tensor for linear computation, the data type should be float32 or float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         output (Tensor): The tensor sotring adaptive logsoftmax result, the shape of output is [N]
