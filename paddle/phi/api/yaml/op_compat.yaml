@@ -2735,7 +2735,7 @@
   outputs :
     output : Output
   attrs :
-    {is_negative_input : Is_Negative_Input, scale : Scale, shift : Shift, output_format : Output_Format, bfloat16 : Bfloat16}
+    {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
   inputs :
