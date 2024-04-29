@@ -294,6 +294,22 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void DetectionMapInferMeta(const MetaTensor& detect_res,
+                           const MetaTensor& label,
+                           const paddle::optional<MetaTensor>& has_state,
+                           const paddle::optional<MetaTensor>& pos_count,
+                           const paddle::optional<MetaTensor>& true_pos,
+                           const paddle::optional<MetaTensor>& false_pos,
+                           int class_num,
+                           int background_label = 0,
+                           float overlap_threshold = .5f,
+                           bool evaluate_difficult = true,
+                           str ap_type = "integral",
+                           MetaTensor* accum_pos_count,
+                           MetaTensor* accum_true_pos,
+                           MetaTensor* accum_false_pos,
+                           MetaTensor* m_ap MetaConfig config = MetaConfig());
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,

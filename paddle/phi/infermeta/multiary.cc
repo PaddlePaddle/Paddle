@@ -1429,6 +1429,69 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DetectionMapInferMeta(const MetaTensor& detect_res,
+                           const MetaTensor& label,
+                           const paddle::optional<MetaTensor>& has_state,
+                           const paddle::optional<MetaTensor>& pos_count,
+                           const paddle::optional<MetaTensor>& true_pos,
+                           const paddle::optional<MetaTensor>& false_pos,
+                           int class_num,
+                           int background_label,
+                           float overlap_threshold,
+                           bool evaluate_difficult,
+                           const std::string& ap_type,
+                           MetaTensor* accum_pos_count,
+                           MetaTensor* accum_true_pos,
+                           MetaTensor* accum_false_pos,
+                           MetaTensor* m_ap,
+                           MetaConfig config = MetaConfig()) {
+  auto det_dims = detect_res.dims();
+  PADDLE_ENFORCE_EQ(det_dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Input(DetectRes) ndim must be 2, the shape is [N, 6],"
+                        "but received the ndim is %d",
+                        det_dims.size()));
+  PADDLE_ENFORCE_EQ(det_dims[1],
+                    6UL,
+                    phi::errors::InvalidArgument(
+                        "The shape is of Input(DetectRes) [N, 6], but received"
+                        " shape is [N, %d]",
+                        det_dims[1]));
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_EQ(label_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The ndim of Input(Label) must be 2, but received %d",
+                        label_dims.size()));
+  if (config.is_runtime || label_dims[1] > 0) {
+    PADDLE_ENFORCE_EQ(
+        (label_dims[1] == 6 || label_dims[1] == 5),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of Input(Label) is [N, 6] or [N, 5], but received "
+            "[N, %d]",
+            label_dims[1]));
+  }
+
+  if (pos_count) {
+    PADDLE_ENFORCE_NE(
+        true_pos.get_ptr(),
+        nullptr,
+        phi::errors::InvalidArgument(
+            "Input(TruePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+    PADDLE_ENFORCE_NE(
+        false_pos.get_ptr(),
+        nullptr,
+        phi::errors::InvalidArgument(
+            "Input(FalsePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+  }
+
+  m_ap->set_dims(common::make_ddim({1}));
+}
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
