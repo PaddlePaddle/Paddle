@@ -37,7 +37,6 @@ struct ClipAndFakeQuantDequantFunctor {
                   phi::DenseTensor *out);
 };
 
-
 template <typename DeviceContext, typename T>
 class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
@@ -103,10 +102,10 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.template device_context<DeviceContext>();
     if (!is_test) {
       T *out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-      phi::func::FindChannelAbsMaxFunctor<DeviceContext, T>()(
+      phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
           dev_ctx, *in, quant_axis, out_scale_data);
     }
-    phi::func::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+    phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
         dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
   }
 };
@@ -128,10 +127,10 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
 
-    phi::func::FindChannelAbsMaxFunctor<DeviceContext, T>()(
+    phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, *in, quant_axis, out_scale_data);
 
-    phi::func::ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
+    phi::funcs::ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
   }
 };
