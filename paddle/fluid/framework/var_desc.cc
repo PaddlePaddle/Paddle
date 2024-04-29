@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/var_desc.h"
 
+#include <utility>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -34,7 +36,7 @@ VarDesc::VarDesc(const VarDesc &other)
 
 VarDesc::~VarDesc() = default;
 
-VarDesc::VarDesc(const proto::VarDesc &desc) : desc_(desc) {
+VarDesc::VarDesc(proto::VarDesc desc) : desc_(std::move(desc)) {
   // Restore attrs_ for auto parallel
   for (const proto::VarDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();

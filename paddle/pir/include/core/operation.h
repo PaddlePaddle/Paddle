@@ -240,7 +240,7 @@ class IR_API alignas(8) Operation final
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
-  Operation(const AttributeMap &attribute,
+  Operation(AttributeMap attribute,
             pir::OpInfo op_info,
             uint32_t num_results,
             uint32_t num_operands,

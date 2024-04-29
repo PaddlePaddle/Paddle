@@ -274,8 +274,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 class TEST_API OperatorBase {
  public:
   OperatorBase(const std::string& type,
-               const VariableNameMap& inputs,
-               const VariableNameMap& outputs,
+               VariableNameMap  inputs,
+               VariableNameMap  outputs,
                const AttributeMap& attrs);
 
   virtual ~OperatorBase() {}

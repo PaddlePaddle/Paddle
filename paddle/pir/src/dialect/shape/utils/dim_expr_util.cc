@@ -15,6 +15,7 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 #include <numeric>
+#include <utility>
 
 namespace symbol {
 
@@ -925,8 +926,8 @@ namespace {
 class SubstituteDimExprHelper final {
  public:
   explicit SubstituteDimExprHelper(
-      const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement)
-      : pattern_to_replacement_(pattern_to_replacement) {}
+      std::unordered_map<DimExpr, DimExpr>  pattern_to_replacement)
+      : pattern_to_replacement_(std::move(pattern_to_replacement)) {}
 
   std::optional<DimExpr> Substitute(const DimExpr& dim_expr) {
     auto iter = pattern_to_replacement_.find(dim_expr);

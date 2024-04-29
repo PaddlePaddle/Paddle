@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 #include <cstdint>
 #include <ostream>
+#include <utility>
 
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/block.h"
@@ -245,13 +246,13 @@ IrContext *Operation::ir_context() const { return info_.ir_context(); }
 
 Dialect *Operation::dialect() const { return info_.dialect(); }
 
-Operation::Operation(const AttributeMap &attributes,
+Operation::Operation(AttributeMap attributes,
                      pir::OpInfo op_info,
                      uint32_t num_results,
                      uint32_t num_operands,
                      uint32_t num_regions,
                      uint32_t num_successors)
-    : attributes_(attributes),
+    : attributes_(std::move(attributes)),
       info_(op_info),
       num_results_(num_results),
       num_operands_(num_operands),

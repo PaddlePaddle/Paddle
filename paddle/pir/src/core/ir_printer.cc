@@ -16,6 +16,7 @@
 #include <ostream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
@@ -371,8 +372,8 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
 
 class CustomPrinter : public IrPrinter {
  public:
-  explicit CustomPrinter(std::ostream& os, const PrintHooks& hooks)
-      : IrPrinter(os), hooks_(hooks) {}
+  explicit CustomPrinter(std::ostream& os, PrintHooks  hooks)
+      : IrPrinter(os), hooks_(std::move(hooks)) {}
   void PrintType(Type type) override {
     if (hooks_.type_print_hook) {
       hooks_.type_print_hook(type, *this);

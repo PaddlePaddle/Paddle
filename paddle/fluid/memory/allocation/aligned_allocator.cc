@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
+#include <utility>
+
 #include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -39,8 +41,8 @@ class AlignedAllocation : public Allocation {
 };
 
 AlignedAllocator::AlignedAllocator(
-    const std::shared_ptr<Allocator>& underlying_allocator, size_t alignment)
-    : underlying_allocator_(underlying_allocator), alignment_(alignment) {
+    std::shared_ptr<Allocator>  underlying_allocator, size_t alignment)
+    : underlying_allocator_(std::move(underlying_allocator)), alignment_(alignment) {
   PADDLE_ENFORCE_GT(
       alignment_,
       0,
