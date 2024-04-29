@@ -744,7 +744,11 @@ bool WhileOp::InferSymbolicShape(
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     const auto &args_i =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
-    for (size_t j = 0; j < body_args.size(); ++j) {
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < input_i.size(); ++j) {
       if (shape_analysis->IsGreatThanOne(input_i[j])) {
         shape_analysis->AddGreatThanOneCstr(args_i[j]);
       }
