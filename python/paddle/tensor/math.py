@@ -7749,7 +7749,7 @@ def sinc(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The Tensor of elementwise computed normalized sinc result.
+        out (Tensor): The Tensor of elementwise-computed normalized sinc result.
 
     Examples:
         .. code-block:: python
