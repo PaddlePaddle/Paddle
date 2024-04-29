@@ -442,9 +442,9 @@ inline cusparseOperation_t GetTransposeOperation(const bool transpose) {
 void CusparseDestroy(cusparseDnMatDescr_t* dn_mat_first,
                      cusparseDnMatDescr_t* dn_mat_second,
                      cusparseSpMatDescr_t* sp_mat) {
-  platform::dynload::cusparseDestroyDnMat(*dn_mat_first);
-  platform::dynload::cusparseDestroyDnMat(*dn_mat_second);
-  platform::dynload::cusparseDestroySpMat(*sp_mat);
+  phi::dynload::cusparseDestroyDnMat(*dn_mat_first);
+  phi::dynload::cusparseDestroyDnMat(*dn_mat_second);
+  phi::dynload::cusparseDestroySpMat(*sp_mat);
 }
 
 /*
@@ -473,74 +473,73 @@ void DotSdd(const phi::GPUContext& ctx,
   cusparseHandle_t handle = nullptr;
   cusparseDnMatDescr_t mat_a, mat_b;
   cusparseSpMatDescr_t mat_c;
-  platform::dynload::cusparseCreate(&handle);
+  phi::dynload::cusparseCreate(&handle);
 
   // Create dense matrix A
-  platform::dynload::cusparseCreateDnMat(&mat_a,
-                                         num_rows,
-                                         num_cols,
-                                         num_cols,
-                                         const_cast<T*>(a_data),
-                                         gpu_type,
-                                         CUSPARSE_ORDER_ROW);
+  phi::dynload::cusparseCreateDnMat(&mat_a,
+                                    num_rows,
+                                    num_cols,
+                                    num_cols,
+                                    const_cast<T*>(a_data),
+                                    gpu_type,
+                                    CUSPARSE_ORDER_ROW);
   // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(&mat_b,
-                                         num_rows,
-                                         num_cols,
-                                         num_cols,
-                                         const_cast<T*>(b_data),
-                                         gpu_type,
-                                         CUSPARSE_ORDER_ROW);
+  phi::dynload::cusparseCreateDnMat(&mat_b,
+                                    num_rows,
+                                    num_cols,
+                                    num_cols,
+                                    const_cast<T*>(b_data),
+                                    gpu_type,
+                                    CUSPARSE_ORDER_ROW);
   // Create sparse matrix C in CSR format
   int c_nnz = c_columns->numel();
-  platform::dynload::cusparseCreateCsr(&mat_c,
-                                       num_rows,
-                                       num_rows,
-                                       c_nnz,
-                                       const_cast<int*>(c_offset_data),
-                                       const_cast<int*>(c_columns_data),
-                                       c_value_data,
-                                       CUSPARSE_INDEX_32I,
-                                       CUSPARSE_INDEX_32I,
-                                       CUSPARSE_INDEX_BASE_ZERO,
-                                       gpu_type);
+  phi::dynload::cusparseCreateCsr(&mat_c,
+                                  num_rows,
+                                  num_rows,
+                                  c_nnz,
+                                  const_cast<int*>(c_offset_data),
+                                  const_cast<int*>(c_columns_data),
+                                  c_value_data,
+                                  CUSPARSE_INDEX_32I,
+                                  CUSPARSE_INDEX_32I,
+                                  CUSPARSE_INDEX_BASE_ZERO,
+                                  gpu_type);
 
   T alpha = 1;
   T beta = 0;
 
   size_t buffer_size = 0;
-  platform::dynload::cusparseSDDMM_bufferSize(
-      handle,
-      GetTransposeOperation(a_transpose),
-      GetTransposeOperation(b_transpose),
-      &alpha,
-      mat_a,
-      mat_b,
-      &beta,
-      mat_c,
-      gpu_type,
-      CUSPARSE_SDDMM_ALG_DEFAULT,
-      &buffer_size);
+  phi::dynload::cusparseSDDMM_bufferSize(handle,
+                                         GetTransposeOperation(a_transpose),
+                                         GetTransposeOperation(b_transpose),
+                                         &alpha,
+                                         mat_a,
+                                         mat_b,
+                                         &beta,
+                                         mat_c,
+                                         gpu_type,
+                                         CUSPARSE_SDDMM_ALG_DEFAULT,
+                                         &buffer_size);
   auto d_buffer_ptr = paddle::memory::Alloc(
       ctx.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
-  platform::dynload::cusparseSDDMM(handle,
-                                   GetTransposeOperation(a_transpose),
-                                   GetTransposeOperation(b_transpose),
-                                   &alpha,
-                                   mat_a,
-                                   mat_b,
-                                   &beta,
-                                   mat_c,
-                                   gpu_type,
-                                   CUSPARSE_SDDMM_ALG_DEFAULT,
-                                   d_buffer);
+  phi::dynload::cusparseSDDMM(handle,
+                              GetTransposeOperation(a_transpose),
+                              GetTransposeOperation(b_transpose),
+                              &alpha,
+                              mat_a,
+                              mat_b,
+                              &beta,
+                              mat_c,
+                              gpu_type,
+                              CUSPARSE_SDDMM_ALG_DEFAULT,
+                              d_buffer);
 
   CusparseDestroy(&mat_a, &mat_b, &mat_c);
-  platform::dynload::cusparseDestroy(handle);
+  phi::dynload::cusparseDestroy(handle);
 }
 
 /*
@@ -569,75 +568,75 @@ void DotDsd(const phi::GPUContext& ctx,
   cusparseHandle_t handle = nullptr;
   cusparseSpMatDescr_t mat_a;
   cusparseDnMatDescr_t mat_b, mat_c;
-  platform::dynload::cusparseCreate(&handle);
+  phi::dynload::cusparseCreate(&handle);
 
   // Create sparse matrix A in CSR format
   int a_nnz = a_columns->numel();
-  platform::dynload::cusparseCreateCsr(&mat_a,
-                                       num_rows,
-                                       num_rows,
-                                       a_nnz,
-                                       const_cast<int*>(a_offset_data),
-                                       const_cast<int*>(a_columns_data),
-                                       const_cast<T*>(a_value_data),
-                                       CUSPARSE_INDEX_32I,
-                                       CUSPARSE_INDEX_32I,
-                                       CUSPARSE_INDEX_BASE_ZERO,
-                                       gpu_type);
+  phi::dynload::cusparseCreateCsr(&mat_a,
+                                  num_rows,
+                                  num_rows,
+                                  a_nnz,
+                                  const_cast<int*>(a_offset_data),
+                                  const_cast<int*>(a_columns_data),
+                                  const_cast<T*>(a_value_data),
+                                  CUSPARSE_INDEX_32I,
+                                  CUSPARSE_INDEX_32I,
+                                  CUSPARSE_INDEX_BASE_ZERO,
+                                  gpu_type);
 
   // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(&mat_b,
-                                         num_rows,
-                                         num_cols,
-                                         num_cols,
-                                         const_cast<T*>(b_data),
-                                         gpu_type,
-                                         CUSPARSE_ORDER_ROW);
+  phi::dynload::cusparseCreateDnMat(&mat_b,
+                                    num_rows,
+                                    num_cols,
+                                    num_cols,
+                                    const_cast<T*>(b_data),
+                                    gpu_type,
+                                    CUSPARSE_ORDER_ROW);
   // Create dense matrix C
-  platform::dynload::cusparseCreateDnMat(&mat_c,
-                                         num_rows,
-                                         num_cols,
-                                         num_cols,
-                                         c_data,
-                                         gpu_type,
-                                         CUSPARSE_ORDER_ROW);
+  phi::dynload::cusparseCreateDnMat(&mat_c,
+                                    num_rows,
+                                    num_cols,
+                                    num_cols,
+                                    c_data,
+                                    gpu_type,
+                                    CUSPARSE_ORDER_ROW);
 
   T alpha = 1;
   T beta = 0;
 
   size_t buffer_size = 0;
   // allocate an external buffer if needed
-  platform::dynload::cusparseSpMM_bufferSize(handle,
-                                             GetTransposeOperation(a_transpose),
-                                             GetTransposeOperation(b_transpose),
-                                             &alpha,
-                                             mat_a,
-                                             mat_b,
-                                             &beta,
-                                             mat_c,
-                                             gpu_type,
-                                             CUSPARSE_SPMM_ALG_DEFAULT,
-                                             &buffer_size);
+  phi::dynload::cusparseSpMM_bufferSize(handle,
+                                        GetTransposeOperation(a_transpose),
+                                        GetTransposeOperation(b_transpose),
+                                        &alpha,
+                                        mat_a,
+                                        mat_b,
+                                        &beta,
+                                        mat_c,
+                                        gpu_type,
+                                        CUSPARSE_SPMM_ALG_DEFAULT,
+                                        &buffer_size);
   auto d_buffer_ptr = paddle::memory::Alloc(
       ctx.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
-  platform::dynload::cusparseSpMM(handle,
-                                  GetTransposeOperation(a_transpose),
-                                  GetTransposeOperation(b_transpose),
-                                  &alpha,
-                                  mat_a,
-                                  mat_b,
-                                  &beta,
-                                  mat_c,
-                                  gpu_type,
-                                  CUSPARSE_SPMM_ALG_DEFAULT,
-                                  d_buffer);
+  phi::dynload::cusparseSpMM(handle,
+                             GetTransposeOperation(a_transpose),
+                             GetTransposeOperation(b_transpose),
+                             &alpha,
+                             mat_a,
+                             mat_b,
+                             &beta,
+                             mat_c,
+                             gpu_type,
+                             CUSPARSE_SPMM_ALG_DEFAULT,
+                             d_buffer);
 
   CusparseDestroy(&mat_b, &mat_c, &mat_a);
-  platform::dynload::cusparseDestroy(handle);
+  phi::dynload::cusparseDestroy(handle);
 }
 
 std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {

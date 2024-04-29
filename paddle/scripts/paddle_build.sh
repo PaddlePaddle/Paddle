@@ -240,6 +240,7 @@ function cmake_base() {
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_CPP_TEST=${WITH_CPP_TEST:-ON}
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
@@ -288,6 +289,7 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_CPP_TEST=${WITH_CPP_TEST:-ON} \
         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
@@ -318,6 +320,17 @@ EOF
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+}
+
+function clean_build_files() {
+    clean_files=("paddle/fluid/pybind/libpaddle.so" "third_party/flashattn/src/extern_flashattn-build/libflashattn.so" "third_party/install/flashattn/lib/libflashattn.so")
+
+    for file in "${clean_files[@]}"; do
+      file=`echo "${PADDLE_ROOT}/build/${file}"`
+      if [ -f "$file" ]; then
+          rm -rf "$file"
+      fi
+    done
 }
 
 function cmake_gen() {
@@ -943,9 +956,9 @@ function check_run_sot_ci() {
 
     # git diff
     SOT_FILE_LIST=(
-        paddle/fluid/operators/run_program_op.h
-        paddle/fluid/operators/run_program_op.cu
-        paddle/fluid/operators/run_program_op.cc
+        paddle/pir
+        paddle/phi
+        paddle/scripts
         paddle/fluid/eager/to_static
         paddle/fluid/pybind/
         python/
@@ -1423,15 +1436,25 @@ function collect_failed_tests() {
 # getting qucik disable ut list
 function get_quickly_disable_ut() {
     python -m pip install httpx
+    if [ $deprecated_test_path ];then
+        cd $deprecated_test_path
+        deprecated_ut=`ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/^/|^/' | sed 's/$/$/'`
+        deprecated_ut=`echo $deprecated_ut | sed 's/ //g'`
+        cd -
+    fi
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+        disable_ut_quickly="${disable_ut_quickly}${deprecated_ut}"
         echo "========================================="
         echo "The following unittests have been disabled:"
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-
-        exit 102
-        disable_ut_quickly='disable_ut'
+        if [ $deprecated_ut ];then
+            disable_ut_quickly="${deprecated_ut}"
+        else
+            exit 102
+            disable_ut_quickly='disable_ut'
+        fi
     fi
 }
 
@@ -2619,7 +2642,6 @@ set -x
         export TEST_NUM_PERCENT_CASES=0.15
         export FLAGS_trt_ibuilder_cache=1
         precision_cases=""
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
@@ -3835,6 +3857,13 @@ function run_setup(){
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    pip install -U PyGithub
+    python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+    if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
+        export WITH_CPP_TEST=OFF
+    else
+        export WITH_CPP_TEST=ON
+    fi
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
     pscore_flag=${distibuted_flag}
@@ -3904,6 +3933,8 @@ EOF
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
+    export WITH_CPP_TEST=${WITH_CPP_TEST:-ON}
+
 
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
@@ -3940,6 +3971,7 @@ EOF
 
     # ci will collect ccache hit rate
     collect_ccache_hits
+
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -4214,10 +4246,18 @@ function main() {
         fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
+      cicheck_build)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
+        fi
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        clean_build_files
+        ;;
       build_pr_dev)
         export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         build_pr_and_develop
         check_sequence_op_unittest
+        clean_build_files
         ;;
       build_dev_test)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -4349,6 +4389,7 @@ function main() {
         enable_unused_var_check
         check_coverage_added_ut
         check_coverage_build
+        clean_build_files
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
@@ -4437,6 +4478,13 @@ function main() {
       cicheck_py37)
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        clean_build_files
+        ;;
+      cicheck_py37_pir)
+        export FLAGS_enable_pir_api=1
+        # disable deprecated test in pir
+        deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)

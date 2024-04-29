@@ -17,8 +17,12 @@ import warnings
 
 from .. import core
 from ..dygraph.base import in_to_static_mode
-from ..framework import Variable, default_main_program, static_only
-from .layer_function_generator import OpProtoHolder
+from ..framework import (
+    OpProtoHolder,
+    Variable,
+    default_main_program,
+    static_only,
+)
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,

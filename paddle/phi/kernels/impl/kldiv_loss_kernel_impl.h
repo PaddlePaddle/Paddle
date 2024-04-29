@@ -24,21 +24,29 @@ namespace phi {
 using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T>
 struct KLDivLossForward {
-  HOSTDEVICE KLDivLossForward() {}
+  bool log_target = false;
+
+  HOSTDEVICE KLDivLossForward(bool logTarget) : log_target(logTarget) {}
 
   HOSTDEVICE T operator()(const T& target, const T& input) const {
-    if (target <= 0) {
-      return 0;
+    if (log_target) {
+      return std::exp(target) * (target - input);
     } else {
-      return target * (std::log(target) - input);
+      if (target <= 0) {
+        return 0;
+      } else {
+        return target * (std::log(target) - input);
+      }
     }
   }
 };
+
 template <typename T, typename Context>
 void KLDivLossKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& label,
                      const std::string& reduction,
+                     bool log_target,
                      DenseTensor* out) {
   auto& place = *(dev_ctx.eigen_device());
   auto* input = &x;
@@ -51,7 +59,7 @@ void KLDivLossKernel(const Context& dev_ctx,
   auto input_t = phi::EigenVector<T>::Flatten(*input);
   auto target_t = phi::EigenVector<T>::Flatten(*target);
   auto loss_t = phi::EigenVector<T>::Flatten(*loss);
-  auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>());
+  auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>(log_target));
   if ("none" == reduction) {
     loss_t.device(place) = output;
   } else if ("batchmean" == reduction) {
