@@ -3170,7 +3170,7 @@
     data_type : x
 
 - op : yolo_box_head
-  args : (Tensor x, int[] anchors={}, int class_num = 1)
+  args : (Tensor x, int[] anchors, int class_num)
   output : Tensor(out)
   infer_meta :
     func : YoloBoxHeadInferMeta

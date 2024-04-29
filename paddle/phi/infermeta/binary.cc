@@ -3417,6 +3417,7 @@ void YoloBoxHeadInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaConfig config) {
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void ValueCompareInferMeta(const MetaTensor& x,
