@@ -591,6 +591,13 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+        def apply_cse(program):
+            pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
+                pm, program
+            )
+            pm.run(program)
+
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
@@ -608,6 +615,7 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
+                apply_cse(forward_program)
 
                 return forward_program, backward_program
 
@@ -633,6 +641,8 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
+                apply_cse(forward_program)
+                apply_cse(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
