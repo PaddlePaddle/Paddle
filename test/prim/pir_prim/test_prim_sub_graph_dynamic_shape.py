@@ -144,6 +144,10 @@ def flatten_net(x):
     return paddle.flatten(x, 1, 2)
 
 
+def meshgrid_net(x, y):
+    return paddle.meshgrid(x, y)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -491,6 +495,23 @@ class TestPrimDropout(TestPrimBase):
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=0.08)
+
+
+class TestPrimMeshgrid(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300]
+        self.shape_y = []
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = meshgrid_net
+        self.necessary_ops = "pd_op.meshgrid"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":
