@@ -96,18 +96,18 @@ class TestBuildFakeProgram(unittest.TestCase):
         # #check attrs
 
         self.assertEqual(dist_input_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_input_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_input_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_input_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_input_op_dist_attr.num_results(), 1)
 
         dist_w0_op_dist_attr = dist_w0.get_defining_op().dist_attr
         self.assertEqual(dist_w0_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_w0_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_w0_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_w0_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_w0_op_dist_attr.num_results(), 1)
 
         dist_w1_op_dist_attr = dist_w1.get_defining_op().dist_attr
         self.assertEqual(dist_w1_op_dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_w1_op_dist_attr.num_operand_dist_attrs(), 0)
-        self.assertEqual(dist_w1_op_dist_attr.num_result_dist_attrs(), 1)
+        self.assertEqual(dist_w1_op_dist_attr.num_operands(), 0)
+        self.assertEqual(dist_w1_op_dist_attr.num_results(), 1)
 
         attrs_op_dist_attr = (
             dist_input.get_defining_op().attrs().get("op_dist_attr")
@@ -115,27 +115,21 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertEqual(attrs_op_dist_attr.process_mesh, mesh)
 
         # check op result dist_attr
+        tensor_dist_attr = dist_input_op_dist_attr.result(
+            0
+        ).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
         self.assertEqual(
-            dist_input_op_dist_attr.result_dist_attr(0).process_mesh, mesh
-        )
-        self.assertEqual(
-            dist_input_op_dist_attr.result_dist_attr(0).dims_mapping,
+            tensor_dist_attr.dims_mapping,
             [-1, -1, -1],
         )
+        tensor_dist_attr = dist_w0_op_dist_attr.result(0).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [0, -1])
 
-        self.assertEqual(
-            dist_w0_op_dist_attr.result_dist_attr(0).process_mesh, mesh
-        )
-        self.assertEqual(
-            dist_w0_op_dist_attr.result_dist_attr(0).dims_mapping, [0, -1]
-        )
-
-        self.assertEqual(
-            dist_w1_op_dist_attr.result_dist_attr(0).process_mesh, mesh
-        )
-        self.assertEqual(
-            dist_w1_op_dist_attr.result_dist_attr(0).dims_mapping, [-1, 0]
-        )
+        tensor_dist_attr = dist_w1_op_dist_attr.result(0).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1, 0])
 
         # check value dist_attr
         self.assertEqual(dist_input.dist_attr().process_mesh, mesh)

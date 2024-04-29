@@ -24,10 +24,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
@@ -103,7 +103,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
@@ -181,7 +181,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);

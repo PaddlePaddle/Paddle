@@ -38,7 +38,7 @@ inline void UpdatePaddingAndDilation(
   symbol::DimExpr one{1};
   symbol::DimExpr two{2};
   if (padding_algorithm == "SAME") {
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < data_dims.size(); ++i) {
       symbol::DimExpr out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       symbol::DimExpr pad_sum = builder.Max(
@@ -90,14 +90,18 @@ bool Conv2dOpInferSymbolicShape(
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-  std::vector<symbol::DimExpr> in_data_dims =
+  const std::vector<symbol::DimExpr> in_data_dims =
       channel_last ? std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 1,
                                                   in_s_or_d.shape().end() - 1)
                    : std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 2,
                                                   in_s_or_d.shape().end());
 
-  std::vector<symbol::DimExpr> filter_data_dims = std::vector<symbol::DimExpr>(
-      filter_s_or_d.shape().begin() + 2, filter_s_or_d.shape().end());
+  const std::vector<symbol::DimExpr> filter_data_dims =
+      channel_last
+          ? std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                         filter_s_or_d.shape().end() - 1)
+          : std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                         filter_s_or_d.shape().end());
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
@@ -124,18 +128,13 @@ bool Conv2dOpInferSymbolicShape(
     }
 
     for (size_t i = 0; i < in_data_dims.size(); ++i) {
-      if (!in_data_dims[i].isa<int64_t>() ||
-          !filter_s_or_d.shape()[i + 2].isa<int64_t>()) {
-        out_s_or_d.push_back(shape_analysis->GetNextSymName());
-      } else {
-        const symbol::DimExpr dkernel =
-            new_dilations[i] * (filter_data_dims[i] - 1) + 1;
-        symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
-                                       new_paddings[2 * i + 1] - dkernel) /
-                                          strides[i] +
-                                      1;
-        out_s_or_d.push_back(output_size);
-      }
+      const symbol::DimExpr dkernel =
+          new_dilations[i] * (filter_data_dims[i] - 1) + 1;
+      symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
+                                     new_paddings[2 * i + 1] - dkernel) /
+                                        strides[i] +
+                                    1;
+      out_s_or_d.push_back(output_size);
     }
     if (channel_last) {
       out_s_or_d.push_back(filter_s_or_d.shape()[0]);
@@ -204,10 +203,20 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() +
-      " 's InferSymbolicShape interface is NOT implemented "
-      "now because of the lack of necessary information."));
+  std::vector<int> target_shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  const std::vector<symbol::DimExpr> &output_dims = [&] {
+    std::vector<symbol::DimExpr> output_dims;
+    output_dims.reserve(target_shape.size());
+    for (int shape : target_shape) {
+      output_dims.push_back(shape);
+    }
+    return output_dims;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_dims));
+
   return true;
 }
 
@@ -285,14 +294,9 @@ bool GatherNdOpInferSymbolicShape(
   const auto &index_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
 
-  const std::vector<symbol::DimExpr> &x_sym_shape =
-      x_shape_or_data.data().has_value() ? x_shape_or_data.data().value()
-                                         : x_shape_or_data.shape();
-
+  const std::vector<symbol::DimExpr> &x_sym_shape = x_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   int x_dims_size = x_sym_shape.size();
   int index_dims_size = index_sym_shape.size();
@@ -426,9 +430,10 @@ bool MatmulOpInferSymbolicShape(
   } else if (ndims_x < ndims_y) {
     out_dims.assign(y_dims.begin(), y_dims.end() - 2);
   } else {
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+      shape_analysis->AddBroadcastableCstr(x_dims[i], y_dims[i]);
     }
   }
 
@@ -473,6 +478,15 @@ bool SearchsortedOpInferSymbolicShape(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   // TODO(fty1777): Add constrains between the shapes of `sorted_sequence` and
   // `values`
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool IscloseOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
   shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   return true;
 }
@@ -543,3 +557,7 @@ bool TopPSamplingOpInferSymbolicShape(
 }
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::IscloseOpInferSymbolicShape;
+}

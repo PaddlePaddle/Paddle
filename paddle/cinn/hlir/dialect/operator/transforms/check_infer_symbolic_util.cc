@@ -28,10 +28,10 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
@@ -48,10 +48,15 @@ DimExprs4ValueT MakeDimExprs4Value(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
-  const auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(program);
+  auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
   return
       [shape_analysis](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+        // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprss
+        if (!value) {
+          static symbol::ShapeOrDataDimExprs empty{
+              symbol::TensorShapeOrDataDimExprs{}};
+          return empty;
+        }
         return shape_analysis->GetShapeOrDataForValue(value);
       };
 }
@@ -260,9 +265,9 @@ struct ShapeSignatureGenerator {
   ConstrainedSymbolNamesList GetConstrainedSymbolNamesList(
       const ShapeAnalysisPtr& op_shape_analysis) {
     ConstrainedSymbolNamesList cstr_list;
-    auto& cstr_manager = op_shape_analysis->GetConstraintsManager();
+    auto* cstr_manager = op_shape_analysis->GetConstraintsManager();
 
-    cstr_manager.VisitEqualClusters([&](auto clusters) {
+    cstr_manager->VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {
         if (dim_expr.isa<std::string>())
@@ -271,7 +276,7 @@ struct ShapeSignatureGenerator {
       if (!equals.symbol_names.empty()) cstr_list.emplace_back(equals);
     });
 
-    cstr_manager.BroadcastableConstraintsVisitor([&](auto it) {
+    cstr_manager->BroadcastableConstraintsVisitor([&](auto it) {
       if (it->data->lhs.template isa<std::string>() &&
           it->data->rhs.template isa<std::string>()) {
         CstrBroadcastableSymbolNames bcables;
@@ -330,40 +335,61 @@ struct ShapeSignatureGenerator {
   }
 };
 
-void CheckByInferMeta(pir::Operation* op,
-                      const std::vector<std::vector<int64_t>>& input_shapes,
-                      const std::vector<std::vector<int64_t>>& output_shapes) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Builder builder = pir::Builder(ctx, op->GetParent());
-  std::vector<paddle::dialect::EmptyOp> empty_op_list;
+void DoInferMeta(const std::vector<std::vector<int64_t>>& input_shapes,
+                 pir::Builder* builder,
+                 pir::Operation* op,
+                 std::vector<paddle::dialect::EmptyOp>* empty_op_list,
+                 std::vector<std::vector<int64_t>>* infer_meta_result) {
   std::vector<pir::Value> input_values;
   for (int i = 0; i < input_shapes.size(); i++) {
     paddle::dialect::EmptyOp empty_op =
-        builder.Build<paddle::dialect::EmptyOp>(input_shapes[i]);
-    empty_op_list.push_back(empty_op);
+        builder->Build<paddle::dialect::EmptyOp>(input_shapes[i]);
+    empty_op_list->push_back(empty_op);
     input_values.push_back(empty_op.out());
   }
   paddle::dialect::InferMetaInterface interface =
       op->dyn_cast<paddle::dialect::InferMetaInterface>();
   pir::AttributeMap attribute_map;
   const auto& types = interface.InferMeta(input_values, &attribute_map);
-  std::vector<std::vector<int64_t>> infer_meta_result;
   for (const auto& type : types) {
-    infer_meta_result.push_back(
+    infer_meta_result->push_back(
         common::vectorize(type.dyn_cast<pir::DenseTensorType>().dims()));
   }
+}
+
+void EraseEmptyOp(const std::vector<paddle::dialect::EmptyOp>& empty_op_list) {
+  for (auto& empty_op : empty_op_list) {
+    PADDLE_ENFORCE_EQ(
+        empty_op->use_empty(),
+        true,
+        phi::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
+                                     "expectation is that it is not used",
+                                     empty_op->name()));
+    empty_op->Erase();
+  }
+}
+
+void CheckByInferMeta(pir::Operation* op,
+                      pir::Builder* builder,
+                      const std::vector<std::vector<int64_t>>& input_shapes,
+                      const std::vector<std::vector<int64_t>>& output_shapes) {
+  std::vector<paddle::dialect::EmptyOp> empty_op_list;
+  std::vector<std::vector<int64_t>> infer_meta_result;
+  DoInferMeta(input_shapes, builder, op, &empty_op_list, &infer_meta_result);
+
   CHECK(infer_meta_result == output_shapes)
       << "check " << op->name() << " constraints error";
-  for (const auto& empty_op : empty_op_list) {
-    empty_op.Erase();
-  }
+
+  EraseEmptyOp(empty_op_list);
 }
 
 void CheckOpDimExprConstraints(pir::Operation* op,
                                const DimExprs4ValueT& GraphDimExprs4Value) {
   ShapeSignatureGenerator generator(op, GraphDimExprs4Value);
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Builder builder = pir::Builder(ctx, op->GetParent());
   generator.Generate([&](const auto& input_shapes, const auto& output_shapes) {
-    CheckByInferMeta(op, input_shapes, output_shapes);
+    CheckByInferMeta(op, &builder, input_shapes, output_shapes);
   });
 }
 

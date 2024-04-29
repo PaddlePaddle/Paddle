@@ -84,10 +84,18 @@ template <typename T>
 class HorizontalFusionPattern {};
 
 template <typename T>
-using StmtPattern = std::variant<TrivialPattern<T>,
-                                 ReducePattern<T>,
-                                 ReduceTreePattern<T>,
-                                 ReduceTreePlusTrivialPattern<T>,
-                                 HorizontalFusionPattern<T>,
-                                 UnsupportPattern<T>>;
+using StmtPatternBase = std::variant<TrivialPattern<T>,
+                                     ReducePattern<T>,
+                                     ReduceTreePattern<T>,
+                                     ReduceTreePlusTrivialPattern<T>,
+                                     HorizontalFusionPattern<T>,
+                                     UnsupportPattern<T>>;
+
+template <typename T>
+struct StmtPattern final : public StmtPatternBase<T> {
+  using StmtPatternBase<T>::StmtPatternBase;
+  const StmtPatternBase<T>& variant() const {
+    return static_cast<const StmtPatternBase<T>&>(*this);
+  }
+};
 }  // namespace cinn::fusion
