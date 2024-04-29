@@ -3775,18 +3775,9 @@
 - op: cudnn_lstm
   backward: cudnn_lstm_grad
   inputs:
-    x: Input
-    init_h: InitH
-    init_c: InitC
-    w: W
-    weight_list: WeightList
-    sequence_length: SequenceLength
+    {x: Input, init_h: InitH, init_c: InitC, w: W, weight_list: WeightList, sequence_length: SequenceLength}
   outputs:
-    reserve: Reserve
-    state_out: StateOut
-    out: Out
-    last_h: LastH
-    last_c: LastC
+    {reserve: Reserve, state_out: StateOut, out: Out, last_h: LastH, last_c: LastC}
   drop_empty_grad : [weight_list_grad]
 
 - op: decayed_adagrad

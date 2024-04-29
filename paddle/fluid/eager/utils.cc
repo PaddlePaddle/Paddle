@@ -128,6 +128,18 @@ std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
   return metas;
 }
 
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const paddle::optional<std::vector<paddle::Tensor*>>& targets) {
+  std::vector<AutogradMeta*> metas;
+  if (targets.get_ptr() != nullptr) {
+    metas.reserve(targets.size());
+    for (const paddle::Tensor* t : (*(targets.get_ptr()))) {
+      metas.emplace_back(nullable_autograd_meta(*t));
+    }
+  }
+  return metas;
+}
+
 std::vector<AutogradMeta*> EagerUtils::autograd_meta(
     std::vector<paddle::Tensor>* targets) {
   std::vector<AutogradMeta*> ret;
