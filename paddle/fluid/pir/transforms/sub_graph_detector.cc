@@ -576,7 +576,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
     for (auto& item : *block) {
-      if (src_op == &item) return true;
+      if (src_op->id() == item.id()) return true;
     }
     return false;
   };
