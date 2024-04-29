@@ -102,5 +102,37 @@ class FindMovingAverageAbsMaxFunctor {
                   DenseTensor *out_scale);
 };
 
+template <typename Context, typename T>
+class FindChannelAbsMaxFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &in_tensor,
+                  const int quant_axis,
+                  T *out_abs_max);
+};
+
+template <typename Context, typename T>
+class ChannelClipAndFakeQuantFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &in,
+                  const DenseTensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
+                  DenseTensor *out);
+};
+
+template <typename Context, typename T>
+class ChannelClipFakeQuantDequantFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &in,
+                  const DenseTensor &scale,
+                  const int bin_cnt,
+                  int round_type,
+                  const int quant_axis,
+                  DenseTensor *out);
+};
 }  // namespace funcs
 }  // namespace phi
