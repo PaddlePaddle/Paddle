@@ -979,10 +979,7 @@ class SigmoidOpPattern
     }
 
     rewriter.ReplaceAllUsesWith(op.result(0), div);
-
     rewriter.EraseOp(op);
-
-    return true;
   }
 };
 class GatherOpPattern
@@ -1025,7 +1022,6 @@ class GatherOpPattern
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
     rewriter.ReplaceAllUsesWith(op->result(0), out);
     rewriter.EraseOp(op);
-    return true;
   }
 };
 
