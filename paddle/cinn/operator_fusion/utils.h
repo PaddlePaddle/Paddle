@@ -44,26 +44,26 @@ static size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
-static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
+static std::vector<size_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("dim");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   if (axis_attr.empty()) {
     // dim: [] means reduce_all.
-    std::vector<int64_t> all_axis;
+    std::vector<size_t> all_axis;
     for (int i = 0; i < input_rank; ++i) {
       all_axis.push_back(i);
     }
     return all_axis;
   }
-  std::vector<int64_t> reduce_axis_idx;
+  std::vector<size_t> reduce_axis_idx;
   if (input_rank == 0) {
     VLOG(4) << "Reduce op has 0D Tensor input, return empty reduce_axis";
     return reduce_axis_idx;
   }
   for (int i = 0; i < axis_attr.size(); ++i) {
-    int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
+    size_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
     if (axis < 0) {
       axis += input_rank;
     }
@@ -79,6 +79,36 @@ static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("keep_dim");
   CHECK(attr_val.isa<::pir::BoolAttribute>());
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
+}
+
+static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
+    pir::Operation* op) {
+  std::vector<std::pair<size_t, size_t>> res;
+  auto* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
+  CHECK(broad_cast_value.has_value());
+
+  const auto& [input_value, output_value] = broad_cast_value.value();
+  const int input_rank = GetRank(input_value);
+  const int output_rank = GetRank(output_value);
+  CHECK_GE(output_rank, input_rank);
+
+  // Compare axis one by one, from back to front.
+  // The rule of broadcasting:
+  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
+  for (int i = 1; i <= input_rank; ++i) {
+    int input_axis = input_rank - i;
+    int output_axis = output_rank - i;
+    if (input_axis < 0 || output_axis < 0) break;
+    if (shape_analysis->IsProductEqual(
+            input_value, {input_axis}, output_value, {output_axis})) {
+      res.emplace_back(input_axis, output_axis);
+    }
+  }
+
+  return res;
 }
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {

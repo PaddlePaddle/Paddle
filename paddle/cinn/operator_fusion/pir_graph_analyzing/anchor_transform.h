@@ -37,10 +37,12 @@ struct IdentityTransform {
 
 struct AppendDimTransform {
   TransformInfo info;
+  std::vector<size_t> append_dims;
 };
 
 struct DeleteDimTransform {
   TransformInfo info;
+  std::vector<size_t> delete_dims;
 };
 
 using AnchorTransform = std::variant<UnsupportTransform,
@@ -57,5 +59,5 @@ struct AnchorState {
   std::vector<ValueExpr<T>> output_exprs;
 };
 
-AnchorTransform CreateAnchorTransform(TransformInfo info);
+AnchorTransform CreateAnchorTransform(const TransformInfo& info);
 }  // namespace cinn::fusion
