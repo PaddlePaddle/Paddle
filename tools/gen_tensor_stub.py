@@ -197,7 +197,7 @@ def with_indent(code: str, level: int) -> str:
         if not line:
             return line
         elif line.startswith(INDENT):
-            return line.removeprefix(INDENT)
+            return line[len(INDENT) :]
         else:
             return line
 
@@ -357,6 +357,9 @@ def main():
 
     # Get members of Tensor
     tensor_members = get_tensor_members()
+
+    print('-' * 20)
+    print(f'total members: {len(tensor_members)}')
 
     # Generate the Tensor stub
     tensor_gen = TensorGen()
