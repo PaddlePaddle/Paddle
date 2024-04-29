@@ -30,6 +30,9 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
       return true;
     } else {
       auto vec_type = value.type().dyn_cast<pir::VectorType>();
+      if (!vec_type) {
+        continue;
+      }
       for (size_t idx = 0; idx < vec_type.size(); ++idx) {
         if (auto dist_type = vec_type[idx].dyn_cast<DistTypeInterface>()) {
           if (p_mesh_attr) {
