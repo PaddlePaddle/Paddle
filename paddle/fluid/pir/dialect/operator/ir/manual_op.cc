@@ -4076,8 +4076,8 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
   } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
