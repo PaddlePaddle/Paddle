@@ -132,7 +132,9 @@ struct LiftToHorizontalFusionPatternOperation {
 struct LiftToAnchorPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    node->set_stmt_pattern(AnchorPattern<Phrase>(node->stmt_pattern()));
+    std::vector<pir::Operation*> ops = GetOpsInPattern(pattern);
+    pir::Value anchor = node->sink_op()->result(0);
+    node->set_stmt_pattern(AnchorPattern<Phrase>(ops, anchor));
   }
 };
 
