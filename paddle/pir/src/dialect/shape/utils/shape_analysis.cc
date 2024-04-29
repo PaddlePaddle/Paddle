@@ -195,9 +195,27 @@ void ShapeConstraintIRAnalysis::SetStaticShapeForValue(Value val) {
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
   std::unordered_set<Operation*> subgraph_ops;
   std::vector<Operation*> start_ops;
+  const auto& GetRealOperandSource = [&](Operation* op) -> std::vector<Value> {
+    if (op->num_regions() == 0) {
+      return op->operands_source();
+    } else {
+      std::vector<Value> ret;
+      for (uint32_t i = 0; i < op->num_regions(); i++) {
+        for (auto& block : op->region(i)) {
+          for (auto& sub_op : block) {
+            for (auto& operand : sub_op.operands_source()) {
+              ret.emplace_back(operand);
+            }
+          }
+        }
+      }
+      return ret;
+    }
+  };
+
   const auto& VisitNotInferedInputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
-        for (auto& operand : op->operands_source()) {
+        for (auto& operand : GetRealOperandSource(op)) {
           if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
             if (!operand.defining_op()) {
               SetStaticShapeForValue(operand);
@@ -212,7 +230,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
   build_subgraph_walker(val.defining_op(), [&](Operation* op) {
     subgraph_ops.insert(op);
     bool has_prev_op = false;
-    for (auto& operand : op->operands_source()) {
+    for (auto& operand : GetRealOperandSource(op)) {
       if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
         if (!operand.defining_op()) {
           SetStaticShapeForValue(operand);
@@ -228,7 +246,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
 
   const auto& VisitSubgraphInputOp =
       [&](Operation* op, const std::function<void(Operation*)>& Visit) {
-        for (auto& operand : op->operands_source()) {
+        for (auto& operand : GetRealOperandSource(op)) {
           if (operand.impl() && subgraph_ops.count(operand.defining_op())) {
             Visit(operand.defining_op());
           }
@@ -240,8 +258,13 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
           for (auto iter = op->result(i).use_begin();
                iter != op->result(i).use_end();
                ++iter) {
-            if (subgraph_ops.count(iter->owner())) {
-              Visit(iter->owner());
+            auto parent_op = iter->owner();
+            while (parent_op) {
+              if (subgraph_ops.count(parent_op)) {
+                Visit(parent_op);
+                break;
+              }
+              parent_op = parent_op->GetParentOp();
             }
           }
         }
