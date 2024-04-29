@@ -3499,6 +3499,7 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
 void QuantizeLinearInferMeta(const MetaTensor& x,
                              const MetaTensor& scale,
+                             const MetaTensor& zero_point,
                              const MetaTensor& in_accum,
                              const MetaTensor& in_state,
                              int quant_axis,
@@ -3508,9 +3509,9 @@ void QuantizeLinearInferMeta(const MetaTensor& x,
                              bool only_observer,
                              float moving_rate,
                              MetaTensor* y,
-                             MetaTensor* out_scale,
+                             MetaTensor* out_state,
                              MetaTensor* out_accum,
-                             MetaTensor* out_state) {
+                             MetaTensor* out_scale) {
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1 || quant_axis == -1,
       true,
