@@ -186,17 +186,21 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 
+std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr) {
+  ir::Expr compute_schedule_block_realize =
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
+          .GetSingle(expr);
+
+  const std::vector<Expr>& all_iter_expr =
+      compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
+          ->iter_values;
+  return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+}
+
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   auto GetUnorderedAllIterVars = [](const ReduceOp& op) {
-    ir::Expr compute_schedule_block_realize =
-        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
-            .GetSingle(_GetRootExpr(op));
-
-    const std::vector<Expr>& all_iter_expr =
-        compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
-            ->iter_values;
-    return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+    return GetAllIterVars(_GetRootExpr(op));
   };
 
   // Iter Vars not appearing in outer_iter_vars are pushed into

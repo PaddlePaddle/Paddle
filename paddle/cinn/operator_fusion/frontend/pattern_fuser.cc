@@ -61,14 +61,4 @@ StmtPattern<FrontendStage> MergePatternImpl(
   return TrivialPattern<FrontendStage>(contents, second.sink());
 }
 
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const HorizontalFusionPattern<FrontendStage>& first,
-    const HorizontalFusionPattern<FrontendStage>& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
-                         GetOpsInPattern<FrontendStage>(second));
-  return HorizontalFusionPattern<FrontendStage>({first, second});
-}
-
 }  // namespace cinn::fusion

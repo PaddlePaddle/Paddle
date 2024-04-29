@@ -88,8 +88,19 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const HorizontalFusionPattern<T>& pattern) {
     // Horizontal Fusion must have the same loop framework.
-    const auto& exprs =
-        GetLoopFramework(StmtPattern<T>(pattern.patterns_.back()));
+    VLOG(4) << "Get horizontal fusion pattern for loop framework.";
+    const auto& base_exprs = GetLoopFramework(
+        StmtPattern<T>(pattern.padding_patterns_.back().pattern));
+    const auto& padding_vector = pattern.padding_patterns_.back().padding_pos;
+    std::vector<symbol::DimExpr> exprs(
+        base_exprs.size() + padding_vector.size(), 1);
+    int pointer = 0;
+    for (int i = 0; i < exprs.size(); i++) {
+      if (std::find(padding_vector.begin(), padding_vector.end(), i) ==
+          padding_vector.end()) {
+        exprs[i] = base_exprs[pointer++];
+      }
+    }
     return exprs;
   }
 
@@ -253,6 +264,57 @@ StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& upstream,
   int insert_num = InsertDownstreamIntoTree(upstream, result);
   CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
   return result;
+}
+
+inline auto GetPaddingVector(const MaybeLoopFramework& first,
+                             const MaybeLoopFramework& second) {
+  // two pointer to get the padding body.
+  std::vector<int> padding_f;
+  std::vector<int> padding_s;
+  VLOG(4) << "GetPaddingVector for: " << utils::Join(first, ",") << " vs "
+          << utils::Join(second, ",");
+  std::function<void(int, int, int)> recursive_padding =
+      [&first, &second, &padding_f, &padding_s, &recursive_padding](
+          int pf, int ps, int padding_size) {
+        if (pf == first.size() && ps == second.size()) {
+          return;
+        } else if (pf == first.size()) {
+          PADDLE_ENFORCE(second[ps] == 1, "second[ps] must be '1' to padding.");
+          padding_f.push_back(padding_size);
+          recursive_padding(pf, ps + 1, padding_size + 1);
+        } else if (ps == second.size()) {
+          PADDLE_ENFORCE(first[pf] == 1, "second[ps] must be '1' to padding.");
+          padding_s.push_back(padding_size);
+          recursive_padding(pf + 1, ps, padding_size + 1);
+        } else if (second[ps] == first[pf]) {
+          recursive_padding(pf + 1, ps + 1, padding_size + 1);
+        } else if (second[ps] == 1) {
+          padding_f.push_back(padding_size);
+          recursive_padding(pf, ps + 1, padding_size + 1);
+        } else if (first[ps] == 1) {
+          padding_s.push_back(padding_size);
+          recursive_padding(pf + 1, ps, padding_size + 1);
+        } else {
+          PADDLE_THROW("Padding Error.");
+        }
+      };
+  recursive_padding(0, 0, 0);
+  VLOG(4) << "GetPaddingVector result: " << utils::Join(padding_f, ",")
+          << " vs " << utils::Join(padding_s, ",");
+  return std::tuple(padding_f, padding_s);
+}
+
+template <typename T>
+StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
+                                const HorizontalFusionPattern<T>& second) {
+  const auto& [f, s] =
+      GetPaddingVector(GetLoopFramework(StmtPattern<T>(first)),
+                       GetLoopFramework(StmtPattern<T>(second)));
+  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_first = {first,
+                                                                       f};
+  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_second = {second,
+                                                                        s};
+  return HorizontalFusionPattern<T>({pad_first, pad_second});
 }
 
 template <typename T>

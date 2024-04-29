@@ -330,4 +330,15 @@ std::vector<T> SliceVector(const std::vector<T>& inp, int start, int end) {
   }
   return result;
 }
+
+template <typename T, typename U>
+std::vector<U> VectorFlatMap(
+    const std::vector<T>& inp,
+    const std::function<std::vector<U>(const T&)>& func) {
+  std::vector<U> result;
+  for (const auto& i : inp) {
+    result = ConcatVector(result, func(i));
+  }
+  return result;
+}
 }  // namespace cinn::fusion
