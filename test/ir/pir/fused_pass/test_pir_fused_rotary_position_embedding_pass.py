@@ -93,7 +93,7 @@ slice slice                    \                   squeeze       unsqueeze      
             for k_shape in [[1, 1, 32, 128]]:
                 for cos_shape in [[1, 1, 1, 128]]:
                     for sin_shape in [[1, 1, 1, 128]]:
-                        for position_ids_shape in [[1, 32]]:
+                        for position_ids_shape in [[1, 1]]:
                             with paddle.pir_utils.IrGuard():
                                 start_prog = paddle.static.Program()
                                 main_prog = paddle.static.Program()
@@ -121,8 +121,8 @@ slice slice                    \                   squeeze       unsqueeze      
                                         shape=position_ids_shape,
                                         dtype='int32',
                                     )
-                                    cos = paddle.squeeze(cos, axis=[0, 2])
-                                    sin = paddle.squeeze(sin, axis=[0, 2])
+                                    cos = cos.squeeze(axis=[0, 2])
+                                    sin = sin.squeeze(axis=[0, 2])
                                     cos = cos[position_ids].unsqueeze(2)
                                     sin = sin[position_ids].unsqueeze(2)
 
@@ -166,14 +166,16 @@ slice slice                    \                   squeeze       unsqueeze      
                                         "pd_op.unsqueeze": 0,
                                         "pd_op.concat": 0,
                                         "pd_op.multiply": 0,
+                                        "pd_op.full": 0,
+                                        "pd_op.full_int_array": 0,
                                         "pd_op.add": 0,
                                         "pd_op.slice": 0,
                                         "pd_op.scale": 0,
-                                        "pd_op.full": 0,
+                                        "builtin.combine": 0,
                                         "pd_op.gather_nd": 0,
                                         "pd_op.fused_rotary_position_embedding": 1,
                                     }
-                                    yield [main_prog, start_prog], False,
+                                    yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():
