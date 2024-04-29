@@ -352,7 +352,6 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : divide
   args : (Tensor x, Tensor y)

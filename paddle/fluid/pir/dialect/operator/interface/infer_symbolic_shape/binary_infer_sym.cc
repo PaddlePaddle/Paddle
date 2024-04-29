@@ -91,33 +91,23 @@ bool BceLossOpInferSymbolicShape(
     return dim_expr_vector;
   }();
 
-  common::DDim input_dims = details::DimExprVec2DDim(input_dim_expr_vector);
-  common::DDim label_dims = details::DimExprVec2DDim(label_dim_expr_vector);
-  int rank = input_dims.size();
+  int rank = input_dim_expr_vector.size();
 
   PADDLE_ENFORCE_EQ(rank,
-                    label_dims.size(),
+                    label_dim_expr_vector.size(),
                     phi::errors::InvalidArgument(
                         "Input(X) and Input(Label) shall have the same rank."
                         "But received: the rank of Input(X) is [%d], "
                         "the rank of Input(Label) is [%d].",
                         rank,
-                        label_dims.size()));
+                        label_dim_expr_vector.size()));
 
-  bool check = true;
-  if (common::product(input_dims) <= 0 || common::product(label_dims) <= 0) {
-    check = false;
-  }
+  // TODO(WintersMontagne10335): CINN currently does not support comparing
+  // symbol::DimExpr with 0
 
-  if (check) {
-    PADDLE_ENFORCE_EQ(input_dims,
-                      label_dims,
-                      phi::errors::InvalidArgument(
-                          "Input(X) and Input(Label) shall have the same "
-                          "shape. But received: the shape of Input(X) is "
-                          "[%s], the shape of Input(Label) is [%s].",
-                          input_dims,
-                          label_dims));
+  for (int i = 0; i < rank; i++) {
+    shape_analysis->AddEqualCstr(input_dim_expr_vector[i],
+                                 label_dim_expr_vector[i]);
   }
 
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
@@ -224,91 +214,6 @@ bool Conv2dOpInferSymbolicShape(
 bool Conv3dOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return Conv2dOpInferSymbolicShape(op, shape_analysis);
-}
-
-bool DistributeFpnProposalsOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &attributes = op->attributes();
-  int max_level =
-      attributes.at("max_level").dyn_cast<pir::Int32Attribute>().data();
-  int min_level =
-      attributes.at("min_level").dyn_cast<pir::Int32Attribute>().data();
-  const auto multi_fpn_rois_shape_or_data_list =
-      shape_analysis->GetShapeOrDataForValue(op->result(0))
-          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-  const auto multi_level_rois_num_shape_or_data_list =
-      shape_analysis->GetShapeOrDataForValue(op->result(1))
-          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-  const auto restore_index_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->result(2));
-
-  PADDLE_ENFORCE_GE(multi_fpn_rois_shape_or_data_list.size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "Outputs(MultiFpnRois) of "
-                        "DistributeFpnProposalsOp should not be empty"));
-  PADDLE_ENFORCE_GE(
-      max_level,
-      min_level,
-      phi::errors::InvalidArgument(
-          "max_level must not lower than "
-          "min_level. But received max_level = %d, min_level = %d",
-          max_level,
-          min_level));
-
-  const symbol::TensorListShapeOrDataDimExprs
-      &multi_fpn_rois_shape_dim_exprs_list = [&] {
-        symbol::TensorListShapeOrDataDimExprs
-            multi_fpn_rois_shape_dim_exprs_list;
-        std::vector<symbol::DimExpr> vec{-1, 4};
-        auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
-
-        for (auto &multi_fpn_rois_shape_or_data :
-             multi_fpn_rois_shape_or_data_list) {
-          // if(multi_fpn_rois_shape_or_data==NULL)
-          //   continue;
-          multi_fpn_rois_shape_dim_exprs_list.emplace_back(shape_dim_exprs);
-        }
-
-        return multi_fpn_rois_shape_dim_exprs_list;
-      }();
-
-  const symbol::TensorListShapeOrDataDimExprs
-      &multi_level_rois_num_shape_dim_exprs_list = [&] {
-        symbol::TensorListShapeOrDataDimExprs
-            multi_level_rois_num_shape_dim_exprs_list;
-        std::vector<symbol::DimExpr> vec{-1};
-        auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
-
-        for (auto &multi_level_rois_num_shape_or_data :
-             multi_level_rois_num_shape_or_data_list) {
-          // if(multi_level_rois_num_shape_or_data==NULL)
-          //   continue;
-          multi_level_rois_num_shape_dim_exprs_list.emplace_back(
-              shape_dim_exprs);
-        }
-
-        return multi_level_rois_num_shape_dim_exprs_list;
-      }();
-
-  const symbol::TensorShapeOrDataDimExprs &restore_index_shape_dim_exprs = [&] {
-    std::vector<symbol::DimExpr> vec{-1};
-    auto restore_index_shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
-
-    return restore_index_shape_dim_exprs;
-  }();
-
-  shape_analysis->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs(multi_fpn_rois_shape_dim_exprs_list));
-  shape_analysis->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs(multi_level_rois_num_shape_dim_exprs_list));
-  shape_analysis->SetShapeOrDataForValue(
-      op->result(2),
-      symbol::ShapeOrDataDimExprs{restore_index_shape_dim_exprs});
-
-  return true;
 }
 
 bool EmbeddingOpInferSymbolicShape(

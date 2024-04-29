@@ -20,6 +20,7 @@ import numpy as np
 from scipy.special import logit
 from test_infer_sym_shape_utils import (
     TestBase,
+    apply_to_static,
     check_infer_results,
 )
 
@@ -29,7 +30,7 @@ from paddle import _C_ops
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-from utils import apply_to_static
+# from utils import apply_to_static
 
 
 class ExpandNet(paddle.nn.Layer):
@@ -209,7 +210,6 @@ class SigmoidCrossEntropyWithLogitsOpInferSymbolicShapeTest(TestBase):
             'shape[S0, S1], data[NULL]',
         ]
 
-    @unittest.skip("TODO: WintersMontagne10335")
     def test_eval_symbolic(self):
         net = SigmoidCrossEntropyWithLogitsNet()
 
@@ -232,7 +232,6 @@ class SigmoidCrossEntropyWithLogitsOpInferSymbolicShapeTest(TestBase):
             net = apply_to_static(net, False, input_spec)
             net.eval()
 
-            # RuntimeError: Unexpected index
             check_infer_results(
                 net,
                 input_spec,

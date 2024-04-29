@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
+    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 from paddle.static import InputSpec
 
-sys.path.append(dirname(dirname(__file__)))
-from utils import apply_to_static
+# sys.path.append(dirname(dirname(__file__)))
+# from utils import apply_to_static
 
 
 class BCELossNet(paddle.nn.Layer):
@@ -47,10 +46,9 @@ class BceLossOpInferSymbolicShapeTest(TestBase):
         ]
 
         self.expected = [
-            'shape[S0, S3], data[NULL]',
+            'shape[S0, S1], data[NULL]',
         ]
 
-    @unittest.skip("TODO: WintersMontagne10335")
     def test_eval_symbolic(self):
         net = BCELossNet()
 
@@ -71,7 +69,6 @@ class BceLossOpInferSymbolicShapeTest(TestBase):
 
             expected_symbol = [self.expected[i]]
 
-            # RuntimeError: Unexpected index
             check_infer_results(
                 net, input_spec, 'pd_op.bce_loss', expected_symbol
             )
