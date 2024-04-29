@@ -30,6 +30,8 @@
 
 namespace {
 
+// TODO(SigureMo): Consider use trait to check whether the operation is
+// commutative.
 static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
     commutative_ops = {
         {"pd_op.multiply", {{0, 1}}},
@@ -47,8 +49,8 @@ static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
 };
 
 template <typename T>
-std::vector<T> SortIndicesElements(const std::vector<T>& vec,
-                                   const std::vector<size_t>& indices) {
+std::vector<T> SortElementsAtIndices(const std::vector<T>& vec,
+                                     const std::vector<size_t>& indices) {
   std::vector<T> selected_elements;
   for (auto& idx : indices) {
     selected_elements.push_back(vec[idx]);
@@ -106,46 +108,78 @@ bool IsTerminateValue(const pir::Value& value) {
 struct ExpressionTable {
  public:
   ExpressionTable() = default;
-  void Insert(pir::Operation* op) { known_ops_[CalcOperationHash(op)] = op; }
+  void RegisiterOp(pir::Operation* op) {
+    auto op_hash = CalcOperationHash(op);
+    auto op_can_be_safe_to_replace = CalcOperationCanBeSafeToReplace(op);
+    VLOG(3) << "[RegisiterOp] op " << op->name() << " [" << op << "]"
+            << "\n  hash: " << op_hash
+            << "\n  can_be_safe_to_replace: " << std::boolalpha
+            << op_can_be_safe_to_replace;
+    registered_ops_info_[reinterpret_cast<void*>(op)] = {
+        op_hash, op_can_be_safe_to_replace};
+  }
+
+  size_t GetOperationHash(pir::Operation* op) {
+    PADDLE_ENFORCE_EQ(
+        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        1,
+        phi::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op->name()));
+    return registered_ops_info_[reinterpret_cast<void*>(op)].first;
+  }
+
+  bool GetOperationCanBeSafeToReplace(pir::Operation* op) {
+    PADDLE_ENFORCE_EQ(
+        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        1,
+        phi::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op->name()));
+    return registered_ops_info_[reinterpret_cast<void*>(op)].second;
+  }
+
+  void Insert(pir::Operation* op) { common_exprs_[GetOperationHash(op)] = op; }
 
   std::optional<pir::Operation*> Lookup(pir::Operation* op) {
-    VLOG(6) << "[Lookup] op [" << op << "] " << op->name() << " start";
-    size_t hash = CalcOperationHash(op);
-    if (!known_ops_.count(hash)) {
+    VLOG(3) << "[Lookup] op [" << op << "] " << op->name() << " start";
+    size_t hash = GetOperationHash(op);
+    if (!common_exprs_.count(hash)) {
       return std::nullopt;
     }
-    VLOG(6) << "[Lookup] op [" << op << "] " << op->name()
-            << " found common subexpression: " << known_ops_[hash]->name();
-    return known_ops_[hash];
+    VLOG(3) << "[Lookup] op [" << op << "] " << op->name()
+            << " found common subexpression: " << common_exprs_[hash]->name();
+    return common_exprs_[hash];
   }
 
   size_t CalcOperationHash(pir::Operation* op) {
-    if (operation_hash_cache_.count(reinterpret_cast<void*>(op))) {
-      return operation_hash_cache_[reinterpret_cast<void*>(op)];
-    }
+    PADDLE_ENFORCE_EQ(
+        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        0,
+        phi::errors::PreconditionNotMet(
+            "The operation %s is already registered in the table, don't call "
+            "CalcOperationHash twice.",
+            op->name()));
     // hash(op) = hash(operands) ^ hash(name) ^ hash(attributes)
     size_t hash = 0;
-    VLOG(6) << "[CalcOperationHash] op [" << op << "] " << op->name()
+    VLOG(3) << "[CalcOperationHash] op [" << op << "] " << op->name()
             << " start";
 
     std::vector<size_t> values_hash;
     for (auto& value : op->operands_source()) {
-      // hash = pir::detail::hash_combine(hash, CalcValueHash(value));
       values_hash.push_back(CalcValueHash(value));
     }
     if (commutative_ops.count(op->name())) {
       for (auto& commutative_indices : commutative_ops[op->name()]) {
-        values_hash = SortIndicesElements(values_hash, commutative_indices);
+        values_hash = SortElementsAtIndices(values_hash, commutative_indices);
       }
     }
     for (auto& value_hash : values_hash) {
       hash = pir::detail::hash_combine(hash, value_hash);
     }
-    VLOG(6) << "[CalcOperationHash] "
+    VLOG(3) << "[CalcOperationHash] "
             << "value hash: " << hash;
     hash =
         pir::detail::hash_combine(hash, std::hash<std::string>{}(op->name()));
-    VLOG(6) << "[CalcOperationHash] "
+    VLOG(3) << "[CalcOperationHash] "
             << "value + name hash: " << hash;
     for (auto& attr_name : op->info().GetAttributesName()) {
       hash =
@@ -153,18 +187,17 @@ struct ExpressionTable {
       auto attr = op->attribute(attr_name);
       hash = pir::detail::hash_combine(hash, attr.hash());
     }
-    VLOG(6) << "[CalcOperationHash] "
+    VLOG(3) << "[CalcOperationHash] "
             << "value + name + attr hash: " << hash;
-    VLOG(6) << "[CalcOperationHash] op [" << op << "] " << op->name()
-            << "hash: " << hash;
-    operation_hash_cache_[reinterpret_cast<void*>(op)] = hash;
+    VLOG(3) << "[CalcOperationHash] op [" << op << "] " << op->name()
+            << " hash: " << hash;
     return hash;
   }
 
   size_t CalcValueHash(const pir::Value& value) {
     // hash(value) = hash(defining_op) ^ value_id
     if (!IsTerminateValue(value)) {
-      return pir::detail::hash_combine(CalcOperationHash(value.defining_op()),
+      return pir::detail::hash_combine(GetOperationHash(value.defining_op()),
                                        GetOpResultId(value));
     }
     // hash(termiante_value) = terminate_value_id
@@ -185,29 +218,71 @@ struct ExpressionTable {
     return value_id;
   }
 
+  bool CalcOperationCanBeSafeToReplace(pir::Operation* op) {
+    PADDLE_ENFORCE_EQ(
+        registered_ops_info_.count(reinterpret_cast<void*>(op)),
+        0,
+        phi::errors::PreconditionNotMet(
+            "The operation %s is already registered in the table, don't call "
+            "CalcOperationCanBeSafeToReplace twice.",
+            op->name()));
+    if (op->HasTrait<pir::SideEffectTrait>()) {
+      VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+              << " has side effect";
+      return false;
+    }
+    for (auto& value : op->operands_source()) {
+      if (IsTerminateValue(value)) {
+        continue;
+      }
+      if (!GetOperationCanBeSafeToReplace(value.defining_op())) {
+        VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+                << " has operand " << value.defining_op()->name()
+                << " which can not be safe to replace";
+        return false;
+      }
+      for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+        auto inplace_info = GetOpInplaceInfo(it->owner());
+        for (auto& [out_idx, in_idx] : inplace_info) {
+          if (it->owner()->operands()[in_idx].source() == value) {
+            VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+                    << " has operand " << value.defining_op()->name()
+                    << " which is inplace to " << it->owner()->name();
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
  private:
-  std::unordered_map<size_t, pir::Operation*> known_ops_;
-  std::unordered_map<void*, size_t> operation_hash_cache_;
+  std::unordered_map<size_t, pir::Operation*> common_exprs_;
+  std::unordered_map<void*, std::pair<size_t, bool>> registered_ops_info_;
   std::unordered_map<pir::Value, size_t> terminate_value_id_map_;
   size_t terminate_value_id_ = 0;
 };
 
-using TerminateValueIdMap = std::unordered_map<pir::Value, size_t>;
-
 struct CSEAnalyzer {
  public:
   CSEAnalyzer() = default;
-  void SimplifyOperation(pir::Operation* op) {
-    VLOG(6) << "[SimplifyOperation] op [" << op << "]";
+  void SimplifyOperation(pir::Operation* op,
+                         ExpressionTable* expression_table) {
+    VLOG(3) << "[SimplifyOperation] op [" << op << "]";
     if (IsTerminateOp(op)) {
       return;
     }
-    auto maybe_same_expression = expression_table.Lookup(op);
-    if (!maybe_same_expression.has_value()) {
-      expression_table.Insert(op);
-    } else {
-      VLOG(6) << "Found common subexpression: " << op->name();
-      to_erase_ops.push_back(op);
+
+    expression_table->RegisiterOp(op);
+    auto maybe_same_expression = expression_table->Lookup(op);
+    if (expression_table->GetOperationCanBeSafeToReplace(op)) {
+      if (!maybe_same_expression.has_value()) {
+        expression_table->Insert(op);
+      } else {
+        VLOG(3) << "Found common subexpression: " << op->name();
+        to_erase_ops.push_back(
+            std::make_pair(op, maybe_same_expression.value()));
+      }
     }
     // Handle sub blocks
     for (auto& region : *op) {
@@ -218,33 +293,13 @@ struct CSEAnalyzer {
   }
 
   void SimplifyBlock(pir::Block* block) {
+    ExpressionTable expression_table;
     for (auto& op : *block) {
-      SimplifyOperation(&op);
+      SimplifyOperation(&op, &expression_table);
     }
   }
 
-  bool CanBeSafeToReplace(pir::Operation* op) {
-    if (op->HasTrait<pir::SideEffectTrait>()) {
-      return false;
-    }
-    for (auto& value : op->operands_source()) {
-      if (!CanBeSafeToReplace(value.defining_op())) {
-        return false;
-      }
-      for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-        auto inplace_info = GetOpInplaceInfo(it->owner());
-        for (auto& [out_idx, in_idx] : inplace_info) {
-          if (it->owner()->operands()[in_idx].source() == value) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
-  }
-
-  ExpressionTable expression_table;
-  std::vector<pir::Operation*> to_erase_ops;
+  std::vector<std::pair<pir::Operation*, pir::Operation*>> to_erase_ops;
 };
 
 pir::Value CreateAssignOp(const pir::Value& value,
@@ -253,12 +308,12 @@ pir::Value CreateAssignOp(const pir::Value& value,
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Builder builder(ctx, block);
   builder.set_insertion_point(op);
-  builder.Build<paddle::dialect::AssignOp>(value);
-  return value;
+  auto assign_op = builder.Build<paddle::dialect::AssignOp>(value);
+  return assign_op.result(0);
 }
 
 void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
-  VLOG(0) << "Replacing op " << op->name() << " [" << op << "] with new op "
+  VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
           << new_op->name() << " [" << new_op << "]";
   PADDLE_ENFORCE_EQ(
       op->num_results(),
@@ -291,12 +346,12 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     int64_t num_erasers{0};
     CSEAnalyzer cse_analyzer;
     cse_analyzer.SimplifyBlock(op->GetParentProgram()->block());
-    for (auto* op : cse_analyzer.to_erase_ops) {
-      auto existing_op = cse_analyzer.expression_table.Lookup(op).value();
-      if (!cse_analyzer.CanBeSafeToReplace(existing_op) ||
-          !cse_analyzer.CanBeSafeToReplace(op)) {
-        continue;
-      }
+    VLOG(3) << "Found " << cse_analyzer.to_erase_ops.size()
+            << " common subexpression";
+    for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
+      VLOG(3) << "Erasing op " << op->name() << " [" << op << "]";
+      VLOG(3) << "Replace to op " << existing_op->name() << " [" << existing_op
+              << "]";
       ReplaceOpWith(op, existing_op);
       num_erasers++;
     }

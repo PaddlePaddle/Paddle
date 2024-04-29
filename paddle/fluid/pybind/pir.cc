@@ -2149,7 +2149,6 @@ void InferSymbolicShapePass(
 void CommonSubexpressionEliminationPass(
     std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
     pir::Program &program) {                          // NOLINT
-  pir::IrContext *ctx = pir::IrContext::Instance();
   pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
 }
 
