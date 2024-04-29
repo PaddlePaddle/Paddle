@@ -464,43 +464,6 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
     }
   }
 
-  // if (check) {
-  //   PADDLE_ENFORCE_EQ(
-  //       common::slice_ddim(x_dim_expr_vector, 0, rank),
-  //       common::slice_ddim(label_dim_expr_vector, 0, rank),
-  //       phi::errors::InvalidArgument(
-  //           "Input(X) and Input(Label) shall have the same shape "
-  //           "except the last dimension. But received: the shape of "
-  //           "Input(X) is [%s], the shape of Input(Label) is [%s].",
-  //           x_dim_expr_vector,
-  //           label_dim_expr_vector));
-
-  //   if (shape_analysis->HasShapeOrDataForValue(op->operand_source(2))) {
-  //     const auto pos_weight_shape_or_data =
-  //         shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
-  //     const std::vector<symbol::DimExpr> &pos_weight_dim_expr_vector = [&] {
-  //       std::vector<symbol::DimExpr> dims;
-  //       if (pos_weight_shape_or_data.data().has_value()) {
-  //         dims = pos_weight_shape_or_data.data().value();
-  //       } else {
-  //         dims = pos_weight_shape_or_data.shape();
-  //       }
-  //       return dims;
-  //     }();
-  //     common::DDim pos_weight_dims =
-  //         details::DimExprVec2DDim(pos_weight_dim_expr_vector);
-  //     PADDLE_ENFORCE_EQ(
-  //         common::slice_ddim(pos_weight_dims, 0, rank),
-  //         common::slice_ddim(label_dim_expr_vector, 0, rank),
-  //         phi::errors::InvalidArgument(
-  //             "Input(pos_weight) and Input(Label) shall have the same shape "
-  //             "But received: the shape of Input(PosWeight) is [%s], "
-  //             "the shape of Input(Label) is [%s].",
-  //             pos_weight_dims,
-  //             label_dim_expr_vector));
-  //   }
-  // }
-
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dim_expr_vector = x_dim_expr_vector;
     return symbol::ShapeOrDataDimExprs{
