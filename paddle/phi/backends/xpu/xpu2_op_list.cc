@@ -1236,6 +1236,10 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"flash_attn_unpadded",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"mask_adaptive_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"sequence_unpad_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
   };
 
   return s_xpu2_kernels;

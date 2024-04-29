@@ -1089,7 +1089,18 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p, {})
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
