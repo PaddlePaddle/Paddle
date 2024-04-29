@@ -372,7 +372,7 @@ def main():
             tensor_gen.add_attribute(member.name, "Any")
 
     # Write to target file
-    with open(args.output_file, "w") as f:
+    with open(args.output_file, "w", encoding="utf-8") as f:
         f.write(tensor_gen.codegen())
 
 
