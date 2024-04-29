@@ -1435,6 +1435,10 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
                          true,
                          "Enable new IR in executor");
 
+PHI_DEFINE_EXPORTED_bool(logging_pir_py_code,
+                         false,
+                         "print pir py code into log file");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
