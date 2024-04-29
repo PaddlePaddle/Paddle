@@ -20,14 +20,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     init_env_utils
     SRCS init_env_utils.cc
-    DEPS layer
-         global_utils
-         dygraph_function
-         dygraph_node
-         grad_node_info
-         utils
-         backward
-         pir)
+    DEPS eager_api phi backward prim_utils)
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
   paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils)
