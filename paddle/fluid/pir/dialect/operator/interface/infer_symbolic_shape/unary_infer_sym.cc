@@ -1243,14 +1243,22 @@ bool UniqueOpInferSymbolicShape(pir::Operation *op,
     return inverse_dims;
   }();
 
+  bool return_index = GetBoolAttr(op, "return_index");
+  bool return_inverse = GetBoolAttr(op, "return_inverse");
+  bool return_counts = GetBoolAttr(op, "return_counts");
+
+  symbol::ShapeOrDataDimExprs empty{symbol::TensorShapeOrDataDimExprs{}};
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   infer_context->SetShapeOrDataForValue(
-      op->result(1), symbol::TensorShapeOrDataDimExprs{index_dims});
+      op->result(1),
+      return_index ? symbol::TensorShapeOrDataDimExprs{index_dims} : empty);
   infer_context->SetShapeOrDataForValue(
-      op->result(2), symbol::TensorShapeOrDataDimExprs{inverse_dims});
+      op->result(2),
+      return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims} : empty);
   infer_context->SetShapeOrDataForValue(
-      op->result(3), symbol::TensorShapeOrDataDimExprs{counts_dims});
+      op->result(3),
+      return_counts ? symbol::TensorShapeOrDataDimExprs{counts_dims} : empty);
 
   return true;
 }
@@ -1307,12 +1315,18 @@ bool UniqueConsecutiveOpInferSymbolicShape(
     return inverse_dims;
   }();
 
+  bool return_inverse = GetBoolAttr(op, "return_inverse");
+  bool return_counts = GetBoolAttr(op, "return_counts");
+
+  symbol::ShapeOrDataDimExprs empty{symbol::TensorShapeOrDataDimExprs{}};
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   infer_context->SetShapeOrDataForValue(
-      op->result(1), symbol::TensorShapeOrDataDimExprs{inverse_dims});
+      op->result(1),
+      return_inverse ? symbol::TensorShapeOrDataDimExprs{inverse_dims} : empty);
   infer_context->SetShapeOrDataForValue(
-      op->result(2), symbol::TensorShapeOrDataDimExprs{counts_dims});
+      op->result(2),
+      return_counts ? symbol::TensorShapeOrDataDimExprs{counts_dims} : empty);
 
   return true;
 }
