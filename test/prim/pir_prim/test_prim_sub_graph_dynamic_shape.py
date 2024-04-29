@@ -74,12 +74,20 @@ def index_sample_net(x, index):
     return paddle.index_sample(x, index)
 
 
+def bce_loss_net(x, label):
+    return paddle._C_ops.bce_loss(x, label)
+
+
 def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
 
 
 def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
+
+
+def dropout_net1(x):
+    return paddle.nn.functional.dropout(x, 0.5)
 
 
 group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
@@ -138,6 +146,10 @@ def layer_norm_net1(x):
 
 def flatten_net(x):
     return paddle.flatten(x, 1, 2)
+
+
+def meshgrid_net(x, y):
+    return paddle.meshgrid(x, y)
 
 
 class TestPrimBase(unittest.TestCase):
@@ -310,6 +322,23 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.tol = 1e-6
 
 
+class TestPrimBceLoss(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [20, 30, 40, 50]
+        self.y_shape = [20, 30, 40, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(0.1, 0.8, self.x_shape).astype(self.dtype_x)
+        self.y = np.random.randint(0, 2, self.x_shape).astype(self.dtype_y)
+        self.net = bce_loss_net
+        self.necessary_ops = "pd_op.bce_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimSwiglu1(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
@@ -468,6 +497,42 @@ class TestPrimGroupNorm7(TestPrimBase):
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 5e-6
+
+
+class TestPrimDropout(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.ones(self.shape_x).astype(self.dtype_x)
+        self.net = dropout_net1
+        self.necessary_ops = "pd_op.dropout"
+        self.enable_cinn = False
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=0.08)
+
+
+class TestPrimMeshgrid(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300]
+        self.shape_y = []
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = meshgrid_net
+        self.necessary_ops = "pd_op.meshgrid"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":

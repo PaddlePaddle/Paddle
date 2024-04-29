@@ -427,13 +427,13 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
-                                                                  recvbuff,
-                                                                  numel,
-                                                                  dtype,
-                                                                  nccl_red_type,
-                                                                  comm->comm(),
-                                                                  stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
+                                                             recvbuff,
+                                                             numel,
+                                                             dtype,
+                                                             nccl_red_type,
+                                                             comm->comm(),
+                                                             stream));
     }
 #else
     PADDLE_THROW(phi::errors::PreconditionNotMet(

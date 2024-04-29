@@ -107,8 +107,12 @@ class TestReshardPToR:
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
 
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._mesh
                 assert op_operand_dist_attr.process_mesh == self._mesh

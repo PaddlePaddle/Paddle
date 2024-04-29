@@ -56,14 +56,17 @@ endif()
 
 set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
-
+if(NOT WIN32)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized")
+endif()
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${EIGEN_PREFIX_DIR}
-  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}" -Wno-maybe-uninitialized"
-             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}" -Wno-maybe-uninitialized"
+  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   UPDATE_COMMAND ""
   PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
