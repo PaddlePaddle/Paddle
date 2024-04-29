@@ -531,6 +531,11 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         "in configs.output_spec is the output tensor of "
         "Layer.forward method."
     )
+    output_spec_is_not_value_error = (
+        "tensor `%s` is not support in pir mode, "
+        "because pir value has no name sometimes, especially as ouptut,"
+        " so we can't check tensor's name with output var name"
+    )
     if output_spec and with_hook:
         raise RuntimeError(
             "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
@@ -546,16 +551,24 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         if output_spec is not None:
             if len(output_spec) == len(result_list):
                 for var in output_spec:
-                    if var not in ValueSet(result_list):
-                        warnings.warn(name_no_exists_error % var.name)
+                    if not isinstance(var, paddle.pir.Value):
+                        warnings.warn(output_spec_is_not_value_error % var.name)
+                    else:
+                        if var not in ValueSet(result_list):
+                            warnings.warn(name_no_exists_error % var.name)
             else:
                 result_set = ValueSet(result_list)
                 result_list = []
                 for var in output_spec:
-                    if var not in result_set:
-                        raise ValueError(name_no_exists_error % var.name)
+                    if not isinstance(var, paddle.pir.Value):
+                        raise ValueError(
+                            output_spec_is_not_value_error % var.name
+                        )
                     else:
-                        result_list.append(var)
+                        if var not in result_set:
+                            raise ValueError(name_no_exists_error % var.name)
+                        else:
+                            result_list.append(var)
 
     else:
         output_vars_dict = OrderedDict()

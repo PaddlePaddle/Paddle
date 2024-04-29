@@ -782,6 +782,35 @@ std::string GetValueName(Value value) {
   }
 }
 
+void SetValueName(Value value, const std::string name) {
+  pir::Operation *define_op = value.defining_op();
+  if (define_op->isa<pir::ParameterOp>()) {
+    define_op->set_attribute(
+        "parameter_name",
+        pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  } else if (define_op->isa<paddle::dialect::DataOp>()) {
+    define_op->set_attribute(
+        "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      nextOp->set_attribute(
+          "output_name",
+          pir::StrAttribute::get(pir::IrContext::Instance(), name));
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only set name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only set name of Value that "
+        "is persistable"));
+  }
+}
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
@@ -913,8 +942,10 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
-      .def_property_readonly("name",
-                             [](Value self) { return GetValueName(self); })
+      .def_property(
+          "name",
+          [](Value self) { return GetValueName(self); },
+          [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly(
           "has_name",
           [](Value self) {

@@ -47,6 +47,11 @@ def _generate_unique_var_name(prefix):
     return unique_name.generate_with_ignorable_key(prefix)
 
 
+@switch_to_static_graph
+def _generate_unique_var_name(prefix):
+    return unique_name.generate(prefix)
+
+
 def _get_pir_persistable_var_names(program):
     persistable_vars = []
     persistable_names = []
@@ -54,6 +59,7 @@ def _get_pir_persistable_var_names(program):
         for var in block.all_parameters():
             if var.persistable:
                 persistable_vars.append(var)
+                var.name = _generate_unique_var_name(var.name)
                 persistable_names.append(var.name)
     return persistable_vars, persistable_names
 
@@ -78,7 +84,6 @@ class _PirProgramHolder:
             self._persistable_vars,
             self._persistable_names,
         ) = _get_pir_persistable_var_names(self._infer_program)
-
         block = self._infer_program.global_block()
         for op in block.ops:
             if op.name() == 'pd_op.data':
@@ -163,16 +168,27 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
     persistable_var_name = program_holder.persistable_names
-    for name, var in sorted(zip(persistable_var_name, persistable_var)):
-        new_var = core.eager.Tensor(
-            dtype=datatype_to_vartype[var.dtype],
-            dims=var.shape,
-            name=var.name,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            place=framework._current_expected_place(),
-            persistable=False,
-        )
 
+    for name, var in sorted(zip(persistable_var_name, persistable_var)):
+        if var.persistable:
+            # use default shape and dtype
+            new_var = framework.EagerParamBase(
+                shape=var.shape,  # only to pass check, this shape is not meaningful
+                dtype=core.VarDesc.VarType.FP32,
+                name=var.name,
+                persistable=True,
+            )
+        else:
+            new_var = core.eager.Tensor(
+                dtype=datatype_to_vartype[var.dtype],
+                dims=var.shape,
+                name=var.name,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                place=framework._current_expected_place(),
+                persistable=False,
+            )
+
+        new_var.stop_gradient = var.stop_gradient
         load_var_dict[name] = new_var
         load_var_list.append(new_var)
         load_densetensor_list.append(new_var.get_tensor())
