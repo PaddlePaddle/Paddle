@@ -168,14 +168,15 @@ void QuantizeLinearKernel(const Context& dev_ctx,
       auto* out_accum = dev_ctx.template Alloc<T>(out_accum);
       auto* out_scale = dev_ctx.template Alloc<T>(out_scale);
 
-      FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
-                                                         *in_accum,
-                                                         *in_state,
-                                                         cur_scale_data,
-                                                         moving_rate,
-                                                         out_state,
-                                                         out_accum,
-                                                         out_scale);
+      phi::funcs::FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
+          dev_ctx,
+          *in_accum,
+          *in_state,
+          cur_scale_data,
+          moving_rate,
+          out_state,
+          out_accum,
+          out_scale);
       if (only_observer) {
         framework::TensorCopy(*in, dev_ctx.GetPlace(), dev_ctx, out);
       } else {
