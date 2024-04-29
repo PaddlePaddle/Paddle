@@ -22,9 +22,18 @@ paddle.enable_static()
 
 class TestFusedRotaryPositionEmbeddingPass(PassTest):
     r"""
-    squeeze2     unsqueeze2           slice    slice
-       \     /                                  /
-        gather_nd                       \      scale
-          |                                    /
-        unsqueeze2                       concat
+      cos         position_ids                 k
+       |             |                       /    \
+    squeeze2     unsqueeze2               slice   slice
+       \     /                              |        |
+        gather_nd                           |     scale
+          |                                 \        /
+        unsqueeze2   q                        concat
+          |         /
+       elementwise_mul
+
+
+
+
+
     """

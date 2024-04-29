@@ -88,6 +88,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                                     {"value", pat.Attr("full_op_3")},
                                     {"dtype", pat.Attr("dtype_1")},
                                     {"place", pat.Attr("place_1")}});
+    // const auto &shape = pat.Op(paddle::dialect::ShapeOp::name());
 
     const auto &scale_op =
         pat.Op(paddle::dialect::ScaleOp::name(),
@@ -125,6 +126,8 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                                  {{"value", pat.Attr("full_12_value")}});
     const auto &full_13 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
                                  {{"value", pat.Attr("full_13_value")}});
+    const auto &full_14 = pat.Op(paddle::dialect::FullIntArrayOp::name(),
+                                 {{"value", pat.Attr("full_14_value")}});
 
     const auto &concat_op = pat.Op(paddle::dialect::ConcatOp::name());
     const auto &combine = pat.Op(pir::CombineOp::name());
@@ -154,6 +157,8 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     // unsqueeze_4对应的是163,164,17是position_ids,162是pd_op.full_int_array
     unsqueeze_4({&pat.Tensor("position_ids"), &full_8()},
                 {&pat.Tensor("unsqueeze_s_out_sin"), &pat.Tensor("xshape")});
+
+    // gather_nd对应165,153是pd_op.squeeze,163是pd_op.unsqueeze
     pat.Tensor("gather_nd_out_sin") = gather_nd_1(
         pat.Tensor("squeeze_out_sin"), pat.Tensor("unsqueeze_s_out_sin"));
 
@@ -190,7 +195,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         multiply3(pat.Tensor("concat_out"), pat.Tensor("unsqueeze_out_sin"));
 
     // add对应182,169对应的multiply,181对应的是multiply
-    pat.Tensor("tmp_28") = add(pat.Tensor("tmp_27"), pat.Tensor("tmp_25"));
+    pat.Tensor("out_q") = add(pat.Tensor("tmp_25"), pat.Tensor("tmp_27"));
 
     // multiply2对应的是183,132是k,160是pd.op.unsqueeze
     pat.Tensor("tmp_29") =
@@ -200,7 +205,8 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("k_slice_out1") = slice_k(pat.Tensor("k"), full_5(), full_6());
 
     // slice_k_1对应的是189,132对应的是k,然后两个pd_op.full_int_array
-    pat.Tensor("k_slice_out2") = slice_k_1(pat.Tensor("k"), full_7(), full_8());
+    pat.Tensor("k_slice_out2") =
+        slice_k_1(pat.Tensor("k"), full_7(), full_14());
 
     // 191是scale_op_k,189对应的是slice,190对应的是pd_op.full
     scale_op_k({&pat.Tensor("k_slice_out2"), &full_op_1()},
@@ -212,7 +218,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     combine_in_k.push_back(&pat.Tensor("k_slice_out1"));
     combine_k(combine_in_k, {&pat.Tensor("combine_out_k")});
 
-    // concat_op_k对应的是194,192为conbine,193位pd_op.full
+    // concat_op_k对应的是194,192为conbine,193为pd_op.full
     concat_op_k({&pat.Tensor("combine_out_k"), &full_op_2()},
                 {&pat.Tensor("concat_out_k")});
 
@@ -220,7 +226,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("tmp_31") =
         multiply4(pat.Tensor("concat_out_k"), pat.Tensor("unsqueeze_out_sin"));
     // tmp_29对应的%183,tmp_31对应的是%195
-    pat.Tensor("tmp_32") = add_1(pat.Tensor("tmp_29"), pat.Tensor("tmp_31"));
+    pat.Tensor("out_k") = add_1(pat.Tensor("tmp_29"), pat.Tensor("tmp_31"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto check_axes = [&](const std::vector<int64_t> &axes) {
@@ -283,17 +289,11 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    // const auto &combine_1 = res.Op("builtin.combine");
-    // combine_1({&res.Tensor("scale_out"), &res.Tensor("q_slice_out1")},
-    //           {&res.Tensor("combine_out")});
-    // const auto &combine_2 = res.Op("builtin.combine");
-    // combine_1({&res.Tensor("scale_out_k"), &res.Tensor("k_slice_out1")},
-    //           {&res.Tensor("combine_out")});
 
     const auto &fused_rotary_position_embedding =
         res.Op(paddle::dialect::FusedRotaryPositionEmbeddingOp::name(),
                {
-                   {"use_neox_rotary_stype", res.BoolAttr(true)},
+                   {"use_neox_rotary_style", res.BoolAttr(true)},
                    {"time_major", res.BoolAttr(false)},
                    {"rotary_emb_base", res.Float32Attr(10000.0)},
                });
@@ -301,11 +301,11 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     fused_rotary_position_embedding(
         {&res.Tensor("q"),
          &res.Tensor("k"),
-         &res.Tensor("v"),
+         &res.InputNoneTensor(),
          &res.Tensor("sin"),
          &res.Tensor("cos"),
          &res.Tensor("position_ids")},
-        {&res.Tensor("out_q"), &res.Tensor("out_k"), &res.Tensor("out_v")});
+        {&res.Tensor("out_q"), &res.Tensor("out_k"), &res.OutputNoneTensor()});
   }
 };
 class FusedRotaryPositionEmbeddingPass : public pir::PatternRewritePass {
