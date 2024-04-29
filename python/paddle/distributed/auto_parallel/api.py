@@ -1934,12 +1934,6 @@ class DistModel:
                 self._engine._inputs_spec,
                 self._engine._labels_spec,
             ) = self._engine._prepare_data_spec_from_dataloader(loader)
-            print(
-                "input_spec:",
-                self._engine._inputs_spec,
-                "label_spec:",
-                self._engine._labels_spec,
-            )
         else:
             batch_size = loader.batch_sampler.batch_size
             (
@@ -2221,7 +2215,6 @@ class DistModel:
         feeds = self._make_feeds(feed_list)
         outs = self._engine.run(feeds)
         self.outs = outs
-        # print(outs)
 
         if self._mode == "predict":
             if "outputs" in outs:
