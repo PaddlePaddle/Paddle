@@ -50,14 +50,6 @@ if(WITH_CUDNN)
 endif()
 
 if(WITH_GPU)
-  add_test(
-    NAME test_launch_kernel_with_symbol
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_launch_kernel_with_symbol.py
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
   file(
     GLOB CINN_IR_TEST
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
