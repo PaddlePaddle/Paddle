@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 #include <unordered_map>
 
 #include "paddle/pir/include/core/type_id.h"
