@@ -298,7 +298,7 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
       platform::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
 
-  WuaucRecord record;
+  WuaucRecord record = {0, 0, 0};
   record.uid_ = uid;
   record.label_ = label;
   record.pred_ = static_cast<float>(pred);
@@ -320,7 +320,7 @@ void BasicAucCalculator::computeWuAuc() {
               }
             });
 
-  WuaucRocData roc_data;
+  WuaucRocData roc_data = {0, 0, 0};
   uint64_t prev_uid = 0;
   size_t prev_pos = 0;
   for (size_t i = 0; i < wuauc_records_.size(); ++i) {
