@@ -1269,6 +1269,17 @@ PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
                          "Whether disable dyshape in training.");
 
 /**
+ * CINN accuracy check related FLAG
+ * Name: FLAGS_enable_cinn_accuracy_check
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
+                         false,
+                         "Whether enable accuracy check in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0

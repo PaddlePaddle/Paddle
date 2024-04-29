@@ -42,6 +42,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
@@ -544,6 +545,10 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int maxlen,
                            DataType out_dtype,
                            MetaTensor* y);
+
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out);
 
 void ShuffleBatchInferMeta(const MetaTensor& x,
                            const MetaTensor& seed,
