@@ -131,7 +131,8 @@ struct GroupSumsOp {
 };
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams<__half> params) {
+__global__ void skipGroupNormNDHWCSumKernel(
+    GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -224,21 +225,22 @@ __global__ void skipGroupNormNHWCSumKernel(GroupNormNHWCParams<__half> params) {
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
-                          cudaStream_t stream) {
+void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
+                           cudaStream_t stream) {
   // Make sure the values are as we expect.
-  PADDLE_ENFORCE_EQ(
-      params.c % params.cPerBlock,
-      0,
-      platform::errors::InvalidArgument(
-          "The groupNormNHWCSum of SkipGroupnormAct Plugin got wrong parameters"
-          "params.c %% params.cPerBlock should be 0, but get %d.",
-          params.c % params.cPerBlock));
+  PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The groupNormNDHWCSum of SkipGroupnormAct Plugin got "
+                        "wrong parameters"
+                        "params.c %% params.cPerBlock should be 0, but get %d.",
+                        params.c % params.cPerBlock));
   PADDLE_ENFORCE_EQ(
       params.dhw % params.dhwPerBlock,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCSum of SkipGroupnormAct Plugin got wrong parameters"
+          "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
+          "parameters"
           "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
           params.dhw % params.dhwPerBlock));
   // Make sure a group does not span multiple blocks.
@@ -246,7 +248,8 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
       params.cPerBlock % params.cPerGroup,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCSum of SkipGroupnormAct Plugin got wrong parameters"
+          "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
+          "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
   dim3 grid;
@@ -260,30 +263,30 @@ void skipGroupNormNHWCSum(GroupNormNHWCParams<__half> const &params,
 
   switch (params.cPerBlock) {
     case 320:
-      skipGroupNormNHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
+      skipGroupNormNDHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
       break;
     case 480:
-      skipGroupNormNHWCSumKernel<256><<<grid, 256, 0, stream>>>(params);
+      skipGroupNormNDHWCSumKernel<256><<<grid, 256, 0, stream>>>(params);
       break;
     case 256:
-      skipGroupNormNHWCSumKernel<128><<<grid, 128, 0, stream>>>(params);
+      skipGroupNormNDHWCSumKernel<128><<<grid, 128, 0, stream>>>(params);
       break;
     case 128:
-      skipGroupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
+      skipGroupNormNDHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
     case 8:
-      skipGroupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      skipGroupNormNDHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCSum of SkipGroupnormAct TRT Plugin "
+          "The function groupNormNDHWCSum of SkipGroupnormAct TRT Plugin "
           "encounter error"));
   }
 }
 
 template <int32_t tTHREADS_PER_BLOCK>
-__global__ void skipGroupNormNHWCScaleKernel(
-    GroupNormNHWCParams<__half> params) {
+__global__ void skipGroupNormNDHWCScaleKernel(
+    GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -354,22 +357,23 @@ __global__ void skipGroupNormNHWCScaleKernel(
   }
 }
 
-void skipGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
-                            cudaStream_t stream) {
+void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
+                             cudaStream_t stream) {
   // Make sure the dimensions are aligned with what we expect.
-  PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The groupNormNHWCScale of SkipGroupnormAct Plugin got "
-                        "wrong parameters"
-                        "params.c %% params.cPerBlock should be 0, but get %d.",
-                        params.c % params.cPerBlock));
+  PADDLE_ENFORCE_EQ(
+      params.c % params.cPerBlock,
+      0,
+      platform::errors::InvalidArgument(
+          "The groupNormNDHWCScale of SkipGroupnormAct Plugin got "
+          "wrong parameters"
+          "params.c %% params.cPerBlock should be 0, but get %d.",
+          params.c % params.cPerBlock));
   // Make sure a group does not span multiple blocks.
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
       platform::errors::InvalidArgument(
-          "The groupNormNHWCScale of SkipGroupnormAct Plugin got wrong "
+          "The groupNormNDHWCScale of SkipGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
@@ -384,23 +388,23 @@ void skipGroupNormNHWCScale(GroupNormNHWCParams<__half> const &params,
 
   switch (params.cPerBlock) {
     case 320:
-      skipGroupNormNHWCScaleKernel<160><<<grid, 160, 0, stream>>>(params);
+      skipGroupNormNDHWCScaleKernel<160><<<grid, 160, 0, stream>>>(params);
       break;
     case 480:
-      skipGroupNormNHWCScaleKernel<256><<<grid, 256, 0, stream>>>(params);
+      skipGroupNormNDHWCScaleKernel<256><<<grid, 256, 0, stream>>>(params);
       break;
     case 256:
-      skipGroupNormNHWCScaleKernel<128><<<grid, 128, 0, stream>>>(params);
+      skipGroupNormNDHWCScaleKernel<128><<<grid, 128, 0, stream>>>(params);
       break;
     case 128:
-      skipGroupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
+      skipGroupNormNDHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
     case 8:
-      skipGroupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      skipGroupNormNDHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
       PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCSum of SkipGroupnormAct TRT Plugin "
+          "The function groupNormNDHWCSum of SkipGroupnormAct TRT Plugin "
           "encounter error"));
   }
 }
@@ -482,8 +486,8 @@ int SkipGroupnormActPluginDynamic::enqueue(
     params_.eps = eps_;
 
     cudaMemsetAsync(params_.redBuffer, 0, ws_, stream);
-    skipGroupNormNHWCSum(params_, stream);
-    skipGroupNormNHWCScale(params_, stream);
+    skipGroupNormNDHWCSum(params_, stream);
+    skipGroupNormNDHWCScale(params_, stream);
 
   } else {
     // input not fp16

@@ -74,7 +74,7 @@ static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32SumKernelQDQ(
-    const GroupNormNHWCParams<__half> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -166,7 +166,7 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void groupNormNCHW32SumQDQ(const GroupNormNHWCParams<__half> &params,
+void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half> &params,
                            cudaStream_t stream) {
   dim3 grid;
 
@@ -198,7 +198,7 @@ void groupNormNCHW32SumQDQ(const GroupNormNHWCParams<__half> &params,
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32ScaleKernelQDQ(
-    const GroupNormNHWCParams<__half> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -290,7 +290,7 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   }
 }
 
-void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams<__half> &params,
+void groupNormNCHW32ScaleQDQ(const GroupNormNDHWCParams<__half> &params,
                              cudaStream_t stream) {
   dim3 grid;
 
@@ -710,10 +710,10 @@ int GroupNormPluginDynamic::enqueue(
                       2 * sizeof(float) * params_.n * groups_,
                       stream);
 
-      phi::groupNormNHWCSum<half> nhwc_sum;
-      nhwc_sum(&params_, stream);
-      phi::groupNormNHWCScale<half> nhwc_scale;
-      nhwc_scale(params_, stream);
+      phi::groupNormNDHWCSum<half> ndhwc_sum;
+      ndhwc_sum(&params_, stream);
+      phi::groupNormNDHWCScale<half> ndhwc_scale;
+      ndhwc_scale(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));

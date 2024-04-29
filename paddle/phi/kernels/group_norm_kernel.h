@@ -58,7 +58,7 @@ class GroupNormDirectCUDAFunctor {
 #endif
 
 template <typename T>
-struct GroupNormNHWCParams {
+struct GroupNormNDHWCParams {
   // The output buffer. Layout NDHWC.
   T* dst;
   // The output buffer. Layout NDHWC.
@@ -111,15 +111,15 @@ struct GroupNormNHWCParams {
 };
 
 template <typename T>
-class groupNormNHWCSum {
+class groupNormNDHWCSum {
  public:
-  void operator()(GroupNormNHWCParams<T>* params, const gpuStream_t stream);
+  void operator()(GroupNormNDHWCParams<T>* params, const gpuStream_t stream);
 };
 
 template <typename T>
-class groupNormNHWCScale {
+class groupNormNDHWCScale {
  public:
-  void operator()(const GroupNormNHWCParams<T>& params,
+  void operator()(const GroupNormNDHWCParams<T>& params,
                   const gpuStream_t stream);
 };
 

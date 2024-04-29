@@ -154,8 +154,8 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
 #endif
 
 template <typename T, int THREADS_PER_BLOCK>
-__global__ void groupNormNHWCSumSingerChannelKernel(
-    const GroupNormNHWCParams<T> params) {
+__global__ void groupNormNDHWCSumSingerChannelKernel(
+    const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
@@ -192,7 +192,7 @@ __global__ void groupNormNHWCSumSingerChannelKernel(
 }
 
 template <typename T, int THREADS_PER_BLOCK, int THREADS_PER_CHANNEL>
-__global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
+__global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, THREADS_PER_BLOCK> BlockScan;
   __shared__ typename BlockScan::TempStorage tempStorage;
@@ -255,8 +255,8 @@ __global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams<T> params) {
 }
 
 template <typename T>
-void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
-                                     gpuStream_t stream) {
+void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T>* params,
+                                      gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
   grid.y = divUp(params->dhw, params->dhwPerBlock);
@@ -265,83 +265,83 @@ void groupNormNHWCSum<T>::operator()(GroupNormNHWCParams<T>* params,
     switch (params->cPerBlock) {
       case 512:
       case 480:
-        groupNormNHWCSumKernel<T, 256, 2><<<grid, 256, 0, stream>>>(*params);
+        groupNormNDHWCSumKernel<T, 256, 2><<<grid, 256, 0, stream>>>(*params);
         break;
       case 320:
-        groupNormNHWCSumKernel<T, 160, 2><<<grid, 160, 0, stream>>>(*params);
+        groupNormNDHWCSumKernel<T, 160, 2><<<grid, 160, 0, stream>>>(*params);
         break;
       case 256:
-        groupNormNHWCSumKernel<T, 128, 2><<<grid, 128, 0, stream>>>(*params);
+        groupNormNDHWCSumKernel<T, 128, 2><<<grid, 128, 0, stream>>>(*params);
         break;
       case 128:
-        groupNormNHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
+        groupNormNDHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
         break;
       default:
         grid.x = divUp(params->c, 128);
         params->cPerBlock = 128;
-        groupNormNHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
+        groupNormNDHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
     }
   } else {
     if (params->cPerGroup != 1) {
       switch (params->cPerBlock) {
         case 512:
-          groupNormNHWCSumKernel<T, 512, 1><<<grid, 512, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 512, 1><<<grid, 512, 0, stream>>>(*params);
           break;
         case 480:
-          groupNormNHWCSumKernel<T, 480, 1><<<grid, 480, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 480, 1><<<grid, 480, 0, stream>>>(*params);
           break;
         case 320:
-          groupNormNHWCSumKernel<T, 320, 1><<<grid, 320, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 320, 1><<<grid, 320, 0, stream>>>(*params);
           break;
         case 256:
-          groupNormNHWCSumKernel<T, 256, 1><<<grid, 256, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 256, 1><<<grid, 256, 0, stream>>>(*params);
           break;
         case 128:
-          groupNormNHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
           break;
         default:
           grid.x = divUp(params->c, 128);
           params->cPerBlock = 128;
-          groupNormNHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
+          groupNormNDHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
       }
     } else {
       switch (params->cPerBlock) {
         case 512:
-          groupNormNHWCSumSingerChannelKernel<T, 512>
+          groupNormNDHWCSumSingerChannelKernel<T, 512>
               <<<grid, 512, 0, stream>>>(*params);
           break;
         case 480:
-          groupNormNHWCSumSingerChannelKernel<T, 480>
+          groupNormNDHWCSumSingerChannelKernel<T, 480>
               <<<grid, 480, 0, stream>>>(*params);
           break;
         case 320:
-          groupNormNHWCSumSingerChannelKernel<T, 320>
+          groupNormNDHWCSumSingerChannelKernel<T, 320>
               <<<grid, 320, 0, stream>>>(*params);
           break;
         case 256:
-          groupNormNHWCSumSingerChannelKernel<T, 256>
+          groupNormNDHWCSumSingerChannelKernel<T, 256>
               <<<grid, 256, 0, stream>>>(*params);
           break;
         case 128:
-          groupNormNHWCSumSingerChannelKernel<T, 128>
+          groupNormNDHWCSumSingerChannelKernel<T, 128>
               <<<grid, 128, 0, stream>>>(*params);
           break;
         default:
           grid.x = divUp(params->c, 128);
           params->cPerBlock = 128;
-          groupNormNHWCSumSingerChannelKernel<T, 128>
+          groupNormNDHWCSumSingerChannelKernel<T, 128>
               <<<grid, 128, 0, stream>>>(*params);
       }
     }
   }
 }
-template class groupNormNHWCSum<half>;
+template class groupNormNDHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int32_t dhwBegin,
                                         int32_t dhwEnd,
                                         int32_t ci,
-                                        const GroupNormNHWCParams<T>& params,
+                                        const GroupNormNDHWCParams<T>& params,
                                         float mean,
                                         float invStdDev) {
   float gamma =
@@ -372,7 +372,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
     int32_t dhwBegin,
     int32_t dhwEnd,
     int32_t ci,
-    const GroupNormNHWCParams<phi::dtype::float16>& params,
+    const GroupNormNDHWCParams<phi::dtype::float16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -415,7 +415,7 @@ inline __device__ void GroupNormCompute<__half, 2>(
     int32_t dhwBegin,
     int32_t dhwEnd,
     int32_t ci,
-    const GroupNormNHWCParams<__half>& params,
+    const GroupNormNDHWCParams<__half>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -459,7 +459,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int32_t dhwBegin,
     int32_t dhwEnd,
     int32_t ci,
-    const GroupNormNHWCParams<phi::dtype::bfloat16>& params,
+    const GroupNormNDHWCParams<phi::dtype::bfloat16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -501,7 +501,8 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
 #endif
 
 template <typename T, int THREADS_PER_CHANNEL>
-__global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
+__global__ void groupNormNDHWCScaleKernel(
+    const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -538,8 +539,8 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams<T> params) {
 }
 
 template <typename T>
-void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
-                                       gpuStream_t stream) {
+void groupNormNDHWCScale<T>::operator()(const GroupNormNDHWCParams<T>& params,
+                                        gpuStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
@@ -553,59 +554,59 @@ void groupNormNHWCScale<T>::operator()(const GroupNormNHWCParams<T>& params,
     switch (params.cPerBlock) {
       case 512:
       case 480:
-        groupNormNHWCScaleKernel<T, 2><<<grid, 256, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 2><<<grid, 256, 0, stream>>>(params);
         break;
       case 320:
-        groupNormNHWCScaleKernel<T, 2><<<grid, 160, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 2><<<grid, 160, 0, stream>>>(params);
         break;
       case 256:
-        groupNormNHWCScaleKernel<T, 2><<<grid, 128, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 2><<<grid, 128, 0, stream>>>(params);
         break;
       case 128:
-        groupNormNHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
         break;
       default:
         grid.x = divUp(params.c, 128);
-        groupNormNHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
     }
   } else {
     switch (params.cPerBlock) {
       case 512:
-        groupNormNHWCScaleKernel<T, 1><<<grid, 512, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 512, 0, stream>>>(params);
         break;
       case 480:
-        groupNormNHWCScaleKernel<T, 1><<<grid, 480, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 480, 0, stream>>>(params);
         break;
       case 320:
-        groupNormNHWCScaleKernel<T, 1><<<grid, 320, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 320, 0, stream>>>(params);
         break;
       case 256:
-        groupNormNHWCScaleKernel<T, 1><<<grid, 256, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 256, 0, stream>>>(params);
         break;
       case 128:
-        groupNormNHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
         break;
       default:
         grid.x = divUp(params.c, 128);
-        groupNormNHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
+        groupNormNDHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
     }
   }
 }
-template class groupNormNHWCScale<half>;
+template class groupNormNDHWCScale<half>;
 
 template <typename T, typename Context>
-void GroupNormNHWCKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
-                         float epsilon,
-                         int groups,
-                         const std::string& data_layout_str,
-                         DenseTensor* y,
-                         DenseTensor* mean,
-                         DenseTensor* var) {
+void GroupNormNDHWCKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const paddle::optional<DenseTensor>& scale,
+                          const paddle::optional<DenseTensor>& bias,
+                          float epsilon,
+                          int groups,
+                          const std::string& data_layout_str,
+                          DenseTensor* y,
+                          DenseTensor* mean,
+                          DenseTensor* var) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  GroupNormNHWCParams<T> params_;
+  GroupNormNDHWCParams<T> params_;
   params_.withSilu = false;
 
   const auto x_dims = x.dims();
@@ -692,10 +693,10 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
 #else
   cudaMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
 #endif
-  groupNormNHWCSum<T> nhwc_sum;
-  nhwc_sum(&params_, stream);
-  groupNormNHWCScale<T> nhwc_scale;
-  nhwc_scale(params_, stream);
+  groupNormNDHWCSum<T> ndhwc_sum;
+  ndhwc_sum(&params_, stream);
+  groupNormNDHWCScale<T> ndhwc_scale;
+  ndhwc_scale(params_, stream);
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpyAsync(mean_data,
                                      params_.redBuffer,
@@ -1026,22 +1027,7 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* var) {
   using std::is_same;
   if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
-    GroupNormNHWCKernel<phi::dtype::float16, Context>(dev_ctx,
-                                                      x,
-                                                      scale,
-                                                      bias,
-                                                      epsilon,
-                                                      groups,
-                                                      data_layout_str,
-                                                      y,
-                                                      mean,
-                                                      var);
-    return;
-  }
-
-#ifdef PADDLE_CUDA_BF16
-  if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
-    GroupNormNHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
+    GroupNormNDHWCKernel<phi::dtype::float16, Context>(dev_ctx,
                                                        x,
                                                        scale,
                                                        bias,
@@ -1051,6 +1037,21 @@ void GroupNormKernel(const Context& dev_ctx,
                                                        y,
                                                        mean,
                                                        var);
+    return;
+  }
+
+#ifdef PADDLE_CUDA_BF16
+  if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
+    GroupNormNDHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
+                                                        x,
+                                                        scale,
+                                                        bias,
+                                                        epsilon,
+                                                        groups,
+                                                        data_layout_str,
+                                                        y,
+                                                        mean,
+                                                        var);
     return;
   }
 #endif
