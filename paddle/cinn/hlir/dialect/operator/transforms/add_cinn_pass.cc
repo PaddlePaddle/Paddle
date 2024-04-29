@@ -52,7 +52,6 @@
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
-COMMON_DECLARE_bool(logging_pir_py_code);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -221,26 +220,10 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
-  if (FLAGS_logging_pir_py_code) {
-    LOG(ERROR) << "====[pir-to-py-code group-ops begin]===" << std::endl
-               << PirToPyCodeConverter().Convert(*program);
-    LOG(ERROR) << "====[pir-to-py-code group-ops end]===";
-  } else {
-    LOG(INFO) << "====[pir-to-py-code group-ops begin]===" << std::endl
-              << PirToPyCodeConverter().Convert(*program);
-    LOG(INFO) << "====[pir-to-py-code group-ops end]===";
-  }
+  PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  if (FLAGS_logging_pir_py_code) {
-    LOG(ERROR) << "====[pir-to-py-code fusion-ops begin]===" << std::endl
-               << PirToPyCodeConverter().Convert(*program);
-    LOG(ERROR) << "====[pir-to-py-code fusion-ops end]===";
-  } else {
-    LOG(INFO) << "====[pir-to-py-code fusion-ops begin]===" << std::endl
-              << PirToPyCodeConverter().Convert(*program);
-    LOG(INFO) << "====[pir-to-py-code fusion-ops end]===";
-  }
+  PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
