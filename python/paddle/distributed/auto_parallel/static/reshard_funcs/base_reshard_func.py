@@ -48,6 +48,7 @@ def is_shard(dist_attr):
             return True
     return False
 
+
 def is_partial(dist_attr):
     if len(dist_attr.partial_status) > 0:
         return True
