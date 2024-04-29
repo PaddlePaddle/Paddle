@@ -287,13 +287,15 @@ struct CSEAnalyzer {
     // Handle sub blocks
     for (auto& region : *op) {
       for (auto& block : region) {
-        SimplifyBlock(&block);
+        SimplifyBlock(&block, expression_table);
       }
     }
   }
 
-  void SimplifyBlock(pir::Block* block) {
-    ExpressionTable expression_table;
+  void SimplifyBlock(pir::Block* block,
+                     ExpressionTable* parent_expression_table) {
+    // Make a clone to inherit the expressions from parent block
+    ExpressionTable expression_table = *parent_expression_table;
     for (auto& op : *block) {
       SimplifyOperation(&op, &expression_table);
     }
@@ -345,7 +347,9 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     VLOG(6) << "apply common_subexpression_elimination_pass";
     int64_t num_erasers{0};
     CSEAnalyzer cse_analyzer;
-    cse_analyzer.SimplifyBlock(op->GetParentProgram()->block());
+    ExpressionTable root_expression_table;
+    cse_analyzer.SimplifyBlock(op->GetParentProgram()->block(),
+                               &root_expression_table);
     VLOG(3) << "Found " << cse_analyzer.to_erase_ops.size()
             << " common subexpression";
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
