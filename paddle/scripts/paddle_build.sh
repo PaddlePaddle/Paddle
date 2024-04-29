@@ -3972,8 +3972,6 @@ EOF
     # ci will collect ccache hit rate
     collect_ccache_hits
 
-    # clean build files
-    clean_build_files
 
     if [ "$build_error" != 0 ];then
         exit 7;
