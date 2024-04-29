@@ -1126,8 +1126,14 @@
     out_accum : OutAccum
 
 - op : fake_quantize_range_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    iter : Iter
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_scales : OutScales
 
 - op : fc
   inputs :
