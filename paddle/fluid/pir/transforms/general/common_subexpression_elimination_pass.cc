@@ -348,7 +348,7 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     ExpressionTable root_expression_table;
     cse_analyzer.SimplifyBlock(op->GetParentProgram()->block(),
                                &root_expression_table);
-    VLOG(3) << "Found " << cse_analyzer.to_erase_ops.size()
+    VLOG(0) << "Found " << cse_analyzer.to_erase_ops.size()
             << " common subexpression";
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
       VLOG(3) << "Erasing op " << op->name() << " [" << op << "]";
