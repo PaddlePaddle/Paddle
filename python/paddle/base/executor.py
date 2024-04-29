@@ -1152,6 +1152,11 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
+        from paddle.decomposition import decomp
+
+        core._set_prim_all_enabled(True)
+        decomp.decompose(program, [])
+        core._set_prim_all_enabled(False)
         return program, new_exe, data_op_infos
 
 

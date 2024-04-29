@@ -29,7 +29,8 @@ class CommunicationTestDistBase(unittest.TestCase):
         self._save_log_dir = save_log_dir
         self._log_dir = tempfile.TemporaryDirectory()
         self._num_of_devices = num_of_devices
-        self._device_list = [str(i) for i in range(num_of_devices)]
+        # self._device_list = [str(i) for i in range(num_of_devices)]
+        self._device_list = ["6", "7"]
         self._timeout = timeout
         self._seeds = [i + 10 for i in range(num_of_devices)]
         self._devices = ','.join(self._device_list)
