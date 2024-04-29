@@ -252,6 +252,14 @@ Tensor reciprocal_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
+  auto one = full<T>(empty_shape, 1, x.dtype());
+  auto ans = full<T>(empty_shape, -1, x.dtype()) *
+             (label * log<T>(x) + (one - label) * log<T>(one - x));
+  return ans;
+}
+
+template <typename T>
 Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   std::size_t x_ndims = x.dims().size();
   std::size_t y_ndims = y.dims().size();

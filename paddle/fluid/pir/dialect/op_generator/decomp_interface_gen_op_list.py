@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
@@ -60,6 +61,7 @@ decomp_interface_declare_gen_op_list = [
 decomp_interface_implementation_gen_op_list = [
     "any",
     "add_n",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
