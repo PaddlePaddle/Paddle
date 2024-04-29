@@ -1000,23 +1000,15 @@ class GatherOpPattern
     auto x = op.operand_source(0);
     auto index = op->operand_source(1);
     const int axis = [&]() -> int {
-      int axis = 0;
-      if (gather_op->attributes().count("index")) {
-        axis =
-            gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
-      } else {
-        auto axis_gen_op = op.operand_source(2).defining_op();
-        PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
-                          true,
-                          ::phi::errors::InvalidArgument(
-                              "Not Supported: The gather operator for CINN "
-                              "only supports constant value"));
-        auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-        axis = static_cast<int>(full_op.attribute("value")
-                                    .dyn_cast<::pir::FloatAttribute>()
-                                    .data());
-        return axis;
-      }
+      auto axis_gen_op = op.operand_source(2).defining_op();
+      PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
+                        true,
+                        ::phi::errors::InvalidArgument(
+                            "Not Supported: The gather operator for CINN "
+                            "only supports constant value"));
+      auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+      return static_cast<int>(
+          full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
     }();
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
