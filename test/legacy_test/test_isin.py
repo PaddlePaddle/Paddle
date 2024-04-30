@@ -34,8 +34,8 @@ DATA_CASES = [
 DATA_CASES_UNIQUE = [
     {'elements_data': np.array(-1.0), 'test_elements_data': np.array(1.0)},
     {
-        'elements_data': np.arange(0, 500).reshape([5, 10, 10]),
-        'test_elements_data': np.arange(200, 400),
+        'elements_data': np.arange(0, 1000).reshape([2, 5, 100]),
+        'test_elements_data': np.arange(200, 700),
     },
     {
         'elements_data': np.arange(-100, 100).reshape([2, 2, 5, 10]),

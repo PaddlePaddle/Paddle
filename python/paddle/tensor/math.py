@@ -8066,9 +8066,9 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
                 duplicate_mask = duplicate_mask.logical_not()
 
             mask = paddle.empty_like(duplicate_mask)
-            mask = sorted_index[duplicate_mask]
+            mask[sorted_index] = duplicate_mask
 
-            cmp = mask[0 : elements.numel()]
+            cmp = mask[0 : elements.numel()].reshape(elements.shape)
         else:
             sorted_test_elements = paddle.sort(test_elements_flat)
             idx = paddle.searchsorted(sorted_test_elements, elements_flat)
