@@ -3237,6 +3237,14 @@
       tensor_name : EndsTensor
       tensors_name : EndsTensorList
 
+- op : sparse_sum
+  attrs:
+    axis: axis
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
+
 - op : sparse_sync_batch_norm
   attrs:
     data_format: data_layout
