@@ -98,24 +98,27 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
                                          kAlignmentB,
                                          cutlass::arch::OpMultiplyAdd>;
 
-  cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
-  cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoord{params.M, params.N, params.K};
+  cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoor`d{params.M, params.N, params.K};
+  //cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
+
+  cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kBatched ;
+  // cutlass::gemm::BatchedGemmCoord problem_size = cutlass::gemm::BatchedGemmCoord{params.M, params.N, params.K, params.batch_count};
 
   using EpilogueOutputOp = typename Gemm::GemmKernel::Epilogue::OutputOp;
   typename EpilogueOutputOp::Params epilogue_op(ElementCompute(params.scale), ElementCompute(1.0));
   typename Gemm::Arguments arguments{
       mode,
       problem_size,
-      /* batch_count = */ 1,
+      params.batch_count,
       epilogue_op,
       reinterpret_cast<ElementInputA*>(const_cast<void*>(params.A)),
       reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B)),
       reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias)),
       reinterpret_cast<ElementOutput*>(params.D),
-      params.M* params.K,
-      params.K* params.N,
-      params.N,
-      params.M* params.N,
+      params.lda * params.M,
+      params.ldb * params.N,
+      (int64_t)0,
+      params.ldd * params.M,
       params.lda,
       params.ldb,
       (int64_t)0,

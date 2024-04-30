@@ -48,25 +48,31 @@ void fp8_fp8_bf16_gemm(
   int64_t device_id = place.GetDeviceId();
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
+  int rank = x.dims().size();
   int M=0;
   int K=0;
   int N=0;
-  int lda = x.dims()[1];
-  int ldb = y.dims()[1];
-  int ldd = out->dims()[1];
+  int lda = x.dims()[rank-1];
+  int ldb = y.dims()[rank-1];
+  int ldd = out->dims()[rank-1];
   if(!trans_x){
-    M = x.dims()[0];
-    K = x.dims()[1];
+    M = x.dims()[rank-2];
+    K = x.dims()[rank-1];
 
   }else{
-    M = x.dims()[1];
-    K = x.dims()[0];
+    M = x.dims()[rank-1];
+    K = x.dims()[rank-2];
   }
 
   if(!trans_y){
-    N = y.dims()[1];
+    N = y.dims()[rank-1];
   }else{
-    N = y.dims()[0];
+    N = y.dims()[rank-2];
+  }
+
+  int batch_count = 1;
+  for(size_t i=0; i<rank-2; ++i){
+    batch_count *= x.dims()[i];
   }
 
   void* dlhandler = phi::dynload::GetFP8FP8GemmFusedHandle();
@@ -102,6 +108,7 @@ void fp8_fp8_bf16_gemm(
       lda,
       ldb,
       ldd,
+      batch_count,
       place,
       stream,
       sm_version,

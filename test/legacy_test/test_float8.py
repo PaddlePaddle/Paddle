@@ -125,12 +125,13 @@ class TestFP8MatmulOp(unittest.TestCase):
         for self.device in ["gpu"]:
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn"]:
-                input1 = paddle.ones([16, 32], dtype=self.dtype)
-                input2 = paddle.ones([64, 32], dtype=self.dtype)
-                input3 = paddle.ones([16, 32], dtype=self.dtype)
-                input4 = paddle.ones([64, 32], dtype=self.dtype)
+                input1 = paddle.ones([4, 16, 32], dtype=self.dtype)
+                input2 = paddle.ones([4, 64, 32], dtype=self.dtype)
+                input3 = paddle.ones([4, 16, 32], dtype=self.dtype)
+                input4 = paddle.ones([4, 64, 32], dtype=self.dtype)
 
-                bias = paddle.ones([64], dtype="float32")
+                bias_fp16 = paddle.ones([64], dtype="float16")
+                bias_bf16 = paddle.ones([64], dtype="bfloat16")
 
                 input5 = np.ones((16, 32)).astype("float32")
                 input6 = np.ones((32, 64)).astype("float32")
@@ -139,10 +140,16 @@ class TestFP8MatmulOp(unittest.TestCase):
                     input2,
                     transpose_x=False,
                     transpose_y=True,
-                    bias=bias,
+                    bias=bias_fp16,
+                    scale=2.0,
                 )
                 output_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
-                    input3, input4, transpose_x=False, transpose_y=True
+                    input3,
+                    input4,
+                    transpose_x=False,
+                    transpose_y=True,
+                    bias=bias_bf16,
+                    scale=1.5,
                 )
                 expect_result = np.matmul(input5, input6)
 

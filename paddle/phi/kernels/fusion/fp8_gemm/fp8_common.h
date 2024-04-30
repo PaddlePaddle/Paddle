@@ -37,6 +37,7 @@ typedef struct {
   int lda;
   int ldb;
   int ldd;
+  int batch_count = 1;
   const phi::GPUPlace& place;
   cudaStream_t stream;
   int sm_version = 80;
