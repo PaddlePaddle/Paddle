@@ -194,19 +194,19 @@ void QuantizeLinearKernel(const Context& dev_ctx,
   } else {
     if (!is_test) {
       T* out_scale_data = dev_ctx.template Alloc<T>(out_scale);
-      FindChannelAbsMaxFunctor<DeviceContext, T>()(
+      phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
           dev_ctx, *in, quant_axis, out_scale_data);
       if (only_observer) {
         framework::TensorCopy(*in, dev_ctx.GetPlace(), dev_ctx, out);
       } else {
-        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+        phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
             dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
       }
     } else {
       if (only_observer) {
         framework::TensorCopy(*in, dev_ctx.GetPlace(), dev_ctx, out);
       } else {
-        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+        phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
             dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
       }
     }
