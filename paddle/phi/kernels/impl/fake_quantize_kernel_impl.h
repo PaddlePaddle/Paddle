@@ -156,10 +156,10 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
-  phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
+  phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
       dev_ctx, x, quant_axis, out_scale_data);
 
-  phi::funcs::ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
+  phi::funcs::ChannelClipFakeQuantDequantFunctor<Context, T>()(
       dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
 }
 

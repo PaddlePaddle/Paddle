@@ -130,7 +130,7 @@ class ChannelClipFakeQuantDequantFunctor {
                   const DenseTensor &in,
                   const DenseTensor &scale,
                   const int bin_cnt,
-                  int round_type,
+                  const int round_type,
                   const int quant_axis,
                   DenseTensor *out);
 };
@@ -146,7 +146,6 @@ class FindRangeAbsMaxFunctor {
                   DenseTensor *scales_arr,
                   DenseTensor *out_scale);
 };
-
 
 }  // namespace funcs
 }  // namespace phi
