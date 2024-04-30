@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
@@ -484,28 +485,6 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(const Operation* op) {  // NOLINT
-  if (!op->isa<cinn::dialect::GroupOp>()) {
-    return op->operands_source();
-  }
-  auto group_op =
-      const_cast<Operation*>(op)->dyn_cast<cinn::dialect::GroupOp>();
-  auto group_ops = std::unordered_set<pir::Operation*>(
-      group_op.GetOperators().begin(), group_op.GetOperators().end());
-  std::unordered_set<::pir::Value> group_inputs;
-  // count all op's input Value
-  for (auto item : group_ops) {
-    for (auto& value : item->operands_source()) {
-      if (!value || !value.type() ||
-          group_ops.find(value.defining_op()) != group_ops.end())
-        continue;
-      // if the input value owner op is not in OpSet, it's the group's input
-      group_inputs.insert(value);
-    }
-  }
-  return std::vector<pir::Value>(group_inputs.begin(), group_inputs.end());
-}
-
 namespace {
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
@@ -570,7 +549,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = AnalysisExternalInputs(op);
+  std::vector<pir::Value> op_inputs = pir::GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
