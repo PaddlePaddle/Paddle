@@ -484,25 +484,21 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(const Operation* op) {  // NOLINT
+std::vector<pir::Value> AnalysisExternalInputs(Operation* op) {  // NOLINT
   if (!op->isa<cinn::dialect::GroupOp>()) {
     return op->operands_source();
   }
   // Get all ops in group
   const auto all_ops = [&]() -> decltype(auto) {
-    auto group_op =
-        const_cast<Operation*>(op)->dyn_cast<cinn::dialect::GroupOp>();
-    std::unordered_set<pir::Operation*> ops_set;
-    for (auto inner_op : group_op.GetOperators()) {
-      ops_set.insert(inner_op);
-    }
-    return ops_set;
+    const auto all_ops = op->dyn_cast<cinn::dialect::GroupOp>().GetOperators();
+    return std::unordered_set<pir::Operation*>(all_ops.begin(), all_ops.end());
   }();
   std::unordered_set<pir::Value> value_set;
   const auto& IsOutsideInput = [&](const pir::Value& value) -> bool {
     const bool is_outside =
         value && value.defining_op() && !all_ops.count(value.defining_op());
     const bool has_visited = value_set.count(value);
+    if (!has_visited) value_set.insert(value);
     return is_outside && !has_visited;
   };
 
