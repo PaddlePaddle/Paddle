@@ -16,6 +16,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/partial_sum_kernel_impl.h"
 
 namespace phi {
 
