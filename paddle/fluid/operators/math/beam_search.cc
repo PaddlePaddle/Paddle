@@ -1,25 +1,21 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/operators/math/beam_search.h"
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-namespace phi {
-class DenseTensor;
-}  // namespace phi
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
 
 template <typename T>
@@ -37,7 +33,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -70,14 +66,13 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
-        selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
+        selected_ids->mutable_data<int64_t>(dims, phi::CPUPlace());
     auto *selected_scores_data =
-        selected_scores->mutable_data<float>(dims, platform::CPUPlace());
+        selected_scores->mutable_data<float>(dims, phi::CPUPlace());
     auto *parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_instances)}, platform::CPUPlace())
-            : nullptr;
+        parent_idx ? parent_idx->mutable_data<int>(
+                         {static_cast<int64_t>(num_instances)}, phi::CPUPlace())
+                   : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;
@@ -96,14 +91,14 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    framework::LoD lod(2);
+    phi::LoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
-    if (!framework::CheckLoD(lod)) {
+    if (!CheckLoD(lod)) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("lod %s is not right in"
                                        " beam_search, please check your code.",
-                                       framework::LoDToString(lod)));
+                                       LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
@@ -158,7 +153,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * since the end tokens must be writed out.
    */
   void PruneEndBeams(const phi::DenseTensor *pre_ids,
-                     const framework::LoD &abs_lod,
+                     const phi::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id) {
@@ -245,7 +240,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
 
     auto *pre_ids_data = pre_ids->data<int64_t>();
     auto *pre_scores_data = pre_scores->data<float>();
@@ -311,5 +306,4 @@ template class BeamSearchFunctor<phi::CPUContext, float>;
 template class BeamSearchFunctor<phi::CPUContext, double>;
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

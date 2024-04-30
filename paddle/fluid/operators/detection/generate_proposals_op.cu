@@ -79,7 +79,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
                                               keep_index.data<int>());
   int keep_num;
   const auto gpu_place = ctx.GetPlace();
-  memory::Copy(platform::CPUPlace(),
+  memory::Copy(phi::CPUPlace(),
                &keep_num,
                gpu_place,
                keep_num_t.data<int>(),
@@ -191,7 +191,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
     auto place = dev_ctx.GetPlace();
-    auto cpu_place = platform::CPUPlace();
+    auto cpu_place = phi::CPUPlace();
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);
@@ -249,7 +249,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
       rpn_rois_num->Resize({num});
     }
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(offset);
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);

@@ -48,14 +48,13 @@ static void DeepCopy(const phi::DenseTensor &src_item,
               : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
-          platform::CPUPlace());
-      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
+          phi::CPUPlace());
+      paddle::framework::TensorCopySync(out, phi::CPUPlace(), dst_item);
     } else {
-      paddle::framework::TensorCopySync(
-          src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
     }
 #else
-    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
 #endif
   } else {
     VLOG(4) << "No copy";
@@ -87,32 +86,28 @@ class FetchV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto *fetch_var = ctx.InputVar("X");
     if (fetch_var == nullptr) {
-      return phi::KernelKey(framework::proto::VarType::FP32,
-                            platform::CPUPlace());
+      return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
     }
 
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       if (!src_item.IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       if (!src_item.initialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     }
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -224,7 +219,7 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(
     fetch_v2,
     ops::FetchV2Op,

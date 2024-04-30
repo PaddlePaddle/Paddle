@@ -47,7 +47,7 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
@@ -776,8 +776,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 #ifdef PADDLE_WITH_XPU_KP
-    auto& dev_ctx =
-        context.template device_context<paddle::platform::XPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
 #else
     auto& dev_ctx = context.cuda_device_context();
 #endif

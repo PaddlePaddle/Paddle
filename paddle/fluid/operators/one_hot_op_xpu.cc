@@ -45,7 +45,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
         depth = depth_data[0];
       }
       auto in_dims = in->dims();
-      framework::DDim out_dims(in_dims);
+      phi::DDim out_dims(in_dims);
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     }
@@ -67,8 +67,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    one_hot,
-    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
+REGISTER_OP_XPU_KERNEL(one_hot,
+                       ops::OneHotXPUKernel<phi::XPUContext, int>,
+                       ops::OneHotXPUKernel<phi::XPUContext, int64_t>);
 #endif

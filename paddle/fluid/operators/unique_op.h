@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -44,7 +44,7 @@ struct UniqueOpFunctor {
   template <typename IndexT>
   void apply() const {
     auto* in_data = in_->data<InT>();
-    auto* index_data = index_->mutable_data<IndexT>(platform::CPUPlace());
+    auto* index_data = index_->mutable_data<IndexT>(phi::CPUPlace());
 
     int64_t j = 0;
 
@@ -75,7 +75,7 @@ struct UniqueOpFunctor {
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
       count_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
-      IndexT* count_data = count_->mutable_data<IndexT>(platform::CPUPlace());
+      IndexT* count_data = count_->mutable_data<IndexT>(phi::CPUPlace());
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
@@ -107,7 +107,7 @@ struct UniqueOpFunctor {
     }
 
     out_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
-    auto out_data = out_->mutable_data<InT>(platform::CPUPlace());
+    auto out_data = out_->mutable_data<InT>(phi::CPUPlace());
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
 };
@@ -246,14 +246,14 @@ static void UniqueDim(const framework::ExecutionContext& context,
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   phi::DenseTensor in_trans;
-  framework::DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
+  phi::DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
   phi::funcs::TransCompute<DeviceContext, InT>(
       in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  framework::DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
+  phi::DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // sort indices
@@ -304,7 +304,7 @@ static void UniqueDim(const framework::ExecutionContext& context,
   indices_vec.erase(indices_vec.begin() + input_unbind.size(),
                     indices_vec.end());
 
-  math::ConcatFunctor<DeviceContext, InT> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, InT> concat_functor;
   phi::DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();

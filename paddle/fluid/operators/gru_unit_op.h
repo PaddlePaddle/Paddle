@@ -41,7 +41,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     } else if (act_type == tanh) {
       TanhFunctor<T>()(d, x, y);
     } else if (act_type == relu) {
-      if (place == platform::CPUPlace())
+      if (place == phi::CPUPlace())
         ReluCPUFunctor<T>()(d, x, y);
       else
         ReluCUDAFunctor<T>()(d, x, y);

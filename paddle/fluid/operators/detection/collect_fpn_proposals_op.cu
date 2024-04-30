@@ -23,10 +23,10 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
@@ -81,7 +81,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
-        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+        roi_batch_id_list.mutable_data<int>(phi::CPUPlace());
     int index = 0;
     int lod_size;
     auto place = dev_ctx.GetPlace();
@@ -93,7 +93,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       if (multi_rois_num.size() > 0) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
-            *multi_rois_num[i], platform::CPUPlace(), &temp);
+            *multi_rois_num[i], phi::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
         lod_size = multi_rois_num[i]->numel();
         for (size_t n = 0; n < lod_size; ++n) {
@@ -233,7 +233,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
         real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  length_lod_cpu.data(),
                  place,
                  length_lod_data,
@@ -257,7 +257,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
     }
 
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(offset);
     fpn_rois->set_lod(lod);
   }

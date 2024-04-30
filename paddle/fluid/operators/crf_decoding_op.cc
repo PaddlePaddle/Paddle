@@ -206,7 +206,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 }  // namespace operators

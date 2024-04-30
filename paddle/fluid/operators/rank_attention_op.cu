@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/rank_attention.cu.h"
 #include "paddle/fluid/operators/rank_attention_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

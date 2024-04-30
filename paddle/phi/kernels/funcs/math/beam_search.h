@@ -1,28 +1,69 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
 #include <string>
 #include <vector>
+#include "glog/logging.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/core/tensor_utils.h"
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/device_context.h"
-
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
+
+static inline std::string LoDToString(const LoD& lod) {
+  std::ostringstream stream;
+  for (const auto& row : lod) {
+    for (const auto& element : row) {
+      stream << element << " ";
+    }
+    stream << "\n";
+  }
+  return stream.str();
+}
+
+static inline bool CheckLoD(const LoD& in, int tensor_height = -1) {
+  if (in.empty()) return true;
+  for (const auto& level : in) {
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+    // check: the first offset(the begin offset) of each level should be 0.
+    if (level.front() != 0) return false;
+    // check: all the offsets in a level should be non-descending
+    if (!std::is_sorted(level.begin(), level.end())) {
+      return false;
+    }
+  }
+  // check: the lowest level's last offset should equals `tensor_height` if
+  //        tensor_height>0.
+  if (tensor_height > 0 &&
+      static_cast<size_t>(tensor_height) != in.back().back())
+    return false;
+
+  // check: the higher level's last offset should equals the lower level's
+  // size-1.
+  // NOTE LoD store the levels from top to bottom, so the higher level goes
+  // first.
+  for (size_t level = 0; level < in.size() - 1; level++) {
+    if (in[level].back() != in[level + 1].size() - 1) return false;
+  }
+  return true;
+}
 
 /*
  * This is an implementation of beam search.
@@ -120,5 +161,4 @@ class BeamSearchFunctor {
 };
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

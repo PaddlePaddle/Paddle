@@ -20,7 +20,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/operators/search_compute.h"
+#include "paddle/phi/kernels/funcs/search_compute.h"
 
 namespace paddle {
 namespace operators {
@@ -365,17 +365,17 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
-    call_gemm(blas,
-              CblasNoTrans,
-              CblasNoTrans,
-              x->dims()[0],
-              dim_t * dim_in,
-              dim_in,
-              1.0f,
-              bottom_l_data,
-              t_data,
-              0.0f,
-              bottom_l_trans_data);
+    phi::funcs::call_gemm(blas,
+                          CblasNoTrans,
+                          CblasNoTrans,
+                          x->dims()[0],
+                          dim_t * dim_in,
+                          dim_in,
+                          1.0f,
+                          bottom_l_data,
+                          t_data,
+                          0.0f,
+                          bottom_l_trans_data);
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
@@ -386,22 +386,22 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
         auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
-        call_gemm_with_lda(blas_2,
-                           CblasNoTrans,
-                           CblasTrans,
-                           len_l,
-                           len_r,
-                           dim_in,
-                           1.0f,
-                           l_t_data,
-                           r_data,
-                           0.0f,
-                           top_data,
-                           dim_t * dim_in);
+        phi::funcs::call_gemm_with_lda(blas_2,
+                                       CblasNoTrans,
+                                       CblasTrans,
+                                       len_l,
+                                       len_r,
+                                       dim_in,
+                                       1.0f,
+                                       l_t_data,
+                                       r_data,
+                                       0.0f,
+                                       top_data,
+                                       dim_t * dim_in);
       }
     }
 
-    framework::LoD out_lod;
+    phi::LoD out_lod;
     out_lod.push_back(top_offset);
 
     out->set_lod(out_lod);
@@ -486,30 +486,30 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff
-    call_gemm(blas,
-              CblasNoTrans,
-              CblasTrans,
-              x->dims()[0],
-              dim_in,
-              dim_t * dim_in,
-              1.0f,
-              bottom_l_trans_diff,
-              t_data,
-              1.0f,
-              bottom_l_diff);
+    phi::funcs::call_gemm(blas,
+                          CblasNoTrans,
+                          CblasTrans,
+                          x->dims()[0],
+                          dim_in,
+                          dim_t * dim_in,
+                          1.0f,
+                          bottom_l_trans_diff,
+                          t_data,
+                          1.0f,
+                          bottom_l_diff);
 
     // t_diff
-    call_gemm(blas,
-              CblasTrans,
-              CblasNoTrans,
-              dim_in,
-              dim_t * dim_in,
-              x->dims()[0],
-              1.0f,
-              bottom_l_data,
-              bottom_l_trans_diff,
-              1.0f,
-              t_diff);
+    phi::funcs::call_gemm(blas,
+                          CblasTrans,
+                          CblasNoTrans,
+                          dim_in,
+                          dim_t * dim_in,
+                          x->dims()[0],
+                          1.0f,
+                          bottom_l_data,
+                          bottom_l_trans_diff,
+                          1.0f,
+                          t_diff);
   }
 };
 

@@ -60,7 +60,7 @@ template <typename T>
 using MinFunctor = phi::funcs::MinimumFunctor<T>;
 
 template <typename T>
-using Complex = paddle::platform::complex<T>;
+using Complex = phi::dtype::complex<T>;
 
 // Ternary compare
 template <typename T>

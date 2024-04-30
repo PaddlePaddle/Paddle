@@ -37,7 +37,7 @@ class TopkKernel : public framework::OpKernel<T> {
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       k = k_t->data<int>()[0];
-      framework::DDim output_dims = output->dims();
+      phi::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);
       indices->Resize(output_dims);
@@ -47,7 +47,7 @@ class TopkKernel : public framework::OpKernel<T> {
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
     // reshape input to a flatten matrix(like flat_inner_dims)
-    framework::DDim inputdims = input->dims();
+    phi::DDim inputdims = input->dims();
     const size_t row =
         common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
@@ -104,7 +104,7 @@ class TopkGradKernel : public framework::OpKernel<T> {
     const int64_t* indices_data = indices->data<int64_t>();
     size_t k = indices->dims()[indices->dims().size() - 1];
 
-    framework::DDim xdims = x->dims();
+    phi::DDim xdims = x->dims();
     const size_t row =
         common::product(common::slice_ddim(xdims, 0, xdims.size() - 1));
     const size_t col = xdims[xdims.size() - 1];

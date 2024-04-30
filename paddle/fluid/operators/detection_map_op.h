@@ -298,9 +298,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       false_pos_starts.push_back(false_pos_count);
     }
 
-    framework::LoD true_pos_lod;
+    phi::LoD true_pos_lod;
     true_pos_lod.emplace_back(true_pos_starts);
-    framework::LoD false_pos_lod;
+    phi::LoD false_pos_lod;
     false_pos_lod.emplace_back(false_pos_starts);
 
     output_true_pos->set_lod(true_pos_lod);

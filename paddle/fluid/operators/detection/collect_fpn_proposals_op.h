@@ -190,7 +190,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       }
     }
     lod0.emplace_back(post_nms_topN);
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(lod0);
     fpn_rois->set_lod(lod);
   }

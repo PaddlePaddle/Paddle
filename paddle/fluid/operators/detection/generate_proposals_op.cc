@@ -124,7 +124,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
 
-    framework::LoD lod;
+    phi::LoD lod;
     lod.resize(1);
     auto &lod0 = lod[0];
     lod0.push_back(0);

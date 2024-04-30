@@ -16,8 +16,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 

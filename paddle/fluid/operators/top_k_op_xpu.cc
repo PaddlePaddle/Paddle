@@ -40,12 +40,12 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     // get k from input tensor
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
-      memory::Copy(platform::CPUPlace(),
+      memory::Copy(phi::CPUPlace(),
                    static_cast<void*>(&k),
                    ctx.GetPlace(),
                    static_cast<const void*>(k_t->data<int>()),
                    sizeof(int));
-      framework::DDim output_dims = output->dims();
+      phi::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);
       indices->Resize(output_dims);
@@ -54,14 +54,14 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     // allocate temp memory for int32 index
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* indices_int_data = RAII_GUARD.alloc_l3_or_gm<int>(indices->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
 
     // reshape input to a flatten matrix(like flat_inner_dims)
-    framework::DDim inputdims = input->dims();
+    phi::DDim inputdims = input->dims();
     const size_t row =
         common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];

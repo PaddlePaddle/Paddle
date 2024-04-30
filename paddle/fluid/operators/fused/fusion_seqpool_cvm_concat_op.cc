@@ -106,7 +106,7 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     const auto& y_dims = out->dims();
     size_t bs = x0_lod[0].size() - 1;
     out->Resize({static_cast<int64_t>(bs), y_dims[1]});
-    framework::LoD y_lod(1);
+    phi::LoD y_lod(1);
     y_lod[0].resize(bs + 1);
     for (size_t i = 0; i <= bs; ++i) {
       y_lod[0][i] = i;
@@ -126,9 +126,9 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     } else if (pooltype == "SQRT") {
       attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                         platform::CPUPlace>::Cache()
-                       .At(attr);
+    auto seqpool =
+        phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache()
+            .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {

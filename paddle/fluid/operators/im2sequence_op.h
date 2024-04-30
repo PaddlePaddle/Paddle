@@ -52,7 +52,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
-          *img_real_size, platform::CPUPlace(), &cpu_shape_tensor);
+          *img_real_size, phi::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> img_real_h;
       std::vector<int> img_real_w;
       std::vector<int> output_height;
@@ -104,7 +104,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
-      framework::LoD lod(1);
+      phi::LoD lod(1);
       lod[0].reserve(batch_size + 1);
       int offset = 0;
       lod[0].push_back(offset);
@@ -140,7 +140,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
       out->Resize(out_dims);
-      framework::LoD lod(1);
+      phi::LoD lod(1);
       lod[0].reserve(batch_size + 1);
       int offset = 0;
       lod[0].push_back(offset);

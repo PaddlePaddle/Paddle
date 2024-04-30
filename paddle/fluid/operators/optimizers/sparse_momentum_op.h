@@ -370,7 +370,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Axis")) {
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
-      framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
+      framework::TensorCopy(*axis_tensor, phi::CPUPlace(), &cpu_axis);
       const auto& axis_type =
           framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {

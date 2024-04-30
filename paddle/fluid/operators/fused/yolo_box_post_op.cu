@@ -469,11 +469,10 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
 
     boxes_scores_tensor->Resize({total_bbox > 0 ? total_bbox : 1, 6});
     float* boxes_scores_data =
-        boxes_scores_tensor->mutable_data<float>(platform::CPUPlace());
+        boxes_scores_tensor->mutable_data<float>(phi::CPUPlace());
     memset(boxes_scores_data, 0, sizeof(float) * 6);
     boxes_num_tensor->Resize({batch});
-    int* boxes_num_data =
-        boxes_num_tensor->mutable_data<int>(platform::CPUPlace());
+    int* boxes_num_data = boxes_num_tensor->mutable_data<int>(phi::CPUPlace());
     int boxes_scores_id = 0;
 
     // NMS

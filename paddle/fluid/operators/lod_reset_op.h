@@ -67,7 +67,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         auto* lod = lod_t->data<int>();
         phi::DenseTensor lod_cpu;
         if (platform::is_gpu_place(lod_t->place())) {
-          framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
+          framework::TensorCopySync(*lod_t, phi::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
         level0 = std::vector<int>(lod, lod + lod_t->numel());
@@ -116,7 +116,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* out_lod = out->mutable_lod();
       out_lod->push_back(ulevel0);
     } else {
-      framework::LoD target_lod;
+      phi::LoD target_lod;
       target_lod.push_back(ulevel0);
       out->set_lod(target_lod);
     }

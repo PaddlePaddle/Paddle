@@ -229,7 +229,7 @@ bool GetCondData(const phi::DenseTensor &cond) {
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
@@ -253,7 +253,7 @@ bool StrInVariableNameMap(const std::string &name,
 void TransferVariablePlace(const framework::Scope *scope,
                            const std::string &var_name,
                            const phi::Place &dst_place,
-                           const platform::DeviceContext &dev_ctx) {
+                           const phi::DeviceContext &dev_ctx) {
   framework::Variable *var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(4) << "[TransferVariablePlace]"

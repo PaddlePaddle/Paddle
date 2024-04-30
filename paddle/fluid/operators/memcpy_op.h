@@ -44,7 +44,7 @@ class MemcpyFunctor {
 
  public:
   MemcpyFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx,
+                const phi::DeviceContext &dev_ctx,
                 const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
@@ -58,7 +58,7 @@ class MemcpyFunctor {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
-      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
+      framework::TensorCopySync(lod_tensor, phi::CPUPlace(), &out_tensor);
 
 #ifdef PADDLE_WTIH_CUSTOM_DEVICE
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
@@ -89,7 +89,7 @@ class MemcpyFunctor {
 
  private:
   framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
+  const phi::DeviceContext &dev_ctx_;
   const int dst_place_type_;
 };
 

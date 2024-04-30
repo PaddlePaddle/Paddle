@@ -112,7 +112,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 
@@ -474,7 +474,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       nms_rois_num->Resize({n});
     }
 
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(batch_starts);
     if (return_index) {
       index->set_lod(lod);

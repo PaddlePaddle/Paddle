@@ -32,7 +32,7 @@ namespace operators {
 class MemcpyD2HFunctor {
  public:
   MemcpyD2HFunctor(framework::Variable *out,
-                   const platform::DeviceContext &dev_ctx,
+                   const phi::DeviceContext &dev_ctx,
                    const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
@@ -74,7 +74,7 @@ class MemcpyD2HFunctor {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
       dev_ctx_.Wait();
     } else if (dst_place_type_ == 0) {
-      framework::TensorCopy(src, platform::CPUPlace(), dev_ctx_, &dst);
+      framework::TensorCopy(src, phi::CPUPlace(), dev_ctx_, &dst);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
@@ -90,7 +90,7 @@ class MemcpyD2HFunctor {
   }
 
   framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
+  const phi::DeviceContext &dev_ctx_;
   const int dst_place_type_;
 };
 

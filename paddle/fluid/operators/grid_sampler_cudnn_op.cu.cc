@@ -16,7 +16,7 @@ limitations under the License. */
 // HIP not support cudnnSpatialTfGridGeneratorForward
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace phi {
 class DenseTensor;
@@ -152,15 +152,14 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(grid_sampler,
                    CUDNN,
-                   plat::CUDAPlace,
+                   phi::GPUPlace,
                    paddle::operators::CUDNNGridSampleOpKernel<float>,
                    paddle::operators::CUDNNGridSampleOpKernel<double>);
 REGISTER_OP_KERNEL(grid_sampler_grad,
                    CUDNN,
-                   plat::CUDAPlace,
+                   phi::GPUPlace,
                    paddle::operators::CUDNNGridSampleGradOpKernel<float>,
                    paddle::operators::CUDNNGridSampleGradOpKernel<double>);
 
