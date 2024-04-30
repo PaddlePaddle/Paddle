@@ -70,6 +70,14 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
+def patch_for_one_hot(inputs, attrs, args):
+    if 'depth_tensor' in inputs.keys():
+        args[1] = inputs['depth_tensor'].item()
+    else:
+        args[1] = attrs['depth']
+    return args
+
+
 # TODO(wanghao107): OpTestUtils will be moved to op_test.py
 class OpTestUtils:
     @classmethod
@@ -179,6 +187,11 @@ class OpTestUtils:
         api_defaults = [
             Empty() for i in range(len(api_params) - len(api_defaults))
         ] + api_defaults
+
+        # patch for one hot -> fill the api params
+        if "one_hot" in str(api):
+            api_defaults = [None for x in range(len(api_params))]
+
         assert len(api_defaults) == len(
             api_params
         ), "Error happens. contack xiongkun03 to solve."
@@ -486,6 +499,8 @@ class PrimForwardChecker:
                 self.kernel_sig,
                 target_dtype=paddle.core.VarDesc.VarType,
             )
+            if "one_hot" in self.op_type:
+                args = patch_for_one_hot(self.inputs, self.attrs, args)
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
@@ -636,6 +651,8 @@ class PrimForwardChecker:
                     if in_pir_mode()
                     else paddle.core.VarDesc.VarType,
                 )
+                if "one_hot" in self.op_type:
+                    args = patch_for_one_hot(self.inputs, self.attrs, args)
                 inputs_sig, _, _ = self.kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
@@ -728,6 +745,8 @@ class PrimForwardChecker:
                 if use_pir_api()
                 else paddle.core.VarDesc.VarType,
             )
+            if "one_hot" in self.op_type:
+                args = patch_for_one_hot(self.inputs, self.attrs, args)
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
