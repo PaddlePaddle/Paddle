@@ -105,7 +105,12 @@ def test(
             elements_data = case['elements_data']
             test_elements_data = case['test_elements_data']
             dygraph_result = run_dygraph(
-                elements_data, test_elements_data, type, invert, use_gpu
+                elements_data,
+                test_elements_data,
+                type,
+                assume_unique,
+                invert,
+                use_gpu,
             ).numpy()
             np_result = np.isin(
                 elements_data.astype(type),
@@ -117,7 +122,12 @@ def test(
 
             def test_static():
                 (static_result,) = run_static(
-                    elements_data, test_elements_data, type, invert, use_gpu
+                    elements_data,
+                    test_elements_data,
+                    type,
+                    assume_unique,
+                    invert,
+                    use_gpu,
                 )
                 np.testing.assert_equal(static_result, np_result)
 
