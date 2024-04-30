@@ -456,33 +456,22 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(const T *in,
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
-    // T s = scale[(i / wh_size) % cout];
-    ComputeDataType s =
-        static_cast<ComputeDataType>(scale[(i / wh_size) % cout]);
-    // T inv_s = inverse(s);
-    ComputeDataType inv_s = inverse(s);
-    // T x = in[i];
-    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+    T s = scale[(i / wh_size) % cout];
+    T inv_s = inverse(s);
+    T x = in[i];
     if (round_type == 0) {
-      // x = bin_cnt * inv_s * x;
-      x = bin_cnt_t * inv_s * x;
+      x = bin_cnt * inv_s * x;
       x = roundWithTiesToEven(x);
-      // T max_bound = bin_cnt;
-      // T min_bound = -bin_cnt - static_cast<T>(1);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      T max_bound = bin_cnt;
+      T min_bound = -bin_cnt - static_cast<T>(1);
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
-      // out[i] = (x * s) / bin_cnt;
-      out[i] = static_cast<T>((x * s) / bin_cnt_t);
+      out[i] = (x * s) / bin_cnt;
     } else {
-      // T v = x > s ? s : x;
-      ComputeDataType v = x > s ? s : x;
+      T v = x > s ? s : x;
       v = v < -s ? -s : v;
-      // v = bin_cnt * inv_s * v;
-      v = bin_cnt_t * inv_s * v;
-      // out[i] = round(v) * s / bin_cnt;
-      out[i] = static_cast<T>(round(v) * s / bin_cnt_t);
+      v = bin_cnt * inv_s * v;
+      out[i] = round(v) * s / bin_cnt;
     }
   }
 }
@@ -502,33 +491,22 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
-    // T s = scale[(i / wh_size) % cout];
-    ComputeDataType s =
-        static_cast<ComputeDataType>(scale[(i / wh_size) % cout]);
-    // T inv_s = inverse(s);
-    ComputeDataType inv_s = inverse(s);
-    // T x = in[i];
-    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+    T s = scale[(i / wh_size) % cout];
+    T inv_s = inverse(s);
+    T x = in[i];
     if (round_type == 0) {
-      // x = bin_cnt * inv_s * x;
-      x = bin_cnt_t * inv_s * x;
+      x = bin_cnt * inv_s * x;
       x = roundWithTiesToEven(x);
-      // T max_bound = bin_cnt;
-      // T min_bound = -bin_cnt - static_cast<T>(1);
-      ComputeDataType max_bound = bin_cnt_t;
-      ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
+      T max_bound = bin_cnt;
+      T min_bound = -bin_cnt - static_cast<T>(1);
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
-      // out[i] = (x * s) / bin_cnt;
-      out[i] = static_cast<T>((x * s) / bin_cnt_t);
+      out[i] = (x * s) / bin_cnt;
     } else {
-      // T v = x > s ? s : x;
-      ComputeDataType v = x > s ? s : x;
+      T v = x > s ? s : x;
       v = v < -s ? -s : v;
-      // v = bin_cnt * inv_s * v;
-      v = bin_cnt_t * inv_s * v;
-      // out[i] = round(v) * s / bin_cnt;
-      out[i] = static_cast<T>(round(v) * s / bin_cnt_t);
+      v = bin_cnt * inv_s * v;
+      out[i] = round(v) * s / bin_cnt;
     }
   }
 }
