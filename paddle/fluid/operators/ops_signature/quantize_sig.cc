@@ -20,7 +20,7 @@ KernelSignature QuantOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "quantize",
       {"Input"},
-      {"Is_Negative_Input", "Scale", "Shift", "Output_Format", "Bfloat16"},
+      {"is_negative_input", "scale", "shift", "output_format", "bfloat16"},
       {"Output"});
 }
 }  // namespace phi
