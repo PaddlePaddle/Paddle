@@ -72,7 +72,7 @@ class TEST_API VarDesc {
     need_updated_ = true;
   }
 
-  explicit VarDesc(const proto::VarDesc &desc);
+  explicit VarDesc(proto::VarDesc desc);
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other);

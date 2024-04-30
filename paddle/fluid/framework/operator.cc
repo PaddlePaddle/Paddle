@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
@@ -993,12 +994,12 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
 }
 
 OperatorBase::OperatorBase(const std::string& type,
-                           const VariableNameMap& inputs,
-                           const VariableNameMap& outputs,
+                           VariableNameMap  inputs,
+                           VariableNameMap  outputs,
                            const AttributeMap& attrs)
     : type_(type),
-      inputs_(inputs),
-      outputs_(outputs),
+      inputs_(std::move(inputs)),
+      outputs_(std::move(outputs)),
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
