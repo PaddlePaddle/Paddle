@@ -3238,8 +3238,6 @@
       tensors_name : EndsTensorList
 
 - op : sparse_sum
-  attrs:
-    axis: axis
   scalar :
     axis :
       data_type : int
