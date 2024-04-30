@@ -105,6 +105,7 @@ OP_SAME_OPERANDS_AND_RESULT(Reciprocal_)
 OP_SAME_OPERANDS_AND_RESULT(Relu)
 OP_SAME_OPERANDS_AND_RESULT(Relu6)
 OP_SAME_OPERANDS_AND_RESULT(Relu_)
+OP_SAME_OPERANDS_AND_RESULT(Reverse)
 OP_SAME_OPERANDS_AND_RESULT(Roll)
 OP_SAME_OPERANDS_AND_RESULT(Round)
 OP_SAME_OPERANDS_AND_RESULT(Round_)
@@ -176,7 +177,8 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
+using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
-}
+}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT

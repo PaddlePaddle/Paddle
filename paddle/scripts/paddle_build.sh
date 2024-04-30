@@ -337,8 +337,6 @@ function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
-    # clean build files
-    clean_build_files
 }
 
 function cmake_gen_in_current_dir() {
@@ -2634,7 +2632,6 @@ set -x
         export TEST_NUM_PERCENT_CASES=0.15
         export FLAGS_trt_ibuilder_cache=1
         precision_cases=""
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
@@ -3965,8 +3962,6 @@ EOF
     # ci will collect ccache hit rate
     collect_ccache_hits
 
-    # clean build files
-    clean_build_files
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -4241,10 +4236,18 @@ function main() {
         fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
+      cicheck_build)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
+        fi
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        clean_build_files
+        ;;
       build_pr_dev)
         export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         build_pr_and_develop
         check_sequence_op_unittest
+        clean_build_files
         ;;
       build_dev_test)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -4376,6 +4379,7 @@ function main() {
         enable_unused_var_check
         check_coverage_added_ut
         check_coverage_build
+        clean_build_files
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
@@ -4464,6 +4468,13 @@ function main() {
       cicheck_py37)
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        clean_build_files
+        ;;
+      cicheck_py37_pir)
+        export FLAGS_enable_pir_api=1
+        # disable deprecated test in pir
+        rm -rf ${PADDLE_ROOT}/build/test/deprecated/CTestTestfile.cmake
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)

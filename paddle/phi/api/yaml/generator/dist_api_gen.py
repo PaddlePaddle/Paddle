@@ -201,6 +201,10 @@ MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
+MULTI_SINGLE_INPLACE_OUT_TMP_TENSOR_CREATION_TEMPLATE = """
+    Tensor api_out_{idx}_tmp;
+    auto dist_out_{idx}_tmp = SetKernelDistOutput(&api_out_{idx}_tmp, spmd_info.second[{idx}]);
+"""
 MULTI_SINGLE_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
     phi::distributed::TensorDistAttr dist_out_attr_{idx};
     if ({out}.get_ptr()) {{
@@ -483,6 +487,10 @@ SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE = """
 NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
     // API `{}` does not need to set DistAttr for output."""
 
+SET_DIMS_TEMPLATE = """
+      {dst}->unsafe_set_dims({src}->dims());
+"""
+
 # TODO(GhostScreaming): Support aliquant condition.
 # Operators like `reshape`, `expand_as` need to calculate local_shape
 # for their local `DenseTensor`, as the given shape in their attribute
@@ -574,6 +582,11 @@ class DistForwardAPI(ForwardAPI):
         # is global_shape for `DistTensor`.
         if 'local_shape' not in infer_meta_config:
             infer_meta['local_shape'] = None
+        # Inplace op that changes shape should not change its global shape
+        # in inferMeta, otherwise, it may fails in reshard pass because of
+        # the inconsistence of dist_atttr and shape.
+        if 'global_shape' not in infer_meta_config:
+            infer_meta['global_shape'] = None
         return infer_meta
 
     def need_to_generate_code_for_inplace_impl(self, i):
@@ -1080,6 +1093,7 @@ class DistForwardAPI(ForwardAPI):
                 output_creation_code += API_OUT_CREATION_TEMPLATE.format(
                     return_type, ""
                 )
+
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
                 self.dist_output_args.append(f'dist_out_{i}')
@@ -1107,6 +1121,14 @@ class DistForwardAPI(ForwardAPI):
                                 output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE.format(
                                     idx=i, out=get_out_code
                                 )
+                                if self.infer_meta['global_shape'] is not None:
+                                    if (
+                                        self.outputs['names'][i]
+                                        == self.infer_meta['global_shape']
+                                    ):
+                                        output_creation_code += MULTI_SINGLE_INPLACE_OUT_TMP_TENSOR_CREATION_TEMPLATE.format(
+                                            idx=i
+                                        )
                             else:
                                 output_creation_code += (
                                     MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
@@ -1118,6 +1140,7 @@ class DistForwardAPI(ForwardAPI):
                                 output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
                                     idx=i, out=get_out_code
                                 )
+
                             else:
                                 output_creation_code += MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
                                     idx=i, out=get_out_code
@@ -1249,9 +1272,23 @@ class DistForwardAPI(ForwardAPI):
                 )
                 output_args_code += f"{out_name}_meta_ptr_vec, "
             else:
-                output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
-                    out_name, out_name
-                )
+                if (
+                    self.need_to_generate_code_for_inplace_impl(i)
+                    and self.infer_meta['global_shape'] is not None
+                    and self.outputs['names'][i]
+                    == self.infer_meta['global_shape']
+                ):
+                    output_decl_code += (
+                        SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
+                            out_name, out_name + '_tmp'
+                        )
+                    )
+                else:
+                    output_decl_code += (
+                        SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
+                            out_name, out_name
+                        )
+                    )
                 if len(self.dense_output_args) == 1:
                     output_args_code += f"&meta_{out_name}, "
                 else:
@@ -1554,6 +1591,17 @@ class DistForwardAPI(ForwardAPI):
         output_args_code = output_args_code[:-2]
 
         infer_meta_code = ""
+
+        if self.infer_meta['global_shape'] is not None:
+            for i, out_name in enumerate(self.outputs['names']):
+                if out_name == self.infer_meta[
+                    'global_shape'
+                ] and self.need_to_generate_code_for_inplace_impl(i):
+                    infer_meta_code += SET_DIMS_TEMPLATE.format(
+                        dst=self.dist_output_args[i],
+                        src=self.dist_output_args[i] + '_tmp',
+                    )
+
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
         if self.infer_meta['local_shape'] is not None:
             shape_name = self.infer_meta['local_shape']
@@ -1564,9 +1612,9 @@ class DistForwardAPI(ForwardAPI):
             "found in its attributes."
             shape_type = self.attrs['attr_info'][shape_name][0]
             out_name = self.dist_output_args[0]
-            infer_meta_code = CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
+            infer_meta_code += CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
                 out_name=out_name,
-                out_dist_attr="paddle::get<0>(spmd_info.second[0])"
+                out_dist_attr="PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
                 if self.infer_meta['spmd_rule']
                 else f"phi::distributed::TensorDistAttr(common::vectorize({out_name}->dims()))",
                 dtype="int64_t" if shape_type == "IntArray" else "int",
