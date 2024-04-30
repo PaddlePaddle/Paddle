@@ -429,10 +429,10 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     }
     auto weight_type = framework::TransToProtoVarType(_blobs_0->dtype());
     if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
-      axpy_noadd(top_data,
-                 top_data,
-                 top->dims()[0] * top->dims()[1],
-                 _drop_out_percent);
+      phi::funcs::axpy_noadd(top_data,
+                             top_data,
+                             top->dims()[0] * top->dims()[1],
+                             _drop_out_percent);
     }
   }
 };
@@ -507,7 +507,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      phi::funcs::axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/common/dim.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

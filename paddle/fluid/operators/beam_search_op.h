@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/beam_search.h"
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
 
 namespace paddle {
 namespace operators {

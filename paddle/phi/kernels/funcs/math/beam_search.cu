@@ -482,7 +482,8 @@ class BeamSearchFunctor<phi::GPUContext, T> {
       int num_used_threads = GetNumUsedThreads(kMaxThreadsPerSeq,
                                                static_cast<int>(seq_width),
                                                static_cast<int>(beam_size));
-      switch (platform::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
+      switch (
+          phi::backends::gpu::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs>
             <<<1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
