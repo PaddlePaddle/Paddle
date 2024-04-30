@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
@@ -39,6 +40,7 @@ decomp_interface_declare_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "meshgrid",
     "one_hot",
     "p_norm",
     "pow",
@@ -57,7 +59,9 @@ decomp_interface_declare_gen_op_list = [
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
+    "any",
     "add_n",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
@@ -74,6 +78,7 @@ decomp_interface_implementation_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "meshgrid",
     "p_norm",
     "pow",
     "reciprocal",
