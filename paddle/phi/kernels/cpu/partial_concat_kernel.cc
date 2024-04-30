@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/partial_concat_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/partial_concat_kernel_impl.h"
 
 PD_REGISTER_KERNEL(partial_concat,
                    CPU,

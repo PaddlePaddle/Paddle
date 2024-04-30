@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/partial_sum_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/kernels/impl/partial_sum_kernel_impl.h"
 
 PD_REGISTER_KERNEL(partial_sum,
                    CPU,
