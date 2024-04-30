@@ -148,7 +148,8 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       fetch_var_names_(fetch_var_names),
       parameter_var_names_(),
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      calculate_stream_timer_(nullptr),
+      calculate_stream_timer_(
+          std::make_unique<phi::CalculateStreamTimer>(place)),
 #endif
       last_calculate_instr_id_(0),
       enable_job_schedule_profiler_(false) {
