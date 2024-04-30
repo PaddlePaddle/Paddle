@@ -7771,7 +7771,7 @@ def sinc(x, name=None):
         x,
         "x",
         [
-            'bfloat16',
+            'uint16',
             'float16',
             'float32',
             'float64',
@@ -7798,7 +7798,7 @@ def sinc_(x, name=None):
         x,
         "x",
         [
-            'bfloat16',
+            'uint16',
             'float16',
             'float32',
             'float64',
