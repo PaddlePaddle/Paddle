@@ -57,7 +57,7 @@ class IR_API ConstraintsManager {
 
   template <typename DoEachT>
   void BroadcastableConstraintsVisitor(const DoEachT& DoEach) {
-    for (auto it = broadcastables_.begin(); it != broadcastables_.end();) {
+    for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
       DoEach(it);
     }
   }
