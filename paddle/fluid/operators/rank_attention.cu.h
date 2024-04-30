@@ -19,6 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+using gpuStream_t = phi::gpuStream_t;
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
