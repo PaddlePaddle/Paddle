@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/funcs/math/beam_search.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
