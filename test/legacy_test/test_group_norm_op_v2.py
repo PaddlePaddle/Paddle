@@ -303,6 +303,8 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shape = (2, 6, 4)
         np.random.seed(10)
@@ -346,6 +348,8 @@ class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
         np.random.seed(10)
@@ -389,6 +393,8 @@ class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shape = (2, 4, 6)
         np.random.seed(10)
@@ -432,6 +438,8 @@ class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shape = (2, 4, 2, 6)
         np.random.seed(10)
@@ -475,6 +483,8 @@ class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)
         np.random.seed(10)
