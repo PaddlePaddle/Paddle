@@ -372,6 +372,31 @@ void DpsgdInferMeta(const MetaTensor& param,
           grad.dims()));
   param_out->set_dims(param_dims);
 }
+
+void FakeQuantizeRangeAbsMaxInferMeta(const MetaTensor& x,
+                                      const MetaTensor& in_scale,
+                                      const MetaTensor& iter,
+                                      int window_size,
+                                      int bit_length,
+                                      bool is_test,
+                                      int round_type,
+                                      MetaTensor* out,
+                                      MetaTensor* out_scale,
+                                      MetaTensor* out_scales) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  if (out_scales) {
+    out_scales->set_dims({window_size});
+  }
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
+}
+
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
@@ -380,14 +405,32 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
+  PADDLE_ENFORCE_EQ(out_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
   out_dims[3] = v.dims()[3];
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
-  softmax->set_dtype(q.dtype());
-  softmax_lse->set_dtype(q.dtype());
+  auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_q_rounded = round_multiple(q.dims()[1]);
+  int seqlen_k_rounded = round_multiple(k.dims()[1]);
+  if (softmax) {
+    softmax->set_dtype(q.dtype());
+    softmax->set_dims(
+        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
+  }
+  if (softmax_lse) {
+    softmax_lse->set_dtype(q.dtype());
+    softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+  }
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
+    seed_offset->set_dims({2});
   }
 }
 

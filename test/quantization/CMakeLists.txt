@@ -1,3 +1,6 @@
+if(ON_INFER)
+  include(../cpp/inference/test.cmake)
+endif()
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

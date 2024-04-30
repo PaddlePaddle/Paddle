@@ -91,6 +91,7 @@ using paddle::dialect::WhileOp;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
 
+using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
@@ -191,6 +192,33 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
     }
   }
   return value;
+}
+
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
 }
 
 void BindProgram(py::module *m) {
@@ -335,7 +363,63 @@ void BindProgram(py::module *m) {
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
            })
-      .def("num_ops", [](Program &self) { return self.num_ops(); });
+      .def("num_ops", [](Program &self) { return self.num_ops(); })
+      .def(
+          "state_dict",
+          [](std::shared_ptr<Program> self,
+             const std::string &mode = "all",
+             const framework::Scope &scope = framework::Scope()) {
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_all;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_param;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_opt;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                auto is_persistable =
+                    var.attribute<BoolAttribute>("persistable");
+                if (is_persistable && is_persistable.data()) {
+                  if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_param[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  } else if (var.defining_op()
+                                 ->isa<paddle::dialect::DataOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_opt[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  }
+                }
+              }
+            }
+            if (mode == "all") {
+              return state_dict_all;
+            } else if (mode == "param") {
+              return state_dict_param;
+            } else if (mode == "opt") {
+              return state_dict_opt;
+            } else {
+              PADDLE_THROW(
+                  phi::errors::InvalidArgument("The mode is not supported."));
+            }
+          })
+      .def("set_state_dict",
+           [](std::shared_ptr<Program> self,
+              const std::unordered_map<std::string, phi::DenseTensor>
+                  &state_dict,
+              const framework::Scope &scope = framework::Scope()) {
+             for (auto item : state_dict) {
+               auto var = scope.FindVar(item.first);
+               if (var == nullptr) {
+                 PADDLE_THROW(phi::errors::NotFound(
+                     "The variable %s is not found.", item.first));
+               } else {
+                 *var->GetMutable<phi::DenseTensor>() = item.second;
+               }
+             }
+           });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -415,22 +499,8 @@ void BindBlock(py::module *m) {
       .def("kwargs", &Block::kwargs, return_value_policy::reference)
       .def("add_kwarg", &Block::AddKwarg)
       .def("erase_kwarg", &Block::EraseKwarg)
-      .def(
-          "remove_op",
-          [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), *op);
-            self.erase(op_iter);
-          },
-          R"DOC(
-        Remove the specific position operator.
-
-        Args:
-            index(int): the position that the operator to insert.
-
-        Returns:
-            None
-
-      )DOC")
+      .def("remove_op",
+           [](Block &self, const Operation &op) { self.erase(op); })
       .def(
           "move_op",
           [](Block &self, Operation *op, uint32_t offset) {
@@ -662,6 +732,7 @@ void BindOperation(py::module *m) {
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
           return_value_policy::reference)
+      .def("erase", &Operation::Erase)
       .def("move_before",
            [](Operation &self, Operation &other) {
              self.MoveTo(other.GetParent(), Block::Iterator{other});
@@ -764,33 +835,6 @@ phi::DataType GetValueDtype(Value value) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType, DistDenseTensorType."));
-  }
-}
-
-std::string GetValueName(Value value) {
-  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
-  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<pir::StrAttribute>("name").AsString();
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
-    } else {
-      return "arg_" + std::to_string(block_arg.index());
-    }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
   }
 }
 
@@ -1043,6 +1087,8 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
+      .def("is_combine",
+           [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
       .def(
@@ -1076,9 +1122,10 @@ void BindOpOperand(py::module *m) {
 
   )DOC");
   op_operand.def("source", [](OpOperand &self) { return self.source(); })
-      .def(
-          "set_source",
-          [](OpOperand &self, const Value &result) { self.set_source(result); })
+      .def("set_source",
+           [](OpOperand &self, Value *value) {
+             value ? self.set_source(*value) : self.set_source(nullptr);
+           })
       .def("owner", &OpOperand::owner, return_value_policy::reference)
       .def("index", &OpOperand::index);
 }
@@ -1090,12 +1137,11 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", [](Type &self, Type &other) { return self == other; })
-      .def("__str__", [](Type &self) {
-        std::ostringstream print_stream;
-        print_stream << self;
-        return print_stream.str();
-      });
+  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {
@@ -1128,11 +1174,30 @@ void BindType(py::module *m) {
 
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
-  ir_attr.def("__str__", [](Attribute &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_attr.def("__eq__", &Attribute::operator==)
+      .def("__str__",
+           [](Attribute &self) {
+             std::ostringstream print_stream;
+             print_stream << self;
+             return print_stream.str();
+           })
+      .def("as_tensor_dist_attr",
+           [](Attribute &self) -> py::object {
+             if (auto dist_attr = self.dyn_cast<TensorDistAttribute>()) {
+               return py::cast(dist_attr);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_array_attr", [](Attribute &self) -> py::object {
+        if (auto array_attr = self.dyn_cast<ArrayAttribute>()) {
+          return py::cast(array_attr);
+        }
+        return py::cast<py::none>(Py_None);
+      });
+  py::class_<ArrayAttribute, Attribute> array_attr(*m, "ArrayAttribute");
+  array_attr.def("__len__", [](ArrayAttribute &self) { return self.size(); })
+      .def("__getitem__",
+           [](ArrayAttribute &self, int idx) { return self.at(idx); });
 }
 
 struct PyInsertionPoint {
