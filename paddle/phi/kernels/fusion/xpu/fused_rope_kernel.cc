@@ -79,6 +79,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         "XPU do not support rotary_embedding with use_neox_rotary_style set."));
   } else {
     if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && k) {
+      int64_t num_heads_k = k->dims()[2];
       auto* outq_data =
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
       auto* outk_data =
@@ -94,7 +95,8 @@ void FusedRopeKernel(const Context& dev_ctx,
           {batch_size, seq_len, num_heads, head_dim},
           {batch_size, seq_len, 1, head_dim},
           {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-          {seq_len * head_dim, head_dim, head_dim, 1});
+          {seq_len * head_dim, head_dim, head_dim, 1},
+          num_heads_k);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2");
     } else {
       auto* outq_data =
@@ -111,6 +113,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           head_dim);
 
       if (k) {
+        int64_t num_heads_k = k->dims()[2];
         auto* outk_data =
             reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
         XPUFusedRotaryHalf<XPUType, Context>(
@@ -121,12 +124,13 @@ void FusedRopeKernel(const Context& dev_ctx,
             outk_data,
             batch_size,
             seq_len,
-            num_heads,
+            num_heads_k,
             head_dim);
       }
     }
 
     if (v) {
+      int64_t num_heads_v = k->dims()[2];
       auto* outv_data =
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_v));
       XPUFusedRotaryHalf<XPUType, Context>(
@@ -137,7 +141,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           outv_data,
           batch_size,
           seq_len,
-          num_heads,
+          num_heads_v,
           head_dim);
     }
   }

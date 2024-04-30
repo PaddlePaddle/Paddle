@@ -450,6 +450,7 @@ static utils::Attribute ConvertArrayAttribute(
             "ArrayAttribute"));
       }
     }
+    // TODO(xiazichao): ADD branch logic for 0-size ArrayAttribute.
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {
