@@ -138,6 +138,16 @@ void CropInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void CorrelationInferMeta(const MetaTensor& input1,
+                          const MetaTensor& input2,
+                          int pad_size,
+                          int kernel_size,
+                          int max_displacement,
+                          int stride1,
+                          int stride2,
+                          int corr_type_multiply,
+                          MetaTensor* out);
+
 void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
