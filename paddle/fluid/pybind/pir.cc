@@ -194,6 +194,33 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   return value;
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
@@ -336,7 +363,63 @@ void BindProgram(py::module *m) {
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
            })
-      .def("num_ops", [](Program &self) { return self.num_ops(); });
+      .def("num_ops", [](Program &self) { return self.num_ops(); })
+      .def(
+          "state_dict",
+          [](std::shared_ptr<Program> self,
+             const std::string &mode = "all",
+             const framework::Scope &scope = framework::Scope()) {
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_all;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_param;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_opt;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                auto is_persistable =
+                    var.attribute<BoolAttribute>("persistable");
+                if (is_persistable && is_persistable.data()) {
+                  if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_param[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  } else if (var.defining_op()
+                                 ->isa<paddle::dialect::DataOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_opt[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  }
+                }
+              }
+            }
+            if (mode == "all") {
+              return state_dict_all;
+            } else if (mode == "param") {
+              return state_dict_param;
+            } else if (mode == "opt") {
+              return state_dict_opt;
+            } else {
+              PADDLE_THROW(
+                  phi::errors::InvalidArgument("The mode is not supported."));
+            }
+          })
+      .def("set_state_dict",
+           [](std::shared_ptr<Program> self,
+              const std::unordered_map<std::string, phi::DenseTensor>
+                  &state_dict,
+              const framework::Scope &scope = framework::Scope()) {
+             for (auto item : state_dict) {
+               auto var = scope.FindVar(item.first);
+               if (var == nullptr) {
+                 PADDLE_THROW(phi::errors::NotFound(
+                     "The variable %s is not found.", item.first));
+               } else {
+                 *var->GetMutable<phi::DenseTensor>() = item.second;
+               }
+             }
+           });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -752,33 +835,6 @@ phi::DataType GetValueDtype(Value value) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType, DistDenseTensorType."));
-  }
-}
-
-std::string GetValueName(Value value) {
-  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
-  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<pir::StrAttribute>("name").AsString();
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
-    } else {
-      return "arg_" + std::to_string(block_arg.index());
-    }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
   }
 }
 

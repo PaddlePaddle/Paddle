@@ -282,6 +282,15 @@ void PrintTypeImpl(pir::Type type, std::ostream& os) {
     os << "tensor_array<";
     tensor_array_type.dtype().Print(os);
     os << ">";
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    os << "sparsecootensor<";
+    for (auto d : common::vectorize(sparse_coo_tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    sparse_coo_tensor_type.dtype().Print(os);
+    os << ">";
   }
 }
 void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {

@@ -44,8 +44,15 @@ static size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
+// FIXME(Aurelius84): 0D Tensor is not compitable with other rank.
+// So we need to add a special case for 0D Tensor.
+static size_t GetCompitableRank(pir::Value value) {
+  size_t rank = GetRank(value);
+  return rank == 0 ? 1 : rank;
+}
+
 static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
-  const size_t input_rank = GetRank(reduce_op->operand_source(0));
+  const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("dim");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
@@ -58,10 +65,6 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     return all_axis;
   }
   std::vector<int64_t> reduce_axis_idx;
-  if (input_rank == 0) {
-    VLOG(4) << "Reduce op has 0D Tensor input, return empty reduce_axis";
-    return reduce_axis_idx;
-  }
   for (int i = 0; i < axis_attr.size(); ++i) {
     int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
     if (axis < 0) {

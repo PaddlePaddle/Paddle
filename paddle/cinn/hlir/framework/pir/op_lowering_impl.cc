@@ -1093,9 +1093,6 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
     auto shape = ::common::vectorize<int>(type_info.dims());
-    if (shape.empty()) {
-      shape.push_back(1);
-    }
     return lang::CreatePlaceHolder(
         shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }

@@ -337,8 +337,6 @@ function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
-    # clean build files
-    clean_build_files
 }
 
 function cmake_gen_in_current_dir() {
@@ -1438,25 +1436,15 @@ function collect_failed_tests() {
 # getting qucik disable ut list
 function get_quickly_disable_ut() {
     python -m pip install httpx
-    if [ $deprecated_test_path ];then
-        cd $deprecated_test_path
-        deprecated_ut=`ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/^/|^/' | sed 's/$/$/'`
-        deprecated_ut=`echo $deprecated_ut | sed 's/ //g'`
-        cd -
-    fi
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-        disable_ut_quickly="${disable_ut_quickly}${deprecated_ut}"
         echo "========================================="
         echo "The following unittests have been disabled:"
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-        if [ $deprecated_ut ];then
-            disable_ut_quickly="${deprecated_ut}"
-        else
-            exit 102
-            disable_ut_quickly='disable_ut'
-        fi
+
+        exit 102
+        disable_ut_quickly='disable_ut'
     fi
 }
 
@@ -3974,8 +3962,6 @@ EOF
     # ci will collect ccache hit rate
     collect_ccache_hits
 
-    # clean build files
-    clean_build_files
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -4250,10 +4236,18 @@ function main() {
         fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
+      cicheck_build)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
+        fi
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+        clean_build_files
+        ;;
       build_pr_dev)
         export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         build_pr_and_develop
         check_sequence_op_unittest
+        clean_build_files
         ;;
       build_dev_test)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -4385,6 +4379,7 @@ function main() {
         enable_unused_var_check
         check_coverage_added_ut
         check_coverage_build
+        clean_build_files
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
@@ -4474,11 +4469,12 @@ function main() {
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        clean_build_files
         ;;
       cicheck_py37_pir)
         export FLAGS_enable_pir_api=1
         # disable deprecated test in pir
-        deprecated_test_path=${PADDLE_ROOT}/build/test/deprecated/
+        rm -rf ${PADDLE_ROOT}/build/test/deprecated/CTestTestfile.cmake
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
