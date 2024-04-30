@@ -76,7 +76,7 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
 
 class PatternCreator {
  public:
-  PatternCreator(pir::IrContext *context) : context(context) {}
+  explicit PatternCreator(pir::IrContext *context) : context(context) {}
 
   template <typename Op>
   void createPatterns(pir::RewritePatternSet &patternSet) {
