@@ -163,6 +163,5 @@ struct ClipAndFakeQuantDequantFunctor<phi::GPUContext, T> {
   }
 };
 
-
 }  // namespace operators
 }  // namespace paddle

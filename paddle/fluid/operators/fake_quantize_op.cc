@@ -65,7 +65,6 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
 };
 template struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, float>;
 
-
 class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
   FakeQuantOrWithDequantAbsMaxOp(const std::string &type,
