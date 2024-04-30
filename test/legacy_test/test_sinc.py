@@ -261,7 +261,7 @@ class TestSincAPIFP16(unittest.TestCase):
 class TestSincAPIBF16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
-        self.dtype = np.uint16
+        self.dtype = 'bfloat16'
         self.place = paddle.CUDAPlace(0)
 
     def test_dtype(self):
