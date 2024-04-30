@@ -32,10 +32,14 @@ from .utils import (
     use_new_executor,
 )
 
-NEW_IR_PASS = [
+PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
     'fused_dropout_add_pass',
+]
+
+PIR_PYTHON_PASS = [
+    'eliminate_transpose',
 ]
 
 
@@ -513,13 +517,13 @@ class Parallelizer:
         ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
-                new_pass_list = []
+                program_pass_list = []
                 for p in self._strategy.fused_passes.fused_passes_list:
-                    if p in NEW_IR_PASS and enable_ir:
+                    if enable_ir and p in (PIR_PASS + PIR_PYTHON_PASS):
                         ir_pass_list.append(p)
                     else:
-                        new_pass_list.append(new_pass(p))
-                pass_manager = PassManager(new_pass_list)
+                        program_pass_list.append(new_pass(p))
+                pass_manager = PassManager(program_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
         main_program._pass_opt = {}

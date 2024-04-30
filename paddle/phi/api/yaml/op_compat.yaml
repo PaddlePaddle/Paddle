@@ -809,6 +809,12 @@
   attrs :
     {scale : Scale, shift : Shift}
 
+- op : dequantize_abs_max
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : dequantize_linear
   inputs :
     {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
@@ -1126,8 +1132,14 @@
     out_accum : OutAccum
 
 - op : fake_quantize_range_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    iter : Iter
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_scales : OutScales
 
 - op : fc
   inputs :

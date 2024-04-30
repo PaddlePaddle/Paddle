@@ -15,6 +15,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fake_quantize_kernel_impl.h"
 
+PD_REGISTER_KERNEL(fake_quantize_range_abs_max,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FakeQuantizeRangeAbsMaxKernel,
+                   float,
+                   phi::dtype::float16) {}
+
 PD_REGISTER_KERNEL(fake_quantize_abs_max,
                    GPU,
                    ALL_LAYOUT,
