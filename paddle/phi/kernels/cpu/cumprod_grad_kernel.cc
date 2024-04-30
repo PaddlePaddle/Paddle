@@ -85,7 +85,7 @@ void CumprodGradKernel(const Context& dev_ctx,
         d_x_data[index] = 0;
         for (size_t n = 0; n < mid_dim; n++) {
           size_t pos = i * mid_dim * inner_dim + n * inner_dim + k;
-          T elem = T();
+          T elem;
           if (j == 0) {
             elem = d_out_data[pos];
           } else {
