@@ -98,7 +98,7 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
                                          kAlignmentB,
                                          cutlass::arch::OpMultiplyAdd>;
 
-  cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoor`d{params.M, params.N, params.K};
+  cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoord{params.M, params.N, params.K};
   //cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
 
   cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kBatched ;

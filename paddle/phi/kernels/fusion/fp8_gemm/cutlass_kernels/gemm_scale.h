@@ -39,7 +39,9 @@ using ElementOutput =
                                 cutlass::half_t>;
 
 using ElementAccumulator = float;
-using ElementComputeEpilogue = ElementAccumulator;
+using ElementCompute = float;
+using ElementComputeEpilogue = float;
+
 using LayoutInputA = cutlass::layout::RowMajor;
 using LayoutInputB = cutlass::layout::ColumnMajor;
 using LayoutOutput = cutlass::layout::RowMajor;
@@ -71,7 +73,8 @@ using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
                                                        // elements. This becomes the vector width of
                                                        // math instructions in the epilogue too
     ElementAccumulator,                                // <- data type of accumulator
-    ElementComputeEpilogue>;  // <- data type for alpha/beta in linear combination function
+    ElementComputeEpilogue,
+    cutlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- data type for alpha/beta in linear combination function
 
 // Number of pipelines you want to use
 constexpr int NumStages = 3;
@@ -95,25 +98,27 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
                                          kAlignmentB,
                                          cutlass::arch::OpMultiplyAdd>;
 
-  using ElementCompute = typename Gemm::GemmKernel::Epilogue::OutputOp::ElementCompute;
-  cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
   cutlass::gemm::GemmCoord problem_size = cutlass::gemm::GemmCoord{params.M, params.N, params.K};
+  //cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kGemm;
+
+  cutlass::gemm::GemmUniversalMode mode = cutlass::gemm::GemmUniversalMode::kBatched ;
+  // cutlass::gemm::BatchedGemmCoord problem_size = cutlass::gemm::BatchedGemmCoord{params.M, params.N, params.K, params.batch_count};
 
   using EpilogueOutputOp = typename Gemm::GemmKernel::Epilogue::OutputOp;
   typename EpilogueOutputOp::Params epilogue_op(ElementCompute(params.scale), ElementCompute(1.0));
   typename Gemm::Arguments arguments{
       mode,
       problem_size,
-      /* batch_count = */ 1,
+      params.batch_count,
       epilogue_op,
       reinterpret_cast<ElementInputA*>(const_cast<void*>(params.A)),
       reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B)),
-      nullptr,
+      reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias)),
       reinterpret_cast<ElementOutput*>(params.D),
-      params.M* params.K,
-      params.K* params.N,
+      params.lda * params.M,
+      params.ldb * params.N,
       (int64_t)0,
-      params.M* params.N,
+      params.ldd * params.M,
       params.lda,
       params.ldb,
       (int64_t)0,

@@ -81,13 +81,12 @@ void fp8_fp8_fp16_gemm(const Context& dev_ctx,
   }
 
 
-  std::string input_dtype;
-  if(x.dtype() == phi::DataType::FLOAT8_E4M3FN){
-    input_dtype = "e4m3";
-  }else{
-    input_dtype = "e5m2";
-  }
+  std::string input_dtype = (x.dtype() == phi::DataType::FLOAT8_E4M3FN)? "e4m3":"e5m2";
   std::string output_dtype = "fp16";
+  std::string isbias = bias? "bias_":"";
+  std::string act = (activation_type==""||activation_type=="identity")? "identity":activation_type;
+
+  std::string gemm_config = input_dtype+"_"+ output_dtype+"_"+isbias+act;
 
   void *bias_data = nullptr;
   std::vector<int64_t> bias_dims{};
@@ -113,9 +112,7 @@ void fp8_fp8_fp16_gemm(const Context& dev_ctx,
       0.01,  // for leaky_relu
       bias_data,
       &bias_dims,
-      input_dtype,
-      output_dtype,
-      activation_type,
+      gemm_config,
   };
     func fp8_gemm_func = (func)(dlsym(dlhandler, "fp8_fp8_gemm_scale_bias_act"));
   fp8_gemm_func(params);

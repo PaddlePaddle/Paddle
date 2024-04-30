@@ -44,9 +44,7 @@ typedef struct {
   float leaky_alpha = 1.0;
   const void *bias;
   std::vector<int64_t>* bias_dims;
-  std::string& input_dtype;
-  std::string& output_dtype;
-  const std::string& activation_type;
+  std::string& gemm_config;
 } GemmEpilogueAllParams;
 
 typedef bool (*func)(GemmEpilogueAllParams);

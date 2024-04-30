@@ -141,7 +141,8 @@ class TestFP8MatmulOp(unittest.TestCase):
                     transpose_x=False,
                     transpose_y=True,
                     bias=bias_fp16,
-                    scale=2.0,
+                    scale=-1.0,
+                    act="gelu",
                 )
                 output_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
                     input3,
@@ -149,7 +150,7 @@ class TestFP8MatmulOp(unittest.TestCase):
                     transpose_x=False,
                     transpose_y=True,
                     bias=bias_bf16,
-                    scale=1.5,
+                    scale=-1.5,
                 )
                 expect_result = np.matmul(input5, input6)
 

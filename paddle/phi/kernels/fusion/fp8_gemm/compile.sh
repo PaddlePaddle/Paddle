@@ -31,5 +31,5 @@ gpu_cc="89"
 
 cd $build_directory
 cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc -DPADDLE_LIB=/home/wangzhe24/paddle/fp8/Paddle/build/paddle_inference_install_dir
-make -j 
+make -j32 
 cd -
