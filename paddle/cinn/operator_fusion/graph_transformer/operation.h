@@ -80,46 +80,22 @@ struct LiftReduceToReduceTreeOperation {
 
 struct MergeTrivialPatternOperation {
   template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph,
-                  PatternNodePtr<Phrase> upstream) {
+  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
+    PADDLE_ENFORCE_EQ(
+        node->downstream().size(),
+        1,
+        phi::errors::PreconditionNotMet("The downstream of the Sink Trivial "
+                                        "Pattern node should be 1, but got %d.",
+                                        node->downstream().size()));
     const auto& downstream = node->downstream().at(0);
-    auto merged_node =
-        graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(node, downstream, MergePattern<Phrase>);
     graph->RemoveNode(downstream);
-    VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
-            << upstream->DebugStr() << "\ndownstream " << downstream->DebugStr()
-            << "\nmerged " << merged_node->DebugStr();
+    graph->RemoveNode(node);
+    VLOG(4) << "MergeTrivialPatternOperation: \nupstream " << node->DebugStr()
+            << "\ndownstream " << downstream->DebugStr() << "\nmerged "
+            << merged_node->DebugStr();
   }
 };
-
-// struct MergeTrivialPatternOperation {
-//   template <typename Phrase>
-//   void operator()(PatternGraph<Phrase>* graph,
-//                   PatternNodePtr<Phrase> upstream) {
-//     std::vector<PatternNodePtr<Phrase>> fusion_candidate =
-//         upstream->downstream();
-//     upstream->ClearDownstream();
-//     for (const auto& downstream : fusion_candidate) {
-//       if (std::holds_alternative<ReducePattern<Phrase>>(
-//               downstream->stmt_pattern()) ||
-//           std::holds_alternative<TrivialPattern<Phrase>>(
-//               downstream->stmt_pattern())) {
-//         auto merged_node =
-//             graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
-//         graph->RemoveNode(downstream);
-//         VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
-//                 << upstream->DebugStr() << "\ndownstream "
-//                 << downstream->DebugStr() << "\nmerged "
-//                 << merged_node->DebugStr();
-//       } else {
-//         upstream->AddNodeToDownstream(downstream);
-//       }
-//     }
-//     if (upstream->downstream().empty()) {
-//       graph->RemoveNode(upstream);
-//     }
-//   }
-// };
 
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
@@ -158,8 +134,41 @@ struct FuseDownstreamAnchorOperation {
 
 struct SplitRecomputeOperation {
   template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    // TODO(@wuzhanfei)
+  void operator()(PatternGraph<Phrase>* graph,
+                  PatternNodePtr<Phrase> upstream) {
+    PADDLE_ENFORCE_GT(upstream->downstream().size(),
+                      1,
+                      phi::errors::PreconditionNotMet(
+                          "The downstream of node for recomputation should be "
+                          "more than 1, but got %d.",
+                          upstream->downstream().size()));
+
+    std::vector<PatternNodePtr<Phrase>> fusion_candidate =
+        upstream->downstream();
+    upstream->ClearDownstream();
+
+    for (const auto& downstream : fusion_candidate) {
+      bool can_fuse = graph->policy_manager()
+                          .template GetPolicy<AnchorSearchPolicy>()
+                          ->HasDownstreamAnchor(upstream, downstream) ||
+                      graph->policy_manager()
+                          .template GetPolicy<AnchorSearchPolicy>()
+                          ->HasUpstreamAnchor(upstream, downstream);
+      if (can_fuse) {
+        auto merged_node =
+            graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+        graph->RemoveNode(downstream);
+        VLOG(4) << "Spliting recomputable anchor pattern: \nupstream "
+                << upstream->DebugStr() << "\ndownstream "
+                << downstream->DebugStr() << "\nmerged "
+                << merged_node->DebugStr();
+      } else {
+        upstream->AddNodeToDownstream(downstream);
+      }
+    }
+    if (upstream->downstream().empty()) {
+      graph->RemoveNode(upstream);
+    }
   }
 };
 

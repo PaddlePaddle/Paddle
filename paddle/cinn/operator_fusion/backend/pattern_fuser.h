@@ -43,6 +43,11 @@ StmtPattern<BackendStage> MergePatternImpl(
 
 template <>
 StmtPattern<BackendStage> MergePatternImpl(
+    const AnchorPattern<BackendStage>& first,
+    const AnchorPattern<BackendStage>& second);
+
+template <>
+StmtPattern<BackendStage> MergePatternImpl(
     const HorizontalFusionPattern<BackendStage>& first,
     const HorizontalFusionPattern<BackendStage>& second);
 

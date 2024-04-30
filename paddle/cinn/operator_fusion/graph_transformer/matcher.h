@@ -92,8 +92,9 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 struct RecomputeNodeMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    // TODO(@wuzhanfei)
-    return false;
+    return StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, node) &&
+           node->downstream().size() > 1 &&
+           (node->stmt_pattern.can_recompute());
   }
 };
 

@@ -174,7 +174,6 @@ void PatternGraph<T>::ReduceTree_Trivial_Fusion() {
 
 template <typename T>
 void PatternGraph<T>::LiftToAnchorPattern() {
-  // TODO(@wuzhanfei)
   GraphTransformer<NodePattern, T, AlwaysTrue<T>, LiftToAnchorPatternOperation>(
       this);
 }
@@ -200,7 +199,6 @@ void PatternGraph<T>::AnchorPatternFusion() {
 
 template <typename T>
 void PatternGraph<T>::SplitRecomputePattern() {
-  // TODO(@wuzhanfei)
   GraphTransformer<NodePattern,
                    T,
                    RecomputeNodeMatcher,
