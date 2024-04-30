@@ -312,7 +312,7 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   }();
 
   const auto &restore_ind = [&]() {
-    return symbol::TensorShapeOrDataDimExprs({num_levels, 1});
+    return symbol::TensorShapeOrDataDimExprs({num_rois, 1});
   }();
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), multi_rois_out_shape);

@@ -239,11 +239,10 @@ const Expr &IrNode::operand(int i) {
 void IrNode::set_type(Type type) { type_ = type; }
 
 void IrNode::convert_int32_to_int64() {
-  common::Type node_type = type();
-  CHECK(node_type == Int(64) || node_type == Int(32) || node_type.is_unk())
+  CHECK(type_ == Int(64) || type_ == Int(32) || type_.is_unk())
       << "Current only support convert int32_t to int64_t, but get type is "
-      << node_type;
-  set_type(Int(64));
+      << type_;
+  type_ = Int(64);
   for (Expr &operand : operands) {
     operand->convert_int32_to_int64();
   }

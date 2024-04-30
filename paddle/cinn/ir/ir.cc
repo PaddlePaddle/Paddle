@@ -210,11 +210,6 @@ void Let::Verify() const {
 
 Type Let::type() const { return symbol.type(); }
 
-void Let::set_type(Type t) {
-  IrNode::set_type(t);
-  symbol->set_type(t);
-}
-
 Expr _Var_::Make(const std::string &name, const Type &type) {
   auto node = new _Var_(name, type);
   return Expr(node);
@@ -413,10 +408,6 @@ const std::string &Store::name() const {
 
 Type Store::type() const { return value.type(); }
 
-void Store::set_type(Type t) {
-  IrNode::set_type(t);
-  value->set_type(t);
-}
 std::vector<Expr *> Store::expr_fields() {
   std::vector<Expr *> exprs({&tensor, &value});
   for (auto &idx : indices) exprs.push_back(&idx);
@@ -624,12 +615,6 @@ Type Load::type() const {
   return type;
 }
 
-void Load::set_type(Type t) {
-  CHECK(tensor.defined());
-  IrNode::set_type(t);
-  tensor->set_type(t);
-}
-
 std::vector<Expr *> Load::expr_fields() {
   std::vector<Expr *> exprs({&tensor});
   for (auto &idx : indices) exprs.push_back(&idx);
@@ -716,11 +701,6 @@ Type Broadcast::type() const {
   return value.type().ElementOf().with_lanes(lanes);
 }
 
-void Broadcast::set_type(Type t) {
-  IrNode::set_type(t);
-  value->set_type(t);
-}
-
 Expr Sum::Make(const std::vector<Expr> &vs) {
   CHECK(!vs.empty());
   if (vs.size() == 1) return vs.front();
@@ -800,11 +780,6 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
 
 Type Reduce::type() const { return body.type().ElementOf(); }
 
-void Reduce::set_type(Type t) {
-  IrNode::set_type(t);
-  body->set_type(t);
-}
-
 std::vector<Expr *> Reduce::expr_fields() {
   std::vector<Expr *> res;
   if (init.defined()) {
@@ -834,11 +809,6 @@ void Reduce::Verify() const {
 Type Select::type() const {
   CHECK_EQ(true_value.type(), false_value.type());
   return true_value.type();
-}
-
-void Select::set_type(Type t) {
-  IrNode::set_type(t);
-  true_value->set_type(t);
 }
 
 void Select::Verify() const {
@@ -903,13 +873,6 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
 
 Type Product::type() const { return operands().front().type(); }
 
-void Product::set_type(Type t) {
-  IrNode::set_type(t);
-  for (auto &operand : operands()) {
-    operand->set_type(t);
-  }
-}
-
 void Product::Verify() const {
   CHECK_GT(operands().size(), 1UL)
       << "Product node should have more than 1 operands";
@@ -917,13 +880,6 @@ void Product::Verify() const {
 }
 
 Type Sum::type() const { return operands().front().type(); }
-
-void Sum::set_type(Type t) {
-  IrNode::set_type(t);
-  for (auto &operand : operands()) {
-    operand->set_type(t);
-  }
-}
 
 void Sum::Verify() const {
   CHECK_GT(operands().size(), 1UL)

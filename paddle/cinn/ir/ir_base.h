@@ -162,7 +162,7 @@ class IrNode : public cinn::common::Object {
 
   virtual IrNodeTy node_type() const { return IrNodeTy::kUnk; }
   virtual Type type() const { return type_; }
-  virtual void set_type(Type t);
+  void set_type(Type type);
   //! Elevate int32 to int64 if needed
   void convert_int32_to_int64();
 
