@@ -17,6 +17,7 @@
 #include <queue>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
@@ -100,11 +101,11 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
 }
 
 struct GCVarInfo {
-  GCVarInfo(const std::string &name,
+  GCVarInfo(std::string name,
             int64_t memory_size,
             details::ComputationOpHandle *op,
             size_t scope_idx)
-      : name_(name),
+      : name_(std::move(name)),
         memory_size_(memory_size),
         op_(op),
         scope_idx_(scope_idx) {}
