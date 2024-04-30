@@ -84,58 +84,6 @@ class FakeQuantizeDequantizeAbsMaxKernel
 };
 
 template <typename T, typename DeviceContext>
-class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    out->mutable_data<T>(context.GetPlace());
-
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-    int quant_axis = context.Attr<int>("quant_axis");
-    bool is_test = context.Attr<bool>("is_test");
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    if (!is_test) {
-      T *out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-      phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
-          dev_ctx, *in, quant_axis, out_scale_data);
-    }
-    phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
-  }
-};
-
-template <typename T, typename DeviceContext>
-class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    T *out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    out->mutable_data<T>(dev_ctx.GetPlace());
-
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-    int quant_axis = context.Attr<int>("quant_axis");
-
-    phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, *in, quant_axis, out_scale_data);
-
-    phi::funcs::ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
-  }
-};
-
-template <typename T, typename DeviceContext>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
