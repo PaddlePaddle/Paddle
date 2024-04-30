@@ -164,4 +164,6 @@ class IR_API ShapeAnalysisManager {
   bool name##OpInferSymbolicShape(            \
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context);
 
+bool IsStaticShape(const Value& value);
+
 }  // namespace pir

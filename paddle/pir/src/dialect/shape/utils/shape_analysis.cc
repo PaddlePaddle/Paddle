@@ -76,6 +76,9 @@ void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
     PADDLE_THROW(phi::errors::Fatal(
         "Set static shape for non-tensor value is FOBBIDEN!"));
   }
+  if (!IsStaticShape(val)) {
+    LOG(WARNING) << "Risk on SetStaticShapeForValue for contain_unknown_dim";
+  }
   auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
   std::vector<symbol::DimExpr> static_shape;
   for (int i = 0; i < type_info.dims().size(); ++i) {
@@ -528,6 +531,15 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   }
 
   return *it->second;
+}
+
+bool IsStaticShape(const Value& value) {
+  const auto& value_type = value.type();
+  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
+    return false;
+  }
+  return !::common::contain_unknown_dim(
+      value_type.dyn_cast<pir::DenseTensorType>().dims());
 }
 
 }  // namespace pir

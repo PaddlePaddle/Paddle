@@ -272,15 +272,6 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
-static inline bool IsStaticShape(const Value& value) {
-  const auto& value_type = value.type();
-  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
-    return false;
-  }
-  return !::common::contain_unknown_dim(
-      value_type.dyn_cast<pir::DenseTensorType>().dims());
-}
-
 symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
   std::vector<symbol::DimExpr> dim_exprs;
   for (int i = 0; i < dims.size(); ++i) {
