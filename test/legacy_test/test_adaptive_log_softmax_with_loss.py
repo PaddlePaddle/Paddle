@@ -445,7 +445,6 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.randint(low=0, high=20, shape=[128, 1])
             _ = model(x, y)
 
-
     def test_gard(self):
         n_classes = 4
         in_features = 8
@@ -549,24 +548,30 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         weights_np = weights.numpy().copy()
         grad_numerical = np.zeros_like(weights_np)
 
-        it = np.nditer(weights_np, flags=['multi_index'], op_flags=['readwrite'])
+        it = np.nditer(
+            weights_np, flags=['multi_index'], op_flags=['readwrite']
+        )
         while not it.finished:
             ix = it.multi_index
             oldval = weights_np[ix]
             weights_np[ix] = oldval + h
-            model.adaptive_softmax.head_weight.set_value(paddle.to_tensor(weights_np))
+            model.adaptive_softmax.head_weight.set_value(
+                paddle.to_tensor(weights_np)
+            )
             _, y_pos = model(x, labels)
             loss_pos = y_pos.mean()
 
             weights_np[ix] = oldval - h
-            model.adaptive_softmax.head_weight.set_value(paddle.to_tensor(weights_np))
+            model.adaptive_softmax.head_weight.set_value(
+                paddle.to_tensor(weights_np)
+            )
             _, y_neg = model(x, labels)
             loss_neg = y_neg.mean()
 
             grad_numerical[ix] = (loss_pos - loss_neg) / (2 * h)
             weights_np[ix] = oldval
             it.iternext()
-        
+
         np.allclose(analytic_grads, grad_numerical, rtol=1e-5, atol=1e-5)
 
 
