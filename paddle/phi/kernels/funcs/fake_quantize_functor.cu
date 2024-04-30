@@ -404,13 +404,6 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
     const int round_type,
     const int quant_axis,
     DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(
-      quant_axis == 0 || quant_axis == 1,
-      true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
-
   int64_t num = in.numel();
   auto in_dims = in.dims();
   const T *in_data = in.data<T>();
@@ -551,12 +544,6 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
     DenseTensor *out) {
   // At present, channelwise quantization supports conv2d, depthwise_conv2d
   // conv2d_transpose and mul
-  PADDLE_ENFORCE_EQ(
-      quant_axis == 0 || quant_axis == 1,
-      true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
 
   int num = in.numel();
   auto in_dims = in.dims();
