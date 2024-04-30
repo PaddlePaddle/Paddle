@@ -37,7 +37,7 @@ namespace operators {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (auto& nccl_id : *nccl_ids) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetUniqueId(&nccl_id));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 }
 

@@ -248,8 +248,11 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
-    framework::TensorCopy(
-        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
+    memory::Copy(ctx.GetPlace(),
+                 softmax->data(),
+                 ctx.GetPlace(),
+                 softmax_2d.data(),
+                 N * D * sizeof(T));
   }
 };
 
@@ -510,8 +513,11 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
-    framework::TensorCopy(
-        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
+    memory::Copy(ctx.GetPlace(),
+                 softmax->data(),
+                 ctx.GetPlace(),
+                 softmax_2d.data(),
+                 N * D * sizeof(T));
   }
 };
 
