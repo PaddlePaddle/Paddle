@@ -99,6 +99,27 @@ struct AnchorPattern {
   std::vector<pir::Operation*> ops() const { return ops_; }
   std::vector<pir::Value> outputs() const { return outputs_; }
   pir::Value anchor() const { return anchor_; }
+
+  bool can_recompute() const {
+    // Current Algorithm:
+    // An AnchorPattern can be recomputed iff:
+    // 1. It didn't go through any pattern merging during prior fusions, which
+    // means it only has one output_expr in anchor_state.
+    // 2. It only contains trivial ops.
+
+    if (anchor_state.output_exprs.size() > 1) {
+      return false;
+    }
+
+    for (const auto& op : ops_) {
+      const auto& op_kind = GetOpPatternKind(op);
+      if (op_kind >= hlir::framework::kReduction) {
+        return false;
+      }
+    }
+
+    return true;
+  }
   static std::string name() { return "AnchorPattern"; }
 };
 

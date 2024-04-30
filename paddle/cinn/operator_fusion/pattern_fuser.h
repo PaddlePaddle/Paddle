@@ -172,6 +172,10 @@ StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
                                 const TrivialPattern<T>& second);
 
 template <typename T>
+StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& first,
+                                const AnchorPattern<T>& second);
+
+template <typename T>
 StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
                                 const HorizontalFusionPattern<T>& second);
 
@@ -191,6 +195,9 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const TrivialPattern<T>& lhs, const TrivialPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const AnchorPattern<T>& lhs, const AnchorPattern<T>& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const HorizontalFusionPattern<T>& lhs,
