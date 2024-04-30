@@ -17,10 +17,7 @@ set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
-  cc_library(
-    init_env_utils
-    SRCS init_env_utils.cc
-    DEPS backward)
+  cc_library(init_env_utils SRCS init_env_utils.cc)
   # DEPS eager_api backward prim_utils)
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
