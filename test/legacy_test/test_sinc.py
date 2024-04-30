@@ -265,32 +265,23 @@ class TestSincAPIBFP16(unittest.TestCase):
         self.place = paddle.CUDAPlace(0)
 
     def test_dtype(self):
-        def run_static(place):
-            paddle.enable_static()
+        def run(place):
+            paddle.disable_static(place)
             for shape in self.shapes:
                 x_data = np.random.rand(*shape).astype('float32')
-                startup_program = paddle.static.Program()
-                main_program = paddle.static.Program()
-                exe = base.Executor(place)
-                with paddle.static.program_guard(main_program, startup_program):
-                    x = paddle.static.data(
-                        name='x', shape=shape, dtype=self.dtype
-                    )
-                    res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
-                    out_expected = np_sinc(x_data)
-                static_result = convert_uint16_to_float(static_result)
+                x = paddle.to_tensor(x_data, dtype=self.dtype)
+                res = paddle.sinc(x)
+                out_expected = np_sinc(x_data)
+                result = convert_uint16_to_float(res)
                 np.testing.assert_allclose(
-                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                    result, out_expected, rtol=1e-6, atol=1e-6
                 )
 
-        run_static(self.place)
+        run(self.place)
 
     def test_zero(self):
-        def run_static(place):
-            paddle.enable_static()
+        def run(place):
+            paddle.disable_static(place)
             for shape in self.shapes:
                 x_data = np.random.rand(*shape).astype('float32')
                 mask = (
@@ -299,24 +290,15 @@ class TestSincAPIBFP16(unittest.TestCase):
                     .astype('float32')
                 )
                 x_data = x_data * mask
-                startup_program = paddle.static.Program()
-                main_program = paddle.static.Program()
-                exe = base.Executor(place)
-                with paddle.static.program_guard(main_program, startup_program):
-                    x = paddle.static.data(
-                        name='x', shape=shape, dtype=self.dtype
-                    )
-                    res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
-                    out_expected = np_sinc(x_data)
-                static_result = convert_uint16_to_float(static_result)
+                x = paddle.to_tensor(x_data, dtype=self.dtype)
+                res = paddle.sinc(x)
+                out_expected = np_sinc(x_data)
+                result = convert_uint16_to_float(res)
                 np.testing.assert_allclose(
-                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                    result, out_expected, rtol=1e-6, atol=1e-6
                 )
 
-        run_static(self.place)
+        run(self.place)
 
 
 if __name__ == "__main__":
