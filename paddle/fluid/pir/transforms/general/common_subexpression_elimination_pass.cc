@@ -348,8 +348,8 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     ExpressionTable root_expression_table;
     cse_analyzer.SimplifyBlock(op->GetParentProgram()->block(),
                                &root_expression_table);
-    VLOG(0) << "Found " << cse_analyzer.to_erase_ops.size()
-            << " common subexpression";
+    std::cout << "Found " << cse_analyzer.to_erase_ops.size()
+              << " common subexpression" << std::endl;
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
       VLOG(3) << "Erasing op " << op->name() << " [" << op << "]";
       VLOG(3) << "Replace to op " << existing_op->name() << " [" << existing_op
@@ -358,6 +358,10 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
       num_erasers++;
     }
     AddStatistics(num_erasers);
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

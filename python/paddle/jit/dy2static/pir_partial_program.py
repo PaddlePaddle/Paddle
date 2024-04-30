@@ -593,10 +593,18 @@ class PartialProgramLayer:
     def _create_program(self, is_infer_mode=False):
         def apply_cse(program):
             pm = paddle.base.libpaddle.pir.PassManager()
+            print("=========================")
+            print("Program before CSE:")
+            print(program)
+            print("=========================")
             paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
                 pm, program
             )
             pm.run(program)
+            print("=========================")
+            print("Program after CSE:")
+            print(program)
+            print("=========================")
 
         if is_infer_mode:
 
@@ -607,6 +615,7 @@ class PartialProgramLayer:
                     pm, forward_program
                 )
                 pm.run(forward_program)
+                apply_cse(forward_program)
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
@@ -615,7 +624,6 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
-                apply_cse(forward_program)
 
                 return forward_program, backward_program
 
@@ -634,6 +642,8 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
+                apply_cse(forward_program)
+                apply_cse(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
@@ -641,8 +651,6 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
-                apply_cse(forward_program)
-                apply_cse(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
