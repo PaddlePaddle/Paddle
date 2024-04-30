@@ -509,7 +509,7 @@
   inplace : (softmax -> input_grad)
 
 - backward_op : cross_grad
-  forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
+  forward : cross (Tensor x, Tensor y, int axis = 12) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :

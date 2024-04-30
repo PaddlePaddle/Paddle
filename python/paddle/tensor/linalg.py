@@ -41,7 +41,7 @@ __all__ = []
 
 
 # Consistent with kDefaultDim from C++ Backend
-K_DEFAULT_DIM = 9
+K_DEFAULT_DIM = 12
 
 
 def transpose(x, perm, name=None):
@@ -1892,7 +1892,7 @@ def t_(input, name=None):
         return out
 
 
-def cross(x, y, axis=9, name=None):
+def cross(x, y, axis=12, name=None):
     """
     Computes the cross product between two tensors along an axis.
 

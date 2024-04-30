@@ -44,11 +44,14 @@ namespace common {
     PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
     PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
     PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(10, callback);                                    \
+    PADDLE_VISIT_DDIM_BASE(11, callback);                                    \
+    PADDLE_VISIT_DDIM_BASE(12, callback);                                    \
     default:                                                                 \
       PD_THROW(                                                              \
           "Unimplemented error. Invalid dimension to be accessed. Now only " \
           "supports access to "                                              \
-          "dimension 0 to 9, but received dimension is ",                    \
+          "dimension 0 to 12, but received dimension is ",                   \
           rank,                                                              \
           ".");                                                              \
   }
@@ -64,11 +67,11 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
 /**
  * \brief A dynamically sized dimension.
  *
- * The number of dimensions must be between [1, 9].
+ * The number of dimensions must be between [1, 12].
  */
 class TEST_API DDim {
  public:
-  constexpr static int kMaxRank = 9;
+  constexpr static int kMaxRank = 12;
 
   DDim();
 
