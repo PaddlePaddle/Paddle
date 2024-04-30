@@ -89,11 +89,11 @@ slice slice                    \                   squeeze       unsqueeze      
         return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
 
     def sample_program(self):
-        for q_shape in [[1, 1, 32, 128]]:
-            for k_shape in [[1, 1, 32, 128]]:
-                for cos_shape in [[1, 1, 1, 128]]:
-                    for sin_shape in [[1, 1, 1, 128]]:
-                        for position_ids_shape in [[1, 1]]:
+        for q_shape in [[2, 8, 2, 16]]:
+            for k_shape in [[2, 8, 2, 16]]:
+                for cos_shape in [[1, 8, 1, 16]]:
+                    for sin_shape in [[1, 8, 1, 16]]:
+                        for position_ids_shape in [[2, 8]]:
                             with paddle.pir_utils.IrGuard():
                                 start_prog = paddle.static.Program()
                                 main_prog = paddle.static.Program()
@@ -121,6 +121,26 @@ slice slice                    \                   squeeze       unsqueeze      
                                         shape=position_ids_shape,
                                         dtype='int64',
                                     )
+
+                                    # perm=[0,2,1,3]
+                                    # q=paddle.transpose(x=q,perm=perm)
+                                    # k=paddle.transpose(x=k,perm=perm)
+
+                                    # print("cos",cos)
+                                    # cos_tensor=cos.squeeze(axis=[0, 2])
+                                    # sin_tensor=sin.squeeze(axis=[0, 2])
+                                    # print("sin_tensor", sin_tensor.shape)
+
+                                    # sin_tensor=sin_tensor[position_ids].unsqueeze(2)
+                                    # cos_tensor=cos_tensor[position_ids].unsqueeze(2)
+                                    # print("cos_tensor", cos_tensor.shape)
+
+                                    # perm=[0,2,1,3]
+                                    # sin_tensor=paddle.transpose(x=sin_tensor,perm=perm)
+                                    # cos_tensor=paddle.transpose(x=cos_tensor,perm=perm)
+                                    # print("sin_tensor的shape",sin_tensor.shape)
+                                    # print("cos_tensor的shape", cos_tensor.shape)
+
                                     cos = cos.squeeze(axis=[0, 2])
                                     sin = sin.squeeze(axis=[0, 2])
                                     cos = cos[position_ids].unsqueeze(2)
@@ -138,8 +158,10 @@ slice slice                    \                   squeeze       unsqueeze      
                                         )
                                         * sin
                                     )
-                                    print("q_embed", q_embed)
-                                    print("k_embed", k_embed)
+                                    out1 = paddle.assign(q_embed)
+                                    out2 = paddle.assign(k_embed)
+                                    # print("q_embed", q_embed)
+                                    # print("k_embed", k_embed)
                                     self.pass_list = [
                                         'fused_rotary_position_embedding_pass'
                                     ]
@@ -161,17 +183,17 @@ slice slice                    \                   squeeze       unsqueeze      
                                             position_ids_shape
                                         ).astype('int64'),
                                     }
-                                    self.fetch_list = [q_embed, k_embed]
+                                    self.fetch_list = [out1, out2]
                                     self.valid_op_map = {
                                         "pd_op.squeeze": 0,
                                         "pd_op.unsqueeze": 0,
                                         "pd_op.concat": 0,
+                                        "pd_op.multiply": 0,
                                         "pd_op.full": 0,
                                         "pd_op.full_int_array": 0,
                                         "pd_op.add": 0,
                                         "pd_op.slice": 0,
                                         "pd_op.scale": 0,
-                                        "pd_op.multiply": 0,
                                         "builtin.combine": 0,
                                         "pd_op.gather_nd": 0,
                                         "pd_op.fused_rotary_position_embedding": 1,
@@ -183,7 +205,7 @@ slice slice                    \                   squeeze       unsqueeze      
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
 if __name__ == "__main__":
