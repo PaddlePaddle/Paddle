@@ -137,10 +137,10 @@ void FakeChannelWiseQuantizeAbsMaxKernel(const Context &dev_ctx,
   if (!is_test) {
     T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
     phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
-        dev_ctx, *in, quant_axis, out_scale_data);
+        dev_ctx, x, quant_axis, out_scale_data);
   }
   phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
-      dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+      dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
 }
 
 template <typename T, typename Context>
@@ -157,10 +157,10 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
   phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
-      dev_ctx, *in, quant_axis, out_scale_data);
+      dev_ctx, x, quant_axis, out_scale_data);
 
   phi::funcs::ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
-      dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+      dev_ctx, x, *out_scale, bin_cnt, round_type, quant_axis, out);
 }
 
 }  // namespace phi
