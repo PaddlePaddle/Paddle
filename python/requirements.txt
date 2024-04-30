@@ -6,5 +6,5 @@ decorator
 astor
 opt_einsum==3.3.0
 networkx
-typing_extensions
 requests
+typing_extensions
