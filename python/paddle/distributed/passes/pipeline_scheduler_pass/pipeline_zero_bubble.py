@@ -261,11 +261,14 @@ class VScheduleCreator:
         self, fill_f=True, fill_w=True, approved_bubbles=None
     ):
         self.init_schedule()
-
         if approved_bubbles is None:
             approved_bubbles = [-1] * self.num_stage
         max_approved_bubble = max(approved_bubbles)
 
+        self._insert_warmup_stage_forward_jobs()
+        self._insert_forward_jobs_before_backward_b()
+
+    def _insert_warmup_stage_forward_jobs(self):
         # Step1: Insert forward jobs with chunk_id=0 into the schedule
         for i in range(self.num_stage):
             self._put_job_into_schedule("forward", chunk_id=0, stage_id=i)
@@ -281,29 +284,108 @@ class VScheduleCreator:
                 + self.program_runtime["communication"]
             )
 
-            self._fill_bubble("forward", 1, i, forward1_start_time)
+            self._fill_bubble("forward", [1], i, forward1_start_time)
             self._put_job_into_schedule("forward", chunk_id=1, stage_id=i)
 
-    def _fill_bubble(
-        self, fill_job_type, chunk_id, stage_id, next_job_start_time
-    ):
-        while (
-            (
-                self._stage_mem_usage[stage_id]
-                + self.program_max_mem_usages[f"{fill_job_type}{chunk_id}"]
-                <= self.max_memory
+    def _insert_forward_jobs_before_backward_b(self):
+        # Insert left chunk forward jobs
+        insert_order = "down"
+        for i in range(2, self.num_model_chunks):
+            if insert_order == "down":
+                start_insert_stage_id = 0
+                stage_order_list = list(range(1, self.num_stage))
+            else:
+                start_insert_stage_id = self.num_stage - 1
+                stage_order_list = list(range(self.num_stage - 2, -1, -1))
+
+            fill_chunk_ids = list(range(0, i))
+            self._put_job_into_schedule(
+                "forward", chunk_id=i, stage_id=start_insert_stage_id
             )
-            and (
-                self._stage_current_time[stage_id]
-                + self.program_runtime[fill_job_type]
-                <= next_job_start_time
+
+            for stage_id in stage_order_list:
+                last_stage_id = (
+                    stage_id - 1 if insert_order == "down" else stage_id + 1
+                )
+                next_chunk_forward_start_time = (
+                    self._job_end_times[
+                        self._get_job_id("forward", i, last_stage_id, 0)
+                    ]
+                    + self.program_runtime["communication"]
+                )
+
+                self._fill_bubble(
+                    "forward",
+                    fill_chunk_ids,
+                    stage_id,
+                    next_chunk_forward_start_time,
+                    insert_order=insert_order,
+                )
+
+                self._put_job_into_schedule(
+                    "forward", chunk_id=i, stage_id=stage_id
+                )
+
+            insert_order = "up" if insert_order == "down" else "down"
+
+        # Insert forward jobs before backward_b
+        if insert_order == "down":
+            start_insert_stage_id = 0
+            stage_order_list = list(range(1, self.num_stage))
+        else:
+            start_insert_stage_id = self.num_stage - 1
+            stage_order_list = list(range(self.num_stage - 2, -1, -1))
+
+        chunk_id = 0
+        for stage_id in stage_order_list:
+            last_stage_id = (
+                stage_id - 1 if insert_order == "down" else stage_id + 1
             )
-            and (
-                self._job_counters[stage_id][f"{fill_job_type}{chunk_id}"]
+
+            # Each stage's forward job count should not be less than the last stage
+            while (
+                self._get_stage_job_cnt(stage_id, "forward")
+                < self._get_stage_job_cnt(last_stage_id, "forward")
+            ) or self._compare_forward_job_cnt(stage_id, last_stage_id):
+                if insert_order == "down":
+                    stage_order = range(stage_id, self.num_stage)
+                else:
+                    stage_order = range(stage_id, -1, -1)
+
+                for id in stage_order:
+                    if self._job_cnt_check("forward", chunk_id, id):
+                        self._put_job_into_schedule("forward", chunk_id, id)
+                chunk_id = (chunk_id + 1) % self.num_model_chunks
+
+    def _compare_forward_job_cnt(self, stage_id, last_stage_id):
+        for chunk_id in range(1, self.num_model_chunks):
+            if (
+                self._job_counters[stage_id][f"forward{chunk_id}"]
+                <= self._job_counters[last_stage_id][f"forward{chunk_id}"]
                 < self.num_micro_batch
-            )
+            ):
+                return True
+        return False
+
+    def _get_stage_job_cnt(self, stage_id, job_type):
+        job_cnt = 0
+        for chunk_id in range(self.num_model_chunks):
+            job_cnt += self._job_counters[stage_id][f"{job_type}{chunk_id}"]
+        return job_cnt
+
+    def _fill_bubble(
+        self,
+        fill_job_type,
+        chunk_ids,
+        stage_id,
+        next_job_start_time,
+        insert_order="down",
+    ):
+        chunk_id = chunk_ids[0]
+        while self._check_before_insert(
+            fill_job_type, chunk_id, stage_id, next_job_start_time
         ):
-            # Note(sonder): After insert forward job, we need to check whether we can insert backward_w job
+            # After insert forward job, we need to check whether we can insert backward_w job
             if fill_job_type == "forward":
                 if (
                     self._stage_mem_usage[stage_id]
@@ -312,8 +394,54 @@ class VScheduleCreator:
                 ) > self.max_memory:
                     break
 
-            for id in range(stage_id + 1):
-                self._put_job_into_schedule(fill_job_type, chunk_id, id)
+            if insert_order == "down":
+                stage_order = range(stage_id, self.num_stage)
+            else:
+                stage_order = range(stage_id, -1, -1)
+
+            for stage_id in stage_order:
+                if self._job_cnt_check(fill_job_type, chunk_id, stage_id):
+                    self._put_job_into_schedule(
+                        fill_job_type, chunk_id, stage_id
+                    )
+
+            chunk_id = (chunk_id + 1) % len(chunk_ids)
+
+    def _check_before_insert(
+        self, job_type, chunk_id, stage_id, next_job_start_time
+    ):
+        return (
+            self._memory_check(job_type, chunk_id, stage_id)
+            and self._time_check(
+                job_type, chunk_id, stage_id, next_job_start_time
+            )
+            and self._job_cnt_check(job_type, chunk_id, stage_id)
+        )
+
+    def _memory_check(self, job_type, chunk_id, stage_id):
+        if (
+            self._stage_mem_usage[stage_id]
+            + self.program_mem_usages[f"{job_type}{chunk_id}"]
+            > self.max_memory
+        ):
+            return False
+        return True
+
+    def _time_check(self, job_type, chunk_id, stage_id, next_job_start_time):
+        if (
+            self._stage_current_time[stage_id] + self.program_runtime[job_type]
+            > next_job_start_time
+        ):
+            return False
+        return True
+
+    def _job_cnt_check(self, job_type, chunk_id, stage_id):
+        if (
+            self._job_counters[stage_id][f"{job_type}{chunk_id}"]
+            >= self.num_micro_batch
+        ):
+            return False
+        return True
 
     def _put_job_into_schedule(
         self,
