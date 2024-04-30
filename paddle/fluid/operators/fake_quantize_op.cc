@@ -285,37 +285,6 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
   }
 };
 
-template struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, float>;
-template <typename T>
-struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &cur_scale,
-                  const phi::DenseTensor &last_scale,
-                  const phi::DenseTensor &iter,
-                  const int window_size,
-                  phi::DenseTensor *scales_arr,
-                  phi::DenseTensor *out_scale) {
-    T *scale_arr = scales_arr->mutable_data<T>(ctx.GetPlace());
-    int64_t it = iter.data<int64_t>()[0];
-    int idx = static_cast<int>(it % window_size);
-    T removed = scale_arr[idx];
-    T cur = cur_scale.data<T>()[0];
-    scale_arr[idx] = cur;
-
-    T max = last_scale.data<T>()[0];
-    if (max < cur) {
-      max = cur;
-    } else if (fabs(removed - max) < 1e-6) {
-      int size = static_cast<int>((it > window_size) ? window_size : it);
-      phi::funcs::FindAbsMaxFunctor<phi::CPUContext, T>()(
-          ctx, scale_arr, size, &max);
-    }
-    out_scale->mutable_data<T>(ctx.GetPlace())[0] = max;
-  }
-};
-
-template struct FindRangeAbsMaxFunctor<phi::CPUContext, float>;
-
 class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
   FakeQuantOrWithDequantAbsMaxOp(const std::string &type,
@@ -539,77 +508,6 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
-
-class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
- public:
-  FakeQuantizeRangeAbsMaxOp(const std::string &type,
-                            const framework::VariableNameMap &inputs,
-                            const framework::VariableNameMap &outputs,
-                            const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Out"), "Output", "Out", "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
-                   "Output",
-                   "OutScale",
-                   "FakeQuantizeRangeAbsMax");
-    if (ctx->HasOutput("OutScales")) {
-      int window_size = ctx->Attrs().Get<int>("window_size");
-      ctx->SetOutputDim("OutScales", {window_size});
-    }
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
-  }
-};
-
-class FakeQuantizeRangeAbsMaxOpMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
-    AddInput("InScale", "Last scale.");
-    AddInput("Iter", "Global step iteration.").AsDispensable();
-    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
-    AddOutput("OutScale", " Current scale");
-    AddOutput("OutScales", "(Tensor) scale buffer.").AsDispensable();
-    AddAttr<int>("window_size", "(int, default 10000) window range size.")
-        .SetDefault(10000);
-    AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
-        .SetDefault(8)
-        .AddCustomChecker([](const int &bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
-                            true,
-                            phi::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16, but "
-                                "the received is %d",
-                                bit_length));
-        });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddComment(R"DOC(
-FakeQuantize operator is used in static quantization.
-
-$$scale = max(max(abs(x)), history_abs_max)$$
-$$range = 2^{bit_length - 1} - 1$$
-$$Out = round(X/scale * range)$$
-
-)DOC");
-  }
-};
-
 class FakeQuantOrWithDequantMovingAverageAbsMaxOp
     : public framework::OperatorWithKernel {
  public:
@@ -818,18 +716,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeQuantizeDequantizeAbsMaxKernel,
-                          float) {}
-
-REGISTER_OPERATOR(
-    fake_quantize_range_abs_max,
-    ops::FakeQuantizeRangeAbsMaxOp,
-    ops::FakeQuantizeRangeAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_range_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeRangeAbsMaxKernel,
                           float) {}
 
 REGISTER_OPERATOR(

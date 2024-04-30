@@ -737,10 +737,31 @@ bool WhileOp::InferSymbolicShape(
     infer_context->SetShapeOrDataForValue(value, shape_data);
   }
 
+  // add GreaterThanOne constraint
+  const auto &body_args = block_args();
+  PADDLE_ENFORCE_EQ(num_operands() - 1,
+                    body_args.size(),
+                    phi::errors::InvalidArgument(
+                        "The num_operands-1 and body_args.size is not equal"));
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_i =
+        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    const auto &args_i =
+        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < input_i.size(); ++j) {
+      if (infer_context->IsGreatThanOne(input_i[j])) {
+        infer_context->AddGreatThanOneCstr(args_i[j]);
+      }
+    }
+  }
+
   pir::InferSymExprForBlock(body(), infer_context);
 
   // add constraints for args
-  const auto &body_args = block_args();
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
         infer_context->GetShapeOrDataForValue(body_args[i]).shape();
@@ -784,6 +805,28 @@ bool WhileOp::InferSymbolicShape(
     infer_context->SetShapeOrDataForValue(
         result(i - 1),
         infer_context->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
+
+  PADDLE_ENFORCE_EQ(body_args.size(),
+                    num_results(),
+                    phi::errors::InvalidArgument(
+                        "The body_args.size and num_results is not equal"));
+  for (size_t i = 0; i < num_results(); ++i) {
+    const auto &input_i =
+        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    const auto &output_i =
+        infer_context->GetShapeOrDataForValue(result(i)).shape();
+    const auto &args_i =
+        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < output_i.size(); j++) {
+      if (infer_context->IsEqual(output_i[j], args_i[j])) {
+        infer_context->AddEqualCstr(output_i[j], input_i[j]);
+      }
+    }
   }
 
   return true;
