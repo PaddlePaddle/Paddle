@@ -1111,12 +1111,12 @@ void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
     auto &op_info = OpInfoMap::Instance().Get(this->Type());
-    if (this->Type() == "fill_constant") {
-      auto attr_type = this->GetAttrType("value", false);
-      auto attr_type_1 = this->GetAttrType("value", true);
-      VLOG(6) << "zyt=op_type=" << this->Type() << ",attr_type=" << attr_type
-              << " " << attr_type_1;
-    }
+    // if (this->Type() == "fill_constant" ) {
+    //   auto attr_type = this->GetAttrType("value", false);
+    //   auto attr_type_1 = this->GetAttrType("value", true);
+    //   VLOG(6) << "zyt=op_type=" << this->Type() << ",attr_type=" << attr_type
+    //           << " " << attr_type_1;
+    // }
 
     this->CheckAttrs();
     auto &infer_shape = op_info.infer_shape_;
