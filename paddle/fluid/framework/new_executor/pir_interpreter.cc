@@ -234,7 +234,7 @@ PirInterpreter::PirInterpreter(
       ir_block_(ir_block),
       sub_blocks_(),
       vec_instruction_base_(),
-      value_exe_info_(nullptr),
+      value_exe_info_(value_exe_info),
       var_ref_count_(),
       ir_dependency_builder_(),
       ir_stream_analyzer_(place),
