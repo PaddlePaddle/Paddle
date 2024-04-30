@@ -47,5 +47,4 @@ PD_REGISTER_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
                    GPU,
                    ALL_LAYOUT,
                    phi::FakeChannelWiseQuantizeDequantizeAbsMaxKernel,
-                   float,
-                   phi::dtype::float16) {}
+                   float) {}
