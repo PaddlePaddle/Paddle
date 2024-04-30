@@ -272,7 +272,7 @@ class TestSincAPIBFP16(unittest.TestCase):
                 x = paddle.to_tensor(x_data, dtype=self.dtype)
                 res = paddle.sinc(x)
                 out_expected = np_sinc(x_data)
-                result = convert_uint16_to_float(res)
+                result = convert_uint16_to_float(res.numpy())
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-6, atol=1e-6
                 )
@@ -293,7 +293,7 @@ class TestSincAPIBFP16(unittest.TestCase):
                 x = paddle.to_tensor(x_data, dtype=self.dtype)
                 res = paddle.sinc(x)
                 out_expected = np_sinc(x_data)
-                result = convert_uint16_to_float(res)
+                result = convert_uint16_to_float(res.numpy())
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-6, atol=1e-6
                 )
