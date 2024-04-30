@@ -38,7 +38,7 @@ class TestPlacementMatmulPass(PassTest):
                 )
                 out = paddle.matmul(x, y)
                 out = paddle.assign(out)
-                self.pass_list = ['onednn_placement_pass']
+                self.pass_attr_list = [{'onednn_placement_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -78,7 +78,7 @@ class TestPlacementReluPass(PassTest):
                 add = paddle.matmul(x, y)
                 out = paddle.nn.functional.leaky_relu(add)
                 out = paddle.assign(out)
-                self.pass_list = ['onednn_placement_pass']
+                self.pass_attr_list = [{'onednn_placement_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -123,7 +123,7 @@ class TestConv3dAddFusePass(PassTest):
                 bn_out = bn(x)
                 out = paddle.nn.functional.relu(bn_out)
                 out = paddle.assign(out)
-                self.pass_list = ['onednn_placement_pass']
+                self.pass_attr_list = [{'onednn_placement_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 32, 28, 28)).astype("float32"),
                 }
