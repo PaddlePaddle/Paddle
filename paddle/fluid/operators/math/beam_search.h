@@ -16,7 +16,6 @@
 
 #include <string>
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/lod_utils.h"

@@ -13,7 +13,7 @@ cc_test(
 cc_test(
   beam_search_test
   SRCS beam_search_test.cc
-  DEPS phi common)
+  DEPS beam_search)
 if(WITH_GPU)
   nv_test(
     selected_rows_functor_gpu_test
