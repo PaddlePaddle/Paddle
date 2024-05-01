@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/math/beam_search.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
