@@ -474,93 +474,6 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
-class FakeQuantOrWithDequantMovingAverageAbsMaxOp
-    : public framework::OperatorWithKernel {
- public:
-  FakeQuantOrWithDequantMovingAverageAbsMaxOp(
-      const std::string &type,
-      const framework::VariableNameMap &inputs,
-      const framework::VariableNameMap &outputs,
-      const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"),
-                   "Input",
-                   "X",
-                   "FakeQuantOrWithDequantMovingAverageAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"),
-                   "Output",
-                   "Out",
-                   "FakeQuantOrWithDequantMovingAverageAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
-                   "Output",
-                   "OutScale",
-                   "FakeQuantOrWithDequantMovingAverageAbsMax");
-    if (ctx->HasOutput("OutState")) {
-      ctx->SetOutputDim("OutState", {1});
-    }
-    if (ctx->HasOutput("OutAccum")) {
-      ctx->SetOutputDim("OutAccum", {1});
-    }
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
-  }
-};
-
-class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
-    AddInput("InScale", "Last scale.");
-    AddInput("InAccum", "Last accum.").AsDispensable();
-    AddInput("InState", "Last state.").AsDispensable();
-    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
-    AddOutput("OutScale", " Current scale");
-    AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
-    AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
-    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
-        .SetDefault(0.9);
-    AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
-        .SetDefault(8)
-        .AddCustomChecker([](const int &bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
-                            true,
-                            phi::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16, but "
-                                "the received is %d",
-                                bit_length));
-        });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddComment(R"DOC(
-This is a Base Op which supports FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp.
-FakeQuantMovingAverageAbsMaxOp operator is used in the static quantization.
-
-$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
-$$range = 2^{bit\_length - 1} - 1$$
-$$Out = round(X/scale * range)$$
-
-FakeQuantDequantMovingAverageAbsMaxOp operator does the moving_average_abs_max quant and then dequant.
-
-$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
-$$range = 2^{bit\_length - 1} - 1$$
-$$Out = round(X/scale * range) * scale / range$$
-
-)DOC");
-  }
-};
 
 class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
  public:
@@ -684,12 +597,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           ops::FakeQuantizeDequantizeAbsMaxKernel,
                           float) {}
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
                           CPU,
                           ALL_LAYOUT,
