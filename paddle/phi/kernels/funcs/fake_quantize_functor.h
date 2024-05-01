@@ -103,6 +103,18 @@ class FindMovingAverageAbsMaxFunctor {
 };
 
 template <typename Context, typename T>
+class FindRangeAbsMaxFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &cur_scale,
+                  const DenseTensor &last_scale,
+                  const DenseTensor &iter,
+                  const int window_size,
+                  DenseTensor *scales_arr,
+                  DenseTensor *out_scale);
+};
+
+template <typename Context, typename T>
 class ClipAndFakeQuantDequantFunctor {
  public:
   void operator()(const Context &ctx,
