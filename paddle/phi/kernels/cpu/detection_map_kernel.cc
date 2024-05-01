@@ -26,7 +26,7 @@ namespace phi {
 
 enum APType { kNone = 0, kIntegral, k11point };
 
-APType GetAPType(std::string str) {
+APType GetAPType(const std::string& str) {
   if (str == "integral") {
     return APType::kIntegral;
   } else if (str == "11point") {
@@ -55,100 +55,6 @@ inline void GetAccumulation(std::vector<std::pair<T, int>> in_pairs,
   }
 }
 
-template <typename T, typename Context>
-void DetectionMAPOpKernel(const Context& dev_ctx,
-                          const DenseTensor& detect_res,
-                          const DenseTensor& label,
-                          const paddle::optional<DenseTensor>& has_state,
-                          const paddle::optional<DenseTensor>& pos_count,
-                          const paddle::optional<DenseTensor>& true_pos,
-                          const paddle::optional<DenseTensor>& false_pos,
-                          int class_num,
-                          int background_label,
-                          float overlap_threshold,
-                          bool evaluate_difficult,
-                          const std::string& ap_type,
-                          DenseTensor* accum_pos_count,
-                          DenseTensor* accum_true_pos,
-                          DenseTensor* accum_false_pos,
-                          DenseTensor* m_ap) {
-  auto* in_detect = &detect_res;
-  auto* in_label = &label;
-  auto* out_map = m_ap;
-
-  auto* in_pos_count = &pos_count;
-  auto* in_true_pos = &true_pos;
-  auto* in_false_pos = &false_pos;
-
-  auto* out_pos_count = accum_pos_count;
-  auto* out_true_pos = accum_true_pos;
-  auto* out_false_pos = accum_false_pos;
-
-  auto& label_lod = in_label->lod();
-  auto& detect_lod = in_detect->lod();
-  PADDLE_ENFORCE_EQ(
-      label_lod.size(),
-      1UL,
-      phi::errors::InvalidArgument("Only support LodTensor of lod_level "
-                                   "with 1 in label, but received %d.",
-                                   label_lod.size()));
-  PADDLE_ENFORCE_EQ(label_lod[0].size(),
-                    detect_lod[0].size(),
-                    phi::errors::InvalidArgument(
-                        "The batch_size of input(Label) and input(Detection) "
-                        "must be the same, but received %d:%d",
-                        label_lod[0].size(),
-                        detect_lod[0].size()));
-
-  std::vector<std::map<int, std::vector<Box>>> gt_boxes;
-  std::vector<std::map<int, std::vector<std::pair<T, Box>>>> detect_boxes;
-
-  GetBoxes<T>(*in_label, *in_detect, &gt_boxes, detect_boxes);
-
-  std::map<int, int> label_pos_count;
-  std::map<int, std::vector<std::pair<T, int>>> true_pos;
-  std::map<int, std::vector<std::pair<T, int>>> false_pos;
-
-  auto* has_state = &has_state;
-  int state = 0;
-  if (has_state) {
-    state = has_state->data<int>()[0];
-  }
-
-  if (in_pos_count != nullptr && state) {
-    GetInputPos<T>(*in_pos_count,
-                   *in_true_pos,
-                   *in_false_pos,
-                   &label_pos_count,
-                   &true_pos,
-                   &false_pos,
-                   class_num);
-  }
-
-  CalcTrueAndFalsePositive<T>(gt_boxes,
-                              detect_boxes,
-                              evaluate_difficult,
-                              overlap_threshold,
-                              &label_pos_count,
-                              &true_pos,
-                              &false_pos);
-
-  T map = CalcMAP<T>(
-      ap_type, label_pos_count, true_pos, false_pos, background_label);
-
-  GetOutputPos<T>(ctx,
-                  label_pos_count,
-                  true_pos,
-                  false_pos,
-                  out_pos_count,
-                  out_true_pos,
-                  out_false_pos,
-                  class_num);
-
-  T* map_data = dev_ctx.template Alloc<T>(out_map);
-  map_data[0] = map;
-}
-
 template <typename T>
 struct Box {
   Box(T xmin, T ymin, T xmax, T ymax)
@@ -159,7 +65,7 @@ struct Box {
 };
 
 template <typename T>
-inline T JaccardOverlap(const Box& box1, const Box& box2) {
+inline T JaccardOverlap(const Box<T>& box1, const Box<T>& box2) {
   if (box2.xmin > box1.xmax || box2.xmax < box1.xmin || box2.ymin > box1.ymax ||
       box2.ymax < box1.ymin) {
     return 0.0;
@@ -181,7 +87,7 @@ inline T JaccardOverlap(const Box& box1, const Box& box2) {
 }
 
 template <typename T>
-inline void ClipBBox(const Box& bbox, Box* clipped_bbox) {
+inline void ClipBBox(const Box<T>& bbox, Box<T>* clipped_bbox) {
   T one = static_cast<T>(1.0);
   T zero = static_cast<T>(0.0);
   clipped_bbox->xmin = std::max(std::min(bbox.xmin, one), zero);
@@ -190,9 +96,9 @@ inline void ClipBBox(const Box& bbox, Box* clipped_bbox) {
   clipped_bbox->ymax = std::max(std::min(bbox.ymax, one), zero);
 }
 
-template <typename T>
+template <typename T, typename Context>
 void GetOutputPos(
-    const framework::ExecutionContext& ctx,
+    const Context& dev_ctx,
     const std::map<int, int>& label_pos_count,
     const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
     const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
@@ -252,9 +158,9 @@ void GetOutputPos(
     false_pos_starts.push_back(false_pos_count);
   }
 
-  framework::LoD true_pos_lod;
+  phi::LoD true_pos_lod;
   true_pos_lod.emplace_back(true_pos_starts);
-  framework::LoD false_pos_lod;
+  phi::LoD false_pos_lod;
   false_pos_lod.emplace_back(false_pos_starts);
 
   output_true_pos->set_lod(true_pos_lod);
@@ -294,8 +200,8 @@ void GetInputPos(const phi::DenseTensor& input_pos_count,
 
 template <typename T>
 void CalcTrueAndFalsePositive(
-    const std::vector<std::map<int, std::vector<Box>>>& gt_boxes,
-    const std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
+    const std::vector<std::map<int, std::vector<Box<T>>>>& gt_boxes,
+    const std::vector<std::map<int, std::vector<std::pair<T, Box<T>>>>>&
         detect_boxes,
     bool evaluate_difficult,
     float overlap_threshold,
@@ -362,13 +268,13 @@ void CalcTrueAndFalsePositive(
       std::vector<bool> visited(matched_bboxes.size(), false);
       // Sort detections in descend order based on scores
       std::sort(
-          pred_boxes.begin(), pred_boxes.end(), SortScorePairDescend<Box>);
+          pred_boxes.begin(), pred_boxes.end(), SortScorePairDescend<Box<T>>);
       for (size_t i = 0; i < pred_boxes.size(); ++i) {
         T max_overlap = -1.0;
         size_t max_idx = 0;
         auto score = pred_boxes[i].first;
         for (size_t j = 0; j < matched_bboxes.size(); ++j) {
-          Box& pred_box = pred_boxes[i].second;
+          Box<T>& pred_box = pred_boxes[i].second;
           ClipBBox<T>(pred_box, &pred_box);
           T overlap = JaccardOverlap<T>(pred_box, matched_bboxes[j]);
           if (overlap > max_overlap) {
@@ -471,11 +377,11 @@ T CalcMAP(APType ap_type,
 }
 
 template <typename T>
-void GetBoxes(
-    const phi::DenseTensor& input_label,
-    const phi::DenseTensor& input_detect,
-    std::vector<std::map<int, std::vector<Box>>>* gt_boxes,
-    std::vector<std::map<int, std::vector<std::pair<T, Box>>>>& detect_boxes) {
+void GetBoxes(const phi::DenseTensor& input_label,
+              const phi::DenseTensor& input_detect,
+              std::vector<std::map<int, std::vector<Box<T>>>>* gt_boxes,
+              std::vector<std::map<int, std::vector<std::pair<T, Box<T>>>>>&
+                  detect_boxes) {
   auto labels = phi::EigenTensor<T, 2>::From(input_label);
   auto detect = phi::EigenTensor<T, 2>::From(input_detect);
 
@@ -486,11 +392,11 @@ void GetBoxes(
   auto& label_index = label_lod[0];
 
   for (int n = 0; n < batch_size; ++n) {
-    std::map<int, std::vector<Box>> boxes;
+    std::map<int, std::vector<Box<T>>> boxes;
     for (size_t i = label_index[n]; i < label_index[n + 1]; ++i) {
       int label = labels(i, 0);
       if (input_label.dims()[1] == 6) {
-        Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
+        Box<T> box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
         auto is_difficult = labels(i, 1);
         if (std::abs(is_difficult - 0.0) < 1e-6)
           box.is_difficult = false;
@@ -505,7 +411,7 @@ void GetBoxes(
                 "The input label width"
                 " must be 5, but received %d, please check your input data",
                 input_label.dims()[1]));
-        Box box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
+        Box<T> box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
         boxes[label].push_back(box);
       }
     }
@@ -514,15 +420,113 @@ void GetBoxes(
 
   auto detect_index = detect_lod[0];
   for (int n = 0; n < batch_size; ++n) {
-    std::map<int, std::vector<std::pair<T, Box>>> boxes;
+    std::map<int, std::vector<std::pair<T, Box<T>>>> boxes;
     for (size_t i = detect_index[n]; i < detect_index[n + 1]; ++i) {
-      Box box(detect(i, 2), detect(i, 3), detect(i, 4), detect(i, 5));
+      Box<T> box(detect(i, 2), detect(i, 3), detect(i, 4), detect(i, 5));
       int label = detect(i, 0);
       auto score = detect(i, 1);
       boxes[label].push_back(std::make_pair(score, box));
     }
     detect_boxes.push_back(boxes);
   }
+}
+
+template <typename T, typename Context>
+void DetectionMAPOpKernel(const Context& dev_ctx,
+                          const DenseTensor& detect_res,
+                          const DenseTensor& label,
+                          const paddle::optional<DenseTensor>& has_state,
+                          const paddle::optional<DenseTensor>& pos_count,
+                          const paddle::optional<DenseTensor>& true_pos,
+                          const paddle::optional<DenseTensor>& false_pos,
+                          int class_num,
+                          int background_label,
+                          float overlap_threshold,
+                          bool evaluate_difficult,
+                          const std::string& ap_type,
+                          DenseTensor* accum_pos_count,
+                          DenseTensor* accum_true_pos,
+                          DenseTensor* accum_false_pos,
+                          DenseTensor* m_ap) {
+  auto* in_detect = &detect_res;
+  auto* in_label = &label;
+  auto* out_map = m_ap;
+
+  auto* in_pos_count = pos_count.get_ptr();
+  auto* in_true_pos = true_pos.get_ptr();
+  auto* in_false_pos = false_pos.get_ptr();
+
+  auto* out_pos_count = accum_pos_count;
+  auto* out_true_pos = accum_true_pos;
+  auto* out_false_pos = accum_false_pos;
+
+  auto& label_lod = in_label->lod();
+  auto& detect_lod = in_detect->lod();
+  PADDLE_ENFORCE_EQ(
+      label_lod.size(),
+      1UL,
+      phi::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                   "with 1 in label, but received %d.",
+                                   label_lod.size()));
+  PADDLE_ENFORCE_EQ(label_lod[0].size(),
+                    detect_lod[0].size(),
+                    phi::errors::InvalidArgument(
+                        "The batch_size of input(Label) and input(Detection) "
+                        "must be the same, but received %d:%d",
+                        label_lod[0].size(),
+                        detect_lod[0].size()));
+
+  std::vector<std::map<int, std::vector<Box<T>>>> gt_boxes;
+  std::vector<std::map<int, std::vector<std::pair<T, Box<T>>>>> detect_boxes;
+
+  GetBoxes<T>(*in_label, *in_detect, &gt_boxes, detect_boxes);
+
+  std::map<int, int> label_pos_count;
+  std::map<int, std::vector<std::pair<T, int>>> true_pos_map;
+  std::map<int, std::vector<std::pair<T, int>>> false_pos_map;
+
+  auto* has_state_p = has_state.get_ptr();
+  int state = 0;
+  if (has_state_p != nullptr) {
+    state = has_state_p->data<int>()[0];
+  }
+
+  if (in_pos_count != nullptr && state) {
+    GetInputPos<T>(*in_pos_count,
+                   *in_true_pos,
+                   *in_false_pos,
+                   &label_pos_count,
+                   &true_pos_map,
+                   &false_pos_map,
+                   class_num);
+  }
+
+  CalcTrueAndFalsePositive<T>(gt_boxes,
+                              detect_boxes,
+                              evaluate_difficult,
+                              overlap_threshold,
+                              &label_pos_count,
+                              &true_pos_map,
+                              &false_pos_map);
+
+  auto ap_type_enum = GetAPType(ap_type);
+  T map = CalcMAP<T>(ap_type_enum,
+                     label_pos_count,
+                     true_pos_map,
+                     false_pos_map,
+                     background_label);
+
+  GetOutputPos<T, Context>(dev_ctx,
+                           label_pos_count,
+                           true_pos_map,
+                           false_pos_map,
+                           out_pos_count,
+                           out_true_pos,
+                           out_false_pos,
+                           class_num);
+
+  T* map_data = dev_ctx.template Alloc<T>(out_map);
+  map_data[0] = map;
 }
 
 }  // namespace phi
