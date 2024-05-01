@@ -14,10 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/common/dim.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
+using gpuStream_t = phi::gpuStream_t;
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {

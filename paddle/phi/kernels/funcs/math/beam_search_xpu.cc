@@ -1,31 +1,53 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#endif
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/operators/math/beam_search.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
 namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace operators {
 namespace math {
+template <typename T>
+int CopyData(const T *x, T **y, int len, const Place &place) {
+  if (nullptr == x || nullptr == y || len <= 0)
+    return xpu::Error_t::INVALID_PARAM;
+
+  *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
+
+  phi::memory_utils::Copy(phi::CPUPlace(), *y, place, x, len * sizeof(T));
+  return xpu::Error_t::SUCCESS;
+}
 
 template <typename T>
-class BeamSearchFunctor<phi::CPUContext, T> {
+void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
+  if (x != nullptr) {
+    int r = CopyData(x, y, len, place);
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        phi::errors::External("Copy data form xpu to cpu failed"));
+  }
+}
+
+template <typename T>
+class BeamSearchFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context UNUSED,
+  void operator()(const phi::XPUContext &context,
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,
@@ -37,7 +59,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -47,7 +69,8 @@ class BeamSearchFunctor<phi::CPUContext, T> {
                                         level,
                                         beam_size,
                                         end_id,
-                                        is_accumulated);
+                                        is_accumulated,
+                                        ids->place());
     auto selected_items = ToMap(items, high_level.back());
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
@@ -59,7 +82,8 @@ class BeamSearchFunctor<phi::CPUContext, T> {
       }
     }
 
-    PruneEndBeams(pre_ids, abs_lod, &selected_items, level, end_id);
+    PruneEndBeams(
+        pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
         std::begin(selected_items),
@@ -95,14 +119,14 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    framework::LoD lod(2);
+    phi::LoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
-    if (!framework::CheckLoD(lod)) {
+    if (!CheckLoD(lod)) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("lod %s is not right in"
                                        " beam_search, please check your code.",
-                                       framework::LoDToString(lod)));
+                                       LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
@@ -112,7 +136,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * The basic items help to sort.
    */
   struct Item {
-    Item() = default;
+    Item() {}
     Item(size_t offset, size_t id, float score)
         : offset(offset), id(id), score(score) {}
     // offset in the higher lod level.
@@ -129,14 +153,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
              ((score == in.score) && (offset < in.offset));
     }
 
-    inline Item &operator=(const Item &in) {
-      if (this != &in) {
-        this->offset = in.offset;
-        this->id = in.id;
-        this->score = in.score;
-        return *this;
-      }
-      return *this;
+    inline void operator=(const Item &in) {
+      offset = in.offset;
+      id = in.id;
+      score = in.score;
     }
 
     std::string ToString() {
@@ -157,11 +177,16 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * since the end tokens must be writed out.
    */
   void PruneEndBeams(const phi::DenseTensor *pre_ids,
-                     const framework::LoD &abs_lod,
+                     const phi::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
-                     int end_id) {
-    auto *pre_ids_data = pre_ids->data<int64_t>();
+                     int end_id,
+                     const Place &place) {
+    auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
+    int64_t *pre_ids_data = nullptr;
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
+
     auto &high_level = abs_lod[lod_level];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
       size_t src_prefix_start = high_level[src_idx];
@@ -185,6 +210,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
           items->at(offset).clear();
       }
     }
+    free(pre_ids_data);
   }
 
   /*
@@ -209,6 +235,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     std::vector<Item> &top_beam = *top_beam_ptr;
 
     size_t num_beams = top_beam.size();
+
     if (num_beams < beam_size) {
       top_beam.resize(num_beams + 1);
       num_beams++;
@@ -240,17 +267,31 @@ class BeamSearchFunctor<phi::CPUContext, T> {
       size_t lod_level,
       size_t beam_size,
       int end_id,
-      bool is_accumulated) {
+      bool is_accumulated,
+      const Place &place) {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
 
-    auto *pre_ids_data = pre_ids->data<int64_t>();
-    auto *pre_scores_data = pre_scores->data<float>();
+    auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
+    int64_t *pre_ids_data = nullptr;
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
 
-    auto *ids_data = ids ? ids->data<int64_t>() : nullptr;
-    auto *scores_data = scores->data<float>();
+    auto *pre_scores_data_xpu = pre_scores->data<float>();
+    float *pre_scores_data = nullptr;
+    CopyDataByCondition<float>(
+        pre_scores_data_xpu, &pre_scores_data, pre_scores->numel(), place);
+
+    auto *ids_data_xpu = ids ? ids->data<int64_t>() : nullptr;
+    int64_t *ids_data = nullptr;
+    CopyDataByCondition<int64_t>(ids_data_xpu, &ids_data, ids->numel(), place);
+
+    auto *scores_data_xpu = scores->data<float>();
+    float *scores_data = nullptr;
+    CopyDataByCondition<float>(
+        scores_data_xpu, &scores_data, scores->numel(), place);
 
     size_t num_seqs = scores->NumElements(lod_level);
     size_t seq_width = 1;
@@ -269,6 +310,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
            ++offset) {
         auto pre_id = pre_ids_data[offset];
         auto pre_score = pre_scores_data[offset];
+
         if (pre_id == end_id) {
           // Allocate all probability mass to end_id for finished branchs and
           // the other candidate ids can be ignored.
@@ -281,6 +323,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
             float score = is_accumulated
                               ? scores_data[index]
                               : pre_score + std::log(scores_data[index]);
+
             Item item(offset, id, score);
             Insert(&top_beam, item, beam_size);
           }
@@ -300,15 +343,19 @@ class BeamSearchFunctor<phi::CPUContext, T> {
       }
     }
 
+    free(pre_ids_data);
+    free(pre_scores_data);
+    free(ids_data);
+    free(scores_data);
+
     return result;
   }
 };
 
-template class BeamSearchFunctor<phi::CPUContext, int>;
-template class BeamSearchFunctor<phi::CPUContext, int64_t>;
-template class BeamSearchFunctor<phi::CPUContext, float>;
-template class BeamSearchFunctor<phi::CPUContext, double>;
+template class BeamSearchFunctor<phi::XPUContext, int>;
+template class BeamSearchFunctor<phi::XPUContext, int64_t>;
+template class BeamSearchFunctor<phi::XPUContext, float>;
+template class BeamSearchFunctor<phi::XPUContext, double>;
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

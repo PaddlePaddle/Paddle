@@ -25,7 +25,6 @@ limitations under the License. */
 #endif
 
 namespace ops = paddle::operators;
-namespace plf = paddle::platform;
 
 namespace paddle {
 namespace operators {

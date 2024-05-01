@@ -77,7 +77,6 @@ that were saved using the SaveCombine operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,

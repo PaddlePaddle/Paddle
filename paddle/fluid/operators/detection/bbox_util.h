@@ -16,9 +16,9 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -61,9 +61,9 @@ inline void BoxToDelta(const int box_num,
                        const float* weights,
                        const bool normalized,
                        phi::DenseTensor* box_delta) {
-  auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
-  auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
-  auto trg = framework::EigenTensor<T, 2>::From(*box_delta);
+  auto ex_boxes_et = phi::EigenTensor<T, 2>::From(ex_boxes);
+  auto gt_boxes_et = phi::EigenTensor<T, 2>::From(gt_boxes);
+  auto trg = phi::EigenTensor<T, 2>::From(*box_delta);
   T ex_w, ex_h, ex_ctr_x, ex_ctr_y, gt_w, gt_h, gt_ctr_x, gt_ctr_y;
   for (int64_t i = 0; i < box_num; ++i) {
     ex_w = ex_boxes_et(i, 2) - ex_boxes_et(i, 0) + (normalized == false);
@@ -104,9 +104,9 @@ template <typename T>
 void BboxOverlaps(const phi::DenseTensor& r_boxes,
                   const phi::DenseTensor& c_boxes,
                   phi::DenseTensor* overlaps) {
-  auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
-  auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
-  auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
+  auto r_boxes_et = phi::EigenTensor<T, 2>::From(r_boxes);
+  auto c_boxes_et = phi::EigenTensor<T, 2>::From(c_boxes);
+  auto overlaps_et = phi::EigenTensor<T, 2>::From(*overlaps);
   int r_num = r_boxes.dims()[0];
   int c_num = c_boxes.dims()[0];
   auto zero = static_cast<T>(0.0);

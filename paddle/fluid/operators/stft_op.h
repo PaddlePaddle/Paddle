@@ -31,7 +31,7 @@ template <typename DeviceContext, typename T>
 class StftGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using C = paddle::platform::complex<T>;
+    using C = phi::dtype::complex<T>;
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     const phi::DenseTensor* window = ctx.Input<phi::DenseTensor>("Window");

@@ -50,7 +50,7 @@ const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;  // NOLINT
 const char RecurrentBase::kInitStateGrads[] =                        // NOLINT
     "initial_states" GRAD_SUFFIX;
 
-static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
+static void ClearStepScopes(const phi::DeviceContext &dev_ctx,
                             framework::Scope *parent_scope,
                             StepScopeVar *step_scopes) {
   if (step_scopes->empty()) return;
@@ -66,7 +66,7 @@ static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
   step_scopes->clear();
 }
 
-StepScopes::StepScopes(const platform::DeviceContext &dev_ctx,
+StepScopes::StepScopes(const phi::DeviceContext &dev_ctx,
                        const framework::Scope &parent,
                        StepScopeVar *scopes,
                        bool is_train,
@@ -97,7 +97,7 @@ framework::Scope &StepScopes::ExScope() {
   return scope;
 }
 
-void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
+void StepScopes::BackwardNext(const phi::DeviceContext &dev_ctx,
                               framework::Scope *parent_scope) {
   PADDLE_ENFORCE_EQ(is_backward_,
                     true,
@@ -321,7 +321,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   }
 }
 
-StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
+StepScopes RecurrentOp::CreateStepScopes(const phi::DeviceContext &dev_ctx,
                                          const framework::Scope &scope,
                                          size_t seq_len) const {
   static std::mutex mutex;
@@ -571,10 +571,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&scope), step_scopes);
 }
 
-StepScopes RecurrentGradOp::CreateStepScopes(
-    const platform::DeviceContext &dev_ctx,
-    const framework::Scope &scope,
-    size_t seq_len) const {
+StepScopes RecurrentGradOp::CreateStepScopes(const phi::DeviceContext &dev_ctx,
+                                             const framework::Scope &scope,
+                                             size_t seq_len) const {
   auto *var = scope.FindVar(Input(kStepScopes));
   PADDLE_ENFORCE_NOT_NULL(var,
                           phi::errors::InvalidArgument(

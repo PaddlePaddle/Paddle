@@ -249,7 +249,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
       rpn_rois_num->Resize({num});
     }
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(offset);
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);

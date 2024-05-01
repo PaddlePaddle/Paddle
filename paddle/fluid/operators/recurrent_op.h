@@ -38,7 +38,7 @@ namespace operators {
 //   access scopes from beginning to end
 class StepScopes {
  public:
-  StepScopes(const platform::DeviceContext &dev_ctx,
+  StepScopes(const phi::DeviceContext &dev_ctx,
              const framework::Scope &parent,
              std::vector<framework::Scope *> *scopes,
              bool is_train,
@@ -56,7 +56,7 @@ class StepScopes {
 
   // Delete ex-scope after using it, then move to next time step when
   // backwarding
-  void BackwardNext(const platform::DeviceContext &dev_ctx,
+  void BackwardNext(const phi::DeviceContext &dev_ctx,
                     framework::Scope *parent_scope);
 
  private:
@@ -226,7 +226,7 @@ class RecurrentOp : public RecurrentBase {
                const platform::Place &place) const override;
 
  private:
-  StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
+  StepScopes CreateStepScopes(const phi::DeviceContext &dev_ctx,
                               const framework::Scope &scope,
                               size_t seq_len) const;
 };
@@ -242,7 +242,7 @@ class RecurrentGradOp : public RecurrentBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override;
 
-  StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
+  StepScopes CreateStepScopes(const phi::DeviceContext &dev_ctx,
                               const framework::Scope &scope,
                               size_t seq_len) const;
 

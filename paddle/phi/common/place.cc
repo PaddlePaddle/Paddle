@@ -23,6 +23,30 @@ limitations under the License. */
 
 namespace phi {
 
+TEST_API bool is_gpu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::GPU;
+}
+
+bool is_xpu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::XPU;
+}
+
+bool is_ipu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::IPU;
+}
+
+TEST_API bool is_cpu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::CPU;
+}
+
+bool is_cuda_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::GPUPINNED;
+}
+
+bool is_custom_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::CUSTOM;
+}
+
 const char *AllocationTypeStr(AllocationType type) {
   switch (type) {
     case AllocationType::UNDEFINED:

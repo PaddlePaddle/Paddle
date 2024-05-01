@@ -257,7 +257,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
     }
 
-    framework::LoD lod;
+    phi::LoD lod;
     lod.emplace_back(offset);
     fpn_rois->set_lod(lod);
   }

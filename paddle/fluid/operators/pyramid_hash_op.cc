@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/search_compute.h"
+#include "paddle/phi/kernels/funcs/search_compute.h"
 
 extern "C" {
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
@@ -376,13 +376,13 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
     int top_l = static_cast<int>(top_offset[top_offset.size() - 1]);
 
-    framework::LoD top_lod;
+    phi::LoD top_lod;
     top_lod.push_back(top_offset);
     top->set_lod(top_lod);
     top->Resize(common::make_ddim({top_l, _num_emb}));
     auto* top_data = top->mutable_data<T>(ctx.GetPlace());
 
-    framework::LoD drop_pos_lod;
+    phi::LoD drop_pos_lod;
     drop_pos_lod.push_back(drop_pos_offset);
     drop_pos->set_lod(drop_pos_lod);
 
@@ -429,10 +429,10 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     }
     auto weight_type = framework::TransToProtoVarType(_blobs_0->dtype());
     if (_is_training == 0 && weight_type != framework::proto::VarType::INT8) {
-      axpy_noadd(top_data,
-                 top_data,
-                 top->dims()[0] * top->dims()[1],
-                 _drop_out_percent);
+      phi::funcs::axpy_noadd(top_data,
+                             top_data,
+                             top->dims()[0] * top->dims()[1],
+                             _drop_out_percent);
     }
   }
 };
@@ -507,7 +507,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      phi::funcs::axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 

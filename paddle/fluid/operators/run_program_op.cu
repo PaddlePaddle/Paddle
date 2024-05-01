@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 /* see [Why use single type kernel] */
 PD_REGISTER_STRUCT_KERNEL(

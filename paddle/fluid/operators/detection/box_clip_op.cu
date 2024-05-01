@@ -54,7 +54,7 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
     auto lod = input->lod();
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    phi::LoD abs_offset_lod = framework::ToAbsOffset(lod);
     auto &dev_ctx = context.template device_context<DeviceContext>();
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;

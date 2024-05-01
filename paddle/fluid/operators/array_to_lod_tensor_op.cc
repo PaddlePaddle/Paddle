@@ -160,7 +160,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         });
 
     // Build phi::DenseTensor `out`
-    framework::LoD *out_lod = out->mutable_lod();
+    phi::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
     auto prefix_lod = rank_table.coarse_lod();
     prefix_lod.emplace_back();
