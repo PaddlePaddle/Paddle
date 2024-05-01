@@ -93,7 +93,6 @@ class Tree2ColFunctor<phi::CPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
-    auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
@@ -146,7 +145,6 @@ class Col2TreeFunctor<phi::CPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();
-    auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
