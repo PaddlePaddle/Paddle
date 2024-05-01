@@ -55,15 +55,13 @@ class MergeParallelMatmulPattern
 
     auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
                                 const std::vector<std::int64_t>& b) {
-      if (a.size() != b.size()) {
-        return false;
-      }
-      for (int i = 0; i < a.size() - 1; ++i) {
-        if (a[i] != b[i]) {
-          return false;
-        }
-      }
-      return true;
+      return std::vector<std::int64_t>(a.begin(), a.end() - 1) ==
+             std::vector<std::int64_t>(b.begin(), b.end() - 1);
+    };
+
+    auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
+      return std::any_of(
+          dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
     };
 
     auto input_x = matmul_op.operand_source(0);
@@ -89,6 +87,9 @@ class MergeParallelMatmulPattern
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
                 .dims());
+        if (IsDynamicShape(cur_dim)) {
+          continue;
+        }
         if (VectorPrefixEqual(pre_dim.value(), cur_dim)) {
           ret.push_back(it->owner());
         }
@@ -126,21 +127,16 @@ class MergeParallelMatmulPattern
             .result(0);
 
     for (size_t i = 0; i < merge_ops.size(); ++i) {
-      auto split_out =
-          rewriter
-              .Build<paddle::dialect::SliceOp>(
-                  matmul_out,
-                  std::vector<std::int64_t>{
-                      matmul_out.type()
-                          .dyn_cast<paddle::dialect::DenseTensorType>()
-                          .dims()
-                          .size() -
-                      1},
-                  std::vector<std::int64_t>{combine_shapes[i]},
-                  std::vector<int64_t>{combine_shapes[i + 1]},
-                  std::vector<std::int64_t>{},
-                  std::vector<std::int64_t>{})
-              .result(0);
+      rewriter.SetInsertionPointAfter(merge_ops[i]);
+      auto split_out = rewriter
+                           .Build<paddle::dialect::SliceOp>(
+                               matmul_out,
+                               std::vector<std::int64_t>{-1},
+                               std::vector<std::int64_t>{combine_shapes[i]},
+                               std::vector<int64_t>{combine_shapes[i + 1]},
+                               std::vector<std::int64_t>{},
+                               std::vector<std::int64_t>{})
+                           .result(0);
 
       rewriter.ReplaceAllUsesWith(merge_ops[i]->result(0), split_out);
       rewriter.EraseOp(merge_ops[i]);

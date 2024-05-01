@@ -471,6 +471,7 @@ if(NOT WITH_GPU
    OR WIN32
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
@@ -1054,5 +1055,3 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_pit_tests_properties()
-
-set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)

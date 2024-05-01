@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
@@ -27,8 +28,13 @@
 namespace pir {
 
 // The implementation is based on shape constraint ir.
-class IR_API ShapeConstraintIRAnalysis {
+class IR_API ShapeConstraintIRAnalysis final
+    : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
  public:
+  ShapeConstraintIRAnalysis() = default;
+  ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
+  ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
+
   void Init();
 
   const std::string GetNextSymName();
@@ -117,7 +123,8 @@ class IR_API ShapeAnalysisManager {
 
  private:
   ShapeAnalysisManager() {}
-  std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
+  std::unordered_map<uint64_t, std::shared_ptr<ShapeConstraintIRAnalysis>>
+      tables_;
 };
 
 #define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \

@@ -809,6 +809,12 @@
   attrs :
     {scale : Scale, shift : Shift}
 
+- op : dequantize_abs_max
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : dequantize_linear
   inputs :
     {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
@@ -1099,8 +1105,11 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
   extra :
@@ -1111,12 +1120,26 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_moving_average_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    in_accum : InAccum
+    in_state : InState
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_state : OutState
+    out_accum : OutAccum
 
 - op : fake_quantize_range_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    iter : Iter
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_scales : OutScales
 
 - op : fc
   inputs :
@@ -1128,7 +1151,7 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
-    attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
   outputs: {out: Out}
@@ -1891,6 +1914,15 @@
     x : X
   outputs :
     {out : Out, indices : Indices}
+
+- op : l1_norm
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : l1_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : label_smooth
   inputs :
@@ -2659,6 +2691,21 @@
   outputs :
     out : Out
 
+- op : pull_gpups_sparse
+  backward : push_gpups_sparse
+  inputs :
+    {w : W, ids : Ids}
+  outputs :
+    out : Out
+
+- op : pull_sparse_v2
+  inputs :
+    { ids : Ids, w : W}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
+
 - op : push_dense
   inputs :
     ids : Ids
@@ -2671,7 +2718,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, 'str[] inputnames = {}', bool is_distributed = true]
+    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_labe_lname = "", int padding_id = 0, bool scales_parse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -3054,6 +3101,10 @@
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
+  inputs:
+    {x : X, group : group}
+  outputs:
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3176,6 +3227,14 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : sparse_batch_norm
+  attrs:
+    data_format: data_layout
+
+- op : sparse_sync_batch_norm
+  attrs:
+    data_format: data_layout
 
 - op : spectral_norm
   backward : spectral_norm_grad
@@ -3375,6 +3434,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tdm_child
+  inputs :
+    {x : X , tree_info : TreeInfo, child_nums: child_nums, dtype: dtype}
+  outputs :
+    {child : Child, leaf_mask : LeafMask}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : tdm_sampler
   inputs:

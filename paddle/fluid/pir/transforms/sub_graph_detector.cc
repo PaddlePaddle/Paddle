@@ -484,6 +484,34 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
+std::vector<pir::Value> AnalysisExternalInputs(Operation* op) {  // NOLINT
+  if (!op->isa<cinn::dialect::GroupOp>()) {
+    return op->operands_source();
+  }
+  // Get all ops in group
+  const auto all_ops = [&]() -> decltype(auto) {
+    const auto all_ops = op->dyn_cast<cinn::dialect::GroupOp>().GetOperators();
+    return std::unordered_set<pir::Operation*>(all_ops.begin(), all_ops.end());
+  }();
+  std::unordered_set<pir::Value> value_set;
+  const auto& IsOutsideInput = [&](const pir::Value& value) -> bool {
+    const bool is_outside =
+        value && value.defining_op() && !all_ops.count(value.defining_op());
+    const bool has_visited = value_set.count(value);
+    if (!has_visited) value_set.insert(value);
+    return is_outside && !has_visited;
+  };
+
+  std::vector<::pir::Value> inputs;
+  // count all op's input Value
+  for (auto inner_op : all_ops) {
+    for (auto& value : inner_op->operands_source()) {
+      if (IsOutsideInput(value)) inputs.push_back(value);
+    }
+  }
+  return inputs;
+}
+
 namespace {
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
@@ -538,18 +566,18 @@ struct IncrementalOrder {
 std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     const pir::Operation* position_op,
     const pir::Block* block,
-    const pir::Operation* op,
+    pir::Operation* op,
     std::unordered_set<pir::Operation*>* visited_ops) {
   std::unordered_set<pir::Operation*> ops;
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
-    for (auto& op : *block) {
-      if (src_op == &op) return true;
+    for (auto& item : *block) {
+      if (src_op->id() == item.id()) return true;
     }
     return false;
   };
-
-  for (auto value : op->operands_source()) {
+  std::vector<pir::Value> op_inputs = AnalysisExternalInputs(op);
+  for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
     if (visited_ops->count(defining_op)) continue;
@@ -580,7 +608,8 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
   }();
 
   for (auto& op : moved_ops) {
-    VLOG(5) << "Move " << op->name() << " before " << insert_point_op->name();
+    VLOG(5) << "Move " << op->id() << " " << op->name() << " before "
+            << insert_point_op->id() << " " << insert_point_op->name();
     op->MoveTo(block, insert_point_op->operator Block::Iterator());
   }
 }

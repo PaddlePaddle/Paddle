@@ -247,7 +247,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
       }
 
       if (comm_ctx) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
@@ -256,7 +256,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
@@ -265,7 +265,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
@@ -275,7 +275,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             comm_ctx->GetNcclComm(),
             stream));
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
@@ -284,7 +284,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             ncclSum,
             comm->comm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
@@ -293,7 +293,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             ncclSum,
             comm->comm(),
             stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,

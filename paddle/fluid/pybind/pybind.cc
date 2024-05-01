@@ -731,43 +731,66 @@ void BindVjp(pybind11::module *m) {
             fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
         PADDLE_ENFORCE(
             vjp_interface,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
         std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
             &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
-            phi::errors::InvalidArgument(
-                "The size of stop_gradients should be the same as vjp_res "
-                "size."
-                "But the size of stop_gradients: %d, vjp_res size: %d",
-                stop_gradients.size(),
-                vjp_res.size()));
+            common::errors::InvalidArgument(
+                "The size of  %s stop_gradients should be the same as vjp_res "
+                "size.",
+                fwd_op.name()));
+
         for (size_t i = 0; i < vjp_res.size(); ++i) {
           PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
                             vjp_res[i].size(),
                             phi::errors::InvalidArgument(
                                 "The size of stop_gradients[%d] should be the "
-                                "same as vjp_res[%d] "
-                                "size."
-                                "But the size of stop_gradients[%d]: %d, "
-                                "vjp_res[%d] size: %d",
+                                "same as vjp_res[%d] size.",
                                 i,
-                                i,
-                                i,
-                                stop_gradients[i].size(),
-                                i,
-                                vjp_res[i].size()));
+                                i));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
             if (!vjp_res[i][j]) {
               sub_res.append(nullptr);
             } else {
+              // The grad_type must equal to forward type.
               sub_res.append(vjp_res[i][j]);
             }
           }
           res.append(sub_res);
+        }
+
+        paddle::dialect::OpYamlInfoInterface yaml_interface =
+            fwd_op.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+        if (yaml_interface) {
+          auto inputs_grad_info = std::get<0>(yaml_interface.GetOpInfo());
+          PADDLE_ENFORCE_EQ(inputs.size(),
+                            inputs_grad_info.size(),
+                            common::errors::InvalidArgument(
+                                "The size of %s inputs should be the "
+                                "same as inputs_grad_info size.",
+                                fwd_op.name()));
+          size_t grad_index = 0;
+          for (size_t idx = 0; idx < inputs.size(); ++idx) {
+            if (!inputs_grad_info[idx].with_grad_semantic) continue;
+            PADDLE_ENFORCE_EQ(inputs[idx].size(),
+                              vjp_res[grad_index].size(),
+                              common::errors::InvalidArgument(
+                                  "The size of inouts[%d] should be the "
+                                  "same as vjp_res[%d] size.",
+                                  idx,
+                                  grad_index));
+            for (size_t j = 0; j < inputs[idx].size(); ++j) {
+              if (vjp_res[grad_index][j]) {
+                // The grad_type must equal to forward type.
+                vjp_res[grad_index][j].set_type(inputs[idx][j].type());
+              }
+            }
+            ++grad_index;
+          }
         }
         return res;
       });

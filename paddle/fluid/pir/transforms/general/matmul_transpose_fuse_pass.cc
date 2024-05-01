@@ -39,7 +39,7 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("matmul_op_out") = matmul_op(pat.Tensor("x"), pat.Tensor("y"));
     pat.Tensor("transpose_op_out") = transpose_op(pat.Tensor("matmul_op_out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
@@ -91,7 +91,7 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("matmul_op_out") =
         matmul_op(pat.Tensor("x_transpose_out"), pat.Tensor("y"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
@@ -144,7 +144,7 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("matmul_op_out") =
         matmul_op(pat.Tensor("x"), pat.Tensor("y_transpose_out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
