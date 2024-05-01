@@ -27,7 +27,7 @@ class IR_API InterfaceValue {
   template <typename Interface, typename Model>
   static InterfaceValue Get();
   TypeId type_id() const { return type_id_; }
-  void *model() const { return model_; }
+  void *model() const { return model_.get(); }
 
   InterfaceValue() = default;
   InterfaceValue(TypeId type_id) : type_id_(type_id) {}  // NOLINT
