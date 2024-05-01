@@ -976,6 +976,56 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  // check output shape
+  CHECK(!output_shapes.empty() && !output_shapes[0].empty())
+      << "Output shape is empty! Please check.\n";
+  // get axis[0, n_dim)
+  std::vector<int> axis;
+  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
+    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    for (auto &e : axis) {
+      if (e >= static_cast<int>(output_shapes[0].size()) ||
+          e < -1 * static_cast<int>(output_shapes[0].size())) {
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "axis is not in [0, n_dim), Please check."));
+      }
+      if (e < 0) {
+        e += output_shapes[0].size();
+      }
+    }
+  }
+
+  framework::CINNCompute reverse_compute([=](lang::Args args,
+                                             lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input argument of reverse compute is empty! Please check.\n";
+    CINNValuePack input_args = args[0];
+    CHECK(!input_args.empty())
+        << "at least one input tensor for reverse compute\n";
+    Expr A = input_args[0];
+    CHECK(A.as_tensor());
+
+    CHECK_EQ(input_args.size(), 2);
+    CHECK(input_args[1].is_string());
+    std::string tensor_name = input_args[1].operator std::string();
+    auto out = pe::Reverse(A.as_tensor_ref(), axis, tensor_name);
+    auto stages = CreateStages({A.as_tensor_ref(), out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  CHECK(out_type.size()) << "Out_type of reverse op is empty! Please check.";
+  strategy->AddImpl(
+      reverse_compute, lang::PackedFunc(), "strategy.reverse.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForReverse(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -2164,6 +2214,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForReverse)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForReverseSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForReverse))
       .set_attr("inferdtype",

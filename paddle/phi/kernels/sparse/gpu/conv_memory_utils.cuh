@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+
 template <int bytes>
 struct global_load;
 
@@ -93,3 +95,5 @@ struct global_load<2>
     }
   }
 };
+
+#endif // PADDLE_WITH_CUDA

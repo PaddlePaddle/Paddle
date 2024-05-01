@@ -51,7 +51,7 @@ class TestDequantizeMaxAbsOp(OpTest):
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):

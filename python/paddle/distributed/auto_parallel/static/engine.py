@@ -632,7 +632,6 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-
         dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
             mix_fw_program
         )
@@ -703,6 +702,7 @@ class Engine:
         dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
             dist_program
         )
+
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
 
@@ -1022,6 +1022,23 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
+    def _init_lr(self):
+        # hack to find learning_rate op
+        lr_name = None
+        for op in self.main_program.global_block().ops:
+            if (
+                op.name() == "pd_op.data"
+                and 'learning_rate' in op.attrs()["name"]
+            ):
+                lr_name = op.attrs()["name"]
+                break
+
+        if lr_name is not None:
+            buffer_tensor = global_scope().var(lr_name).get_tensor()
+            buffer_tensor.set(
+                np.float32(self._optimizer._learning_rate), self._place
+            )
+
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
@@ -1042,6 +1059,7 @@ class Engine:
                 self._pir_dense_main_progs[mode], self._place
             )
 
+            self._init_lr()
             return
 
         if self._strategy.seed:
