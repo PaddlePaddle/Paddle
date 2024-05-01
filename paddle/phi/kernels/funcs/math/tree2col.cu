@@ -83,12 +83,12 @@ class Tree2ColFunctor<phi::GPUContext, T> {
 
     size_t patch_size = processing_list.size();
     phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
-    int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
-                                           cpu_place);
-    T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
-                                     cpu_place);
-    int* index = index_cpu.mutable_data<int>(
-        {static_cast<int64_t>(patch_size * 2)}, cpu_place);
+    node_cpu.Resize({static_cast<int64_t>(total_size)});
+    int* node = context.template Alloc<int>(&node_cpu);
+    eta_cpu.Resize({static_cast<int64_t>(total_size * 3)});
+    T* eta = context.template Alloc<T>(&eta_cpu);
+    index_cpu.Resize({static_cast<int64_t>(patch_size * 2)});
+    int* index = context.template Alloc<int>(&index_cpu);
 
     int idx = 0, index_idx = 0;
     for (auto& tmp : processing_list) {
@@ -113,9 +113,9 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
 
-    patch->mutable_data<T>(
-        {static_cast<int64_t>(max_size), static_cast<int64_t>(patch_elem_size)},
-        gpu_place);
+    patch->Resize({static_cast<int64_t>(max_size),
+                   static_cast<int64_t>(patch_elem_size)});
+    context.template Alloc<T>(patch);
     constant(context, patch, 0);
     tree2col<T><<<grid, threads, 0, stream>>>(eta_gpu.data<T>(),
                                               node_gpu.data<int>(),
@@ -168,12 +168,12 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     }
 
     phi::DenseTensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
-    int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
-                                           cpu_place);
-    T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
-                                     cpu_place);
-    int* index = index_cpu.mutable_data<int>(
-        {static_cast<int64_t>(grad_size * 2)}, cpu_place);
+    node_cpu.Resize({static_cast<int64_t>(total_size)});
+    int* node = context.template Alloc<int>(&node_cpu);
+    eta_cpu.Resize({static_cast<int64_t>(total_size * 3)});
+    T* eta = context.template Alloc<T>(&eta_cpu);
+    index_cpu.Resize({static_cast<int64_t>(grad_size * 2)});
+    int* index = context.template Alloc<int>(&index_cpu);
 
     size_t idx = 0, index_idx = 0;
     for (auto& tmp : grad_list) {
@@ -198,9 +198,9 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
 
-    embedding_grad->mutable_data<T>(
-        {static_cast<int64_t>(max_size), static_cast<int64_t>(patch_elem_size)},
-        gpu_place);
+    embedding_grad->Resize({static_cast<int64_t>(max_size),
+                            static_cast<int64_t>(patch_elem_size)});
+    context.template Alloc<T>(embedding_grad);
 
     constant(context, embedding_grad, 0);
     tree2col<T><<<grid, threads, 0, stream>>>(eta_gpu.data<T>(),

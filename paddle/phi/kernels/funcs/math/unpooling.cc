@@ -33,7 +33,7 @@ class Unpool2dMaxFunctor<phi::CPUContext, T> {
     int output_feasize = output_height * output_width;
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
@@ -78,7 +78,7 @@ class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
     int output_feasize = output_height * output_width;
     const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
 
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
@@ -124,7 +124,7 @@ class Unpool3dMaxFunctor<phi::CPUContext, T> {
     int output_feasize = output_depth * output_height * output_width;
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
@@ -172,7 +172,7 @@ class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
     int output_feasize = output_depth * output_height * output_width;
     const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
 
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
