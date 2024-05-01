@@ -93,7 +93,6 @@ class Tree2ColFunctor<phi::CPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
-    auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
@@ -109,10 +108,9 @@ class Tree2ColFunctor<phi::CPUContext, T> {
     }
     patch_size = processing_list.size();
 
-    T *patch_data =
-        patch->mutable_data<T>({static_cast<int64_t>(patch_size),
-                                static_cast<int64_t>(patch_elem_size)},
-                               cpu_place);
+    patch->Resize({static_cast<int64_t>(patch_size),
+                   static_cast<int64_t>(patch_elem_size)});
+    T *patch_data = context.template Alloc<T>(patch);
     constant(context, patch, 0);
     const T *features = node_features.data<T>();
 
@@ -147,7 +145,6 @@ class Col2TreeFunctor<phi::CPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();
-    auto cpu_place = context.GetPlace();
     phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
@@ -168,10 +165,9 @@ class Col2TreeFunctor<phi::CPUContext, T> {
         grad_list[v.get_node() - 1].push_back(v.change_node(patch_id + 1));
       }
     }
-    T *grad_data =
-        in_grad->mutable_data<T>({static_cast<int64_t>(node_count),
-                                  static_cast<int64_t>(grad_elem_size)},
-                                 cpu_place);
+    in_grad->Resize({static_cast<int64_t>(node_count),
+                     static_cast<int64_t>(grad_elem_size)});
+    T *grad_data = context.template Alloc<T>(in_grad);
 
     constant(context, in_grad, 0);
     const T *out_g = out_grad.data<T>();

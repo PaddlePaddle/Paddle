@@ -124,7 +124,7 @@ class Unpool2dMaxFunctor<phi::GPUContext, T> {
     const int output_width = output->dims()[3];
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMax<T>
@@ -161,7 +161,7 @@ class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMaxGrad<T>
@@ -196,7 +196,7 @@ class Unpool3dMaxFunctor<phi::GPUContext, T> {
     const int output_width = output->dims()[4];
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMax<T>
@@ -237,7 +237,7 @@ class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMaxGrad<T>
