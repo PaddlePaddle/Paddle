@@ -52,7 +52,7 @@ class IR_API InterfaceValue {
 
  private:
   TypeId type_id_;
-  std::unique_ptr<void, decltype(&free)> model_{nullptr, &free};
+  std::unique_ptr<void, decltype(static_cast<void(*)(void*)>(free))> model_{nullptr, static_cast<void(*)(void*)>(free)};
 };
 
 template <typename Interface, typename Model>
