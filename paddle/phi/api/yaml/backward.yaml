@@ -1936,6 +1936,7 @@
     param : [x]
   kernel :
     func : reduce_as_grad
+  composite: reduce_as_grad(x, target, out_grad, x_grad)
 
 - backward_op : relu6_grad
   forward : relu6 (Tensor x) -> Tensor(out)
