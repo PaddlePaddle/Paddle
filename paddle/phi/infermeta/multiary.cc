@@ -1444,7 +1444,7 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
                            MetaTensor* accum_true_pos,
                            MetaTensor* accum_false_pos,
                            MetaTensor* m_ap,
-                           MetaConfig config = MetaConfig()) {
+                           MetaConfig config) {
   auto det_dims = detect_res.dims();
   PADDLE_ENFORCE_EQ(det_dims.size(),
                     2UL,
