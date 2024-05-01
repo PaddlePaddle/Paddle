@@ -597,12 +597,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           ops::FakeQuantizeDequantizeAbsMaxKernel,
                           float) {}
 
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel,
-                          float) {}
-
 REGISTER_OPERATOR(
     fake_channel_wise_quantize_abs_max,
     ops::FakeChannelWiseQuantizeAbsMaxOp,

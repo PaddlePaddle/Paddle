@@ -313,7 +313,9 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
         self.check_output(check_dygraph=False)
         if with_gradient:
             gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
-            self.check_grad(['X'], 'Out', user_defined_grads=gradient)
+            self.check_grad(
+                ['X'], 'Out', user_defined_grads=gradient, check_dygraph=False
+            )
 
     def test_fake_quantize_moving_average_abs_max(self):
         self._fake_quantize_moving_average_abs_max(
