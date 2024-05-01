@@ -79,9 +79,38 @@ void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
   out_scale_data[0] = scale;
 }
 
+template <typename Context, typename T>
+void FindRangeAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &cur_scale,
+    const DenseTensor &last_scale,
+    const DenseTensor &iter,
+    const int window_size,
+    DenseTensor *scales_arr,
+    DenseTensor *out_scale) {
+  T *scale_arr_data = ctx.template Alloc<T>(scales_arr);
+  int64_t it = iter.data<int64_t>()[0];
+  int idx = static_cast<int>(it % window_size);
+  T removed = scale_arr_data[idx];
+  T cur = cur_scale.data<T>()[0];
+  scale_arr_data[idx] = cur;
+
+  T max = last_scale.data<T>()[0];
+  if (max < cur) {
+    max = cur;
+  } else if (fabs(removed - max) < 1e-6) {
+    int size = static_cast<int>((it > window_size) ? window_size : it);
+    phi::funcs::FindAbsMaxFunctor<Context, T>()(
+        ctx, scale_arr_data, size, &max);
+  }
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+  out_scale_data[0] = max;
+}
+
 template class FindAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantFunctor<CPUContext, float>;
 template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
+template class FindRangeAbsMaxFunctor<CPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi

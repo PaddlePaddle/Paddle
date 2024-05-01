@@ -632,7 +632,6 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-
         dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
             mix_fw_program
         )

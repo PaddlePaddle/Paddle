@@ -154,3 +154,34 @@ def apply_reshard_pass(program):
                 )
 
     return new_program
+
+
+# In sequence_parallel, we need to transpose hidden_states
+# from [bs, seq, hidden] to [seq, bs, hidden] to perform
+# split and allgather at dim 0.
+# The transpose may lead to about 3% performance
+# in llama-70B model (tp4pp8).
+# We found that, when bs=1, which is the common case in llm
+# training, the transpose is equal to reshape.
+# So, this pass is to haddle the specific case.
+def eliminate_transpose_by_reshape(program):
+    for op in program.global_block().ops:
+        if (
+            op.name() == 'pd_op.transpose'
+            or op.name() == 'pd_op.transpose_grad'
+        ):
+            var = op.operand(0).source()
+            rank = len(var.shape)
+            perm = op.attrs()['perm']
+            perm = [p + rank if p < 0 else p for p in perm]
+            # only support transpose dim 0 and dim 1
+            expected_perm = [1, 0] + [i + 2 for i in range(rank - 2)]
+            if perm == expected_perm and (
+                var.shape[0] == 1 or var.shape[1] == 1
+            ):
+                paddle.pir.set_insertion_point(op)
+                transpose_var = op.result(0)
+                reshape_var = paddle._C_ops.reshape(var, transpose_var.shape)
+                transpose_var.replace_all_uses_with(reshape_var)
+                program.global_block().remove_op(op)
+    return program
