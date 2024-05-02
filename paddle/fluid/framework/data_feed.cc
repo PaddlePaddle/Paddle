@@ -632,7 +632,7 @@ void MultiSlotDataFeed::Init(
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   // temporarily set queue size = batch size * 100
@@ -1038,7 +1038,7 @@ void MultiSlotInMemoryDataFeed::Init(
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -1608,7 +1608,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -2026,7 +2026,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
                  platform::errors::PreconditionNotMet(
                      "Multi_slot_desc has not been set in data_feed_desc"));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
