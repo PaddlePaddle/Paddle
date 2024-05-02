@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 
+#include <utility>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
@@ -27,19 +29,19 @@ namespace inference {
 namespace analysis {
 
 ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
-    const std::string& model_file,
-    const std::string& params_file,
-    const std::string& mixed_model_file,
-    const std::string& mixed_params_file,
+    std::string  model_file,
+    std::string  params_file,
+    std::string  mixed_model_file,
+    std::string  mixed_params_file,
     phi::DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
     const std::unordered_set<std::string>& black_list,
     const std::unordered_set<std::string>& white_list)
-    : model_file_(model_file),
-      params_file_(params_file),
-      mixed_model_file_(mixed_model_file),
-      mixed_params_file_(mixed_params_file),
+    : model_file_(std::move(model_file)),
+      params_file_(std::move(params_file)),
+      mixed_model_file_(std::move(mixed_model_file)),
+      mixed_params_file_(std::move(mixed_params_file)),
       mixed_precision_(mixed_precision),
       backend_(backend),
       keep_io_types_(keep_io_types),
