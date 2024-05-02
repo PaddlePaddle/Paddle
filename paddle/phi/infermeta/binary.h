@@ -182,6 +182,11 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out);
+
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
                             MetaTensor* out);

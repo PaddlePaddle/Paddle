@@ -484,26 +484,32 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(const Operation* op) {  // NOLINT
+std::vector<pir::Value> AnalysisExternalInputs(Operation* op) {  // NOLINT
   if (!op->isa<cinn::dialect::GroupOp>()) {
     return op->operands_source();
   }
-  auto group_op =
-      const_cast<Operation*>(op)->dyn_cast<cinn::dialect::GroupOp>();
-  auto group_ops = std::unordered_set<pir::Operation*>(
-      group_op.GetOperators().begin(), group_op.GetOperators().end());
-  std::unordered_set<::pir::Value> group_inputs;
+  // Get all ops in group
+  const auto all_ops = [&]() -> decltype(auto) {
+    const auto all_ops = op->dyn_cast<cinn::dialect::GroupOp>().GetOperators();
+    return std::unordered_set<pir::Operation*>(all_ops.begin(), all_ops.end());
+  }();
+  std::unordered_set<pir::Value> value_set;
+  const auto& IsOutsideInput = [&](const pir::Value& value) -> bool {
+    const bool is_outside =
+        value && value.defining_op() && !all_ops.count(value.defining_op());
+    const bool has_visited = value_set.count(value);
+    if (!has_visited) value_set.insert(value);
+    return is_outside && !has_visited;
+  };
+
+  std::vector<::pir::Value> inputs;
   // count all op's input Value
-  for (auto item : group_ops) {
-    for (auto& value : item->operands_source()) {
-      if (!value || !value.type() ||
-          group_ops.find(value.defining_op()) != group_ops.end())
-        continue;
-      // if the input value owner op is not in OpSet, it's the group's input
-      group_inputs.insert(value);
+  for (auto inner_op : all_ops) {
+    for (auto& value : inner_op->operands_source()) {
+      if (IsOutsideInput(value)) inputs.push_back(value);
     }
   }
-  return std::vector<pir::Value>(group_inputs.begin(), group_inputs.end());
+  return inputs;
 }
 
 namespace {
@@ -566,7 +572,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
     for (auto& item : *block) {
-      if (src_op == &item) return true;
+      if (src_op->id() == item.id()) return true;
     }
     return false;
   };

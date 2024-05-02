@@ -1703,31 +1703,28 @@ SplitedResult SplitForwardBackward(
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = forward_outputs.size();
 
-  auto create_output_fn_forward = [&ctx,
-                                   &forward_value_map,
-                                   &counter,
-                                   &forward_program,
-                                   &forward_inputs,
-                                   &forward_params](const pir::Value &v) {
-    if (v.impl() == nullptr) {
-      return;
-    }
-    // Skip the value that already in forward_params.
-    if (std::find(forward_params.begin(), forward_params.end(), v) !=
-        forward_params.end()) {
-      return;
-    }
-    std::string shadow_output_name =
-        std::string("output_") + std::to_string(counter);
-    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-    pir::AttributeMap attribute_map = {
-        {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
-    };
-    pir::Operation *operation = pir::Operation::Create(
-        {forward_value_map[v]}, attribute_map, {}, op_info);
-    forward_program->block()->push_back(operation);
-    counter += 1;
-  };
+  auto create_output_fn_forward =
+      [&ctx, &forward_value_map, &counter, &forward_program, &forward_params](
+          const pir::Value &v) {
+        if (v.impl() == nullptr) {
+          return;
+        }
+        // Skip the value that already in forward_params.
+        if (std::find(forward_params.begin(), forward_params.end(), v) !=
+            forward_params.end()) {
+          return;
+        }
+        std::string shadow_output_name =
+            std::string("output_") + std::to_string(counter);
+        auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+        pir::AttributeMap attribute_map = {
+            {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
+        };
+        pir::Operation *operation = pir::Operation::Create(
+            {forward_value_map[v]}, attribute_map, {}, op_info);
+        forward_program->block()->push_back(operation);
+        counter += 1;
+      };
 
   auto create_output_fn_backward = [&ctx,
                                     &backward_value_map,
