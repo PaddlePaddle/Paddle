@@ -251,75 +251,6 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
   }
 };
 
-class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
- public:
-  FakeQuantOrWithDequantAbsMaxOp(const std::string &type,
-                                 const framework::VariableNameMap &inputs,
-                                 const framework::VariableNameMap &outputs,
-                                 const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("X"), "Input", "X", "FakeQuantOrWithDequantAbsMaxOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"),
-                   "Output",
-                   "Out",
-                   "FakeQuantOrWithDequantAbsMaxOp");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
-                   "Output",
-                   "OutScale",
-                   "FakeQuantOrWithDequantAbsMaxOp");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
-  }
-};
-
-class FakeQuantOrWithDequantAbsMaxOpMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
-    AddOutput("Out",
-              "(Tensor) Output of quantized low level tensor, "
-              "but also saved as float data type.");
-    AddOutput("OutScale", "(Tensor) Current scale");
-    AddAttr<int>("bit_length", "(int, default 8)")
-        .SetDefault(8)
-        .AddCustomChecker([](const int &bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
-                            true,
-                            phi::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16, but "
-                                "the received is %d",
-                                bit_length));
-        });
-    AddComment(R"DOC(
-This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
-FakeQuantAbsMaxOp operator is used in the dynamic quantization.
-
-$$scale = max(abs(X))$$
-$$range = 2^{bit_length - 1} - 1$$
-$$Out = round(X/scale * range)$$
-
-FakeQuantDequantAbsMaxOp operator does the abs_max quantization and then dequantization.
-
-$$scale = max(abs(X))$$
-$$range = 2^{bit\_length - 1} - 1$$
-$$Out = round(X/scale * range) * scale / range$$
-
-)DOC");
-  }
-};
-
 class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -584,18 +515,6 @@ class StraightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
-
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_abs_max,
-    ops::FakeQuantOrWithDequantAbsMaxOp,
-    ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeDequantizeAbsMaxKernel,
-                          float) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_quantize_abs_max,

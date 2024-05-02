@@ -58,52 +58,6 @@ struct ChannelClipFakeQuantDequantFunctor {
                   phi::DenseTensor *out);
 };
 
-template <typename DeviceContext, typename T>
-class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    auto *x = context.Input<phi::DenseTensor>("X");
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    T *out_s = dev_ctx.template Alloc<T>(out_scale);
-
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-
-    const T *in_data = x->data<T>();
-    phi::funcs::FindAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in_data, x->numel(), out_s);
-    RunClipFunctor(dev_ctx, *x, *out_scale, bin_cnt, round_type, out);
-  }
-
-  virtual ~FakeAbsMaxKernelBase() = default;
-
- protected:
-  virtual void RunClipFunctor(const DeviceContext &dev_ctx,
-                              const phi::DenseTensor &in,
-                              const phi::DenseTensor &scale,
-                              int bin_cnt,
-                              int round_type,
-                              phi::DenseTensor *out) const = 0;
-};
-
-template <typename T, typename DeviceContext>
-class FakeQuantizeDequantizeAbsMaxKernel
-    : public FakeAbsMaxKernelBase<DeviceContext, T> {
- protected:
-  void RunClipFunctor(const DeviceContext &dev_ctx,
-                      const phi::DenseTensor &in,
-                      const phi::DenseTensor &scale,
-                      int bin_cnt,
-                      int round_type,
-                      phi::DenseTensor *out) const override {
-    phi::funcs::ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, bin_cnt, round_type, out);
-  }
-};
-
 template <typename T, typename DeviceContext>
 class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:

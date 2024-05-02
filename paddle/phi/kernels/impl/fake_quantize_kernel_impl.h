@@ -172,4 +172,21 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxKernel(
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
+template <typename T, typename Context>
+void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
+                                        const DenseTensor &x,
+                                        int bit_length,
+                                        int round_type,
+                                        DenseTensor *out,
+                                        DenseTensor *out_scale) {
+  T *out_s = dev_ctx.template Alloc<T>(out_scale);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+  const T *in_data = x.data<T>();
+  phi::funcs::FindAbsMaxFunctor<Context, T>()(
+      dev_ctx, in_data, x.numel(), out_s);
+
+  phi::funcs::ClipAndFakeQuantDequantFunctor<Context, T>()(
+      dev_ctx, x, *out_scale, bin_cnt, round_type, out);
+}
+
 }  // namespace phi
