@@ -17,10 +17,45 @@ _DType = TypeVar("_DType", bound=Any)
 
 
 class Tensor(Generic[_ShapeType, _DType]):
-    # annotation: tensor_docstring
+    @overload
+    def __init__(self) -> None: ...
 
     @overload
-    def __init__(self) -> None:
+    def __init__(
+        self, dtype, dims, name: str, type, persistable: bool
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        value: npt.NDArray[Any],
+        place,
+        persistable: bool,
+        zero_copy: bool,
+        name: str,
+        stop_gradient: bool,
+    ) -> None: ...
+
+    @overload
+    def __init__(self, value: npt.NDArray[Any]) -> None: ...
+
+    @overload
+    def __init__(self, value: Tensor) -> None: ...
+
+    @overload
+    def __init__(
+        self, value: Tensor, place, name: str, process_mesh, placements
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self, value: Tensor, dims, name: str, process_mesh, placements
+    ) -> None: ...
+
+    @overload
+    def __init__(self, value: Tensor, place, name: str) -> None: ...
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
         ref: paddle/fluid/pybind/eager.cc
 
@@ -77,41 +112,6 @@ class Tensor(Generic[_ShapeType, _DType]):
         *  **/
         """
         ...
-
-    @overload
-    def __init__(
-        self, dtype, dims, name: str, type, persistable: bool
-    ) -> None: ...
-
-    @overload
-    def __init__(
-        self,
-        value: npt.NDArray[Any],
-        place,
-        persistable: bool,
-        zero_copy: bool,
-        name: str,
-        stop_gradient: bool,
-    ) -> None: ...
-
-    @overload
-    def __init__(self, value: npt.NDArray[Any]) -> None: ...
-
-    @overload
-    def __init__(self, value: Tensor) -> None: ...
-
-    @overload
-    def __init__(
-        self, value: Tensor, place, name: str, process_mesh, placements
-    ) -> None: ...
-
-    @overload
-    def __init__(
-        self, value: Tensor, dims, name: str, process_mesh, placements
-    ) -> None: ...
-
-    @overload
-    def __init__(self, value: Tensor, place, name: str) -> None: ...
 
     def __add__(self, y: Tensor) -> Tensor: ...
 

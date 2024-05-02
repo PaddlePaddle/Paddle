@@ -50,7 +50,8 @@ class Member:
 
 
 class TensorGen:
-    def __init__(self):
+    def __init__(self, template: str = ''):
+        self._template: str = template
         self._tensor_doc: str = ''
         self._future_features: list[str] = []
         self._import_stmts: list[str] = []
@@ -351,8 +352,21 @@ def get_tensor_members():
     return members
 
 
+def get_tensor_template(path: str) -> str:
+    with open(path) as f:
+        return ''.join(f.readlines())
+
+
 def main():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-i",
+        "--input-file",
+        type=str,
+        default="python/paddle/tensor/tensor.pyi.in",
+    )
+
     parser.add_argument(
         "-o",
         "--output-file",
@@ -361,6 +375,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    tensor_template = get_tensor_template(args.input_file)
+    print(tensor_template)
 
     # Get members of Tensor
     tensor_members = get_tensor_members()
