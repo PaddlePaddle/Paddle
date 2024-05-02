@@ -334,16 +334,22 @@ def get_api_md5(path):
     if not os.path.isfile(API_spec):
         return api_md5
     pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
+
+    # insert ArgSpec for changing the API's type annotation can trigger the CI
     patArgSpec = re.compile(
-        r'^(paddle[^,]+)\s+\(ArgSpec.*document\W*([0-9a-z]{32})'
+        r'^(paddle[^,]+)\s+\((ArgSpec.*),.*document\W*([0-9a-z]{32})'
     )
+
     with open(API_spec) as f:
         for line in f.readlines():
             mo = pat.search(line)
-            if not mo:
-                mo = patArgSpec.search(line)
+
             if mo:
                 api_md5[mo.group(1)] = mo.group(2)
+            else:
+                mo = patArgSpec.search(line)
+                api_md5[mo.group(1)] = f'{mo.group(2)}, {mo.group(3)}'
+
     return api_md5
 
 
