@@ -36,11 +36,11 @@ else()
   set(CMAKE_CXX_FLAGS_MINSIZEREL "/MD /O1 /Ob1 /DNDEBUG")
 
   if(WITH_GPU)
-    set(CMAKE_CUDA_FLAGS_DEBUG "-Xcompiler \"-MDd -Zi -Ob0 -Od /RTC1\"")
-    set(CMAKE_CUDA_FLAGS_RELEASE "-Xcompiler \"-MD -O2 -Ob2\" -DNDEBUG")
+    set(CMAKE_CUDA_FLAGS_DEBUG "-Xcompiler=\"-MDd -Zi -Ob0 -Od /RTC1\"")
+    set(CMAKE_CUDA_FLAGS_RELEASE "-Xcompiler=\"-MD -O2 -Ob2\" -DNDEBUG")
     set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO
-        "-Xcompiler \"-MD -Zi -O2 -Ob1\" -DNDEBUG")
-    set(CMAKE_CUDA_FLAGS_MINSIZEREL "-Xcompiler \"-MD -O1 -Ob1\" -DNDEBUG")
+        "-Xcompiler=\"-MD -Zi -O2 -Ob1\" -DNDEBUG")
+    set(CMAKE_CUDA_FLAGS_MINSIZEREL "-Xcompiler=\"-MD -O1 -Ob1\" -DNDEBUG")
   endif()
 
   # It can specify CUDA compile flag manually,
