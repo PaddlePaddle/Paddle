@@ -4318,7 +4318,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return out
 
 
-def cumprod(x, dim=None, exclusive=False, reverse=False, dtype=None, name=None):
+def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
@@ -4380,7 +4380,7 @@ def cumprod(x, dim=None, exclusive=False, reverse=False, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim, exclusive, reverse)
+        return _C_ops.cumprod(x, dim, False, False)
     else:
         check_variable_and_dtype(
             x,
@@ -4405,7 +4405,7 @@ def cumprod(x, dim=None, exclusive=False, reverse=False, dtype=None, name=None):
             type='cumprod',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'dim': dim, 'exclusive': exclusive, 'reverse': reverse},
+            attrs={'dim': dim},
         )
         return out
 

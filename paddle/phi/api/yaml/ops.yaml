@@ -721,7 +721,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cumprod
-  args : (Tensor x,  int dim, bool exclusive, bool reverse)
+  args : (Tensor x,  int dim, bool exclusive=false, bool reverse=false)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMetaCheckAxis
