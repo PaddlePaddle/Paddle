@@ -314,7 +314,15 @@ def check_public_api():
         for member_name in allapi:
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
-            doc_md5 = md5(instance.__doc__)
+
+            # make md5 with signature and docstring, and change the type annotation trigger the PR-CI-Static-Check
+            try:
+                signature = inspect.signature(instance)
+            except:
+                signature = ''
+
+            doc_md5 = md5(f'{signature}, {instance.__doc__}')
+
             member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
 
 
