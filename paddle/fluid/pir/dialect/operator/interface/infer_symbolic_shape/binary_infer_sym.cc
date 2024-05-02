@@ -90,14 +90,18 @@ bool Conv2dOpInferSymbolicShape(
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-  std::vector<symbol::DimExpr> in_data_dims =
+  const std::vector<symbol::DimExpr> in_data_dims =
       channel_last ? std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 1,
                                                   in_s_or_d.shape().end() - 1)
                    : std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 2,
                                                   in_s_or_d.shape().end());
 
-  std::vector<symbol::DimExpr> filter_data_dims = std::vector<symbol::DimExpr>(
-      filter_s_or_d.shape().begin() + 2, filter_s_or_d.shape().end());
+  const std::vector<symbol::DimExpr> filter_data_dims =
+      channel_last
+          ? std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                         filter_s_or_d.shape().end() - 1)
+          : std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                         filter_s_or_d.shape().end());
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
@@ -124,18 +128,13 @@ bool Conv2dOpInferSymbolicShape(
     }
 
     for (size_t i = 0; i < in_data_dims.size(); ++i) {
-      if (!in_data_dims[i].isa<int64_t>() ||
-          !filter_s_or_d.shape()[i + 2].isa<int64_t>()) {
-        out_s_or_d.push_back(shape_analysis->GetNextSymName());
-      } else {
-        const symbol::DimExpr dkernel =
-            new_dilations[i] * (filter_data_dims[i] - 1) + 1;
-        symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
-                                       new_paddings[2 * i + 1] - dkernel) /
-                                          strides[i] +
-                                      1;
-        out_s_or_d.push_back(output_size);
-      }
+      const symbol::DimExpr dkernel =
+          new_dilations[i] * (filter_data_dims[i] - 1) + 1;
+      symbol::DimExpr output_size = (in_data_dims[i] + new_paddings[2 * i] +
+                                     new_paddings[2 * i + 1] - dkernel) /
+                                        strides[i] +
+                                    1;
+      out_s_or_d.push_back(output_size);
     }
     if (channel_last) {
       out_s_or_d.push_back(filter_s_or_d.shape()[0]);
@@ -236,8 +235,22 @@ bool GatherOpInferSymbolicShape(
     return numel;
   }();
 
-  const auto &axis_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  int axis = 0;
+  const auto &attributes = op->attributes();
+  if (op->HasAttribute("axis")) {  // CINN Dialect
+    axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
+  } else {
+    PADDLE_ENFORCE_EQ(
+        op->num_operands() == 3,
+        true,
+        phi::errors::InvalidArgument(
+            "in GatherOpInferSymbolicShape: The number of operands should be "
+            "3 when the axis is not set."));
+    const auto &axis_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+    axis =
+        static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+  }
 
   const std::vector<symbol::DimExpr> &input_sym_shape =
       input_shape_or_data.data().has_value()
@@ -249,8 +262,6 @@ bool GatherOpInferSymbolicShape(
           ? index_shape_or_data.data().value()
           : index_shape_or_data.shape();
 
-  int axis =
-      static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   if (axis < 0) axis += input_sym_shape.size();
 
   const auto &out_sym_shape = [&] {
@@ -295,14 +306,9 @@ bool GatherNdOpInferSymbolicShape(
   const auto &index_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
 
-  const std::vector<symbol::DimExpr> &x_sym_shape =
-      x_shape_or_data.data().has_value() ? x_shape_or_data.data().value()
-                                         : x_shape_or_data.shape();
-
+  const std::vector<symbol::DimExpr> &x_sym_shape = x_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   int x_dims_size = x_sym_shape.size();
   int index_dims_size = index_sym_shape.size();

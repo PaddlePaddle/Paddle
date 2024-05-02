@@ -64,6 +64,21 @@ std::set<std::string> StringSplit(const std::string& str) {
   }
   return tokens;
 }
+
+void RemoveOp(pir::Block* block, pir::Operation* op) {
+  bool remove_op = true;
+  for (auto& item : op->results()) {
+    if (item.HasOneUse()) {
+      remove_op = false;
+      break;
+    }
+  }
+  if (remove_op) {
+    auto op_iter = std::find(block->begin(), block->end(), *op);
+    block->erase(op_iter);
+  }
+}
+
 }  // namespace
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
@@ -423,27 +438,41 @@ void DecompProgram::decomp_block(
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       std::vector<pir::Value> orig_outs = op->results();
-      std::vector<pir::Value> standard_decomp_res =
-          format_decomp_res(op->name(), orig_outs, decomp_res);
-      check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
-      construct_dst_vars(op->name(),
-                         orig_outs,
-                         standard_decomp_res,
-                         orig_vars_dict,
-                         &tar_vars);
+      bool is_next_builtin_split = false;
 
-      op->ReplaceAllUsesWith(standard_decomp_res);
-      bool remove_op = true;
-      for (auto& item : op->results()) {
-        if (item.HasOneUse()) {
-          remove_op = false;
-          break;
+      for (size_t i = 0; i < orig_outs.size(); i++) {
+        auto item = orig_outs[i];
+        if (item.use_count() == 1) {
+          auto next_op = item.first_use().owner();
+          if (next_op->name() == "builtin.split") {
+            is_next_builtin_split = true;
+
+            check_decomp_outputs(
+                next_op->name(), next_op->results(), decomp_res[i]);
+            construct_dst_vars(next_op->name(),
+                               next_op->results(),
+                               decomp_res[i],
+                               orig_vars_dict,
+                               &tar_vars);
+
+            next_op->ReplaceAllUsesWith(decomp_res[i]);
+            RemoveOp(block, next_op);
+          }
         }
       }
-      if (remove_op) {
-        auto op_iter = std::find(block->begin(), block->end(), *op);
-        block->erase(op_iter);
+      if (!is_next_builtin_split) {
+        std::vector<pir::Value> standard_decomp_res =
+            format_decomp_res(op->name(), orig_outs, decomp_res);
+        check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
+        construct_dst_vars(op->name(),
+                           orig_outs,
+                           standard_decomp_res,
+                           orig_vars_dict,
+                           &tar_vars);
+
+        op->ReplaceAllUsesWith(standard_decomp_res);
       }
+      RemoveOp(block, op);
     }
   }
   if (FLAGS_prim_check_ops) {

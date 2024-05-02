@@ -55,6 +55,17 @@
         - delete_attr : atol
           comment : The attribute 'atol' is deleted. The reason why it is deleted is that
                     attributes do not support a float64 value and it is changed to a tensor.
+
+- op : argsort
+  version :
+    - checkpoint : Upgrade agsort, add a new attribute [stable]
+      action :
+        - add_attr : stable
+          comment : If true, it will use stable sorting algorithm which preserves the order
+                    of equivalent elements. Otherwise, the order of equivalent elements will
+                    not be guaranteed to be preserved.
+          default : "false"
+
 - op : assign_value
   version :
     - checkpoint : Upgrade assign_value, remove plain attributes in favor of generic attribute.
@@ -314,6 +325,14 @@
         - modify_attr : Scale
           comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
           default : "true"
+
+- op : kldiv_loss
+  version :
+    - checkpoint : Upgrade kldiv_loss, add a new attribute [log_target]
+      action :
+        - add_attr : log_target
+          comment : In order to specify whether 'label' is passed in log space.
+          default : "false"
 
 - op : lamb
   version :
