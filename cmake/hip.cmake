@@ -24,6 +24,7 @@ else()
       CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
 include_directories(${ROCM_PATH}/include)
