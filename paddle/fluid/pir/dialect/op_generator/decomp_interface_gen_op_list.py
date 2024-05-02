@@ -25,6 +25,7 @@ decomp_interface_declare_gen_op_list = [
     "batch_norm_",
     "bce_loss",
     "bmm",
+    "clip",
     "dropout",
     "elu",
     "embedding",
