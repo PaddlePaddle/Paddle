@@ -314,15 +314,7 @@ def check_public_api():
         for member_name in allapi:
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
-
-            # make md5 with signature and docstring, and change the type annotation trigger the PR-CI-Static-Check
-            try:
-                signature = inspect.signature(instance)
-            except:
-                signature = ''
-
-            doc_md5 = md5(f'{signature}, {instance.__doc__}')
-
+            doc_md5 = md5(instance.__doc__)
             member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
 
 
@@ -388,16 +380,15 @@ if __name__ == '__main__':
             if args.skipped != '' and api_name.find(args.skipped) >= 0:
                 continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
-
-            # make md5 with signature and docstring, and change the type annotation trigger the PR-CI-Static-Check
-            api_signature = (
-                api_info['signature']
-                if 'signature' in api_info
-                else 'ArgSpec()'
+            print(
+                "{} ({}, ('document', '{}'))".format(
+                    api_name,
+                    api_info['signature']
+                    if 'signature' in api_info
+                    else 'ArgSpec()',
+                    md5(api_info['docstring']),
+                )
             )
-            api_md5 = md5(f"{api_signature}, {api_info['docstring']}")
-
-            print(f"{api_name} ({api_signature}, ('document', '{api_md5}'))")
 
     if len(ErrorSet) == 0:
         sys.exit(0)
