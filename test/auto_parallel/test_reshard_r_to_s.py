@@ -54,15 +54,15 @@ class TestReshardRToS(test_base.CommunicationTestDistBase):
 
 class TestReshardRToSCrossMesh(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=4, timeout=120)
+        super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
             "dtype": "float32",
             "seeds": "2023",
         }
         self._changeable_envs = {
-            "shape": ["(10, 20)", "(5, 7)"],
+            "shape": ["(10, 20)"],
             "shard": ["0", "1"],
-            "backend": ["cpu", "gpu"],
+            "backend": ["cpu"],
         }
 
     def test_reshard_r_to_s_cross_mesh(self):

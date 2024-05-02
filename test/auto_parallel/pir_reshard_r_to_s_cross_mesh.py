@@ -28,8 +28,8 @@ class TestReshardRToSCrossMesh:
         self._seeds = eval(os.getenv("seeds"))
         self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
-        self._in_mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self._out_mesh = dist.ProcessMesh([2, 3], dim_names=["x"])
+        self._in_mesh = dist.ProcessMesh([0, 2], dim_names=["x"])
+        self._out_mesh = dist.ProcessMesh([1, 3], dim_names=["x"])
 
     def run_test_case(self):
         paddle.enable_static()
@@ -59,7 +59,7 @@ class TestReshardRToSCrossMesh:
         # np.testing.assert_equal(dist_program.num_ops(), 6)
         new_ops = [op.name() for op in main_program.global_block().ops]
         assert 'dist_op.reshard' not in new_ops
-        if dist.get_rank() in [0, 1]:
+        if dist.get_rank() in self._in_mesh.process_ids:
             assert 'pd_op.send_v2' in new_ops
         else:
             assert 'pd_op.recv_v2' in new_ops
