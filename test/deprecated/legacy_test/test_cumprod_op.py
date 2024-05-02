@@ -139,7 +139,6 @@ class TestCumprod(OpTest):
                 self.x[i] = 0
             self.x = np.reshape(self.x, self.shape)
         self.out = np.cumprod(self.x, axis=dim)
-        # print(self.out)
         if self.dtype == np.uint16:
             self.inputs = {'X': convert_float_to_uint16(self.x)}
             self.outputs = {'Out': convert_float_to_uint16(self.out)}
