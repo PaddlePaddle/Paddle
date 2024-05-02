@@ -326,7 +326,7 @@ def scale(
         return helper.append_activation(out)
 
 
-def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
+def stanh(x, scale_a: int = 1, scale_b=1.7159, name=None):
     r"""
 
     stanh activation.
