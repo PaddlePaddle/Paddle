@@ -215,8 +215,8 @@ def log_(x, name=None):
 
 
 def scale(
-    x, scale: int = 1, bias=0.0, bias_after_scale=True, act=None, name=None
-):
+    x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None
+) -> int:
     """
     Scale operator.
 
