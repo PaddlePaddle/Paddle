@@ -77,6 +77,8 @@ def index_sample_net(x, index):
 def bce_loss_net(x, label):
     return paddle._C_ops.bce_loss(x, label)
 
+def one_hot_net(x, depth_tensor):
+    return paddle.nn.functional.one_hot(x, depth_tensor)
 
 def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
@@ -321,6 +323,51 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.enable_cinn = False
         self.tol = 1e-6
 
+class TestPrimOneHot(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [10]
+        self.y_shape = [1]
+        self.dtype_x = "int32"
+        self.dtype_y = "int32"
+        self.init_x_shape = [None]
+        self.init_y_shape = [None]
+        self.depth = 10
+        self.x = np.array([np.random.randint(0, self.depth - 1) for i in range(self.depth)]).astype(self.dtype_x).reshape([self.depth])
+        self.y = np.array(self.depth,).astype(self.dtype_y)
+        self.net = one_hot_net
+        self.necessary_ops = "pd_op.one_hot_v2"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype=self.dtype_x),
+                    InputSpec(name="num_classes", shape=self.init_y_shape, dtype=self.dtype_y),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
+        res = fn(x, y)
+
+        if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
+            assert self.necessary_ops not in ops
+            core._set_prim_all_enabled(False)
+        return res
 
 class TestPrimBceLoss(TestPrimTwo):
     def setUp(self):
