@@ -4411,9 +4411,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def cumprod_(
-    x, dim=None, exclusive=False, reverse=False, dtype=None, name=None
-):
+def cumprod_(x, dim=None, dtype=None, name=None):
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
@@ -4422,7 +4420,7 @@ def cumprod_(
         x = cast_(x, dtype)
 
     if in_dynamic_mode():
-        return _C_ops.cumprod(x, dim, exclusive, reverse)
+        return _C_ops.cumprod_(x, dim, False, False)
 
 
 def isfinite(x, name=None):
