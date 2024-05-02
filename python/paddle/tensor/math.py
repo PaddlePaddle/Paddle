@@ -214,13 +214,8 @@ def log_(x, name=None):
         return _C_ops.log_(x)
 
 
-# TODO(megemini): test for `type hints``
-def scale(
-    x, scale: int = 1, bias=0.0, bias_after_scale=True, act=None, name=None
-) -> paddle.Tensor:
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    TODO:
-
     Scale operator.
 
     Putting scale and bias to the input Tensor as following:
@@ -279,6 +274,7 @@ def scale(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1. , 3. , 5. ],
              [7. , 9. , 11.]])
+
     """
 
     if in_dynamic_mode():
