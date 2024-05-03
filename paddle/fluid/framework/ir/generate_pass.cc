@@ -474,7 +474,7 @@ GeneratePass::GeneratePass(const std::string& binary_str,
   VerifyDesc();
 }
 
-GeneratePass::GeneratePass(proto::MultiPassDesc  multi_pass_desc,
+GeneratePass::GeneratePass(proto::MultiPassDesc multi_pass_desc,
                            const std::string& pass_type)
     : multi_pass_desc_(std::move(multi_pass_desc)) {
   RegisterType(pass_type);
@@ -512,7 +512,7 @@ bool GeneratePass::VerifyGraph(const Graph& graph) {
 namespace generate_pass {
 
 VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
-VarHelper::VarHelper(std::string  name, Type type)
+VarHelper::VarHelper(std::string name, Type type)
     : name_(std::move(name)), type_(type) {}
 
 OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)

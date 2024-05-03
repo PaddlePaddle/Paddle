@@ -42,7 +42,7 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) {
   InitMessageBus();
 }
 
-FleetExecutor::FleetExecutor(FleetExecutorDesc  exe_desc)
+FleetExecutor::FleetExecutor(FleetExecutorDesc exe_desc)
     : exe_desc_(std::move(exe_desc)) {
   // Message bus will be created and inited only once
   GlobalVal<MessageBus>::Create();

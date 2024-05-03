@@ -47,7 +47,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
   }
 }
 
-TRTInt8Calibrator::TRTInt8Calibrator(std::string  calib_data)
+TRTInt8Calibrator::TRTInt8Calibrator(std::string calib_data)
     : batch_size_(0),
       calib_running_(false),
       data_is_set_(false),

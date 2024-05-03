@@ -24,10 +24,9 @@
 namespace paddle {
 namespace jit {
 
-PredictorEngine::PredictorEngine(
-    const std::shared_ptr<FunctionInfo> &info,
-    std::shared_ptr<VariableMap> params_dict,
-    const phi::Place &place)
+PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
+                                 std::shared_ptr<VariableMap> params_dict,
+                                 const phi::Place &place)
     : info_(info),
       params_dict_(std::move(params_dict)),
       scope_(new framework::Scope()),

@@ -23,7 +23,7 @@
 namespace paddle {
 namespace jit {
 
-Argument::Argument(std::string  name, bool is_out)
+Argument::Argument(std::string name, bool is_out)
     : name_(std::move(name)), is_output_(is_out) {}
 
 const std::string& Argument::Name() const { return name_; }
@@ -54,8 +54,8 @@ void FunctionSchema::AddOutputArg(const std::string& name) {
   output_args.emplace_back(name, true);
 }
 
-FunctionInfo::FunctionInfo(std::string  func_name,
-                           std::vector<std::string>  param_names,
+FunctionInfo::FunctionInfo(std::string func_name,
+                           std::vector<std::string> param_names,
                            const framework::ProgramDesc& program_desc)
     : func_name_(std::move(func_name)), param_names_(std::move(param_names)) {
   program_desc_.reset(new framework::ProgramDesc(program_desc));
