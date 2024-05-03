@@ -283,7 +283,7 @@ using CommonType2 = typename std::add_lvalue_reference<
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
   do {                                                                         \
     auto __val1 = (__VAL1);                                                    \
-    auto __val2 = (__VAL2);                                                    \
+    const auto& __val2 = (__VAL2);                                                    \
     using __TYPE1__ = decltype(__val1);                                        \
     using __TYPE2__ = decltype(__val2);                                        \
     using __COMMON_TYPE1__ =                                                   \
