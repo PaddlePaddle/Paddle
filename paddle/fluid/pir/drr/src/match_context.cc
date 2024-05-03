@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <utility>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/fluid/pir/drr/src/match_context_impl.h"
@@ -22,7 +23,7 @@ namespace paddle {
 namespace drr {
 
 MatchContext::MatchContext(std::shared_ptr<const MatchContextImpl> impl)
-    : impl_(impl) {}
+    : impl_(std::move(impl)) {}
 
 const pir::Value& MatchContext::Tensor(const std::string& tensor_name) const {
   return impl_->Tensor(tensor_name);
