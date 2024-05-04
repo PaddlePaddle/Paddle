@@ -166,7 +166,8 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   const auto& out_dist_attr_src = out.dist_attr();
-  const std::vector<int64_t>& out_dims_mapping = out_dist_attr_src.dims_mapping();
+  const std::vector<int64_t>& out_dims_mapping =
+      out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
