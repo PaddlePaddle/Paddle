@@ -46,7 +46,6 @@ class TestExplicitQuantizationLayer:
             min_subgraph_size=0,
             precision_mode=precision_mode,
             use_static=False,
-            use_calib_mode=False,
         )
         if precision_mode == PrecisionType.Int8:
             config.enable_tensorrt_explicit_quantization()

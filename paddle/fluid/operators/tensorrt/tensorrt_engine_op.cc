@@ -26,7 +26,8 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
     AddAttr<std::string>("subgraph", "the subgraph.");
-    AddAttr<std::string>("calibration_data", "the calibration data for int8");
+    // AddAttr<std::string>("calibration_data", "the calibration data for
+    // int8");
     AddAttr<std::string>(
         "engine_serialized_data",
         "the serialized data contains the all info of the ICUDAEngine");

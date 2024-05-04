@@ -99,7 +99,6 @@ class TestRemoveStrategyOpBase:
                 min_subgraph_size=0,
                 precision_mode=self.precision_mode,
                 use_static=False,
-                use_calib_mode=False,
             )
             config.set_trt_dynamic_shape_info(*self.dynamic_shape_info)
         predictor = create_predictor(config)

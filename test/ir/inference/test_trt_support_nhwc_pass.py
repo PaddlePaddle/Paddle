@@ -121,7 +121,6 @@ class TRTNHWCConvertTest(unittest.TestCase):
             min_subgraph_size=3,
             precision_mode=self.precision_mode,
             use_static=False,
-            use_calib_mode=False,
         )
         predictor = inference.create_predictor(config)
         return predictor

@@ -135,7 +135,6 @@ class TestExplicitQuantizationModel:
             min_subgraph_size=3,
             precision_mode=precision_mode,
             use_static=False,
-            use_calib_mode=False,
         )
         if trt_int8:
             config.enable_tensorrt_explicit_quantization()

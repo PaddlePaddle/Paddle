@@ -25,11 +25,37 @@ from paddle.pir_utils import test_with_pir_api
 position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
 
 
+"""
+    对输入的张量进行转置操作，使得其维度顺序从(B, N, H, W)变为(B, H, W, N)。
+
+    Args:
+        init_value (paddle.Tensor): 输入的张量，形状为(B, N, H, W)。
+
+    Returns:
+        paddle.Tensor: 转置后的张量，形状为(B, H, W, N)。
+
+"""
+
+
 def deal_qkv(init_value):
     if init_value is None:
         return None
     perm = [0, 2, 1, 3]
     return paddle.transpose(x=init_value, perm=perm)
+
+
+"""
+    将query矩阵和key、value矩阵做乘法操作，使用cos和sin函数进行旋转，得到变换后的query矩阵。
+
+    Args:
+        value (paddle.Tensor): 待变换的query矩阵，形状为[batch_size, heads, seq_len, d_k]。
+        cos_tensor (paddle.Tensor): 余弦函数生成的张量，形状为[batch_size, heads, seq_len, d_k]。
+        sin_tensor (paddle.Tensor): 正弦函数生成的张量，形状为[batch_size, heads, seq_len, d_k]。
+
+    Returns:
+        paddle.Tensor: 变换后的query矩阵，形状与输入value相同。
+
+"""
 
 
 def mult_qkv(value, cos_tensor, sin_tensor):
