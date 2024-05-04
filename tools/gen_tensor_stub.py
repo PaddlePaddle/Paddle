@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import argparse
 import inspect
 import re
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import Any, Callable, Literal
 
 from typing_extensions import TypeAlias
@@ -49,99 +49,169 @@ class Member:
         self.aliases.append(alias)
 
 
+@lru_cache
+def _slot_pattern(slot_name: str) -> re.Pattern:
+    return re.compile(
+        r"(?P<indent> *)#\s*annotation:\s*\$\{" + slot_name + r"\}"
+    )
+
+
 class TensorGen:
     def __init__(self, template: str = ''):
-        self._template: str = template
-        self._tensor_doc: str = ''
-        self._future_features: list[str] = []
-        self._import_stmts: list[str] = []
-        self._attributes: dict[str, str] = {}
-        self._methods: list[Member] = []
-        self._aliases: dict[str, str] = {'__qualname__': '"Tensor"'}
-        self.add_future("annotations")
+        self._template = template
 
-    def add_doc(self, doc: str):
-        self._tensor_doc += f'{INDENT}r"""\n'
-        self._tensor_doc += with_indent(doc, 1)
-        self._tensor_doc += "\n"
-        self._tensor_doc += f'{INDENT}"""\n'
+    def find_annotation_slot(self, slot_name: str) -> tuple[str, int, int]:
+        pattern = _slot_pattern(slot_name)
+        slot = []
+        for mo in pattern.finditer(self._template):
+            _indent = mo.group('indent')
+            _start_index, _end_index = mo.span()
+            slot.append((_indent, _start_index, _end_index))
 
-    def add_future(self, feature: str):
-        self._future_features.append(feature)
+        assert len(slot) == 1, self._template
+        return slot[0]
 
-    def add_import(self, import_stmt: str):
-        self._import_stmts.append(import_stmt)
+    @property
+    def tensor_docstring(self):
+        return self.find_annotation_slot('tensor_docstring')
 
-    def add_attribute(self, name: str, type: str):
-        self._attributes[name] = type
+    @property
+    def tensor_attributes(self):
+        return self.find_annotation_slot('tensor_attributes')
+
+    @property
+    def tensor_methods(self):
+        return self.find_annotation_slot('tensor_methods')
+
+    @property
+    def tensor_alias(self):
+        return self.find_annotation_slot('tensor_alias')
+
+    def find_apis(self, api_name: str) -> list[dict[str, tuple[str, int, int]]]:
+        pattern = re.compile(
+            r"(?P<indent> *)(?P<def_api>def "
+            + api_name
+            + r")(?P<signature>\(.*?\).*?:)(?P<docstring>.*?)(?P<ellipsis>\.{3})(?P<comment>[^\n]*#[^\n]*\n)?",
+            re.DOTALL,
+        )
+        api = []
+        for mo in pattern.finditer(self._template):
+            _indent = mo.group('indent')
+            _def_api = mo.group('def_api')
+            _signature = mo.group('signature')
+            _docstring = mo.group('docstring')
+            _ellipsis = mo.group('ellipsis')
+            _comment = mo.group('comment')
+            _comment = '' if _comment is None else _comment
+
+            _start_index, _end_index = mo.span()
+
+            _start_indent = _start_index
+            _end_indent = _start_indent + len(_indent)
+
+            _start_def_api = _end_indent
+            _end_def_api = _start_def_api + len(_def_api)
+
+            _start_signature = _end_def_api
+            _end_signature = _start_signature + len(_signature)
+
+            _start_docstring = _end_signature
+            _end_docstring = _start_docstring + len(_docstring)
+
+            _start_ellipsis = _end_docstring
+            _end_ellipsis = _start_ellipsis + len(_ellipsis)
+
+            _start_comment = _end_ellipsis
+            _end_comment = _start_comment + len(_comment)
+
+            assert _end_index == _end_comment
+
+            _api = {
+                'indent': (_indent, _start_indent, _end_indent),
+                'signature': (_signature, _start_signature, _end_signature),
+                'docstring': (_docstring, _start_docstring, _end_docstring),
+                'ellipsis': (_ellipsis, _start_ellipsis, _end_ellipsis),
+                'comment': (_comment, _start_comment, _end_comment),
+            }
+            api.append(_api)
+
+        return api
+
+    def insert_template(self, code: str, start: int, end: int) -> None:
+        self._template = self._template[:start] + code + self._template[end:]
 
     def add_method(self, func: Member):
-        self._methods.append(func)
+        """
+        1. insert docstring: tensor.pyi.in define the method without docstring
+        2. insert method: tensor.pyi.in NOT define the method
+        """
+        methods = self.find_apis(func.name)
+        if methods:
+            # only use the last method
+            method = methods[-1]
+            # insert docstring if necessary
+            if not method['docstring'][0].strip():
+                doc = func.doc
+                if doc:
+                    comment = method['comment'][0]
+                    doc_start = method['docstring'][1]
+                    doc_end = method['docstring'][2]
 
-    def add_alias(self, alias: str, target: str):
-        self._aliases[alias] = target
+                    api_indent = method['indent'][0]
 
-    @property
-    def future_imports(self):
-        futures = ", ".join(self._future_features)
-        return f"from __future__ import {futures}"
+                    assert len(api_indent) % INDENT_SIZE == 0
 
-    @property
-    def imports(self):
-        # TODO: sort import like the isort
-        imports = "\n".join(self._import_stmts)
-        return imports
+                    _indent = api_indent + INDENT
 
-    @property
-    def tensor_spec(self) -> str:
-        return """class Tensor:"""
+                    _doc = '\n'  # new line
+                    _doc += f'{_indent}r"""\n'
+                    _doc += with_indent(doc, len(_indent) // INDENT_SIZE)
+                    _doc += "\n"
+                    _doc += f'{_indent}"""\n'
+                    _doc += f'{_indent}'
 
-    @property
-    def tensor_doc(self) -> str:
-        return self._tensor_doc
-
-    @property
-    def tensor_attributes(self) -> str:
-        attributes_code = ""
-        for name, type_ in self._attributes.items():
-            attributes_code += f"{INDENT}{name}: {type_}\n"
-        return attributes_code
-
-    @property
-    def tensor_methods(self) -> str:
-        method_code = ""
-        for method in self._methods:
-            for decorator in method.decorators:
+                    self.insert_template(comment + _doc, doc_start, doc_end)
+        else:
+            method_code = '\n'
+            for decorator in func.decorators:
                 method_code += f"@{decorator}\n"
-            method_code += f"def {method.signature}:\n"
-            if method.doc:
+
+            method_code += f"def {func.signature}:\n"
+            if func.doc:
                 method_code += f'{INDENT}r"""\n'
-                method_code += with_indent(method.doc, 1)
+                method_code += with_indent(func.doc, 1)
                 method_code += "\n"
                 method_code += f'{INDENT}"""\n'
             method_code += f"{INDENT}...\n"
-            method_code += "\n"
-        return with_indent(method_code, 1)
 
-    @property
-    def tensor_aliases(self) -> str:
-        aliases_code = ""
-        for alias, target in self._aliases.items():
-            aliases_code += f"{INDENT}{alias} = {target}\n"
-        return aliases_code
+            _indent, _, _end_index = self.tensor_methods
+            method_code = with_indent(method_code, len(_indent) // INDENT_SIZE)
+            self.insert_template(method_code, _end_index, _end_index)
+
+    def add_alias(self, alias: str, target: str):
+        _indent, _, _end_index = self.tensor_alias
+        aliases_code = "\n"
+        aliases_code += f"{_indent}{alias} = {target}"
+        self.insert_template(aliases_code, _end_index, _end_index)
+
+    def add_attribute(self, name: str, type_: str):
+        _indent, _, _end_index = self.tensor_attributes
+        attr_code = "\n"
+        attr_code += f"{_indent}{name}: {type_}"
+        self.insert_template(attr_code, _end_index, _end_index)
+
+    def add_doc(self, doc: str):
+        _indent, _, _end_index = self.tensor_docstring
+        docstring = "\n"
+        docstring += 'r"""\n'
+        docstring += doc
+        docstring += "\n"
+        docstring += '"""\n'
+        docstring = with_indent(docstring, len(_indent) // INDENT_SIZE)
+        self.insert_template(docstring, _end_index, _end_index)
 
     def codegen(self) -> str:
-        code = f"""\
-# This file is auto-generated by tools/gen_tensor_stub.py
-{self.future_imports}
-{self.imports}
-{self.tensor_spec}
-{self.tensor_doc}
-{self.tensor_attributes}
-{self.tensor_methods}
-{self.tensor_aliases}
-"""
-        return code
+        return self._template
 
 
 def is_inherited_member(name: str, cls: type) -> bool:
@@ -206,6 +276,7 @@ def with_indent(code: str, level: int) -> str:
     elif level > 0:
         if level == 1:
             return process_lines(code, add_indent_line)
+        code = process_lines(code, add_indent_line)
         return with_indent(code, level - 1)
     else:
         if level == -1:
@@ -348,7 +419,9 @@ def get_tensor_members():
                 member_doc_cleaned,
             )
         else:
+            print('*' * 20)
             print(name, member)
+            print('=' * 20)
     return members
 
 
@@ -376,20 +449,16 @@ def main():
 
     args = parser.parse_args()
 
-    tensor_template = get_tensor_template(args.input_file)
-    print(tensor_template)
-
     # Get members of Tensor
     tensor_members = get_tensor_members()
-
     print('-' * 20)
     print(f'total members: {len(tensor_members)}')
 
+    # Get tensor template
+    tensor_template = get_tensor_template(args.input_file)
+
     # Generate the Tensor stub
-    tensor_gen = TensorGen()
-    tensor_gen.add_import("import numpy as np")
-    tensor_gen.add_import("from typing import Any")
-    tensor_gen.add_import("import paddle")
+    tensor_gen = TensorGen(tensor_template)
 
     for member in tensor_members.values():
         if member.type == "method":

@@ -173,6 +173,7 @@ if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
     COMMAND
       ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
       ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
+      --input-file ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi.in
       --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
   add_dependencies(paddle_copy paddle_python)
