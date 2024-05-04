@@ -454,6 +454,17 @@
     func: coalesce_coo{sparse_coo -> sparse_coo}
     layout : x
 
+- op: concat
+  args : (Tensor[] x, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : ConcatInferMeta
+    param : [x, axis]
+  kernel :
+    func : concat_coo{vec::sparse_coo -> sparse_coo},
+           concat_csr{vec::sparse_csr -> sparse_csr}
+    layout : x
+
 - op: full_like
   args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)

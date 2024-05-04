@@ -585,24 +585,6 @@
   backward : concat_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : concat_coo
-  args : (Tensor[] x, Scalar axis=0)
-  output : Tensor
-  infer_meta :
-    func : ConcatInferMeta
-    param : [x, axis]
-  kernel :
-    func : concat_coo
-
-- op : concat_csr
-  args : (Tensor[] x, Scalar axis=0)
-  output : Tensor
-  infer_meta :
-    func : ConcatInferMeta
-    param : [x, axis]
-  kernel :
-    func : concat_csr
-
 - op : conj
   args : (Tensor x)
   output : Tensor (out)
