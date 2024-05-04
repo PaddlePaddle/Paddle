@@ -130,7 +130,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
 
   VLOG(4) << "Builder construction attributes";
   auto process_mesh_attr = tensor_dist_attr.process_mesh_attr();
-  const auto& dims_mapping = tensor_dist_attr.dims_mapping();
+  auto dims_mapping = tensor_dist_attr.dims_mapping();
 
   pir::Attribute op_dist_attr = OperationDistAttribute::get(
       pir::IrContext::Instance(),
@@ -141,7 +141,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
 
   VLOG(4) << "Builder construction outputs";
   auto global_dims = input_tensor_type.dims();
-  const auto& process_mesh_shape = process_mesh_attr.shape();
+  auto process_mesh_shape = process_mesh_attr.shape();
   PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()),
                     global_dims.size(),
                     common::errors::PreconditionNotMet(
@@ -326,9 +326,9 @@ void ReshardOp::Build(pir::Builder& builder,
   VLOG(4) << "Builder construction outputs";
   auto global_dims = input_tensor_type.global_ddim();
   auto process_mesh_attr = tensor_dist_attr.process_mesh_attr();
-  const auto& dims_mapping = tensor_dist_attr.dims_mapping();
+  auto dims_mapping = tensor_dist_attr.dims_mapping();
 
-  const auto& process_mesh_shape = process_mesh_attr.shape();
+  auto process_mesh_shape = process_mesh_attr.shape();
   PADDLE_ENFORCE_EQ(static_cast<int>(dims_mapping.size()),
                     global_dims.size(),
                     common::errors::PreconditionNotMet(
