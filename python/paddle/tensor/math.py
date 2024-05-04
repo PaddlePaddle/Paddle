@@ -7987,6 +7987,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
 
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> paddle.set_device('cpu')
             >>> elements = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
@@ -7995,6 +7996,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
             >>> print(res)
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True, True, False, True])
+
             >>> elements = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
             >>> test_elements = paddle.to_tensor([-2.1, 2.5], dtype='float32')
             >>> res = paddle.isin(elements, test_elements, invert=True)
