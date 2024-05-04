@@ -627,7 +627,6 @@ template class FindChannelAbsMaxFunctor<GPUContext, float16>;
 template class FindChannelAbsMaxFunctor<GPUContext, float>;
 template class ChannelClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ChannelClipAndFakeQuantFunctor<GPUContext, float>;
-template class ChannelClipFakeQuantDequantFunctor<GPUContext, float16>;
 template class ChannelClipFakeQuantDequantFunctor<GPUContext, float>;
 template class FindRangeAbsMaxFunctor<GPUContext, float16>;
 template class FindRangeAbsMaxFunctor<GPUContext, float>;
