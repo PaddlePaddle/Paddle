@@ -30,13 +30,18 @@ def reduce_sum(x):
     return paddle.sum(x, axis=-1)
 
 
+def reduce_mean(x):
+    return paddle.mean(x, axis=-1)
+
+
 class CINNSubGraphNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = reduce_sum
+        self.fn1 = reduce_sum
+        self.fn2 = reduce_mean
 
     def forward(self, x):
-        out = self.fn(x)
+        out = self.fn2(self.fn1(x))
         return out
 
 
@@ -50,7 +55,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.x_shape = [64, 128]
+        self.x_shape = [32, 64, 128]
         self.x = paddle.randn(self.x_shape, dtype="float32")
         self.x.stop_gradient = False
 
@@ -62,7 +67,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         paddle.seed(2022)
         net = CINNSubGraphNet()
         input_spec = [
-            InputSpec(shape=[None, 128], dtype='float32'),
+            InputSpec(shape=[None, None, 128], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()

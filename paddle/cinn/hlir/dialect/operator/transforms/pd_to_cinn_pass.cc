@@ -61,6 +61,34 @@ class SumOpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class MeanOpPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "MeanOpPattern"; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    paddle::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &mean = pattern.Op(paddle::dialect::MeanOp::name(),
+                                  {{"dtype", pattern.Attr("dtype")},
+                                   {"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = mean(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    paddle::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_mean =
+        res.Op(cinn::dialect::ReduceMeanOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_mean(res.Tensor("arg0"));
+  }
+};
+
 class MaxOpPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "MaxOpPattern"; }
@@ -107,11 +135,11 @@ class MinOpPattern : public paddle::drr::DrrPatternBase {
 
     // Result patterns
     paddle::drr::ResultPattern res = pattern.ResultPattern();
-    const auto &cinn_reduce_max =
+    const auto &cinn_reduce_min =
         res.Op(cinn::dialect::ReduceMinOp::name(),
                {{"dim", pattern.Attr("axis_info")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
-    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+    res.Tensor("ret") = cinn_reduce_min(res.Tensor("arg0"));
   }
 };
 
@@ -1026,6 +1054,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(paddle::drr::Create<SumOpPattern>(context));
+  ps.Add(paddle::drr::Create<MeanOpPattern>(context));
   ps.Add(paddle::drr::Create<MaxOpPattern>(context));
   ps.Add(paddle::drr::Create<MinOpPattern>(context));
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));

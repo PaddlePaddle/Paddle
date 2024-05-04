@@ -48,6 +48,15 @@
     func : frobenius_norm
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : reduce_mean
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : reduce_min
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
