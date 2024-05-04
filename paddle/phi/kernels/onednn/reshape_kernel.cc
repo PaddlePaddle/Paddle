@@ -154,7 +154,7 @@ void ReshapeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& shape,
                         DenseTensor* out) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 
