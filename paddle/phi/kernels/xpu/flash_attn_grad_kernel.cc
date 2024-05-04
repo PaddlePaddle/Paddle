@@ -69,9 +69,28 @@ void FlashAttnGradKernel(const Context& ctx,
   const XPUType* out_data = reinterpret_cast<const XPUType*>(out.data<T>());
   const float* softmax_lse_data = softmax_lse.data<float>();
   const XPUType* dout_data = reinterpret_cast<const XPUType*>(dout.data<T>());
+
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
   const float* bias_data = nullptr;
   if (attn_mask.get_ptr() != nullptr) {
-    bias_data = attn_mask->data<float>();
+    if (attn_mask->dtype() == phi::DataType::FLOAT32) {
+      bias_data = attn_mask->data<float>();
+    } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
+               attn_mask->dtype() == phi::DataType::BFLOAT16) {
+      float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
+      int r = xpu::cast<XPUType, float>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(attn_mask->data<T>()),
+          bias_tmp,
+          attn_mask->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      bias_data = bias_tmp;
+    } else {
+      errors::Unimplemented(
+          "Unsupported dtype for attention_mask in xpu flash attention, only "
+          "float32, float16 and "
+          "bfloat16 are supported.");
+    }
   }
   // output
   XPUType* dq_data = reinterpret_cast<XPUType*>(dq->data<T>());
