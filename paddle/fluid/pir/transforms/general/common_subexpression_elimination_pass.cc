@@ -102,8 +102,9 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation* op) {
 }
 
 bool IsTerminateOp(pir::Operation* op) {
-  return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
-         op->isa<pir::ConstantTensorOp>();
+  return op->num_operands() == 0;
+  // return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
+  //        op->isa<pir::ConstantTensorOp>();
 }
 bool IsTerminateValue(const pir::Value& value) {
   return !value.defining_op() || IsTerminateOp(value.defining_op());
