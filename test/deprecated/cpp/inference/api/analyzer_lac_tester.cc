@@ -26,8 +26,9 @@ struct DataRecord {
   std::vector<std::vector<size_t>> batched_lods;
   std::vector<std::vector<int64_t>> batched_datas;
   std::vector<std::vector<int64_t>> datasets;
-  DataRecord() = default;
-  explicit DataRecord(const std::string &path, int batch_size = 1) {
+  DataRecord() : data(), lod(), batched_lods(), batched_datas(), datasets() {}
+  explicit DataRecord(const std::string &path, int batch_size = 1)
+      : data(), lod(), batched_lods(), batched_datas(), datasets() {
     Load(path);
     Prepare(batch_size);
     batch_iter = 0;

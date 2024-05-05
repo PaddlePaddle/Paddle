@@ -24,7 +24,7 @@ namespace experimental {
 
 template <>
 ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
-    : dtype_(tensor_in.dtype()) {  // NOLINT
+    : dtype_(tensor_in.dtype()), data_{.i32 = 0} {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
                     phi::errors::InvalidArgument(

@@ -29,6 +29,7 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
                    int64_t task_id,
                    int64_t max_run_times)
     : program_(program),
+      role_(0),
       rank_(rank),
       task_id_(task_id),
       max_run_times_(max_run_times) {
@@ -37,7 +38,7 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
 }
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
-    : program_(program), rank_(rank), task_id_(rank) {
+    : program_(program), role_(0), rank_(rank), task_id_(rank) {
   max_run_times_ = 1;
   LOG(INFO)
       << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
@@ -82,7 +83,7 @@ void TaskNode::Init(bool use_feed_fetch_ops) {
 }
 
 TaskNode::TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times)
-    : rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
+    : role_(0), rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
 
 TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
