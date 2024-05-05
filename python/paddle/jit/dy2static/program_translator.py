@@ -151,7 +151,9 @@ class FunctionCache:
 
         # Get static function from AST
         static_func, file_name = ast_to_func(root, func)
-
+        import textwrap
+        a = textwrap.dedent(inspect.getsource(static_func))
+        print("static_func", a)
         create_and_update_origin_info_map(root, static_func)
         return static_func
 

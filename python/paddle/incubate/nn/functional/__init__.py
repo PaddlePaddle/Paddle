@@ -57,3 +57,10 @@ __all__ = [
     "block_multihead_attention",
     "swiglu",
 ]
+
+try:
+    from .triton_ops import weight_only_int8
+
+    __all__ += ["weight_only_int8"]
+except:
+    print("import triton_ops failed")
