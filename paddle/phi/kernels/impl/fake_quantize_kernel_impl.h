@@ -149,7 +149,6 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
                                                    int bit_length,
                                                    int round_type,
                                                    int quant_axis,
-                                                   bool is_test,
                                                    DenseTensor *out,
                                                    DenseTensor *out_scale) {
   T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);

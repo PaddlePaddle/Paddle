@@ -1316,7 +1316,6 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
                                                       int bit_length,
                                                       int round_type,
                                                       int quant_axis,
-                                                      bool is_test,
                                                       MetaTensor* out,
                                                       MetaTensor* out_scale) {
   PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,

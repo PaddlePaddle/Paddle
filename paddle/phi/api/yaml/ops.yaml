@@ -996,7 +996,7 @@
     data_type : x
 
 - op : fake_channel_wise_quantize_dequantize_abs_max
-  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0, bool is_test = false)
+  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0)
   output : Tensor(out), Tensor(out_scale)
   infer_meta :
     func : FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta

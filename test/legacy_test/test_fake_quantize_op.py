@@ -417,7 +417,6 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
         scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
-        self.python_api = 'fake_channel_wise_quantize_dequantize_abs_max'
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype

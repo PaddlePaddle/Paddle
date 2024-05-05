@@ -237,7 +237,6 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
                                                       int bit_length,
                                                       int round_type,
                                                       int quant_axis,
-                                                      bool is_test,
                                                       MetaTensor* out,
                                                       MetaTensor* out_scale);
 
