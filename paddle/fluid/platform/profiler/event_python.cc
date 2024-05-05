@@ -133,7 +133,7 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 ProfilerResult::ProfilerResult(
     std::unique_ptr<NodeTrees> tree,
-    ExtraInfo  extra_info,
+    ExtraInfo extra_info,
     const std::map<uint32_t, gpuDeviceProp> device_property_map)
     : tree_(tree.release()),
       extra_info_(std::move(extra_info)),
@@ -148,7 +148,7 @@ ProfilerResult::ProfilerResult(
 #endif
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
-                               ExtraInfo  extra_info)
+                               ExtraInfo extra_info)
     : tree_(tree.release()), extra_info_(std::move(extra_info)) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();

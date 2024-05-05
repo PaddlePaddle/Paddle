@@ -97,8 +97,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
                            phi::DataLayout::NCHW));
 }
 
-Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
-               std::string name)
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl, std::string name)
     : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */

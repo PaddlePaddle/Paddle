@@ -27,7 +27,8 @@
 namespace paddle {
 namespace platform {
 
-CustomTracer::CustomTracer(std::string  dev_type) : dev_type_(std::move(dev_type)) {
+CustomTracer::CustomTracer(std::string dev_type)
+    : dev_type_(std::move(dev_type)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto selected_devices = phi::DeviceManager::GetSelectedDeviceList(dev_type_);
   if (selected_devices.size()) {

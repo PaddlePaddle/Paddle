@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-DeserializationReader::DeserializationReader(std::string  filename)
+DeserializationReader::DeserializationReader(std::string filename)
     : filename_(std::move(filename)) {
   OpenFile();
   node_trees_proto_ = new NodeTreesProto();
