@@ -559,7 +559,7 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-PirDependencyBuilder::PirDependencyBuilder() {
+PirDependencyBuilder::PirDependencyBuilder() : instructions_() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();

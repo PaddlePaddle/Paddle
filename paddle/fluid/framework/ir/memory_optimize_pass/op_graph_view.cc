@@ -26,7 +26,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-OpGraphView::OpGraphView(const std::vector<details::OpHandleBase *> &ops) {
+OpGraphView::OpGraphView(const std::vector<details::OpHandleBase *> &ops)
+    : preceding_ops_(), pending_ops_() {
   Build(ops);
 }
 

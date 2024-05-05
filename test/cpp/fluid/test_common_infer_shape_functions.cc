@@ -61,7 +61,7 @@ class DygraphInferShapeTest {
   imperative::NameVarBaseMap outs_;
   framework::AttributeMap attrs_;
   std::string op_type_;
-  std::map<std::string, framework::DDim> expected_dims_;
+  std::map<std::string, framework::DDim> expected_dims_ = {};
 };
 }  // namespace details
 
