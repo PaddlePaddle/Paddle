@@ -14753,6 +14753,7 @@ class Tensor(Generic[_ShapeType, _DType]):
 
         """
         ...
+
     def numpy(self) -> npt.NDArray[Any]:
         r"""
         Returns a numpy array shows the value of current Tensor.
