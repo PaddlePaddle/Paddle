@@ -101,8 +101,9 @@ struct MergeTrivialPatternOperation {
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    node->set_stmt_pattern(
-        HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
+    node->set_stmt_pattern(HorizontalFusionPattern<Phrase>(
+        {typename HorizontalFusionPattern<Phrase>::PaddingStmtPattern(
+            node->stmt_pattern(), {})}));
   }
 };
 
@@ -179,6 +180,7 @@ struct HorizontalFusionOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& i,
                   const PatternNodePtr<Phrase>& j) {
+    VLOG(4) << "Start HorizontalFusionOperation";
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
         HorizontalFusionPattern<Phrase>::name(),
@@ -193,9 +195,13 @@ struct HorizontalFusionOperation {
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));
-    graph->MergeNode(i, j, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(i, j, MergePattern<Phrase>);
+    VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
+            << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
+    VLOG(4) << "After HorizontalFusionOperation, Graph is"
+            << graph->GraphInfo();
   }
 };
 

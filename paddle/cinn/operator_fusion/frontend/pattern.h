@@ -48,11 +48,14 @@ struct hash<cinn::fusion::FrontendContent> {
 namespace cinn::fusion {
 template <>
 struct TrivialPattern<FrontendStage> {
-  explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
+  explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
+                          pir::Operation* sink_op)
+      : ops_(ops), sink_op(sink_op) {}
   std::vector<pir::Operation*> ops_;
+  pir::Operation* sink_op;
   static std::string name() { return "Trivial"; }
   std::vector<pir::Operation*> ops() const { return ops_; }
+  pir::Operation* sink() const { return sink_op; }
 };
 
 template <>
@@ -95,5 +98,4 @@ struct ValueExpr<FrontendStage> {
   AnchorTransformRoute transform_route;
   pir::Value root_value;
 };
-
 }  // namespace cinn::fusion
