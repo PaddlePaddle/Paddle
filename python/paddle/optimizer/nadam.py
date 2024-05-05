@@ -38,7 +38,7 @@ class NAdam(Optimizer):
        \begin{aligned}
             &\textbf{for} \: t=1 \: \textbf{to} \: \ldots \: \textbf{do}                         \\
             &\hspace{5mm} \mu_t \leftarrow \beta_1 \big(1 - \frac{1}{2}  \rho ^{t \psi} \big)     \\
-            &\hspace{5mm} \mu_{t+1} \leftarrow \beta_1 \big(1 - \frac{1}{2} \rho ^{(t+1)\psi}\big)\\
+            &\hspace{5mm} \mu_{t+1} \leftarrow \beta_1 \big(1 - \frac{1}{2} 0.96 ^{(t+1)\psi}\big)\\
             &\hspace{5mm}m_t           \leftarrow   \beta_1 m_{t-1} + (1 - \beta_1) g_t          \\
             &\hspace{5mm}v_t           \leftarrow   \beta_2 v_{t-1} + (1-\beta_2) g^2_t          \\
             &\hspace{5mm}\widehat{m_t} \leftarrow \mu_{t+1} m_t/(1-\prod_{i=1}^{t+1}\mu_i) + (1-\mu_t) g_t /(1-\prod_{i=1}^{t} \mu_{i})                         \\
@@ -46,7 +46,7 @@ class NAdam(Optimizer):
             &\hspace{5mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t}/
                 \big(\sqrt{\widehat{v_t}} + \epsilon \big)                                       \\
             &\hspace{0mm} \text{ 其中 } \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)}, \: \theta_0 \text{ (params)}, \: f(\theta) \text{ (objective)} \\
-            &\hspace{0mm} \: \lambda \text{ (weight decay)}, \:\psi \text{ (momentum decay)} \: \rho \text{ (momentum decay base) } \\
+            &\hspace{0mm} \: \lambda \text{ (weight decay)}, \:\psi \text{ (momentum decay)} \\
        \end{aligned}
 
     Args:
@@ -68,7 +68,6 @@ class NAdam(Optimizer):
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         momentum_decay (float): momentum momentum_decay. The default value is 0.004.
-        momentum_decay_base (float): momentum momentum_decay_base. The default value is 0.96.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
@@ -135,7 +134,6 @@ class NAdam(Optimizer):
         beta2=0.999,
         epsilon=1.0e-8,
         momentum_decay=0.004,
-        momentum_decay_base=0.96,
         parameters=None,
         weight_decay=None,
         grad_clip=None,
@@ -161,10 +159,6 @@ class NAdam(Optimizer):
             raise ValueError(
                 f"Invalid momentum_decay value: {momentum_decay}, expect momentum_decay >= 0."
             )
-        if not 0.0 <= momentum_decay_base:
-            raise ValueError(
-                f"Invalid momentum_decay_base value: {momentum_decay_base}, expect momentum_decay_base >= 0."
-            )
 
         super().__init__(
             learning_rate=learning_rate,
@@ -178,7 +172,6 @@ class NAdam(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self._momentum_decay_base = momentum_decay_base
         self._momentum_decay = momentum_decay
         self._multi_precision = False
         self._master_weights = {}
@@ -187,7 +180,6 @@ class NAdam(Optimizer):
             'beta2': beta2,
             'epsilon': epsilon,
             'momentum_decay': momentum_decay,
-            'momentum_decay_base': momentum_decay_base,
         }
 
     def _add_moments_pows(self, p):
@@ -298,7 +290,6 @@ class NAdam(Optimizer):
                 self._beta2,
                 self._epsilon,
                 self._momentum_decay,
-                self._momentum_decay_base,
                 find_master,
             )
             return None
@@ -335,7 +326,6 @@ class NAdam(Optimizer):
                     "beta1": self._beta1,
                     "beta2": self._beta2,
                     "momentum_decay": self._momentum_decay,
-                    "momentum_decay_base": self._momentum_decay_base,
                 },
                 stop_gradient=True,
             )
@@ -348,9 +338,6 @@ class NAdam(Optimizer):
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
         self._momentum_decay = parameters.get(
             'momentum_decay', self._default_dict['momentum_decay']
-        )
-        self._momentum_decay_base = parameters.get(
-            'momentum_decay_base', self._default_dict['momentum_decay_base']
         )
         parameters = parameters.get('params')
         return parameters

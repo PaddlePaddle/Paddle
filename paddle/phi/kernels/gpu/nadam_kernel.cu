@@ -91,7 +91,6 @@ void NAdamKernel(const Context& dev_ctx,
                  float beta2,
                  float epsilon,
                  float momentum_decay,
-                 float momentum_decay_base,
                  bool multi_precision,
                  DenseTensor* param_out,
                  DenseTensor* momentum_decay_pow_out,
@@ -123,7 +122,6 @@ void NAdamKernel(const Context& dev_ctx,
   MPDType beta2_ = static_cast<MPDType>(beta2);
   MPDType epsilon_ = static_cast<MPDType>(epsilon);
   MPDType momentum_decay_ = static_cast<MPDType>(momentum_decay);
-  MPDType momentum_decay_base_ = static_cast<MPDType>(momentum_decay_base);
 
   // make cpu accumulator to tensor
   DenseTensor momentum_decay_pow_data;
@@ -133,7 +131,7 @@ void NAdamKernel(const Context& dev_ctx,
             false,
             &momentum_decay_pow_data);
   MPDType momentum_decay_pow_scalar =
-      momentum_decay_pow_data.data<MPDType>()[0] * momentum_decay_base_;
+      momentum_decay_pow_data.data<MPDType>()[0] * static_cast<MPDType>(0.96);
   momentum_decay_pow_out_data[0] = momentum_decay_pow_scalar;
 
   DenseTensor beta2_pow_data;
@@ -149,7 +147,7 @@ void NAdamKernel(const Context& dev_ctx,
       beta1_ * (static_cast<MPDType>(1) -
                 static_cast<MPDType>(0.5) *
                     std::pow(momentum_decay_pow_scalar, momentum_decay_) *
-                    std::pow(momentum_decay_base_, momentum_decay_));
+                    std::pow(static_cast<MPDType>(0.96), momentum_decay_));
 
   DenseTensor mu_product_data;
   phi::Copy(dev_ctx, mu_product, phi::CPUPlace(), false, &mu_product_data);

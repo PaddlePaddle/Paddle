@@ -43,9 +43,8 @@ def nadam_step(inputs, attributes):
     beta1 = attributes['beta1']
     beta2 = attributes['beta2']
     momentum_decay = attributes['momentum_decay']
-    momentum_decay_base = attributes['momentum_decay_base']
 
-    momentum_decay_pow *= momentum_decay_base
+    momentum_decay_pow *= 0.96
     beta2_pow *= beta2
 
     mu_t = beta1 * (1.0 - 0.5 * (momentum_decay_pow**momentum_decay))
@@ -53,7 +52,7 @@ def nadam_step(inputs, attributes):
         1.0
         - 0.5
         * (momentum_decay_pow**momentum_decay)
-        * (momentum_decay_base**momentum_decay)
+        * (0.96**momentum_decay)
     )
 
     mu_product *= mu_t
@@ -87,7 +86,6 @@ def nadam_wrapper(
     beta2=0.999,
     epsilon=1e-8,
     momentum_decay=0.004,
-    momentum_decay_base=0.96,
     multi_precision=False,
 ):
     _, _, _, _, _, _, _ = paddle._C_ops.nadam_(
@@ -104,7 +102,6 @@ def nadam_wrapper(
         beta2,
         epsilon,
         momentum_decay,
-        momentum_decay_base,
         multi_precision,
     )
 
@@ -126,12 +123,9 @@ class TestNAdamOp(OpTest):
         beta2 = 0.915
         epsilon = 1e-8
         momentum_decay = 0.004
-        momentum_decay_base = 0.96
 
         # accumulators
-        momentum_decay_pow = np.array(momentum_decay_base**3).astype(
-            "float32"
-        )
+        momentum_decay_pow = np.array(0.96**3).astype("float32")
         # use beta1 to fake mu_product
         mu_product = np.array(beta1**3).astype("float32")
         beta2_pow = np.array(beta2**3).astype("float32")
@@ -155,7 +149,6 @@ class TestNAdamOp(OpTest):
             "beta1": beta1,
             "beta2": beta2,
             "momentum_decay": momentum_decay,
-            "momentum_decay_base": momentum_decay_base,
         }
 
         (
@@ -318,10 +311,6 @@ class TestNAdamAPI(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = paddle.optimizer.NAdam(
                 0.1, momentum_decay=-1, parameters=linear.parameters()
-            )
-        with self.assertRaises(ValueError):
-            _ = paddle.optimizer.NAdam(
-                0.1, momentum_decay_base=-1, parameters=linear.parameters()
             )
 
 

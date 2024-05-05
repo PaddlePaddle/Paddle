@@ -39,7 +39,6 @@ void NAdamKernel(const Context& dev_ctx,
                  float beta2,
                  float epsilon,
                  float momentum_decay,
-                 float momentum_decay_base,
                  bool multi_precision UNUSED,
                  DenseTensor* param_out,
                  DenseTensor* momentum_decay_pow_out,
@@ -59,7 +58,6 @@ void NAdamKernel(const Context& dev_ctx,
   T beta2_ = static_cast<T>(beta2);
   T epsilon_ = static_cast<T>(epsilon);
   T momentum_decay_ = static_cast<T>(momentum_decay);
-  T momentum_decay_base_ = static_cast<T>(momentum_decay_base);
 
   auto eigen_param = EigenVector<T>::Flatten(param);
   auto eigen_grad = EigenVector<T>::Flatten(grad);
@@ -79,7 +77,7 @@ void NAdamKernel(const Context& dev_ctx,
   auto eigen_moment2_out = EigenVector<T>::Flatten(*moment2_out);
 
   eigen_momentum_decay_pow_out =
-      eigen_momentum_decay_pow * momentum_decay_base_;
+      eigen_momentum_decay_pow * static_cast<T>(0.96);
   eigen_beta2_pow_out = eigen_beta2_pow * beta2_;
 
   auto eigen_mu_t =
@@ -90,7 +88,7 @@ void NAdamKernel(const Context& dev_ctx,
       beta1_ *
       (static_cast<T>(1) -
        static_cast<T>(0.5) * eigen_momentum_decay_pow_out.pow(momentum_decay_) *
-           std::pow(momentum_decay_base_, momentum_decay_));
+           std::pow(static_cast<T>(0.96), momentum_decay_));
 
   eigen_mu_product_out = eigen_mu_product * eigen_mu_t;
   auto eigen_mu_product_t_1 = eigen_mu_product_out * eigen_mu_t_1;
