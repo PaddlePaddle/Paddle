@@ -98,6 +98,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config) {
   auto dim_x = x.dims();
@@ -1082,6 +1083,15 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 data_format,
                 out,
                 config);
+}
+
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
 }
 
 void DequantizeLogInferMeta(const MetaTensor& x,
@@ -3108,6 +3118,30 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of x must be 1. But received: %d",
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of y must be 1. But received: %d",
+                                   y_dims.size()));
+
+  if (x_dims[0] <= y_dims[0]) {
+    out->set_dims(y_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
 }
 
 void ShuffleBatchInferMeta(const MetaTensor& x,

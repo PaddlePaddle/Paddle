@@ -180,6 +180,16 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
                           conv_autotune_file_writeback));
   }
 }
+void InferXPUContext::SetContextOption(const char* name, const char* value) {
+  phi::backends::xpu::XPUDeviceGuard guard(GetPlace().GetDeviceId());
+  VLOG(5) << "XPU Set Option name:" << name << " value:" << value;
+  int ret;
+  ret = x_context()->set_option(name, value);
+  PADDLE_ENFORCE_EQ(
+      ret,
+      0,
+      platform::errors::Unavailable("Failed to set XPU option %s.", name));
+}
 
 void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
                                         int fc_autotune_level,

@@ -3981,6 +3981,53 @@ void CrossAttentionXPUInferMeta(
   qkv_max->set_layout(input_q.layout());
 }
 
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len) {
+  auto mask_dims = mask.dims();
+  auto mask_dims_size = mask_dims.size();
+  PADDLE_ENFORCE_EQ(
+      mask_dims_size,
+      3,
+      phi::errors::InvalidArgument(
+          "mask_dims_size should be 3, but received mask_dims_size is %d",
+          mask_dims_size));
+  length->set_dims({mask_dims[0]});
+  seq_lod->set_dims({mask_dims[0] + 1});
+  pad_seq_len->set_dims({1});
+  length->set_dtype(phi::DataType::INT64);
+  seq_lod->set_dtype(phi::DataType::INT32);
+  pad_seq_len->set_dtype(phi::DataType::INT32);
+}
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto len_dims = length.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Rank of X can't be less than 2, but received x_dims.size() is %d",
+          x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      len_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Rank of Length should be 1, but received en_dims.size() is %d",
+          len_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims[0],
+                    len_dims[0],
+                    phi::errors::InvalidArgument(
+                        "X and Length should have the same 1st dim, but "
+                        "received X.dims[0] is %d, Length.dims[0] is %d",
+                        x_dims[0],
+                        len_dims[0]));
+  out->set_dtype(x.dtype());
+}
+
 void MultiGruInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& weight_x,
@@ -4015,7 +4062,8 @@ void MultiGruInferMeta(
         phi::errors::InvalidArgument(
             "The first dimension of flattened WeightX #%d"
             "should equal to last dimension of flattened input X, but "
-            "received fattened WeightX dimension is:%d, flattened X dimension "
+            "received fattened WeightX dimension is:%d, flattened X "
+            "dimension "
             "is:%d",
             i,
             weight_x[i]->dims()[0],
@@ -4279,15 +4327,15 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       sin_emb_dims_size,
       4,
-      phi::errors::InvalidArgument(
-          "sin_emb_dims_size should be 4, but received sin_emb_dims_size is %d",
-          sin_emb_dims_size));
+      phi::errors::InvalidArgument("sin_emb_dims_size should be 4, but "
+                                   "received sin_emb_dims_size is %d",
+                                   sin_emb_dims_size));
   PADDLE_ENFORCE_EQ(
       cos_emb_dims_size,
       4,
-      phi::errors::InvalidArgument(
-          "cos_emb_dims_size should be 4, but received cos_emb_dims_size is %d",
-          cos_emb_dims_size));
+      phi::errors::InvalidArgument("cos_emb_dims_size should be 4, but "
+                                   "received cos_emb_dims_size is %d",
+                                   cos_emb_dims_size));
   for (int i = 0; i < sin_emb_dims_size; i++) {
     PADDLE_ENFORCE_EQ(
         sin_emb_dims[i],
