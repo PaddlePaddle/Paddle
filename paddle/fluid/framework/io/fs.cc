@@ -147,7 +147,7 @@ std::shared_ptr<FILE> localfs_open_append_write(std::string path,
 }
 
 int64_t localfs_file_size(const std::string& path) {
-  struct stat buf;
+  struct stat buf = {};
   if (0 != stat(path.c_str(), &buf)) {
     PADDLE_THROW(platform::errors::External(
         "Failed to get file status via stat function."));

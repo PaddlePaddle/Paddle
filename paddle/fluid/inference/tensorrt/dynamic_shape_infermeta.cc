@@ -41,7 +41,7 @@ class ExprWrapper {
   friend ExprWrapper BinaryOp(const ExprWrapper& a,
                               const ExprWrapper& b,
                               nvinfer1::DimensionOperation op) {
-    ExprWrapper result;
+    ExprWrapper result = {};
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
     }
@@ -57,7 +57,7 @@ class ExprWrapper {
                               int b_value,
                               nvinfer1::DimensionOperation op) {
     assert(a.expr_builder);
-    ExprWrapper b;
+    ExprWrapper b = {};
     b.expr_builder = a.expr_builder;
     b.expr = b.expr_builder->constant(b_value);
     return BinaryOp(a, b, op);
@@ -129,7 +129,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
 
 static nvinfer1::DimsExprs VecExprWrapper2DimsExprs(
     const std::vector<ExprWrapper>& output_dims_wrapper) {
-  nvinfer1::DimsExprs output_dims;
+  nvinfer1::DimsExprs output_dims = {};
   output_dims.nbDims = output_dims_wrapper.size();
   for (int i = 0; i < output_dims.nbDims; i++) {
     output_dims.d[i] = output_dims_wrapper[i].extract_expr();
@@ -163,7 +163,7 @@ nvinfer1::DimsExprs GatherNdInferMeta(
     }
   }
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = result_dims.size();
   for (int i = 0; i < output.nbDims; i++) {
     output.d[i] = result_dims[i];
@@ -196,7 +196,7 @@ nvinfer1::DimsExprs YoloBoxInferMeta(
           nvinfer1::DimensionOperation::kPROD, *dim_x.d[2], *dim_x.d[3]),
       *expr_builder.constant(anchor_num));
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = 3;
   if (output_index == 0) {
     output.d[0] = dim_x.d[0];
@@ -314,7 +314,7 @@ nvinfer1::DimsExprs UnfoldInferMeta(
       nvinfer1::DimensionOperation::kPROD, *output_height, *output_width);
 
   out_dims.push_back(output_col_length);
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = out_dims.size();
   for (size_t i = 0; i < out_dims.size(); i++) output.d[i] = out_dims[i];
   return output;
@@ -368,7 +368,7 @@ nvinfer1::DimsExprs Pad3dInferMeta(
     const framework::OpDesc& op_desc) {
   const nvinfer1::DimsExprs x_dim = inputs[0];
 
-  nvinfer1::DimsExprs out_dims;
+  nvinfer1::DimsExprs out_dims = {};
   out_dims.nbDims = x_dim.nbDims;
 
   out_dims.d[0] = x_dim.d[0];
@@ -496,7 +496,7 @@ nvinfer1::DimsExprs PNormInferMeta(
   }
   x_dim.d[axis] = expr_builder.constant(1);
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   if (keepdim) {
     output = x_dim;
   } else {
@@ -515,7 +515,7 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
   const nvinfer1::DimsExprs x_dims = inputs[0];
   const nvinfer1::DimsExprs grid_dims = inputs[1];
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   if (grid_dims.nbDims == 4) {
     output.nbDims = 4;
     output.d[0] = x_dims.d[0];
@@ -684,7 +684,7 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   const auto x_dims = inputs[0];
   const auto weight_dims = inputs[1];
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = x_dims.nbDims + 1;
   for (int i = 0; i < x_dims.nbDims; ++i) {
     output.d[i] = x_dims.d[i];
@@ -714,13 +714,13 @@ nvinfer1::DimsExprs MemoryEfficientAttentionInferMeta(
   if (output_index == 0) {
     return inputs[0];
   } else if (output_index == 1) {
-    nvinfer1::DimsExprs output;
+    nvinfer1::DimsExprs output = {};
     output.nbDims = 2;
     output.d[0] = inputs[0].d[0];
     output.d[1] = inputs[0].d[2];
     return output;
   } else {
-    nvinfer1::DimsExprs output;
+    nvinfer1::DimsExprs output = {};
     output.nbDims = 1;
     output.d[0] = expr_builder.constant(2);
     return output;
@@ -815,7 +815,7 @@ nvinfer1::DimsExprs PadInferMeta(
   auto paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = x_dims.nbDims;
   for (int i = 0; i < x_dims.nbDims; ++i) {
     output.d[i] = expr_builder.operation(
@@ -852,7 +852,7 @@ nvinfer1::DimsExprs ArgsortInferMeta(
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
   const nvinfer1::DimsExprs input_dims = inputs[0];
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = input_dims.nbDims;
   for (int i = 0; i < input_dims.nbDims; ++i) {
     output.d[i] = input_dims.d[i];

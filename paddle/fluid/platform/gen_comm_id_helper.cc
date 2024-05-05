@@ -163,7 +163,7 @@ int CreateListenSocket(const std::string& ep) {
   int opt = 1;
 
   // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
-  linger ling;
+  linger ling = {};
   ling.l_onoff = 1;
   ling.l_linger = 0;
 
@@ -185,7 +185,7 @@ int CreateListenSocket(const std::string& ep) {
       "setsockopt");
 #endif
 
-  struct sockaddr_in address;
+  struct sockaddr_in address = {};
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
@@ -219,7 +219,7 @@ static int SocketAccept(int server_fd, const CommHead head) {
   static_assert(sizeof(CommHead) <= 1024,
                 "sizeof(CommHead) must <= buffer size");
 
-  struct sockaddr_in client_addr;
+  struct sockaddr_in client_addr = {};
   socklen_t addr_length = sizeof(client_addr);
   std::array<char, 1024> buffer{0};
   int conn = -1;
@@ -255,7 +255,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
 
-  struct sockaddr_in server_addr;
+  struct sockaddr_in server_addr = {};
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);

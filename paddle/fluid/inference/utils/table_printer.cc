@@ -65,7 +65,7 @@ TablePrinter::TablePrinter(const std::vector<std::string>& header) {
     terminal_width = csbi.dwSize.X;
   }
 #else
-  struct winsize terminal_size;
+  struct winsize terminal_size = {};
   int status = ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal_size);
   if (status == 0 && terminal_size.ws_col != 0) {
     terminal_width = terminal_size.ws_col;
