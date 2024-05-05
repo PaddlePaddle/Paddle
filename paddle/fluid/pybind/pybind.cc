@@ -1664,7 +1664,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const ProgramDesc &origin,
            const std::set<std::string> &feeded_var_names,
            const std::vector<std::array<size_t, 2>> &targets) {
-          ProgramDesc prog_with_targets(origin);
+           const ProgramDesc& prog_with_targets(origin);
 
           for (const auto &t : targets) {
             prog_with_targets.MutableBlock(t[0])
