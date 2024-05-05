@@ -31,7 +31,9 @@ env = Environment(
 
 
 def OpNameNormalizerInitialization(
-    op_compat_yaml_file: str = "", output_source_file: str = ""
+    op_compat_yaml_file: str = "",
+    sparse_op_yaml_file: str = "",
+    output_source_file: str = "",
 ) -> None:
     def to_phi_and_fluid_op_name(op_item):
         # Template: - op : phi_name (fluid_name)
@@ -168,10 +170,23 @@ def OpNameNormalizerInitialization(
     op_arg_name_mappings['push_sparse_v2'].update(
         {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
     )
-
     op_arg_name_mappings['push_gpups_sparse'].update(
         {"out_grad": "Out@GRAD", "out_grad_grad": "Out@GRAD"}
     )
+
+    sparse_op_yaml_files = sparse_op_yaml_file.split(",")
+    for yaml_file in sparse_op_yaml_files:
+        with open(yaml_file, 'r') as f:
+            sparse_ops_items = yaml.safe_load(f)
+            for sparse_op in sparse_ops_items:
+                if yaml_file.endswith("sparse_ops.yaml"):
+                    op_name = sparse_op['op']
+                else:
+                    op_name = sparse_op['backward_op']
+                if op_name[-1] == "_":
+                    op_name_mappings["sparse_" + op_name[:-1]] = op_name + 'sp_'
+                else:
+                    op_name_mappings["sparse_" + op_name] = op_name + '_sp'
 
     op_name_normalizer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:
@@ -192,6 +207,7 @@ def ParseArguments():
         description='Generate OP Compatible info Files By Yaml'
     )
     parser.add_argument('--op_compat_yaml_file', type=str)
+    parser.add_argument('--sparse_op_yaml_file', type=str)
     parser.add_argument('--output_source_file', type=str)
     return parser.parse_args()
 

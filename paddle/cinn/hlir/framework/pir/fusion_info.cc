@@ -174,8 +174,10 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   };
 
   for (const auto& value : group.GetInputOpValues()) {
-    if (!TryGetDimExprsFromGroup(value)) {
+    if (group.IsBroadcastLeaf()) {
       TryGetDimExprsFromGroup(value);
+    } else {
+      TryeGetDimExprsFromGlobal(value);
     }
   }
 }

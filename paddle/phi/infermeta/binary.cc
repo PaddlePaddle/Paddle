@@ -98,6 +98,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config) {
   auto dim_x = x.dims();
@@ -1082,6 +1083,15 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 data_format,
                 out,
                 config);
+}
+
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
 }
 
 void DequantizeLogInferMeta(const MetaTensor& x,
@@ -2787,6 +2797,44 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   }
 }
 
+void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
+                           const std::vector<const MetaTensor*>& w,
+                           int embedding_dim,
+                           int table_id,
+                           const std::string& accessor_class,
+                           const std::string& ctrlabel_name,
+                           int padding_id,
+                           bool scale_sparse_grad,
+                           const std::vector<std::string>& input_names,
+                           bool is_distributed,
+                           std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_GE(ids.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(Ids) of PullSparseV2Op can not be null"));
+  PADDLE_ENFORCE_GE(out.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of PullSparseV2Op can not be null"));
+
+  auto hidden_size = embedding_dim;
+  const size_t n_ids = ids.size();
+  std::vector<phi::DDim> outs_dims;
+  outs_dims.resize(n_ids);
+  for (size_t i = 0; i < n_ids; ++i) {
+    const auto ids_dims = ids[i]->dims();
+    auto out_dim = common::vectorize(ids_dims);
+    out_dim.push_back(hidden_size);
+    outs_dims[i] = common::make_ddim(out_dim);
+  }
+
+  for (size_t i = 0; i < n_ids; ++i) {
+    out[i]->set_dims(outs_dims[i]);
+    out[i]->share_lod(*ids[i], i);
+    out[i]->set_dtype(w[i]->dtype());
+  }
+}
+
 void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
                                    const MetaTensor& scales,
                                    MetaTensor* out) {
@@ -3070,6 +3118,30 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of x must be 1. But received: %d",
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The rank of y must be 1. But received: %d",
+                                   y_dims.size()));
+
+  if (x_dims[0] <= y_dims[0]) {
+    out->set_dims(y_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
 }
 
 void ShuffleBatchInferMeta(const MetaTensor& x,
