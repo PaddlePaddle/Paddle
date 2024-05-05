@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
 
 namespace cinn::fusion {
@@ -108,9 +109,10 @@ struct LiftToHorizontalFusionPatternOperation {
 struct LiftToAnchorPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    std::vector<pir::Operation*> ops = GetOpsInPattern(pattern);
+    std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
     pir::Value anchor = node->sink_op()->result(0);
-    node->set_stmt_pattern(AnchorPattern<Phrase>(ops, anchor));
+    node->set_stmt_pattern(AnchorPattern<Phrase>(
+        ops, anchor, InitAnchorState(node->stmt_pattern())));
   }
 };
 

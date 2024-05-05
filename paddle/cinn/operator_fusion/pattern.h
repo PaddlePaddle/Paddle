@@ -87,18 +87,18 @@ class HorizontalFusionPattern {};
 
 template <typename T>
 struct AnchorPattern {
-  explicit AnchorPattern(
-      const std::vector<pir::Operation*>& ops,
-      const pir::Value& anchor const AnchorState<T>& anchor_state)
-      : ops_(ops), anchor_(anchor), {
+  explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
+                         const pir::Value& anchor,
+                         const AnchorState<T>& anchor_state)
+      : ops_(ops), anchor_(anchor), anchor_state_(anchor_state) {
     // TODO(@wuzhanfei): Initialize anchor state
   }
   std::vector<pir::Operation*> ops_;
   pir::Value anchor_;  // Choose only one anchor
-  AnchorState<T> anchor_state;
+  AnchorState<T> anchor_state_;
   std::vector<pir::Operation*> ops() const { return ops_; }
-  std::vector<pir::Value> outputs() const { return outputs_; }
   pir::Value anchor() const { return anchor_; }
+  pir::Value anchor_state() const { return anchor_state_; }
 
   bool can_recompute() const {
     // Current Algorithm:
