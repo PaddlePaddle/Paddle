@@ -989,10 +989,12 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 template <typename T>
 Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto x_cast = cast<T>(x, min.dtype());
+
   auto broadcast_dims = 1;
   for (size_t i = 0; i < x.shape().size(); i++) {
     broadcast_dims *= x.shape()[i];
   }
+
   auto min_reshape =
       reshape<T>(tile<T>(min, {broadcast_dims}), common::vectorize(x.dims()));
   auto max_reshape =
