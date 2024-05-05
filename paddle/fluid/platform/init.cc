@@ -342,7 +342,7 @@ void DisableSignalHandler() {
 #ifndef _WIN32
   for (const auto &SignalErrorString : SignalErrorStrings) {
     int signal_number = SignalErrorString.signal_number;
-    struct sigaction sig_action;
+    struct sigaction sig_action = {};
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;

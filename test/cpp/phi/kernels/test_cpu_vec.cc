@@ -25,7 +25,7 @@ namespace phi {
 namespace tests {
 
 inline double GetCurrentUS() {
-  struct timeval time;
+  struct timeval time = {};
   gettimeofday(&time, nullptr);
   return 1e+6 * time.tv_sec + time.tv_usec;  // NOLINT
 }

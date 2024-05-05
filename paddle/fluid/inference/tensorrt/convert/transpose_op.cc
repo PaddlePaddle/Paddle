@@ -35,7 +35,7 @@ class TransposeOpConverter : public OpConverter {
         axis[i]--;
       }
     }
-    nvinfer1::Permutation perm;
+    nvinfer1::Permutation perm = {};
     for (int i = 0; i < dims; i++) {
       int j = engine_->with_dynamic_shape() ? i : i + 1;
       perm.order[i] = axis[j];
