@@ -261,14 +261,15 @@ class TestSincAPIFP16(unittest.TestCase):
 class TestSincAPIBF16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
-        self.dtype = 'bfloat16'
+        self.dtype = 'uint16'
         self.place = paddle.CUDAPlace(0)
 
     def test_dtype(self):
         def run(place):
             paddle.enable_static()
             for shape in self.shapes:
-                x_data = np.random.rand(*shape).astype('float32')
+                x_data_np = np.random.rand(*shape).astype('float32')
+                x_data = x_data_np.astype(self.dtype)
                 startup_program = paddle.static.Program()
                 main_program = paddle.static.Program()
                 exe = base.Executor(place)
@@ -280,7 +281,7 @@ class TestSincAPIBF16(unittest.TestCase):
                     static_result = exe.run(
                         feed={'x': x_data}, fetch_list=[res]
                     )[0]
-                    out_expected = np_sinc(x_data)
+                    out_expected = np_sinc(x_data_np)
                 result = convert_uint16_to_float(static_result)
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-6, atol=1e-6
@@ -292,7 +293,8 @@ class TestSincAPIBF16(unittest.TestCase):
         def run(place):
             paddle.enable_static()
             for shape in self.shapes:
-                x_data = np.random.rand(*shape).astype('float32')
+                x_data_np = np.random.rand(*shape).astype('float32')
+                x_data = x_data_np.astype(self.dtype)
                 mask = (
                     (np.random.rand(*shape) > 0.5)
                     .astype('int')
@@ -310,7 +312,7 @@ class TestSincAPIBF16(unittest.TestCase):
                     static_result = exe.run(
                         feed={'x': x_data}, fetch_list=[res]
                     )[0]
-                    out_expected = np_sinc(x_data)
+                    out_expected = np_sinc(x_data_np)
                 result = convert_uint16_to_float(static_result)
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-6, atol=1e-6
