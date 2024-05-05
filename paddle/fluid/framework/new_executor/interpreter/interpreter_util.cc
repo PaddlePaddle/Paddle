@@ -117,10 +117,9 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
                                EventsWaiter* waiter)
-    : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
-}
+    : host_num_thread_(host_num_threads),
+      queue_group_(CreateWorkQueueGroup(ConstructWorkQueueOptions(
+          host_num_threads, device_num_threads, waiter))) {}
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {

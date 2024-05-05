@@ -27,9 +27,13 @@ struct DataRecord {
   size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
-  DataRecord() = default;
+  DataRecord() : link_step_data_all(), lod(), rnn_link_data(), num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : batch_size(batch_size) {
+      : link_step_data_all(),
+        lod(),
+        rnn_link_data(),
+        num_samples(0),
+        batch_size(batch_size) {
     Load(path);
   }
   DataRecord NextBatch() {

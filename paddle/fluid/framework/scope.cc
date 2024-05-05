@@ -28,7 +28,7 @@ COMMON_DECLARE_bool(eager_delete_scope);
 
 namespace paddle {
 namespace framework {
-Scope::Scope() = default;
+Scope::Scope() : vars_(), kids_() {}
 Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {

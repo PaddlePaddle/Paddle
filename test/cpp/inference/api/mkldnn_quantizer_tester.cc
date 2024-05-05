@@ -25,7 +25,7 @@ namespace paddle {
 
 class MkldnnQuantizerTest : public testing::Test {
  public:
-  MkldnnQuantizerTest() {
+  MkldnnQuantizerTest() : predictor(nullptr), mkldnn_quantizer(nullptr) {
     AnalysisConfig config(FLAGS_dirname);
     predictor = CreatePaddlePredictor(config);
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());

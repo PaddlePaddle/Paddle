@@ -45,11 +45,8 @@ class Logger : public nvinfer1::ILogger {
 
 class ScopedWeights {
  public:
-  explicit ScopedWeights(float value) : value_(value) {
-    w.type = nvinfer1::DataType::kFLOAT;
-    w.values = &value_;
-    w.count = 1;
-  }
+  explicit ScopedWeights(float value)
+      : value_(value), w{nvinfer1::DataType::kFLOAT, &value_, 1} {}
   const nvinfer1::Weights& get() { return w; }
 
  private:
