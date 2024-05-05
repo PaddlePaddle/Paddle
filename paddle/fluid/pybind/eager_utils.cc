@@ -2742,11 +2742,11 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
 
 static PyMethodDef EagerUtilMethods[] = {
     {"create_empty_tensors_with_var_descs",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithVarDesc,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithVarDesc,
      METH_VARARGS,
      "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_values",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithValue,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithValue,
      METH_VARARGS,
      "GetEmptyTensorsWithValue."},
     {"set_static_op_arg_pre_cast_hook",
