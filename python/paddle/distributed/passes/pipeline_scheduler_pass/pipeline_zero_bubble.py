@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-from collections import deque
 
 import paddle
 from paddle.base import core
@@ -157,12 +156,41 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self.base_memory = []
         self.program_runtime = {
             "forward": 1000,
-            "backward": 1000,
+            "backward_b": 1000,
+            "backward_w": 1000,
             "communication": 1,
         }
 
     def _create_job_list(self):
-        pass
+        v_scheduler = VScheduleCreator(
+            self.get_attr("pp_degree"),
+            self.get_attr("num_micro_batches"),
+            self.get_attr("vpp_degree"),
+            self.program_mem_usages,
+            self.program_max_mem_usages,
+            self.base_memory,
+            self.program_runtime,
+        )
+
+        schedule, max_bubble = None, None
+        for fill_w_before_b in [True, False]:
+            for fill_w_before_f in [True, False]:
+                if schedule is None:
+                    schedule, _, max_bubble = v_scheduler.create_v_schedule(
+                        fill_w_before_b=fill_w_before_b,
+                        fill_w_before_f=fill_w_before_f,
+                    )
+                else:
+                    (
+                        new_schedule,
+                        _,
+                        new_max_bubble,
+                    ) = v_scheduler.create_v_schedule(
+                        fill_w_before_b=fill_w_before_b,
+                        fill_w_before_f=fill_w_before_f,
+                    )
+                    if new_max_bubble < max_bubble:
+                        schedule, max_bubble = new_schedule, new_max_bubble
 
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
@@ -232,33 +260,36 @@ class VScheduleCreator:
         program_max_mem_usages,
         base_memory,
         program_runtime,
-        max_memory,
+        max_memory=None,
     ):
         self.num_stage = num_stage
         self.num_micro_batch = num_micro_batch
         self.num_model_chunks = num_model_chunks
-        self.num_nodes = num_model_chunks * num_stage * num_micro_batch
+        self.num_nodes = num_model_chunks * num_stage * num_micro_batch * 3
         self.program_mem_usages = program_mem_usages
         self.program_max_mem_usages = program_max_mem_usages
         self.job_types = ["forward", "backward_w", "backward_b"]
-        self.max_memory = max_memory
+        self.program_runtime = program_runtime
+        self.base_memory = base_memory
+        if max_memory is None:
+            self.max_memory = float("inf")
 
     def init_schedule(self):
         job_counter = {}
         for job_type in self.job_types:
-            for chunk_id in self.num_model_chunks:
+            for chunk_id in range(self.num_model_chunks):
                 job_counter[f"{job_type}{chunk_id}"] = 0
 
         self._job_counters = [job_counter.copy() for _ in range(self.num_stage)]
         self._job_end_times = [-1] * self.num_nodes
         self._stage_current_time = [0] * self.num_stage
-        self._stage_mem_usage = [0] * self.num_stage
-        self._pending_w = [deque() for _ in range(self.num_stage)]
+        self._stage_mem_usage = self.base_memory.copy()
+        self._pending_w = [[] for _ in range(self.num_stage)]
         self._stage_job_schedule = [[] for _ in range(self.num_stage)]
         self._stage_bubbles = [0] * self.num_stage
 
     def create_v_schedule(
-        self, fill_f=True, fill_w=True, approved_bubbles=None
+        self, fill_w_before_f=True, fill_w_before_b=True, approved_bubbles=None
     ):
         self.init_schedule()
         if approved_bubbles is None:
@@ -267,11 +298,33 @@ class VScheduleCreator:
 
         self._insert_warmup_stage_forward_jobs()
         self._insert_forward_jobs_before_backward_b()
+        self._insert_jobs_after_backward_start(
+            fill_w_before_f, fill_w_before_b, approved_bubbles
+        )
+
+        schedule = self._stage_job_schedule.copy()
+        end_time = self._job_end_times.copy()
+        max_bubble = self._get_max_stage_bubble()
+
+        if max_approved_bubble < 0 or max_bubble < max_approved_bubble:
+            new_schedule, new_end_time, new_max_bubble = self.create_v_schedule(
+                fill_w_before_f, fill_w_before_b, self._stage_bubbles
+            )
+
+            if new_max_bubble < max_bubble:
+                return new_schedule, new_end_time, new_max_bubble
+
+        return schedule, end_time, max_bubble
 
     def _insert_warmup_stage_forward_jobs(self):
         # Step1: Insert forward jobs with chunk_id=0 into the schedule
         for i in range(self.num_stage):
             self._put_job_into_schedule("forward", chunk_id=0, stage_id=i)
+            if i < self.num_stage - 1:
+                self._stage_current_time[i + 1] = (
+                    self._job_end_times[self._get_job_id("forward", 0, i, 0)]
+                    + self.program_runtime["communication"]
+                )
 
         # Step2: Insert forward jobs with chunk_id=1 into the schedule
         for i in range(self.num_stage - 1, -1, -1):
@@ -284,7 +337,9 @@ class VScheduleCreator:
                 + self.program_runtime["communication"]
             )
 
-            self._fill_bubble("forward", [1], i, forward1_start_time)
+            self._fill_bubble(
+                "forward", [0], i, forward1_start_time, insert_order="up"
+            )
             self._put_job_into_schedule("forward", chunk_id=1, stage_id=i)
 
     def _insert_forward_jobs_before_backward_b(self):
@@ -342,7 +397,7 @@ class VScheduleCreator:
                 stage_id - 1 if insert_order == "down" else stage_id + 1
             )
 
-            # Each stage's forward job count should not be less than the last stage
+            # Each stage's forward job number should not be less than the last stage
             while (
                 self._get_stage_job_cnt(stage_id, "forward")
                 < self._get_stage_job_cnt(last_stage_id, "forward")
@@ -356,6 +411,177 @@ class VScheduleCreator:
                     if self._job_cnt_check("forward", chunk_id, id):
                         self._put_job_into_schedule("forward", chunk_id, id)
                 chunk_id = (chunk_id + 1) % self.num_model_chunks
+
+    def _insert_jobs_after_backward_start(
+        self, fill_w_before_f, fill_w_before_b, approved_bubbles
+    ):
+        backward_b_job_number = self.num_model_chunks * self.num_micro_batch
+
+        for _ in range(backward_b_job_number):
+            # Step1: Check memory usage, if not enough, put pending backward_w job into schedule
+            for stage_id in range(self.num_stage):
+                while not self._memory_check("backward_b", 0, stage_id):
+                    if len(self._pending_w[stage_id]) == 0:
+                        raise ValueError(
+                            "No pending backward_w job and backward_b job exceeds the memory limit."
+                        )
+                    self._put_w_job_into_schedule(stage_id)
+
+            # Step2: Insert backward_b job for each stage
+            b_ranks = [[] for _ in range(self.num_model_chunks)]
+            for stage_id in range(self.num_stage):
+                for chunk_id in range(0, self.num_model_chunks):
+                    if self._can_schedule_b_task(stage_id, chunk_id):
+                        b_ranks[chunk_id].append(stage_id)
+                        break
+
+            for chunk_id, b_rank in enumerate(b_ranks):
+                if chunk_id % 2 == 0:
+                    b_rank = b_rank[::-1]
+                for stage_id in b_rank:
+                    dependency_job_end_time = self._get_dependency_job_end_time(
+                        "backward_b",
+                        chunk_id,
+                        stage_id,
+                        self._job_counters[stage_id][f"backward_b{chunk_id}"],
+                    )
+                    while (
+                        len(self._pending_w[stage_id])
+                        and dependency_job_end_time
+                        + self.program_runtime["communication"]
+                        > self._stage_current_time[stage_id]
+                        + self.program_runtime["backward_w"]
+                    ):
+                        self._put_w_job_into_schedule(stage_id)
+
+                    max_stage_bubble = self._get_max_stage_bubble(
+                        stage_id, approved_bubbles
+                    )
+                    stage_bubble = self._stage_bubbles[stage_id]
+                    if (
+                        len(self._pending_w[stage_id])
+                        and dependency_job_end_time
+                        + self.program_runtime["communication"]
+                        - self._stage_current_time[stage_id]
+                        > max_stage_bubble - stage_bubble
+                    ):
+                        if chunk_id == 0 or fill_w_before_b:
+                            self._put_w_job_into_schedule(stage_id)
+
+                    self._put_job_into_schedule(
+                        "backward_b", chunk_id, stage_id
+                    )
+
+            # Step3: Insert forward jobs after backward_b
+            for stage_id in range(self.num_stage):
+                for chunk_id in range(self.num_model_chunks - 1, -1, -1):
+                    if self._can_schedule_f_task(stage_id, chunk_id):
+                        while (
+                            self._stage_mem_usage[stage_id]
+                            + self.program_max_mem_usages[stage_id][
+                                f"forward{chunk_id}"
+                            ]
+                            > self.max_memory
+                        ):
+                            if len(self._pending_w[stage_id]) == 0:
+                                raise ValueError(
+                                    "No pending backward_w job and forward job exceeds the memory limit."
+                                )
+                            self._put_w_job_into_schedule(stage_id)
+
+                        dependency_job_end_time = (
+                            self._get_dependency_job_end_time(
+                                "forward",
+                                chunk_id,
+                                stage_id,
+                                self._job_counters[stage_id][
+                                    f"forward{chunk_id}"
+                                ],
+                            )
+                        )
+                        while (
+                            len(self._pending_w[stage_id])
+                            and dependency_job_end_time
+                            + self.program_runtime["communication"]
+                            > self._stage_current_time[stage_id]
+                            + self.program_runtime["backward_w"]
+                        ):
+                            self._put_w_job_into_schedule(stage_id)
+
+                        max_stage_bubble = self._get_max_stage_bubble(
+                            stage_id, approved_bubbles
+                        )
+                        stage_bubble = self._stage_bubbles[stage_id]
+                        if (
+                            len(self._pending_w[stage_id])
+                            and dependency_job_end_time
+                            + self.program_runtime["communication"]
+                            - self._stage_current_time[stage_id]
+                            > max_stage_bubble - stage_bubble
+                        ):
+                            if fill_w_before_f:
+                                self._put_w_job_into_schedule(stage_id)
+
+                        self._put_job_into_schedule(
+                            "forward", chunk_id, stage_id
+                        )
+                        break
+
+        for stage_id in range(self.num_stage):
+            while len(self._pending_w[stage_id]):
+                self._put_w_job_into_schedule(stage_id)
+
+    def _can_schedule_f_task(self, stage_id, chunk_id):
+        if chunk_id == 0:
+            if (
+                self._job_counters[stage_id][f"forward{chunk_id}"]
+                < self.num_micro_batch
+            ):
+                return True
+            return False
+
+        return self._can_schedule_task("forward", chunk_id, stage_id)
+
+    def _can_schedule_b_task(self, stage_id, chunk_id):
+        if chunk_id == self.num_model_chunks - 1:
+            if (
+                self._job_counters[stage_id][f"backward_b{chunk_id}"]
+                < self.num_micro_batch
+            ):
+                return True
+            return False
+
+        return self._can_schedule_task("backward_b", chunk_id, stage_id)
+
+    def _can_schedule_task(self, job_type, chunk_id, stage_id):
+        if job_type == "forward":
+            current_key = f"forward{chunk_id}"
+            prev_key = f"forward{chunk_id - 1}"
+        elif job_type == "backward_b":
+            current_key = f"backward_b{chunk_id}"
+            prev_key = f"backward_b{chunk_id + 1}"
+
+        prev_chunk_finish = True
+        prev_chunk_count = self._job_counters[stage_id][prev_key]
+        current_chunk_count = self._job_counters[stage_id][current_key]
+        if prev_chunk_count <= current_chunk_count:
+            prev_chunk_finish = False
+
+        if not prev_chunk_finish:
+            return False
+
+        job_cnt = self._job_counters[stage_id][current_key]
+        if job_cnt >= self.num_micro_batch:
+            return False
+
+        prev_stage_job_end_time = self._get_dependency_job_end_time(
+            job_type, chunk_id, stage_id, job_cnt
+        )
+
+        if prev_stage_job_end_time < 0:
+            return False
+
+        return True
 
     def _compare_forward_job_cnt(self, stage_id, last_stage_id):
         for chunk_id in range(1, self.num_model_chunks):
@@ -389,8 +615,12 @@ class VScheduleCreator:
             if fill_job_type == "forward":
                 if (
                     self._stage_mem_usage[stage_id]
-                    + self.program_mem_usages[f"{fill_job_type}{chunk_id}"]
-                    + self.program_max_mem_usages[f"backward_w{chunk_id}"]
+                    + self.program_mem_usages[stage_id][
+                        f"{fill_job_type}{chunk_id}"
+                    ]
+                    + self.program_max_mem_usages[stage_id][
+                        f"backward_w{chunk_id}"
+                    ]
                 ) > self.max_memory:
                     break
 
@@ -421,7 +651,7 @@ class VScheduleCreator:
     def _memory_check(self, job_type, chunk_id, stage_id):
         if (
             self._stage_mem_usage[stage_id]
-            + self.program_mem_usages[f"{job_type}{chunk_id}"]
+            + self.program_max_mem_usages[stage_id][f"{job_type}{chunk_id}"]
             > self.max_memory
         ):
             return False
@@ -454,62 +684,43 @@ class VScheduleCreator:
         )
 
         job_cnt = self._job_counters[stage_id][f"{job_type}{chunk_id}"]
-        if job_cnt > self.num_micro_batch:
+        if job_cnt >= self.num_micro_batch:
             raise ValueError(
                 f"Job {job_type}{chunk_id} exceeds the limit of micro batches."
             )
 
         if (
             self._stage_mem_usage[stage_id]
-            + self.program_max_mem_usages[f"{job_type}{chunk_id}"]
+            + self.program_max_mem_usages[stage_id][f"{job_type}{chunk_id}"]
             > self.max_memory
         ):
             raise ValueError(
                 f"Job {job_type}{chunk_id} exceeds the memory limit."
             )
 
-        if chunk_id > 0:
-            self._check_job_dependency_finished(
+        self._check_job_chunk_order(job_type, chunk_id, stage_id, job_cnt)
+
+        if job_type in ["forward", "backward_b"]:
+            dependency_job_end_time = self._get_dependency_job_end_time(
                 job_type, chunk_id, stage_id, job_cnt
             )
-
-        if chunk_id > 0 and job_type != "optimize":
-            if stage_id < self.num_stage - 1:
-                next_stage_job_id = self._get_job_id(
-                    job_type, chunk_id, stage_id + 1, job_cnt
+            if dependency_job_end_time < 0:
+                prev_stage_id = self._get_prev_stage_id(
+                    job_type, chunk_id, stage_id
                 )
-                job_end_time = self._job_end_times[next_stage_job_id]
-                if job_end_time < 0:
-                    raise ValueError(
-                        f"Job {job_type}{chunk_id} in stage {stage_id} depends on unfinished job in stage {stage_id + 1}."
-                    )
-                task_end_time = max(
-                    task_end_time,
-                    job_end_time
-                    + self.program_runtime["communication"]
-                    + self.program_runtime[job_type],
+                raise ValueError(
+                    f"Job {job_type}{chunk_id} at stage {stage_id} depends on unfinished job at stage {prev_stage_id}."
                 )
-
-        if chunk_id == 0 and job_type != "optimize":
-            if stage_id > 0:
-                prev_stage_job_id = self._get_job_id(
-                    job_type, chunk_id, stage_id - 1, job_cnt
-                )
-                job_end_time = self._job_end_times[prev_stage_job_id]
-                if job_end_time < 0:
-                    raise ValueError(
-                        f"Job {job_type}{chunk_id} in stage {stage_id} depends on unfinished job in stage {stage_id - 1}."
-                    )
-                task_end_time = max(
-                    task_end_time,
-                    job_end_time
-                    + self.program_runtime["communication"]
-                    + self.program_runtime[job_type],
-                )
+            task_end_time = max(
+                task_end_time,
+                dependency_job_end_time
+                + self.program_runtime["communication"]
+                + self.program_runtime[job_type],
+            )
 
         job_id = self._get_job_id(job_type, chunk_id, stage_id, job_cnt)
         if self._job_counters[stage_id]["forward0"] > 0:
-            self._stage_bubbles += (
+            self._stage_bubbles[stage_id] += (
                 task_end_time
                 - self._stage_current_time[stage_id]
                 - self.program_runtime[job_type]
@@ -517,7 +728,7 @@ class VScheduleCreator:
 
         self._job_end_times[job_id] = task_end_time
         self._stage_current_time[stage_id] = task_end_time
-        self._stage_mem_usage[stage_id] += self.program_mem_usages[
+        self._stage_mem_usage[stage_id] += self.program_mem_usages[stage_id][
             f"{job_type}{chunk_id}"
         ]
 
@@ -530,36 +741,91 @@ class VScheduleCreator:
         if not len(self._pending_w[stage_id]):
             raise ValueError("No pending backward_w job.")
 
-        chunk_id, _ = self._pending_w[stage_id].popleft()
+        self._pending_w[stage_id].sort(key=lambda x: x[1])
+        chunk_id, _ = self._pending_w[stage_id][0]
+        self._pending_w[stage_id] = self._pending_w[stage_id][1:]
+
         self._put_job_into_schedule("backward_w", chunk_id, stage_id)
 
-    def _check_job_dependency_finished(
-        self, job_type, chunk_id, stage_id, job_cnt
-    ):
-        if job_type in ["backward_b", "backward_w"]:
-            prev_job_end_time = self._job_end_times[
-                self._get_job_id("backward", chunk_id - 1, stage_id, job_cnt)
-            ]
+    def _check_job_chunk_order(self, job_type, chunk_id, stage_id, job_cnt):
+        if job_type == "forward":
+            if chunk_id > 0:
+                prev_job_end_time = self._job_end_times[
+                    self._get_job_id("forward", chunk_id - 1, stage_id, job_cnt)
+                ]
+                if prev_job_end_time < 0:
+                    raise ValueError(
+                        f"Job {job_type}{chunk_id}_{job_cnt} depends on unfinished {job_type}{chunk_id - 1}_{job_cnt} job."
+                    )
+        elif job_type == "backward_b":
+            if chunk_id < self.num_model_chunks - 1:
+                prev_job_end_time = self._job_end_times[
+                    self._get_job_id(job_type, chunk_id + 1, stage_id, job_cnt)
+                ]
+                if prev_job_end_time < 0:
+                    raise ValueError(
+                        f"Job {job_type}{chunk_id}_{job_cnt} depends on unfinished {job_type}{chunk_id + 1}_{job_cnt} job."
+                    )
+        elif job_type == "backward_w":
+            prev_job_end_time = self._get_prev_job_end_time(
+                "backward_b", chunk_id, stage_id, job_cnt
+            )
             if prev_job_end_time < 0:
                 raise ValueError(
-                    f"Job {job_type}{chunk_id} depends on unfinished backward job."
-                )
-        elif job_type == "optimize":
-            prev_job_end_time = self._job_end_times[
-                self._get_job_id("backward_w", chunk_id, stage_id, job_cnt)
-            ]
-            if prev_job_end_time < 0:
-                raise ValueError(
-                    f"Job {job_type}{chunk_id} depends on unfinished backward job."
+                    f"Job {job_type}{chunk_id}_{job_cnt} depends on unfinished backward_b{chunk_id}_{job_cnt} job."
                 )
 
-    def _get_max_stage_bubble(
-        self, stage_bubbles, approved_bubbles, stage_id=-1
+    def _get_dependency_job_end_time(
+        self, job_type, chunk_id, stage_id, job_cnt
     ):
-        max_stage_bubble = max(stage_bubbles)
+        prev_stage_id = self._get_prev_stage_id(job_type, chunk_id, stage_id)
+        if prev_stage_id < 0 or prev_stage_id >= self.num_stage:
+            return 0
+
+        prev_stage_job_id = self._get_job_id(
+            job_type, chunk_id, prev_stage_id, job_cnt
+        )
+
+        prev_job_end_time = self._job_end_times[prev_stage_job_id]
+        return prev_job_end_time
+
+    def _get_prev_job_end_time(self, job_type, chunk_id, stage_id, job_cnt):
+        if job_type == "forward":
+            prev_job_chunk_id = chunk_id - 1
+            if prev_job_chunk_id < 0:
+                return 0
+
+        elif job_type == "backward_b":
+            prev_job_chunk_id = chunk_id + 1
+            if prev_job_chunk_id >= self.num_model_chunks:
+                job_type = "forward"
+                prev_job_chunk_id = self.num_model_chunks - 1
+
+        prev_job_id = self._get_job_id(
+            job_type, prev_job_chunk_id, stage_id, job_cnt
+        )
+
+        return self._job_end_times[prev_job_id]
+
+    def _get_prev_stage_id(self, job_type, chunk_id, stage_id):
+        if job_type == "forward":
+            if chunk_id % 2:
+                return stage_id + 1
+            else:
+                return stage_id - 1
+        elif job_type in ["backward_b", "backward_w"]:
+            if chunk_id % 2:
+                return stage_id - 1
+            else:
+                return stage_id + 1
+
+    def _get_max_stage_bubble(self, stage_id=-1, approved_bubbles=None):
+        max_stage_bubble = max(self._stage_bubbles)
         if stage_id >= 0:
+            max_approved_bubble = max(approved_bubbles)
             max_stage_bubble = max(
-                max_stage_bubble, max_stage_bubble - approved_bubbles[stage_id]
+                max_stage_bubble,
+                max_approved_bubble - approved_bubbles[stage_id],
             )
         return max_stage_bubble
 
