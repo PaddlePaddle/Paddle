@@ -991,8 +991,6 @@ class Cluster:
 
     def _build_from_topo(self, topo_info, local_size):
         self.mesh_group = MeshGroup()
-
-        new_global_device_id = 0
         for mesh_key, mesh_val in topo_info.items():
             # parse mesh
             mesh_id = self._generate_mesh_id()
@@ -1016,13 +1014,10 @@ class Cluster:
                 machine.latency = int(machine_val.get("latency"))
 
                 # parse device
-                old_to_new_global_id_map = {}
+                self._num_devices_per_machine = len(machine_val.get("devices"))
                 for device_val in machine_val.get("devices"):
-                    old_to_new_global_id_map[
-                        device_val.get("global_id")
-                    ] = new_global_device_id
                     device = Device(
-                        new_global_device_id,
+                        device_val.get("global_id"),
                         device_val.get("local_id"),
                         machine,
                         mesh,
@@ -1033,15 +1028,10 @@ class Cluster:
                     device.dp_gflops = int(device_val.get("dp_gflops"))
                     device.memory = int(device_val.get("memory"))
                     machine.add_device(device)
-                    new_global_device_id += 1
 
                 for link_val in machine_val.get("links"):
-                    source_device_id = old_to_new_global_id_map[
-                        link_val.get("source_global_id")
-                    ]
-                    target_device_id = old_to_new_global_id_map[
-                        link_val.get("target_global_id")
-                    ]
+                    source_device_id = link_val.get("source_global_id")
+                    target_device_id = link_val.get("target_global_id")
                     device_link = Link(
                         source=source_device_id,
                         target=target_device_id,
@@ -1320,11 +1310,6 @@ def get_default_cluster(json_config=None, auto_config=None):
                             topo_dict[mesh_type] = []
                         mesh_idx = len(topo_dict[mesh_type])
                         global_topo_value = json.loads(value)
-                        for device in global_topo_value["devices"]:
-                            device["global_id"] += mesh_idx * 8
-                        for link in global_topo_value["links"]:
-                            link["source_global_id"] += mesh_idx * 8
-                            link["target_global_id"] += mesh_idx * 8
                         topo_dict[mesh_type].append(global_topo_value)
                     cluster._build_from_topo(topo_dict, local_size)
                     retry = False
