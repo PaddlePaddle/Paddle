@@ -105,6 +105,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     CReduceProdOp::name(),
     CScatterOp::name(),
+    PullBoxSparseOp::name(),
+    PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
     PartialRecvOp::name()};
