@@ -183,7 +183,7 @@ class Context:
                     f"LAUNCH ERROR the nnodes {nnodes} > len(ip_list)"
                 )
 
-        if self.node.ip not in ip_list:
+        if self.node.ip not in ip_list and self.node.ip != "127.0.0.1":
             raise ValueError(
                 f"LAUNCH ERROR the {self.node.ip} not in ips, please check your config --ips"
             )
