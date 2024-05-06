@@ -3250,6 +3250,23 @@
   attrs:
     data_format: data_layout
 
+- op : sparse_slice
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
+
+- op : sparse_sum
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
+
 - op : sparse_sync_batch_norm
   attrs:
     data_format: data_layout

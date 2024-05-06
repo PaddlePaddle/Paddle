@@ -305,6 +305,11 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
     std::vector<std::string> input_types;
     for (const auto& pair : inputs) {
+      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice") {
+        if (pair.first != "x") {
+          continue;
+        }
+      }
       VarDesc* var_desc = op_desc.Block()->FindVarRecursive(pair.second[0]);
       PADDLE_ENFORCE_NE(
           var_desc,
