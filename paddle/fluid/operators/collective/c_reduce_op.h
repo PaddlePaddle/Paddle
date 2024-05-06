@@ -321,14 +321,14 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
-                                                               recvbuff,
-                                                               numel,
-                                                               dtype,
-                                                               nccl_red_type,
-                                                               root,
-                                                               comm->comm(),
-                                                               stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(sendbuff,
+                                                          recvbuff,
+                                                          numel,
+                                                          dtype,
+                                                          nccl_red_type,
+                                                          root,
+                                                          comm->comm(),
+                                                          stream));
     }
 #else
     PADDLE_ENFORCE_EQ(

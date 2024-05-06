@@ -80,10 +80,8 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   std::vector<std::pair<int64_t, int64_t>> p2p_pair;
   for (size_t i = 0; i < out_process_ids.size(); ++i) {
-    p2p_pair.emplace_back(
-        std::make_pair(in_process_ids[i], out_process_ids[i]));
+    p2p_pair.emplace_back(in_process_ids[i], out_process_ids[i]);
   }
-
   int64_t cur_global_rank = GetCurGlobalRank();
   for (const auto& iter : p2p_pair) {
     int64_t src = iter.first;

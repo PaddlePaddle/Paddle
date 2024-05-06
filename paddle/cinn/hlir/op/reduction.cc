@@ -70,7 +70,22 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      if (absl::holds_alternative<std::vector<int64_t>>(
+              attrs.attr_store.at("dim"))) {
+        const auto &dim_attr =
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+        return std::vector<int>(dim_attr.begin(), dim_attr.end());
+      } else if (absl::holds_alternative<std::vector<int>>(
+                     attrs.attr_store.at("dim"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "reduce dimension's type is invalid!"));
+      }
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
@@ -352,7 +367,22 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      if (absl::holds_alternative<std::vector<int64_t>>(
+              attrs.attr_store.at("dim"))) {
+        const auto &dim_attr =
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+        return std::vector<int>(dim_attr.begin(), dim_attr.end());
+      } else if (absl::holds_alternative<std::vector<int>>(
+                     attrs.attr_store.at("dim"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "reduce dimension's type is invalid!"));
+      }
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
@@ -363,7 +393,6 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       });
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
-    // check reduce_axes
     CHECK_LE(reduce_axes.size(), ndim);
     CHECK_LT(reduce_axes.back(), ndim);
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {

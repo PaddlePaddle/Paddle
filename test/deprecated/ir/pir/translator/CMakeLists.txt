@@ -4,9 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
-# test_op_translator has been tested in test/ir/pir/translator/ dir
-list(REMOVE_ITEM TEST_INTERP_CASES test_op_translator)
-
 set(DISTRIBUTED_OP_TRANSLATOR_TEST test_all_reduce_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_barrier_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_min_translator)
@@ -30,6 +27,9 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_push_dense_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_recv_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_prune_gate_by_capacity_translator)
+
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_pull_gpups_sparse_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_pull_sparse_v2_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_random_routing_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_limit_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_global_scatter_translator)

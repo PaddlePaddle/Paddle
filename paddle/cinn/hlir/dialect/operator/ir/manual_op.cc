@@ -103,7 +103,7 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
@@ -181,7 +181,7 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
