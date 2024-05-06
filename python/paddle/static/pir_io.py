@@ -67,15 +67,11 @@ def get_pir_parameters(program):
     """
     params = []
     opts = []
-    for op in program.global_block().ops:
-        if op.name() == "builtin.parameter" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["parameter_name"]
-                params.append(name)
-        elif op.name() == "pd_op.data" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["name"]
-                opts.append(name)
+    for var in program.list_vars():
+        if var.is_parameter and var.persistable:
+            params.append(var)
+        elif var.persistable and var.get_defining_op().name() == "pd_op.data":
+            opts.append(var)
     return params, opts
 
 
@@ -308,7 +304,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=list(filter(predicate, vars_list)),
+            vars=vars_list,  # list(filter(predicate, vars_list)),
             filename=filename,
         )
     else:
@@ -321,18 +317,16 @@ def save_vars_pir(
             return None
 
         save_var_map = {}
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
+        for v in vars:
+            var = global_scope().find_var(v.name)
             # TODO(chenzhiyang): deal with RAW type and sparse
             if filename is None and save_to_memory is False:
-                save_file_path = os.path.join(
-                    os.path.normpath(dirname), var_name
-                )
+                save_file_path = os.path.join(os.path.normpath(dirname), v.name)
                 core.save_func(
-                    var.get_tensor(), var_name, save_file_path, True, False
+                    var.get_tensor(), v.name, save_file_path, True, False
                 )
             else:
-                save_var_map[var_name] = var.get_tensor()
+                save_var_map[v.name] = var.get_tensor()
 
         if filename is not None or save_to_memory:
             save_var_list = []
@@ -416,7 +410,7 @@ def load_vars_pir(
         load_vars_pir(
             dirname=dirname,
             main_program=main_program,
-            vars=list(filter(predicate, vars_list)),
+            vars=vars_list,  # list(filter(predicate, vars_list)),
             filename=filename,
         )
     else:
@@ -426,18 +420,18 @@ def load_vars_pir(
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
 
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
+        for v in vars:
+            var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
             if filename is None:
                 if dirname is None:
                     raise ValueError(
                         "The directory path and params cannot be None at the same time."
                     )
-                file_path = os.path.join(dirname, var_name)
+                file_path = os.path.join(dirname, v.name)
                 core.load_func(file_path, -1, [], False, var.get_tensor())
             else:
-                load_var_map[var_name] = var
+                load_var_map[v.name] = var
 
         if filename is not None:
             load_var_list = []
@@ -500,14 +494,14 @@ def save_pir(program, model_path, protocol=4, **configs):
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
-    def get_tensor(name):
-        t = global_scope().find_var(name).get_tensor()
+    def get_tensor(var):
+        t = global_scope().find_var(var.name).get_tensor()
         return np.array(t)
 
     # get parameters and optimizer variables
     parameter_list, optimizer_param_list = get_pir_parameters(program)
-    param_dict = {name: get_tensor(name) for name in parameter_list}
-    opt_dict = {name: get_tensor(name) for name in optimizer_param_list}
+    param_dict = {var.name: get_tensor(var) for var in parameter_list}
+    opt_dict = {var.name: get_tensor(var) for var in optimizer_param_list}
 
     # save parameters
     param_dict = _unpack_saved_dict(param_dict, protocol)
@@ -581,11 +575,11 @@ def load_pir(program, model_path, executor=None, var_list=None):
         else:
             load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
-    for name in parameter_list:
+    for var in parameter_list:
         assert (
-            name in load_dict
-        ), f"Can not find [{name}] in model file [{parameter_file_name}]"
-        set_var(name, load_dict[name])
+            var.name in load_dict
+        ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+        set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
@@ -594,17 +588,17 @@ def load_pir(program, model_path, executor=None, var_list=None):
         ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
-            paddle.base.core._create_loaded_parameter(
+            paddle.base.libpaddle.pir.create_loaded_parameter(
                 optimizer_param_list, global_scope(), executor._default_executor
             )
 
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')
-        for name in optimizer_param_list:
+        for var in optimizer_param_list:
             assert (
-                name in load_dict
-            ), f"Can not find [{name}] in model file [{opt_file_name}]"
-            set_var(name, load_dict[name])
+                var.name in load_dict
+            ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+            set_var(var.name, load_dict[var.name])
 
 
 @static_only
