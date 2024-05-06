@@ -3236,3 +3236,13 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: stft
+  args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
+  output: Tensor (out)
+  infer_meta:
+    func: StftInferMeta
+  kernel:
+    func: stft
+    data_type: x
+  backward: stft_grad
