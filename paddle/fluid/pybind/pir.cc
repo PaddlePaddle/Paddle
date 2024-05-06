@@ -540,6 +540,12 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+      .def("set_execution_stream",
+           [](Operation &self, const std::string &exe_stream) {
+             self.set_attribute("execution_stream",
+                                pir::StrAttribute::get(
+                                    pir::IrContext::Instance(), exe_stream));
+           })
       .def("set_scheduling_priority",
            [](Operation &self, int64_t priority) {
              self.set_attribute("scheduling_priority",
