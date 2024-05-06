@@ -87,7 +87,9 @@ def train_mlp(
 
     if sharding_stage == 1:
         optimizer = fleet.distributed_optimizer(optimizer)
-        optimizer._set_broadcast_overlap(broadcast_overlap=broadcast_overlap, model)
+        optimizer._set_broadcast_overlap(
+            broadcast_overlap=broadcast_overlap, model=model
+        )
 
     if sharding_stage == 1:
         model.to(device="gpu")
@@ -208,12 +210,17 @@ def test_stage1_bf16():
         compare_state_dict(
             model_param_dict_o1, model_param_dict_o2, optimizer_state_dict_o2
         )
+
     def _compare_bf16_broadcast_overlap(acc_steps=1):
         mlp1 = MLP()
         mlp2 = MLP()
         mlp1.set_state_dict(state_dict)
         mlp2.set_state_dict(state_dict)
-        o1_losses_overlap, model_param_dict_o1_overlap, optimizer_state_dict_o1_overlap = train_mlp(
+        (
+            o1_losses_overlap,
+            model_param_dict_o1_overlap,
+            optimizer_state_dict_o1_overlap,
+        ) = train_mlp(
             mlp1,
             sharding_stage=1,
             train_loader=train_loader,
@@ -222,7 +229,11 @@ def test_stage1_bf16():
             broadcast_overlap=True,
         )
 
-        o1_losses_no_overlap, model_param_dict_o1_no_overlap, optimizer_state_dict_o1_no_overlap = train_mlp(
+        (
+            o1_losses_no_overlap,
+            model_param_dict_o1_no_overlap,
+            optimizer_state_dict_o1_no_overlap,
+        ) = train_mlp(
             mlp1,
             sharding_stage=1,
             train_loader=train_loader,
@@ -232,10 +243,15 @@ def test_stage1_bf16():
         )
 
         np.testing.assert_array_equal(o1_losses_overlap, o1_losses_no_overlap)
-        np.testing.assert_array_equal(model_param_dict_o1_overlap, model_param_dict_o1_no_overlap)
-       
+        np.testing.assert_array_equal(
+            model_param_dict_o1_overlap, model_param_dict_o1_no_overlap
+        )
 
-        o2_losses_overlap, model_param_dict_o2_overlap, optimizer_state_dict_o2_overlap = train_mlp(
+        (
+            o2_losses_overlap,
+            model_param_dict_o2_overlap,
+            optimizer_state_dict_o2_overlap,
+        ) = train_mlp(
             mlp2,
             sharding_stage=1,
             train_loader=train_loader,
@@ -245,7 +261,11 @@ def test_stage1_bf16():
             broadcast_overlap=True,
         )
 
-        o2_losses_no_overlap, model_param_dict_o2_no_overlap, optimizer_state_dict_o2_no_overlap = train_mlp(
+        (
+            o2_losses_no_overlap,
+            model_param_dict_o2_no_overlap,
+            optimizer_state_dict_o2_no_overlap,
+        ) = train_mlp(
             mlp2,
             sharding_stage=1,
             train_loader=train_loader,
@@ -256,10 +276,10 @@ def test_stage1_bf16():
         )
 
         np.testing.assert_array_equal(o2_losses_overlap, o2_losses_no_overlap)
-        np.testing.assert_array_equal(model_param_dict_o2_overlap, model_param_dict_o2_no_overlap)
+        np.testing.assert_array_equal(
+            model_param_dict_o2_overlap, model_param_dict_o2_no_overlap
+        )
 
-    
-        
     # no gradient accumulation
     _compare_bf16_o1_vs_o2(acc_steps=1)
     # gradient accumulation
