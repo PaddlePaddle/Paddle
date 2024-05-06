@@ -23,6 +23,29 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/type_name.h"
 
+#define OVERLOAD_PREFER_LAYOUT(op)                          \
+  template <>                                               \
+  common::DataLayout PreferLayoutImpl<op>(pir::Operation*); \
+  extern template common::DataLayout PreferLayoutImpl<op>(pir::Operation*);
+
+#define OVERLOAD_REWRITE_BY_LAYOUT(op)                               \
+  template <>                                                        \
+  void RewriteByLayoutImpl<op>(pir::Operation*, common::DataLayout); \
+  extern template void RewriteByLayoutImpl<op>(pir::Operation*,      \
+                                               common::DataLayout);
+
+#define OVERLOAD_RELEVANT_INPUTS(op)                                   \
+  template <>                                                          \
+  std::vector<pir::Value> RelevantInputsImpl<op>(pir::Operation * op); \
+  extern template std::vector<pir::Value> RelevantInputsImpl<op>(      \
+      pir::Operation * op);
+
+#define OVERLOAD_RELEVANT_OUTPUTS(op)                                   \
+  template <>                                                           \
+  std::vector<pir::Value> RelevantOutputsImpl<op>(pir::Operation * op); \
+  extern template std::vector<pir::Value> RelevantOutputsImpl<op>(      \
+      pir::Operation * op);
+
 namespace paddle {
 namespace dialect {
 
@@ -70,64 +93,47 @@ std::vector<pir::Value> RelevantOutputsImpl(pir::Operation* op) {
 }
 
 class FusedConv2dAddActOp;
-template <>
-common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation*);
-extern template common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(
-    pir::Operation*);
-template <>
-common::DataLayout CurrentLayoutImpl<FusedConv2dAddActOp>(pir::Operation*);
-extern template common::DataLayout CurrentLayoutImpl<FusedConv2dAddActOp>(
-    pir::Operation*);
-template <>
-void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation*,
-                                              common::DataLayout);
-extern template void RewriteByLayoutImpl<FusedConv2dAddActOp>(
-    pir::Operation*, common::DataLayout);
+OVERLOAD_PREFER_LAYOUT(FusedConv2dAddActOp);
+OVERLOAD_REWRITE_BY_LAYOUT(FusedConv2dAddActOp);
 
 class GroupNormOp;
-template <>
-void RewriteByLayoutImpl<GroupNormOp>(pir::Operation* op,
-                                      common::DataLayout new_layout);
-extern template void RewriteByLayoutImpl<GroupNormOp>(
-    pir::Operation* op, common::DataLayout new_layout);
-template <>
-std::vector<pir::Value> RelevantInputsImpl<GroupNormOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantInputsImpl<GroupNormOp>(
-    pir::Operation* op);
-template <>
-std::vector<pir::Value> RelevantOutputsImpl<GroupNormOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantOutputsImpl<GroupNormOp>(
-    pir::Operation* op);
+OVERLOAD_REWRITE_BY_LAYOUT(GroupNormOp);
+OVERLOAD_RELEVANT_INPUTS(GroupNormOp);
+OVERLOAD_RELEVANT_OUTPUTS(GroupNormOp);
 
 class ReshapeOp;
-template <>
-void RewriteByLayoutImpl<ReshapeOp>(pir::Operation* op,
-                                    common::DataLayout new_layout);
-extern template void RewriteByLayoutImpl<ReshapeOp>(
-    pir::Operation* op, common::DataLayout new_layout);
-template <>
-std::vector<pir::Value> RelevantInputsImpl<ReshapeOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantInputsImpl<ReshapeOp>(
-    pir::Operation* op);
-template <>
-std::vector<pir::Value> RelevantOutputsImpl<ReshapeOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantOutputsImpl<ReshapeOp>(
-    pir::Operation* op);
+OVERLOAD_REWRITE_BY_LAYOUT(ReshapeOp);
+OVERLOAD_RELEVANT_INPUTS(ReshapeOp);
+OVERLOAD_RELEVANT_OUTPUTS(ReshapeOp);
 
 class SqueezeOp;
-template <>
-void RewriteByLayoutImpl<SqueezeOp>(pir::Operation* op,
-                                    common::DataLayout new_layout);
-extern template void RewriteByLayoutImpl<SqueezeOp>(
-    pir::Operation* op, common::DataLayout new_layout);
-template <>
-std::vector<pir::Value> RelevantInputsImpl<SqueezeOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantInputsImpl<SqueezeOp>(
-    pir::Operation* op);
-template <>
-std::vector<pir::Value> RelevantOutputsImpl<SqueezeOp>(pir::Operation* op);
-extern template std::vector<pir::Value> RelevantOutputsImpl<SqueezeOp>(
-    pir::Operation* op);
+OVERLOAD_REWRITE_BY_LAYOUT(SqueezeOp);
+OVERLOAD_RELEVANT_INPUTS(SqueezeOp);
+OVERLOAD_RELEVANT_OUTPUTS(SqueezeOp);
 
+class SiluOp;
+OVERLOAD_REWRITE_BY_LAYOUT(SiluOp);
+
+class AddOp;
+OVERLOAD_REWRITE_BY_LAYOUT(AddOp);
+
+class CastOp;
+OVERLOAD_REWRITE_BY_LAYOUT(CastOp);
+
+class ConcatOp;
+OVERLOAD_REWRITE_BY_LAYOUT(ConcatOp);
+OVERLOAD_RELEVANT_INPUTS(ConcatOp);
+
+}  // namespace dialect
+}  // namespace paddle
+
+namespace pir {
+class CombineOp;
+}
+
+namespace paddle {
+namespace dialect {
+
+OVERLOAD_REWRITE_BY_LAYOUT(::pir::CombineOp);
 }  // namespace dialect
 }  // namespace paddle

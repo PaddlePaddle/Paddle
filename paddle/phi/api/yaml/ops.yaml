@@ -598,7 +598,7 @@
     func : concat
     data_type : x
   backward : concat_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : conj
   args : (Tensor x)
@@ -2693,6 +2693,7 @@
   kernel :
     func : silu
   backward : silu_grad
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : sin
   args : (Tensor x)

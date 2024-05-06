@@ -25,7 +25,7 @@
     data_type: x
   inplace : (x -> out)
   backward : add_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 # this add_n is only for ops_api_gen.py and onednn
 - op : add_n
@@ -378,7 +378,7 @@
     data_type : x
   inplace: (x -> out)
   backward : cast_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")

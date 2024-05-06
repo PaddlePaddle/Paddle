@@ -313,17 +313,24 @@ struct FlowGraph {
 
       std::cout << "judging node: " << node << std::endl;
 
+      auto judge_dense_tensor_type = [](paddle::dialect::DenseTensorType t) {
+        if (t.dims().size() == 4) {
+          return false;
+        }
+        return true;
+      };
+
       bool should_interrupt = std::visit(
           overloaded{
               [&](const pir::Operation* op) {
-                // these conditions may be too strict, we can optimize later
+                // TODO(lyk): These conditions may be too loose,
+                // we should make a white list here.
                 if (op->name() == "pd_op.reshape" ||
                     op->name() == "pd_op.shape" ||
                     op->name() == "pd_op.transpose" ||
                     op->name() == "pd_op.unsqueeze" ||
                     op->name() == "pd_op.squeeze" ||
-                    op->name() == "pd_op.flatten" ||
-                    op->name() == "builtin.combine") {
+                    op->name() == "pd_op.flatten") {
                   return true;
                 }
                 return false;
@@ -338,12 +345,13 @@ struct FlowGraph {
                   std::cout << "judging var: " << v.defining_op() << " "
                             << v.type() << " " << vdt.dims() << " "
                             << (vdt.dims().size() == 4) << std::endl;
-                  const auto& dims = vdt.dims();
-                  if (dims.size() == 4) {  // this doesn't necessiarily mean the
-                                           // var has a NCHW/NHWC layout, but we
-                                           // combine this with the op type
-                    return false;
-                  }
+                  return judge_dense_tensor_type(vdt);
+                } else if (auto vdt = vt.dyn_cast<pir::VectorType>()) {
+                  if (vdt.size() == 0) return false;
+                  auto vt_elem = vdt[0];
+                  if (auto vdt_elem =
+                          vt_elem.dyn_cast<paddle::dialect::DenseTensorType>())
+                    return judge_dense_tensor_type(vdt_elem);
                 }
                 return true;
               },
@@ -643,8 +651,75 @@ class TransferLayoutPass : public pir::Pass {
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
-      // if (is_node_layout_visited.count(node)) continue;
-      // is_node_layout_visited.insert(node);
+
+      // not in cut set and its layout should not be changed
+      if (src_set.find(node) == src_set.end()) {
+        // process layout transformation
+        if (std::get_if<const pir::Operation*>(&(node.data)) == nullptr)
+          continue;
+        auto* op = const_cast<pir::Operation*>(
+            std::get<const pir::Operation*>(node.data));
+        std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
+        auto layout_transformation_iface =
+            op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+        if (!layout_transformation_iface) continue;
+        layout_transformation_iface.RewriteByLayout(op,
+                                                    common::DataLayout::NHWC);
+
+        // if (op->name() == "pd_op.fused_conv2d_add_act") {
+        //   op->set_attribute(
+        //       "data_format",
+        //       pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
+        //   // auto concrete_op =
+        //   // op->dyn_cast<paddle::dialect::FusedConv2dAddActOp>();
+
+        //   std::vector<pir::Type> new_outputs =
+        //       paddle::dialect::FusedConv2dAddActOp::InferMeta(
+        //           op->operands_source(),
+        //           const_cast<pir::AttributeMap*>(&op->attributes()));
+        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
+        //     op->result(i).set_type(new_outputs[i]);
+        //   }
+        // } else if (op->name() == "pd_op.group_norm") {
+        //   op->set_attribute(
+        //       "data_format",
+        //       pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
+        //   auto new_outputs = paddle::dialect::GroupNormOp::InferMeta(
+        //       op->operands_source(),
+        //       const_cast<pir::AttributeMap*>(&op->attributes()));
+        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
+        //     op->result(i).set_type(new_outputs[i]);
+        //   }
+        // } else if (op->name() == "pd_op.silu") {
+        //   auto new_outputs = paddle::dialect::SiluOp::InferMeta(
+        //       op->operands_source(),
+        //       const_cast<pir::AttributeMap*>(&op->attributes()));
+        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
+        //     op->result(i).set_type(new_outputs[i]);
+        //   }
+        // } else if (op->name() == "pd_op.add") {
+        //   auto new_outputs = paddle::dialect::AddOp::InferMeta(
+        //       op->operands_source(),
+        //       const_cast<pir::AttributeMap*>(&op->attributes()));
+        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
+        //     op->result(i).set_type(new_outputs[i]);
+        //   }
+        // } else if (op->name() == "pd_op.cast") {
+        //   auto new_outputs = paddle::dialect::CastOp::InferMeta(
+        //       op->operands_source(),
+        //       const_cast<pir::AttributeMap*>(&op->attributes()));
+        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
+        //     op->result(i).set_type(new_outputs[i]);
+        //   }
+        // } else if (op->name() == "builtin.combine") {
+        //   auto concrete_op = op->dyn_cast<pir::CombineOp>();
+
+        // } else {
+        //   PADDLE_THROW(common::errors::Unimplemented(
+        //       "Op %s should have a specialized RewriteByLayout function",
+        //       op->name()));
+        // }
+      }
 
       std::cout << "[Rewrite] for " << node << std::endl;
       // if node is the src node of a cut edge
@@ -710,70 +785,6 @@ class TransferLayoutPass : public pir::Pass {
                  (arg.owner() != transpose_op.operation());
         };
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
-      }
-
-      // not in cut set and its layout should not be changed
-      if (src_set.find(node) != src_set.end()) continue;
-
-      // process layout transformation
-      if (std::get_if<const pir::Operation*>(&(node.data)) == nullptr) continue;
-      auto* op = const_cast<pir::Operation*>(
-          std::get<const pir::Operation*>(node.data));
-      //  auto layout_transformation_iface =
-      //  op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-      //  if(!layout_transformation_iface) continue;
-      //  layout_transformation_iface->RewriteByLayout(op,
-      //  common::DataLayout::NHWC);
-      std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
-      if (op->name() == "pd_op.fused_conv2d_add_act") {
-        op->set_attribute(
-            "data_format",
-            pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
-        // auto concrete_op =
-        // op->dyn_cast<paddle::dialect::FusedConv2dAddActOp>();
-
-        std::vector<pir::Type> new_outputs =
-            paddle::dialect::FusedConv2dAddActOp::InferMeta(
-                op->operands_source(),
-                const_cast<pir::AttributeMap*>(&op->attributes()));
-        for (size_t i = 0; i < new_outputs.size(); ++i) {
-          op->result(i).set_type(new_outputs[i]);
-        }
-      } else if (op->name() == "pd_op.group_norm") {
-        op->set_attribute(
-            "data_format",
-            pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
-        auto new_outputs = paddle::dialect::GroupNormOp::InferMeta(
-            op->operands_source(),
-            const_cast<pir::AttributeMap*>(&op->attributes()));
-        for (size_t i = 0; i < new_outputs.size(); ++i) {
-          op->result(i).set_type(new_outputs[i]);
-        }
-      } else if (op->name() == "pd_op.silu") {
-        auto new_outputs = paddle::dialect::SiluOp::InferMeta(
-            op->operands_source(),
-            const_cast<pir::AttributeMap*>(&op->attributes()));
-        for (size_t i = 0; i < new_outputs.size(); ++i) {
-          op->result(i).set_type(new_outputs[i]);
-        }
-      } else if (op->name() == "pd_op.add") {
-        auto new_outputs = paddle::dialect::AddOp::InferMeta(
-            op->operands_source(),
-            const_cast<pir::AttributeMap*>(&op->attributes()));
-        for (size_t i = 0; i < new_outputs.size(); ++i) {
-          op->result(i).set_type(new_outputs[i]);
-        }
-      } else if (op->name() == "pd_op.cast") {
-        auto new_outputs = paddle::dialect::CastOp::InferMeta(
-            op->operands_source(),
-            const_cast<pir::AttributeMap*>(&op->attributes()));
-        for (size_t i = 0; i < new_outputs.size(); ++i) {
-          op->result(i).set_type(new_outputs[i]);
-        }
-      } else {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Op %s should have a specialized RewriteByLayout function",
-            op->name()));
       }
     }
 
