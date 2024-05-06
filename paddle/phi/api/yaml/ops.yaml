@@ -776,6 +776,15 @@
     data_type : input
   backward : depthwise_conv2d_grad
 
+- op : dequantize_abs_max
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : DequantizeAbsMaxInferMeta
+  kernel :
+    func : dequantize_abs_max
+    data_type : x
+
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -1998,6 +2007,7 @@
     data_type : query
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : merge_selected_rows
   args : (Tensor x)

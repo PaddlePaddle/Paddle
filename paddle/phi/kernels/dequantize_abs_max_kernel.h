@@ -14,24 +14,16 @@
 
 #pragma once
 
-#include <string>
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pir {
+namespace phi {
 
-class Program;
+template <typename T, typename Context>
+void DequantizeAbsMaxKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& scale,
+                            float max_range,
+                            DenseTensor* out);
 
-}
-
-namespace cinn::dialect::ir {
-
-class PirToPyCodeConverter {
- public:
-  PirToPyCodeConverter() = default;
-  PirToPyCodeConverter(const PirToPyCodeConverter&) = delete;
-  PirToPyCodeConverter(PirToPyCodeConverter&&) = delete;
-
-  void SaveIfFlagEnabled(const std::string& tag,
-                         const pir::Program& program) const;
-};
-
-}  // namespace cinn::dialect::ir
+}  // namespace phi
