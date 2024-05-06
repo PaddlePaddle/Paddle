@@ -394,7 +394,7 @@ class SliceArrayOp
   using Op::Op;
   static const char *name() { return "pd_op.slice_array"; }
   static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 2;
+  static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
 
   void VerifySig();
