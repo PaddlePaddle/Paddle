@@ -113,7 +113,7 @@ void fp8_fp8_bf16_gemm(
       sm_version,
       0.01,  // for leaky_relu
       bias_data,
-      &bias_dims,
+      bias_dims,
       gemm_config
   };
   func fp8_gemm_func = (func)(dlsym(dlhandler, "fp8_fp8_gemm_scale_bias_act"));

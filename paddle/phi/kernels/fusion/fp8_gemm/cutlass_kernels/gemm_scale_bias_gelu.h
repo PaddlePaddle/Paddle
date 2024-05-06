@@ -23,7 +23,7 @@ namespace fusion{
 namespace cutlass_internal{
 
 template <typename InputType, typename OutType>
-bool dispatch_gemm_scale(GemmEpilogueAllParams params){
+bool dispatch_gemm_scale_bias_gelu(GemmEpilogueAllParams params){
 
 using ElementInputA =
     typename std::conditional_t<std::is_same_v<InputType, phi::dtype::float8_e4m3fn>,
@@ -66,7 +66,7 @@ using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 32>;  // <- MMA Op tile M = 1
 // This code section describes how threadblocks are scheduled on GPU
 using SwizzleThreadBlock = cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>;  // <- ??
 
-using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
+using EpilogueOp = cutlass::epilogue::thread::LinearCombinationGELU<
     ElementOutput,                                     // <- data type of output matrix
     128 / cutlass::sizeof_bits<ElementOutput>::value,  // <- the number of elements per vectorized
                                                        // memory access. For a byte, it's 16
@@ -74,7 +74,7 @@ using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
                                                        // math instructions in the epilogue too
     ElementAccumulator,                                // <- data type of accumulator
     ElementComputeEpilogue,
-    cutlass::epilogue::thread::ScaleType::OnlyAlphaScaling>;  // <- data type for alpha/beta in linear combination function
+    cutlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- data type for alpha/beta in linear combination function
 
 // Number of pipelines you want to use
 constexpr int NumStages = 3;
@@ -113,7 +113,7 @@ using Gemm = cutlass::gemm::device::GemmUniversal<ElementInputA,
       epilogue_op,
       reinterpret_cast<ElementInputA*>(const_cast<void*>(params.A)),
       reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B)),
-      nullptr,
+      reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias)),
       reinterpret_cast<ElementOutput*>(params.D),
       params.lda * params.M,
       params.ldb * params.N,

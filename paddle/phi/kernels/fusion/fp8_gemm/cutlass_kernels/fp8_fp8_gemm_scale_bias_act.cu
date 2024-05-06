@@ -17,7 +17,9 @@
 
 #include "gemm_scale.h"
 #include "gemm_scale_bias.h"
-#include "gemm_scale_bias_act.h"
+#include "gemm_scale_bias_relu.h"
+#include "gemm_scale_bias_gelu.h"
+#include "gemm_scale_gelu.h"
 
 namespace phi{
 namespace fusion{
@@ -26,16 +28,24 @@ namespace cutlass_internal{
 std::map<std::string,int> config_map{
   {"e4m3_bf16_identity",0},
   {"e4m3_bf16_bias_identity",1},
-  {"e4m3_bf16_bias_gelu",2},
-  {"e4m3_fp16_identity",3},
-  {"e4m3_fp16_bias_identity",4},
-  {"e4m3_fp16_bias_gelu",5},
-  {"e5m2_bf16_identity",6},
-  {"e5m2_bf16_bias_identity",7},
-  {"e5m2_bf16_bias_gelu",8},
-  {"e5m2_fp16_identity",9},
-  {"e5m2_fp16_bias_identity",10},
-  {"e5m2_fp16_bias_gelu",11},
+  {"e4m3_bf16_bias_relu",2},
+  {"e4m3_bf16_bias_gelu",3},
+  {"e4m3_bf16_gelu",4},
+  {"e4m3_fp16_identity",5},
+  {"e4m3_fp16_bias_identity",6},
+  {"e4m3_fp16_bias_relu",7},
+  {"e4m3_fp16_bias_gelu",8},
+  {"e4m3_fp16_gelu",9},
+  {"e5m2_bf16_identity",10},
+  {"e5m2_bf16_bias_identity",11},
+  {"e5m2_bf16_bias_relu",12},
+  {"e5m2_bf16_bias_gelu",13},
+  {"e5m2_bf16_gelu",14},
+  {"e5m2_fp16_identity",15},
+  {"e5m2_fp16_bias_identity",16},
+  {"e5m2_fp16_bias_relu",17},
+  {"e5m2_fp16_bias_gelu",18},
+  {"e5m2_fp16_gelu",19},
 };
 
 
@@ -52,34 +62,58 @@ std::cout <<"config_map[&params.gemm_config()] :"  << config_map[params.gemm_con
         dispatch_gemm_scale_bias<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
         break;
       case 2:
-        dispatch_gemm_scale_bias_act<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
+        dispatch_gemm_scale_bias_relu<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
         break;
       case 3:
-        dispatch_gemm_scale<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
+        dispatch_gemm_scale_bias_gelu<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
         break;
       case 4:
-        dispatch_gemm_scale_bias<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
+        dispatch_gemm_scale_gelu<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(params);
         break;
       case 5:
-        dispatch_gemm_scale_bias_act<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
+        dispatch_gemm_scale<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
         break;
       case 6:
-        dispatch_gemm_scale<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        dispatch_gemm_scale_bias<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
         break;
       case 7:
-        dispatch_gemm_scale_bias<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        dispatch_gemm_scale_bias_relu<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
         break;
       case 8:
-        dispatch_gemm_scale_bias_act<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        dispatch_gemm_scale_bias_gelu<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
         break;
       case 9:
-        dispatch_gemm_scale<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        dispatch_gemm_scale_gelu<phi::dtype::float8_e4m3fn, phi::dtype::float16>(params);
         break;
       case 10:
-        dispatch_gemm_scale_bias<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        dispatch_gemm_scale<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
         break;
       case 11:
-        dispatch_gemm_scale_bias_act<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        dispatch_gemm_scale_bias<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        break;
+      case 12:
+        dispatch_gemm_scale_bias_relu<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        break;
+      case 13:
+        dispatch_gemm_scale_bias_gelu<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        break;
+      case 14:
+        dispatch_gemm_scale_gelu<phi::dtype::float8_e5m2, phi::dtype::bfloat16>(params);
+        break;
+      case 15:
+        dispatch_gemm_scale<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        break;
+      case 16:
+        dispatch_gemm_scale_bias<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        break;
+      case 17:
+        dispatch_gemm_scale_bias_relu<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        break;
+      case 18:
+        dispatch_gemm_scale_bias_gelu<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
+        break;
+      case 19:
+        dispatch_gemm_scale_gelu<phi::dtype::float8_e5m2, phi::dtype::float16>(params);
         break;
       default:
           throw std::runtime_error(

@@ -43,7 +43,7 @@ typedef struct {
   int sm_version = 80;
   float leaky_alpha = 1.0;
   const void *bias;
-  std::vector<int64_t>* bias_dims;
+  std::vector<int64_t> &bias_dims;
   std::string& gemm_config;
 } GemmEpilogueAllParams;
 

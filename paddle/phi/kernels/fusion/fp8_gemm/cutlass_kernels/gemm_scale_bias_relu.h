@@ -23,7 +23,7 @@ namespace fusion{
 namespace cutlass_internal{
 
 template <typename InputType, typename OutType>
-bool dispatch_gemm_scale_bias_act(GemmEpilogueAllParams params){
+bool dispatch_gemm_scale_bias_relu(GemmEpilogueAllParams params){
 
 using ElementInputA =
     typename std::conditional_t<std::is_same_v<InputType, phi::dtype::float8_e4m3fn>,
@@ -66,7 +66,7 @@ using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 32>;  // <- MMA Op tile M = 1
 // This code section describes how threadblocks are scheduled on GPU
 using SwizzleThreadBlock = cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>;  // <- ??
 
-using EpilogueOp = cutlass::epilogue::thread::LinearCombinationGELU<
+using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
     ElementOutput,                                     // <- data type of output matrix
     128 / cutlass::sizeof_bits<ElementOutput>::value,  // <- the number of elements per vectorized
                                                        // memory access. For a byte, it's 16
