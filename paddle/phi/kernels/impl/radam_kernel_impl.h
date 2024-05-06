@@ -89,15 +89,13 @@ void RAdamKernel(const Context& dev_ctx,
 
   Eigen::DSizes<int, 1> p_dsize(param_out->numel());
   auto eigen_moment1_hat =
-      eigen_moment1_out /
-      (static_cast<T>(1) - eigen_beta1_pow_out.broadcast(p_dsize));
+      eigen_moment1_out / (static_cast<T>(1) - eigen_beta1_pow_out);
 
   T rho_t = rho_inf - static_cast<T>(2) * eigen_rho_out.data()[0];
 
   if (rho_t > static_cast<T>(5)) {
-    auto l_t =
-        (static_cast<T>(1) - eigen_beta2_pow_out.broadcast(p_dsize)).sqrt() /
-        (eigen_moment2_out.sqrt() + epsilon_);
+    auto l_t = (static_cast<T>(1) - eigen_beta2_pow_out).sqrt() /
+               (eigen_moment2_out.sqrt() + epsilon_);
     auto r_t = std::sqrt(
         ((rho_t - static_cast<T>(4)) * (rho_t - static_cast<T>(2)) * rho_inf) /
         ((rho_inf - static_cast<T>(4)) * (rho_inf - static_cast<T>(2)) *

@@ -194,24 +194,18 @@ class NAdam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=1.0,
-            shape=[1],
-            device='cpu',
         )
         self._add_accumulator(
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
             fill_value=1.0,
-            shape=[1],
-            device='cpu',
         )
         self._add_accumulator(
             name=self._mu_product_acc_str,
             param=p,
             dtype=acc_dtype,
             fill_value=1.0,
-            shape=[1],
-            device='cpu',
         )
 
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)

@@ -99,14 +99,12 @@ void NAdamKernel(const Context& dev_ctx,
                       (static_cast<T>(1) - beta2_) * eigen_grad * eigen_grad;
 
   Eigen::DSizes<int, 1> p_dsize(param_out->numel());
-  auto eigen_moment1_hat =
-      eigen_mu_t_1.broadcast(p_dsize) * eigen_moment1_out /
-          (static_cast<T>(1) - eigen_mu_product_t_1.broadcast(p_dsize)) +
-      (static_cast<T>(1) - eigen_mu_t.broadcast(p_dsize)) * eigen_grad /
-          (static_cast<T>(1) - eigen_mu_product_out.broadcast(p_dsize));
+  auto eigen_moment1_hat = eigen_mu_t_1 * eigen_moment1_out /
+                               (static_cast<T>(1) - eigen_mu_product_t_1) +
+                           (static_cast<T>(1) - eigen_mu_t) * eigen_grad /
+                               (static_cast<T>(1) - eigen_mu_product_out);
   auto eigen_moment2_hat =
-      eigen_moment2_out /
-      (static_cast<T>(1) - eigen_beta2_pow_out.broadcast(p_dsize));
+      eigen_moment2_out / (static_cast<T>(1) - eigen_beta2_pow_out);
 
   eigen_param_out = eigen_param - eigen_lr.broadcast(p_dsize) *
                                       eigen_moment1_hat /

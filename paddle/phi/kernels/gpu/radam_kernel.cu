@@ -26,18 +26,21 @@ template <typename T, typename MT>
 __global__ void RAdamGPUKernel(const T* param,
                                const T* grad,
                                const MT* learning_rate,
+                               const MT* beta1_pow,
+                               const MT* beta2_pow,
+                               const MT* rho,
                                const MT* moment1,
                                const MT* moment2,
                                const MT* master_param,
                                MT beta1,
                                MT beta2,
                                MT epsilon,
-                               MT beta1_pow_scalar,
-                               MT beta2_pow_scalar,
-                               MT rho_scalar,
                                MT rho_inf,
                                int num,
                                T* param_out,
+                               MT* beta1_pow_out,
+                               MT* beta2_pow_out,
+                               MT* rho_out,
                                MT* moment1_out,
                                MT* moment2_out,
                                MT* master_param_out) {
@@ -50,9 +53,18 @@ __global__ void RAdamGPUKernel(const T* param,
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
     MT d_grad = static_cast<MT>(grad[index]);
+    MT d_beta1_pow = static_cast<MT>(beta1_pow[index]);
+    MT d_beta2_pow = static_cast<MT>(beta2_pow[index]);
+    MT d_rho = static_cast<MT>(rho[index]);
     MT d_moment1 = static_cast<MT>(moment1[index]);
     MT d_moment2 = static_cast<MT>(moment2[index]);
+
     // compute
+    MT beta1_pow_scalar = d_beta1_pow * beta1;
+    MT beta2_pow_scalar = d_beta2_pow * beta2;
+    MT rho_scalar = (d_rho * (beta2 - beta2_pow_scalar) + beta2_pow_scalar) /
+                    (static_cast<MT>(1) - beta2_pow_scalar);
+
     MT m1_out = beta1 * d_moment1 + (static_cast<MT>(1) - beta1) * d_grad;
     MT m2_out =
         beta2 * d_moment2 + (static_cast<MT>(1) - beta2) * d_grad * d_grad;
@@ -77,6 +89,9 @@ __global__ void RAdamGPUKernel(const T* param,
 
     // store
     param_out[index] = static_cast<T>(p_out);
+    beta1_pow_out[index] = static_cast<T>(beta1_pow_scalar);
+    beta2_pow_out[index] = static_cast<T>(beta2_pow_scalar);
+    rho_out[index] = static_cast<T>(rho_scalar);
     moment1_out[index] = static_cast<MT>(m1_out);
     moment2_out[index] = static_cast<MT>(m2_out);
 
@@ -111,11 +126,9 @@ void RAdamKernel(const Context& dev_ctx,
   using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
 
-  MPDType* beta1_pow_out_data =
-      dev_ctx.template HostAlloc<MPDType>(beta1_pow_out);
-  MPDType* beta2_pow_out_data =
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out);
-  MPDType* rho_out_data = dev_ctx.template HostAlloc<MPDType>(rho_out);
+  MPDType* beta1_pow_out_data = dev_ctx.template Alloc<MPDType>(beta1_pow_out);
+  MPDType* beta2_pow_out_data = dev_ctx.template Alloc<MPDType>(beta2_pow_out);
+  MPDType* rho_out_data = dev_ctx.template Alloc<MPDType>(rho_out);
 
   MPDType* moment1_out_data = dev_ctx.template Alloc<MPDType>(moment1_out);
   MPDType* moment2_out_data = dev_ctx.template Alloc<MPDType>(moment2_out);
@@ -134,25 +147,6 @@ void RAdamKernel(const Context& dev_ctx,
       static_cast<MPDType>(2) / (static_cast<MPDType>(1) - beta2_) -
       static_cast<MPDType>(1);
 
-  // make cpu accumulator to tensor
-  DenseTensor beta1_pow_data;
-  phi::Copy(dev_ctx, beta1_pow, phi::CPUPlace(), false, &beta1_pow_data);
-  MPDType beta1_pow_scalar = beta1_pow_data.data<MPDType>()[0] * beta1_;
-  beta1_pow_out_data[0] = beta1_pow_scalar;
-
-  DenseTensor beta2_pow_data;
-  phi::Copy(dev_ctx, beta2_pow, phi::CPUPlace(), false, &beta2_pow_data);
-  MPDType beta2_pow_scalar = beta2_pow_data.data<MPDType>()[0] * beta2_;
-  beta2_pow_out_data[0] = beta2_pow_scalar;
-
-  DenseTensor rho_data;
-  phi::Copy(dev_ctx, rho, phi::CPUPlace(), false, &rho_data);
-  MPDType rho_scalar =
-      (rho_data.data<MPDType>()[0] * (beta2_ - beta2_pow_scalar) +
-       beta2_pow_scalar) /
-      (static_cast<MPDType>(1) - beta2_pow_scalar);
-  rho_out_data[0] = rho_scalar;
-
   int numel = param.numel();
   int block = 512;
   int grid = (param.numel() + block - 1) / block;
@@ -162,18 +156,21 @@ void RAdamKernel(const Context& dev_ctx,
       <<<block, grid, 0, stream>>>(param.data<T>(),
                                    grad.data<T>(),
                                    learning_rate.data<MPDType>(),
+                                   beta1_pow.data<MPDType>(),
+                                   beta2_pow.data<MPDType>(),
+                                   rho.data<MPDType>(),
                                    moment1.data<MPDType>(),
                                    moment2.data<MPDType>(),
                                    master_in_data,
                                    beta1_,
                                    beta2_,
                                    epsilon_,
-                                   beta1_pow_scalar,
-                                   beta2_pow_scalar,
-                                   rho_scalar,
                                    rho_inf,
                                    numel,
                                    param_out_data,
+                                   beta1_pow_out_data,
+                                   beta2_pow_out_data,
+                                   rho_out_data,
                                    moment1_out_data,
                                    moment2_out_data,
                                    master_out_data);

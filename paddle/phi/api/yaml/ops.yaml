@@ -2133,6 +2133,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (momentum_decay_pow -> momentum_decay_pow_out), (beta2_pow -> beta2_pow_out), (mu_product -> mu_product_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : nanmedian
   args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
@@ -2363,6 +2364,7 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (rho -> rho_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)

@@ -26,19 +26,21 @@ template <typename T, typename MT>
 __global__ void NAdamGPUKernel(const T* param,
                                const T* grad,
                                const MT* learning_rate,
+                               const MT* momentum_decay_pow,
+                               const MT* beta2_pow,
+                               const MT* mu_product,
                                const MT* moment1,
                                const MT* moment2,
                                const MT* master_param,
                                MT beta1,
                                MT beta2,
                                MT epsilon,
-                               MT beta2_pow_scalar,
-                               MT mu_t_scalar,
-                               MT mu_t_1_scalar,
-                               MT mu_product_scalar,
-                               MT mu_product_t_1_scalar,
+                               MT momentum_decay,
                                int num,
                                T* param_out,
+                               MT* momentum_decay_pow_out,
+                               MT* beta2_pow_out,
+                               MT* mu_product_out,
                                MT* moment1_out,
                                MT* moment2_out,
                                MT* master_param_out) {
@@ -51,9 +53,29 @@ __global__ void NAdamGPUKernel(const T* param,
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
     MT d_grad = static_cast<MT>(grad[index]);
+    MT d_momentum_decay_pow = static_cast<MT>(momentum_decay_pow[index]);
+    MT d_beta2_pow = static_cast<MT>(beta2_pow[index]);
+    MT d_mu_product = static_cast<MT>(mu_product[index]);
     MT d_moment1 = static_cast<MT>(moment1[index]);
     MT d_moment2 = static_cast<MT>(moment2[index]);
+
     // compute
+    MT momentum_decay_pow_scalar = d_momentum_decay_pow * static_cast<MT>(0.96);
+    MT beta2_pow_scalar = d_beta2_pow * beta2;
+    MT mu_t_scalar =
+        beta1 * (static_cast<MT>(1) -
+                 static_cast<MT>(0.5) *
+                     std::pow(momentum_decay_pow_scalar, momentum_decay));
+
+    MT mu_t_1_scalar =
+        beta1 * (static_cast<MT>(1) -
+                 static_cast<MT>(0.5) *
+                     std::pow(momentum_decay_pow_scalar, momentum_decay) *
+                     std::pow(static_cast<MT>(0.96), momentum_decay));
+
+    MT mu_product_scalar = d_mu_product * mu_t_scalar;
+    MT mu_product_t_1_scalar = mu_product_scalar * mu_t_1_scalar;
+
     MT m1_out = beta1 * d_moment1 + (static_cast<MT>(1) - beta1) * d_grad;
     MT m2_out =
         beta2 * d_moment2 + (static_cast<MT>(1) - beta2) * d_grad * d_grad;
@@ -65,8 +87,12 @@ __global__ void NAdamGPUKernel(const T* param,
     MT m2_hat = m2_out / (static_cast<MT>(1) - beta2_pow_scalar);
 
     MT p_out = d_param - lr_scalar * m1_hat / (std::sqrt(m2_hat) + epsilon);
+
     // store
     param_out[index] = static_cast<T>(p_out);
+    momentum_decay_pow_out[index] = static_cast<MT>(momentum_decay_pow_scalar);
+    beta2_pow_out[index] = static_cast<MT>(beta2_pow_scalar);
+    mu_product_out[index] = static_cast<MT>(mu_product_scalar);
     moment1_out[index] = static_cast<MT>(m1_out);
     moment2_out[index] = static_cast<MT>(m2_out);
 
@@ -103,11 +129,10 @@ void NAdamKernel(const Context& dev_ctx,
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
 
   MPDType* momentum_decay_pow_out_data =
-      dev_ctx.template HostAlloc<MPDType>(momentum_decay_pow_out);
-  MPDType* beta2_pow_out_data =
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out);
+      dev_ctx.template Alloc<MPDType>(momentum_decay_pow_out);
+  MPDType* beta2_pow_out_data = dev_ctx.template Alloc<MPDType>(beta2_pow_out);
   MPDType* mu_product_out_data =
-      dev_ctx.template HostAlloc<MPDType>(mu_product_out);
+      dev_ctx.template Alloc<MPDType>(mu_product_out);
 
   MPDType* moment1_out_data = dev_ctx.template Alloc<MPDType>(moment1_out);
   MPDType* moment2_out_data = dev_ctx.template Alloc<MPDType>(moment2_out);
@@ -123,38 +148,6 @@ void NAdamKernel(const Context& dev_ctx,
   MPDType epsilon_ = static_cast<MPDType>(epsilon);
   MPDType momentum_decay_ = static_cast<MPDType>(momentum_decay);
 
-  // make cpu accumulator to tensor
-  DenseTensor momentum_decay_pow_data;
-  phi::Copy(dev_ctx,
-            momentum_decay_pow,
-            phi::CPUPlace(),
-            false,
-            &momentum_decay_pow_data);
-  MPDType momentum_decay_pow_scalar =
-      momentum_decay_pow_data.data<MPDType>()[0] * static_cast<MPDType>(0.96);
-  momentum_decay_pow_out_data[0] = momentum_decay_pow_scalar;
-
-  DenseTensor beta2_pow_data;
-  phi::Copy(dev_ctx, beta2_pow, phi::CPUPlace(), false, &beta2_pow_data);
-  MPDType beta2_pow_scalar = beta2_pow_data.data<MPDType>()[0] * beta2_;
-  beta2_pow_out_data[0] = beta2_pow_scalar;
-
-  MPDType mu_t_scalar =
-      beta1_ * (static_cast<MPDType>(1) -
-                static_cast<MPDType>(0.5) *
-                    std::pow(momentum_decay_pow_scalar, momentum_decay_));
-  MPDType mu_t_1_scalar =
-      beta1_ * (static_cast<MPDType>(1) -
-                static_cast<MPDType>(0.5) *
-                    std::pow(momentum_decay_pow_scalar, momentum_decay_) *
-                    std::pow(static_cast<MPDType>(0.96), momentum_decay_));
-
-  DenseTensor mu_product_data;
-  phi::Copy(dev_ctx, mu_product, phi::CPUPlace(), false, &mu_product_data);
-  MPDType mu_product_scalar = mu_product_data.data<MPDType>()[0] * mu_t_scalar;
-  MPDType mu_product_t_1_scalar = mu_product_scalar * mu_t_1_scalar;
-  mu_product_out_data[0] = mu_product_scalar;
-
   int numel = param.numel();
   int block = 512;
   int grid = (param.numel() + block - 1) / block;
@@ -164,19 +157,21 @@ void NAdamKernel(const Context& dev_ctx,
       <<<block, grid, 0, stream>>>(param.data<T>(),
                                    grad.data<T>(),
                                    learning_rate.data<MPDType>(),
+                                   momentum_decay_pow.data<MPDType>(),
+                                   beta2_pow.data<MPDType>(),
+                                   mu_product.data<MPDType>(),
                                    moment1.data<MPDType>(),
                                    moment2.data<MPDType>(),
                                    master_in_data,
                                    beta1_,
                                    beta2_,
                                    epsilon_,
-                                   beta2_pow_scalar,
-                                   mu_t_scalar,
-                                   mu_t_1_scalar,
-                                   mu_product_scalar,
-                                   mu_product_t_1_scalar,
+                                   momentum_decay_,
                                    numel,
                                    param_out_data,
+                                   momentum_decay_pow_out_data,
+                                   beta2_pow_out_data,
+                                   mu_product_out_data,
                                    moment1_out_data,
                                    moment2_out_data,
                                    master_out_data);
