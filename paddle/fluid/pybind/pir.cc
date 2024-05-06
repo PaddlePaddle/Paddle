@@ -33,6 +33,7 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -815,44 +816,42 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-phi::DataType GetValueDtype(Value value) {
-  if (!value.type()) {
+phi::DataType GetTensorDtype(Type type) {
+  if (!type) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorType>().dtype());
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<SelectedRowsType>().dtype());
-  } else if (value.type().isa<DenseTensorArrayType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorArrayType>().dtype());
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DistDenseTensorType>().dtype());
+  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
+    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
+    return dialect::TransToPhiDataType(select_rows.dtype());
+  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DistDenseTensorType."));
+        "SelectedRowsType, DenseTensorArrayType."));
   }
 }
+phi::DataType GetValueDtype(Value value) {
+  return GetTensorDtype(value.type());
+}
 
-const phi::DDim &GetValueDims(Value value) {
-  if (!value.type()) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+const phi::DDim &GetTensorDims(Type type) {
+  if (!type) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The type used to get dims is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return value.type().dyn_cast<DenseTensorType>().dims();
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return value.type().dyn_cast<SelectedRowsType>().dims();
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return value.type().dyn_cast<DistDenseTensorType>().global_ddim();
+  if (auto dense_type = type.dyn_cast<DenseTensorType>()) {
+    return dense_type.dims();
+  } else if (auto select_rows_type = type.dyn_cast<SelectedRowsType>()) {
+    return select_rows_type.dims();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and distdense"
-        "tensor."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently, we can only get shape for dense and selsect rows type."));
   }
+}
+const phi::DDim &GetValueDims(Value value) {
+  return GetTensorDims(value.type());
 }
 
 pir::Value apply(Value self, py::object func) {
@@ -1100,13 +1099,10 @@ void BindValue(py::module *m) {
             }
             return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
           })
+      // The function will calculate the new local shape based on the global
+      // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        if (auto dist_type = self.type().dyn_cast<DistTypeInterface>()) {
-          self.set_type(dist_type.CopyWithNewDistAttr(dist_attr));
-        } else {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "update_dist_attr is only for dist type tensor."));
-        }
+        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
       });
 }
 
@@ -1137,11 +1133,26 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_type.def("__eq__", &Type::operator==)
+      .def_property(
+          "shape",
+          [](Type self) { return phi::vectorize(GetTensorDims(self)); },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Type self) { return GetTensorDtype(self); },
+          [](Type self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          })
+      .def("__str__", [](Type &self) {
+        std::ostringstream print_stream;
+        print_stream << self;
+        return print_stream.str();
+      });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {

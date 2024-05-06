@@ -85,11 +85,12 @@ class TestReshardPToRCrossMesh:
                 reshard_tensor = paddle._pir_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
-            dist_program = apply_reshard_pass(main_program)
 
-        ops = [op.name() for op in dist_program.global_block().ops]
+            apply_reshard_pass(main_program)
+
+        ops = [op.name() for op in main_program.global_block().ops]
         if paddle.distributed.get_rank() == 0:
-            np.testing.assert_equal(dist_program.num_ops(), 4)
+            np.testing.assert_equal(main_program.num_ops(), 4)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
@@ -97,7 +98,7 @@ class TestReshardPToRCrossMesh:
                 'pd_op.send_v2',
             ]
         else:
-            np.testing.assert_equal(dist_program.num_ops(), 5)
+            np.testing.assert_equal(main_program.num_ops(), 5)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
@@ -109,7 +110,7 @@ class TestReshardPToRCrossMesh:
             ops,
             std_ops,
         )
-        for op in dist_program.global_block().ops:
+        for op in main_program.global_block().ops:
             if op.name() == 'pd_op.send_v2':
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 0
