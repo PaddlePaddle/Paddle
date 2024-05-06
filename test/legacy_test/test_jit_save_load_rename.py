@@ -16,6 +16,7 @@
 import copy
 import os
 import pickle
+import shutil
 import tempfile
 import unittest
 
@@ -23,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.base import unique_name
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
@@ -1532,6 +1534,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])]
             )
 
+    @test_with_dygraph_pir
     def test_parse_name(self):
         model_path_inference = os.path.join(
             self.temp_dir.name, "jit_save_load_parse_name/model"
@@ -1545,6 +1548,8 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         load_net = paddle.jit.load(model_path_inference)
 
         self.assertFalse(hasattr(load_net, 'v2'))
+
+'''
 
 
 class LayerSaved(paddle.nn.Layer):
@@ -1627,7 +1632,6 @@ class NetTensor(paddle.nn.Layer):
         self.bias = 0.4
         self.flag = paddle.ones([2], dtype="int32")
 
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
     def forward(self, x):
         out = self.fc1(x)
         out = paddle.nn.functional.relu(out)
@@ -1665,41 +1669,13 @@ class TestJitSaveCombineProperty(unittest.TestCase):
         # Use new namespace
         with unique_name.guard():
             net = NetTensor()
+            net = paddle.jit.to_static(
+                net,
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
+            )
 
         paddle.jit.save(net, model_path, combine_params=True)
-
-
-class LayerLoadFinetune(paddle.nn.Layer):
-    def __init__(self, in_size, out_size, load_path):
-        super().__init__()
-        # Test duplicate name
-        self._linear_0 = Linear(in_size, in_size)
-        self._linear_1_0 = Linear(out_size, in_size)
-        self._linear_1_1 = Linear(out_size, in_size)
-        self._linear_2 = Linear(out_size, out_size)
-        self._scale = paddle.to_tensor([9.9])
-
-        # Load multiple times
-        self._load_l1 = paddle.jit.load(load_path)
-        self._load_l2 = paddle.jit.load(load_path)
-
-    @paddle.jit.to_static
-    def forward(self, x):
-        y = self._linear_0(x)
-        y = self._load_l1(y)
-        # Multiple blocks
-        if paddle.shape(x)[0] == 1:
-            y = self._linear_1_0(y)
-            y = self._load_l1(y)
-        else:
-            y += self._linear_1_1(x + self._scale)
-            y = self._load_l2(y)
-        y = self._linear_1_0(y)
-        y = self._load_l1(y)
-        y = self._linear_1_0(y)
-        # Use the same layer multiple times.
-        y = self._load_l1(y)
-        return y
 
 
 class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
@@ -1755,6 +1731,38 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 
 
+'''
+class LayerLoadFinetune(paddle.nn.Layer):
+    def __init__(self, in_size, out_size, load_path):
+        super().__init__()
+        # Test duplicate name
+        self._linear_0 = Linear(in_size, in_size)
+        self._linear_1_0 = Linear(out_size, in_size)
+        self._linear_1_1 = Linear(out_size, in_size)
+        self._linear_2 = Linear(out_size, out_size)
+        self._scale = paddle.to_tensor([9.9])
+
+        # Load multiple times
+        self._load_l1 = paddle.jit.load(load_path)
+        self._load_l2 = paddle.jit.load(load_path)
+
+    def forward(self, x):
+        y = self._linear_0(x)
+        y = self._load_l1(y)
+        # Multiple blocks
+        if paddle.shape(x)[0] == 1:
+            y = self._linear_1_0(y)
+            y = self._load_l1(y)
+        else:
+            y += self._linear_1_1(x + self._scale)
+            y = self._load_l2(y)
+        y = self._linear_1_0(y)
+        y = self._load_l1(y)
+        y = self._linear_1_0(y)
+        # Use the same layer multiple times.
+        y = self._load_l1(y)
+        return y
+
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1764,6 +1772,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    #@test_with_dygraph_pir
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
@@ -1781,6 +1790,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         # load
         with unique_name.guard():
             layer_load = LayerLoadFinetune(IMAGE_SIZE, IMAGE_SIZE, model_path)
+            layer_load = paddle.jit.to_static(layer_load, full_graph=True)
         # train
         train(layer_load, input_size=IMAGE_SIZE)
         result_00 = layer_load(inps0)
@@ -1794,6 +1804,8 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
+
+'''
 
 
 # NOTE(weixin): When there are multiple test functions in an
@@ -1809,6 +1821,7 @@ class TestJitSaveLoadFunctionCase1(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_static_function(self):
         @paddle.jit.to_static
         def fun(inputs):
@@ -1835,6 +1848,7 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_function_input_spec(self):
         @paddle.jit.to_static(
             input_spec=[
@@ -1864,6 +1878,7 @@ class TestJitSaveLoadFunctionCase3(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_function_function(self):
         def fun(inputs):
             return paddle.tanh(inputs)
@@ -1895,6 +1910,7 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
@@ -1934,6 +1950,7 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
@@ -1974,6 +1991,7 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
@@ -2024,6 +2042,7 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
             err_msg=f'Result diff when load and inference:\nlayer result:\n{pred}\nloaded layer result:\n{loaded_pred}',
         )
 
+    @test_with_dygraph_pir
     def test_jit_save_data_parallel_with_inputspec(self):
         layer = LinearNetNotDeclarative(784, 1)
         layer = paddle.DataParallel(layer)
@@ -2036,6 +2055,7 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
 
         self.verify_inference_correctness(layer, path)
 
+    @test_with_dygraph_pir
     def test_jit_save_data_parallel_with_to_static(self):
         layer = LinearNetWithInputSpec(784, 1)
         layer = paddle.DataParallel(layer)
@@ -2049,7 +2069,7 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
 
 
 class InputSepcLayer(paddle.nn.Layer):
-     #A layer with InputSpec to test InputSpec compatibility
+    # A layer with InputSpec to test InputSpec compatibility
 
     def forward(self, x, y):
         return x, y
@@ -2074,6 +2094,7 @@ class TestInputSpecCompatibility(unittest.TestCase):
             expected_result[1].numpy(), test_result[1].numpy()
         )
 
+    @test_with_dygraph_pir
     def test_jit_save_compatible_input_sepc(self):
         layer = InputSepcLayer()
         layer = paddle.jit.to_static(
@@ -2118,6 +2139,7 @@ class TestInputSpecCompatibility(unittest.TestCase):
         self._assert_input_spec_layer_return(layer, compatible_input_spec_layer)
         shutil.rmtree(save_dir)
 
+    @test_with_dygraph_pir
     def test_jit_save_incompatible_input_sepc(self):
         layer = InputSepcLayer()
         layer = paddle.jit.to_static(
@@ -2184,6 +2206,7 @@ class TestNotJitForward(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_not_save_forward(self):
         layer = NotJitForward()
 
@@ -2200,6 +2223,6 @@ class TestNotJitForward(unittest.TestCase):
 
         shutil.rmtree(save_dir)
 
-'''
+
 if __name__ == '__main__':
     unittest.main()
