@@ -18,7 +18,6 @@
 namespace cinn::fusion {
 // Matcher
 
-template <typename StmtPattern>
 struct AlwaysTrue {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
@@ -103,8 +102,9 @@ struct HasUpstreamAnchorMatcher {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
-    // TODO(@wuzhanfei)
-    return false;
+    return graph.policy_manager()
+        .template GetPolicy<AnchorSearchPolicy>()
+        ->HasUpstreamAnchor(upstream, downstream);
   }
 };
 
@@ -113,8 +113,9 @@ struct HasDownstreamAnchorMatcher {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
-    // TODO(@wuzhanfei)
-    return false;
+    return graph.policy_manager()
+        .template GetPolicy<AnchorSearchPolicy>()
+        ->HasDownstreamAnchor(upstream, downstream);
   }
 };
 

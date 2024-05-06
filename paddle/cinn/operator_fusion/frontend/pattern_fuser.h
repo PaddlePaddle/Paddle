@@ -51,4 +51,11 @@ StmtPattern<FrontendStage> MergePatternImpl(
     const HorizontalFusionPattern<FrontendStage>& first,
     const HorizontalFusionPattern<FrontendStage>& second);
 
+template <>
+ValueExpr<FrontendStage> InitValueExprImpl(
+    const TrivialPattern<FrontendStage>& pattern, pir::Value anchor);
+
+template <>
+ValueExpr<FrontendStage> InitValueExprImpl(
+    const ReducePattern<FrontendStage>& pattern, pir::Value anchor);
 }  // namespace cinn::fusion

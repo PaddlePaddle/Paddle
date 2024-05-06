@@ -407,4 +407,16 @@ std::vector<ir::Expr> GetExprFromPattern(
   return TopoSort(results);
 }
 
+template <>
+ValueExpr<BackendStage> InitValueExprImpl(
+    const TrivialPattern<BackendStage>& pattern, pir::Value anchor) {
+  return ValueExpr<BackendStage>(anchor, pattern.trivial_op);
+}
+
+template <>
+ValueExpr<BackendStage> InitValueExprImpl(
+    const ReducePattern<BackendStage>& pattern, pir::Value anchor) {
+  return ValueExpr<BackendStage>(anchor, pattern.reduce_op);
+}
+
 }  // namespace cinn::fusion

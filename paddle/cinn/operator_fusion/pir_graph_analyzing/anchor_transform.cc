@@ -30,8 +30,11 @@ AnchorTransform CreateAnchorTransformForReduce(const TransformInfo& info) {
   }
 
   if (info.is_upstream_anchor) {
-    return std::make_shared<AppendDimTransform>(
-        info, GetReduceAxisIdx(pir::Operation * reduce_op))
+    // TODO(@wuzhanfei) do not support reduce currently
+
+    // return std::make_shared<AppendDimTransform>(
+    //     info, GetReduceAxisIdx(pir::Operation * reduce_op))
+    return CreateDefaultAnchorTransform(info);
   } else {
     return CreateDefaultAnchorTransform(info);
   }
@@ -43,19 +46,22 @@ AnchorTransform CreateAnchorTransformForBroadcast(const TransformInfo& info) {
   }
 
   if (info.is_upstream_anchor) {
-    auto related_dims = GetNonBroadCastDims(info.op);
-    size_t output_rank = GetRank(info.OutputValue());
-    std::vector<size_t> used_dim_mask = std::vector<size_t>(output_rank, 0);
-    std::vector<size_t> delete_dim_idx;
-    for (const auto& [input_dim_idx, output_dim_idx] : related_dims) {
-      used_dim_mask[output_dim_idx] = 1;
-    }
-    for (size_t used_dim : used_dim_mask) {
-      if (used_dim == 0) {
-        delete_dim_idx.emplace_back();
-      }
-    }
-    return std::make_shared<DeleteDimTransform>(info, delete_dim_idx);
+    // TODO(@wuzhanfei) do not support broadcast currently
+
+    // auto related_dims = GetNonBroadCastDims(info.op);
+    // size_t output_rank = GetRank(info.OutputValue());
+    // std::vector<size_t> used_dim_mask = std::vector<size_t>(output_rank, 0);
+    // std::vector<size_t> delete_dim_idx;
+    // for (const auto& [input_dim_idx, output_dim_idx] : related_dims) {
+    //   used_dim_mask[output_dim_idx] = 1;
+    // }
+    // for (size_t used_dim : used_dim_mask) {
+    //   if (used_dim == 0) {
+    //     delete_dim_idx.emplace_back();
+    //   }
+    // }
+    // return std::make_shared<DeleteDimTransform>(info, delete_dim_idx);
+    return CreateDefaultAnchorTransform(info);
   } else {
     return CreateDefaultAnchorTransform(info);
   }

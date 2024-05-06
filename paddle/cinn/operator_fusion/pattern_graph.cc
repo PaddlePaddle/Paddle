@@ -180,7 +180,8 @@ void PatternGraph<T>::LiftToAnchorPattern() {
   GraphTransformer<
       NodePattern,
       T,
-      Not<StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>>,
+      And<Not<StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
+          Not<StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>>>,
       LiftToAnchorPatternOperation>(this);
 }
 

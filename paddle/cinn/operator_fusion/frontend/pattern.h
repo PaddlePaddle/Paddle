@@ -77,24 +77,8 @@ struct UnsupportPattern<FrontendStage> {
 };
 
 template <>
-struct HorizontalFusionPattern<FrontendStage> {
-  explicit HorizontalFusionPattern(
-      const std::vector<StmtPattern<FrontendStage>>& patterns)
-      : patterns_(patterns) {}
-  std::vector<StmtPattern<FrontendStage>> patterns_;
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& pattern : patterns_) {
-      auto ops = GetOpsInPattern(pattern);
-      ExtendVector(&result, ops);
-    }
-    return result;
-  }
-  static std::string name() { return "HorizontalFusionPattern"; }
-};
-
-template <>
 struct ValueExpr<FrontendStage> {
+  explicit ValueExpr(const pir::Value& root) : root_value(root) {}
   AnchorTransformRoute transform_route;
   pir::Value root_value;
 };

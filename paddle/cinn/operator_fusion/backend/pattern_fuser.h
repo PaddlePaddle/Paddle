@@ -54,4 +54,11 @@ StmtPattern<BackendStage> MergePatternImpl(
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern);
 
+template <>
+ValueExpr<BackendStage> InitValueExprImpl(
+    const TrivialPattern<BackendStage>& pattern, pir::Value anchor);
+
+template <>
+ValueExpr<BackendStage> InitValueExprImpl(
+    const ReducePattern<BackendStage>& pattern, pir::Value anchor);
 }  // namespace cinn::fusion

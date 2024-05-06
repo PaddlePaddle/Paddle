@@ -55,6 +55,12 @@ std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
                     pattern.variant());
 }
 
+template <typename T>
+pir::Operation* GetSinkOpInPattern(const StmtPattern<T>& pattern) {
+  return std::visit([](const auto& impl) { return impl.sink_op(); },
+                    pattern.variant());
+}
+
 using LoopFramework = std::vector<symbol::DimExpr>;
 
 // std::optional({}) means not sure.
@@ -368,6 +374,28 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
       },
   };
   return std::visit(PatternMatch, first.variant(), second.variant());
+}
+
+template <typename T>
+ValueExpr<T> InitValueExprImpl(const TrivialPattern<T>& pattern,
+                               pir::Value anchor);
+
+template <typename T>
+ValueExpr<T> InitValueExprImpl(const ReducePattern<T>& pattern,
+                               pir::Value anchor);
+
+template <typename T>
+ValueExpr<T> InitValueExpr(const StmtPattern<T>& pattern, pir::Value anchor) {
+  return std::visit(
+      [anchor](const auto& arg) {
+        using U = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<U, TrivialPattern<T>>) {
+          return InitValueExprImpl(arg, anchor);
+        } else if constexpr (std::is_same_v<U, ReducePattern<T>>) {
+          return InitValueExprImpl(arg, anchor);
+        }
+      },
+      s.variant());
 }
 
 }  // namespace cinn::fusion

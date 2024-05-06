@@ -73,24 +73,9 @@ struct UnsupportPattern<BackendStage> {
 };
 
 template <>
-struct HorizontalFusionPattern<BackendStage> {
-  explicit HorizontalFusionPattern(
-      const std::vector<StmtPattern<BackendStage>>& patterns)
-      : patterns_(patterns) {}
-  std::vector<StmtPattern<BackendStage>> patterns_;
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& pattern : patterns_) {
-      auto ops = GetOpsInPattern(pattern);
-      ExtendVector(&result, ops);
-    }
-    return result;
-  }
-  static std::string name() { return "HorizontalFusionPattern"; }
-};
-
-template <>
 struct ValueExpr<BackendStage> {
+  explicit ValueExpr(const pir::Value& root, const FusionOp& op)
+      : root_value(root), root_fusion_op(op) {}
   AnchorTransformRoute transform_route;
   pir::Value root_value;
   FusionOp root_fusion_op;

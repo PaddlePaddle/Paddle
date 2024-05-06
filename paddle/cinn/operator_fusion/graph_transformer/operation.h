@@ -75,7 +75,6 @@ struct LiftReduceToReduceTreeOperation {
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     const auto& reduce_pattern = ToReducePattern<Phrase>(node->stmt_pattern());
     node->set_stmt_pattern(ReduceTreePattern<Phrase>({}, reduce_pattern));
-    VLOG(4) << "LiftReduceToReduceTreeOperation: \nnode " << node->DebugStr();
   }
 };
 
@@ -111,9 +110,13 @@ struct LiftToAnchorPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
-    pir::Value anchor = node->sink_op()->result(0);
+    // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
+    // type has sink and the others not) then, update logic here
+    pir::Value anchor = node->sink_op();
     node->set_stmt_pattern(AnchorPattern<Phrase>(
-        ops, anchor, InitAnchorState(node->stmt_pattern())));
+        ops,
+        anchor,
+        AnchorState<Phrase>({InitValueExpr(node->stmt_pattern(), anchor)})));
   }
 };
 
@@ -122,7 +125,10 @@ struct FuseUpstreamAnchorOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& upstream,
                   const PatternNodePtr<Phrase>& downstream) {
-    // TODO(@wuzhanfei)
+    auto merged_node =
+        graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+    graph->RemoveNode(upstream);
+    graph->RemoveNode(downstream);
   }
 };
 
