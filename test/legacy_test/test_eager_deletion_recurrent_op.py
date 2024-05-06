@@ -58,7 +58,7 @@ class TestDy2StRecurrentOpBackward(unittest.TestCase):
         dy_grad = inputs.gradient()
         inputs.clear_gradient()
 
-        net = paddle.jit.to_static(net)
+        net = paddle.jit.to_static(net, full_graph=True)
         outputs, final_states = net(inputs, prev_h)
         outputs.backward()
         st_grad = inputs.gradient()
