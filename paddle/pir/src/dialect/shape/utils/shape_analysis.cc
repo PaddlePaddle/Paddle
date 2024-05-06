@@ -91,20 +91,23 @@ void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
   };
 
   if (value_type.isa<DenseTensorType>()) {
-    auto type_info = value_type.dyn_cast<DenseTensorType>();
+    const DenseTensorType& type_info = value_type.dyn_cast<DenseTensorType>();
     SetShapeOrDataForValue(val, GetStaticShapeForDenseTensorType(type_info));
     return;
   }
   if (value_type.isa<VectorType>()) {
-    auto vec_data = value_type.dyn_cast<VectorType>().data();
+    const std::vector<Type>& vec_data =
+        value_type.dyn_cast<VectorType>().data();
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
     for (unsigned i = 0; i < vec_data.size(); ++i) {
       if (!vec_data[i].isa<DenseTensorType>()) {
         PADDLE_THROW(phi::errors::Fatal(
             "Set static shape ONLY SUPPORT inner type DenseTensorType!"));
       } else {
-        auto type_info = vec_data[i].dyn_cast<DenseTensorType>();
-        shape_data_list.push_back(GetStaticShapeForDenseTensorType(type_info));
+        const DenseTensorType& type_info =
+            vec_data[i].dyn_cast<DenseTensorType>();
+        shape_data_list.emplace_back(
+            GetStaticShapeForDenseTensorType(type_info));
       }
     }
     SetShapeOrDataForValue(val, shape_data_list);

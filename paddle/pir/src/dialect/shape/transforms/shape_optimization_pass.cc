@@ -316,21 +316,23 @@ void InferSymExprForBlock(const Block& block,
 
       if (all_outs_static_dims) {
         for (uint32_t i = 0; i < op.num_results(); ++i) {
-          auto value_type = op.result(i).type();
-          if (value_type.isa<pir::DenseTensorType>()) {
+          const Type& value_type = op.result(i).type();
+          if (value_type.isa<DenseTensorType>()) {
             infer_context->SetShapeOrDataForValue(
                 op.result(i),
                 CreateShapeOrDataByDDim(
-                    value_type.dyn_cast<pir::DenseTensorType>().dims()));
+                    value_type.dyn_cast<DenseTensorType>().dims()));
             continue;
           }
-          if (value_type.isa<pir::VectorType>()) {
-            auto vec_data = value_type.dyn_cast<VectorType>().data();
+          if (value_type.isa<VectorType>()) {
+            const std::vector<Type>& vec_data =
+                value_type.dyn_cast<VectorType>().data();
             symbol::TensorListShapeOrDataDimExprs shape_data_list;
             for (unsigned i = 0; i < vec_data.size(); ++i) {
               CHECK(vec_data[i].isa<DenseTensorType>());
-              auto type_info = vec_data[i].dyn_cast<DenseTensorType>();
-              shape_data_list.push_back(
+              const DenseTensorType& type_info =
+                  vec_data[i].dyn_cast<DenseTensorType>();
+              shape_data_list.emplace_back(
                   CreateShapeOrDataByDDim(type_info.dims()));
             }
             infer_context->SetShapeOrDataForValue(op.result(i),
