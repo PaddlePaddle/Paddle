@@ -34,8 +34,10 @@ from paddle.base.framework import (
     Variable,
     _create_tensor,
     _current_expected_place,
+    _current_expected_place_,
     _dygraph_tracer,
     in_dygraph_mode,
+    in_pir_mode,
 )
 
 from .io_utils import (
@@ -519,7 +521,7 @@ def _to_LodTensor(ndarray):
             f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
-    place = _current_expected_place()
+    place = _current_expected_place_()
     t.set(ndarray, place)
     return t
 
@@ -888,9 +890,14 @@ def save(obj, path, protocol=4, **configs):
             )
 
         if isinstance(obj, Program):
-            obj.desc.flush()
-            with _open_file_buffer(path, "wb") as f:
-                f.write(obj.desc.serialize_to_string())
+            if in_pir_mode():
+                paddle.core.serialize_pir_program(
+                    obj, path, 1, True, False, True
+                )
+            else:
+                obj.desc.flush()
+                with _open_file_buffer(path, "wb") as f:
+                    f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
             if in_dygraph_mode():

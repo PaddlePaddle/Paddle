@@ -140,7 +140,7 @@ def train_dygraph(args, batch_generator):
                             batch_id,
                             total_avg_cost,
                             total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)]),
+                            np.exp([min(total_avg_cost, 100)]).item(),
                         )
                     )
                     avg_batch_time = time.time()
@@ -154,7 +154,7 @@ def train_dygraph(args, batch_generator):
                             batch_id,
                             total_avg_cost,
                             total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)]),
+                            np.exp([min(total_avg_cost, 100)]).item(),
                             args.print_step / (time.time() - avg_batch_time),
                         )
                     )
