@@ -287,7 +287,7 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_unique<Program>(pir::IrContext::Instance());
+        return std::make_shared<Program>(pir::IrContext::Instance());
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
