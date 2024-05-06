@@ -1330,7 +1330,6 @@ void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
                                    "the received is %d",
                                    quant_axis));
-
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
   out_scale->set_dims({x.dims()[quant_axis]});
