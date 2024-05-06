@@ -129,7 +129,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       pir::PatternRewriter& rewriter) const {  // NOLINT
     auto it = op_handler_map().find(op->name());
     if (it == op_handler_map().end()) {
-      LOG(WARNING) << "No fallback handler for op: " << op->name();
+      VLOG(4) << "No fallback handler for op: " << op->name();
       return std::nullopt;
     }
     return (this->*(it->second))(op, rewriter);
