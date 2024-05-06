@@ -4143,9 +4143,6 @@ bool ShapeBroadcastOp::InferSymbolicShape(
 
   symbol::ShapeOrDataDimExprs output_data_shape{
       symbol::TensorShapeOrDataDimExprs(shape, output_data)};
-  VLOG(0) << "###### x_data " << x_data;
-  VLOG(0) << "###### y_data " << y_data;
-  VLOG(0) << "###### output_data " << output_data_shape;
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }

@@ -18,11 +18,12 @@ import os
 import pickle
 import sys
 from io import BytesIO
+from types import FunctionType, MethodType
 
 import numpy as np
 
 import paddle
-from paddle.base import core
+from paddle.base import core, global_scope
 from paddle.base.framework import Parameter, Variable, static_only
 from paddle.base.log_helper import get_logger
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -271,3 +272,54 @@ def _unpack_saved_dict(saved_obj, protocol):
                     saved_obj[part] = temp_saved_obj[part]
         saved_obj['UnpackBigParamInfor@@'] = unpack_infor
     return saved_obj
+
+
+def set_value(var, value, scope=None):
+    if not (isinstance(value, np.ndarray) or hasattr(value, "__array__")):
+        raise TypeError(
+            f"`value` should be `numpy.ndarray` or `LoDTensor`, but received {type(value)}."
+        )
+
+    if scope is not None and not isinstance(scope, core._Scope):
+        raise TypeError(
+            f"`scope` should be None or `paddle.static.Scope` type, but received {type(scope)}."
+        )
+
+    if scope is None:
+        scope = global_scope()
+
+    var_temp = scope.find_var(var.name)
+    if var_temp is None:
+        raise ValueError(f"Can not find Variable '{var.name}' in the Scope.")
+
+    t = var_temp.get_tensor()
+
+    if hasattr(value, "shape"):
+        if isinstance(value.shape, (MethodType, FunctionType)):
+            value_shape = value.shape()
+        else:
+            value_shape = value.shape
+        if list(t.shape()) != list(value_shape):
+            raise ValueError(
+                f"{var.name} expected a shape {list(t.shape())}, but the received shape is {list(value_shape)}."
+            )
+
+    p = t._place()
+    if p.is_cpu_place():
+        place = core.CPUPlace()
+    elif p.is_cuda_pinned_place():
+        place = core.CUDAPinnedPlace()
+    elif p.is_xpu_place():
+        p = core.Place()
+        p.set_place(t._place())
+        place = core.XPUPlace(p.xpu_device_id())
+    elif p.is_custom_place():
+        p = core.Place()
+        p.set_place(t._place())
+        place = core.CustomPlace(p.custom_device_type(), p.custom_device_id())
+    else:
+        p = core.Place()
+        p.set_place(t._place())
+        place = core.CUDAPlace(p.gpu_device_id())
+
+    t.set(value, place)

@@ -774,59 +774,29 @@ bool WhileOp::InferSymbolicShape(
     shape_analysis->SetShapeOrDataForValue(value, shape_data);
   }
 
-  pir::InferSymExprForBlock(body(), shape_analysis);
-
-  // shape_analysis->PrintDimExprClusters();
-
-  // add constraints for args
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr>
-      args_expr_map;  // args -> original value
+  // add GreaterThanOne constraint
   const auto &body_args = block_args();
+  PADDLE_ENFORCE_EQ(num_operands() - 1,
+                    body_args.size(),
+                    phi::errors::InvalidArgument(
+                        "The num_operands-1 and body_args.size is not equal"));
   for (size_t i = 0; i < body_args.size(); ++i) {
-    const auto &input_arg_shape =
-        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
-    const auto &original_input_shape =
+    const auto &input_i =
         shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
-    if (input_arg_shape.size() != original_input_shape.size()) {
+    const auto &args_i =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
       continue;
     }
-    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
-      if (input_arg_shape[j].isa<int64_t>()) {
-        continue;
+    for (size_t j = 0; j < input_i.size(); ++j) {
+      if (shape_analysis->IsGreatThanOne(input_i[j])) {
+        shape_analysis->AddGreatThanOneCstr(args_i[j]);
       }
-      args_expr_map.emplace(input_arg_shape[j], original_input_shape[j]);
     }
-  }
-  for (const auto &[k, v] : args_expr_map) {
-    VLOG(0) << "##### args_expr_map: " << k << " --> " << v;
   }
 
-  auto IsSameWithDimExprBeforeWhile = [&](const symbol::DimExpr &before_expr,
-                                          const symbol::DimExpr &yield_expr) {
-    if (before_expr == yield_expr) return true;
-    VLOG(0) << "##### before_expr: " << before_expr
-            << " vs. yield_expr: " << yield_expr;
-    if (args_expr_map.count(yield_expr) &&
-        args_expr_map[yield_expr] == before_expr) {
-      return true;
-    }
-    if (yield_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
-      for (const auto &expr :
-           *yield_expr.Get<symbol::Broadcast<symbol::DimExpr>>().operands) {
-        if (expr == before_expr) {
-          continue;
-        }
-        if (args_expr_map.count(expr) && args_expr_map[expr] == before_expr) {
-          continue;
-        }
-        VLOG(0) << "##### expr is false: " << expr;
-        return false;
-      }
-      VLOG(0) << "##### expr is true: " << yield_expr;
-      return true;
-    }
-    return false;
-  };
+  pir::InferSymExprForBlock(body(), shape_analysis);
 
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
@@ -871,6 +841,28 @@ bool WhileOp::InferSymbolicShape(
     shape_analysis->SetShapeOrDataForValue(
         result(i - 1),
         shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
+
+  PADDLE_ENFORCE_EQ(body_args.size(),
+                    num_results(),
+                    phi::errors::InvalidArgument(
+                        "The body_args.size and num_results is not equal"));
+  for (size_t i = 0; i < num_results(); ++i) {
+    const auto &input_i =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    const auto &output_i =
+        shape_analysis->GetShapeOrDataForValue(result(i)).shape();
+    const auto &args_i =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < output_i.size(); j++) {
+      if (shape_analysis->IsEqual(output_i[j], args_i[j])) {
+        shape_analysis->AddEqualCstr(output_i[j], input_i[j]);
+      }
+    }
   }
 
   return true;
