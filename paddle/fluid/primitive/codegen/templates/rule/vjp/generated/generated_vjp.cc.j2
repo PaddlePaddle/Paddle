@@ -118,13 +118,7 @@ for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {
 
 {%- set args_names=[] -%}
 {%- for i in api.inputs -%} {%- do args_names.append(i.name) -%} {%- endfor -%}
-{%- for i in api.attrs -%} 
-  {%- if i is mutable_attribute -%}
-    {%- do args_names.append(i.name~'_') -%} 
-  {%- else -%}
-    {%- do args_names.append(i.name) -%} 
-  {%- endif -%}
-{%- endfor %}
+{%- for i in api.attrs -%} {%- do args_names.append(i.name) -%} {%- endfor %}
 {%- set outputs_names=[] -%}
 {%- for i in api.outputs -%} {%- do outputs_names.append(i.name) -%} {%- endfor -%}
 details::{{api.name}}<LazyTensor>({{common.args(args_names, outputs_names)}});
