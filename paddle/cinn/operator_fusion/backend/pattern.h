@@ -73,12 +73,16 @@ struct UnsupportPattern<BackendStage> {
 };
 
 template <>
-struct ValueExpr<BackendStage> {
-  explicit ValueExpr(const pir::Value& root, const FusionOp& op)
+struct ExprPromise<BackendStage> {
+  explicit ExprPromise(const pir::Value& root, const FusionOp& op)
       : root_value(root), root_fusion_op(op) {}
   AnchorTransformRoute transform_route;
   pir::Value root_value;
   FusionOp root_fusion_op;
+
+  void update(const AnchorTransformRoute& route) {
+    transform_route.insert(transform_route.end(), route.begin(), route.end());
+  }
 };
 
 }  // namespace cinn::fusion

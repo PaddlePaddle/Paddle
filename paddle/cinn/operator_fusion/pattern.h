@@ -114,16 +114,12 @@ struct AnchorPattern {
   explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
                          const pir::Value& anchor,
                          const AnchorState<T>& anchor_state)
-      : ops_(ops), anchor_(anchor), anchor_state_(anchor_state) {
-    // TODO(@wuzhanfei): Initialize anchor state
-  }
-  std::vector<pir::Operation*> ops_;
-  pir::Value anchor_;  // Choose only one anchor
-  AnchorState<T> anchor_state_;
+      : ops_(ops), anchor_(anchor), anchor_state_(anchor_state) {}
+  AnchorState<T> anchor_state;
+
+  static std::string name() { return "AnchorPattern"; }
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Value anchor() const { return anchor_; }
-  pir::Value anchor_state() const { return anchor_state_; }
-
   bool can_recompute() const {
     // Current Algorithm:
     // An AnchorPattern can be recomputed iff:
@@ -131,7 +127,7 @@ struct AnchorPattern {
     // means it only has one output_expr in anchor_state.
     // 2. It only contains trivial ops.
 
-    if (anchor_state.output_exprs.size() > 1) {
+    if (anchor_state.promise.size() > 1) {
       return false;
     }
 
@@ -144,7 +140,10 @@ struct AnchorPattern {
 
     return true;
   }
-  static std::string name() { return "AnchorPattern"; }
+
+ private:
+  std::vector<pir::Operation*> ops_;
+  pir::Value anchor_;  // Choose only one anchor
 };
 
 template <typename T>

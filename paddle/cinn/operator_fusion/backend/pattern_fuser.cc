@@ -79,19 +79,12 @@ StmtPattern<BackendStage> MergePatternImpl(
 
 template <>
 StmtPattern<BackendStage> MergePatternImpl(
-    const AnchorPattern<BackendStage>& first,
-    const AnchorPattern<BackendStage>& second) {
-  // TODO(@wuzhanfei)
-}
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const HorizontalFusionPattern<BackendStage>& first,
-    const HorizontalFusionPattern<BackendStage>& second) {
+    const AnchorPattern<BackendStage>& source,
+    const AnchorPattern<BackendStage>& dest) {
   const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
-                         GetOpsInPattern<BackendStage>(second));
-  return HorizontalFusionPattern<BackendStage>({first, second});
+      UniqueConcatVector(GetOpsInPattern<BackendStage>(source),
+                         GetOpsInPattern<BackendStage>(dest));
+  return AnchorPattern<BackendStage>(contents, source.anchor(), {});
 }
 
 /// Start: Tmp Transform Operation for ReduceTree
@@ -408,15 +401,15 @@ std::vector<ir::Expr> GetExprFromPattern(
 }
 
 template <>
-ValueExpr<BackendStage> InitValueExprImpl(
+ExprPromise<BackendStage> InitExprPromiseImpl(
     const TrivialPattern<BackendStage>& pattern, pir::Value anchor) {
-  return ValueExpr<BackendStage>(anchor, pattern.trivial_op);
+  return ExprPromise<BackendStage>(anchor, pattern.trivial_op);
 }
 
 template <>
-ValueExpr<BackendStage> InitValueExprImpl(
+ExprPromise<BackendStage> InitExprPromiseImpl(
     const ReducePattern<BackendStage>& pattern, pir::Value anchor) {
-  return ValueExpr<BackendStage>(anchor, pattern.reduce_op);
+  return ExprPromise<BackendStage>(anchor, pattern.reduce_op);
 }
 
 }  // namespace cinn::fusion

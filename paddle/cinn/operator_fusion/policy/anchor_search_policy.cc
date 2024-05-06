@@ -69,7 +69,8 @@ std::optional<AnchorTransformRoute> FindAnchorTransformRoute(
 }
 
 template <typename T>
-bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
+std::optional<AnchorTransformRoute>
+AnchorSearchPolicy<T>::FindUpstreamAnchorTransformRoute(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& upstream_anchor_pattern =
       std::get<AnchorPattern<T>>(upstream->stmt_pattern());
@@ -77,27 +78,45 @@ bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
       std::get<AnchorPattern<T>>(downstream->stmt_pattern());
 
   return FindAnchorTransformRoute(
-             upstream_anchor_pattern.anchor(),
-             downstream_anchor_pattern.anchor(),
-             ToSet(ConcatVector(upstream_anchor_pattern.ops(),
-                                downstream_anchor_pattern.ops()))) !=
+      upstream_anchor_pattern.anchor(),
+      downstream_anchor_pattern.anchor(),
+      ToSet(ConcatVector(upstream_anchor_pattern.ops(),
+                         downstream_anchor_pattern.ops())));
+}
+
+template <typename T>
+std::optional<AnchorTransformRoute>
+AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  const auto& upstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
+  const auto& downstream_anchor_pattern =
+      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
+
+  return FindAnchorTransformRoute(
+      downstream_anchor_pattern.anchor(),
+      upstream_anchor_pattern.anchor(),
+      ToSet(ConcatVector(upstream_anchor_pattern.ops(),
+                         downstream_anchor_pattern.ops())));
+}
+
+template <typename T>
+bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  return FindUpstreamAnchorTransformRoute(upstream, downstream).value() !=
          std::nullopt;
 }
+
 template <typename T>
 bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& upstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
-  const auto& downstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
-
-  return FindAnchorTransformRoute(
-             downstream_anchor_pattern.anchor(),
-             upstream_anchor_pattern.anchor(),
-             ToSet(ConcatVector(upstream_anchor_pattern.ops(),
-                                downstream_anchor_pattern.ops()))) !=
+  return FindDownstreamAnchorTransformRoute(upstream, downstream).value() !=
          std::nullopt;
 }
+
+template <typename T>
+AnchorState<T> AnchorSearchPolicy<T>::MergeAnchorState(
+    const AnchorState<T>& source, const AnchorState<T>& dest) {}
 
 template class AnchorSearchPolicy<FrontendStage>;
 template class AnchorSearchPolicy<BackendStage>;

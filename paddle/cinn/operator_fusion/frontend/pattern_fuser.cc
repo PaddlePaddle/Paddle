@@ -63,31 +63,24 @@ StmtPattern<FrontendStage> MergePatternImpl(
 
 template <>
 StmtPattern<FrontendStage> MergePatternImpl(
-    const AnchorPattern<FrontendStage>& first,
-    const AnchorPattern<FrontendStage>& second) {
-  // TODO(@wuzhanfei)
-}
-
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const HorizontalFusionPattern<FrontendStage>& first,
-    const HorizontalFusionPattern<FrontendStage>& second) {
+    const AnchorPattern<FrontendStage>& source,
+    const AnchorPattern<FrontendStage>& dest) {
   const auto& contents =
-      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
-                         GetOpsInPattern<FrontendStage>(second));
-  return HorizontalFusionPattern<FrontendStage>({first, second});
+      UniqueConcatVector(GetOpsInPattern<FrontendStage>(source),
+                         GetOpsInPattern<FrontendStage>(dest));
+  return AnchorPattern<FrontendStage>(contents, source.anchor(), {});
 }
 
 template <>
-ValueExpr<FrontendStage> InitValueExprImpl(
+ExprPromise<FrontendStage> InitExprPromiseImpl(
     const TrivialPattern<FrontendStage>& pattern, pir::Value anchor) {
-  return ValueExpr<FrontendStage>(anchor);
+  return ExprPromise<FrontendStage>(anchor);
 }
 
 template <>
-ValueExpr<FrontendStage> InitValueExprImpl(
+ExprPromise<FrontendStage> InitExprPromiseImpl(
     const ReducePattern<FrontendStage>& pattern, pir::Value anchor) {
-  return ValueExpr<FrontendStage>(anchor);
+  return ExprPromise<FrontendStage>(anchor);
 }
 
 }  // namespace cinn::fusion

@@ -116,7 +116,7 @@ struct LiftToAnchorPatternOperation {
     node->set_stmt_pattern(AnchorPattern<Phrase>(
         ops,
         anchor,
-        AnchorState<Phrase>({InitValueExpr(node->stmt_pattern(), anchor)})));
+        AnchorState<Phrase>({InitExprPromise(node->stmt_pattern(), anchor)})));
   }
 };
 
@@ -125,8 +125,29 @@ struct FuseUpstreamAnchorOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& upstream,
                   const PatternNodePtr<Phrase>& downstream) {
-    auto merged_node =
-        graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+    auto optional_transform_route =
+        graph->policy_manager()
+            .template GetPolicy<AnchorSearchPolicy>()
+            ->FindUpstreamAnchorTransformRoute(upstream, downstream);
+    PADDLE_ENFORCE_NE(
+        optional_transform_route.value(),
+        std::nullopt,
+        phi::errors::PreconditionNotMet("Transform Route Not Found"));
+
+    auto transform_route = optional_transform_route.value();
+
+    const auto merge_pattern_fn = [](const StmtPattern<Phrase>& source,
+                                     const StmtPattern<Phrase>& destination) {
+      auto new_anchor_pattern = std::get<AnchorPattern<Phrase>>(
+          MergePattern<Phrase>(source, destination));
+      auto transformed_anchor_state = ApplyAnchorTransformRoute<Phrase>(
+          GetAnchorState(destination), transform_route);
+      new_anchor_pattern.anchor_state.update(GetAnchorState(source));
+      new_anchor_pattern.anchor_state.update(transformed_anchor_state);
+      return new_anchor_pattern;
+    };
+
+    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
   }
@@ -137,7 +158,14 @@ struct FuseDownstreamAnchorOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& upstream,
                   const PatternNodePtr<Phrase>& downstream) {
-    // TODO(@wuzhanfei)
+    const auto merge_pattern_fn = [&fake_reduce_iter_idx](
+                                      const StmtPattern<Phrase>& destination,
+                                      const StmtPattern<Phrase>& source) {
+      return MergePattern<Phrase>(source, destination);
+    };
+    auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
+    graph->RemoveNode(upstream);
+    graph->RemoveNode(downstream);
   }
 };
 

@@ -43,8 +43,8 @@ StmtPattern<FrontendStage> MergePatternImpl(
 
 template <>
 StmtPattern<FrontendStage> MergePatternImpl(
-    const AnchorPattern<FrontendStage>& first,
-    const AnchorPattern<FrontendStage>& second);
+    const AnchorPattern<FrontendStage>& source,
+    const AnchorPattern<FrontendStage>& dest);
 
 template <>
 StmtPattern<FrontendStage> MergePatternImpl(
@@ -52,10 +52,10 @@ StmtPattern<FrontendStage> MergePatternImpl(
     const HorizontalFusionPattern<FrontendStage>& second);
 
 template <>
-ValueExpr<FrontendStage> InitValueExprImpl(
+ExprPromise<FrontendStage> InitExprPromiseImpl(
     const TrivialPattern<FrontendStage>& pattern, pir::Value anchor);
 
 template <>
-ValueExpr<FrontendStage> InitValueExprImpl(
+ExprPromise<FrontendStage> InitExprPromiseImpl(
     const ReducePattern<FrontendStage>& pattern, pir::Value anchor);
 }  // namespace cinn::fusion

@@ -51,7 +51,7 @@ static size_t GetCompitableRank(pir::Value value) {
   return rank == 0 ? 1 : rank;
 }
 
-static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
+static std::vector<size_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("dim");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());

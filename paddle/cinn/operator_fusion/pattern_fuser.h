@@ -336,8 +336,8 @@ StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
                                 const TrivialPattern<T>& second);
 
 template <typename T>
-StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& first,
-                                const AnchorPattern<T>& second);
+StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& source,
+                                const AnchorPattern<T>& dest);
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
@@ -377,25 +377,45 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
 }
 
 template <typename T>
-ValueExpr<T> InitValueExprImpl(const TrivialPattern<T>& pattern,
-                               pir::Value anchor);
+ExprPromise<T> InitExprPromiseImpl(const TrivialPattern<T>& pattern,
+                                   pir::Value anchor);
 
 template <typename T>
-ValueExpr<T> InitValueExprImpl(const ReducePattern<T>& pattern,
-                               pir::Value anchor);
+ExprPromise<T> InitExprPromiseImpl(const ReducePattern<T>& pattern,
+                                   pir::Value anchor);
 
 template <typename T>
-ValueExpr<T> InitValueExpr(const StmtPattern<T>& pattern, pir::Value anchor) {
+ExprPromise<T> InitExprPromise(const StmtPattern<T>& pattern,
+                               pir::Value anchor) {
   return std::visit(
       [anchor](const auto& arg) {
         using U = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<U, TrivialPattern<T>>) {
-          return InitValueExprImpl(arg, anchor);
+          return InitExprPromiseImpl(arg, anchor);
         } else if constexpr (std::is_same_v<U, ReducePattern<T>>) {
-          return InitValueExprImpl(arg, anchor);
+          return InitExprPromiseImpl(arg, anchor);
         }
       },
       s.variant());
+}
+
+template <typename T>
+ReducePattern<T> GetAnchorState(const StmtPattern<T>& pattern) {
+  return std::visit([](const auto& arg) { return arg.anchor_state; },
+                    pattern.variant());
+}
+
+template <typename T>
+AnchorState<T> ApplyAnchorTransformRoute(const AnchorState<T>& anchor_state,
+                                         const AnchorTransformRoute& route) {
+  return std::visit(
+      [route](const auto& arg) {
+        AnchorState<T> result = anchor_state;
+        for (auto promise : anchor_state.promise) {
+          promise.transform_route.update(route);
+        }
+      },
+      anchor_state);
 }
 
 }  // namespace cinn::fusion

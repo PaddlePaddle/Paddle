@@ -71,11 +71,16 @@ using AnchorTransform = std::variant<UnsupportTransformPtr,
 using AnchorTransformRoute = std::vector<AnchorTransform>;
 
 template <typename T>
-struct ValueExpr {};
+struct ExprPromise {};
 
 template <typename T>
 struct AnchorState {
-  std::vector<ValueExpr<T>> output_exprs;
+  std::vector<ExprPromise<T>> promise;
+
+  void update(AnchorState<T> new_state) {
+    auto new_exprs = new_state.promise;
+    promise.insert(promise.end(), new_exprs.begin(), new_exprs.end());
+  }
 };
 
 AnchorTransform CreateAnchorTransform(const TransformInfo& info);

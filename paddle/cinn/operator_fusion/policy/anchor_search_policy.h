@@ -29,6 +29,11 @@ class AnchorSearchPolicy final : : public PolicyBase<T> {
                          const PatternNodePtr<T>& downstream);
   bool HasDownstreamAnchor(const PatternNodePtr<T>& upstream,
                            const PatternNodePtr<T>& downstream);
+  std::optional<AnchorTransformRoute> FindUpstreamAnchorTransformRoute(
+      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream);
+  std::optional<AnchorTransformRoute> FindDownstreamAnchorTransformRoute(
+      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream);
+
   std::string Name() { return "AnchorSearchPolicy"; }
 };
 
