@@ -449,9 +449,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
     if (input_rank == bias_rank) {
       b_dims[input_rank - 1] = static_cast<int>(bias.dims()[input_rank - 1]);
     } else {
-      // Note(lyk): remains same before modification, but its correctness is suspucious.
-      // Since it works a long time for some scenarios, we keep this line temporarily. 
-      // But this kernel's implementation should be reviewed.
+      // TODO(lyk): remains same before modification, but its correctness is
+      // suspucious. Since it works a long time for some scenarios, we keep this
+      // line temporarily. But this branch still should be reviewed.
       b_dims[input_rank - 1] = static_cast<int>(bias.dims()[0]);
     }
   }
