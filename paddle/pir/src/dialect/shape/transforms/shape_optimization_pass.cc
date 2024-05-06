@@ -272,7 +272,8 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
-symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
+symbol::TensorShapeOrDataDimExprs CreateShapeOrDataByDDim(
+    const pir::DDim& dims) {
   std::vector<symbol::DimExpr> dim_exprs;
   for (int i = 0; i < dims.size(); ++i) {
     dim_exprs.emplace_back(dims.at(i));
@@ -315,10 +316,26 @@ void InferSymExprForBlock(const Block& block,
 
       if (all_outs_static_dims) {
         for (uint32_t i = 0; i < op.num_results(); ++i) {
-          infer_context->SetShapeOrDataForValue(
-              op.result(i),
-              CreateShapeOrDataByDDim(
-                  op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
+          auto value_type = op.result(i).type();
+          if (value_type.isa<pir::DenseTensorType>()) {
+            infer_context->SetShapeOrDataForValue(
+                op.result(i),
+                CreateShapeOrDataByDDim(
+                    value_type.dyn_cast<pir::DenseTensorType>().dims()));
+            continue;
+          }
+          if (value_type.isa<pir::VectorType>()) {
+            auto vec_data = value_type.dyn_cast<VectorType>().data();
+            symbol::TensorListShapeOrDataDimExprs shape_data_list;
+            for (unsigned i = 0; i < vec_data.size(); ++i) {
+              CHECK(vec_data[i].isa<DenseTensorType>());
+              auto type_info = vec_data[i].dyn_cast<DenseTensorType>();
+              shape_data_list.push_back(
+                  CreateShapeOrDataByDDim(type_info.dims()));
+            }
+            infer_context->SetShapeOrDataForValue(op.result(i),
+                                                  shape_data_list);
+          }
         }
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(

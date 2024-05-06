@@ -68,28 +68,50 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
 }
 
 void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
-  if (!val) {
+  const auto& value_type = val.type();
+  if (!val || !value_type) {
     PADDLE_THROW(
         phi::errors::Fatal("Set static shape for null value is FOBBIDEN!"));
-  }
-  if (!val.type().isa<DenseTensorType>()) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "Set static shape for non-tensor value is FOBBIDEN!"));
   }
   if (!IsStaticShape(val)) {
     LOG(WARNING) << "Risk on SetStaticShapeForValue for contain_unknown_dim";
   }
-  auto type_info = val.type().dyn_cast<pir::DenseTensorType>();
-  std::vector<symbol::DimExpr> static_shape;
-  for (int i = 0; i < type_info.dims().size(); ++i) {
-    int dim = type_info.dims()[i];
-    if (dim > 0) {
-      static_shape.emplace_back(symbol::DimExpr{dim});
-    } else {
-      static_shape.emplace_back(GetNextSymName());
+  const auto& GetStaticShapeForDenseTensorType =
+      [&](DenseTensorType type_info) -> symbol::TensorShapeOrDataDimExprs {
+    std::vector<symbol::DimExpr> static_shape;
+    for (int i = 0; i < type_info.dims().size(); ++i) {
+      int dim = type_info.dims()[i];
+      if (dim > 0) {
+        static_shape.emplace_back(symbol::DimExpr{dim});
+      } else {
+        static_shape.emplace_back(GetNextSymName());
+      }
     }
+    return symbol::TensorShapeOrDataDimExprs(static_shape);
+  };
+
+  if (value_type.isa<DenseTensorType>()) {
+    auto type_info = value_type.dyn_cast<DenseTensorType>();
+    SetShapeOrDataForValue(val, GetStaticShapeForDenseTensorType(type_info));
+    return;
   }
-  SetShapeOrDataForValue(val, symbol::TensorShapeOrDataDimExprs(static_shape));
+  if (value_type.isa<VectorType>()) {
+    auto vec_data = value_type.dyn_cast<VectorType>().data();
+    symbol::TensorListShapeOrDataDimExprs shape_data_list;
+    for (unsigned i = 0; i < vec_data.size(); ++i) {
+      if (!vec_data[i].isa<DenseTensorType>()) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Set static shape ONLY SUPPORT inner type DenseTensorType!"));
+      } else {
+        auto type_info = vec_data[i].dyn_cast<DenseTensorType>();
+        shape_data_list.push_back(GetStaticShapeForDenseTensorType(type_info));
+      }
+    }
+    SetShapeOrDataForValue(val, shape_data_list);
+    return;
+  }
+  PADDLE_THROW(phi::errors::Fatal(
+      "Set static shape ONLY SUPPORT DenseTensorType and VectorType!"));
 }
 
 void InferSymbolicShapeContext::SetShapeOrDataForValue(
@@ -535,11 +557,31 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
 
 bool IsStaticShape(const Value& value) {
   const auto& value_type = value.type();
-  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
+  if (!value || !value_type) {
     return false;
   }
-  return !::common::contain_unknown_dim(
-      value_type.dyn_cast<pir::DenseTensorType>().dims());
+  if (value_type.isa<DenseTensorType>()) {
+    return !::common::contain_unknown_dim(
+        value_type.dyn_cast<DenseTensorType>().dims());
+  }
+  if (value_type.isa<VectorType>()) {
+    bool is_static = true;
+    auto vec_data = value_type.dyn_cast<VectorType>().data();
+    for (unsigned i = 0; i < vec_data.size(); ++i) {
+      if (!vec_data[i].isa<DenseTensorType>()) {
+        is_static = false;
+        break;
+      } else {
+        is_static = !::common::contain_unknown_dim(
+            vec_data[i].dyn_cast<DenseTensorType>().dims());
+        if (!is_static) {
+          break;
+        }
+      }
+    }
+    return is_static;
+  }
+  return false;
 }
 
 }  // namespace pir

@@ -75,8 +75,6 @@ class IR_API InferSymbolicShapeContext {
   DimExprSubstitutionPattern substitution_pattern_;
 };
 
-// The implementation is based on shape constraint ir.
-// The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis final
     : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
  public:
