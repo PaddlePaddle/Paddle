@@ -54,12 +54,16 @@ USE_PIR_PASS(matmul_transpose_reshape_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(fc_onednn_enable_pass);
+USE_PIR_PASS(fc_activation_fuse_pass);
+USE_PIR_PASS(self_attention_fuse_pass);
 USE_PIR_PASS(softplus_activation_fuse_pass);
+USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_onednn_fuse_pass);
 USE_PIR_PASS(conv_activation_onednn_fuse_pass);
 USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
 USE_PIR_PASS(elementwise_act_onednn_fuse_pass);
 USE_PIR_PASS(operator_unsqueeze_onednn_fuse_pass);
+USE_PIR_PASS(operator_scale_onednn_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU

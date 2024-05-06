@@ -42,6 +42,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
@@ -180,6 +181,11 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
+
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out);
 
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
@@ -473,6 +479,25 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PullGpupsSparseInferMeta(const MetaTensor& w,
+                              const std::vector<const MetaTensor*>& ids,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out);
+
+void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
+                           const std::vector<const MetaTensor*>& w,
+                           int embedding_dim,
+                           int table_id,
+                           const std::string& accessor_class,
+                           const std::string& ctrlabel_name,
+                           int padding_id,
+                           bool scale_sparse_grad,
+                           const std::vector<std::string>& input_names,
+                           bool is_distributed,
+                           std::vector<MetaTensor*> out);
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
@@ -518,6 +543,10 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int maxlen,
                            DataType out_dtype,
                            MetaTensor* y);
+
+void ShapeBroadcastInferMeta(const MetaTensor& x,
+                             const MetaTensor& y,
+                             MetaTensor* out);
 
 void ShuffleBatchInferMeta(const MetaTensor& x,
                            const MetaTensor& seed,

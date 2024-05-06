@@ -126,6 +126,9 @@ static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
+      if (op_desc->Type() == "transpose2_grad" && n.first == "XShape") {
+        continue;
+      }
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
         if (inner_outputs.count(var_name) == 0) {
@@ -646,7 +649,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
-    if ((*op_desc)->Type() == "data") {
+    if ((*op_desc)->Type() == "data" || (*op_desc)->Type() == "feed") {
       continue;
     }
 

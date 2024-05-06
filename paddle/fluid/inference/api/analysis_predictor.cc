@@ -651,6 +651,13 @@ void AnalysisPredictor::InitDeviceContexts() {
               config_.xpu_config_.fc_autotune_level,
               config_.xpu_config_.fc_autotune_file_writeback,
               place_);
+          if (config_.xpu_config_.transformer_softmax_optimize_level > 0) {
+            xpu_context->SetContextOption(
+                "XPU_SOFTMAX_OPT",
+                std::to_string(
+                    config_.xpu_config_.transformer_softmax_optimize_level)
+                    .c_str());
+          }
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
