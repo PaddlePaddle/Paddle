@@ -20,19 +20,30 @@ import paddle
 import paddle.nn.functional as F
 from paddle.base import core
 from paddle.nn.functional.flash_attention import (
-    flash_attention,
+    scaled_dot_product_attention,
+    flash_attention
 )
 
 
 def get_triangle_upper_mask(x):
-    mask = paddle.full_like(x, -1e4)
+    mask = paddle.full_like(x, -1e9)
     mask.stop_gradient = True
     mask = paddle.triu(mask, diagonal=1)
     mask.stop_gradient = True
     return mask
 
+def get_random_mask(shape):
+    x=paddle.rand(shape, dtype='float32')
+    x.stop_gradient = True
+    m=paddle.randint(0, 2, shape).astype('bool')
+    m.stop_gradient = True
+    y=paddle.full(shape, -1e9, dtype='float32')
+    y.stop_gradient = True
+    mask = paddle.where(m, y, x)
+    mask.stop_gradient = True
+    return mask
 
-def attention_naive(q, k, v):
+def attention_naive(q, k, v, attention_mask=None):
     origin_dtype = q.dtype
     assert k.dtype == origin_dtype
     assert v.dtype == origin_dtype
@@ -47,8 +58,11 @@ def attention_naive(q, k, v):
     scale = 1.0 / np.sqrt(q.shape[-1])
     s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
     s = paddle.scale(s, scale)
-    mask = get_triangle_upper_mask(s)
-    s = s + mask
+    if attention_mask is not None:
+        s = s + attention_mask
+    else:
+        mask = get_triangle_upper_mask(s)
+        s = s + mask
     p = F.softmax(s)
     o = paddle.matmul(p, vt)
     o = paddle.cast(o, origin_dtype)
@@ -77,8 +91,8 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.return_softmax = False
 
     def test_all(self):
-        self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
-        self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
+        self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4) 
+        self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3) 
         self.run_case(dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2)
 
     def run_case(self, dtype, tolerance, tolerance_dv):
@@ -112,13 +126,16 @@ class TestFlashAttentionAPI(unittest.TestCase):
         v_ = paddle.to_tensor(
             value, place=self.place, dtype=dtype, stop_gradient=False
         )
-
-        out, _ = flash_attention(
-            q, k, v, self.dropout, self.causal, self.return_softmax
+        if self.causal == False:
+            self.attention_mask = get_random_mask(self.mask_shape)
+        else:
+            self.attention_mask=None
+        
+        out = scaled_dot_product_attention(
+            q, k, v, self.attention_mask, self.dropout, self.causal
         )
         # TODO(houj04): use self.causal
-        out_ = attention_naive(q_, k_, v_)
-
+        out_ = attention_naive(q_, k_, v_, self.attention_mask)
         out.backward()
         out_.backward()
 
@@ -201,6 +218,15 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.shape = (2, 128, 1, 32)
         self.dropout = 0.0
         self.causal = True
+        self.return_softmax = False
+        
+class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.XPUPlace(0)
+        self.shape = (2, 128, 1, 32)
+        self.mask_shape = (1, 1, 128, 128)
+        self.dropout = 0.0
+        self.causal = False
         self.return_softmax = False
 
 
