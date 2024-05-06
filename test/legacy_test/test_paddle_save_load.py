@@ -280,15 +280,15 @@ class TestSaveLoadAny(unittest.TestCase):
                         os.path.join(self.temp_dir.name, path_vars, var.name),
                     )
 
+            # Pir value currently does not have .set_value() and .get_value()
+            # Instead, use new functions to replace them
             with self.assertRaises(TypeError):
                 get_value(var, 'base.global_scope()')
-            # Pir value currently does not have .get_value()
+            # Pir get_value() currently does not raise ValueError
             # Maybe fix it later
             if not in_pir_mode():
                 with self.assertRaises(ValueError):
                     x.get_value()
-            # Pir value currently does not have .set_value()
-            # Instead, use a new function to replace it
             with self.assertRaises(TypeError):
                 set_value(x, '1')
             fake_data = np.zeros([3, 2, 1, 2, 3])
