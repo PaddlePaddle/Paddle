@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# all registered reshard functions
+_g_reshard_func_list = []
+
 
 class ReshardFunction:
     def is_suitable(self, dist_tensor, dist_attr):
-        return "ReshardFunction is_suitable not implemented"
+        raise NotImplementedError
 
-    def reshard(self, program, op, src_tensor, dst_dist_attr):
-        return "ReshardFunction reshard not implemented"
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+        raise NotImplementedError
 
 
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
@@ -39,6 +42,13 @@ def clean_reshard_funcs():
     _g_reshard_func_list.clear()
 
 
+def is_shard(dist_attr):
+    for v in dist_attr.dims_mapping:
+        if v != -1:
+            return True
+    return False
+
+
 def is_partial(dist_attr):
     if len(dist_attr.partial_status) > 0:
         return True
@@ -54,6 +64,3 @@ def is_replicated(dist_attr):
     ):
         return True
     return False
-
-
-_g_reshard_func_list = []

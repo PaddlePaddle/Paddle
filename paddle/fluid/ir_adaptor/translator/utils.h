@@ -42,6 +42,7 @@ struct PdOpSig {
 bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+const std::vector<PdOpSig>& SparseOpToPdOpsMapping(std::string op_name);
 
 #ifdef PADDLE_WITH_DNNL
 bool IsOneDNNOnlyOp(std::string op_name);
