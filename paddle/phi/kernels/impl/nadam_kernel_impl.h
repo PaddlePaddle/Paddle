@@ -16,8 +16,6 @@
 
 #include <math.h>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/nadam_kernel.h"
