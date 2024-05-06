@@ -278,8 +278,29 @@ bool FlashAttnOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &q =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
+  const symbol::ShapeOrDataDimExprs &k =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
   const symbol::ShapeOrDataDimExprs &v =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  shape_analysis->AddEqualCstr(q.shape()[0], k.shape()[0]);
+  shape_analysis->AddEqualCstr(q.shape()[0], v.shape()[0]);
+  shape_analysis->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
+  if (op->operand_source(4)) {
+    const symbol::ShapeOrDataDimExprs &attn_mask =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(4));
+    shape_analysis->AddEqualCstr(attn_mask.shape()[0], q.shape()[0]);
+    shape_analysis->AddEqualCstr(attn_mask.shape()[2], q.shape()[1]);
+    shape_analysis->AddEqualCstr(attn_mask.shape()[3], k.shape()[1]);
+  }
 
   std::vector<symbol::DimExpr> out_shape = q.shape();
 
@@ -287,6 +308,57 @@ bool FlashAttnOpInferSymbolicShape(
 
   shape_analysis->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+
+  // GPU has round for seqlen, but XPU has not. Here we align with the GPU
+  // version.
+  auto round_multiple = [](symbol::DimExpr x) {
+    auto m = symbol::DimExpr{128};
+    auto m_minus_one = symbol::DimExpr{127};
+    return (x + m_minus_one) / m * m;
+  };
+  auto batch_size_expr = q.shape()[0];
+  auto num_heads_expr = q.shape()[2];
+  auto seqlen_q_rounded_expr = round_multiple(q.shape()[1]);
+  auto seqlen_k_rounded_expr = round_multiple(k.shape()[1]);
+  if (op->result(1)) {
+    std::vector<symbol::DimExpr> softmax_shape{batch_size_expr,
+                                               num_heads_expr,
+                                               seqlen_q_rounded_expr,
+                                               seqlen_k_rounded_expr};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
+  }
+  if (op->result(2)) {
+    std::vector<symbol::DimExpr> softmax_lse_shape{
+        batch_size_expr, num_heads_expr, seqlen_q_rounded_expr};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
+  }
+  if (op->result(3)) {
+    std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(out_shape));
+  }
+  return true;
+}
+
+bool GroupNormOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  const symbol::DimExpr &batch_size = x_shape.shape()[0];
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  symbol::TensorShapeOrDataDimExprs mean_shape(
+      std::vector<symbol::DimExpr>{batch_size, groups});
+  if (op->result(1)) {
+    shape_analysis->SetShapeOrDataForValue(op->result(1), mean_shape);
+  }
+  if (op->result(2)) {
+    shape_analysis->SetShapeOrDataForValue(op->result(2), mean_shape);
+  }
   return true;
 }
 
@@ -325,6 +397,74 @@ bool LogspaceOpInferSymbolicShape(
 bool NearestInterpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool MemoryEfficientAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &q_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &k_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &v_shape =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  PADDLE_ENFORCE_EQ(
+      q_shape.size(),
+      4,
+      phi::errors::InvalidArgument("Query should be a 4-D tensor"
+                                   "But received Query dimension(%d)",
+                                   q_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      k_shape.size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%d)",
+                                   k_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      v_shape.size(),
+      4,
+      phi::errors::InvalidArgument("Value should be a 4-D tensor"
+                                   "But received Value dimension(%d)",
+                                   v_shape.size()));
+
+  const auto &query_batch_size = q_shape[0];
+  const auto &query_seq_length = q_shape[1];
+  const auto &query_num_head = q_shape[2];
+  const auto &query_head_size = q_shape[3];
+
+  const auto &key_batch_size = k_shape[0];
+  const auto &key_seq_length = k_shape[1];
+  const auto &key_num_head = k_shape[2];
+  const auto &key_head_size = k_shape[3];
+
+  const auto &value_batch_size = v_shape[0];
+  const auto &value_seq_length = v_shape[1];
+  const auto &value_num_head = v_shape[2];
+  const auto &value_head_size = v_shape[3];
+
+  shape_analysis->AddEqualCstr(query_batch_size, key_batch_size);
+  shape_analysis->AddEqualCstr(key_batch_size, value_batch_size);
+
+  shape_analysis->AddEqualCstr(query_num_head, key_num_head);
+  shape_analysis->AddEqualCstr(key_num_head, value_num_head);
+
+  shape_analysis->AddEqualCstr(query_head_size, key_head_size);
+
+  shape_analysis->AddEqualCstr(key_seq_length, value_seq_length);
+
+  const std::vector<symbol::DimExpr> out_dims{
+      query_batch_size, query_seq_length, query_num_head, value_head_size};
+  const std::vector<symbol::DimExpr> logsumexp_dims{query_num_head,
+                                                    query_batch_size};
+  const std::vector<symbol::DimExpr> seed_and_offset_dims{2};
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(logsumexp_dims));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(2), symbol::TensorShapeOrDataDimExprs(seed_and_offset_dims));
+
+  return true;
 }
 
 bool MeshgridOpInferSymbolicShape(
