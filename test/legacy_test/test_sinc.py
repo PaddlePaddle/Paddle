@@ -260,7 +260,7 @@ class TestSincAPIFP16(unittest.TestCase):
 )
 class TestSincAPIBF16(unittest.TestCase):
     def setUp(self):
-        self.shapes = [[6], [16, 64]]
+        self.shapes = [[6], [8, 64]]
         self.dtype = 'uint16'
         self.place = paddle.CUDAPlace(0)
 
