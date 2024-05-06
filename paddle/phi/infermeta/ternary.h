@@ -96,6 +96,17 @@ void DpsgdInferMeta(const MetaTensor& param,
                     int size,
                     MetaTensor* param_out);
 
+void FakeQuantizeRangeAbsMaxInferMeta(const MetaTensor& x,
+                                      const MetaTensor& in_scale,
+                                      const MetaTensor& iter,
+                                      int window_size,
+                                      int bit_length,
+                                      bool is_test,
+                                      int round_type,
+                                      MetaTensor* out,
+                                      MetaTensor* out_scale,
+                                      MetaTensor* out_scales);
+
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,

@@ -252,6 +252,14 @@ Tensor reciprocal_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
+  auto one = full<T>(empty_shape, 1, x.dtype());
+  auto ans = full<T>(empty_shape, -1, x.dtype()) *
+             (label * log<T>(x) + (one - label) * log<T>(one - x));
+  return ans;
+}
+
+template <typename T>
 Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   std::size_t x_ndims = x.dims().size();
   std::size_t y_ndims = y.dims().size();
@@ -536,6 +544,55 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
+  int64_t rank = x.size();
+  std::vector<Tensor> res;
+  std::vector<int64_t> tar_shape(rank, 1);
+  for (int64_t i = 0; i < rank; i++) {
+    if (x[i].shape().size() == 1) {
+      tar_shape[i] = x[i].shape()[0];
+    }
+  }
+  if (has_dynamic_shape(tar_shape)) {
+    std::vector<Tensor> tmp_shape;
+    for (int64_t i = 0; i < rank; i++) {
+      if (tar_shape[i] == 1) {
+        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT32));
+      } else {
+        tmp_shape.push_back(shape<T>(x[i]));
+      }
+    }
+    auto tar_tensor_shape = concat<T>(tmp_shape);
+
+    for (int64_t i = 0; i < rank; i++) {
+      if (tar_shape[i] == 1) {
+        res.push_back(backend::expand_with_tensor<T>(x[i], tar_tensor_shape));
+      } else {
+        std::vector<int64_t> unsqueeze_dim;
+        for (int64_t k = 0; k < rank; k++) {
+          if (i != k) {
+            unsqueeze_dim.push_back(k);
+          }
+        }
+        res.push_back(backend::expand_with_tensor<T>(
+            unsqueeze<T>(x[i], unsqueeze_dim), tar_tensor_shape));
+      }
+    }
+
+  } else {
+    for (int64_t i = 0; i < rank; i++) {
+      std::vector<int64_t> view_shape(rank, 1);
+      if (x[i].shape().size() == 1) {
+        view_shape[i] = x[i].shape()[0];
+      }
+      res.push_back(expand<T>(reshape<T>(x[i], view_shape), tar_shape));
+    }
+  }
+
+  return res;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
@@ -696,9 +753,17 @@ std::tuple<Tensor, Tensor> dropout_decomp(
   if (is_half_dtype(org_dtype)) {
     dtype_tmp = DataType::FLOAT32;
   }
-
-  auto uniform_tensor =
-      uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  Tensor uniform_tensor;
+  if (has_dynamic_shape(x.shape())) {
+    auto shape_tensor = shape<T>(x);
+    auto zero = full<T>(empty_shape, 0.0, dtype_tmp);
+    auto one = full<T>(empty_shape, 1.0, dtype_tmp);
+    uniform_tensor =
+        backend::uniform<T>(shape_tensor, zero, one, dtype_tmp, seed_tmp);
+  } else {
+    uniform_tensor =
+        uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  }
   auto mask = cast<T>(
       greater_equal<T>(uniform_tensor, full<T>(empty_shape, p, dtype_tmp)),
       org_dtype);

@@ -61,96 +61,118 @@ def reshard_combine_value(op, operand, attr):
 
 
 def apply_partition_pass(program):
-    with paddle.static.program_guard(program):
-        for op in program.global_block().ops:
-            if op.name() in partition_skip_op_list:
-                continue
-            assert len(op.operands()) == len(
-                op.dist_attr.operands()
-            ), f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
+    for op in program.global_block().ops:
+        if op.name() in partition_skip_op_list:
+            continue
+        assert len(op.operands()) == len(
+            op.dist_attr.operands()
+        ), f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
 
-            for operand, attr in zip(op.operands(), op.dist_attr.operands()):
-                prev_var = operand.source()
-                if prev_var.is_combine():
-                    operand.set_source(reshard_combine_value(op, operand, attr))
-                else:
-                    operand.set_source(reshard_single_value(op, operand, attr))
-                prev_op = prev_var.get_defining_op()
-                if (
-                    prev_op
-                    and prev_op.num_results() == 1
-                    and prev_var.use_empty()
-                ):
-                    prev_op.erase()
-
-            for var, attr in zip(op.results(), op.dist_attr.results()):
-                if (
-                    var.initialized()
-                    and var.is_dist()
-                    and var.dist_attr() != attr
-                ):
-                    paddle.pir.set_insertion_point_after(op)
-                    old_dist_attr = var.dist_attr()
-                    var.update_dist_attr(attr.as_tensor_dist_attr())
-                    # insert reshard
-                    reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
-                    var.replace_all_uses_with(reshard_var)
-                    reshard_var.get_defining_op().operand(0).set_source(var)
-
-        # pruning op and value not belong to cur rank
-        cur_rank = paddle.distributed.get_rank()
-        for op in program.global_block().ops[::-1]:
-            if cur_rank not in op.dist_attr.process_mesh.process_ids:
-                program.global_block().remove_op(op)
+        for operand, attr in zip(op.operands(), op.dist_attr.operands()):
+            prev_var = operand.source()
+            if prev_var.is_combine():
+                operand.set_source(reshard_combine_value(op, operand, attr))
             else:
-                # set the operand as null when it is not belong to cur rank
-                if (
-                    op.name() == 'dist_op.reshard'
-                    and cur_rank
-                    not in op.operand(0)
-                    .source()
-                    .dist_attr()
-                    .process_mesh.process_ids
-                ):
-                    op.operand(0).set_source(None)
+                operand.set_source(reshard_single_value(op, operand, attr))
+            prev_op = prev_var.get_defining_op()
+            if prev_op and prev_op.num_results() == 1 and prev_var.use_empty():
+                prev_op.erase()
 
-        # merge pd.data ops for
-        lr_ops = []
-        for op in program.global_block().ops[::-1]:
+        for var, attr in zip(op.results(), op.dist_attr.results()):
+            if var.initialized() and var.is_dist() and var.dist_attr() != attr:
+                paddle.pir.set_insertion_point_after(op)
+                old_dist_attr = var.dist_attr()
+                var.update_dist_attr(attr.as_tensor_dist_attr())
+                # insert reshard
+                reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
+                var.replace_all_uses_with(reshard_var)
+                reshard_var.get_defining_op().operand(0).set_source(var)
+
+    # pruning op and value not belong to cur rank
+    cur_rank = paddle.distributed.get_rank()
+    for op in program.global_block().ops[::-1]:
+        if cur_rank not in op.dist_attr.process_mesh.process_ids:
+            op.erase()
+        else:
+            # set the operand as null when it is not belong to cur rank
             if (
-                op.name() == 'pd_op.data'
-                and "learning_rate" in op.attrs()["name"]
+                op.name() == 'dist_op.reshard'
+                and cur_rank
+                not in op.operand(0)
+                .source()
+                .dist_attr()
+                .process_mesh.process_ids
             ):
-                lr_ops.append(op)
+                op.operand(0).set_source(None)
 
-        if len(lr_ops) > 1:
-            lr_value = lr_ops[0].result(0)
-            for op in lr_ops[1:]:
-                lr = op.result(0)
-                lr.replace_all_uses_with(lr_value)
-                program.global_block().remove_op(op)
-    return program
+    # merge pd.data ops for
+    lr_ops = []
+    for op in program.global_block().ops[::-1]:
+        if op.name() == 'pd_op.data' and "learning_rate" in op.attrs()["name"]:
+            lr_ops.append(op)
+
+    if len(lr_ops) > 1:
+        lr_value = lr_ops[0].result(0)
+        for op in lr_ops[1:]:
+            lr = op.result(0)
+            lr.replace_all_uses_with(lr_value)
+            op.erase()
 
 
 def apply_reshard_pass(program):
-    new_program = program.clone()
-    with paddle.base.program_guard(new_program):
-        for op in new_program.global_block().ops:
-            if op.name() == 'dist_op.reshard':
-                var = op.operand_source(0)
-                op_dist_attr = op.dist_attr
-                src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
-                dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
-                assert (
-                    not var.initialized() or var.dist_attr() == src_dist_attr
-                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
+    for op in program.global_block().ops:
+        if op.name() == 'dist_op.reshard':
+            var = op.operand_source(0)
+            op_dist_attr = op.dist_attr
+            src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
+            dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
+            assert (
+                not var.initialized() or var.dist_attr() == src_dist_attr
+            ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
 
-                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
-                assert (
-                    reshard_func is not None
-                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
-                reshard_func.reshard(
-                    new_program, op, src_dist_attr, dst_dist_attr
-                )
+            reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+            assert (
+                reshard_func is not None
+            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+            paddle.pir.set_insertion_point_after(op)
+            out_value = reshard_func.reshard(
+                src_dist_attr,
+                dst_dist_attr,
+                op.operand_source(0),
+                op.result(0).type(),
+            )
+            if out_value is not None:
+                op.result(0).replace_all_uses_with(out_value)
+            if op.result(0).use_empty():
+                op.erase()
 
-    return new_program
+
+# In sequence_parallel, we need to transpose hidden_states
+# from [bs, seq, hidden] to [seq, bs, hidden] to perform
+# split and allgather at dim 0.
+# The transpose may lead to about 3% performance
+# in llama-70B model (tp4pp8).
+# We found that, when bs=1, which is the common case in llm
+# training, the transpose is equal to reshape.
+# So, this pass is to haddle the specific case.
+def eliminate_transpose_by_reshape(program):
+    for op in program.global_block().ops:
+        if (
+            op.name() == 'pd_op.transpose'
+            or op.name() == 'pd_op.transpose_grad'
+        ):
+            var = op.operand(0).source()
+            rank = len(var.shape)
+            perm = op.attrs()['perm']
+            perm = [p + rank if p < 0 else p for p in perm]
+            # only support transpose dim 0 and dim 1
+            expected_perm = [1, 0] + [i + 2 for i in range(rank - 2)]
+            if perm == expected_perm and (
+                var.shape[0] == 1 or var.shape[1] == 1
+            ):
+                paddle.pir.set_insertion_point(op)
+                transpose_var = op.result(0)
+                reshape_var = paddle._C_ops.reshape(var, transpose_var.shape)
+                transpose_var.replace_all_uses_with(reshape_var)
+                op.erase()
+    return program

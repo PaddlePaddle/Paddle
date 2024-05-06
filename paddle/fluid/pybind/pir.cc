@@ -33,6 +33,7 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -194,6 +195,33 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   return value;
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
@@ -259,7 +287,7 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_unique<Program>(pir::IrContext::Instance());
+        return std::make_shared<Program>(pir::IrContext::Instance());
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
@@ -336,7 +364,63 @@ void BindProgram(py::module *m) {
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
            })
-      .def("num_ops", [](Program &self) { return self.num_ops(); });
+      .def("num_ops", [](Program &self) { return self.num_ops(); })
+      .def(
+          "state_dict",
+          [](std::shared_ptr<Program> self,
+             const std::string &mode = "all",
+             const framework::Scope &scope = framework::Scope()) {
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_all;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_param;
+            std::unordered_map<std::string, phi::DenseTensor> state_dict_opt;
+            for (auto op : self->block()->ops()) {
+              for (auto var : op->results()) {
+                auto is_persistable =
+                    var.attribute<BoolAttribute>("persistable");
+                if (is_persistable && is_persistable.data()) {
+                  if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_param[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  } else if (var.defining_op()
+                                 ->isa<paddle::dialect::DataOp>()) {
+                    std::string var_name = GetValueName(var);
+                    auto tensor =
+                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
+                    state_dict_opt[var_name] = *tensor;
+                    state_dict_all[var_name] = *tensor;
+                  }
+                }
+              }
+            }
+            if (mode == "all") {
+              return state_dict_all;
+            } else if (mode == "param") {
+              return state_dict_param;
+            } else if (mode == "opt") {
+              return state_dict_opt;
+            } else {
+              PADDLE_THROW(
+                  phi::errors::InvalidArgument("The mode is not supported."));
+            }
+          })
+      .def("set_state_dict",
+           [](std::shared_ptr<Program> self,
+              const std::unordered_map<std::string, phi::DenseTensor>
+                  &state_dict,
+              const framework::Scope &scope = framework::Scope()) {
+             for (auto item : state_dict) {
+               auto var = scope.FindVar(item.first);
+               if (var == nullptr) {
+                 PADDLE_THROW(phi::errors::NotFound(
+                     "The variable %s is not found.", item.first));
+               } else {
+                 *var->GetMutable<phi::DenseTensor>() = item.second;
+               }
+             }
+           });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -732,71 +816,42 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-phi::DataType GetValueDtype(Value value) {
-  if (!value.type()) {
+phi::DataType GetTensorDtype(Type type) {
+  if (!type) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorType>().dtype());
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<SelectedRowsType>().dtype());
-  } else if (value.type().isa<DenseTensorArrayType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorArrayType>().dtype());
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DistDenseTensorType>().dtype());
+  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
+    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
+    return dialect::TransToPhiDataType(select_rows.dtype());
+  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DistDenseTensorType."));
+        "SelectedRowsType, DenseTensorArrayType."));
   }
 }
+phi::DataType GetValueDtype(Value value) {
+  return GetTensorDtype(value.type());
+}
 
-std::string GetValueName(Value value) {
-  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
-  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<pir::StrAttribute>("name").AsString();
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
-    } else {
-      return "arg_" + std::to_string(block_arg.index());
-    }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
-    }
+const phi::DDim &GetTensorDims(Type type) {
+  if (!type) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The type used to get dims is nullptr."));
+  }
+  if (auto dense_type = type.dyn_cast<DenseTensorType>()) {
+    return dense_type.dims();
+  } else if (auto select_rows_type = type.dyn_cast<SelectedRowsType>()) {
+    return select_rows_type.dims();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently, we can only get shape for dense and selsect rows type."));
   }
 }
-
 const phi::DDim &GetValueDims(Value value) {
-  if (!value.type()) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
-  }
-  if (value.type().isa<DenseTensorType>()) {
-    return value.type().dyn_cast<DenseTensorType>().dims();
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return value.type().dyn_cast<SelectedRowsType>().dims();
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return value.type().dyn_cast<DistDenseTensorType>().global_ddim();
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and distdense"
-        "tensor."));
-  }
+  return GetTensorDims(value.type());
 }
 
 pir::Value apply(Value self, py::object func) {
@@ -1044,13 +1099,10 @@ void BindValue(py::module *m) {
             }
             return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
           })
+      // The function will calculate the new local shape based on the global
+      // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        if (auto dist_type = self.type().dyn_cast<DistTypeInterface>()) {
-          self.set_type(dist_type.CopyWithNewDistAttr(dist_attr));
-        } else {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "update_dist_attr is only for dist type tensor."));
-        }
+        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
       });
 }
 
@@ -1081,11 +1133,26 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_type.def("__eq__", &Type::operator==)
+      .def_property(
+          "shape",
+          [](Type self) { return phi::vectorize(GetTensorDims(self)); },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Type self) { return GetTensorDtype(self); },
+          [](Type self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          })
+      .def("__str__", [](Type &self) {
+        std::ostringstream print_stream;
+        print_stream << self;
+        return print_stream.str();
+      });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {
@@ -1647,31 +1714,28 @@ SplitedResult SplitForwardBackward(
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = forward_outputs.size();
 
-  auto create_output_fn_forward = [&ctx,
-                                   &forward_value_map,
-                                   &counter,
-                                   &forward_program,
-                                   &forward_inputs,
-                                   &forward_params](const pir::Value &v) {
-    if (v.impl() == nullptr) {
-      return;
-    }
-    // Skip the value that already in forward_params.
-    if (std::find(forward_params.begin(), forward_params.end(), v) !=
-        forward_params.end()) {
-      return;
-    }
-    std::string shadow_output_name =
-        std::string("output_") + std::to_string(counter);
-    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-    pir::AttributeMap attribute_map = {
-        {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
-    };
-    pir::Operation *operation = pir::Operation::Create(
-        {forward_value_map[v]}, attribute_map, {}, op_info);
-    forward_program->block()->push_back(operation);
-    counter += 1;
-  };
+  auto create_output_fn_forward =
+      [&ctx, &forward_value_map, &counter, &forward_program, &forward_params](
+          const pir::Value &v) {
+        if (v.impl() == nullptr) {
+          return;
+        }
+        // Skip the value that already in forward_params.
+        if (std::find(forward_params.begin(), forward_params.end(), v) !=
+            forward_params.end()) {
+          return;
+        }
+        std::string shadow_output_name =
+            std::string("output_") + std::to_string(counter);
+        auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+        pir::AttributeMap attribute_map = {
+            {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
+        };
+        pir::Operation *operation = pir::Operation::Create(
+            {forward_value_map[v]}, attribute_map, {}, op_info);
+        forward_program->block()->push_back(operation);
+        counter += 1;
+      };
 
   auto create_output_fn_backward = [&ctx,
                                     &backward_value_map,

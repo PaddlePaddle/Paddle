@@ -27,6 +27,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -51,7 +52,10 @@ std::unordered_map<T, U> MakeMap(const std::vector<T>& keys,
                                  const std::vector<U>& values) {
   std::unordered_map<T, U> result = std::unordered_map<T, U>();
 
-  CHECK(keys.size() == values.size());
+  PADDLE_ENFORCE_EQ(keys.size(),
+                    values.size(),
+                    ::common::errors::InvalidArgument(
+                        "Required keys shall have same size with values."));
   for (int i = 0; i < keys.size(); i++) {
     result[keys[i]] = values[i];
   }
