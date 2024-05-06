@@ -437,13 +437,13 @@ bool NearestInterpOpInferSymbolicShape(
 }
 
 bool MemoryEfficientAttentionOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &q_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &k_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(1)).shape();
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &v_shape =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(2)).shape();
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
   PADDLE_ENFORCE_EQ(
       q_shape.size(),
       4,
@@ -478,15 +478,15 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   const auto &value_num_head = v_shape[2];
   const auto &value_head_size = v_shape[3];
 
-  shape_analysis->AddEqualCstr(query_batch_size, key_batch_size);
-  shape_analysis->AddEqualCstr(key_batch_size, value_batch_size);
+  infer_context->AddEqualCstr(query_batch_size, key_batch_size);
+  infer_context->AddEqualCstr(key_batch_size, value_batch_size);
 
-  shape_analysis->AddEqualCstr(query_num_head, key_num_head);
-  shape_analysis->AddEqualCstr(key_num_head, value_num_head);
+  infer_context->AddEqualCstr(query_num_head, key_num_head);
+  infer_context->AddEqualCstr(key_num_head, value_num_head);
 
-  shape_analysis->AddEqualCstr(query_head_size, key_head_size);
+  infer_context->AddEqualCstr(query_head_size, key_head_size);
 
-  shape_analysis->AddEqualCstr(key_seq_length, value_seq_length);
+  infer_context->AddEqualCstr(key_seq_length, value_seq_length);
 
   const std::vector<symbol::DimExpr> out_dims{
       query_batch_size, query_seq_length, query_num_head, value_head_size};
@@ -494,11 +494,11 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
                                                     query_batch_size};
   const std::vector<symbol::DimExpr> seed_and_offset_dims{2};
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       op->result(1), symbol::TensorShapeOrDataDimExprs(logsumexp_dims));
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       op->result(2), symbol::TensorShapeOrDataDimExprs(seed_and_offset_dims));
 
   return true;
