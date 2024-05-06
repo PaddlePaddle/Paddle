@@ -17,14 +17,18 @@ from .p_to_r_reshard_func import (
     PToRReshardFunction,
     PToRReshardFunctionCrossMesh,
 )
-from .r_to_s_reshard_func import RToSReshardFunction
+from .r_to_s_reshard_func import (
+    RToSReshardFunction,
+    RToSReshardFunctionCrossMesh,
+)
 from .same_status_reshard_func import SameStatusReshardFunction
 
 
 def register_reshard_funcs():
     register_reshard_func(PToRReshardFunction())
-    register_reshard_func(RToSReshardFunction())
     register_reshard_func(PToRReshardFunctionCrossMesh())
+    register_reshard_func(RToSReshardFunction())
+    register_reshard_func(RToSReshardFunctionCrossMesh())
     register_reshard_func(SameStatusReshardFunction())
 
 
