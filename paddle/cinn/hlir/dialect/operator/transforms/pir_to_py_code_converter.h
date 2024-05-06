@@ -30,7 +30,8 @@ class PirToPyCodeConverter {
   PirToPyCodeConverter(const PirToPyCodeConverter&) = delete;
   PirToPyCodeConverter(PirToPyCodeConverter&&) = delete;
 
-  std::string Convert(const pir::Program& program) const;
+  void SaveIfFlagEnabled(const std::string& tag,
+                         const pir::Program& program) const;
 };
 
 }  // namespace cinn::dialect::ir
