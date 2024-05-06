@@ -522,7 +522,6 @@ class TestTensorRegisterHook(unittest.TestCase):
         jit_net = paddle.jit.to_static(
             net,
             input_spec=[paddle.static.InputSpec([None, self.in_size])],
-            full_graph=True,
         )
 
         data = np.random.uniform(size=[self.batch_size, self.in_size]).astype(
