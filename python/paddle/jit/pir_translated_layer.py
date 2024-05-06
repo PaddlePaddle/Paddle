@@ -29,6 +29,7 @@ PIR_INFER_MODEL_SUFFIX = ".json"
 
 from .translated_layer import (
     BUFFER_NAME_PREFIX,
+    INFER_PARAMS_SUFFIX,
     PARAMETER_NAME_PREFIX,
 )
 
@@ -274,6 +275,27 @@ def _construct_params_and_buffers(
         var_dict = _load_pir_persistable_vars(
             model_path, programs['forward'], params_filename
         )
+        model_name = params_filename[: -len(INFER_PARAMS_SUFFIX)]
+        # Load every file that meets the requirements in the directory model_path.
+        for file_name in os.listdir(model_path):
+            if file_name.startswith(model_name) and file_name.endswith(
+                INFER_PARAMS_SUFFIX
+            ):
+                parsing_names = file_name[
+                    len(model_name) : -len(INFER_PARAMS_SUFFIX) + 1
+                ].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                else:
+                    continue
+            else:
+                continue
+
+            var_dict.update(
+                _load_pir_persistable_vars(
+                    model_path, programs[func_name], file_name
+                )
+            )
         return var_dict
 
 
@@ -306,6 +328,7 @@ def _run_dygraph(instance, input, program_holder):
         input_tensors.append(tensor)
 
     persistable_tensors = []
+
     for var_name in program_holder.persistable_names:
         dy_var_name = instance._persistable_var_name_dict[var_name]
         if dy_var_name in instance._parameters:

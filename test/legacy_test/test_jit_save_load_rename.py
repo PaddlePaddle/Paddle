@@ -1492,7 +1492,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    # @test_with_dygraph_pir
+    @test_with_dygraph_pir
     def test_jit_save_load_inference(self):
         model_path_inference = os.path.join(
             self.temp_dir.name, "jit_save_load_multi_methods/model"
@@ -2114,7 +2114,7 @@ class TestInputSpecCompatibility(unittest.TestCase):
         )
 
     @test_with_dygraph_pir
-    def test_jit_save_compatible_input_sepc(self):
+    def test_jit_save_no_input_sepc(self):
         layer = InputSepcLayer()
         layer = paddle.jit.to_static(
             layer,
@@ -2132,6 +2132,18 @@ class TestInputSpecCompatibility(unittest.TestCase):
         self._assert_input_spec_layer_return(layer, no_input_spec_layer)
         shutil.rmtree(save_dir)
 
+    @test_with_dygraph_pir
+    def test_jit_save_same_input_sepc(self):
+        layer = InputSepcLayer()
+        layer = paddle.jit.to_static(
+            layer,
+            input_spec=[
+                InputSpec(shape=[None, 8], dtype='float32', name='x'),
+                InputSpec(shape=[None, 1], dtype='float64', name='y'),
+            ],
+            full_graph=True,
+        )
+
         save_dir = os.path.join(self.temp_dir.name, "jit_save_same_input_spec")
         path = save_dir + "/model"
 
@@ -2146,6 +2158,18 @@ class TestInputSpecCompatibility(unittest.TestCase):
         same_input_spec_layer = paddle.jit.load(path)
         self._assert_input_spec_layer_return(layer, same_input_spec_layer)
         shutil.rmtree(save_dir)
+
+    @test_with_dygraph_pir
+    def test_jit_save_compatible_input_sepc(self):
+        layer = InputSepcLayer()
+        layer = paddle.jit.to_static(
+            layer,
+            input_spec=[
+                InputSpec(shape=[None, 8], dtype='float32', name='x'),
+                InputSpec(shape=[None, 1], dtype='float64', name='y'),
+            ],
+            full_graph=True,
+        )
 
         save_dir = os.path.join(
             self.temp_dir.name, "jit_save_compatible_input_spec"

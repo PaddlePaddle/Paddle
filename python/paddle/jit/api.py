@@ -1216,8 +1216,8 @@ def save(layer, path, input_spec=None, **configs):
             params_filename = (
                 file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
             )
-            file_prefix = file_prefix + '.' + attr_func
-        file_prefix = os.path.join(model_path, file_prefix)
+            path_prefix = file_prefix + '.' + attr_func
+        file_path = os.path.join(model_path, path_prefix)
         with scope_guard(scope):
             if use_pir_api():
                 value_map = paddle.pir.IrMapping()
@@ -1247,7 +1247,7 @@ def save(layer, path, input_spec=None, **configs):
                 clone_output_vars = output_vars
 
             save_inference_model(
-                path_prefix=file_prefix,
+                path_prefix=file_path,
                 feed_vars=clone_input_vars,
                 fetch_vars=clone_output_vars,
                 executor=Executor(_current_expected_place()),
