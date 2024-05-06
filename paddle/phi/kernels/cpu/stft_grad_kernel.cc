@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/stft_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/stft_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     stft_grad, CPU, ALL_LAYOUT, phi::StftGradKernel, float, double);
