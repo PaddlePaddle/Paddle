@@ -16,6 +16,7 @@ import os
 import random
 
 import numpy as np
+from mlp_demo import PPDemoNet
 from test_to_static_pir_program import DemoNet
 
 import paddle
@@ -26,7 +27,6 @@ from paddle.io import DataLoader
 
 BATCH_SIZE = 4
 BATCH_NUM = 4
-SEQ_LEN = 2
 IMAGE_SIZE = 16
 CLASS_NUM = 8
 
@@ -128,7 +128,6 @@ class TestSimpleNetForSemiAutoParallel:
                 loss = loss_fn(out, label)
                 loss_list.append(loss.numpy())
                 loss.backward()
-
                 opt.step()
                 opt.clear_grad()
         return np.array(loss_list)
@@ -157,11 +156,44 @@ class TestSimpleNetForSemiAutoParallel:
         dy2static_losses, dist_model = self.run_dy2static(
             dy2static_layer, dy2static_opt, dist_dataloader
         )
+
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
         np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
+    def test_pp_demo_net(self):
+        paddle.disable_static()
+        self.set_random_seed(self._seed)
+        mesh1 = dist.ProcessMesh([0], dim_names=["x"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        data_loader = self.create_data_loader()
+
+        self.set_random_seed(self._seed)
+        dy_layer = PPDemoNet(mesh1, mesh2)
+        dy_opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=dy_layer.parameters()
+        )
+
+        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
+        self.set_random_seed(self._seed)
+        dy2static_layer = PPDemoNet(mesh1, mesh2)
+        dy2static_opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=dy2static_layer.parameters()
+        )
+        dist_dataloader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[mesh1, mesh2],
+        )
+        dy2static_losses, dist_model = self.run_dy2static(
+            dy2static_layer, dy2static_opt, dist_dataloader
+        )
+
+        dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
+        if paddle.distributed.get_rank() == 1:
+            np.testing.assert_array_equal(dy_losses, dy2static_losses)
+
     def run_test_case(self):
         self.test_mp_demo_net()
+        self.test_pp_demo_net()
 
 
 if __name__ == '__main__':
