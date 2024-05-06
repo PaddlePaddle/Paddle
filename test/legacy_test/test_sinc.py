@@ -294,13 +294,13 @@ class TestSincAPIBF16(unittest.TestCase):
             paddle.enable_static()
             for shape in self.shapes:
                 x_data_np = np.random.rand(*shape).astype('float32')
-                x_data = x_data_np.astype(self.dtype)
                 mask = (
                     (np.random.rand(*shape) > 0.5)
                     .astype('int')
                     .astype('float32')
                 )
-                x_data = x_data * mask
+                x_data_np = x_data_np * mask
+                x_data = x_data_np.astype(self.dtype)
                 startup_program = paddle.static.Program()
                 main_program = paddle.static.Program()
                 exe = base.Executor(place)
