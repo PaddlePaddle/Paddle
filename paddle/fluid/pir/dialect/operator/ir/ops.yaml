@@ -1351,6 +1351,15 @@
     func : prune_gate_by_capacity
     data_type : gate_idx
 
+- op : pull_box_sparse
+  args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
+  output : Tensor[](out){ids.size()}
+  infer_meta :
+    func : PullBoxSparseInferMeta
+  kernel :
+    func : pull_box_sparse
+    data_type : ids
+
 - op : pull_gpups_sparse
   args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
   output : Tensor[](out){ids.size()}

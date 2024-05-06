@@ -25,6 +25,73 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
+# TODO: Consider a better way to mark these ops has no grad op.
+# Such as use a new trait to mark these ops.
+ALLOW_NO_GRAD_OPS = [
+    # Compare ops
+    "pd_op.equal",
+    "pd_op.equal_",
+    "pd_op.not_equal",
+    "pd_op.not_equal_",
+    "pd_op.less_than",
+    "pd_op.less_than_",
+    "pd_op.less_equal",
+    "pd_op.less_equal_",
+    "pd_op.greater_than",
+    "pd_op.greater_than_",
+    "pd_op.greater_equal",
+    "pd_op.greater_equal_",
+    # Logical ops
+    "pd_op.logical_and",
+    "pd_op.logical_and_",
+    "pd_op.logical_not",
+    "pd_op.logical_not_",
+    "pd_op.logical_or",
+    "pd_op.logical_or_",
+    "pd_op.logical_xor",
+    "pd_op.logical_xor_",
+    # Bitwise ops
+    "pd_op.bitwise_and",
+    "pd_op.bitwise_and_",
+    "pd_op.bitwise_left_shift",
+    "pd_op.bitwise_left_shift_",
+    "pd_op.bitwise_not",
+    "pd_op.bitwise_not_",
+    "pd_op.bitwise_or",
+    "pd_op.bitwise_or_",
+    "pd_op.bitwise_right_shift",
+    "pd_op.bitwise_right_shift_",
+    "pd_op.bitwise_xor",
+    "pd_op.bitwise_xor_",
+    # Array ops
+    "pd_op.assign_array",
+    "pd_op.array_length",
+    "pd_op.slice_array",
+    "pd_op.slice_array_dense",
+    "pd_op.assign_array",
+    "pd_op.assign_array_",
+    "pd_op.create_array",
+    "pd_op.create_array_like",
+    "pd_op.array_read",
+    "pd_op.array_write_",
+    "pd_op.array_pop",
+    # Others
+    "pd_op.remainder",
+    "pd_op.argmax",
+    "pd_op.print",
+    "pd_op.accuracy",
+    "pd_op.uniform",
+    "pd_op.gaussian",
+    "pd_op.bernoulli",
+    "pd_op.full_like",
+    "pd_op.assign_value_",
+    "pd_op.nextafter",
+    "pd_op.isnan",
+    "pd_op.isinf",
+    "pd_op.all",
+    "pd_op.any",
+]
+
 
 class ValueWrapper:
     def __init__(self, value) -> None:
@@ -279,6 +346,11 @@ def some_in_set(value_list, value_set):
 
 def is_control_flow(op):
     return op.name() == "pd_op.if" or op.name() == "pd_op.while"
+
+
+def is_builtin_op(op):
+    dialect_name, opname = op.name().split(".")
+    return dialect_name == "builtin"
 
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):

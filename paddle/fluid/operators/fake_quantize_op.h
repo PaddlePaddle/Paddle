@@ -38,17 +38,6 @@ struct ClipAndFakeQuantDequantFunctor {
 };
 
 template <typename DeviceContext, typename T>
-struct FindRangeAbsMaxFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &cur_scale,
-                  const phi::DenseTensor &last_scale,
-                  const phi::DenseTensor &iter,
-                  const int window_size,
-                  phi::DenseTensor *scales_arr,
-                  phi::DenseTensor *out_scale);
-};
-
-template <typename DeviceContext, typename T>
 struct FindChannelAbsMaxFunctor {
   void operator()(const DeviceContext &ctx,
                   const phi::DenseTensor &in_tensor,
@@ -173,53 +162,6 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
 
     ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
-  }
-};
-
-template <typename T, typename DeviceContext>
-class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-    auto *in_scale = context.Input<phi::DenseTensor>("InScale");
-
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-
-    bool is_test = context.Attr<bool>("is_test");
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-
-    // testing
-    if (is_test) {
-      phi::funcs::ClipAndFakeQuantFunctor<DeviceContext, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
-      return;
-    }
-
-    // training
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    auto *out_scales = context.Output<phi::DenseTensor>("OutScales");
-    auto *iter = context.Input<phi::DenseTensor>("Iter");
-
-    int window_size = context.Attr<int>("window_size");
-    out_scale->mutable_data<T>(context.GetPlace());
-
-    phi::DenseTensor cur_scale;
-    T *cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
-    phi::funcs::FindAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
-    FindRangeAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
-                                               cur_scale,
-                                               *in_scale,
-                                               *iter,
-                                               window_size,
-                                               out_scales,
-                                               out_scale);
-    phi::funcs::ClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
   }
 };
 

@@ -31,6 +31,8 @@ class KernelAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
+  static std::string name() { return "a_kernel"; }
+
   phi::KernelKey data() const { return storage()->GetAsKey(); }
 };
 
