@@ -776,6 +776,15 @@
     data_type : input
   backward : depthwise_conv2d_grad
 
+- op : dequantize_abs_max
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : DequantizeAbsMaxInferMeta
+  kernel :
+    func : dequantize_abs_max
+    data_type : x
+
 - op : det
   args : (Tensor x)
   output : Tensor

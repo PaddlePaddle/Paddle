@@ -284,7 +284,7 @@ static inline bool IsStaticShape(const Value& value) {
 symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
   std::vector<symbol::DimExpr> dim_exprs;
   for (int i = 0; i < dims.size(); ++i) {
-    dim_exprs.emplace_back(symbol::DimExpr{dims.at(i)});
+    dim_exprs.emplace_back(dims.at(i));
   }
   return symbol::TensorShapeOrDataDimExprs{dim_exprs};
 }
