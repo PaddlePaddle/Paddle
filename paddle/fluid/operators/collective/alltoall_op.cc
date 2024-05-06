@@ -65,7 +65,6 @@ Scatter tensors from all participators to all participators.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(alltoall,
                              ops::AllToAllBaseOp,

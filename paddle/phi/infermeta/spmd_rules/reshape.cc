@@ -125,6 +125,17 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
           input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
+        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {
+          // NOTE: for the case like:
+          //    shape: [1, 512, 4096] --> [1, 2, 256, 4096],
+          //    input dims_mapping: [0, 1, -1]
+          //    expected output dims_mapping: [0, 1, -1, -1] (not [-1, 1, -1,
+          //    -1])
+          // In this case, the dim0 in target shape is 1 and it is from
+          // dim0 in source shape. make the dim0's transformation be InputDim
+          // rather than Singleton so that the sharding status can be
+          // propagated.
+          input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
         }
       }
       std::shared_ptr<DimTrans> flatten = make_flatten(input_dims);

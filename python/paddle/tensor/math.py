@@ -43,7 +43,7 @@ from ..framework import (
     in_pir_mode,
 )
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn, templatedoc
+from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
     abs,
@@ -1578,6 +1578,81 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return out
 
 
+def reduce_as(x, target, name=None):
+    """
+    Computes the sum of tensor elements make the shape of its result equal to the shape of target.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int32 or int64.
+
+    Returns:
+        Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor target, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8]])
+            >>> x
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 3, 4],
+             [5, 6, 7, 8]])
+            >>> target = paddle.to_tensor([1, 2, 3, 4])
+            >>> target
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [1, 2, 3, 4])
+            >>> res = paddle.reduce_as(x, target)
+            >>> res
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [6 , 8 , 10, 12])
+    """
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.reduce_as(x, target)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'reduce_as',
+        )
+        check_variable_and_dtype(
+            target,
+            'target',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'reduce_as',
+        )
+
+        helper = LayerHelper('reduce_as', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_as',
+            inputs={'x': x, 'target': target},
+            outputs={'out': out},
+        )
+        return out
+
+
 def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     """
     Replaces NaN, positive infinity, and negative infinity values in input tensor.
@@ -1918,7 +1993,6 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
 
 
-@templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
     Sum one or more Tensor of the input.
@@ -7654,3 +7728,146 @@ def signbit(x, name=None):
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
+
+
+def isposinf(x, name=None):
+    r"""
+    Tests if each element of input is positive infinity or not.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. Each element of output indicates whether the input element is positive infinity or not.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., float('inf'), -2.1, -float('inf'), 2.5], dtype='float32')
+            >>> res = paddle.isposinf(x)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True, False, False, False])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'bfloat16',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+        ],
+        "isposinf",
+    )  ## dtype is the intersection of dtypes supported by isinf and signbit
+    is_inf = paddle.isinf(x)
+    signbit = ~paddle.signbit(x)
+    return paddle.logical_and(is_inf, signbit)
+
+
+def isneginf(x, name=None):
+    r"""
+    Tests if each element of input is negative infinity or not.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. Each element of output indicates whether the input element is negative infinity or not.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., float('inf'), -2.1, -float('inf'), 2.5], dtype='float32')
+            >>> res = paddle.isneginf(x)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, False, True, False])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'bfloat16',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+        ],
+        "isneginf",
+    )
+    is_inf = paddle.isinf(x)
+    signbit = paddle.signbit(x)
+    return paddle.logical_and(is_inf, signbit)
+
+
+def isreal(x, name=None):
+    r"""
+    Tests if each element of input is a real number or not.
+
+    Args:
+        x (Tensor): The input Tensor.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. Each element of output indicates whether the input element is a real number or not.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., -2.1, 2.5], dtype='float32')
+            >>> res = paddle.isreal(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True, True])
+
+            >>> x = paddle.to_tensor([(-0.+1j), (-2.1+0.2j), (2.5-3.1j)])
+            >>> res = paddle.isreal(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, False])
+
+            >>> x = paddle.to_tensor([(-0.+1j), (-2.1+0j), (2.5-0j)])
+            >>> res = paddle.isreal(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True, True])
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    dtype = x.dtype
+    is_real_dtype = not (
+        dtype == core.VarDesc.VarType.COMPLEX64
+        or dtype == core.VarDesc.VarType.COMPLEX128
+        or dtype == core.DataType.COMPLEX64
+        or dtype == core.DataType.COMPLEX128
+    )
+    if is_real_dtype:
+        return paddle.ones_like(x, dtype='bool')
+
+    return paddle.equal(paddle.imag(x), 0)

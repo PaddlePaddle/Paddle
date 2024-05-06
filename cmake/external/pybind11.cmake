@@ -17,23 +17,26 @@ include(ExternalProject)
 set(PYBIND_PREFIX_DIR ${THIRD_PARTY_PATH}/pybind)
 set(PYBIND_SOURCE_DIR ${PYBIND_PREFIX_DIR}/src/extern_pybind)
 set(PYBIND_INCLUDE_DIR ${PYBIND_SOURCE_DIR}/include)
-set(PYBIND_TAG v2.10.3)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/pybind)
 set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
 include_directories(${PYBIND_INCLUDE_DIR})
 
+# It can be safely removed in gcc9.1+
 set(PYBIND_PATCH_COMMAND "")
-if(NOT WIN32)
-  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
-       native_dst)
+if(LINUX
+   AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  set(PYBIND_TAG v2.12.0)
+  file(TO_NATIVE_PATH
+       ${PADDLE_SOURCE_DIR}/patches/pybind/detail/internals.h.patch native_dst)
   # Note: [Why calling some `git` commands before `patch`?]
   # Paddle's CI uses cache to accelerate the make process. However, error might raise when patch codes in two scenarios:
   # 1. Patch to the wrong version: the tag version of CI's cache falls behind PYBIND_TAG, use `git checkout ${PYBIND_TAG}` to solve this.
   # 2. Patch twice: the tag version of cache == PYBIND_TAG, but patch has already applied to cache.
   set(PYBIND_PATCH_COMMAND
       git checkout -- . && git checkout ${PYBIND_TAG} && patch -Nd
-      ${SOURCE_INCLUDE_DIR}/pybind11 < ${native_dst})
+      ${SOURCE_INCLUDE_DIR}/pybind11/detail < ${native_dst})
 endif()
 
 ExternalProject_Add(

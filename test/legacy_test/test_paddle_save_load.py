@@ -24,8 +24,11 @@ import paddle
 import paddle.optimizer as opt
 from paddle import base, nn
 from paddle.base import framework
+from paddle.framework import in_pir_mode
+from paddle.framework.io_utils import set_value
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
+from paddle.pir_utils import test_with_pir_api
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -171,6 +174,11 @@ class TestSaveLoadAny(unittest.TestCase):
             scope = base.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
+                if (
+                    in_pir_mode()
+                    and var.get_defining_op().name() == "pd_op.fetch"
+                ):
+                    continue
                 ten = scope.find_var(var.name).get_tensor()
                 if ten is not None:
                     ten.set(np.zeros_like(np.array(ten)), place)
@@ -178,32 +186,36 @@ class TestSaveLoadAny(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
     def replace_static_save(self, program, model_path, pickle_protocol=2):
+        scope = base.global_scope()
         with self.assertRaises(TypeError):
             program.state_dict(1)
         with self.assertRaises(TypeError):
             program.state_dict(scope=1)
         with self.assertRaises(ValueError):
-            program.state_dict('x')
-        state_dict_param = program.state_dict('param')
+            program.state_dict('x', scope)
+        state_dict_param = program.state_dict('param', scope)
         paddle.save(state_dict_param, model_path + '.pdparams')
-        state_dict_opt = program.state_dict('opt')
+        state_dict_opt = program.state_dict('opt', scope)
         paddle.save(state_dict_opt, model_path + '.pdopt')
-        state_dict_all = program.state_dict()
+        state_dict_all = program.state_dict('all', scope)
         paddle.save(state_dict_opt, model_path + '.pdall')
 
     def replace_static_load(self, program, model_path):
         with self.assertRaises(TypeError):
             program.set_state_dict(1)
+        scope = base.global_scope()
         state_dict_param = paddle.load(model_path + '.pdparams')
-        state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
-        state_dict_param['static_x'] = 'UserWarning'
-        program.set_state_dict(state_dict_param)
-        state_dict_param['static_x'] = np.random.randn(1, 2)
-        program.set_state_dict(state_dict_param)
-        program.set_state_dict(state_dict_param)
+        if not in_pir_mode():
+            state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
+            state_dict_param['static_x'] = 'UserWarning'
+            program.set_state_dict(state_dict_param)
+            state_dict_param['static_x'] = np.random.randn(1, 2)
+            program.set_state_dict(state_dict_param)
+        program.set_state_dict(state_dict_param, scope)
         state_dict_opt = paddle.load(model_path + '.pdopt')
-        program.set_state_dict(state_dict_opt)
+        program.set_state_dict(state_dict_opt, scope)
 
+    @test_with_pir_api
     def test_replace_static_save_load(self):
         paddle.enable_static()
         with new_program_scope():
@@ -224,6 +236,11 @@ class TestSaveLoadAny(unittest.TestCase):
             base_map = {}
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -237,6 +254,11 @@ class TestSaveLoadAny(unittest.TestCase):
             paddle.static.load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -245,9 +267,15 @@ class TestSaveLoadAny(unittest.TestCase):
             # legacy paddle.base.save, paddle.load
             paddle.static.save(prog, path)
             self.set_zero(prog, place)
+            # paddle.static.load(prog, path)
             self.replace_static_load(prog, path)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -257,33 +285,44 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    tensor = var.get_value(base.global_scope())
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
+                    tensor = base.global_scope().find_var(var.name).get_tensor()
                     paddle.save(
                         tensor,
                         os.path.join(self.temp_dir.name, path_vars, var.name),
                     )
+            if not in_pir_mode():
+                with self.assertRaises(TypeError):
+                    var.get_value('base.global_scope()')
+                with self.assertRaises(ValueError):
+                    x.get_value()
             with self.assertRaises(TypeError):
-                var.get_value('base.global_scope()')
-            with self.assertRaises(ValueError):
-                x.get_value()
-            with self.assertRaises(TypeError):
-                x.set_value('1')
+                set_value(x, '1')
             fake_data = np.zeros([3, 2, 1, 2, 3])
             with self.assertRaises(TypeError):
-                x.set_value(fake_data, '1')
+                set_value(x, fake_data, '1')
             with self.assertRaises(ValueError):
-                x.set_value(fake_data)
+                set_value(x, fake_data)
             with self.assertRaises(ValueError):
-                var.set_value(fake_data)
+                set_value(var, fake_data)
             # set var to zero
             self.set_zero(prog, place)
             for var in prog.list_vars():
                 if var.persistable:
+                    if (
+                        in_pir_mode()
+                        and var.get_defining_op().name() == "pd_op.fetch"
+                    ):
+                        continue
                     tensor = paddle.load(
                         os.path.join(self.temp_dir.name, path_vars, var.name),
                         return_numpy=False,
                     )
-                    var.set_value(tensor)
+                    set_value(var, tensor)
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )

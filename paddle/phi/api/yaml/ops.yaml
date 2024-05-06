@@ -26,6 +26,16 @@
     func : accuracy
     data_type : x
 
+- op : accuracy_check
+  args : (Tensor x, Tensor y, str fn_name, int64_t res_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : accuracy_check
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
+
 - op : acos
   args : (Tensor x)
   output : Tensor(out)
@@ -173,7 +183,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : argsort
-  args : (Tensor x, int axis=-1, bool descending=false)
+  args : (Tensor x, int axis=-1, bool descending=false, bool stable=false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
@@ -766,6 +776,15 @@
     data_type : input
   backward : depthwise_conv2d_grad
 
+- op : dequantize_abs_max
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : DequantizeAbsMaxInferMeta
+  kernel :
+    func : dequantize_abs_max
+    data_type : x
+
 - op : det
   args : (Tensor x)
   output : Tensor
@@ -975,6 +994,35 @@
   inplace: (x -> out)
   backward : expm1_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : fake_quantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeQuantizeAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_abs_max
+    data_type : x
+
+- op : fake_quantize_moving_average_abs_max
+  args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  infer_meta :
+    func : FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_moving_average_abs_max
+    data_type : x
+  optional : in_accum, in_state, out_state, out_accum
+
+- op : fake_quantize_range_abs_max
+  args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale), Tensor(out_scales)
+  infer_meta :
+    func : FakeQuantizeRangeAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_range_abs_max
+    data_type : x
+  optional : iter, out_scales
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
@@ -1305,6 +1353,7 @@
   optional : scale, bias
   intermediate : mean, variance
   backward : group_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -1524,6 +1573,7 @@
   kernel :
     func : isclose
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isfinite
   args : (Tensor x)
@@ -1556,7 +1606,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction = "mean")
+  args : (Tensor x, Tensor label, str reduction = "mean", bool log_target = false)
   output : Tensor(out)
   infer_meta :
     func : KLDivInferMeta
@@ -1584,6 +1634,17 @@
     func : kthvalue
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : l1_norm
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : L1NormInferMeta
+  kernel :
+    func : l1_norm
+    data_type : x
+  inplace: (x -> out)
+  backward : l1_norm_grad
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
@@ -1946,6 +2007,7 @@
     data_type : query
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : merge_selected_rows
   args : (Tensor x)
@@ -2122,6 +2184,7 @@
   kernel :
     func : nonzero
     data_type: condition
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
@@ -2172,6 +2235,7 @@
   kernel :
     func : pad3d
   backward : pad3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
@@ -2297,6 +2361,17 @@
     func : reciprocal
   inplace : (x -> out)
   backward : reciprocal_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reduce_as
+  args : (Tensor x, Tensor target)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceAsInferMeta
+  kernel :
+    func : reduce_as
+    data_type : x
+  backward : reduce_as_grad
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
@@ -2351,6 +2426,7 @@
     func : reverse
     data_type : x
   backward : reverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
@@ -2595,6 +2671,7 @@
     func : sigmoid
   inplace : (x -> out)
   backward : sigmoid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)

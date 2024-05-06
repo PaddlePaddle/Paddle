@@ -26,11 +26,13 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
@@ -41,6 +43,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -48,6 +51,7 @@
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
+COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -80,6 +84,7 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
@@ -174,6 +179,10 @@ void ApplyCinnLowerPass(
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
+  if (FLAGS_enable_cinn_accuracy_check) {
+    VLOG(0) << "Enable CINN Accuracy Check Pass";
+    pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
+  }
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
@@ -211,8 +220,10 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
+  PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
+  PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";

@@ -113,6 +113,7 @@ class DataLayoutAttribute : public pir::Attribute {
 
   static DataLayoutAttribute Parse(pir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
+  static std::string name() { return "a_layout"; }
 };
 
 }  // namespace dialect

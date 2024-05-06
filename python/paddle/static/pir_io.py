@@ -24,6 +24,11 @@ import numpy as np
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import (
+    ValueSet,
+    get_real_op_inputs,
+    some_in_set,
+)
 from paddle.base import (
     core,
     default_main_program,
@@ -62,15 +67,11 @@ def get_pir_parameters(program):
     """
     params = []
     opts = []
-    for op in program.global_block().ops:
-        if op.name() == "builtin.parameter" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["parameter_name"]
-                params.append(name)
-        elif op.name() == "pd_op.data" and "persistable" in op.attrs():
-            if op.attrs()['persistable'] == [True]:
-                name = op.attrs()["name"]
-                opts.append(name)
+    for var in program.list_vars():
+        if var.is_parameter and var.persistable:
+            params.append(var)
+        elif var.persistable and var.get_defining_op().name() == "pd_op.data":
+            opts.append(var)
     return params, opts
 
 
@@ -97,6 +98,58 @@ def set_var(name, ndarray):
         place = paddle.base.CUDAPlace(p.gpu_device_id())
 
     t.set(ndarray, place)
+
+
+def append_pir_fetch_ops(program, fetch_name_var_maps):
+    """
+    Append fetch ops to the program.
+    Args:
+        program(Program): Specify a program you want to append fetch op.
+        fetch_vars(Tensor | list[Tensor]): Values returned by inference.
+    Returns:
+        modify program
+    """
+    for i, (var, name) in enumerate(fetch_name_var_maps):
+        out = paddle._pir_ops.fetch(var, name, i)
+        out.persistable = True
+
+
+def pir_prune_with_input(program, feed_vars, target_vars):
+    """
+    Prune a program according to feed_vars and target_vars.
+    Args:
+        program(Program): Specify a program you want to prune.
+        feed_vars(Tensor | list[Tensor]): Values needed by inference.
+        target_vars(Tensor | list[Tensor]): Values returned by inference.
+    Returns
+        modify program
+    """
+    if not isinstance(program, paddle.static.Program):
+        raise TypeError(
+            "program type must be `paddle.static.Program`, but received `%s`"
+            % type(program)
+        )
+
+    total_ops = program.global_block().ops
+    intersection_op_flags = [True] * len(total_ops)
+
+    # from output to input
+    target_vars_ = ValueSet(target_vars)
+    for i, op in reversed(list(enumerate(total_ops))):
+        if some_in_set(op.results(), target_vars_):
+            for operand in get_real_op_inputs(op):
+                target_vars_.add(operand)
+        else:
+            intersection_op_flags[i] = False
+
+    for i, op in reversed(list(enumerate(total_ops))):
+        if not intersection_op_flags[i]:
+            if some_in_set(op.results(), ValueSet(feed_vars)):
+                raise ValueError(
+                    f"The feed_var create by: '{op.name()}' is not involved in the target_vars calculation"
+                    f"Please remove it from feed_vars ."
+                )
+            program.global_block().remove_op(op)
 
 
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
@@ -146,49 +199,54 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
     if not all(isinstance(v, pir.Value) for v in feed_vars):
-        raise TypeError("feed_vars type must be a Value or a list of Variable.")
+        raise TypeError("feed_vars type must be a Value or a list of Value.")
     if not isinstance(fetch_vars, list):
         fetch_vars = [fetch_vars]
     if not all(isinstance(v, pir.Value) for v in fetch_vars):
-        raise TypeError(
-            "fetch_vars type must be a Value or a list of Variable."
-        )
+        raise TypeError("fetch_vars type must be a Value or a list of Value.")
 
     # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
+
     with paddle.static.program_guard(program):
         uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
+        for var in fetch_vars:
             if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
+                var_ = paddle.scale(fetch_vars[0], 1.0)
+                uniq_fetch_vars.append(var_)
+            fetch_vars = uniq_fetch_vars
 
     # serialize program
-    copy_program = program.clone()
+    value_map = paddle.pir.IrMapping()
+    copy_program = program.clone(value_map)
     global_block = copy_program.global_block()
-    remove_ops = []
+    clone_feed_vars = [value_map.look_up(v) for v in feed_vars]
+    clone_fetch_vars = [value_map.look_up(v) for v in fetch_vars]
+
     for op in global_block.ops:
-        if op.name() == "pd_op.feed" or op.name() == "pd_op.fetch":
-            remove_ops.append(op)
+        # can not delete feed op because it's output used by other op.
+        if op.name() == "pd_op.fetch":
+            global_block.remove_op(op)
 
-    for op in remove_ops:
-        global_block.remove_op(op)
-
-    # feed_var_names = [var.name for var in feed_vars]
-
-    # skip_prune_program = kwargs.get('skip_prune_program', False)
-    # if not skip_prune_program:
-    #     copy_program = copy_program._prune_with_input(
-    #         feeded_var_names=feed_var_names, targets=fetch_vars
-    #     )
+    skip_prune_program = kwargs.get('skip_prune_program', False)
+    # if feed var is not conect with target_vars, it will be delete.
+    if not skip_prune_program:
+        pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
     # copy_program = copy_program._inference_optimize(prune_read_op=True)
-    # fetch_var_names = [var.name for var in fetch_vars]
-    # prepend_feed_ops(copy_program, feed_var_names)
-    # append_fetch_ops(copy_program, fetch_var_names)
+
+    fetch_vars_tuple = []
+    for i, var in enumerate(clone_fetch_vars):
+        if "name" in var.get_defining_op().attrs():
+            fetch_vars_tuple.append(
+                (var, var.get_defining_op().attrs()['name'])
+            )
+        else:
+            fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
+    with paddle.static.program_guard(copy_program):
+        append_pir_fetch_ops(copy_program, fetch_vars_tuple)
 
     return copy_program
 
@@ -246,7 +304,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=list(filter(predicate, vars_list)),
+            vars=vars_list,  # list(filter(predicate, vars_list)),
             filename=filename,
         )
     else:
@@ -259,18 +317,16 @@ def save_vars_pir(
             return None
 
         save_var_map = {}
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
+        for v in vars:
+            var = global_scope().find_var(v.name)
             # TODO(chenzhiyang): deal with RAW type and sparse
             if filename is None and save_to_memory is False:
-                save_file_path = os.path.join(
-                    os.path.normpath(dirname), var_name
-                )
+                save_file_path = os.path.join(os.path.normpath(dirname), v.name)
                 core.save_func(
-                    var.get_tensor(), var_name, save_file_path, True, False
+                    var.get_tensor(), v.name, save_file_path, True, False
                 )
             else:
-                save_var_map[var_name] = var.get_tensor()
+                save_var_map[v.name] = var.get_tensor()
 
         if filename is not None or save_to_memory:
             save_var_list = []
@@ -354,7 +410,7 @@ def load_vars_pir(
         load_vars_pir(
             dirname=dirname,
             main_program=main_program,
-            vars=list(filter(predicate, vars_list)),
+            vars=vars_list,  # list(filter(predicate, vars_list)),
             filename=filename,
         )
     else:
@@ -364,18 +420,18 @@ def load_vars_pir(
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
 
-        for var_name in vars:
-            var = global_scope().find_var(var_name)
+        for v in vars:
+            var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
             if filename is None:
                 if dirname is None:
                     raise ValueError(
                         "The directory path and params cannot be None at the same time."
                     )
-                file_path = os.path.join(dirname, var_name)
+                file_path = os.path.join(dirname, v.name)
                 core.load_func(file_path, -1, [], False, var.get_tensor())
             else:
-                load_var_map[var_name] = var
+                load_var_map[v.name] = var
 
         if filename is not None:
             load_var_list = []
@@ -438,14 +494,14 @@ def save_pir(program, model_path, protocol=4, **configs):
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
-    def get_tensor(name):
-        t = global_scope().find_var(name).get_tensor()
+    def get_tensor(var):
+        t = global_scope().find_var(var.name).get_tensor()
         return np.array(t)
 
     # get parameters and optimizer variables
     parameter_list, optimizer_param_list = get_pir_parameters(program)
-    param_dict = {name: get_tensor(name) for name in parameter_list}
-    opt_dict = {name: get_tensor(name) for name in optimizer_param_list}
+    param_dict = {var.name: get_tensor(var) for var in parameter_list}
+    opt_dict = {var.name: get_tensor(var) for var in optimizer_param_list}
 
     # save parameters
     param_dict = _unpack_saved_dict(param_dict, protocol)
@@ -519,11 +575,11 @@ def load_pir(program, model_path, executor=None, var_list=None):
         else:
             load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
-    for name in parameter_list:
+    for var in parameter_list:
         assert (
-            name in load_dict
-        ), f"Can not find [{name}] in model file [{parameter_file_name}]"
-        set_var(name, load_dict[name])
+            var.name in load_dict
+        ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+        set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
@@ -532,17 +588,17 @@ def load_pir(program, model_path, executor=None, var_list=None):
         ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
-            paddle.base.core._create_loaded_parameter(
+            paddle.base.libpaddle.pir.create_loaded_parameter(
                 optimizer_param_list, global_scope(), executor._default_executor
             )
 
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')
-        for name in optimizer_param_list:
+        for var in optimizer_param_list:
             assert (
-                name in load_dict
-            ), f"Can not find [{name}] in model file [{opt_file_name}]"
-            set_var(name, load_dict[name])
+                var.name in load_dict
+            ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+            set_var(var.name, load_dict[var.name])
 
 
 @static_only
