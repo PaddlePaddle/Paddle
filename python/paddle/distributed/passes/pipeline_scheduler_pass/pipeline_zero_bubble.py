@@ -192,6 +192,16 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
                     if new_max_bubble < max_bubble:
                         schedule, max_bubble = new_schedule, new_max_bubble
 
+        stage_schedule = schedule[self.get_attr("pp_stage")]
+        job_list = []
+
+        for job_info in stage_schedule:
+            job = core.Job(job_info["type"])
+            job.set_micro_batch_id(job_info["micro_batch"])
+            job_list.append(job)
+
+        return job_list
+
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
@@ -732,7 +742,8 @@ class VScheduleCreator:
             f"{job_type}{chunk_id}"
         ]
 
-        self._stage_job_schedule[stage_id].append(f"{job_type}{chunk_id}")
+        job_info = {"type": job_type, "chunk": chunk_id, "micro_batch": job_cnt}
+        self._stage_job_schedule[stage_id].append(job_info)
         if job_type == "backward_b":
             self._pending_w[stage_id].append((chunk_id, job_cnt))
         self._job_counters[stage_id][f"{job_type}{chunk_id}"] += 1
