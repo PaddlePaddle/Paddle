@@ -1050,8 +1050,7 @@ class TestJitMultipleLoading(unittest.TestCase):
         )
         state_dict = multi_loaded_layer.state_dict()
         name_set = set()
-        for name, var in state_dict.items():
-            # print("name = ", name,  " var.name = ", var.name)
+        for _, var in state_dict.items():
             self.assertTrue(var.name not in name_set)
             name_set.add(var.name)
 
@@ -1484,7 +1483,6 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
         np.testing.assert_array_equal(out, load_out)
 
 
-'''
 class TestJitSaveLoadMultiMethods(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1494,7 +1492,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    #@test_with_dygraph_pir
+    # @test_with_dygraph_pir
     def test_jit_save_load_inference(self):
         model_path_inference = os.path.join(
             self.temp_dir.name, "jit_save_load_multi_methods/model"
@@ -1503,6 +1501,14 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         layer = LinearNetWithMultiStaticFunc(IMAGE_SIZE, 10)
         layer = paddle.jit.to_static(
             layer,
+            full_graph=True,
+        )
+        layer.forward_no_param = paddle.jit.to_static(
+            layer.forward_no_param,
+            full_graph=True,
+        )
+        layer.forward_general = paddle.jit.to_static(
+            layer.forward_general,
             full_graph=True,
         )
         inps = paddle.randn([1, IMAGE_SIZE])
@@ -1520,6 +1526,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
                 < 1e-5
             )
 
+    @test_with_dygraph_pir
     def test_jit_save_load_multi_methods_inputspec(self):
         model_path = os.path.join(
             self.temp_dir.name, 'jit_save_load_multi_methods/model'
@@ -1527,6 +1534,14 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         layer = LinearNetWithMultiStaticFunc(784, 1)
         layer = paddle.jit.to_static(
             layer,
+            full_graph=True,
+        )
+        layer.forward_no_param = paddle.jit.to_static(
+            layer.forward_no_param,
+            full_graph=True,
+        )
+        layer.forward_general = paddle.jit.to_static(
+            layer.forward_general,
             full_graph=True,
         )
         with self.assertRaises(ValueError):
@@ -1549,8 +1564,6 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
 
         self.assertFalse(hasattr(load_net, 'v2'))
 
-'''
-
 
 class LayerSaved(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
@@ -1572,77 +1585,6 @@ class LayerSaved(paddle.nn.Layer):
         return self._linear_2(y)
 
 
-class Net(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = paddle.nn.Linear(4, 4)
-        self.fc2 = paddle.nn.Linear(4, 4)
-        self.bias = 0.4
-        self.flag = paddle.ones([2], dtype="int32")
-
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
-    def log_softmax(self, input):
-        return paddle.nn.functional.log_softmax(input, axis=-1)
-
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
-    def forward(self, x):
-        out = self.fc1(x)
-        out = paddle.nn.functional.relu(out)
-        out = paddle.mean(out)
-        return out
-
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
-    def infer(self, input):
-        out = self.fc2(input)
-        out = out + self.bias
-        out = paddle.mean(out)
-        return out
-
-    # For extra Python float
-    @paddle.jit.to_static(property=True)
-    def fbias(self):
-        return self.bias + 1
-
-    @paddle.jit.to_static(property=True)
-    def down_sampling(self):
-        return 4
-
-    @paddle.jit.to_static(property=True)
-    def fstr(self):
-        return "save str property"
-
-    @paddle.jit.to_static(property=True)
-    def ints(self):
-        return [10, 20]
-
-    @paddle.jit.to_static(property=True)
-    def floats(self):
-        return [1.1, 2.2]
-
-    @paddle.jit.to_static(property=True)
-    def strs(self):
-        return ["hello", "world"]
-
-
-class NetTensor(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = paddle.nn.Linear(4, 4)
-        self.fc2 = paddle.nn.Linear(4, 4)
-        self.bias = 0.4
-        self.flag = paddle.ones([2], dtype="int32")
-
-    def forward(self, x):
-        out = self.fc1(x)
-        out = paddle.nn.functional.relu(out)
-        out = paddle.mean(out)
-        return out
-
-    @paddle.jit.to_static(property=True)
-    def fflag(self):
-        return True
-
-
 class TestJitSaveCombineProperty(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1652,7 +1594,65 @@ class TestJitSaveCombineProperty(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_jit_save_combine_property(self):
+        class Net(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.fc1 = paddle.nn.Linear(4, 4)
+                self.fc2 = paddle.nn.Linear(4, 4)
+                self.bias = 0.4
+                self.flag = paddle.ones([2], dtype="int32")
+
+            @paddle.jit.to_static(
+                input_spec=[InputSpec([None, 4], dtype='float32')]
+            )
+            def log_softmax(self, input):
+                return paddle.nn.functional.log_softmax(input, axis=-1)
+
+            @paddle.jit.to_static(
+                input_spec=[InputSpec([None, 4], dtype='float32')]
+            )
+            def forward(self, x):
+                out = self.fc1(x)
+                out = paddle.nn.functional.relu(out)
+                out = paddle.mean(out)
+                return out
+
+            @paddle.jit.to_static(
+                input_spec=[InputSpec([None, 4], dtype='float32')]
+            )
+            def infer(self, input):
+                out = self.fc2(input)
+                out = out + self.bias
+                out = paddle.mean(out)
+                return out
+
+            # For extra Python float
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def fbias(self):
+                return self.bias + 1
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def down_sampling(self):
+                return 4
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def fstr(self):
+                return "save str property"
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def ints(self):
+                return [10, 20]
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def floats(self):
+                return [1.1, 2.2]
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def strs(self):
+                return ["hello", "world"]
+
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_combine/model"
         )
@@ -1662,7 +1662,26 @@ class TestJitSaveCombineProperty(unittest.TestCase):
         # save
         paddle.jit.save(net, model_path, combine_params=True)
 
+    @test_with_dygraph_pir
     def test_jit_save_tensor_property(self):
+        class NetTensor(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.fc1 = paddle.nn.Linear(4, 4)
+                self.fc2 = paddle.nn.Linear(4, 4)
+                self.bias = 0.4
+                self.flag = paddle.ones([2], dtype="int32")
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = paddle.nn.functional.relu(out)
+                out = paddle.mean(out)
+                return out
+
+            @paddle.jit.to_static(property=True, full_graph=True)
+            def fflag(self):
+                return True
+
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_combine/model"
         )
@@ -2105,15 +2124,16 @@ class TestInputSpecCompatibility(unittest.TestCase):
             ],
             full_graph=True,
         )
-        save_dir = os.path.join(
-            self.temp_dir.name, "jit_save_compatible_input_spec"
-        )
+        save_dir = os.path.join(self.temp_dir.name, "jit_save_no_input_spec")
         path = save_dir + "/model"
 
         paddle.jit.save(layer=layer, path=path)
         no_input_spec_layer = paddle.jit.load(path)
         self._assert_input_spec_layer_return(layer, no_input_spec_layer)
         shutil.rmtree(save_dir)
+
+        save_dir = os.path.join(self.temp_dir.name, "jit_save_same_input_spec")
+        path = save_dir + "/model"
 
         paddle.jit.save(
             layer=layer,
@@ -2127,6 +2147,10 @@ class TestInputSpecCompatibility(unittest.TestCase):
         self._assert_input_spec_layer_return(layer, same_input_spec_layer)
         shutil.rmtree(save_dir)
 
+        save_dir = os.path.join(
+            self.temp_dir.name, "jit_save_compatible_input_spec"
+        )
+        path = save_dir + "/model"
         paddle.jit.save(
             layer=layer,
             path=path,
