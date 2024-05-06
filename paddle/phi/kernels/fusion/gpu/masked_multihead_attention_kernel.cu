@@ -16,9 +16,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
-// 当前的preprocess线程数是错的啦
+/// 当前工作是在flashAttention MMHA的基础上，加入一个前处理，使mmha_kernel简洁
+// preprocess线程数暂时是错的啦
 // Dh_MAX/2在Qk_vec_<float,32>上不能跑，其他也不完全合适
-/// 还待做的工作：程序边界检查统一/多种问题规模下测试修改有没有问题/更新注释
+// 还待做的工作：程序边界检查统一/更新注释
 namespace phi {
 namespace fusion {
 
@@ -287,7 +288,7 @@ __global__ void preprocess(preprocess_params<T> params, LoadFunc load_func) {
   V_vec v_bias;
   zero(v_bias);
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
-  if (Dh == Dh_MAX || vi < Dh) {
+  if ((tid / THREADS_PER_VALUE == 0) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
     int v_offset = qkv_base_offset - hi * Dh + vi +
                    (num_head + kv_num_head + hi / num_head_per_group) * Dh;
@@ -392,8 +393,8 @@ __global__ void masked_multihead_attention_kernel(
     zero(q);
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
       load_func.template load<Q_vec>(q, q_offset);
-      *reinterpret_cast<Q_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
     }
+    *reinterpret_cast<Q_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
   }
   __syncthreads();
 
@@ -755,40 +756,6 @@ void fmha_launch_kernel(const preprocess_params<T> preprocess_params,
     MMHA_LAUNCH_KERNEL(
         T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func);
   }
-  //   } else if (params.timestep < 2048) {
-  // #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
-//     __CUDA_ARCH__ >= 750
-  //     MMHA_LAUNCH_KERNEL(T,
-  //                        Dh,
-  //                        Dh_MAX,
-  //                        4,
-  //                        THREADS_PER_VALUE,
-  //                        256,
-  //                        stream,
-  //                        load_func,
-  //                        store_func);
-  // #else
-  //     MMHA_LAUNCH_KERNEL(T,
-  //                        Dh,
-  //                        Dh_MAX,
-  //                        2,
-  //                        THREADS_PER_VALUE,
-  //                        128,
-  //                        stream,
-  //                        load_func,
-  //                        store_func);
-  // #endif
-  //   } else {
-  //     MMHA_LAUNCH_KERNEL(T,
-  //                        Dh,
-  //                        Dh_MAX,
-  //                        1,
-  //                        THREADS_PER_VALUE,
-  //                        256,
-  //                        stream,
-  //                        load_func,
-  //                        store_func);
-  //   }
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc_kai>
@@ -1091,6 +1058,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   preprocess_params.qkv = const_cast<T *>(x.data<T>());  // 前处理强行覆盖当前Q
 
   mmha_params.add_qkv_bias = false;
+  preprocess_params.add_qkv_bias = false;
   if (bias) {
     mmha_params.add_qkv_bias = true;
     mmha_params.qkv_bias = const_cast<T *>(bias->data<T>());
