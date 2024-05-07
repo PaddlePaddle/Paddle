@@ -16,7 +16,7 @@ limitations under the License. */
 // HIP not support cudnnSpatialTfGridGeneratorForward
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace phi {
 class DenseTensor;

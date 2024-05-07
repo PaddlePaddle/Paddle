@@ -31,7 +31,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         phi::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+    PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
                       phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
@@ -231,7 +231,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         phi::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+    PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
                       phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
