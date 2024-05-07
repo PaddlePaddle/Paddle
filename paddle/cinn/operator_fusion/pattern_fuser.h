@@ -140,7 +140,7 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const AnchorPattern<T>& pattern) {
     const auto& exprs = GetDimExprsFromValue(pattern.anchor());
-    return exprs
+    return exprs;
   }
 };
 
