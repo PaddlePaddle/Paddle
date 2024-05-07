@@ -111,18 +111,18 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      memory::Copy(place,
-                   concat_rois_data + roi_offset,
-                   place,
-                   roi_in->data<T>(),
-                   roi_in->numel() * sizeof(T),
-                   dev_ctx.stream());
-      memory::Copy(place,
-                   concat_scores_data + score_offset,
-                   place,
-                   score_in->data<T>(),
-                   score_in->numel() * sizeof(T),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              concat_rois_data + roi_offset,
+                              place,
+                              roi_in->data<T>(),
+                              roi_in->numel() * sizeof(T),
+                              dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              concat_scores_data + score_offset,
+                              place,
+                              score_in->data<T>(),
+                              score_in->numel() * sizeof(T),
+                              dev_ctx.stream());
       roi_offset += roi_in->numel();
       score_offset += score_in->numel();
     }
@@ -233,12 +233,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
         real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
-    memory::Copy(platform::CPUPlace(),
-                 length_lod_cpu.data(),
-                 place,
-                 length_lod_data,
-                 sizeof(int) * lod_size,
-                 dev_ctx.stream());
+    phi::memory_utils::Copy(platform::CPUPlace(),
+                            length_lod_cpu.data(),
+                            place,
+                            length_lod_data,
+                            sizeof(int) * lod_size,
+                            dev_ctx.stream());
     dev_ctx.Wait();
 
     std::vector<size_t> offset(1, 0);
@@ -249,12 +249,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput("RoisNum")) {
       auto* rois_num = ctx.Output<phi::DenseTensor>("RoisNum");
       int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
-      memory::Copy(place,
-                   rois_num_data,
-                   place,
-                   length_lod_data,
-                   lod_size * sizeof(int),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rois_num_data,
+                              place,
+                              length_lod_data,
+                              lod_size * sizeof(int),
+                              dev_ctx.stream());
     }
 
     framework::LoD lod;

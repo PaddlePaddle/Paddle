@@ -50,18 +50,18 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   if (flag == 0) {
     T* dstData =
         dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         dstData,
-                         place,
-                         srcData,
-                         srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(paddle::platform::CPUPlace(),
+                            dstData,
+                            place,
+                            srcData,
+                            srcTensor.numel() * sizeof(T));
   } else {
     T* dstData = dstTensor->template mutable_data<T>(place);
-    paddle::memory::Copy(place,
-                         dstData,
-                         paddle::platform::CPUPlace(),
-                         srcData,
-                         srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(place,
+                            dstData,
+                            paddle::platform::CPUPlace(),
+                            srcData,
+                            srcTensor.numel() * sizeof(T));
   }
 
   return xpu::Error_t::SUCCESS;

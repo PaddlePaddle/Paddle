@@ -847,12 +847,12 @@ void LaunchLayernormResidualDropoutBias(
   // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = ctx.GetPlace();
-    memory::Copy(cuda_place,
-                 dst,
-                 cuda_place,
-                 residual,
-                 rows * cols * sizeof(T),
-                 ctx.stream());
+    phi::memory_utils::Copy(cuda_place,
+                            dst,
+                            cuda_place,
+                            residual,
+                            rows * cols * sizeof(T),
+                            ctx.stream());
     if (mask_data != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
           mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));

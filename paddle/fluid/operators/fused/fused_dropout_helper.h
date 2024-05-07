@@ -193,12 +193,12 @@ class FusedDropoutHelper {
         d_bias,
         ctx);
     if (d_residual) {
-      memory::Copy(ctx.GetPlace(),
-                   d_residual,
-                   ctx.GetPlace(),
-                   d_out,
-                   rows_ * cols_ * sizeof(T),
-                   ctx.stream());
+      phi::memory_utils::Copy(ctx.GetPlace(),
+                              d_residual,
+                              ctx.GetPlace(),
+                              d_out,
+                              rows_ * cols_ * sizeof(T),
+                              ctx.stream());
     }
   }
 

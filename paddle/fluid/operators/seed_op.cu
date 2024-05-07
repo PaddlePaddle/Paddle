@@ -40,12 +40,12 @@ class GPUSeedKernel : public framework::OpKernel<T> {
       auto *out_data = out->mutable_data<T>(context.GetPlace());
       auto target_gpu_place = context.GetPlace();
       auto stream = context.cuda_device_context().stream();
-      memory::Copy(target_gpu_place,
-                   out_data,
-                   platform::CPUPlace(),
-                   &seed,
-                   sizeof(int),
-                   stream);
+      phi::memory_utils::Copy(target_gpu_place,
+                              out_data,
+                              platform::CPUPlace(),
+                              &seed,
+                              sizeof(int),
+                              stream);
     }
   }
 };
