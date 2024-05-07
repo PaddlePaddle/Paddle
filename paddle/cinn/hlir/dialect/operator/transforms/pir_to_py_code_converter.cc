@@ -138,33 +138,78 @@ struct PirToPyCodeConverterHelper {
     return ret;
   }
 
-  std::vector<pir::Value> GetInputs(const pir::Block& block) {
-    std::unordered_set<pir::Value> values;
-    for (const auto& op : block) {
-      for (int i = 0; i < op.num_results(); ++i) {
-        values.insert(op.result(i));
-      }
+  template <typename DoEachOpT>
+  void WalkOp(const pir::Block& block, const DoEachOpT& DoEachOp) {
+    for (const auto& block_op : block) {
+      auto* mut_op = const_cast<pir::Operation*>(&block_op);
+      mut_op->Walk([&](pir::Operation* op) {
+        const auto& const_op = *op;
+        DoEachOp(const_op);
+      });
     }
+  }
+
+  template <typename DoEachBlockT>
+  void WalkBlock(const pir::Block& block, const DoEachBlockT& DoEachBlock) {
+    for (const auto& block_op : block) {
+      auto* mut_op = const_cast<pir::Operation*>(&block_op);
+      mut_op->Walk([&](pir::Block* block) {
+        const auto& const_block = *block;
+        DoEachBlock(const_block);
+      });
+    }
+    DoEachBlock(block);
+  }
+
+  std::vector<pir::Value> GetFreeVars(const pir::Block& block) {
+    const auto internal_values = [&] {
+      std::unordered_set<pir::Value> internal_values;
+      WalkOp(block, [&](const pir::Operation& op) {
+        for (int i = 0; i < op.num_results(); ++i) {
+          internal_values.insert(op.result(i));
+        }
+      });
+      return internal_values;
+    }();
+    const auto args = [&] {
+      std::unordered_set<pir::Value> args;
+      WalkBlock(block, [&args](const pir::Block& sub_block) {
+        args.insert(sub_block.args().begin(), sub_block.args().end());
+      });
+      return args;
+    }();
+    const auto kwargs = [&] {
+      std::unordered_set<pir::Value> kwargs;
+      WalkBlock(block, [&kwargs](const pir::Block& sub_block) {
+        for (const auto& [_, value] : sub_block.kwargs()) {
+          kwargs.insert(value);
+        }
+      });
+      return kwargs;
+    }();
     std::vector<pir::Value> inputs;
-    for (const auto& op : block) {
+    WalkOp(block, [&](const pir::Operation& op) {
       for (int i = 0; i < op.num_operands(); ++i) {
         pir::Value input = op.operand_source(i);
-        if (values.count(input)) continue;
+        if (!input) continue;
+        if (internal_values.count(input)) continue;
+        if (args.count(input)) continue;
+        if (kwargs.count(input)) continue;
         if (std::find(inputs.begin(), inputs.end(), input) != inputs.end()) {
           continue;
         }
         inputs.push_back(input);
       }
-    }
+    });
     return inputs;
   }
 
   std::string ConvertFreeVarsAsArgs(const pir::Block& block) {
-    const std::vector<pir::Value> inputs = GetInputs(block);
-    return ConvertInputsAsArgs(inputs);
+    const std::vector<pir::Value> inputs = GetFreeVars(block);
+    return ConvertValuesAsArgs(inputs);
   }
 
-  std::string ConvertInputsAsArgs(const std::vector<pir::Value>& inputs) {
+  std::string ConvertValuesAsArgs(const std::vector<pir::Value>& inputs) {
     std::stringstream ss;
     for (int i = 0; i < inputs.size(); ++i) {
       if (i > 0) {
@@ -180,10 +225,13 @@ struct PirToPyCodeConverterHelper {
     for (const auto& [_, value] : block.kwargs()) {
       values.push_back(value);
     }
-    return ConvertInputsAsArgs(values);
+    return ConvertValuesAsArgs(values);
   }
 
   std::string ConvertValue(pir::Value value) {
+    if (!value) {
+      return "None";
+    }
     const auto* op = value.defining_op();
     if (op == nullptr) {
       return std::string("arg_") +
@@ -242,7 +290,7 @@ struct PirToPyCodeConverterHelper {
     }
     const std::string ret_lambda_name = "ret_lambda";
     const auto GetRetLambda = [&]() {
-      const auto& args_str = ConvertInputsAsArgs(block.args());
+      const auto& args_str = ConvertValuesAsArgs(block.args());
       const auto& kwargs_str = ConvertKwargsToString(block);
       IString ret_lambda_declare(
           std::string("def ") + ret_lambda_name + "(" + args_str +
