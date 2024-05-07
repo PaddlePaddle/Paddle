@@ -19,10 +19,14 @@
 
 namespace cinn::fusion {
 struct TransformInfo {
-  pir::Operation* op;
-  size_t input_idx;
-  size_t output_idx;
-  bool is_upstream_anchor;
+  explicit TransformInfo(pir::Operation* op_,
+                         size_t input_idx_,
+                         size_t output_idx_,
+                         bool is_upstream_anchor_)
+      : op(op_),
+        input_idx(input_idx_),
+        output_idx(output_idx_),
+        is_upstream_anchor(is_upstream_anchor_) {}
   pir::Value InputValue() { return op->operand_source(input_idx); }
   pir::Value OutputValue() { return op->result(output_idx); }
   pir::Value SrcValue() {
@@ -39,22 +43,35 @@ struct TransformInfo {
       return OutputValue();
     }
   }
+
+  pir::Operation* op;
+  size_t input_idx;
+  size_t output_idx;
+  bool is_upstream_anchor;
 };
 
 struct UnsupportTransform {
+  explicit UnsupportTransform(const TransformInfo& info_) : info(info_) {}
   TransformInfo info;
 };
 
 struct IdentityTransform {
+  explicit IdentityTransform(const TransformInfo& info_) : info(info_) {}
   TransformInfo info;
 };
 
 struct AppendDimTransform {
+  explicit AppendDimTransform(const TransformInfo& info_,
+                              const std::vector<size_t>& append_dims_)
+      : info(info_), append_dims(append_dims_) {}
   TransformInfo info;
   std::vector<size_t> append_dims;
 };
 
 struct DeleteDimTransform {
+  explicit DeleteDimTransform(const TransformInfo& info_,
+                              const std::vector<size_t>& delete_dims_)
+      : info(info_), delete_dims(delete_dims_) {}
   TransformInfo info;
   std::vector<size_t> delete_dims;
 };

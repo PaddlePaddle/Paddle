@@ -197,6 +197,12 @@ std::set<T> ToSet(const std::vector<T>& input) {
 }
 
 template <typename T>
+std::unordered_set<T> ToUnorderedSet(const std::vector<T>& input) {
+  std::unordered_set<T> result(input.begin(), input.end());
+  return result;
+}
+
+template <typename T>
 bool IsAnyFirstInSecond(const std::vector<T>& first,
                         const std::vector<T>& second) {
   const auto& second_set = ToSet(second);

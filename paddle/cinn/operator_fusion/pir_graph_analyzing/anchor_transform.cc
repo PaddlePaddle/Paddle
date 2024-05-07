@@ -99,6 +99,7 @@ AnchorTransform CreateAnchorTransform(const TransformInfo& info) {
   }
 
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(info.op);
+  AnchorTransform result;
   if (kind == hlir::framework::kReduction) {
     result = CreateAnchorTransformForReduce(info);
   } else if (kind == hlir::framework::kElementWise) {
@@ -128,17 +129,17 @@ std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
        ++consumer_it) {
     auto downstream_op = consumer_it->owner();
     size_t input_idx = GetOperandIdx(v, downstream_op);
-    for (size_t i = 0; i < downstream_op.num_results(); i++) {
+    for (size_t i = 0; i < downstream_op->num_results(); i++) {
       result.emplace_back(CreateAnchorTransform(
           TransformInfo(downstream_op, input_idx, i, false)));
     }
   }
 
-  return results;
+  return result;
 }
 
 TransformInfo GetTransformInfo(AnchorTransform trans) {
-  return std::visit([](auto&& arg{}) { return arg->info; }, trans);
+  return std::visit([](auto&& arg) { return arg->info; }, trans);
 }
 
 }  // namespace cinn::fusion

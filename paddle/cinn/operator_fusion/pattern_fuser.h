@@ -344,10 +344,6 @@ StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& source,
                                 const AnchorPattern<T>& dest);
 
 template <typename T>
-StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
-                                const HorizontalFusionPattern<T>& second);
-
-template <typename T>
 StmtPattern<T> MergePattern(const StmtPattern<T>& first,
                             const StmtPattern<T>& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "

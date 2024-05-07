@@ -47,11 +47,6 @@ StmtPattern<FrontendStage> MergePatternImpl(
     const AnchorPattern<FrontendStage>& dest);
 
 template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const HorizontalFusionPattern<FrontendStage>& first,
-    const HorizontalFusionPattern<FrontendStage>& second);
-
-template <>
 ExprPromise<FrontendStage> InitExprPromiseImpl(
     const TrivialPattern<FrontendStage>& pattern, pir::Value anchor);
 

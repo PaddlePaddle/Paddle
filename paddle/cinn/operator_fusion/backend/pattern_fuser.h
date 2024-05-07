@@ -46,11 +46,6 @@ StmtPattern<BackendStage> MergePatternImpl(
     const AnchorPattern<BackendStage>& source,
     const AnchorPattern<BackendStage>& dest);
 
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const HorizontalFusionPattern<BackendStage>& first,
-    const HorizontalFusionPattern<BackendStage>& second);
-
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern);
 

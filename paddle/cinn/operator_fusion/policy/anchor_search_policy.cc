@@ -21,7 +21,7 @@ namespace cinn::fusion {
 bool IsLegalRoute(const AnchorTransformRoute& route) {
   // TODO(@wuzhanfei) we need to judge if this tranform route will reduce
   // performance
-  return True;
+  return true;
 }
 
 std::optional<AnchorTransformRoute> SearchAnchorTransformRecursively(
@@ -80,8 +80,8 @@ AnchorSearchPolicy<T>::FindUpstreamAnchorTransformRoute(
   return FindAnchorTransformRoute(
       upstream_anchor_pattern.anchor(),
       downstream_anchor_pattern.anchor(),
-      ToSet(ConcatVector(upstream_anchor_pattern.ops(),
-                         downstream_anchor_pattern.ops())));
+      ToUnorderedSet(ConcatVector(upstream_anchor_pattern.ops(),
+                                  downstream_anchor_pattern.ops())));
 }
 
 template <typename T>
@@ -96,8 +96,8 @@ AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
   return FindAnchorTransformRoute(
       downstream_anchor_pattern.anchor(),
       upstream_anchor_pattern.anchor(),
-      ToSet(ConcatVector(upstream_anchor_pattern.ops(),
-                         downstream_anchor_pattern.ops())));
+      ToUnorderedSet(ConcatVector(upstream_anchor_pattern.ops(),
+                                  downstream_anchor_pattern.ops())));
 }
 
 template <typename T>
@@ -112,10 +112,6 @@ bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
   return FindDownstreamAnchorTransformRoute(upstream, downstream) !=
          std::nullopt;
 }
-
-template <typename T>
-AnchorState<T> AnchorSearchPolicy<T>::MergeAnchorState(
-    const AnchorState<T>& source, const AnchorState<T>& dest) {}
 
 template class AnchorSearchPolicy<FrontendStage>;
 template class AnchorSearchPolicy<BackendStage>;
