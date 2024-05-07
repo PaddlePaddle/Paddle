@@ -148,7 +148,8 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
-PyObject* ToPyObject(const phi::DataType& type);
+PyObject* ToPyObject(const phi::DataType& dtype);
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
