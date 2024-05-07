@@ -464,11 +464,11 @@ class TestRAdamMultiPrecision(unittest.TestCase):
 class TestNdamaxMultiPrecision2_0(unittest.TestCase):
     def dygraph_radam_mp(self, mp, use_amp):
         paddle.disable_static()
-        paddle.seed(100)
+        paddle.seed(2024)
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.RAdam(0.5, parameters=model.parameters())
+        optimizer = paddle.optimizer.RAdam(0.01, parameters=model.parameters())
         optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
@@ -494,12 +494,11 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
 
     def static_radam_mp(self, mp, use_amp):
         paddle.enable_static()
-        paddle.seed(100)
-        np.random.seed(100)
+        paddle.seed(2024)
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.RAdam(0.1)
+        optimizer = paddle.optimizer.RAdam(0.01)
         optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
@@ -523,6 +522,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             optimizer.minimize(loss)
         exe.run(startup_program)
 
+        np.random.seed(2024)
         if use_amp:
             optimizer.amp_init(
                 place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
