@@ -20,7 +20,6 @@
 #include "paddle/fluid/platform/enforce.h"
 
 REGISTER_FILE_SYMBOLS(aligned_allocator);
-
 namespace paddle {
 namespace memory {
 namespace allocation {
