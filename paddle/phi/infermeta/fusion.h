@@ -976,4 +976,29 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          MetaTensor* reordered_c0,
                          MetaTensor* checked_cell);
 
+void SpeculativeDecodingMultiheadAttentionInferMeta(
+    const MetaTensor& qkv,
+    const MetaTensor& key_cache,
+    const MetaTensor& value_cache,
+    const MetaTensor& seq_lens_encoder,
+    const MetaTensor& seq_lens_decoder,
+    const MetaTensor& seq_lens_this_time,
+    const MetaTensor& padding_offsets,
+    const MetaTensor& cum_offsets,
+    const MetaTensor& cu_seqlens_q,
+    const MetaTensor& cu_seqlens_k,
+    const MetaTensor& rope_emb,
+    const MetaTensor& mask,
+    const MetaTensor& qkv_bias,
+    int max_enc_len_this_time,
+    int max_dec_len_this_time,
+    int token_num_in_cache,
+    int max_seq_len,
+    bool use_neox_style,
+    const std::string& compute_dtype,
+    MetaTensor* fmha_out,
+    MetaTensor* qkv_out,
+    MetaTensor* key_cache_out,
+    MetaTensor* value_cache_out);
+
 }  // namespace phi
