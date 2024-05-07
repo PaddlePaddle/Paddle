@@ -1249,54 +1249,6 @@ void maximum_grad(const Tensor& x,
 }
 
 template <typename T>
-void masked_select_grad(const Tensor& x,
-                        const Tensor& mask,
-                        const Tensor& out_grad,
-                        Tensor* x_grad) {
-  if (x_grad) {
-    auto x_num = 1;
-    for (size_t i=0; i<x.shape().size(); i++){
-      x_num *= x.shape()[i];
-    }
-
-    auto grad_num = 1;
-    for (size_t i=0; i<out_grad.shape().size(); i++){
-      grad_num *= out_grad.shape()[i];
-    }
-
-    auto end = full<T>({1}, x_num, x.dtype());
-    auto start = full<T>({1}, 0, x.dtype());
-    auto step = full<T>({1}, 1, x.dtype());
-    auto x_arange =
-        paddle::primitive::backend::arange_with_tensor<T>(start, end, step, x.dtype());
-    
-    auto x_arange_reshape = reshape<T>(x_arange, x.shape());
-
-    auto x_index = paddle::primitive::masked_select<T>(x_arange_reshape, mask);
-
-    auto index_num = x_index.shape()[0];
-
-    auto grad_reshape = reshape<T>(out_grad, {grad_num});
-
-    auto grad_trans = grad_reshape;
-    if (grad_num > index_num){
-      grad_trans = slice<T>(grad_reshape, {0}, {0}, {index_num}, {1}, {});
-    }else if (grad_num < index_num){
-      auto pad_zeros = full<T>({index_num - grad_num}, 0, x.dtype());
-      grad_trans = concat<T>({grad_reshape, pad_zeros}, 0);
-    }
-
-    auto input_tensor = full<T>({x_num}, 0, x.dtype());
-    auto index_tensor = x_index;
-    auto update_tensor = grad_trans;
-    auto x_output = scatter<T>(input_tensor, index_tensor, update_tensor, false);
-    auto res = reshape<T>(x_output, x.shape());
-    set_output<T>(end, x_grad);
-  }
-}
-
-
-template <typename T>
 void dropout_grad(const Tensor& mask,
                   const Tensor& out_grad,
                   const Scalar& p,

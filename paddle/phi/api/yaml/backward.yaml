@@ -1588,7 +1588,6 @@
   kernel :
     func : masked_select_grad
     data_type : x
-  composite : masked_select_grad(x, mask, out_grad, x_grad)
   no_need_buffer : x
 
 - backward_op : matrix_power_grad
