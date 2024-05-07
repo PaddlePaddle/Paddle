@@ -287,7 +287,7 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_unique<Program>(pir::IrContext::Instance());
+        return std::make_shared<Program>(pir::IrContext::Instance());
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
@@ -376,7 +376,7 @@ void BindProgram(py::module *m) {
             for (auto op : self->block()->ops()) {
               for (auto var : op->results()) {
                 auto is_persistable =
-                    var.attribute<BoolAttribute>("persistable");
+                    var.attribute<BoolAttribute>(kAttrIsPersistable);
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
                     std::string var_name = GetValueName(var);

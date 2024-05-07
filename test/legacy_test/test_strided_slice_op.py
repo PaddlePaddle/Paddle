@@ -765,7 +765,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         self.is_grads_equal_zeros(grads_zeros)
 
-        func = paddle.jit.to_static(net.forward)
+        func = paddle.jit.to_static(net.forward, full_graph=True)
         l2 = func(inps2)
         s2 = l2.numpy()
         l2.sum().backward()
@@ -807,7 +807,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
                         return array1 + array2 * array2
 
                 net = Simple()
-                func = paddle.jit.to_static(net.forward)
+                func = paddle.jit.to_static(net.forward, full_graph=True)
 
                 inps1 = paddle.to_tensor(
                     np.random.randn(2, 10),
