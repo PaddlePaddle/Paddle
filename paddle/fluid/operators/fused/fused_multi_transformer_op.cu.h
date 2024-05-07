@@ -27,8 +27,6 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -38,6 +36,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -711,13 +710,13 @@ struct Qk_dot<float16, 4> {
   }
 };
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 32>
 inline __device__ float block_sum(float *red_smem, float sum) {
-  int warp = threadIdx.x / WARP_SIZE;
-  int lane = threadIdx.x % WARP_SIZE;
+  int warp = threadIdx.x / WARP_SIZE_T;
+  int lane = threadIdx.x % WARP_SIZE_T;
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+  for (int mask = WARP_SIZE_T / 2; mask >= 1; mask /= 2) {
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
   }
 
@@ -789,8 +788,8 @@ __global__ void masked_multihead_attention_kernel(
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
   static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
 
-  constexpr int WARP_SIZE = 32;
-  constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
+  constexpr int WARP_SIZE_TMP = 32;
+  constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE_TMP;
 
   extern __shared__ char smem_[];
 
@@ -824,7 +823,7 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
-  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE, "");
+  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE_TMP, "");
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
 
   // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
@@ -944,16 +943,16 @@ __global__ void masked_multihead_attention_kernel(
 
     qk = dot<Qk_vec, Qk_vec>(q, k);
 
-    if (QK_VECS_PER_WARP <= WARP_SIZE) {
+    if (QK_VECS_PER_WARP <= WARP_SIZE_TMP) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
       }
     }
   }
-  if (QK_VECS_PER_WARP > WARP_SIZE) {
+  if (QK_VECS_PER_WARP > WARP_SIZE_TMP) {
     constexpr int WARPS_PER_RED =
-        (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
+        (QK_VECS_PER_WARP + WARP_SIZE_TMP - 1) / WARP_SIZE_TMP;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
   if (tid == 0) {
@@ -994,7 +993,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
-  constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
+  constexpr int K_PER_WARP = WARP_SIZE_TMP / THREADS_PER_KEY;
 
   T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
@@ -1031,12 +1030,12 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+  for (int mask = WARP_SIZE_TMP / 2; mask >= THREADS_PER_KEY; mask /= 2) {
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
   }
 
-  const int warp = tid / WARP_SIZE;
-  const int lane = tid % WARP_SIZE;
+  const int warp = tid / WARP_SIZE_TMP;
+  const int lane = tid % WARP_SIZE_TMP;
 
   if (lane == 0) {
     red_smem[warp] = qk_max;
