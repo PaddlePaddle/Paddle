@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_uint16_to_float
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -269,7 +269,7 @@ class TestSincAPIBF16(unittest.TestCase):
             paddle.enable_static()
             for shape in self.shapes:
                 x_data_np = np.random.rand(*shape).astype('float32')
-                x_data = x_data_np.astype(self.dtype)
+                x_data = convert_float_to_uint16(x_data_np)
                 startup_program = paddle.static.Program()
                 main_program = paddle.static.Program()
                 exe = base.Executor(place)
@@ -284,7 +284,7 @@ class TestSincAPIBF16(unittest.TestCase):
                     out_expected = np_sinc(x_data_np)
                 result = convert_uint16_to_float(static_result)
                 np.testing.assert_allclose(
-                    result, out_expected, rtol=1e-6, atol=1e-6
+                    result, out_expected, rtol=1e-3, atol=1e-2
                 )
 
         run(self.place)
@@ -300,7 +300,7 @@ class TestSincAPIBF16(unittest.TestCase):
                     .astype('float32')
                 )
                 x_data_np = x_data_np * mask
-                x_data = x_data_np.astype(self.dtype)
+                x_data = convert_float_to_uint16(x_data_np)
                 startup_program = paddle.static.Program()
                 main_program = paddle.static.Program()
                 exe = base.Executor(place)
@@ -315,7 +315,7 @@ class TestSincAPIBF16(unittest.TestCase):
                     out_expected = np_sinc(x_data_np)
                 result = convert_uint16_to_float(static_result)
                 np.testing.assert_allclose(
-                    result, out_expected, rtol=1e-6, atol=1e-6
+                    result, out_expected, rtol=1e-3, atol=1e-2
                 )
 
         run(self.place)
