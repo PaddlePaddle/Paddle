@@ -635,18 +635,6 @@ class TransferLayoutPass : public pir::Pass {
                  "sort]------------------------"
               << std::endl;
 
-    // process every node by topology and the consequences of min cut
-    // while (!q.empty()) {
-    //   auto node = q.front();
-    //   q.pop_front();
-    //   topological_visit(node);
-    // }
-    // process every node by topology and the consequences of min cut
-    // while (!q.empty()) {
-    //   auto node = q.front();
-    //   q.pop_front();
-    //   topological_visit(node);
-    // }
     for (auto n : q) {
       std::cout << n << std::endl;
     }
