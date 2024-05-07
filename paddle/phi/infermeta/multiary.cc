@@ -4350,20 +4350,52 @@ void WhereInferMeta(const MetaTensor& condition,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
-      cond_dims,
-      x_dims,
+      cond_dims.size(),
+      x_dims.size(),
       phi::errors::InvalidArgument(
           "The dims of Inputs(Condition) and Inputs(X) should be same. "
-          "But received Condition's shape is [%s], X's shape is [%s]",
-          cond_dims,
-          x_dims));
-  PADDLE_ENFORCE_EQ(x_dims,
-                    y_dims,
+          "But received Condition's rank is [%d], X's rank is [%d]",
+          cond_dims.size(),
+          x_dims.size()));
+
+  for (size_t i = 0; i < cond_dims.size(); ++i) {
+    if (cond_dims[i] == -1 || x_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        cond_dims[i],
+        x_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(Condition) and Inputs(X) should be same. "
+            "But received Condition's shape is [%d], X's shape is [%d]",
+            i,
+            cond_dims[i],
+            x_dims[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    y_dims.size(),
                     phi::errors::InvalidArgument(
                         "The dims of Inputs(X) and Inputs(Y) should be same. "
-                        "But received X's shape is [%s], Y's shape is [%s]",
-                        x_dims,
-                        y_dims));
+                        "But received X's shape is [%d], Y's shape is [%d]",
+                        x_dims.size(),
+                        y_dims.size()));
+
+  for (size_t i = 0; i < x_dims.size(); ++i) {
+    if (x_dims[i] == -1 || y_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        x_dims[i],
+        y_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(X) and Inputs(Y) should be same. "
+            "But received X's shape is [%s], Y's shape is [%s]",
+            i,
+            x_dims[i],
+            y_dims[i]));
+  }
+
   out->share_meta(x);
 }
 
