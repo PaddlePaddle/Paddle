@@ -320,6 +320,29 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void CudnnLSTMGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    MetaTensor* x_grad,
+    MetaTensor* init_h_grad,
+    MetaTensor* init_c_grad,
+    std::vector<MetaTensor*> weight_list_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (init_h_grad) {
+    init_h_grad->share_meta(init_h);
+  }
+  if (init_c_grad) {
+    init_c_grad->share_meta(init_c);
+  }
+  if (!weight_list_grad.empty()) {
+    UnchangedMultiInferMeta(weight_list.get(), weight_list_grad);
+  }
+}
+
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,

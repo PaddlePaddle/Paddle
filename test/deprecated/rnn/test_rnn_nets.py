@@ -374,7 +374,9 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn.train()
 
     rnn = paddle.jit.to_static(
-        rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)]
+        rnn,
+        [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)],
+        full_graph=True,
     )
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)

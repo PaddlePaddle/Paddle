@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
 namespace framework {
@@ -88,7 +88,7 @@ struct LoDTensorToArrayFunctor {
 template <typename DeviceContext>
 template <typename T>
 void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
-  math::SplitFunctor<DeviceContext, T> func;
+  phi::funcs::SplitFunctor<DeviceContext, T> func;
   func(*dev_ctx_,
        prev_functor_->input_,
        prev_functor_->ref_inputs_,
