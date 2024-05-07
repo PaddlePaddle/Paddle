@@ -16,6 +16,8 @@
 
 #include <cstddef>
 #include "glog/logging.h"  // For VLOG()
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,6 +25,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+#include "paddle/utils/none.h"
 
 namespace phi {
 template <typename OutT>
@@ -511,7 +514,7 @@ void FlashAttnWithSparseMaskKernel(
     const DenseTensor& k,
     const DenseTensor& v,
     const DenseTensor& attn_mask_start_row_indices,
-    const DenseTensor& attn_mask_end_row_indices,
+    const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     float dropout,
     bool causal,
@@ -523,6 +526,13 @@ void FlashAttnWithSparseMaskKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
+  if (causal) {
+    PADDLE_ENFORCE_EQ(
+        attn_mask_end_row_indices.get_ptr(),
+        nullptr,
+        phi::errors::InvalidArgument(
+            "attn_mask_end_row_indices must be none when causal"));
+  }
   FlashAttnBaseKernel<T, Context>(ctx,
                                   q,
                                   k,

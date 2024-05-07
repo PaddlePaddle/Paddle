@@ -845,7 +845,7 @@ def flash_attention_with_sparse_mask(
     key,
     value,
     attn_mask_start_row_indices,
-    attn_mask_end_row_indices,
+    attn_mask_end_row_indices=None,
     attn_mask_start_row=0,
     dropout_p=0.0,
     is_causal=False,
@@ -937,9 +937,6 @@ def flash_attention_with_sparse_mask(
         attn_mask_start_row_indices is not None
     ), f"attn_mask_start_row_indices must be not None, but got {attn_mask_start_row_indices}"
     assert (
-        is_causal is True
-    ), f"is_causal must be True when attn_mask_start_row_indices is not None, but got {is_causal}"
-    assert (
         attn_mask_start_row_indices.dtype == paddle.int32
     ), f"attn_mask_start_row_indices.dtype must be paddle.int32, but got {attn_mask_start_row_indices.dtype}"
     assert isinstance(
@@ -948,6 +945,21 @@ def flash_attention_with_sparse_mask(
     assert (
         attn_mask_start_row >= 0
     ), f"Should set attn_mask_start_row >=0 when attn_mask_start_row_indices is not None, but got {attn_mask_start_row}"
+
+    if not is_causal:
+        assert (
+            attn_mask_end_row_indices is not None
+        ), f"attn_mask_end_row_indices must be not None, but got {attn_mask_end_row_indices}"
+        assert (
+            attn_mask_end_row_indices.dtype == paddle.int32
+        ), f"attn_mask_end_row_indices.dtype must be paddle.int32, but got {attn_mask_end_row_indices.dtype}"
+        assert (
+            attn_mask_start_row_indices.shape == attn_mask_end_row_indices.shape
+        ), f"attn_mask_start_row_indices.shape must be equal to attn_mask_end_row_indices.shape, but got {attn_mask_start_row_indices.shape} and {attn_mask_end_row_indices.shape}."
+    else:
+        assert (
+            attn_mask_end_row_indices is None
+        ), f"attn_mask_end_row_indices must be None when is_causal=True,but got {attn_mask_end_row_indices}"
 
     fixed_seed_offset = None
     return_softmax = False

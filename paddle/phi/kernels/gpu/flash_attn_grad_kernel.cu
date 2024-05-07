@@ -818,7 +818,7 @@ void FlashAttnWithSparseGradKernel(
     const DenseTensor& k,
     const DenseTensor& v,
     const DenseTensor& attn_mask_start_row_indices,
-    const DenseTensor& attn_mask_end_row_indices,
+    const paddle::optional<DenseTensor>& attn_mask_end_row_indices,
     const DenseTensor& out,
     const DenseTensor& softmax_lse,
     const DenseTensor& seed_offset,
