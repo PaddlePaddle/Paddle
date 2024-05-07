@@ -107,12 +107,14 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 bool GroupOp::InferSymbolicShape(
@@ -185,12 +187,15 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
+    // os << printer.indentation();
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void YieldStoreOp::Build(pir::Builder& builder,
