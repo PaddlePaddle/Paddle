@@ -87,7 +87,6 @@ def train_mlp(
 
     if sharding_stage == 1:
         optimizer = fleet.distributed_optimizer(optimizer)
-        print("optimizer", optimizer)
         optimizer._set_broadcast_overlap(
             broadcast_overlap=broadcast_overlap, model=model
         )
