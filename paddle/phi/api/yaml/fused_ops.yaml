@@ -403,6 +403,15 @@
     func : layer_norm_act_xpu
     data_type : x
 
+- op : mask_adaptive_xpu
+  args : (Tensor mask)
+  output : Tensor (length), Tensor (seq_lod), Tensor (pad_seq_len)
+  infer_meta :
+    func : MaskAdaptiveXPUInferMeta
+  kernel :
+    func : mask_adaptive_xpu
+    data_type : mask
+
 # This op is implemented using CUDNN Frontend API, which serves as a supplement to
 # legacy max pooling implementation. It shows better performance with NHWC layout and
 # half precision.
@@ -482,6 +491,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : sequence_unpad_xpu
+  args : (Tensor x, Tensor length)
+  output : Tensor(out)
+  infer_meta :
+    func : SequenceUnpadXPUInferMeta
+  kernel :
+    func : sequence_unpad_xpu
     data_type : x
 
 - op : sine_pos_xpu

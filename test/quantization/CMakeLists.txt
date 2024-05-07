@@ -1,3 +1,4 @@
+include(../cpp/inference/test.cmake)
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

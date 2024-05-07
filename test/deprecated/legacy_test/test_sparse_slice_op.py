@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 
@@ -206,26 +207,32 @@ class TestSparseCooSliceStatic(unittest.TestCase):
         if format == 'coo':
             self._check_result_coo(np_x, axes, starts, ends)
 
+    @compare_legacy_with_pt
     def test_coo_5d(self):
         for item in data_5d:
             self.check_result_with_shape(*item, format='coo')
 
+    @compare_legacy_with_pt
     def test_coo_4d(self):
         for item in data_4d:
             self.check_result_with_shape(*item, format='coo')
 
+    @compare_legacy_with_pt
     def test_coo_3d(self):
         for item in data_3d:
             self.check_result_with_shape(*item, format='coo')
 
+    @compare_legacy_with_pt
     def test_coo_2d(self):
         for item in data_2d:
             self.check_result_with_shape(*item, format='coo')
 
+    @compare_legacy_with_pt
     def test_coo_1d(self):
         x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
         self.check_result_with_list(x, [0], [3], [5], format='coo')
 
+    @compare_legacy_with_pt
     def test_coo_1d_zero(self):
         x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
         self.check_result_with_list(x, [0], [-3], [-1], format='coo')
