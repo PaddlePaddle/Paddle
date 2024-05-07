@@ -18,7 +18,6 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
