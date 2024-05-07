@@ -44,7 +44,7 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id), ops_(nullptr), unused_vars_() {}
+    : prog_(prog), block_id_(block_id), ops_(), unused_vars_() {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
