@@ -32,4 +32,4 @@ if(WITH_ONEDNN AND NOT WIN32)
 endif()
 # set_tests_properties(test_flags_mkldnn_ops_on_off PROPERTIES TIMEOUT 120)
 
-set_pit_tests_properties()
+set_pir_tests_properties()
