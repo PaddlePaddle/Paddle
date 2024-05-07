@@ -43,10 +43,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
           ir::_Var_::Make(common::UniqName("local_var"), op->type());
       auto let_op = ir::Let::Make(local_var, const_cast<ir::Load *>(op));
       let_list.push_back(let_op);
-      VLOG(-1) << "========== op->name: " << op->name();
       collection_name_map_expr[op->name()] = local_var;
-      // replaceOp(last_op, op);
-      VLOG(-1) << "========== last_op: " << last_op;
       last_op->replace(Expr(const_cast<ir::Load *>(op)), local_var);
     }
   }
@@ -154,13 +151,11 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   VisitImpl(Not);
   VisitImpl(Min);
   VisitImpl(Max);
-  VisitImpl(Minus)
+  VisitImpl(Minus);
 };
 }  // namespace
 
 void RearrangeLoadInstruction(Expr *expr) {
-  VLOG(4) << "Before RearrangeLoadInstruction: \n" << *expr;
-
   RearrangeLoadInstructionMutator collector;
   collector(expr);
 }
