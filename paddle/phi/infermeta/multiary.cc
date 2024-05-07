@@ -1475,15 +1475,15 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
   }
 
   if (pos_count.initialized()) {
-    PADDLE_ENFORCE_NE(
-        true_pos,
-        nullptr,
+    PADDLE_ENFORCE_EQ(
+        true_pos.initialized(),
+        true,
         phi::errors::InvalidArgument(
             "Input(TruePos) of DetectionMAPOp should not be null when "
             "Input(PosCount) is not null."));
-    PADDLE_ENFORCE_NE(
-        false_pos,
-        nullptr,
+    PADDLE_ENFORCE_EQ(
+        false_pos.initialized(),
+        true,
         phi::errors::InvalidArgument(
             "Input(FalsePos) of DetectionMAPOp should not be null when "
             "Input(PosCount) is not null."));
