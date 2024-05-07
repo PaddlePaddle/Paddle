@@ -31,13 +31,13 @@ inline std::vector<int> get_expand_times(
     auto* expand_tensor = ctx.Input<phi::DenseTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     phi::DenseTensor cpu_expand_tensor;
-    if (platform::is_gpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
           *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::XPU) {
       paddle::framework::TensorCopySync(
           *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
@@ -55,13 +55,14 @@ inline std::vector<int> get_expand_times(
     std::vector<int> vec_expand_times;
     for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
       auto tensor = list_expand_times_tensor[i];
-      if (platform::is_gpu_place(tensor->place())) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
-      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+      else if (tensor->place().GetType() ==  // NOLINT
+               phi::AllocationType::XPU) {   // NOLINT
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());

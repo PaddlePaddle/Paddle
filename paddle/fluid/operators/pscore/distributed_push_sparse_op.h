@@ -42,7 +42,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
 
     auto fleet = distributed::FleetWrapper::GetInstance();
 
-    if (platform::is_cpu_place(context.GetPlace())) {
+    if (context.GetPlace().GetType() == phi::AllocationType::CPU) {
       fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id),
                                        emb_dim,
                                        static_cast<uint64_t>(padding_idx),

@@ -36,7 +36,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<phi::DenseTensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
-      if (platform::is_xpu_place(depth_tensor->place())) {
+      if (depth_tensor->place().GetType() == phi::AllocationType::XPU) {
         xpu_memcpy(static_cast<void*>(&depth),
                    static_cast<const void*>(depth_data),
                    sizeof(int32_t),

@@ -66,7 +66,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
       } else {
         auto* lod = lod_t->data<int>();
         phi::DenseTensor lod_cpu;
-        if (platform::is_gpu_place(lod_t->place())) {
+        if (lod_t->place().GetType() == phi::AllocationType::GPU) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }

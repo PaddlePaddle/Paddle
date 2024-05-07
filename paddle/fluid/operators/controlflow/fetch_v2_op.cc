@@ -157,9 +157,10 @@ class FetchV2Kernel {
         return;
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
-      bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place()) ||
-                         platform::is_custom_place(src_item.place());
+      bool check_place =
+          src_item.place().GetType() == phi::AllocationType::CPU ||
+          src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
+          src_item.place().GetType() == phi::AllocationType::CUSTOM;
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
@@ -184,10 +185,11 @@ class FetchV2Kernel {
       auto &dst_item =
           PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
-        PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "Tensor's place of input(X) must be CPUPlace."));
+        PADDLE_ENFORCE_EQ(
+            src_item[i].place().GetType() == phi::AllocationType::CPU,
+            true,
+            phi::errors::InvalidArgument(
+                "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {

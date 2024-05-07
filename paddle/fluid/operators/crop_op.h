@@ -57,7 +57,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                                      rank));
     const int* offsets_data;
     phi::DenseTensor cpu_tmp_tensor;
-    if (platform::is_cpu_place(offsets_tensor->place())) {
+    if (offsets_tensor->place().GetType() == phi::AllocationType::CPU) {
       offsets_data = offsets_tensor->data<int>();
     } else {
       framework::TensorCopySync(

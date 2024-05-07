@@ -48,7 +48,7 @@ class RandpermKernel : public framework::OpKernel<T> {
     phi::DenseTensor* out_tensor =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       T* out_data = out_tensor->mutable_data<T>(platform::CPUPlace());
       random_permute<T>(out_data, n, seed);
 

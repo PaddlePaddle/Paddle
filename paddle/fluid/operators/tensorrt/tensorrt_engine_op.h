@@ -311,7 +311,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           paddle::platform::DeviceContextPool &pool =
               paddle::platform::DeviceContextPool::Instance();
 
-          if (platform::is_cpu_place(t.place())) {
+          if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;
             if (t.dtype() == phi::DataType::INT64) {
               auto *cpu_ctx = pool.Get(platform::CPUPlace());
@@ -325,7 +325,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                  platform::CPUPlace(),
                                  int32_tensor.data<int>(),
                                  int32_tensor.numel() * sizeof(int));
-          } else if (platform::is_gpu_place(t.place())) {
+          } else if (t.place().GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA)
             auto *dev_ctx = pool.Get(t.place());
             auto &int32_tensor = t;
@@ -547,7 +547,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               t.numel()));
 
       // check the input_tensor
-      if (!platform::is_gpu_place(t.place())) {
+      if (!(t.place().GetType() == phi::AllocationType::GPU)) {
         phi::DenseTensor out;
         framework::TensorCopy(t, dev_place, dev_ctx, &out);
         t.ShareDataWith(out);
