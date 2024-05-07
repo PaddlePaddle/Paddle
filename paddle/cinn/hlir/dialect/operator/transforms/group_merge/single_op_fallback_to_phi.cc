@@ -64,15 +64,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i),
                                   paddle_op.value()->result(i));
-      if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
-        shape_analysis.SetShapeOrDataForValue(
-            paddle_op.value()->result(i),
-            shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
-      } else {
-        LOG(WARNING) << "No shape_data for "
-                     << fusion_op.result(i).defining_op()->name() << "_result_"
-                     << i << ", this may cause error in dynamic shape";
-      }
+      shape_analysis.SetShapeOrDataForValue(
+          paddle_op.value()->result(i),
+          shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
     }
 
     rewriter.EraseOp(fusion_op);

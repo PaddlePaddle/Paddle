@@ -351,7 +351,7 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
 }
 
 bool ExpandOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::InferSymbolicShapeContext* infer_context) {
   VLOG(4) << "Infer symbolic shape for op: ExpandOp";
   PADDLE_THROW(phi::errors::Unimplemented(
       " ExpandOp's InferSymbolicShape interface is NOT implemented now."));

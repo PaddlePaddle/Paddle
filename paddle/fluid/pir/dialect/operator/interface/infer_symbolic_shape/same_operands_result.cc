@@ -14,14 +14,14 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 
-#define OP_SAME_OPERANDS_AND_RESULT(name)                                   \
-  bool name##OpInferSymbolicShape(                                          \
-      pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) { \
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =              \
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));      \
-    shape_analysis->SetShapeOrDataForValue(op->result(0),                   \
-                                           operand_shape_or_data);          \
-    return true;                                                            \
+#define OP_SAME_OPERANDS_AND_RESULT(name)                                  \
+  bool name##OpInferSymbolicShape(                                         \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) { \
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =             \
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));      \
+    infer_context->SetShapeOrDataForValue(op->result(0),                   \
+                                          operand_shape_or_data);          \
+    return true;                                                           \
   }
 
 namespace paddle::dialect {
@@ -138,17 +138,17 @@ OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+                               pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source);
+      infer_context->GetShapeOrDataForValue(operand_source);
   std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
 
   if (operand_shape_or_data.data()) {
     const std::vector<symbol::DimExpr> data = [&] {
       const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
         if (op->num_operands() == 2) {
-          return shape_analysis->GetShapeOrDataForValue(op->operand_source(1))
+          return infer_context->GetShapeOrDataForValue(op->operand_source(1))
               .data()
               ->at(0);
         }
@@ -164,11 +164,10 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
       return data;
     }();
 
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
   } else {
-    shape_analysis->SetShapeOrDataForValue(op->result(0),
-                                           operand_shape_or_data);
+    infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   }
 
   return true;

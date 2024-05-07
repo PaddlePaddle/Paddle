@@ -27,23 +27,17 @@
 
 namespace pir {
 
-// The implementation is based on shape constraint ir.
-class IR_API ShapeConstraintIRAnalysis final
-    : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
+class IR_API InferSymbolicShapeContext {
  public:
-  ShapeConstraintIRAnalysis() = default;
-  ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
-  ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
-
   void Init();
 
   const std::string GetNextSymName();
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  void InferShapeOrDataForValue(Value val);
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+  void SetStaticShapeForValue(Value val);
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
@@ -58,6 +52,47 @@ class IR_API ShapeConstraintIRAnalysis final
 
   void AddBroadcastableCstr(const symbol::DimExpr& lhs,
                             const symbol::DimExpr& rhs);
+
+  bool IsBroadcastable(const symbol::DimExpr& lhs,
+                       const symbol::DimExpr& rhs) const;
+
+  void PrintShapeOrDatas() const;
+
+ private:
+  void SubstituteDimExpr(const symbol::DimExpr& origin,
+                         const symbol::DimExpr& substituted);
+
+ private:
+  int64_t next_sym_idx_ = 0;
+
+  std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
+      value_id_to_shape_or_data_;
+
+  symbol::ConstraintsManager constraints_manager_;
+
+  using DimExprSubstitutionPattern =
+      std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+  DimExprSubstitutionPattern substitution_pattern_;
+};
+
+class IR_API ShapeConstraintIRAnalysis final
+    : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
+ public:
+  ShapeConstraintIRAnalysis() = default;
+  ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
+  ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
+  void Init();
+
+  const std::string GetNextSymName();
+
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+
+  void SetShapeOrDataForValue(Value val,
+                              const symbol::ShapeOrDataDimExprs& shape_or_data);
+
+  bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
+
+  bool IsGreatThanOne(const symbol::DimExpr& dim_expr) const;
 
   bool IsBroadcastable(const symbol::DimExpr& lhs,
                        const symbol::DimExpr& rhs) const;
@@ -93,23 +128,19 @@ class IR_API ShapeConstraintIRAnalysis final
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
 
- private:
-  void SubstituteDimExpr(const symbol::DimExpr& origin,
-                         const symbol::DimExpr& substituted);
+  // TODO(hongqing-work): make it a private component only for infer friend
+  // class
+  InferSymbolicShapeContext* GetInferSymbolicShapeContext() {
+    return &context_;
+  }
 
  private:
-  ModuleOp m_;
+  void SetStaticShapeForValue(Value val);
 
-  int64_t next_sym_idx_ = 0;
+  void InferShapeOrDataForValue(Value val);
 
-  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_;
-
-  symbol::ConstraintsManager constraints_manager_;
-
-  using DimExprSubstitutionPattern =
-      std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
-  DimExprSubstitutionPattern substitution_pattern_;
+ private:
+  InferSymbolicShapeContext context_;
 };
 
 class IR_API ShapeAnalysisManager {
@@ -129,6 +160,8 @@ class IR_API ShapeAnalysisManager {
 
 #define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
   bool name##OpInferSymbolicShape(            \
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis);
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context);
+
+bool IsStaticShape(const Value& value);
 
 }  // namespace pir

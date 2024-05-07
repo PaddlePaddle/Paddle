@@ -57,7 +57,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class PyLayerOp : public pir::Op<PyLayerOp> {
@@ -122,7 +122,7 @@ class WhileOp
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -205,7 +205,7 @@ class SelectInputOp
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::Value out() { return result(0); }
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {

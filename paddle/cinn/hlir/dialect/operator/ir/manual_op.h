@@ -53,7 +53,7 @@ class IR_API GroupOp
   pir::Block *block() const;
   std::vector<pir::Operation *> GetOperators() const;
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -102,7 +102,7 @@ class IR_API YieldStoreOp
 
   void VerifySig();
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IR_API ConcatOp
@@ -123,7 +123,7 @@ class IR_API ConcatOp
 
   void VerifySig() const {}
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IR_API SplitOp : public pir::Op<SplitOp> {
@@ -177,7 +177,7 @@ class IR_API GenerateShapeOp
 
   pir::Value out() { return result(0); }
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   static pir::Attribute ConvertSymbolBindingsToAttribute(
       pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT

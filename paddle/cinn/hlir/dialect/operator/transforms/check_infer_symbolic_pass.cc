@@ -144,7 +144,10 @@ class BlockDimExprsAsserter {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
     } else {
-      bool infer_result = interface.InferSymbolicShape(shape_analysis.get());
+      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
+      // is done.
+      bool infer_result = interface.InferSymbolicShape(
+          shape_analysis->GetInferSymbolicShapeContext());
       PADDLE_ENFORCE_EQ(infer_result,
                         true,
                         ::common::errors::PreconditionNotMet(
