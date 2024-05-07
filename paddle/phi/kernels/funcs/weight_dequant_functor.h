@@ -225,7 +225,7 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
       // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11
       // 12 13 14 15 ... 31 weight 0 1 8 9 16 17 24 25 2 3 10 11 18 19 26 27 4 5
       // 12 13 20 21 28 29 6 7 14 15 22 23 30 31
-      vec_out[p] = vec_weight_f16[p];
+      vec_out[p] = vec_weight_f16[8 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
     Store<T, 32>(vec_out, &output[i / 256 * 64 + (i % 64)]);
   }
@@ -366,7 +366,6 @@ void WeightDequantize(const Context& dev_ctx,
   dim3 block(512);
   dim3 grid(n / 32);
   auto stream = dev_ctx.stream();
-  printf(" %d %d ", n, k);
   if (algo == "weight_only_int8" && group_size == -1) {
     int8_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),

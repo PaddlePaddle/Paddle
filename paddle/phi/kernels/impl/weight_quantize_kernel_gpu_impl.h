@@ -215,7 +215,6 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
                         const std::string& algo) {
   auto total_k = shape[0];
   auto total_n = shape[1];
-  printf("total_k: %d, total_n: %d", total_k, total_n);
   auto numel = total_k * total_n;
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();

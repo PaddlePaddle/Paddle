@@ -90,14 +90,12 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  scale->data<T>(),
                                  weight_shape,
                                  algo);
-    printf("quanted_x: %d, %d", quanted_x.dims()[0], quanted_x.dims()[1]);
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),
                                 weight_shape,
                                 arch,
                                 algo);
-    printf("out: %d, %d", out->dims()[0], out->dims()[1]);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
