@@ -21,7 +21,6 @@ from paddle import pir
 from paddle.base import (
     CompiledProgram,
     Variable,
-    default_main_program,
 )
 
 
@@ -66,7 +65,7 @@ def _get_valid_program(program=None):
     return default main program if program is None.
     """
     if program is None:
-        program = default_main_program()
+        program = paddle.static.default_main_program()
     elif isinstance(program, CompiledProgram):
         program = program._program
         if program is None:
