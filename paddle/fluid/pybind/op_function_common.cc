@@ -858,6 +858,17 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
   attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
 }
 
+void CastPyArg2AttrIRProgram(PyObject* obj,
+                             paddle::framework::AttributeMap& attrs,  // NOLINT
+                             const std::string& key,
+                             const std::string& op_type,
+                             ssize_t arg_pos) {
+  VLOG(1) << "After Process pir::Program*";
+  const std::shared_ptr<::pir::Program> program =
+      ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
+  attrs[key] = program;
+}
+
 void CastPyArg2AttrValues(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
                           const std::string& key,
@@ -1020,11 +1031,11 @@ void ConstructAttrMapForRunProgram(
 
     if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
       CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
-    } else if (std::set<std::string>({"global_block",
-                                      "forward_global_block",
-                                      "backward_global_block"})
-                   .count(key)) {
+    } else if (std::set<std::string>({"global_block"}).count(key)) {
       CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"forward_program", "backward_program"})
+                   .count(key)) {
+      CastPyArg2AttrIRProgram(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);

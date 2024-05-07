@@ -59,8 +59,7 @@ IfInstruction::IfInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetVarByValue(cond_value);
+  cond_var_ = value_exec_info->GetVarByValue(if_op.cond());
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));

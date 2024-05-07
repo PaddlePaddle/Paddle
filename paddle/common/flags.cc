@@ -1037,7 +1037,17 @@ PHI_DEFINE_EXPORTED_bool(
     enable_cinn_compile_cache,
     true,
     "It controls whether to enable cinn compilation cache.");
-
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=-1
+ * Example: FLAGS_cinn_compile_thread_nume=8
+ */
+PHI_DEFINE_EXPORTED_int64(
+    cinn_compile_thread_num,
+    -1,
+    "It controls how many thread numbers applying compilation cache.");
 /*
  * CINN related FLAG
  * Name: FLAGS_enable_interpretercore_launch_cinn
@@ -1259,6 +1269,17 @@ PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
                          "Whether disable dyshape in training.");
 
 /**
+ * CINN accuracy check related FLAG
+ * Name: FLAGS_enable_cinn_accuracy_check
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
+                         false,
+                         "Whether enable accuracy check in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1413,6 +1434,10 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
                          true,
                          "Enable new IR in executor");
+
+PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
+                           "",
+                           "the logging directory to save pir py code");
 
 /**
  * Using PIR API in Python
