@@ -175,15 +175,15 @@
 
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
-  args : (Tensor y, Tensor out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
   output : Tensor(y_grad), Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
-    param : [y, grad_x, grad_x]
+    param : [y, out, out]
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad
@@ -411,6 +411,7 @@
     param: [x]
   kernel :
     func : min_grad
+  composite : min_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : minimum_grad
   forward : minimum(Tensor x, Tensor y) -> Tensor(out)
@@ -646,6 +647,16 @@
   kernel:
     func: set_value_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+
+- backward_op : shuffle_channel_grad
+  forward : shuffle_channel (Tensor x, int group=1) -> Tensor(out)
+  args : (Tensor out_grad, int group)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : shuffle_channel_grad
 
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)

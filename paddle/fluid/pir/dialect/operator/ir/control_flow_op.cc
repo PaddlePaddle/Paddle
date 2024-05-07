@@ -24,7 +24,8 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -308,18 +309,18 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
   return res;
 }
 
-bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
+bool IfOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
   // infer true block
-  pir::InferSymExprForBlock(true_block(), shape_analysis);
+  pir::InferSymExprForBlock(true_block(), infer_context);
 
   // infer false block
-  pir::InferSymExprForBlock(false_block(), shape_analysis);
+  pir::InferSymExprForBlock(false_block(), infer_context);
 
   auto GetSymExprForBlockResult =
-      [shape_analysis](const pir::Operation &op,
-                       uint32_t idx) -> const std::vector<symbol::DimExpr> & {
+      [infer_context](const pir::Operation &op,
+                      uint32_t idx) -> const std::vector<symbol::DimExpr> & {
     const auto &shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
+        infer_context->GetShapeOrDataForValue(op.operand_source(idx));
     if (shape_or_data.data().has_value()) {
       return shape_or_data.data().value();
     } else {
@@ -358,12 +359,12 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
                               false_dims.size()));
         for (size_t i = 0; i < true_dims.size(); i++) {
           if (true_dims[i] != false_dims[i]) {
-            out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+            out_dims[i] = symbol::DimExpr{infer_context->GetNextSymName()};
           }
         }
       }
 
-      shape_analysis->SetShapeOrDataForValue(
+      infer_context->SetShapeOrDataForValue(
           result(rst_idx),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(out_dims)});
@@ -714,7 +715,7 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
 }
 
 bool WhileOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   for (auto &value : block_args()) {
     std::vector<symbol::DimExpr> sym_dims;
     const std::vector<int64_t> &dims =
@@ -723,7 +724,7 @@ bool WhileOp::InferSymbolicShape(
     for (auto dim : dims) {
       symbol::DimExpr dim_expr;
       if (dim == pir::ShapedTypeInterface::kDynamic) {
-        symbol::DimExpr symbolic_dim_expr(shape_analysis->GetNextSymName());
+        symbol::DimExpr symbolic_dim_expr(infer_context->GetNextSymName());
         dim_expr = symbolic_dim_expr;
       } else {
         symbol::DimExpr numeric_dim_expr(dim);
@@ -733,18 +734,39 @@ bool WhileOp::InferSymbolicShape(
     }
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(sym_dims)};
-    shape_analysis->SetShapeOrDataForValue(value, shape_data);
+    infer_context->SetShapeOrDataForValue(value, shape_data);
   }
 
-  pir::InferSymExprForBlock(body(), shape_analysis);
+  // add GreaterThanOne constraint
+  const auto &body_args = block_args();
+  PADDLE_ENFORCE_EQ(num_operands() - 1,
+                    body_args.size(),
+                    phi::errors::InvalidArgument(
+                        "The num_operands-1 and body_args.size is not equal"));
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_i =
+        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    const auto &args_i =
+        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < input_i.size(); ++j) {
+      if (infer_context->IsGreatThanOne(input_i[j])) {
+        infer_context->AddGreatThanOneCstr(args_i[j]);
+      }
+    }
+  }
+
+  pir::InferSymExprForBlock(body(), infer_context);
 
   // add constraints for args
-  const auto &body_args = block_args();
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
-        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
     const auto &yield_value_shape =
-        shape_analysis
+        infer_context
             ->GetShapeOrDataForValue(body().back().operand_source(i + 1))
             .shape();
     PADDLE_ENFORCE_EQ(input_arg_shape.size(),
@@ -758,21 +780,21 @@ bool WhileOp::InferSymbolicShape(
                           input_arg_shape.size(),
                           yield_value_shape.size()));
     const auto &original_input_shape =
-        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
     for (size_t j = 0; j < input_arg_shape.size(); ++j) {
       if (input_arg_shape[j].isa<int64_t>()) {
         continue;
       }
       if (input_arg_shape[j] ==
           yield_value_shape[j]) {  // Dim isn't changed in while
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        infer_context->AddEqualCstr(original_input_shape[j],
+                                    input_arg_shape[j]);
         continue;
       }
       if (original_input_shape.size() == yield_value_shape.size() &&
           original_input_shape[j] == yield_value_shape[j]) {
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        infer_context->AddEqualCstr(original_input_shape[j],
+                                    input_arg_shape[j]);
         continue;
       }
     }
@@ -780,9 +802,31 @@ bool WhileOp::InferSymbolicShape(
 
   const auto &last_op = body().back();
   for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         result(i - 1),
-        shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
+        infer_context->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
+
+  PADDLE_ENFORCE_EQ(body_args.size(),
+                    num_results(),
+                    phi::errors::InvalidArgument(
+                        "The body_args.size and num_results is not equal"));
+  for (size_t i = 0; i < num_results(); ++i) {
+    const auto &input_i =
+        infer_context->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    const auto &output_i =
+        infer_context->GetShapeOrDataForValue(result(i)).shape();
+    const auto &args_i =
+        infer_context->GetShapeOrDataForValue(body_args[i]).shape();
+    if (input_i.size() !=
+        args_i.size()) {  // there is a trick, so the size may vary.
+      continue;
+    }
+    for (size_t j = 0; j < output_i.size(); j++) {
+      if (infer_context->IsEqual(output_i[j], args_i[j])) {
+        infer_context->AddEqualCstr(output_i[j], input_i[j]);
+      }
+    }
   }
 
   return true;
@@ -827,19 +871,31 @@ void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
 void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
-  IR_ENFORCE(operand_type(0).isa<pir::ContainerType>(),
-             "The first input of cf.has_elements must be container type.");
+  PADDLE_ENFORCE_EQ(
+      num_operands(),
+      1u,
+      phi::errors::InvalidArgument("The size of inputs must equal to 1."));
+  PADDLE_ENFORCE_EQ(
+      operand_type(0).isa<pir::ContainerType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first input of cf.has_elements must be container type."));
 
   // No attributes should be verify.
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>(),
-             "The type of cf.has_elements' output is not correct.");
+  PADDLE_ENFORCE_EQ(
+      num_results(),
+      1u,
+      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ((*this)->result_type(0).isa<DenseTensorType>(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of cf.has_elements' output is not correct."));
 }
 
 const char *AssertOp::attributes_name[1] = {"summarize"};
+const char AssertOp::ERROR_INFO_ATTR_NAME[] = "error_info";
 
 void AssertOp::Build(pir::Builder &builder,             // NOLINT
                      pir::OperationArgument &argument,  // NOLINT
@@ -886,51 +942,69 @@ void AssertOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
 
     if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
-      IR_ENFORCE((*this)
-                     ->operand_source(0)
-                     .type()
-                     .dyn_cast<pir::DenseTensorType>()
-                     .dtype()
-                     .isa<pir::BoolType>(),
-                 "Type validation failed for the 0th input, it should be a "
-                 "bool DenseTensorType.");
+      PADDLE_ENFORCE_EQ(
+          (*this)
+              ->operand_source(0)
+              .type()
+              .dyn_cast<pir::DenseTensorType>()
+              .dtype()
+              .isa<pir::BoolType>(),
+          true,
+          phi::errors::InvalidArgument(
+              "Type validation failed for the 0th input, it should be a "
+              "bool DenseTensorType."));
     }
 
     if (auto vec_type =
             (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                   "Type validation failed for the 1th input.");
+        PADDLE_ENFORCE_EQ(
+            vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
+            true,
+            phi::errors::InvalidArgument(
+                "Type validation failed for the 1th input."));
       }
     } else {
-      IR_ENFORCE(
+      PADDLE_ENFORCE_EQ(
           (*this)->operand(1).type().isa<paddle::dialect::DenseTensorType>() ||
               (*this)
                   ->operand(1)
                   .type()
                   .isa<paddle::dialect::SelectedRowsType>(),
-          "Type validation failed for the 1th input.");
+          true,
+          phi::errors::InvalidArgument(
+              "Type validation failed for the 1th input."));
     }
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("summarize") > 0, "summarize does not exist.");
-    IR_ENFORCE(attributes.at("summarize").isa<pir::Int64Attribute>(),
-               "Type of attribute: summarize is not pir::Int64Attribute.");
+    PADDLE_ENFORCE_GT(
+        attributes.count("summarize"),
+        0,
+        phi::errors::InvalidArgument("summarize does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("summarize").isa<pir::Int64Attribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: summarize is not pir::Int64Attribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 0u,
-               "The size %d of outputs must be equal to 0.",
-               output_size);
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        0u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 0.", output_size));
     // Outputs num is 0, not need to check outputs type.
   }
   VLOG(4) << "End Verifying for: AssertOp.";
@@ -941,83 +1015,113 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto in_size = num_operands();
-    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be 3.", in_size);
+    PADDLE_ENFORCE_EQ(
+        in_size,
+        3u,
+        phi::errors::InvalidArgument("Size %d of inputs must be 3.", in_size));
     auto input1 = (*this)->operand_source(1).type();
     auto input2 = (*this)->operand_source(2).type();
     if (input1.isa<paddle::dialect::DenseTensorType>() &&
         input2.isa<paddle::dialect::DenseTensorType>()) {
       auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
     } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
                input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto tensor1 =
           input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       auto tensor2 =
           input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
-      IR_ENFORCE(
-          tensor1.place() == tensor2.place(),
-          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
+      PADDLE_ENFORCE_EQ(
           tensor1.place(),
-          tensor2.place());
+          tensor2.place(),
+          phi::errors::InvalidArgument(
+              "The 1st input place %s should be equal to 2ed input place %s.",
+              tensor1.place(),
+              tensor2.place()));
     } else {
-      IR_ENFORCE(input1 == input2,
-                 "The 1st input type %s should be equal to 2ed input type %s.",
-                 input1,
-                 input2);
+      PADDLE_ENFORCE_EQ(
+          input1,
+          input2,
+          phi::errors::InvalidArgument(
+              "The 1st input type %s should be equal to 2ed input type %s.",
+              input1,
+              input2));
     }
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto out_size = num_results();
-    IR_ENFORCE(
-        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+    PADDLE_ENFORCE_EQ(out_size,
+                      1u,
+                      phi::errors::InvalidArgument(
+                          "Size %d of outputs must be equal to 1.", out_size));
   }
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
 bool SelectInputOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   auto GetSymExprForValue =
-      [shape_analysis](pir::Value val) -> const std::vector<symbol::DimExpr> & {
-    const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(val);
+      [infer_context](pir::Value val) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data = infer_context->GetShapeOrDataForValue(val);
     if (shape_or_data.data().has_value()) {
       return shape_or_data.data().value();
     } else {
@@ -1030,7 +1134,7 @@ bool SelectInputOp::InferSymbolicShape(
 
   // for compatibility, we just return second_shape.
   if (input1_dims.size() != input2_dims.size()) {
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         result(0),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(input2_dims)});
@@ -1044,12 +1148,12 @@ bool SelectInputOp::InferSymbolicShape(
   if (input2_dims.size() != 0) {
     for (size_t i = 0; i < input1_dims.size(); i++) {
       if (input1_dims[i] != input2_dims[i]) {
-        out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+        out_dims[i] = symbol::DimExpr{infer_context->GetNextSymName()};
       }
     }
   }
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
@@ -1061,13 +1165,18 @@ void SelectOutputOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto in_size = num_operands();
-    IR_ENFORCE(in_size == 2u, "Size %d of inputs must be 2.", in_size);
+    PADDLE_ENFORCE_EQ(
+        in_size,
+        2u,
+        phi::errors::InvalidArgument("Size %d of inputs must be 2.", in_size));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto out_size = num_results();
-    IR_ENFORCE(
-        out_size == 2u, "Size %d of outputs must be equal to 2.", out_size);
+    PADDLE_ENFORCE_EQ(out_size,
+                      2u,
+                      phi::errors::InvalidArgument(
+                          "Size %d of outputs must be equal to 2.", out_size));
 
     auto out1 = (*this)->result(0).type();
     auto out2 = (*this)->result(1).type();
@@ -1075,58 +1184,83 @@ void SelectOutputOp::VerifySig() {
         out2.isa<paddle::dialect::DenseTensorType>()) {
       auto tensor1 = out1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
     } else if (out1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
                out2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto tensor1 = out1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
-      IR_ENFORCE(
-          tensor1.place() == tensor2.place(),
-          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
+      PADDLE_ENFORCE_EQ(
           tensor1.place(),
-          tensor2.place());
+          tensor2.place(),
+          phi::errors::InvalidArgument(
+              "The 1st input place %s should be equal to 2ed input place %s.",
+              tensor1.place(),
+              tensor2.place()));
     } else {
-      IR_ENFORCE(out1 == out2,
-                 "The 1st input type %s should be equal to 2ed input type %s.",
-                 out1,
-                 out2);
+      PADDLE_ENFORCE_EQ(
+          out1,
+          out2,
+          phi::errors::InvalidArgument(
+              "The 1st input type %s should be equal to 2ed input type %s.",
+              out1,
+              out2));
     }
   }
   VLOG(4) << "End Verifying for: AssignArray_Op.";

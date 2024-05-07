@@ -34,8 +34,10 @@ from paddle.base.framework import (
     Variable,
     _create_tensor,
     _current_expected_place,
+    _current_expected_place_,
     _dygraph_tracer,
     in_dygraph_mode,
+    in_pir_mode,
 )
 
 from .io_utils import (
@@ -137,6 +139,8 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
+                if value.is_dense() and value.place.is_custom_place():
+                    value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
@@ -166,9 +170,13 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(
-                persistable_var_dict[var_name].cpu()
-            )
+            tmp_var = persistable_var_dict[var_name]
+            if tmp_var.is_dense() and tmp_var.place.is_custom_place():
+                load_param_dict[var_name] = np.array(
+                    paddle._C_ops.npu_identity(tmp_var, -1).cpu()
+                )
+            else:
+                load_param_dict[var_name] = np.array(tmp_var.cpu())
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -222,6 +230,8 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
+        if var.is_dense() and var.place.is_custom_place():
+            var = paddle._C_ops.npu_identity(var, -1)
         load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
@@ -365,7 +375,10 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self.cpu())
+        if self.is_dense() and self.place.is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
+        else:
+            data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
@@ -373,7 +386,10 @@ def _pickle_save(obj, f, protocol):
     def reduce_LoDTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        data = np.array(self._copy(p))
+        if self._place().is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
+        else:
+            data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -505,7 +521,7 @@ def _to_LodTensor(ndarray):
             f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
-    place = _current_expected_place()
+    place = _current_expected_place_()
     t.set(ndarray, place)
     return t
 
@@ -873,10 +889,15 @@ def save(obj, path, protocol=4, **configs):
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
 
-        if isinstance(obj, Program):
-            obj.desc.flush()
-            with _open_file_buffer(path, "wb") as f:
-                f.write(obj.desc.serialize_to_string())
+        if isinstance(obj, paddle.static.Program):
+            if in_pir_mode():
+                paddle.core.serialize_pir_program(
+                    obj, path, 1, True, False, True
+                )
+            else:
+                obj.desc.flush()
+                with _open_file_buffer(path, "wb") as f:
+                    f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
             if in_dygraph_mode():
@@ -1167,13 +1188,24 @@ def load(path, **configs):
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        return np.array(tensor._copy(p))
+                        if tensor._place().is_custom_place():
+                            return np.array(
+                                paddle._C_ops.npu_identity(tensor, -1)._copy(p)
+                            )
+                        else:
+                            return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:
                     try:
+                        if in_pir_mode():
+                            program = paddle.static.Program()
+                            paddle.core.deserialize_pir_program(
+                                path, program, 1
+                            )
+                            return program
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()
                             program = Program.parse_from_string(

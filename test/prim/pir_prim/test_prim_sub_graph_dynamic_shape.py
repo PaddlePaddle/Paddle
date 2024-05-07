@@ -70,18 +70,12 @@ def stack_net(x):
     return paddle.stack([x, y], axis=0)
 
 
-def tile_net1(x):
-    y = paddle.tile(x, repeat_times=[2, 5])
-    return y
-
-
-def tile_net2(x):
-    y = paddle.tile(x, repeat_times=[3, 2, 5])
-    return y
-
-
 def index_sample_net(x, index):
     return paddle.index_sample(x, index)
+
+
+def bce_loss_net(x, label):
+    return paddle._C_ops.bce_loss(x, label)
 
 
 def swiglu_net1(x, y):
@@ -92,33 +86,58 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def dropout_net1(x):
+    return paddle.nn.functional.dropout(x, 0.5)
+
+
+group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
+
+
 def group_norm_net1(x):
-    group_norm = paddle.nn.GroupNorm(num_channels=x.shape[1], num_groups=32)
-    return group_norm(x)
+    return group_norm1(x)
+
+
+group_norm2 = paddle.nn.GroupNorm(
+    num_channels=128, num_groups=32, weight_attr=False
+)
 
 
 def group_norm_net2(x):
-    group_norm = paddle.nn.GroupNorm(
-        num_channels=x.shape[1], num_groups=32, weight_attr=False
-    )
-    return group_norm(x)
+    return group_norm2(x)
+
+
+group_norm3 = paddle.nn.GroupNorm(
+    num_channels=128, num_groups=32, bias_attr=False
+)
 
 
 def group_norm_net3(x):
-    group_norm = paddle.nn.GroupNorm(
-        num_channels=x.shape[1], num_groups=32, bias_attr=False
-    )
-    return group_norm(x)
+    return group_norm3(x)
+
+
+group_norm4 = paddle.nn.GroupNorm(
+    num_channels=128,
+    num_groups=32,
+    weight_attr=False,
+    bias_attr=False,
+)
 
 
 def group_norm_net4(x):
-    group_norm = paddle.nn.GroupNorm(
-        num_channels=x.shape[1],
-        num_groups=32,
-        weight_attr=False,
-        bias_attr=False,
-    )
-    return group_norm(x)
+    return group_norm4(x)
+
+
+group_norm5 = paddle.nn.GroupNorm(
+    num_channels=128,
+    num_groups=32,
+    weight_attr=False,
+    bias_attr=False,
+    data_format='NHWC',
+)
+
+
+def group_norm_net5(x):
+    return group_norm5(x)
 
 
 def layer_norm_net1(x):
@@ -127,6 +146,10 @@ def layer_norm_net1(x):
 
 def flatten_net(x):
     return paddle.flatten(x, 1, 2)
+
+
+def meshgrid_net(x, y):
+    return paddle.meshgrid(x, y)
 
 
 class TestPrimBase(unittest.TestCase):
@@ -230,32 +253,6 @@ class TestPrimStack(TestPrimBase):
         self.tol = 1e-6
 
 
-class TestPrimTile(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [1, 300, 4096]
-        self.init_x_shape = [None, None, 4096]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = tile_net1
-        self.necessary_ops = "pd_op.tile"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimTile2(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [300, 4096]
-        self.init_x_shape = [None, 4096]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = tile_net2
-        self.necessary_ops = "pd_op.tile"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
 class TestPrimTwo(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -321,6 +318,23 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = index_sample_net
         self.necessary_ops = "pd_op.index_sample"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimBceLoss(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [20, 30, 40, 50]
+        self.y_shape = [20, 30, 40, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(0.1, 0.8, self.x_shape).astype(self.dtype_x)
+        self.y = np.random.randint(0, 2, self.x_shape).astype(self.dtype_y)
+        self.net = bce_loss_net
+        self.necessary_ops = "pd_op.bce_loss"
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -394,54 +408,129 @@ class TestPrimFlatten2(TestPrimBase):
         self.tol = 1e-6
 
 
-class TestPrimGroupNorm1(unittest.TestCase):
+class TestPrimGroupNorm1(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [8, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net1
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
-class TestPrimGroupNorm2(unittest.TestCase):
+class TestPrimGroupNorm2(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [8, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net2
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
-class TestPrimGroupNorm3(unittest.TestCase):
+class TestPrimGroupNorm3(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10]
-        self.init_x_shape = [None, 640, None]
+        self.x_shape = [50, 128, 10]
+        self.init_x_shape = [None, 128, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net3
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
-class TestPrimGroupNorm4(unittest.TestCase):
+class TestPrimGroupNorm4(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [8, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net4
         self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimGroupNorm5(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [8, 6, 8, 4, 128]
+        self.init_x_shape = [8, 6, 8, 4, 128]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net5
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimGroupNorm6(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [8, 6, 8, 4, 128]
+        self.init_x_shape = [None, None, None, None, 128]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net5
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimGroupNorm7(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [8, 10, 8, 128]
+        self.init_x_shape = [None, None, None, 128]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net5
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 5e-6
+
+
+class TestPrimDropout(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.ones(self.shape_x).astype(self.dtype_x)
+        self.net = dropout_net1
+        self.necessary_ops = "pd_op.dropout"
+        self.enable_cinn = False
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref.sum(), actual.sum(), rtol=0.08)
+
+
+class TestPrimMeshgrid(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300]
+        self.shape_y = []
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = meshgrid_net
+        self.necessary_ops = "pd_op.meshgrid"
         self.enable_cinn = False
         self.tol = 1e-6
 

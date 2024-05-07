@@ -64,6 +64,21 @@ std::set<std::string> StringSplit(const std::string& str) {
   }
   return tokens;
 }
+
+void RemoveOp(pir::Block* block, pir::Operation* op) {
+  bool remove_op = true;
+  for (auto& item : op->results()) {
+    if (item.HasOneUse()) {
+      remove_op = false;
+      break;
+    }
+  }
+  if (remove_op) {
+    auto op_iter = std::find(block->begin(), block->end(), *op);
+    block->erase(op_iter);
+  }
+}
+
 }  // namespace
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
@@ -298,12 +313,12 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
   return new_decomp_outs;
 }
 
-std::vector<pir::Value> DecompProgram::construct_dst_vars(
+void DecompProgram::construct_dst_vars(
     const std::string& op_name,
     const std::vector<pir::Value>& orig_outs,
     const std::vector<pir::Value>& decomp_outs,
-    std::unordered_map<pir::Value, int> orig_vars_dict) {
-  std::vector<pir::Value> tar_vars(src_vars_.size());
+    std::unordered_map<pir::Value, int> orig_vars_dict,
+    std::vector<pir::Value>* tar_vars) {
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
@@ -315,10 +330,9 @@ std::vector<pir::Value> DecompProgram::construct_dst_vars(
           decomp_outs.size()));
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
-      tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
+      (*tar_vars)[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
     }
   }
-  return tar_vars;
 }
 
 std::vector<pir::Value> DecompProgram::get_dst_vars() {
@@ -424,24 +438,41 @@ void DecompProgram::decomp_block(
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       std::vector<pir::Value> orig_outs = op->results();
-      std::vector<pir::Value> standard_decomp_res =
-          format_decomp_res(op->name(), orig_outs, decomp_res);
-      check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
-      tar_vars = construct_dst_vars(
-          op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
+      bool is_next_builtin_split = false;
 
-      op->ReplaceAllUsesWith(standard_decomp_res);
-      bool remove_op = true;
-      for (auto& item : op->results()) {
-        if (item.HasOneUse()) {
-          remove_op = false;
-          break;
+      for (size_t i = 0; i < orig_outs.size(); i++) {
+        auto item = orig_outs[i];
+        if (item.use_count() == 1) {
+          auto next_op = item.first_use().owner();
+          if (next_op->name() == "builtin.split") {
+            is_next_builtin_split = true;
+
+            check_decomp_outputs(
+                next_op->name(), next_op->results(), decomp_res[i]);
+            construct_dst_vars(next_op->name(),
+                               next_op->results(),
+                               decomp_res[i],
+                               orig_vars_dict,
+                               &tar_vars);
+
+            next_op->ReplaceAllUsesWith(decomp_res[i]);
+            RemoveOp(block, next_op);
+          }
         }
       }
-      if (remove_op) {
-        auto op_iter = std::find(block->begin(), block->end(), *op);
-        block->erase(op_iter);
+      if (!is_next_builtin_split) {
+        std::vector<pir::Value> standard_decomp_res =
+            format_decomp_res(op->name(), orig_outs, decomp_res);
+        check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
+        construct_dst_vars(op->name(),
+                           orig_outs,
+                           standard_decomp_res,
+                           orig_vars_dict,
+                           &tar_vars);
+
+        op->ReplaceAllUsesWith(standard_decomp_res);
       }
+      RemoveOp(block, op);
     }
   }
   if (FLAGS_prim_check_ops) {

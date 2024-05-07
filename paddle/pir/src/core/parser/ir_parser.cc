@@ -34,9 +34,12 @@ Token IrParser::PeekToken() { return lexer->PeekToken(); }
 
 void IrParser::ConsumeAToken(std::string expect_token_val) {
   std::string token_val = ConsumeToken().val_;
-  IR_ENFORCE(token_val == expect_token_val,
-             "The token value of expectation is " + expect_token_val + " ,not" +
-                 token_val + "." + GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(
+      token_val,
+      expect_token_val,
+      phi::errors::InvalidArgument("The token value of expectation is " +
+                                   expect_token_val + " ,not" + token_val +
+                                   "." + GetErrorLocationInfo()));
 }
 
 // Type := BuiltinType | OtherDialectsDefineType
@@ -104,9 +107,11 @@ Type IrParser::ParseType() {
     }
     return builder->vec_type(vec_type);
   } else {
-    IR_ENFORCE(type_val.find('.') != std::string::npos,
-               "No function parsing " + type_val + " exists!" +
-                   GetErrorLocationInfo());
+    PADDLE_ENFORCE_NE(
+        type_val.find('.'),
+        std::string::npos,
+        phi::errors::InvalidArgument("No function parsing " + type_val +
+                                     " exists!" + GetErrorLocationInfo()));
     auto dialect_name = type_val.substr(0, type_val.find('.'));
     auto dialect = ctx->GetRegisteredDialect(dialect_name);
     return dialect->ParseType(*this);
@@ -167,9 +172,11 @@ Attribute IrParser::ParseAttribute() {
   } else if (attribute_type == "Pointer") {
     IR_THROW("This attribute is not currently supported by parser");
   } else {
-    IR_ENFORCE(attribute_type.find('.') != std::string::npos,
-               "No function parsing " + attribute_type + " exists!" +
-                   GetErrorLocationInfo());
+    PADDLE_ENFORCE_NE(
+        attribute_type.find('.'),
+        std::string::npos,
+        phi::errors::InvalidArgument("No function parsing " + attribute_type +
+                                     " exists!" + GetErrorLocationInfo()));
     auto dialect_name = attribute_type.substr(0, attribute_type.find('.'));
     auto dialect = ctx->GetRegisteredDialect(dialect_name);
     return dialect->ParseAttribute(*this);
@@ -190,8 +197,10 @@ std::unique_ptr<Program> IrParser::ParseProgram() {
 // Region := Block
 void IrParser::ParseRegion(Region& region) {  // NOLINT
   ParseBlock(region.front());
-  IR_ENFORCE(PeekToken().val_ != "{",
-             "Only one block in a region is supported");
+  PADDLE_ENFORCE_NE(
+      PeekToken().val_,
+      "{",
+      phi::errors::InvalidArgument("Only one block in a region is supported"));
 }
 
 // Block := "{" {Operation} "}"
@@ -243,7 +252,7 @@ std::vector<std::string> IrParser::ParseValueList() {
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
-      value_index.push_back("null");
+      value_index.emplace_back("null");
     } else {
       std::string str = index_token.val_;
       value_index.push_back(str);
@@ -301,9 +310,11 @@ AttributeMap IrParser::ParseAttributeMap() {
     } else if (token_val == ",") {
       key_token = ConsumeToken();
     } else {
-      IR_ENFORCE((token_val == "}") || (token_val == ","),
-                 "The token value of expectation is } or , , not " + token_val +
-                     "." + GetErrorLocationInfo());
+      PADDLE_ENFORCE_EQ((token_val == "}") || (token_val == ","),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The token value of expectation is } or , , not " +
+                            token_val + "." + GetErrorLocationInfo()));
     }
   }
   return attribute_map;

@@ -1349,9 +1349,13 @@ class Layer:
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, buffer
 
-    def clear_gradients(self):
+    def clear_gradients(self, set_to_zero=True):
         """
         Clear the gradients of all parameters for this layer.
+
+        Args:
+            set_to_zero (bool, optional): Whether to set the trainable parameters'
+                gradients to zero or None. Default is True.
 
         Returns:
             None
@@ -1375,7 +1379,7 @@ class Layer:
         """
         for p in self.parameters():
             if p.trainable:
-                p.clear_gradient()
+                p.clear_gradient(set_to_zero)
 
     def _build_once(self, *args, **kwargs):
         pass
@@ -1539,7 +1543,7 @@ class Layer:
         elif hasattr(self, name) and name not in self._parameters:
             raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
-            parameter, framework.Parameter
+            parameter, (framework.Parameter, paddle.pir.Value)
         ):
             raise TypeError(
                 f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."

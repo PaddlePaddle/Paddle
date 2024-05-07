@@ -25,6 +25,73 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
+# TODO: Consider a better way to mark these ops has no grad op.
+# Such as use a new trait to mark these ops.
+ALLOW_NO_GRAD_OPS = [
+    # Compare ops
+    "pd_op.equal",
+    "pd_op.equal_",
+    "pd_op.not_equal",
+    "pd_op.not_equal_",
+    "pd_op.less_than",
+    "pd_op.less_than_",
+    "pd_op.less_equal",
+    "pd_op.less_equal_",
+    "pd_op.greater_than",
+    "pd_op.greater_than_",
+    "pd_op.greater_equal",
+    "pd_op.greater_equal_",
+    # Logical ops
+    "pd_op.logical_and",
+    "pd_op.logical_and_",
+    "pd_op.logical_not",
+    "pd_op.logical_not_",
+    "pd_op.logical_or",
+    "pd_op.logical_or_",
+    "pd_op.logical_xor",
+    "pd_op.logical_xor_",
+    # Bitwise ops
+    "pd_op.bitwise_and",
+    "pd_op.bitwise_and_",
+    "pd_op.bitwise_left_shift",
+    "pd_op.bitwise_left_shift_",
+    "pd_op.bitwise_not",
+    "pd_op.bitwise_not_",
+    "pd_op.bitwise_or",
+    "pd_op.bitwise_or_",
+    "pd_op.bitwise_right_shift",
+    "pd_op.bitwise_right_shift_",
+    "pd_op.bitwise_xor",
+    "pd_op.bitwise_xor_",
+    # Array ops
+    "pd_op.assign_array",
+    "pd_op.array_length",
+    "pd_op.slice_array",
+    "pd_op.slice_array_dense",
+    "pd_op.assign_array",
+    "pd_op.assign_array_",
+    "pd_op.create_array",
+    "pd_op.create_array_like",
+    "pd_op.array_read",
+    "pd_op.array_write_",
+    "pd_op.array_pop",
+    # Others
+    "pd_op.remainder",
+    "pd_op.argmax",
+    "pd_op.print",
+    "pd_op.accuracy",
+    "pd_op.uniform",
+    "pd_op.gaussian",
+    "pd_op.bernoulli",
+    "pd_op.full_like",
+    "pd_op.assign_value_",
+    "pd_op.nextafter",
+    "pd_op.isnan",
+    "pd_op.isinf",
+    "pd_op.all",
+    "pd_op.any",
+]
+
 
 class ValueWrapper:
     def __init__(self, value) -> None:
@@ -236,8 +303,7 @@ class State:
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
-            shape = item.shape
-            if -1 in shape:
+            if item.initialized() and -1 in item.shape:
                 warnings.warn(
                     f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
                 )
@@ -280,6 +346,11 @@ def some_in_set(value_list, value_set):
 
 def is_control_flow(op):
     return op.name() == "pd_op.if" or op.name() == "pd_op.while"
+
+
+def is_builtin_op(op):
+    dialect_name, opname = op.name().split(".")
+    return dialect_name == "builtin"
 
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
@@ -389,7 +460,6 @@ def remove_op(block, op, state):
     '''
     remove op from block
     '''
-    block.remove_op(op)
     if state.opgrad_to_op[op] != []:
         fwd_op = state.opgrad_to_op[op][0]
         state.op_to_opgrad[fwd_op].remove(op)
@@ -403,6 +473,10 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
+    # NOTE(SigureMo): Ensure access to the op's results before removing it.
+    # Otherwise, the op will be deconstructed and access the num_results
+    # will be undefined behavior, it always cause hanging on the macOS.
+    block.remove_op(op)
 
 
 def while_prune_check(while_tuple_ops):
@@ -444,6 +518,14 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_input_stop_gradient_true(list_of_list):
+    for list_ in list_of_list:
+        for stop_gradient in list_:
+            if stop_gradient is False:
+                return False
+    return True
+
+
 def all_output_grad_none(list_of_list):
     for list_ in list_of_list:
         for value in list_:
@@ -479,7 +561,7 @@ def return_map_value_list(value, map):
     output = []
     for i in range(len(value)):
         if value[i] in map:
-            output.append(map[value[i]])
+            output.append(return_map_value(value[i], map))
         else:
             output.append(value[i])
     return output

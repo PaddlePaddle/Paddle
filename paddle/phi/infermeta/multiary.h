@@ -321,6 +321,20 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& in_scale,
+    const MetaTensor& in_accum,
+    const MetaTensor& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    MetaTensor* out,
+    MetaTensor* out_scale,
+    MetaTensor* out_state,
+    MetaTensor* out_accum);
+
 void FtrlInferMeta(const MetaTensor& param,
                    const MetaTensor& squared_accumulator,
                    const MetaTensor& linear_accumulator,
@@ -904,6 +918,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
@@ -951,7 +966,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out);
 

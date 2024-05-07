@@ -42,27 +42,23 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
   return ss.str();
 }
 
-void CompilationTask::operator()() {
-  VLOG(4) << "Run Compilation Task for : " << context_->group_.get();
-  if (CompilationCache::Instance().Has(context_->group_)) {
-    VLOG(4) << "Found cached kernel info for group: "
-            << context_->group_->FuncName();
-    return;
-  }
+std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
   Lowering();
-  CodegenAndJit();
+  return CodegenAndJit();
 }
 
 void CompilationTask::Lowering() {
+  VLOG(5) << "Begin to lowering group: " << *context_->group_;
   auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
       op_lowerer.BucketLower(context_->group_,
                              /* apply op schedule = */ false,
                              /* apply group schedule = */ true,
                              /* apply pass = */ true));
+  VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
-void CompilationTask::CodegenAndJit() {
+std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   ir::Module::Builder builder(cinn::common::UniqName("module"),
                               context_->target_);
   CHECK_EQ(context_->predicates_.size(), context_->lowered_funcs_.size());
@@ -74,27 +70,23 @@ void CompilationTask::CodegenAndJit() {
   }
   builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
   ir::Module ir_module = builder.Build();
-  BuildPirCINNKernelInfo(ir_module);
+  return BuildPirCINNKernelInfo(ir_module);
 }
 
-pir::CINNKernelInfo CompilationTask::GetCINNKernelInfo() {
-  if (!CompilationCache::Instance().Has(context_->group_)) {
-    PADDLE_THROW(phi::errors::NotFound(
-        "Kernel info has been cached for current group."));
-  }
-  return CompilationCache::Instance().GetKernelInfo(context_->group_);
-}
-
-void CompilationTask::BuildPirCINNKernelInfo(const ir::Module& module) {
+std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
+    const ir::Module& module) {
   auto compilation_result =
       std::make_shared<pir::CompilationResult>(context_->target_);
-  pir::BackendResource& backend_resource =
-      compilation_result->MutableBackendResource();
-  backend_resource.GetBackendCompiler()->Build(module, "");
-  backend_resource.SetHostFnName(context_->group_->FuncName());
-  backend_resource.SetInferFnName(context_->group_->FuncName() +
-                                  "_infer_shape");
-  CompilationCache::Instance().Insert(context_->group_, compilation_result);
+  auto backend_resource = std::make_shared<pir::BackendResource>(
+      context_->target_,
+      context_->group_->FuncName(),
+      context_->group_->FuncName() + "_infer_shape",
+      context_->group_->int_args_map());
+  VLOG(5) << "Start to compile module into cuda kernel...";
+  backend_resource->GetBackendCompiler()->Build(module, "");
+  compilation_result->SetBackendResource(backend_resource);
+  VLOG(5) << "End to compile module into cuda kernel.";
+  return compilation_result;
 }
 
 }  // namespace framework

@@ -31,11 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -696,7 +696,7 @@ void _sliceCompute(const phi::DenseTensor *in,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out);
-  operators::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+  phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
       eigen_place, out_t, in_t, offsets, extents);
 }
 
@@ -721,7 +721,7 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
+    phi::funcs::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }

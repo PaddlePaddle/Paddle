@@ -47,6 +47,11 @@ struct AttributeTrait<int> {
   using value_type = ::pir::Int32Attribute;
 };
 
+template <>
+struct AttributeTrait<float> {
+  using value_type = ::pir::FloatAttribute;
+};
+
 template <typename T = int64_t>
 std::vector<T> GetVectorAttr(const ::pir::Operation *op,
                              const std::string &name) {
@@ -82,8 +87,10 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      for (auto expr : list[i].data().value()) {
-        result.emplace_back(expr);
+      if (list[i].data().has_value()) {
+        for (auto expr : list[i].data().value()) {
+          result.emplace_back(expr);
+        }
       }
     }
     return result;
@@ -116,18 +123,18 @@ std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);
 
 bool ReduceInferDim(pir::Operation *op,
-                    pir::ShapeConstraintIRAnalysis *shape_analysis,
+                    pir::InferSymbolicShapeContext *infer_context,
                     const std::vector<int64_t> &axis,
                     bool keep_dim,
                     bool reduce_all);
 
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis);
 
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const std::vector<pir::Value> &values,
     int axis);
 

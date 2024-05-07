@@ -104,9 +104,6 @@ class DynamicToStaticConverter {
   }
 
   bool Convert() {
-    if (!IsSymbolFullyInfered()) {
-      return false;
-    }
     bool updated = false;
     VisitEachValue(fusion_op_, [&](pir::Value value) {
       updated |= UpdateValueShape(value);
@@ -116,16 +113,6 @@ class DynamicToStaticConverter {
   }
 
  private:
-  bool IsSymbolFullyInfered() {
-    bool is_infered = true;
-    VisitEachValue(fusion_op_, [&](pir::Value value) {
-      if (!shape_analysis_->HasShapeOrDataForValue(value)) {
-        is_infered = false;
-      }
-    });
-    return is_infered;
-  }
-
   DimExpr4SymbolName InitDimExpr4SymbolName() {
     const auto* map = GetGlobalDynamicToStaticDimMap();
     CHECK(map->has_value());
@@ -178,13 +165,25 @@ class DynamicToStaticConverter {
 
   bool UpdateValueShape(pir::Value value) {
     bool update = false;
-    CHECK(shape_analysis_->HasShapeOrDataForValue(value));
     const auto& origin_shape = GetOriginValueShape(value);
     const auto& target_shape = GetTargetValueShape(value);
-    CHECK_EQ(origin_shape.size(), target_shape.size());
+    PADDLE_ENFORCE_EQ(
+        origin_shape.size(),
+        target_shape.size(),
+        phi::errors::InvalidArgument(
+            "The size of origin shape and target shape is not equal,"
+            "where the size of origin shape:%d but the size of target "
+            "shape:%d.",
+            origin_shape.size(),
+            target_shape.size()));
     for (std::size_t i = 0; i < origin_shape.size(); ++i) {
       if (origin_shape.at(i) == -1) {
-        CHECK_GT(target_shape.at(i), 0);
+        PADDLE_ENFORCE_GT(target_shape.at(i),
+                          0,
+                          phi::errors::InvalidArgument(
+                              "The size of target shape is incorrect."
+                              "Expected size is larger than 0, but receive %d.",
+                              target_shape.at(i)));
         update = true;
       } else {
         CHECK(origin_shape.at(i) == target_shape.at(i));

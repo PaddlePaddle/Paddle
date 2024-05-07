@@ -38,7 +38,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -59,8 +59,7 @@ IfInstruction::IfInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetVarByValue(cond_value);
+  cond_var_ = value_exec_info->GetVarByValue(if_op.cond());
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));
@@ -196,6 +195,16 @@ IfInstruction::~IfInstruction() {
   if (false_branch_inter_ != nullptr) {
     delete false_branch_inter_;
   }
+}
+
+void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetOutputHooks(hookfuncs);
+  false_branch_inter_->SetOutputHooks(hookfuncs);
+}
+
+void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetInputHooks(hookfuncs);
+  false_branch_inter_->SetInputHooks(hookfuncs);
 }
 
 void IfInstruction::Run() {

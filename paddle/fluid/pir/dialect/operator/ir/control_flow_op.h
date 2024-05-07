@@ -57,7 +57,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class PyLayerOp : public pir::Op<PyLayerOp> {
@@ -122,7 +122,7 @@ class WhileOp
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -173,9 +173,11 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 ///      print(summarize number of elements in data)
 ///   }
 ///
-class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
+class AssertOp
+    : public pir::Op<AssertOp, OpYamlInfoInterface, pir::SideEffectTrait> {
  public:
   using Op::Op;
+  static const char ERROR_INFO_ATTR_NAME[];
   static const char *name() { return "pd_op.assert"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[1];
@@ -203,7 +205,7 @@ class SelectInputOp
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::Value out() { return result(0); }
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {

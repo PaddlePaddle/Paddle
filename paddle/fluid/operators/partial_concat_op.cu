@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/partial_concat_op.h"
-#include "paddle/fluid/platform/float16.h"
-
-namespace plat = paddle::platform;
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -73,13 +71,13 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
 
     auto input_dim = in_vars[0]->dims();
     PADDLE_ENFORCE_EQ(input_dim.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Only supports 2-D array with batch size in the 1st "
                           "dimension and data in the 2nd."));
     auto in_size = input_dim[1];
@@ -156,7 +154,7 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
     // all parameters
     auto batch_size = ins[0]->dims()[0];
@@ -175,7 +173,7 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
         *ctx.template device_context<phi::GPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
-      auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
+      auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
       dxt.device(place) = dxt.constant(static_cast<T>(0));
     }
 
@@ -240,7 +238,7 @@ PD_REGISTER_STRUCT_KERNEL(partial_concat,
                           double,
                           int,
                           int64_t,
-                          plat::float16,
+                          phi::dtype::float16,
                           phi::dtype::complex<float>,
                           phi::dtype::complex<double>) {}
 PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
@@ -251,6 +249,6 @@ PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
                           double,
                           int,
                           int64_t,
-                          plat::float16,
+                          phi::dtype::float16,
                           phi::dtype::complex<float>,
                           phi::dtype::complex<double>) {}

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     if (x_lod.empty()) {
       PADDLE_ENFORCE_EQ(x_dim.size(),
                         3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "3, but received %d. ",
@@ -52,14 +52,14 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(x_dim.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "2, but received %d. ",
                             x_dim.size()));
       PADDLE_ENFORCE_EQ(x_lod.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s lod level of AddPositionEncodingOp "
                             "should be equal to "
                             "1, but received %d. ",
@@ -70,13 +70,13 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       enc_size = x_dim[1];
     }
 
-    PADDLE_ENFORCE_EQ(enc_size % 2,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The input(X)'s feature size of "
-                          "AddPositionEncodingOp only support even, "
-                          "but received an odd number: %d. ",
-                          enc_size));
+    PADDLE_ENFORCE_EQ(
+        enc_size % 2,
+        0,
+        phi::errors::InvalidArgument("The input(X)'s feature size of "
+                                     "AddPositionEncodingOp only support even, "
+                                     "but received an odd number: %d. ",
+                                     enc_size));
 
     const int half_size = enc_size / 2;
     for (int i = 0; i < batch_size; ++i) {
@@ -104,11 +104,11 @@ class AddPositionEncodingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto dout = framework::EigenVector<T>::Flatten(*dOut);
+    auto dout = phi::EigenVector<T>::Flatten(*dOut);
 
     auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto dx = phi::EigenVector<T>::Flatten(*dX);
 
     float alpha = context.Attr<float>("alpha");
 
