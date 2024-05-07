@@ -36,7 +36,6 @@ from paddle.base import (
 from paddle.base.executor import Executor, global_scope
 from paddle.base.framework import (
     dygraph_not_support,
-    process_type_promotion,
     static_only,
 )
 from paddle.base.log_helper import get_logger
@@ -215,7 +214,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
         uniq_fetch_vars = []
         for var in fetch_vars:
             if var.dtype != paddle.bool:
-                var_ = paddle.scale(fetch_vars[0], 1.0)
+                var_ = paddle.scale(var, 1.0)
                 uniq_fetch_vars.append(var_)
             fetch_vars = uniq_fetch_vars
 
@@ -652,12 +651,6 @@ def save_pir_inference_model(
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
-
-    # do type promotion
-    program = process_type_promotion(program)
-
-    clip_extra = kwargs.get('clip_extra', True)
-
     # serialize and save program
     program = normalize_pir_program(
         program,
@@ -665,7 +658,12 @@ def save_pir_inference_model(
         fetch_vars,
         skip_prune_program=kwargs.get('skip_prune_program', False),
     )
-    paddle.core.serialize_pir_program(program, model_path, 1, True, False, True)
+
+    readable = kwargs.get('readable', False)
+    trainable = kwargs.get('trainable', True)
+    paddle.core.serialize_pir_program(
+        program, model_path, 1, True, readable, trainable
+    )
 
     # serialize and save params
     save_dirname = os.path.dirname(params_path)
