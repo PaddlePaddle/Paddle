@@ -1280,6 +1280,17 @@ PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
                          "Whether enable accuracy check in cinn.");
 
 /**
+ * CINN accuracy check related FLAG
+ * Name: FLAGS_enable_fuse_parallel_matmul_pass
+ * Since Version: 2.7.0
+ * Value Range: bool, default=true
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
+                         true,
+                         "Whether enable fuse_parallel_matmul_pass in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
