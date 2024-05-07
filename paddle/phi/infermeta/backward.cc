@@ -128,7 +128,7 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         do_dims.size()));
-  auto dx_dims = do_dims;
+  const auto& dx_dims = do_dims;
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
 }
