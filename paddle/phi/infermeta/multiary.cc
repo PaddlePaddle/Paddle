@@ -1431,10 +1431,10 @@ void DeformableConvInferMeta(const MetaTensor& x,
 
 void DetectionMapInferMeta(const MetaTensor& detect_res,
                            const MetaTensor& label,
-                           const paddle::optional<MetaTensor>& has_state,
-                           const paddle::optional<MetaTensor>& pos_count,
-                           const paddle::optional<MetaTensor>& true_pos,
-                           const paddle::optional<MetaTensor>& false_pos,
+                           const MetaTensor& has_state,
+                           const MetaTensor& pos_count,
+                           const MetaTensor& true_pos,
+                           const MetaTensor& false_pos,
                            int class_num,
                            int background_label,
                            float overlap_threshold,
@@ -1474,15 +1474,15 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
             label_dims[1]));
   }
 
-  if (pos_count) {
+  if (pos_count.initialized()) {
     PADDLE_ENFORCE_NE(
-        true_pos.get_ptr(),
+        true_pos,
         nullptr,
         phi::errors::InvalidArgument(
             "Input(TruePos) of DetectionMAPOp should not be null when "
             "Input(PosCount) is not null."));
     PADDLE_ENFORCE_NE(
-        false_pos.get_ptr(),
+        false_pos,
         nullptr,
         phi::errors::InvalidArgument(
             "Input(FalsePos) of DetectionMAPOp should not be null when "
