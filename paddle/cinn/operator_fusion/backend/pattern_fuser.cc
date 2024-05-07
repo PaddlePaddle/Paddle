@@ -152,6 +152,23 @@ struct FusionOp2Expr {
   }
 };
 
+struct ApplyTransform {
+  explicit ApplyTransform(const ir::Expr& expr) : expr_(expr) {}
+  ir::Expr operator()(const UnsupportTransformPtr& transform) {
+    PADDLE_THROW("Can not do UnsupportTransform");
+  }
+  ir::Expr operator()(const IdentityTransformPtr& transform) { return expr_; }
+  ir::Expr operator()(const AppendDimTransformPtr& transform) {
+    PADDLE_THROW("AppendDimTransform not implemented");
+  }
+  ir::Expr operator()(const DeleteDimTransformPtr& transform) {
+    PADDLE_THROW("DeleteDimTransform not implemented");
+  }
+
+ private:
+  ir::Expr expr_;
+};
+
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern);
 
@@ -235,6 +252,19 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   return result;
 }
 
+std::vector<ir::Expr> ApplyTransformToPromise(
+    const ExprPromise<BackendStage>& promise) {
+  std::function<ir::Expr(ir::Expr)> do_transform =
+      [transform_route = promise.transform_route](ir::Expr target) -> ir::Expr {
+    for (auto transform : transform_route) {
+      target = std::visit(ApplyTransform(target), transform);
+    }
+    return target;
+  };
+  return MapVector(std::visit(FusionOp2Expr(), promise.root_fusion_op),
+                   do_transform);
+}
+
 struct IrExprGetter {
   std::vector<ir::Expr> operator()(
       const TrivialPattern<BackendStage>& pattern) {
@@ -277,6 +307,12 @@ struct IrExprGetter {
           result, MapVector(GetExprFromPattern(sub_pattern.pattern), func));
     }
     return result;
+  }
+
+  std::vector<ir::Expr> operator()(const AnchorPattern<BackendStage>& pattern) {
+    std::vector<ir::Expr> result;
+    for (auto promise : pattern.anchor_state.promise) {
+    }
   }
 
   std::vector<ir::Expr> operator()(
