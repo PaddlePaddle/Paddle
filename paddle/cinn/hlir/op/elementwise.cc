@@ -1368,7 +1368,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<Type> &out_type,
-    const std::vector<ir::Dim> &output_shapes,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
   auto attr_store = attrs.attr_store;
   CHECK(attr_store.count("start"));
