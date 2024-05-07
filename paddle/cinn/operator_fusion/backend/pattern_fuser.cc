@@ -312,7 +312,9 @@ struct IrExprGetter {
   std::vector<ir::Expr> operator()(const AnchorPattern<BackendStage>& pattern) {
     std::vector<ir::Expr> result;
     for (auto promise : pattern.anchor_state.promise) {
+      result = ConcatVector(result, ApplyTransformToPromise(promise));
     }
+    return result;
   }
 
   std::vector<ir::Expr> operator()(
