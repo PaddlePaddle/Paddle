@@ -153,7 +153,6 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   for (int i = 0; i < process_factors.size(); ++i) {
     Var temp_var(common::UniqName(for_node->loop_var->name));
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
-
     new_loop_vars.push_back(temp_var);
   }
   substitute_value = cinn::common::AutoSimplify(substitute_value);
