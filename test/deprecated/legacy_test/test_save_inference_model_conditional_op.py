@@ -86,6 +86,7 @@ class TestConditionalOp(unittest.TestCase):
             input_spec=[
                 paddle.static.InputSpec(shape=[1, 3, 8, 8], dtype='float32')
             ],
+            full_graph=True,
         )
         root_path = tempfile.TemporaryDirectory()
         model_file = os.path.join(root_path.name, "while_net")
@@ -111,7 +112,9 @@ class TestConditionalOp(unittest.TestCase):
         paddle.disable_static()
         net = ForNet()
         net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')]
+            net,
+            input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')],
+            full_graph=True,
         )
         root_path = tempfile.TemporaryDirectory()
         model_file = os.path.join(root_path.name, "for_net")
@@ -137,7 +140,9 @@ class TestConditionalOp(unittest.TestCase):
         paddle.disable_static()
         net = IfElseNet()
         net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')]
+            net,
+            input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')],
+            full_graph=True,
         )
         root_path = tempfile.TemporaryDirectory()
         model_file = os.path.join(root_path.name, "if_net")
