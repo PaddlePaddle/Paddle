@@ -185,7 +185,7 @@ class TestPirBackwardDygraph(unittest.TestCase):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.enable_inplace = False
 
-        @paddle.jit.to_static(build_strategy=build_strategy)
+        @paddle.jit.to_static(build_strategy=build_strategy, full_graph=True)
         def func(x, y):
             return x * y
 
@@ -210,7 +210,7 @@ class TestPirReshapeBackwardDygraph(unittest.TestCase):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.enable_inplace = False
 
-        @paddle.jit.to_static(build_strategy=build_strategy)
+        @paddle.jit.to_static(build_strategy=build_strategy, full_graph=True)
         def func(x, y):
             x = x.reshape([-1, 2, 2])
             y = y.reshape([-1, 2, 2])
