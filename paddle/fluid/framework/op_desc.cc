@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
@@ -975,6 +976,9 @@ struct SetAttrDescVisitor {
     // just do nothing.
   }
   void operator()(const std::vector<pir::Block *> &v) const {
+    // just do nothing.
+  }
+  void operator()(const std::shared_ptr<pir::Program> &v) const {
     // just do nothing.
   }
   void operator()(const std::vector<VarDesc *> &v) const {
