@@ -190,7 +190,6 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << " {\n";
   printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    // os << printer.indentation();
     printer.PrintOperation(sub_op);
     os << "\n";
   }
