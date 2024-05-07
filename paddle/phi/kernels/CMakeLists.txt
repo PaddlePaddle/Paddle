@@ -172,14 +172,24 @@ if(WITH_CUTLASS)
     message("copy ${fpA_intB_gemm_autogen_dir}")
   endif()
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/generate_variable_forward_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}"
+    RESULT_VARIABLE memory_efficient_attention_gen_res)
+
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    # "fusion/cutlass/conv2d/generated/*.cu"
+    # "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu"
+    "fusion/cutlass/fused_multi_head_attention/autogen/impl/*.cu")
 
   list(APPEND kernel_cu ${cutlass_cu})
 endif()

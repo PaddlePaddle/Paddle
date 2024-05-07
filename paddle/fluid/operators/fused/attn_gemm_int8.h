@@ -35,8 +35,8 @@ class AttnMatmulINT8 {
   AttnMatmulINT8(
       const phi::GPUContext& dev_ctx, int m, int n, int k, bool compute_bias)
       : dev_ctx_(dev_ctx), m_(m), n_(n), k_(k), compute_bias_(compute_bias) {
-    auto helper = std::make_shared<CublasLtHelper>(m, k, n);
-    helpers_.emplace_back(helper);
+    cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+    helper_ = std::make_unique<CublasLtHelper<int32_t>>(m, k, n, lt_handle);
     gpu_config_ = std::make_unique<GpuLaunchConfig>(
         phi::backends::gpu::GetGpuLaunchConfig1D(
             dev_ctx, m * n, DequantKernelVecSize));
@@ -54,6 +54,7 @@ class AttnMatmulINT8 {
                       phi::DenseTensor* bias_out,
                       const float quant_in_scale,
                       const phi::DenseTensor* dequant_out_scale,
+                      phi::DenseTensor* workspace = nullptr,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
@@ -67,10 +68,12 @@ class AttnMatmulINT8 {
                          quant_min_bound,
                          dev_ctx_.stream());
 
-    helpers_[0]->GEMM(input_tmp->data<int8_t>(),
-                      weight->data<int8_t>(),
-                      output_tmp->data<int32_t>(),
-                      dev_ctx_.stream());
+    helper_->GEMM(input_tmp->data<int8_t>(),
+                  weight->data<int8_t>(),
+                  output_tmp->data<int32_t>(),
+                  dev_ctx_.stream(),
+                  (void*)workspace->data<int8_t>(),
+                  workspace->numel());
 
     LaunchDequantKernel<T>(output_tmp->data<int32_t>(),
                            output->data<T>(),
@@ -103,12 +106,13 @@ class AttnMatmulINT8 {
                                 const phi::DenseTensor* bias,
                                 phi::DenseTensor* output,
                                 phi::DenseTensor* bias_out,
-                                void* workspace = nullptr) {
-    helpers_[0]->GEMM(input->data<int8_t>(),
-                      weight->data<int8_t>(),
-                      output->data<int32_t>(),
-                      dev_ctx_.stream(),
-                      workspace);
+                                phi::DenseTensor* workspace = nullptr) {
+    helper_->GEMM(input->data<int8_t>(),
+                  weight->data<int8_t>(),
+                  output->data<int32_t>(),
+                  dev_ctx_.stream(),
+                  (void*)workspace->data<int8_t>(),
+                  workspace->numel());
   }
 
   // This function is used to execute GEMM, with input and output's types are
@@ -120,11 +124,14 @@ class AttnMatmulINT8 {
                              phi::DenseTensor* output,
                              phi::DenseTensor* output_tmp,
                              phi::DenseTensor* bias_out,
-                             const phi::DenseTensor* dequant_out_scale) {
-    helpers_[0]->GEMM(input->data<int8_t>(),
-                      weight->data<int8_t>(),
-                      output_tmp->data<int32_t>(),
-                      dev_ctx_.stream());
+                             const phi::DenseTensor* dequant_out_scale,
+                             phi::DenseTensor* workspace = nullptr) {
+    helper_->GEMM(input->data<int8_t>(),
+                  weight->data<int8_t>(),
+                  output_tmp->data<int32_t>(),
+                  dev_ctx_.stream(),
+                  (void*)workspace->data<int8_t>(),
+                  workspace->numel());
 
     LaunchDequantKernel<T>(output_tmp->data<int32_t>(),
                            output->data<T>(),
@@ -159,6 +166,7 @@ class AttnMatmulINT8 {
                              const phi::DenseTensor* bias,
                              phi::DenseTensor* output,
                              phi::DenseTensor* bias_out,
+                             phi::DenseTensor* workspace = nullptr,
                              const int quant_round_type = 1,
                              const float quant_max_bound = 127.0,
                              const float quant_min_bound = -127.0) {
@@ -172,10 +180,12 @@ class AttnMatmulINT8 {
                          quant_min_bound,
                          dev_ctx_.stream());
 
-    helpers_[0]->GEMM(input_tmp->data<int8_t>(),
-                      weight->data<int8_t>(),
-                      output->data<int32_t>(),
-                      dev_ctx_.stream());
+    helper_->GEMM(input_tmp->data<int8_t>(),
+                  weight->data<int8_t>(),
+                  output->data<int32_t>(),
+                  dev_ctx_.stream(),
+                  (void*)workspace->data<int8_t>(),
+                  workspace->numel());
   }
 
  private:
@@ -186,7 +196,7 @@ class AttnMatmulINT8 {
   int k_;  // k
 
   int compute_bias_;
-  std::vector<std::shared_ptr<CublasLtHelper>> helpers_;
+  std::unique_ptr<CublasLtHelper<int32_t>> helper_;
   std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 

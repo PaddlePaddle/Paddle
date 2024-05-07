@@ -32,3 +32,21 @@ PHI_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
                           phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
                           "cuDNN convolution workspace limit in MB unit.");
 #endif
+
+/**
+ * The fmha mode in FusedMultiTransformer
+ * Value Range: string, {naive, cutlass, flash_attention_v2}
+ */
+PHI_DEFINE_EXPORTED_string(fmha_mode,
+                           "cutlass",
+                           "The mode of fmha in FusedMultiTransformer.");
+
+PHI_DEFINE_EXPORTED_bool(print_matrix, false, "");
+PHI_DEFINE_EXPORTED_bool(fuse_softmax, false, "");
+
+PHI_DEFINE_EXPORTED_int64(custom_allreduce_one_shot_threshold,
+                          -1,
+                          "");  // 393216
+PHI_DEFINE_EXPORTED_int64(custom_allreduce_two_shot_threshold,
+                          -1,
+                          "");  // 50331648

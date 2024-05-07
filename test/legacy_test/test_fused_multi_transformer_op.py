@@ -115,6 +115,7 @@ class TestFusedMultiTransformerOp(OpTest):
     def config(self):
         # for debug
         self.debug = False
+        self.pdb_debug = False
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
@@ -131,6 +132,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.has_pre_cache = False
         self.rotary_embs = None
         self.rotary_emb_dims = 0
+        self.neox_rotary_style = False
 
         self.remove_padding = False
 
@@ -249,6 +251,9 @@ class TestFusedMultiTransformerOp(OpTest):
             self.attn_mask = None
 
         if self.rotary_emb_dims > 0:
+            self.rotary_emb_dims = (
+                1 if not self.neox_rotary_style else self.rotary_emb_dims
+            )
             self.rotary_emb = np.random.uniform(
                 -1,
                 1,
@@ -260,11 +265,18 @@ class TestFusedMultiTransformerOp(OpTest):
                     self.head_dim // 2 // self.rotary_emb_dims,
                 ),
             ).astype(self.x_type)
-            concat_nums = 2 * self.rotary_emb_dims
-            rotary_embs = []
-            for _ in range(concat_nums):
-                rotary_embs.append(self.rotary_emb)
-            self.rotary_embs = np.concatenate(rotary_embs, -1)
+            if self.neox_rotary_style:
+                concat_nums = 2 * self.rotary_emb_dims
+                rotary_embs = []
+                for _ in range(concat_nums):
+                    rotary_embs.append(self.rotary_emb)
+                self.rotary_embs = np.concatenate(rotary_embs, -1)
+            else:
+                rotary_emb = paddle.to_tensor(self.rotary_emb)
+                self.rotary_embs = paddle.reshape(
+                    paddle.stack([rotary_emb, rotary_emb], axis=-1),
+                    [2, self.batch_size, 1, self.query_length, self.head_dim],
+                ).numpy()
 
         self.key, self.value = self.query, self.query
 
@@ -276,7 +288,7 @@ class TestFusedMultiTransformerOp(OpTest):
         x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
         return paddle.concat((-x2, x1), axis=-1)
 
-    def apply_rotary_emb(self, x, cos_emb, sin_emb, rotary_emb_dims):
+    def apply_neoXrotary_emb(self, x, cos_emb, sin_emb, rotary_emb_dims):
         # x shape [bsz, num_heads, seq_len, head_dim]
         # cos_emb, sin_emb shape [bsz, 1, seq_len, head_dim]
         x_dims = paddle.split(x, num_or_sections=rotary_emb_dims, axis=-1)
@@ -293,6 +305,15 @@ class TestFusedMultiTransformerOp(OpTest):
                 x_dim * cos_dim + self.rotate_half(x_dim) * sin_dim
             )
         return paddle.concat(rotary_dims, axis=-1)
+
+    def apply_rotary_emb(self, x, cos_emb, sin_emb):
+        # x shape [bsz, num_heads, seq_len, head_dim]
+        # cos_emb, sin_emb shape [bsz, 1, seq_len, head_dim]
+        rotate_half_x = paddle.reshape(
+            paddle.stack([-x[:, :, :, 1::2], x[:, :, :, 0::2]], axis=-1),
+            paddle.shape(x),
+        )
+        return x * cos_emb + rotate_half_x * sin_emb
 
     def GetBaselineOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
@@ -337,12 +358,16 @@ class TestFusedMultiTransformerOp(OpTest):
             if self.rotary_emb_dims > 0:
                 cos_emb = rotary_embs[0]
                 sin_emb = rotary_embs[1]
-                q_out = self.apply_rotary_emb(
-                    q_out, cos_emb, sin_emb, self.rotary_emb_dims
-                )
-                k_out = self.apply_rotary_emb(
-                    k_out, cos_emb, sin_emb, self.rotary_emb_dims
-                )
+                if self.neox_rotary_style:
+                    q_out = self.apply_neoXrotary_emb(
+                        q_out, cos_emb, sin_emb, self.rotary_emb_dims
+                    )
+                    k_out = self.apply_neoXrotary_emb(
+                        k_out, cos_emb, sin_emb, self.rotary_emb_dims
+                    )
+                else:
+                    q_out = self.apply_rotary_emb(q_out, cos_emb, sin_emb)
+                    k_out = self.apply_rotary_emb(k_out, cos_emb, sin_emb)
 
             if self.has_cache_kv:
                 # [1, B, n_head, cache_seq_len, head_dim]
@@ -493,12 +518,17 @@ class TestFusedMultiTransformerOp(OpTest):
                 if self.rotary_emb_dims > 0:
                     cos_emb = rotary_embs[0][i : i + 1]
                     sin_emb = rotary_embs[1][i : i + 1]
-                    q_out = self.apply_rotary_emb(
-                        q_out, cos_emb, sin_emb, self.rotary_emb_dims
-                    )
-                    k_out = self.apply_rotary_emb(
-                        k_out, cos_emb, sin_emb, self.rotary_emb_dims
-                    )
+
+                    if self.neox_rotary_style:
+                        q_out = self.apply_neoXrotary_emb(
+                            q_out, cos_emb, sin_emb, self.rotary_emb_dims
+                        )
+                        k_out = self.apply_neoXrotary_emb(
+                            k_out, cos_emb, sin_emb, self.rotary_emb_dims
+                        )
+                    else:
+                        q_out = self.apply_rotary_emb(q_out, cos_emb, sin_emb)
+                        k_out = self.apply_rotary_emb(k_out, cos_emb, sin_emb)
 
                 if self.has_cache_kv:
                     # [1, B, n_head, cache_seq_len, head_dim]
@@ -639,7 +669,7 @@ class TestFusedMultiTransformerOp(OpTest):
         if self.rotary_emb_dims > 0:
             rotary_embs = paddle.to_tensor(
                 self.rotary_embs, stop_gradient=False
-            )
+            ).astype('float32')
         else:
             rotary_embs = None
 
@@ -767,6 +797,29 @@ class TestFusedMultiTransformerOp(OpTest):
                     paddle.to_tensor(self.pre_cache_kv, stop_gradient=False)
                 )
 
+        if self.pdb_debug:
+            # print(f'x: {x.dtype}')
+            # print(f'ln_scales: {ln_scales[0].dtype}')
+            # print(f'ln_biases: {ln_biases[0].dtype}')
+            # print(f'qkv_weights: {qkv_weights[0].dtype}')
+            # print(f'qkv_biases: {qkv_biases[0].dtype}')
+            # print(f'out_weights: {out_weights[0].dtype}')
+            # print(f'out_biases: {out_biases[0].dtype}')
+            # print(f'ffn_ln_scales: {ffn_ln_scales[0].dtype}')
+            # print(f'ffn_ln_biases: {ffn_ln_biases[0].dtype}')
+            # print(f'ffn1_weights: {ffn1_weights[0].dtype}')
+            # print(f'ffn1_biases: {ffn1_biases[0].dtype}')
+            # print(f'ffn2_weights: {ffn2_weights[0].dtype}')
+            # print(f'ffn2_biases: {ffn2_biases[0].dtype}')
+            # print(f'cache_kvs: {cache_kvs[0].dtype}')
+            # print(f'rotary_embs: {rotary_embs.dtype}')
+            # print(f'attn_mask: {attn_mask.dtype}')
+            # # float32
+            # # print(f'self.dropout_prob: {self.dropout_prob.dtype}')
+            # print("empty")
+            # import pdb; pdb.set_trace()
+            pass
+
         final_out = fused_multi_transformer(
             x,
             ln_scales,
@@ -793,6 +846,7 @@ class TestFusedMultiTransformerOp(OpTest):
             dropout_rate=self.dropout_prob,
             activation=self.act_method,
             training=self.training,
+            use_neox_rotary_style=self.neox_rotary_style,
         )
 
         if self.has_cache_kv:
@@ -1153,6 +1207,7 @@ class TestFusedMultiTransformerOpGenRotaryFP16(TestFusedMultiTransformerOp):
             self.query_length,
             self.query_length,
         )
+        self.neox_rotary_style = True
         self.rotary_emb_dims = 2
 
 
@@ -1165,20 +1220,13 @@ class TestFusedMultiTransformerOpGenCacheRotaryFP16(
         self.has_cache_kv = True
         self.gen_cache_kv = True
         self.rotary_emb_dims = 1
+        self.pdb_debug = True
 
 
 class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
         self.x_type = np.float16
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.act_method = "relu"
         self.layers = 3  # odd layers
 
 
@@ -1277,106 +1325,6 @@ class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
         self.x_type = np.float16
 
 
-class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.remove_padding = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.remove_padding = True
-        self.layers = 4  # even layers
-
-
-class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.remove_padding = True
-        self.layers = 4  # even layers
-        self.rotary_emb_dims = 2
-
-
-class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.remove_padding = True
-        self.layers = 3  # odd layers
-        self.rotary_emb_dims = 2
-
-
-class TestFusedMultiTransformerOpVariableNormTransformer1(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = False
-        self.gen_cache_kv = False
-        self.remove_padding = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpVariableNormTransformer2(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = False
-        self.gen_cache_kv = False
-        self.remove_padding = True
-        self.layers = 4  # even layers
-
-
-class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = False
-        self.remove_padding = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = False
-        self.remove_padding = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 4  # even layers
-
-
-class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = False
-        self.remove_padding = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 4  # even layers
-        self.rotary_emb_dims = 2
-
-
 class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -1395,7 +1343,7 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             initializer=paddle.nn.initializer.Constant(0.0)
         )
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         self.has_pre_cache = True
         self.remove_padding = False

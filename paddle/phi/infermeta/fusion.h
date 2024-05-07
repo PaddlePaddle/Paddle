@@ -31,6 +31,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
     const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
     const MetaTensor& rotary_tensor,
+    const MetaTensor& beam_offset,
     const MetaTensor& time_step,
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
@@ -44,6 +45,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
     bool pre_layer_norm,
     float epsilon,
+    float residual_alpha,
     float dropout_rate,
     int rotary_emb_dims,
     bool is_test,
@@ -51,6 +53,9 @@ void FusedMultiTransformerInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    const std::string& norm_type,
+    bool use_neox_rotary_style,
+    int gqa_group_size,
     std::vector<MetaTensor*> cache_kv_outs,
     MetaTensor* out);
 
