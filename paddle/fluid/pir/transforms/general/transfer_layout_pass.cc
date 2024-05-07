@@ -195,8 +195,8 @@ struct FlowGraph {
   }
 
   explicit FlowGraph(const pir::Program& program) : program(program) {
-    // We assume by default that the program is topologically sorted; otherwise,
-    // it will fail during destruction.
+    // We assume by default that the program is topologically sorted;
+    // otherwise, it will fail during destruction.
 
     for (auto& op : *(program.block())) {
       Node op_node(&op);
@@ -231,21 +231,21 @@ struct FlowGraph {
   }
 
   void PreProcess() {
-    // the algorithm only accepts two kinds of layout, we assign src node and
-    // dst node each a kind. in the begin, each var node have a layout, but the
-    // layout of op node is uncertain.
+    // the algorithm only accepts two kinds of layout, we assign src node
+    // and dst node each a kind. in the begin, each var node have a
+    // layout, but the layout of op node is uncertain.
 
     // TODO(lyk): we need a getLayout interface to get the layout of op /
-    // value and determine how many kinds of layout in program currently. Then
-    // we call prefer_layout get the total count while running the algorithm. To
-    // simplify the experiment, we skip the first step here and just assume
-    // they're all NCHW
+    // value and determine how many kinds of layout in program currently.
+    // Then we call prefer_layout get the total count while running the
+    // algorithm. To simplify the experiment, we skip the first step here
+    // and just assume they're all NCHW
 
     for (auto& op : *(program.block())) {
       // we need to ensure the edge from src node to real src node in
       // calculation graph
-      //   if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() >
-      //   0 &&
+      //   if (!op.HasTrait<pir::ImmutableLayoutTrait>() &&
+      //   op.num_operands() > 0 &&
       //       op.name() != "builtin.combine") {
       if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() > 0) {
         continue;
@@ -289,11 +289,11 @@ struct FlowGraph {
       }
     }
 
-    // Since VarDesc doesn't store layout, in pir we set all layout to NCHW
-    // after translation. However, we need the real layout to decide if we need
-    // to alter the operation and value. Here we start from the operation who
-    // have a dertermined layout and spread its layout to its output and inputs
-    // recursively.
+    // Since VarDesc doesn't store layout, in pir we set all layout to
+    // NCHW after translation. However, we need the real layout to decide
+    // if we need to alter the operation and value. Here we start from the
+    // operation who have a dertermined layout and spread its layout to
+    // its output and inputs recursively.
     std::queue<Node> q;
     for (auto& n : nhwc_nodes) {
       q.push(n);
@@ -339,7 +339,8 @@ struct FlowGraph {
                 if (!v) return true;
                 auto vt = v.type();
                 if (!vt) return true;
-                // maybe not DenseTensor, but we can handle other types later
+                // maybe not DenseTensor, but we can handle other types
+                // later
                 if (auto vdt =
                         vt.dyn_cast<paddle::dialect::DenseTensorType>()) {
                   std::cout << "judging var: " << v.defining_op() << " "
@@ -457,9 +458,9 @@ struct FlowGraph {
   }
 
   float max_flow() {
-    std::cout
-        << "--------------------[max flow start]---------------------------"
-        << std::endl;
+    std::cout << "--------------------[max flow "
+                 "start]---------------------------"
+              << std::endl;
     float total_flow = 0.0f;
     while (ConstructLevelGraph()) {
       for (auto& [node, nexts] : adjs) {
@@ -542,9 +543,9 @@ class TransferLayoutPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     auto* program = module_op.program();
 
-    std::cout
-        << "---------------------[program before pass]---------------------"
-        << std::endl;
+    std::cout << "---------------------[program before "
+                 "pass]---------------------"
+              << std::endl;
     std::cout << *program << std::endl;
 
     // MinCut
@@ -630,10 +631,16 @@ class TransferLayoutPass : public pir::Pass {
       q.push_front(op_node);
     }
 
-    std::cout
-        << "-----------------------[topological sort]------------------------"
-        << std::endl;
+    std::cout << "-----------------------[topological "
+                 "sort]------------------------"
+              << std::endl;
 
+    // process every node by topology and the consequences of min cut
+    // while (!q.empty()) {
+    //   auto node = q.front();
+    //   q.pop_front();
+    //   topological_visit(node);
+    // }
     // process every node by topology and the consequences of min cut
     // while (!q.empty()) {
     //   auto node = q.front();
@@ -644,17 +651,17 @@ class TransferLayoutPass : public pir::Pass {
       std::cout << n << std::endl;
     }
 
-    std::cout
-        << "-----------------------[rewrite begin]------------------------"
-        << std::endl;
+    std::cout << "-----------------------[rewrite "
+                 "begin]------------------------"
+              << std::endl;
 
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
 
-      // not in cut set and its layout should not be changed
+      for (size_t i = 0; i < 10; i++) std::cout << std::endl;
       if (src_set.find(node) == src_set.end()) {
-        // process layout transformation
+        std::cout << *program << std::endl;
         if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
           auto* op = const_cast<pir::Operation*>(
               std::get<const pir::Operation*>(node.data));
@@ -668,7 +675,8 @@ class TransferLayoutPass : public pir::Pass {
                 op, common::DataLayout::NHWC);
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
-                "Op %s should have a specialized RewriteByLayout function",
+                "Op %s should have a specialized RewriteByLayout "
+                "function",
                 op->name()));
           }
         }
@@ -689,15 +697,17 @@ class TransferLayoutPass : public pir::Pass {
                   << (dst_value ? (dst_value.defining_op()) : nullptr)
                   << " t:" << (dst_value ? (dst_value.type()) : pir::Type())
                   << std::endl;
-
-        // TODO(lyk): special process for reshape, we cannot only just insert a
-        // transpose op temporarily ignore reshape
-        // if (dst_value.defining_op()->name() == "pd_op.reshape") continue;
+        transpose_op->set_attribute(
+            "source",
+            pir::StrAttribute::get(transpose_op->ir_context(),
+                                   "transfer_layout_pass"));
+        // TODO(lyk): special process for reshape, we cannot only just
+        // insert a transpose op temporarily ignore reshape if
+        // (dst_value.defining_op()->name() == "pd_op.reshape") continue;
 
         // enforce dst value.defining_op = src
-        const auto& perm =
-            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
-                                       : layout_to_perm("NHWC", "NCHW"));
+        ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
+                                   : layout_to_perm("NHWC", "NCHW"));
         builder.SetInsertionPointAfter(dst_value.defining_op());
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
@@ -728,7 +738,6 @@ class TransferLayoutPass : public pir::Pass {
         }
         std::cout << std::endl;
         const auto& perm =
-            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
         builder.SetInsertionPointAfter(value.defining_op());
         auto transpose_op =
@@ -741,9 +750,9 @@ class TransferLayoutPass : public pir::Pass {
       }
     }
 
-    std::cout
-        << "---------------------[program after pass]---------------------"
-        << std::endl;
+    std::cout << "---------------------[program after "
+                 "pass]---------------------"
+              << std::endl;
     std::cout << *program << std::endl;
   }
 };

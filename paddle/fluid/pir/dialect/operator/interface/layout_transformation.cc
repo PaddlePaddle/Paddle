@@ -48,7 +48,8 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
       }
     }
   }
-  return common::StringToDataLayout(data_format_attr.AsString());
+  return common::DataLayout::NHWC;
+  // return common::StringToDataLayout(data_format_attr.AsString());
 }
 
 template <>
