@@ -234,13 +234,16 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &fused_rotary_position_embedding =
-        res.Op(paddle::dialect::FusedRotaryPositionEmbeddingOp::name(),
-               {
-                   {"use_neox_rotary_style", res.BoolAttr(false)},
-                   {"time_major", res.BoolAttr(false)},
-                   {"rotary_emb_base", res.Float32Attr(10000.0)},
-               });
+    const auto &fused_rotary_position_embedding = res.Op(
+        paddle::dialect::FusedRotaryPositionEmbeddingOp::name(),
+        {
+            // todo:This pass only supports the case where use_neox_rotary_style
+            // is false. When use_neox_rotary_style is true, the source pattern
+            // needs to be modified accordingly.
+            {"use_neox_rotary_style", res.BoolAttr(false)},
+            {"time_major", res.BoolAttr(false)},
+            {"rotary_emb_base", res.Float32Attr(10000.0)},
+        });
 
     fused_rotary_position_embedding(
         {&res.Tensor("q"),
