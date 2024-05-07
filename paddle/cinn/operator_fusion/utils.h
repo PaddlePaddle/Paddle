@@ -70,7 +70,7 @@ static std::vector<size_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     return reduce_axis_idx;
   }
   for (int i = 0; i < axis_attr.size(); ++i) {
-    size_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
+    int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
     if (axis < 0) {
       axis += input_rank;
     }

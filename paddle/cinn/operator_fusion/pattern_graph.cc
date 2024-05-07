@@ -150,7 +150,8 @@ void PatternGraph<T>::HorizontalFusion() {
                    Or<StmtPatternGraphMatcher<TrivialPattern<T>>,
                       StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>,
                       StmtPatternGraphMatcher<ReducePattern<T>>,
-                      StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
+                      StmtPatternGraphMatcher<ReduceTreePattern<T>>,
+                      StmtPatternGraphMatcher<AnchorPattern<T>>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,

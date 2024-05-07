@@ -87,7 +87,6 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const TrivialPattern<T>& pattern) {
     pir::Operation* t_op = pattern.sink();
-    const auto& dims = GetDimExprsFromValue(t_op->result(0));
     const auto& exprs = GetDimExprsFromValue(t_op->result(0));
     return exprs;
   }
@@ -140,7 +139,8 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const AnchorPattern<T>& pattern) {
-    PADDLE_ENFORCE(false, "Not support GetLoopRange.");
+    const auto& exprs = GetDimExprsFromValue(pattern.anchor());
+    return exprs
   }
 };
 
