@@ -655,70 +655,23 @@ class TransferLayoutPass : public pir::Pass {
       // not in cut set and its layout should not be changed
       if (src_set.find(node) == src_set.end()) {
         // process layout transformation
-        if (std::get_if<const pir::Operation*>(&(node.data)) == nullptr)
-          continue;
-        auto* op = const_cast<pir::Operation*>(
-            std::get<const pir::Operation*>(node.data));
-        std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
-        auto layout_transformation_iface =
-            op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-        if (!layout_transformation_iface) continue;
-        layout_transformation_iface.RewriteByLayout(op,
-                                                    common::DataLayout::NHWC);
-
-        // if (op->name() == "pd_op.fused_conv2d_add_act") {
-        //   op->set_attribute(
-        //       "data_format",
-        //       pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
-        //   // auto concrete_op =
-        //   // op->dyn_cast<paddle::dialect::FusedConv2dAddActOp>();
-
-        //   std::vector<pir::Type> new_outputs =
-        //       paddle::dialect::FusedConv2dAddActOp::InferMeta(
-        //           op->operands_source(),
-        //           const_cast<pir::AttributeMap*>(&op->attributes()));
-        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
-        //     op->result(i).set_type(new_outputs[i]);
-        //   }
-        // } else if (op->name() == "pd_op.group_norm") {
-        //   op->set_attribute(
-        //       "data_format",
-        //       pir::StrAttribute::get(pir::IrContext::Instance(), "NHWC"));
-        //   auto new_outputs = paddle::dialect::GroupNormOp::InferMeta(
-        //       op->operands_source(),
-        //       const_cast<pir::AttributeMap*>(&op->attributes()));
-        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
-        //     op->result(i).set_type(new_outputs[i]);
-        //   }
-        // } else if (op->name() == "pd_op.silu") {
-        //   auto new_outputs = paddle::dialect::SiluOp::InferMeta(
-        //       op->operands_source(),
-        //       const_cast<pir::AttributeMap*>(&op->attributes()));
-        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
-        //     op->result(i).set_type(new_outputs[i]);
-        //   }
-        // } else if (op->name() == "pd_op.add") {
-        //   auto new_outputs = paddle::dialect::AddOp::InferMeta(
-        //       op->operands_source(),
-        //       const_cast<pir::AttributeMap*>(&op->attributes()));
-        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
-        //     op->result(i).set_type(new_outputs[i]);
-        //   }
-        // } else if (op->name() == "pd_op.cast") {
-        //   auto new_outputs = paddle::dialect::CastOp::InferMeta(
-        //       op->operands_source(),
-        //       const_cast<pir::AttributeMap*>(&op->attributes()));
-        //   for (size_t i = 0; i < new_outputs.size(); ++i) {
-        //     op->result(i).set_type(new_outputs[i]);
-        //   }
-        // } else if (op->name() == "builtin.combine") {
-        //   auto concrete_op = op->dyn_cast<pir::CombineOp>();
-
-        // } else {
-        //   PADDLE_THROW(common::errors::Unimplemented(
-        //       "Op %s should have a specialized RewriteByLayout function",
-        //       op->name()));
-        // }
+        if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
+          auto* op = const_cast<pir::Operation*>(
+              std::get<const pir::Operation*>(node.data));
+          for (size_t i = 0; i < 10; i++) std::cout << std::endl;
+          std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
+          std::cout << *program << std::endl;
+          auto layout_transformation_iface =
+              op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+          if (layout_transformation_iface) {
+            layout_transformation_iface.RewriteByLayout(
+                op, common::DataLayout::NHWC);
+          } else {
+            PADDLE_THROW(common::errors::Unimplemented(
+                "Op %s should have a specialized RewriteByLayout function",
+                op->name()));
+          }
+        }
       }
 
       std::cout << "[Rewrite] for " << node << std::endl;
@@ -787,10 +740,6 @@ class TransferLayoutPass : public pir::Pass {
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
-
-    std::cout
-        << "-----------------------[trans var end]------------------------"
-        << std::endl;
 
     std::cout
         << "---------------------[program after pass]---------------------"
