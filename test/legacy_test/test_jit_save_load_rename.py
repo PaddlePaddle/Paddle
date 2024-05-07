@@ -1516,6 +1516,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         for func in dir(layer):
             if func.startswith('forward'):
                 result_origin[func] = getattr(layer, func, None)(inps)
+
         paddle.jit.save(layer, model_path_inference)
         load_net = paddle.jit.load(model_path_inference)
         for func, result in result_origin.items():
@@ -1750,7 +1751,6 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 
 
-'''
 class LayerLoadFinetune(paddle.nn.Layer):
     def __init__(self, in_size, out_size, load_path):
         super().__init__()
@@ -1782,6 +1782,8 @@ class LayerLoadFinetune(paddle.nn.Layer):
         y = self._load_l1(y)
         return y
 
+
+'''
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1823,7 +1825,6 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
-
 '''
 
 

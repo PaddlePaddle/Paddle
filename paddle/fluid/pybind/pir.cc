@@ -121,6 +121,16 @@ PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
 
+pir::Value FakeValue() {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return pir::Value(nullptr);
+}
+
+bool IsFakeValue(const pir::Value &value) {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return value.impl() == nullptr || !value.type();
+}
+
 inline int64_t GetProgramInt64Attr(const std::shared_ptr<Program> &program,
                                    const std::string &attr_name,
                                    int64_t default_value = 0) {
@@ -222,6 +232,21 @@ void SetValueName(Value value, const std::string name) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only set name of Value that "
         "is persistable"));
+  }
+}
+
+bool HasValueName(const Value &value) {
+  if (IsFakeValue(value)) {
+    return false;
+  }
+  if (value.defining_op()->isa<::pir::ParameterOp>() ||
+      value.defining_op()->isa<paddle::dialect::DataOp>() ||
+      value.isa<BlockArgument>() ||
+      (value.first_use() &&
+       (value.first_use().owner()->isa<::pir::ShadowOutputOp>()))) {
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -1002,19 +1027,8 @@ void BindValue(py::module *m) {
           "name",
           [](Value self) { return GetValueName(self); },
           [](Value self, const std::string &name) { SetValueName(self, name); })
-      .def_property_readonly(
-          "has_name",
-          [](Value self) {
-            if (self.defining_op()->isa<::pir::ParameterOp>() ||
-                self.defining_op()->isa<paddle::dialect::DataOp>() ||
-                self.isa<BlockArgument>() ||
-                (self.first_use() &&
-                 self.first_use().owner()->isa<::pir::ShadowOutputOp>())) {
-              return true;
-            } else {
-              return false;
-            }
-          })
+      .def_property_readonly("has_name",
+                             [](Value self) { return HasValueName(self); })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1508,16 +1522,6 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-pir::Value FakeValue() {
-  // create a fake value to simplify `ForwardBackwardSplit`.
-  return pir::Value(nullptr);
-}
-
-bool IsFakeValue(const pir::Value &value) {
-  // create a fake value to simplify `ForwardBackwardSplit`.
-  return value.impl() == nullptr || !value.type();
-}
-
 static auto GetNoNeedBufferValue(
     const ::pir::Block *whole_block,
     std::vector<int> range,
@@ -1626,10 +1630,12 @@ int AppendShadowOutputs(Program *forward_program,
                         std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::Value> added_value;
-
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
+      if (HasValueName(value)) {
+        shadow_output_name = GetValueName(value);
+      }
       AppendShadowOutput(
           forward_program, value, shadow_output_name, start_point + counter);
       counter += 1;
@@ -1759,6 +1765,9 @@ SplitedResult SplitForwardBackward(
         }
         std::string shadow_output_name =
             std::string("output_") + std::to_string(counter);
+        if (HasValueName(v)) {
+          shadow_output_name = GetValueName(v);
+        }
         auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
         pir::AttributeMap attribute_map = {
             {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
