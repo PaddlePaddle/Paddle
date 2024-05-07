@@ -34,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     const DrrPatternContext& drr_context,
     pir::IrContext* context,
     pir::PatternBenefit benefit,
-    std::shared_ptr<const DrrPatternBase>  drr_pattern_owner)
+    std::shared_ptr<const DrrPatternBase> drr_pattern_owner)
     : pir::RewritePattern(
           (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,

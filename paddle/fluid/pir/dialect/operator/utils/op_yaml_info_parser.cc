@@ -20,8 +20,7 @@
 namespace paddle {
 namespace dialect {
 
-OpYamlInfoParser::OpYamlInfoParser(OpInfoTuple  op_info_tuple,
-                                   bool is_legacy_op)
+OpYamlInfoParser::OpYamlInfoParser(OpInfoTuple op_info_tuple, bool is_legacy_op)
     : op_info_tuple_(std::move(op_info_tuple)), is_legacy_op_(is_legacy_op) {
   parse();
 }

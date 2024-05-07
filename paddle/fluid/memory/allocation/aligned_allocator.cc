@@ -41,8 +41,9 @@ class AlignedAllocation : public Allocation {
 };
 
 AlignedAllocator::AlignedAllocator(
-    std::shared_ptr<Allocator>  underlying_allocator, size_t alignment)
-    : underlying_allocator_(std::move(underlying_allocator)), alignment_(alignment) {
+    std::shared_ptr<Allocator> underlying_allocator, size_t alignment)
+    : underlying_allocator_(std::move(underlying_allocator)),
+      alignment_(alignment) {
   PADDLE_ENFORCE_GT(
       alignment_,
       0,

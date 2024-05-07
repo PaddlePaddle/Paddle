@@ -142,7 +142,7 @@ class CUDAGraphAllocator
     DecoratedAllocationPtr underlying_allocation_;
   };
 
-  explicit CUDAGraphAllocator(std::shared_ptr<Allocator>  allocator)
+  explicit CUDAGraphAllocator(std::shared_ptr<Allocator> allocator)
       : underlying_allocator_(std::move(allocator)) {}
 
  public:

@@ -227,7 +227,8 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   ConvGeluFusePattern(std::string activation_name, int fused_level)
-      : activation_name_(std::move(activation_name)), fused_level_(fused_level) {}
+      : activation_name_(std::move(activation_name)),
+        fused_level_(fused_level) {}
 
   std::string name() const override { return "ConvGeluFusePattern"; }
 
@@ -370,7 +371,8 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   ConvClipFusePattern(std::string activation_name, int fused_level)
-      : activation_name_(std::move(activation_name)), fused_level_(fused_level) {}
+      : activation_name_(std::move(activation_name)),
+        fused_level_(fused_level) {}
 
   std::string name() const override { return "ConvClipFusePattern"; }
 

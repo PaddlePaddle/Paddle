@@ -22,9 +22,13 @@ namespace dialect {
 IrSelectedRows::IrSelectedRows(phi::DataType dtype,
                                const phi::DDim& dims,
                                phi::DataLayout layout,
-                               LoD  lod,
+                               LoD lod,
                                size_t offset)
-    : dims_(dims), dtype_(dtype), layout_(layout), lod_(std::move(lod)), offset_(offset) {}
+    : dims_(dims),
+      dtype_(dtype),
+      layout_(layout),
+      lod_(std::move(lod)),
+      offset_(offset) {}
 
 IrSelectedRows::IrSelectedRows(const IrSelectedRows& other) {
   dims_ = other.dims();

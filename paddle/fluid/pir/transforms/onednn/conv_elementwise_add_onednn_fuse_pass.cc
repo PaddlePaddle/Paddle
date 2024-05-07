@@ -32,9 +32,9 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
   std::string fused_conv_name_;
 
  public:
-  ConvElementwiseAddPattern(std::string conv_name,
-                            std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+  ConvElementwiseAddPattern(std::string conv_name, std::string fused_conv_name)
+      : conv_name_(std::move(conv_name)),
+        fused_conv_name_(std::move(fused_conv_name)) {}
 
   std::string name() const override { return "ConvElementwiseAddPattern"; }
 
@@ -113,7 +113,8 @@ class ConvElementwiseAddAsYPattern : public paddle::drr::DrrPatternBase {
  public:
   ConvElementwiseAddAsYPattern(std::string conv_name,
                                std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+      : conv_name_(std::move(conv_name)),
+        fused_conv_name_(std::move(fused_conv_name)) {}
 
   std::string name() const override { return "ConvElementwiseAddAsYPattern"; }
 
@@ -192,7 +193,8 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
  public:
   FusedConvBiasElementwiseAddPattern(std::string conv_name,
                                      std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+      : conv_name_(std::move(conv_name)),
+        fused_conv_name_(std::move(fused_conv_name)) {}
 
   std::string name() const override {
     return "FusedConvBiasElementwiseAddPattern";
@@ -288,7 +290,8 @@ class FusedConvBiasElementwiseAddAsYPattern
  public:
   FusedConvBiasElementwiseAddAsYPattern(std::string conv_name,
                                         std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+      : conv_name_(std::move(conv_name)),
+        fused_conv_name_(std::move(fused_conv_name)) {}
 
   std::string name() const override {
     return "FusedConvBiasElementwiseAddAsYPattern";
