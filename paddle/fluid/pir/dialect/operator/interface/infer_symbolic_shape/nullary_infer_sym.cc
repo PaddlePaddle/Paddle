@@ -294,7 +294,7 @@ bool GaussianOpInferSymbolicShape(
   } else {
     pir::Value operand_source = op->operand_source(0);
     const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(operand_source);
+        infer_context->GetShapeOrDataForValue(operand_source);
     PADDLE_ENFORCE_EQ(
         operand_shape_or_data.data().has_value(),
         true,
@@ -302,7 +302,7 @@ bool GaussianOpInferSymbolicShape(
             "The data of input dim_expr shape is null. When input of empty op "
             "is a tensor, the data of input dim_expr shape must have value."));
 
-    shape_analysis->SetShapeOrDataForValue(
+    infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::TensorShapeOrDataDimExprs{
             operand_shape_or_data.data().value()});
