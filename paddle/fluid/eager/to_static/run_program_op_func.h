@@ -296,16 +296,7 @@ inline void pir_run_program_ad_func(
 
     grad_node->SetStepScope(step_scope);  // just for set useable.
 
-    // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
-    // gradient. for example: x[1] is not used for output, the x[1] is ignored.
-
-    std::vector<const paddle::Tensor*> x_require_grad;
-    for (size_t i = 0; i < x.size(); ++i) {
-      x_require_grad.push_back(&x[i]);
-    }
-
-    grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
+    grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
     // TODO(@xiongkun): rewrite by new ir representation.
