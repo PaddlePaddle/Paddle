@@ -2864,11 +2864,11 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
 }
 
 /// kai mod
-template <typename T, typename StoreT=T, bool Smooth=false>
-struct MMHAStore_kai{
-  explicit MMHAStore_kai(StoreT* dst) : dst_(dst){}
-  
-  __device__ void store(T& src, int idx){
+template <typename T, typename StoreT = T, bool Smooth = false>
+struct MMHAStore_kai {
+  explicit MMHAStore_kai(StoreT* dst) : dst_(dst) {}
+
+  __device__ void store(T& src, int idx) {
     *reinterpret_cast<T*>(dst_ + idx) = src;
   }
 
@@ -2876,13 +2876,13 @@ struct MMHAStore_kai{
 };
 
 template <typename T>
-struct MMHAStore_kai<T, T, true>{
+struct MMHAStore_kai<T, T, true> {
   MMHAStore_kai(T* dst, const T* shift, const T* smooth, const int cols)
       : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
 
   __device__ void store(T& src, int idx) {
     T shift_val = *(shift_ + idx % cols_);
-    T smooth_val = *(smooth_ + idx % cols_); 
+    T smooth_val = *(smooth_ + idx % cols_);
     *(dst_ + idx) = (src + shift_val) * smooth_val;
   }
 
@@ -2893,12 +2893,12 @@ struct MMHAStore_kai<T, T, true>{
 };
 
 template <typename T>
-struct MMHAStore_kai<T, int8_t>{
+struct MMHAStore_kai<T, int8_t> {
   MMHAStore_kai(int8_t* dst,
-            const int quant_round_type,
-            const float quant_scale,
-            const float quant_max_bound,
-            const float quant_min_bound)
+                const int quant_round_type,
+                const float quant_scale,
+                const float quant_max_bound,
+                const float quant_min_bound)
       : dst_(dst),
         quant_round_type_(quant_round_type),
         quant_scale_(quant_scale),
@@ -2906,11 +2906,11 @@ struct MMHAStore_kai<T, int8_t>{
         quant_min_bound_(quant_min_bound) {}
 
   __device__ void store(T& src, int idx) {  // NOLINT
-    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src), 
-                                        quant_scale_,
-                                        quant_round_type_,
-                                        quant_max_bound_,
-                                        quant_min_bound_);
+    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src),
+                                                   quant_scale_,
+                                                   quant_round_type_,
+                                                   quant_max_bound_,
+                                                   quant_min_bound_);
   }
 
   int8_t* dst_;
@@ -2921,15 +2921,15 @@ struct MMHAStore_kai<T, int8_t>{
 };
 
 template <typename T>
-struct MMHAStore_kai<T, int8_t, true>{
+struct MMHAStore_kai<T, int8_t, true> {
   MMHAStore_kai(int8_t* dst,
-            const T* shift,
-            const T* smooth,
-            const int cols,
-            const int quant_round_type,
-            const float quant_scale,
-            const float quant_max_bound,
-            const float quant_min_bound)
+                const T* shift,
+                const T* smooth,
+                const int cols,
+                const int quant_round_type,
+                const float quant_scale,
+                const float quant_max_bound,
+                const float quant_min_bound)
       : dst_(dst),
         quant_round_type_(quant_round_type),
         quant_scale_(quant_scale),
@@ -2941,13 +2941,13 @@ struct MMHAStore_kai<T, int8_t, true>{
 
   __device__ void store(T& src, int idx) {  // NOLINT
     T shift_val = *(shift_ + idx % cols_);
-    T smooth_val = *(smooth_ + idx % cols_); 
+    T smooth_val = *(smooth_ + idx % cols_);
     T src_val = (src + shift_val) * smooth_val;
-    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src_val), 
-                                        quant_scale_,
-                                        quant_round_type_,
-                                        quant_max_bound_,
-                                        quant_min_bound_);
+    *(dst_ + idx) = QuantHelperFunc<float, int8_t>(static_cast<float>(src_val),
+                                                   quant_scale_,
+                                                   quant_round_type_,
+                                                   quant_max_bound_,
+                                                   quant_min_bound_);
   }
 
   int8_t* dst_;
@@ -2959,6 +2959,126 @@ struct MMHAStore_kai<T, int8_t, true>{
   const float quant_max_bound_;
   const float quant_min_bound_;
 };
+
+/// ========================= kai mod ===================================
+//  ======================== for q or k ================================
+inline __device__ void apply_rotary_embedding(float& q,      // NOLINT
+                                              float& cos,    // NOLINT
+                                              float& sin) {  // NOLINT
+  return;
+}
+
+inline __device__ void apply_rotary_embedding(float2& q,      // NOLINT
+                                              float2& cos,    // NOLINT
+                                              float2& sin) {  // NOLINT
+  q = rotary_embedding_transform(q, cos, sin);
+}
+
+inline __device__ void apply_rotary_embedding(float4& q,      // NOLINT
+                                              float4& cos,    // NOLINT
+                                              float4& sin) {  // NOLINT
+  Float4_& q_ = *reinterpret_cast<Float4_*>(&q);
+  Float4_& cos_ = *reinterpret_cast<Float4_*>(&cos);
+  Float4_& sin_ = *reinterpret_cast<Float4_*>(&sin);
+  q_.x = rotary_embedding_transform(q_.x, cos_.x, sin_.x);
+  q_.y = rotary_embedding_transform(q_.y, cos_.y, sin_.y);
+}
+
+inline __device__ void apply_rotary_embedding(uint32_t& q,      // NOLINT
+                                              uint32_t& cos,    // NOLINT
+                                              uint32_t& sin) {  // NOLINT
+  q = rotary_embedding_transform(q, cos, sin);
+}
+
+inline __device__ void apply_rotary_embedding(uint32_t& q,    // NOLINT
+                                              float2& cos,    // NOLINT
+                                              float2& sin) {  // NOLINT
+  q = rotary_embedding_transform(q, cos, sin);
+}
+
+inline __device__ void apply_rotary_embedding(uint2& q,      // NOLINT
+                                              uint2& cos,    // NOLINT
+                                              uint2& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+}
+
+inline __device__ void apply_rotary_embedding(
+    uint2& q,       // NOLINT equals 4 half.
+    float4& cos,    // NOLINT 2 float2 cos.
+    float4& sin) {  // NOLINT
+  Float4_& cos_ = *reinterpret_cast<Float4_*>(&cos);
+  Float4_& sin_ = *reinterpret_cast<Float4_*>(&sin);
+  // cos_.x is float2
+  q.x = rotary_embedding_transform(q.x, cos_.x, sin_.x);
+  q.y = rotary_embedding_transform(q.y, cos_.y, sin_.y);
+}
+
+inline __device__ void apply_rotary_embedding(uint4& q,      // NOLINT
+                                              uint4& cos,    // NOLINT
+                                              uint4& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+  q.z = rotary_embedding_transform(q.z, cos.z, sin.z);
+  q.w = rotary_embedding_transform(q.w, cos.w, sin.w);
+}
+
+inline __device__ void apply_rotary_embedding(uint4& q,        // NOLINT
+                                              Float8_& cos,    // NOLINT
+                                              Float8_& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+  q.z = rotary_embedding_transform(q.z, cos.z, sin.z);
+  q.w = rotary_embedding_transform(q.w, cos.w, sin.w);
+}
+
+#ifdef ENABLE_BF16
+inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,      // NOLINT
+                                              __nv_bfloat162& cos,    // NOLINT
+                                              __nv_bfloat162& sin) {  // NOLINT
+  q = rotary_embedding_transform(q, cos, sin);
+}
+
+inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,  // NOLINT
+                                              float2& cos,        // NOLINT
+                                              float2& sin) {      // NOLINT
+  q = rotary_embedding_transform(q, cos, sin);
+}
+
+inline __device__ void apply_rotary_embedding(bf16_4_t& q,      // NOLINT
+                                              bf16_4_t& cos,    // NOLINT
+                                              bf16_4_t& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+}
+
+inline __device__ void apply_rotary_embedding(bf16_4_t& q,    // NOLINT
+                                              float4& cos,    // NOLINT
+                                              float4& sin) {  // NOLINT
+  Float4_& cos_ = *reinterpret_cast<Float4_*>(&cos);
+  Float4_& sin_ = *reinterpret_cast<Float4_*>(&sin);
+  q.x = rotary_embedding_transform(q.x, cos_.x, sin_.x);
+  q.y = rotary_embedding_transform(q.y, cos_.y, sin_.y);
+}
+
+inline __device__ void apply_rotary_embedding(bf16_8_t& q,      // NOLINT
+                                              bf16_8_t& cos,    // NOLINT
+                                              bf16_8_t& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+  q.z = rotary_embedding_transform(q.z, cos.z, sin.z);
+  q.w = rotary_embedding_transform(q.w, cos.w, sin.w);
+}
+
+inline __device__ void apply_rotary_embedding(bf16_8_t& q,     // NOLINT
+                                              Float8_& cos,    // NOLINT
+                                              Float8_& sin) {  // NOLINT
+  q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
+  q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
+  q.z = rotary_embedding_transform(q.z, cos.z, sin.z);
+  q.w = rotary_embedding_transform(q.w, cos.w, sin.w);
+}
+#endif  // ENABLE_BF16
 
 }  // namespace fusion
 }  // namespace phi
