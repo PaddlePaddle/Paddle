@@ -74,6 +74,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                    "with use_neox_rotary_style set."));
   } else {
     if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && dout_k) {
+      int64_t num_heads_k = dout_k->dims()[2];
       auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
       auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
       int ret = xpu::rotary_no_freqs_qk_embedding_v2_grad<XPUType>(
@@ -87,7 +88,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           {batch_size, seq_len, num_heads, head_dim},
           {batch_size, seq_len, 1, head_dim},
           {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-          {seq_len * head_dim, head_dim, head_dim, 1});
+          {seq_len * head_dim, head_dim, head_dim, 1},
+          num_heads_k);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2_grad");
     } else {
       auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
@@ -104,6 +106,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           true);
 
       if (dout_k.get_ptr()) {
+        int64_t num_heads_k = dout_k->dims()[2];
         auto* dk_data =
             reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
         XPUFusedRotaryHalf<XPUType, Context>(
@@ -114,13 +117,14 @@ void FusedRopeGradKernel(const Context& dev_ctx,
             dk_data,
             batch_size,
             seq_len,
-            num_heads,
+            num_heads_k,
             head_dim,
             true);
       }
     }
 
     if (dout_v.get_ptr()) {
+      int64_t num_heads_v = dout_v->dims()[2];
       auto* dv_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dv));
       XPUFusedRotaryHalf<XPUType, Context>(
           dev_ctx,
@@ -130,7 +134,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           dv_data,
           batch_size,
           seq_len,
-          num_heads,
+          num_heads_v,
           head_dim,
           true);
     }

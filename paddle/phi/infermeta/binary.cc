@@ -1085,6 +1085,15 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
+}
+
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
                             MetaTensor* out) {
@@ -2987,6 +2996,33 @@ void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
   auto gate_idx_in_dims = gate_idx.dims();
   new_gate_idx->set_dims(gate_idx_in_dims);
   new_gate_idx->set_dtype(gate_idx.dtype());
+}
+
+void PullBoxSparseInferMeta(const MetaTensor& w,
+                            const std::vector<const MetaTensor*>& ids,
+                            bool is_sparse,
+                            bool is_distributed,
+                            int size,
+                            std::vector<MetaTensor*> out) {
+  auto hidden_size = static_cast<int64_t>(size);
+  const size_t n_ids = ids.size();
+  for (size_t i = 0; i < n_ids; ++i) {
+    MetaTensor* output = out[i];
+    auto ids_dims = ids[i]->dims();
+    int ids_rank = ids_dims.size();
+    PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "Shape error in %lu id, the last dimension of the "
+                          "'Ids' tensor must be 1.",
+                          i));
+    auto out_dim =
+        common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    out_dim.push_back(hidden_size);
+    output->set_dims(common::make_ddim(out_dim));
+    output->share_lod(*ids[i]);
+    output->set_dtype(w.dtype());
+  }
 }
 
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
