@@ -519,6 +519,18 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_op : cudnn_lstm_grad
+  forward: cudnn_lstm (Tensor x, Tensor init_h, Tensor init_c, Tensor w, Tensor[] weight_list, Tensor sequence_length, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0) -> Tensor (out), Tensor (last_h), Tensor (last_c), Tensor (reserve), Tensor (state_out)
+  args: (Tensor x, Tensor init_h, Tensor init_c, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor reserve, Tensor state_out, Tensor out_grad, Tensor last_h_grad, Tensor last_c_grad, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0)
+  output: Tensor (x_grad), Tensor (init_h_grad), Tensor (init_c_grad), Tensor[](weight_list_grad){weight_list.size()}
+  infer_meta:
+    func: CudnnLSTMGradInferMeta
+    param : [x, init_h, init_c, weight_list]
+  kernel:
+    func: cudnn_lstm_grad
+    data_type : out_grad
+  optional: weight_list, sequence_length, weight_list_grad
+
 - backward_op : cummax_grad
   forward : cummax(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
   args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
