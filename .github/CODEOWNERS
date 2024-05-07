@@ -1,3 +1,7 @@
+CMakeLists.txt @wanghuancoder @luotao1 @Aurelius84 @XiaoguangHu01 @qili93
+python/paddle/distributed/__init @sneaxiy @raindrops2sea
+python/paddle/distributed/fleet/__init__.py @sneaxiy @raindrops2sea
+python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
 python/requirements.txt @phlrain @jzhang533 @kolinwei
 python/paddle/base/__init__.py @phlrain @luotao1 @Aurelius84 @qili93
 paddle/fluid/operators/distributed/send_recv.proto.in @gongweibao @seiriosPlus

@@ -20,8 +20,8 @@ fi
 
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
-API_FILES=(
-           "tools/print_signatures.py"
+# If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
+API_FILES=("tools/print_signatures.py"
            "tools/sampcd_processor.py"
            "tools/check_pr_approval.py"
 	   "tools/checkout_api_compatible.py"
