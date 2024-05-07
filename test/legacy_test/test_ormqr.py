@@ -67,7 +67,7 @@ def geqrf(x):
     return out.reshape(org_x_shape), taus.reshape(org_taus_shape)
 
 
-def ref_ormqr(input, tau, other, left=True, transpose=False):
+def ref_ormqr(input, tau, y, left=True, transpose=False):
     m, n = input.shape[-2:]
 
     def _ref_ormqr(input_matrix, tau_vector):
@@ -108,7 +108,7 @@ def ref_ormqr(input, tau, other, left=True, transpose=False):
             if transpose
             else Q.reshape(org_input_shape)
         )
-    result = np.matmul(Q, other) if left else np.matmul(other, Q)
+    result = np.matmul(Q, y) if left else np.matmul(y, Q)
 
     return result
 
@@ -132,7 +132,7 @@ class TestOrmqrAPI(unittest.TestCase):
             ],
             dtype=np.float32,
         )
-        self.other = np.array(
+        self.y = np.array(
             [
                 [1, 2, 4],
                 [0, 0, 5],
@@ -146,7 +146,7 @@ class TestOrmqrAPI(unittest.TestCase):
         self.geqrf_x, self.tau = geqrf(self.x)
         self._x = self.geqrf_x.copy()
         self._tau = self.tau.copy()
-        self._other = self.other.copy()
+        self._y = self.y.copy()
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
@@ -155,16 +155,16 @@ class TestOrmqrAPI(unittest.TestCase):
             tau = paddle.static.data(
                 'tau', self.tau.shape, dtype=self.tau.dtype
             )
-            other = paddle.static.data(
-                'other', self.other.shape, dtype=self.other.dtype
+            y = paddle.static.data(
+                'y', self.y.shape, dtype=self.y.dtype
             )
-            out = paddle.linalg.ormqr(x, tau, other)
+            out = paddle.linalg.ormqr(x, tau, y)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
-                feed={'x': self.geqrf_x, 'tau': self.tau, 'other': self.other},
+                feed={'x': self.geqrf_x, 'tau': self.tau, 'y': self.y},
                 fetch_list=[out],
             )
-            out_ref = ref_ormqr(self._x, self._tau, self._other)
+            out_ref = ref_ormqr(self._x, self._tau, self._y)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-3, atol=1e-3)
 
     def test_dygraph_api(self):
@@ -172,13 +172,13 @@ class TestOrmqrAPI(unittest.TestCase):
         self.geqrf_x, self.tau = geqrf(self.x)
         self._x = self.geqrf_x.copy()
         self._tau = self.tau.copy()
-        self._other = self.other.copy()
+        self._y = self.y.copy()
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.geqrf_x)
         tau = paddle.to_tensor(self.tau)
-        other = paddle.to_tensor(self.other)
-        out = paddle.linalg.ormqr(x, tau, other)
-        out_ref = ref_ormqr(self._x, self._tau, self._other)
+        y = paddle.to_tensor(self.y)
+        out = paddle.linalg.ormqr(x, tau, y)
+        out_ref = ref_ormqr(self._x, self._tau, self._y)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-3, atol=1e-3)
         paddle.enable_static()
 
@@ -189,42 +189,42 @@ class TestOrmqrAPI(unittest.TestCase):
 class TestOrmqrAPICase1(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('float32')
-        self.other = np.random.randn(3, 4).astype('float32')
+        self.y = np.random.randn(3, 4).astype('float32')
 
 
 class TestOrmqrAPICase2(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('float64')
-        self.other = np.random.randn(3, 4).astype('float64')
+        self.y = np.random.randn(3, 4).astype('float64')
 
 
 class TestOrmqrAPICase3(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(5, 4, 3).astype('float32')
-        self.other = np.random.randn(5, 3, 4).astype('float32')
+        self.y = np.random.randn(5, 3, 4).astype('float32')
 
 
 # complex dtype
 class TestOrmqrAPICase4(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('complex64')
-        self.other = np.random.randn(3, 4).astype('complex64')
+        self.y = np.random.randn(3, 4).astype('complex64')
 
 
 class TestOrmqrAPICase5(TestOrmqrAPI):
     def init_input(self):
         self.x = np.random.randn(4, 3).astype('complex128')
-        self.other = np.random.randn(3, 4).astype('complex128')
+        self.y = np.random.randn(3, 4).astype('complex128')
 
 
 class TestOrmqrAPICase6(TestOrmqrAPI):
     def init_input(self):
         if paddle.is_compiled_with_cuda():
             self.x = np.random.randn(4, 3).astype('float16')
-            self.other = np.random.randn(3, 4).astype('float16')
+            self.y = np.random.randn(3, 4).astype('float16')
         else:
             self.x = np.random.randn(4, 3).astype('float32')
-            self.other = np.random.randn(3, 4).astype('float32')
+            self.y = np.random.randn(3, 4).astype('float32')
 
 
 class TestOrmqrAPI_type_error(TestOrmqrAPI):
@@ -232,8 +232,8 @@ class TestOrmqrAPI_type_error(TestOrmqrAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float64')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([3, 4], dtype='float64')
-            out = paddle.linalg.ormqr(x, tau, other)
+            y = paddle.randn([3, 4], dtype='float64')
+            out = paddle.linalg.ormqr(x, tau, y)
 
 
 class TestOrmqrAPI_shape_error(TestOrmqrAPI):
@@ -241,8 +241,8 @@ class TestOrmqrAPI_shape_error(TestOrmqrAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([3], dtype='float32')
             tau = paddle.randn([], dtype='float32')
-            other = paddle.randn([3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other)
+            y = paddle.randn([3], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y)
 
 
 class TestOrmqrAPI_dim_error(TestOrmqrAPI):
@@ -250,8 +250,8 @@ class TestOrmqrAPI_dim_error(TestOrmqrAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([3, 4], dtype='float32')
             tau = paddle.randn([3, 4], dtype='float32')
-            other = paddle.randn([4, 3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other)
+            y = paddle.randn([4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y)
 
 
 class TestOrmqrAPI_householder_error(TestOrmqrAPI):
@@ -259,37 +259,37 @@ class TestOrmqrAPI_householder_error(TestOrmqrAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([4], dtype='float32')
-            other = paddle.randn([3, 4], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other)
+            y = paddle.randn([3, 4], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y)
 
 
-class TestOrmqrAPI_other_error(TestOrmqrAPI):
+class TestOrmqrAPI_y_error(TestOrmqrAPI):
     def test_error(self):
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([3, 4], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other, left=True, transpose=True)
+            y = paddle.randn([3, 4], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y, left=True, transpose=True)
 
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([4, 3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other, left=True, transpose=False)
+            y = paddle.randn([4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y, left=True, transpose=False)
 
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([3, 4], dtype='float32')
+            y = paddle.randn([3, 4], dtype='float32')
             out = paddle.linalg.ormqr(
-                x, tau, other, left=False, transpose=False
+                x, tau, y, left=False, transpose=False
             )
 
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
-            other = paddle.randn([4, 3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other, left=False, transpose=True)
+            y = paddle.randn([4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y, left=False, transpose=True)
 
 
 class TestOrmqrAPI_batch_error(TestOrmqrAPI):
@@ -297,8 +297,8 @@ class TestOrmqrAPI_batch_error(TestOrmqrAPI):
         with self.assertRaises(AssertionError):
             x = paddle.randn([5, 3, 4], dtype='float32')
             tau = paddle.randn([5, 4], dtype='float32')
-            other = paddle.randn([4, 4, 3], dtype='float32')
-            out = paddle.linalg.ormqr(x, tau, other)
+            y = paddle.randn([4, 4, 3], dtype='float32')
+            out = paddle.linalg.ormqr(x, tau, y)
 
 
 if __name__ == '__main__':
