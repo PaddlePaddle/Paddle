@@ -39,7 +39,7 @@ void WeightDequantizeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, group_size, out);
   if (algo == "weight_only_int4") {
-    out->Resize({out_dims[1] , out_dims[0] * 2});
+    out->Resize({out_dims[1], out_dims[0] * 2});
   } else {
     out->Resize({{out_dims[1], out_dims[0]}});
   }

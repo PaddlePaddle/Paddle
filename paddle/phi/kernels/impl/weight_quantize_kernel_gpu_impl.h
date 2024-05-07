@@ -76,7 +76,7 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
     // 0 8 4 12 1 9 5 13 2 10 6 14 3 11 7 15
     // find index of above list
     // 0 4 8 12 2 6 10 14 1 5 9 13 3 7 11 15
-    // we know int8 index is 
+    // we know int8 index is
     // 0 2 4 6 8 10 12 14 1 3 5 7 9 11 13 15
     // change it to
     // 0 2 4 6 1 3 5 7 8 10 12 14 9 11 13 15
@@ -87,10 +87,11 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
     // it change ori to 0 8 4 12...
     // finally we do some bitwise operation to change int4index
     int permute_kk = (temp_k_expr_1 + temp_k_expr_2 +
-                     (temp_k_expr_2 + 1) % 2 * k_mod_8 * 2 / 2 +
-                     temp_k_expr_1 * temp_k_expr_2) % 8 * 2 + 
+                      (temp_k_expr_2 + 1) % 2 * k_mod_8 * 2 / 2 +
+                      temp_k_expr_1 * temp_k_expr_2) %
+                         8 * 2 +
                      (k_id % 16) / 8 + k_id / 16 * 16;
-    int permute_index = permute_kk % 32 + permute_kk / 32 * 128 + 
+    int permute_index = permute_kk % 32 + permute_kk / 32 * 128 +
                         32 * (n_id % 4) + total_k * 4 * (n_id / 4);
     int8_t shift_quant_weight = input_data_dev[linear_idx];
     output_data_dev[permute_index] =
@@ -98,22 +99,29 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
   }
   constexpr int value_per_interval_thread = 4;
   constexpr int pack_size = 2;
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x * value_per_interval_thread;
+  for (int linear_idx =
+           blockIdx.x * blockDim.x + threadIdx.x * value_per_interval_thread;
        linear_idx < numel;
        linear_idx += blockDim.x * gridDim.x * 4) {
     for (int pack = 0; pack < pack_size; ++pack) {
       uint8_t interval_weight_0 = static_cast<uint8_t>(
-        static_cast<int32_t>(output_data_dev[linear_idx + pack]));
+          static_cast<int32_t>(output_data_dev[linear_idx + pack]));
       uint8_t interval_weight_1 = static_cast<uint8_t>(
           static_cast<int32_t>(output_data_dev[linear_idx + pack + 2]));
 
-      uint8_t interval_weight_0_l = static_cast<uint8_t>(((interval_weight_0 & 0x0F) + 8) & 0x0F);
-      uint8_t interval_weight_0_r = static_cast<uint8_t>(((interval_weight_0 >> 4) + 8) & 0x0F);
-      uint8_t interval_weight_1_l = static_cast<uint8_t>(((interval_weight_1 & 0x0F) + 8) & 0x0F);
-      uint8_t interval_weight_1_r = static_cast<uint8_t>(((interval_weight_1 >> 4) + 8) & 0x0F);
+      uint8_t interval_weight_0_l =
+          static_cast<uint8_t>(((interval_weight_0 & 0x0F) + 8) & 0x0F);
+      uint8_t interval_weight_0_r =
+          static_cast<uint8_t>(((interval_weight_0 >> 4) + 8) & 0x0F);
+      uint8_t interval_weight_1_l =
+          static_cast<uint8_t>(((interval_weight_1 & 0x0F) + 8) & 0x0F);
+      uint8_t interval_weight_1_r =
+          static_cast<uint8_t>(((interval_weight_1 >> 4) + 8) & 0x0F);
 
-      uint8_t new_interval_weight_0 = interval_weight_0_l | (interval_weight_1_l << 4);
-      uint8_t new_interval_weight_1 = interval_weight_0_r | (interval_weight_1_r << 4);
+      uint8_t new_interval_weight_0 =
+          interval_weight_0_l | (interval_weight_1_l << 4);
+      uint8_t new_interval_weight_1 =
+          interval_weight_0_r | (interval_weight_1_r << 4);
 
       output_data_dev[linear_idx + pack] =
           *reinterpret_cast<int8_t*>(&new_interval_weight_0);
@@ -187,10 +195,11 @@ __global__ void weight_interleave_add_bias_kernel_wint4(
     const int interleave_idx = k_id * total_n + new_n_id;
 
     uint8_t offseted_weight = 0;
-    uint8_t shift_quant_weight = static_cast<uint8_t>(
-        static_cast<int32_t>(input_data_dev[linear_idx]));
+    uint8_t shift_quant_weight =
+        static_cast<uint8_t>(static_cast<int32_t>(input_data_dev[linear_idx]));
     uint8_t shift_quant_weight_low = ((shift_quant_weight & 0x0F) + 8) & 0x0F;
-    uint8_t shift_quant_weight_high = ((shift_quant_weight >> 4 & 0x0F) + 8) & 0x0F;
+    uint8_t shift_quant_weight_high =
+        ((shift_quant_weight >> 4 & 0x0F) + 8) & 0x0F;
     offseted_weight = shift_quant_weight_low | (shift_quant_weight_high << 4);
     output_data_dev[interleave_idx] =
         *reinterpret_cast<int8_t*>(&offseted_weight);
@@ -216,20 +225,20 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
       total_k /= 2;
       numel /= 2;
       weight_permute_kernel_wint4<<<grid_size, block_size>>>(
-        input_data, output_data, numel, total_k, total_n);
+          input_data, output_data, numel, total_k, total_n);
     } else {
       weight_permute_kernel_wint8<<<grid_size, block_size>>>(
-        input_data, output_data, numel, total_k, total_n);
+          input_data, output_data, numel, total_k, total_n);
     }
   } else if (arch == 70) {
     if (algo == "weight_only_int4") {
       total_k /= 2;
       numel /= 2;
       weight_permute_kernel_wint4<<<grid_size, block_size>>>(
-        input_data, output_data, numel, total_k, total_n);
+          input_data, output_data, numel, total_k, total_n);
     } else {
       weight_permute_kernel_wint8<<<grid_size, block_size>>>(
-        input_data, output_data, numel, total_k, total_n);
+          input_data, output_data, numel, total_k, total_n);
     }
   }
 }
@@ -335,7 +344,7 @@ __global__ void per_channel_quant_gpu_int4(const T* weight_data,
         phi::AlignedVector<T, VectorSize> weight;
         *reinterpret_cast<int4*>(&weight) =
             *reinterpret_cast<const int4*>(vec_weight_data_ptr + linear_index);
-  #pragma unroll
+#pragma unroll
         for (int i = 0; i < VectorSize; ++i) {
           float scaled_weight =
               (static_cast<float>(weight[i]) / static_cast<float>(abs_max[i])) *
@@ -377,10 +386,10 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
       max((vec_total_n + kBlockSize - 1) / kBlockSize, static_cast<int>(1));
   if (algo == "weight_only_int4") {
     per_channel_quant_gpu_int4<T, kVectorSize><<<kGridSize, kBlockSize>>>(
-      weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
+        weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
   } else {
     per_channel_quant_gpu<T, kVectorSize><<<kGridSize, kBlockSize>>>(
-      weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
+        weight_data, quanted_weight_data, scale_data, total_k, vec_total_n);
   }
 }
 
