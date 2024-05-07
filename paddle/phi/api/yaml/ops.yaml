@@ -2354,6 +2354,15 @@
     func : qr
   backward : qr_grad
 
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : prob
+
 - op : real
   args : (Tensor x)
   output : Tensor (out)
