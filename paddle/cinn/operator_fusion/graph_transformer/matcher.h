@@ -49,9 +49,9 @@ struct SinkTrivialMatcher {
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return StmtPatternGraphMatcher<TrivialPattern<T>>()(graph, node) &&
            node->downstream().size() == 1 &&
-           (std::holds_alternative<ReducePattern<Phrase>>(
+           (std::holds_alternative<ReducePattern<T>>(
                 node->downstream().at(0)->stmt_pattern()) ||
-            std::holds_alternative<TrivialPattern<Phrase>>(
+            std::holds_alternative<TrivialPattern<T>>(
                 node->downstream().at(0)->stmt_pattern()));
   }
 };
@@ -93,7 +93,7 @@ struct RecomputeNodeMatcher {
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, node) &&
            node->downstream().size() > 1 &&
-           (node->stmt_pattern.can_recompute());
+           (std::get<AnchorPattern<T>>(node->stmt_pattern()).can_recompute());
   }
 };
 
@@ -135,7 +135,9 @@ struct HorizontalFusionMatcher {
     const auto& rhs_pattern =
         std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
 
-    return graph.topo_manager().CanFuse(lhs, rhs) &&
+    return graph.policy_manager()
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(lhs, rhs) &&
            IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
                                 rhs_pattern.padding_patterns_.back().pattern);
   }

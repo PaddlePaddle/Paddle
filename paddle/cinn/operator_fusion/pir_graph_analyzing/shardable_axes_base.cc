@@ -115,8 +115,8 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
   const auto reduce_axis_idx = [&]() -> decltype(auto) {
-    const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
-    return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
+    const std::vector<size_t> axis_idx = GetReduceAxisIdx(reduce_op);
+    return std::unordered_set<size_t>(axis_idx.begin(), axis_idx.end());
   }();
   PADDLE_ENFORCE_NE(
       reduce_axis_idx.size(),

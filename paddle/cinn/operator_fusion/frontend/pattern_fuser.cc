@@ -68,7 +68,8 @@ StmtPattern<FrontendStage> MergePatternImpl(
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern<FrontendStage>(source),
                          GetOpsInPattern<FrontendStage>(dest));
-  return AnchorPattern<FrontendStage>(contents, source.anchor(), {});
+  return AnchorPattern<FrontendStage>(
+      contents, source.anchor(), AnchorState<FrontendStage>({}));
 }
 
 template <>

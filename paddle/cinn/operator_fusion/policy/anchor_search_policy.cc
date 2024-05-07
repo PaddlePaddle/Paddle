@@ -103,14 +103,13 @@ AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
 template <typename T>
 bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  return FindUpstreamAnchorTransformRoute(upstream, downstream).value() !=
-         std::nullopt;
+  return FindUpstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
 }
 
 template <typename T>
 bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  return FindDownstreamAnchorTransformRoute(upstream, downstream).value() !=
+  return FindDownstreamAnchorTransformRoute(upstream, downstream) !=
          std::nullopt;
 }
 

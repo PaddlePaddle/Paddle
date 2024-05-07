@@ -88,6 +88,22 @@ static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }
 
+static std::optional<std::pair<pir::Value, pir::Value>>
+GetBroadcastOpInputOuputValue(pir::Operation* op) {
+  auto* mut_op = const_cast<pir::Operation*>(op);
+  if (op->isa<paddle::dialect::ExpandOp>()) {
+    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+    return std::make_pair(expand_op.x(), expand_op.out());
+  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
+    auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
+    return std::make_pair(broadcast_op.x(), broadcast_op.out());
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Unsupported broadcast op, %s", op->name()));
+  }
+  return std::nullopt;
+}
+
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {
   std::vector<std::pair<size_t, size_t>> res;
@@ -126,21 +142,6 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
     ss << "\n";
   }
   return ss.str();
-}
-
-static std::optional<std::pair<pir::Value, pir::Value>>
-GetBroadcastOpInputOuputValue(pir::Operation* op) {
-  auto* mut_op = const_cast<pir::Operation*>(op);
-  if (op->isa<paddle::dialect::ExpandOp>()) {
-    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-    return std::make_pair(expand_op.x(), expand_op.out());
-  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
-    auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
-    return std::make_pair(broadcast_op.x(), broadcast_op.out());
-  } else {
-    CHECK(false) << "Unsupported broadcast op: " << op->name();
-  }
-  return std::nullopt;
 }
 
 template <typename T>
@@ -393,7 +394,7 @@ static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
 
 static const size_t GetOperandIdx(const pir::Value& v, pir::Operation* op) {
   for (size_t i = 0; i < op->num_operands(); i++) {
-    if (op->operand(i) == v) {
+    if (op->operand(i).source() == v) {
       return i;
     }
   }

@@ -138,6 +138,10 @@ struct LoopFrameworkVisitor {
   MaybeLoopFramework operator()(const UnsupportPattern<T>& pattern) {
     PADDLE_ENFORCE(false, "Not support GetLoopRange.");
   }
+
+  MaybeLoopFramework operator()(const AnchorPattern<T>& pattern) {
+    PADDLE_ENFORCE(false, "Not support GetLoopRange.");
+  }
 };
 
 template <typename T>
@@ -384,38 +388,33 @@ template <typename T>
 ExprPromise<T> InitExprPromiseImpl(const ReducePattern<T>& pattern,
                                    pir::Value anchor);
 
+template <typename T, template <typename> typename PATTERN>
+ExprPromise<T> InitExprPromiseImpl(const PATTERN<T>& pattern,
+                                   pir::Value anchor) {
+  PADDLE_THROW("Can not Init ExprPromise");
+}
+
 template <typename T>
 ExprPromise<T> InitExprPromise(const StmtPattern<T>& pattern,
                                pir::Value anchor) {
   return std::visit(
-      [anchor](const auto& arg) {
-        using U = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<U, TrivialPattern<T>>) {
-          return InitExprPromiseImpl(arg, anchor);
-        } else if constexpr (std::is_same_v<U, ReducePattern<T>>) {
-          return InitExprPromiseImpl(arg, anchor);
-        }
-      },
-      s.variant());
+      [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
+      pattern.variant());
 }
 
 template <typename T>
-ReducePattern<T> GetAnchorState(const StmtPattern<T>& pattern) {
-  return std::visit([](const auto& arg) { return arg.anchor_state; },
-                    pattern.variant());
+AnchorState<T> GetAnchorState(const AnchorPattern<T>& pattern) {
+  return pattern.anchor_state;
 }
 
 template <typename T>
 AnchorState<T> ApplyAnchorTransformRoute(const AnchorState<T>& anchor_state,
                                          const AnchorTransformRoute& route) {
-  return std::visit(
-      [route](const auto& arg) {
-        AnchorState<T> result = anchor_state;
-        for (auto promise : anchor_state.promise) {
-          promise.transform_route.update(route);
-        }
-      },
-      anchor_state);
+  AnchorState<T> result = anchor_state;
+  for (auto promise : result.promise) {
+    promise.update(route);
+  }
+  return result;
 }
 
 }  // namespace cinn::fusion

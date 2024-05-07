@@ -112,7 +112,12 @@ struct LiftToAnchorPatternOperation {
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
     // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
     // type has sink and the others not) then, update logic here
-    pir::Value anchor = node->sink_op();
+    PADDLE_ENFORCE_EQ(
+        node->sink_op()->num_results(),
+        1,
+        phi::errors::PreconditionNotMet(
+            "Op with multi output value can not lift to AnchorPattern"));
+    pir::Value anchor = node->sink_op()->result(0);
     node->set_stmt_pattern(AnchorPattern<Phrase>(
         ops,
         anchor,
@@ -130,19 +135,22 @@ struct FuseUpstreamAnchorOperation {
             .template GetPolicy<AnchorSearchPolicy>()
             ->FindUpstreamAnchorTransformRoute(upstream, downstream);
     PADDLE_ENFORCE_NE(
-        optional_transform_route.value(),
+        optional_transform_route,
         std::nullopt,
         phi::errors::PreconditionNotMet("Transform Route Not Found"));
 
     auto transform_route = optional_transform_route.value();
 
-    const auto merge_pattern_fn = [](const StmtPattern<Phrase>& source,
-                                     const StmtPattern<Phrase>& destination) {
+    const auto merge_pattern_fn = [transform_route](
+                                      const StmtPattern<Phrase>& source,
+                                      const StmtPattern<Phrase>& destination) {
       auto new_anchor_pattern = std::get<AnchorPattern<Phrase>>(
           MergePattern<Phrase>(source, destination));
       auto transformed_anchor_state = ApplyAnchorTransformRoute<Phrase>(
-          GetAnchorState(destination), transform_route);
-      new_anchor_pattern.anchor_state.update(GetAnchorState(source));
+          GetAnchorState(std::get<AnchorPattern<Phrase>>(destination)),
+          transform_route);
+      new_anchor_pattern.anchor_state.update(
+          GetAnchorState(std::get<AnchorPattern<Phrase>>(source)));
       new_anchor_pattern.anchor_state.update(transformed_anchor_state);
       return new_anchor_pattern;
     };
@@ -164,19 +172,22 @@ struct FuseDownstreamAnchorOperation {
             ->FindDownstreamAnchorTransformRoute(upstream, downstream);
 
     PADDLE_ENFORCE_NE(
-        optional_transform_route.value(),
+        optional_transform_route,
         std::nullopt,
         phi::errors::PreconditionNotMet("Transform Route Not Found"));
 
     auto transform_route = optional_transform_route.value();
 
-    const auto merge_pattern_fn = [](const StmtPattern<Phrase>& destination,
-                                     const StmtPattern<Phrase>& source) {
+    const auto merge_pattern_fn = [transform_route](
+                                      const StmtPattern<Phrase>& destination,
+                                      const StmtPattern<Phrase>& source) {
       auto new_anchor_pattern = std::get<AnchorPattern<Phrase>>(
           MergePattern<Phrase>(source, destination));
       auto transformed_anchor_state = ApplyAnchorTransformRoute<Phrase>(
-          GetAnchorState(destination), transform_route);
-      new_anchor_pattern.anchor_state.update(GetAnchorState(source));
+          GetAnchorState(std::get<AnchorPattern<Phrase>>(destination)),
+          transform_route);
+      new_anchor_pattern.anchor_state.update(
+          GetAnchorState(std::get<AnchorPattern<Phrase>>(source)));
       new_anchor_pattern.anchor_state.update(transformed_anchor_state);
       return new_anchor_pattern;
     };

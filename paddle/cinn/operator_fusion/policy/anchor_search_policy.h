@@ -23,7 +23,7 @@
 namespace cinn::fusion {
 
 template <typename T>
-class AnchorSearchPolicy final : : public PolicyBase<T> {
+struct AnchorSearchPolicy final : public PolicyBase<T> {
   static constexpr PolicyKind Kind = PolicyKind::AnchorSearch;
   bool HasUpstreamAnchor(const PatternNodePtr<T>& upstream,
                          const PatternNodePtr<T>& downstream);

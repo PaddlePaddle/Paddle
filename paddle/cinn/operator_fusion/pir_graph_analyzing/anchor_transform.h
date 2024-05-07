@@ -75,6 +75,8 @@ struct ExprPromise {};
 
 template <typename T>
 struct AnchorState {
+  explicit AnchorState(const std::vector<ExprPromise<T>>& init_promise)
+      : promise(init_promise) {}
   std::vector<ExprPromise<T>> promise;
 
   void update(AnchorState<T> new_state) {

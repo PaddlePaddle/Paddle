@@ -113,8 +113,8 @@ template <typename T>
 struct AnchorPattern {
   explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
                          const pir::Value& anchor,
-                         const AnchorState<T>& anchor_state)
-      : ops_(ops), anchor_(anchor), anchor_state_(anchor_state) {}
+                         const AnchorState<T>& init_anchor_state)
+      : ops_(ops), anchor_(anchor), anchor_state(init_anchor_state) {}
   AnchorState<T> anchor_state;
 
   static std::string name() { return "AnchorPattern"; }

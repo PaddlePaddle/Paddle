@@ -84,7 +84,8 @@ StmtPattern<BackendStage> MergePatternImpl(
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern<BackendStage>(source),
                          GetOpsInPattern<BackendStage>(dest));
-  return AnchorPattern<BackendStage>(contents, source.anchor(), {});
+  return AnchorPattern<BackendStage>(
+      contents, source.anchor(), AnchorState<BackendStage>({}));
 }
 
 /// Start: Tmp Transform Operation for ReduceTree
