@@ -16,3 +16,6 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   set_tests_properties(${PIR_COVERAGE_TEST}_pir PROPERTIES TIMEOUT 120)
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in sequence test")
 endforeach()
+
+set_tests_properties(test_sequence_conv PROPERTIES TIMEOUT 120)
+set_tests_properties(test_sequence_pool PROPERTIES TIMEOUT 120)
