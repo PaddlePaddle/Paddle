@@ -155,9 +155,7 @@ class TestOrmqrAPI(unittest.TestCase):
             tau = paddle.static.data(
                 'tau', self.tau.shape, dtype=self.tau.dtype
             )
-            y = paddle.static.data(
-                'y', self.y.shape, dtype=self.y.dtype
-            )
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
             out = paddle.linalg.ormqr(x, tau, y)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
@@ -281,9 +279,7 @@ class TestOrmqrAPI_y_error(TestOrmqrAPI):
             x = paddle.randn([4, 3], dtype='float32')
             tau = paddle.randn([3], dtype='float32')
             y = paddle.randn([3, 4], dtype='float32')
-            out = paddle.linalg.ormqr(
-                x, tau, y, left=False, transpose=False
-            )
+            out = paddle.linalg.ormqr(x, tau, y, left=False, transpose=False)
 
         with self.assertRaises(AssertionError):
             x = paddle.randn([4, 3], dtype='float32')
