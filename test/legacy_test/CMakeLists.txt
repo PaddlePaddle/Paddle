@@ -1054,4 +1054,4 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
-set_pit_tests_properties()
+set_pir_tests_properties()
