@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -304,7 +304,7 @@ static void UniqueDim(const framework::ExecutionContext& context,
   indices_vec.erase(indices_vec.begin() + input_unbind.size(),
                     indices_vec.end());
 
-  math::ConcatFunctor<DeviceContext, InT> concat_functor;
+  phi::funcs::ConcatFunctor<DeviceContext, InT> concat_functor;
   phi::DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();

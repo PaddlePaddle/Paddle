@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <paddle/fluid/operators/math/concat_and_split.h>
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -77,7 +77,7 @@ struct ArrayToLoDFunctor {
 template <typename DeviceContext>
 template <typename T>
 void ArrayToLoDFunctorImpl<DeviceContext>::apply() {
-  math::ConcatFunctor<DeviceContext, T> func;
+  phi::funcs::ConcatFunctor<DeviceContext, T> func;
   func(*dev_ctx_, prev_functor_->in, 0, prev_functor_->out);
 }
 
