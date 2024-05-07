@@ -125,8 +125,8 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   return axis;
 }
 
-inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
-                                   const framework::DDim &y_dims,
+inline void GetBroadcastDimsArrays(const phi::DDim &x_dims,
+                                   const phi::DDim &y_dims,
                                    int *x_dims_array,
                                    int *y_dims_array,
                                    int *out_dims_array,
@@ -141,8 +141,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                      axis);
 }
 
-inline framework::DDim trim_trailing_singular_dims(
-    const framework::DDim &dims) {
+inline phi::DDim trim_trailing_singular_dims(const phi::DDim &dims) {
   return phi::funcs::TrimTrailingSingularDims(dims);
 }
 
@@ -467,7 +466,7 @@ template <typename DeviceContext,
           bool KeepIntermediateOut>
 void FusedElemwiseAndActComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
+    const phi::DDim &x_dim,
     const phi::DenseTensor &x,
     const phi::DenseTensor &y,
     CompoundFunctor compound_functor,
@@ -497,8 +496,8 @@ template <typename DeviceContext,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim_untrimed,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor &x,
     const phi::DenseTensor &y,
     CompoundFunctor compound_functor,
@@ -640,8 +639,8 @@ template <typename DeviceContext,
           bool UseIntermediateOut>
 void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim UNUSED,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim UNUSED,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
@@ -1243,8 +1242,8 @@ template <typename DeviceContext,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActGradComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim_untrimed,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
@@ -1398,8 +1397,8 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
                                       DIntermediate_OP dintermediate_op) {
-  const framework::DDim &x_dim = x->dims();
-  const framework::DDim &y_dim = y->dims();
+  const phi::DDim &x_dim = x->dims();
+  const phi::DDim &y_dim = y->dims();
   if (UseIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
@@ -1512,8 +1511,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
             "out is null pointer."));
   }
 
-  const framework::DDim &x_dim = x.dims();
-  const framework::DDim &y_dim = y.dims();
+  const phi::DDim &x_dim = x.dims();
+  const phi::DDim &y_dim = y.dims();
   if (x.dims() == y.dims()) {
     FusedElemwiseAndActComputeNoBroadcast<DeviceContext,
                                           T,
@@ -1588,8 +1587,8 @@ static inline void GetDoubleGradSafeTensor(
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const framework::DDim &in,
-                                            const framework::DDim &out,
+static inline std::vector<int> GetReduceDim(const phi::DDim &in,
+                                            const phi::DDim &out,
                                             int axis) {
   return phi::funcs::GetReduceDim(in, out, axis);
 }

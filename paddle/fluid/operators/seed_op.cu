@@ -26,12 +26,12 @@ class GPUSeedKernel : public framework::OpKernel<T> {
     int seed = get_seed(context);
 
     auto force_cpu = context.Attr<bool>("force_cpu");
-    bool cpu_place = force_cpu || context.GetPlace() == platform::CPUPlace();
+    bool cpu_place = force_cpu || context.GetPlace() == phi::CPUPlace();
     if (cpu_place) {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      out->mutable_data<T>(platform::CPUPlace());
+      auto &dev_ctx = *pool.Get(phi::CPUPlace());
+      out->mutable_data<T>(phi::CPUPlace());
       phi::funcs::SetConstant<phi::CPUContext, T> functor;
       functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx),
               out,
@@ -42,7 +42,7 @@ class GPUSeedKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       memory::Copy(target_gpu_place,
                    out_data,
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    &seed,
                    sizeof(int),
                    stream);

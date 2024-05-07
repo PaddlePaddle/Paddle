@@ -49,7 +49,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_id, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -71,8 +71,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(
-              step_score, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_score, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 

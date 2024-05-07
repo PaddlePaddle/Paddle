@@ -24,15 +24,15 @@ limitations under the License. */
 #include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
-static inline std::vector<framework::DDim> UpdateOutsDims(
+static inline std::vector<phi::DDim> UpdateOutsDims(
     const bool is_runtime,
     const bool each_section_is_known,
-    const framework::DDim in_dims,
+    const phi::DDim in_dims,
     const size_t num,
     std::vector<int> sections,
     const size_t axis,
     const int outs_number) {
-  std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+  std::vector<phi::DDim> outs_dims(outs_number, in_dims);
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
