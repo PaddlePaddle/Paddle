@@ -2345,6 +2345,126 @@ def fractional_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+def lp_pool1d(
+    x,
+    norm_type,
+    kernel_size,
+    stride=None,
+    padding=0,
+    ceil_mode=False,
+    name=None,
+):
+    """
+    This API implements power-average pooling 1d operation.
+    See more details in :ref:`api_paddle_nn_LPPool1d` .
+
+    Args:
+        x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
+                          shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
+                          `L` is the length of the feature. The data type is float16, float32 or float64.
+        norm_type (int|float): The number the power operation.
+        kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
+            it must contain two integers, (kernel_size_Height, kernel_size_Width).
+            Otherwise, the pool kernel size will be a square of an int.
+        stride (int|list|tuple): The stride size. If it is a tuple or list,
+            it must contain two integers, (stride_Height, stride_Width).
+            Otherwise, the stride size will be a square of an int.
+        padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+    Returns:
+        Tensor: The output tensor of pooling result. The data type is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> data = paddle.uniform([1, 3, 32], paddle.float32)
+            >>> LPPool1D = nn.LPPool1D(norm_type=3, kernel_size=2, stride=2, padding=0)
+            >>> pool_out = LPPool1D(data)
+            >>> print(pool_out.shape)
+            [1, 3, 16]
+    """
+    """NCL to NCHW"""
+    data_format = "NCHW"
+    if not in_dynamic_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'lp_pool1d'
+        )
+    _check_input(x, 3)
+    x = unsqueeze(x, [2])
+    kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
+    kernel_size = [1] + kernel_size
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = convert_to_list(stride, 1, 'pool_stride')
+        stride = [1] + stride
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
+
+    channel_last = _channel_last("NCL", 1)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
+    )
+
+    # use 2d to implement 1d should expand padding in advance.
+    padding = _expand_low_nd_padding(padding)
+
+    if in_dynamic_or_pir_mode():
+        output = _C_ops.lp_pool2d(
+            x,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            True,
+            data_format,
+            'lp',
+            False,
+            False,
+            padding_algorithm,
+            norm_type,
+        )
+        return squeeze(output, [2])
+
+    else:
+        op_type = 'lp_pool2d'
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"x": x},
+            outputs={"out": pool_out},
+            attrs={
+                "pooling_type": "lp",
+                "kernel_size": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "ceil_mode": ceil_mode,
+                "exclusive": True,
+                "data_format": data_format,
+                "norm_type": norm_type,
+            },
+        )
+        return squeeze(pool_out, [2])
+
+
 def lp_pool2d(
     x,
     norm_type,
@@ -2358,22 +2478,21 @@ def lp_pool2d(
 ):
     """
     This API implements power-average pooling 2d operation.
-    See more details in :ref:`api_paddle_nn_AvgPool2d` .
+    See more details in :ref:`api_paddle_nn_LPPool2d` .
 
     Args:
-        norm_type (int|float): The number the power operation.
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
+        norm_type (int|float): The number the power operation.
         kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
         stride (int|list|tuple): The stride size. If it is a tuple or list,
             it must contain two integers, (stride_Height, stride_Width).
             Otherwise, the stride size will be a square of an int.
-
         padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
@@ -2408,6 +2527,8 @@ def lp_pool2d(
             >>> print(out.shape)
             [1, 3, 16, 16]
     """
+
+    _check_input(x, 4)
     if norm_type == 0:
         raise ValueError("`norm_type` cannot be 0.")
 

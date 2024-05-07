@@ -365,23 +365,23 @@ class TestPool2D_API(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             input = paddle.static.data(
-                name="input", shape=[2, 3, 32, 32], dtype="float32"
+                name="input", shape=[2, 3, 128, 128], dtype="float32"
             )
             norm_type = 2
             result = lp_pool2d(
                 input,
                 norm_type,
-                kernel_size=2,
-                stride=2,
+                kernel_size=4,
+                stride=4,
                 ceil_mode=True,
             )
 
-            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input_np = np.random.random([2, 3, 128, 128]).astype("float32")
             result_np = pool2D_forward_naive(
                 input_np,
-                ksize=[2, 2],
+                ksize=[4, 4],
                 paddings=[0, 0],
-                strides=[2, 2],
+                strides=[4, 4],
                 ceil_mode=True,
                 norm_type=norm_type,
                 pool_type='lp',
@@ -403,7 +403,7 @@ class TestPool2D_API(unittest.TestCase):
                 input,
                 norm_type,
                 kernel_size=2,
-                stride=2,
+                stride=1,
                 ceil_mode=False,
             )
 
@@ -411,7 +411,7 @@ class TestPool2D_API(unittest.TestCase):
                 input_np,
                 ksize=[2, 2],
                 paddings=[0, 0],
-                strides=[2, 2],
+                strides=[1, 1],
                 ceil_mode=False,
                 norm_type=norm_type,
                 pool_type='lp',
@@ -421,7 +421,7 @@ class TestPool2D_API(unittest.TestCase):
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
                 norm_type=norm_type,
                 kernel_size=2,
-                stride=2,
+                stride=1,
                 ceil_mode=False,
             )
             result = lp_pool2d_dg(input)
@@ -435,14 +435,14 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d(
                 input,
                 norm_type,
-                kernel_size=2,
+                kernel_size=[2, 4],
                 stride=2,
                 ceil_mode=False,
             )
 
             result_np = pool2D_forward_naive(
                 input_np,
-                ksize=[2, 2],
+                ksize=[2, 4],
                 paddings=[0, 0],
                 strides=[2, 2],
                 ceil_mode=False,
@@ -454,7 +454,7 @@ class TestPool2D_API(unittest.TestCase):
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
                 norm_type=norm_type,
-                kernel_size=2,
+                kernel_size=[2, 4],
                 stride=2,
                 ceil_mode=False,
             )
@@ -502,16 +502,16 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d(
                 input,
                 norm_type,
-                kernel_size=2,
-                stride=2,
+                kernel_size=5,
+                stride=3,
                 ceil_mode=True,
             )
 
             result_np = pool2D_forward_naive(
                 input_np,
-                ksize=[2, 2],
+                ksize=[5, 5],
                 paddings=[0, 0],
-                strides=[2, 2],
+                strides=[3, 3],
                 ceil_mode=True,
                 norm_type=norm_type,
                 pool_type='lp',
@@ -520,8 +520,8 @@ class TestPool2D_API(unittest.TestCase):
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
                 norm_type=norm_type,
-                kernel_size=2,
-                stride=2,
+                kernel_size=5,
+                stride=3,
                 ceil_mode=True,
             )
             result = lp_pool2d_dg(input)
@@ -601,6 +601,148 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_lp_float16_static(self, place):
+        if isinstance(place, base.CUDAPlace):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 64, 64], dtype="float16"
+                )
+                norm_type = 2
+                result = lp_pool2d(
+                    input,
+                    norm_type,
+                    kernel_size=4,
+                    stride=[2, 4],
+                    ceil_mode=True,
+                )
+
+                input_np = np.random.random([2, 3, 64, 64]).astype("float16")
+                result_np = pool2D_forward_naive(
+                    input_np,
+                    ksize=[4, 4],
+                    paddings=[0, 0],
+                    strides=[2, 4],
+                    ceil_mode=True,
+                    norm_type=norm_type,
+                    pool_type='lp',
+                )
+
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
+                np.testing.assert_allclose(
+                    fetches[0], result_np.astype(np.float16), rtol=1e-03
+                )
+
+    def check_lp_float64_static(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 64, 64], dtype="float64"
+            )
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=5,
+                stride=3,
+                ceil_mode=True,
+            )
+
+            input_np = np.random.random([2, 3, 64, 64]).astype("float64")
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[5, 5],
+                paddings=[0, 0],
+                strides=[3, 3],
+                ceil_mode=True,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
+    def check_lp_dygraph_float16(self, place):
+        if isinstance(place, base.CUDAPlace):
+            with base.dygraph.guard(place):
+                input_np = np.random.random([2, 3, 32, 32]).astype("float16")
+                input = paddle.to_tensor(input_np)
+                norm_type = 2
+                result = lp_pool2d(
+                    input,
+                    norm_type,
+                    kernel_size=3,
+                    stride=2,
+                    ceil_mode=False,
+                )
+
+                result_np = pool2D_forward_naive(
+                    input_np,
+                    ksize=[3, 3],
+                    paddings=[0, 0],
+                    strides=[2, 2],
+                    ceil_mode=False,
+                    norm_type=norm_type,
+                    pool_type='lp',
+                )
+                np.testing.assert_allclose(
+                    result.numpy(), result_np, rtol=1e-03
+                )
+
+                lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                    norm_type=norm_type,
+                    kernel_size=3,
+                    stride=2,
+                    ceil_mode=False,
+                )
+                result = lp_pool2d_dg(input)
+                np.testing.assert_allclose(
+                    result.numpy(), result_np.astype(np.float16), rtol=1e-03
+                )
+
+    def check_lp_dygraph_float64(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float64")
+            input = paddle.to_tensor(input_np)
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=5,
+                stride=3,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[5, 5],
+                paddings=[0, 0],
+                strides=[3, 3],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=5,
+                stride=3,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
     @test_with_pir_api
     def test_pool2d_static(self):
         paddle.enable_static()
@@ -608,6 +750,8 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
             self.check_lp_static_results(place)
+            self.check_lp_float64_static(place)
+            self.check_lp_float16_static(place)
         paddle.disable_static()
 
     def test_pool2d(self):
@@ -627,6 +771,8 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_dygraph_nhwc_results(place)
             self.check_lp_dygraph_results_norm_type_is_inf(place)
             self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
+            self.check_lp_dygraph_float64(place)
+            self.check_lp_dygraph_float16(place)
 
 
 class TestPool2DError_API(unittest.TestCase):

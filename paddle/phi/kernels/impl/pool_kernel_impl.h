@@ -81,6 +81,9 @@ void PoolRawKernel(const Context& ctx,
     true_type = "max";
   else
     true_type = pooling_type;
+  if (true_type == "lp" && norm_type == 0)
+    PADDLE_THROW(
+        errors::InvalidArgument("norm_type of LPPool op cannot be 0."));
 
   funcs::UpdatePadding(&paddings_,
                        global_pooling,

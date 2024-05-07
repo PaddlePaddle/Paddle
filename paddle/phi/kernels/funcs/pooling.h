@@ -81,17 +81,11 @@ class LPPool {
     return static_cast<T>(0);
   }
   DEVICE inline void compute(const T& x, T* y UNUSED) {
-    if (norm_type != 0) {
-      intermediate_res += static_cast<MT>(powf(x, norm_type));
-    }
+    intermediate_res += static_cast<MT>(powf(x, norm_type));
   }
 
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
-    if (norm_type == 0) {
-      *y = static_cast<T>(1);
-    } else {
-      *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
-    }
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
 
@@ -124,12 +118,9 @@ class LPPoolGrad {
   HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
   HOSTDEVICE inline void compute(
       const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
-    if (norm_type != 0) {
-      *dx +=
-          static_cast<T>(static_cast<double>(dy) *
-                         powf(static_cast<double>(x) / static_cast<double>(y),
-                              norm_type - 1.0f));
-    }
+    *dx += static_cast<T>(static_cast<double>(dy) *
+                          powf(static_cast<double>(x) / static_cast<double>(y),
+                               norm_type - 1.0f));
   }
 };
 
@@ -294,18 +285,6 @@ class MaxPool2dGradFunctor {
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
-
-// template <typename Context, typename PoolProcess, typename T>
-// class LPPool2dFunctor {
-//  public:
-//   void operator()(const Context& context,
-//                   const DenseTensor& input,
-//                   const std::vector<int>& ksize,
-//                   const std::vector<int>& strides,
-//                   const std::string data_format,
-//                   DenseTensor* output,
-//                   PoolProcess pool_compute);
-// };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename PoolProcess, typename T>

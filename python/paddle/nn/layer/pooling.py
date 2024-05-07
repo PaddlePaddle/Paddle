@@ -132,6 +132,7 @@ class AvgPool2D(Layer):
             Output(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
                 Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
 
+
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
@@ -321,6 +322,100 @@ class AvgPool3D(Layer):
         )
 
 
+class LPPool1D(Layer):
+    r"""
+    This operation applies a 1D power-average pooling over an input signal composed
+    of several input planes, based on the input, output_size, return_mask parameters.
+    Input(X) and output(Out) are in NCL format, where N is batch
+    size, C is the number of channels, L is the length of the feature.
+    The output tensor shape will be [N, C, output_size].
+
+    The output value of the layer with input size (N, C, L),
+    output (N, C, :math:`L_{out}`) and kernel_size ksize can be precisely described as
+    For average pool1d:
+
+    ..  math::
+
+        Output(N_i, C_i, l) = \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
+
+
+    Parameters:
+        norm_type(int|float): The number the power operation.
+        kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+            it must contain an integer.
+        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+            it must contain an integer. Default None, then stride will be equal to the kernel_size.
+        padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
+            1. A string in ['valid', 'same'].
+            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
+            4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
+        ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
+            and width. If it is set to False, the floor function will be used. The default value is False.
+        name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no nset and None by default.
+
+    Shape:
+        - x(Tensor): The input tensor of lp pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of lp pool1d  operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        A callable object of LPPool1D.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
+            >>> LPPool1D = nn.LPPool1D(kernel_size=2, stride=2, padding=0)
+            >>> pool_out = LPPool1D(data)
+            >>> print(pool_out.shape)
+            [1, 3, 16]
+
+    """
+
+    def __init__(
+        self,
+        norm_type,
+        kernel_size,
+        stride=None,
+        padding=0,
+        ceil_mode=False,
+        name=None,
+    ):
+        super().__init__()
+        self.norm_type = float(norm_type)
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.name = name
+
+    def forward(self, x):
+        out = F.lp_pool1d(
+            x,
+            self.norm_type,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.ceil_mode,
+            self.name,
+        )
+        return out
+
+    def extra_repr(self):
+        return 'norm_type={norm_type}, kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
+
+
 class LPPool2D(Layer):
     r"""
     This operation applies 2D power-average pooling over input features based on the input,
@@ -368,13 +463,13 @@ class LPPool2D(Layer):
             Usually name is no need to set and None by default.
 
     Shape:
-        - x(Tensor): The input tensor of avg pool2d operator, which is a 4-D tensor.
+        - x(Tensor): The input tensor of lp pool2d operator, which is a 4-D tensor.
           The data type can be float32, float64.
-        - output(Tensor): The output tensor of avg pool2d  operator, which is a 4-D tensor.
+        - output(Tensor): The output tensor of lp pool2d  operator, which is a 4-D tensor.
           The data type is same as input x.
 
     Returns:
-        A callable object of AvgPool2D.
+        A callable object of LPPool2D.
 
     Examples:
         .. code-block:: python
