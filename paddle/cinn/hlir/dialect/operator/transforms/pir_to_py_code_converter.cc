@@ -29,10 +29,12 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 
 namespace cinn::dialect::ir {
@@ -138,69 +140,14 @@ struct PirToPyCodeConverterHelper {
     return ret;
   }
 
-  template <typename DoEachOpT>
-  void WalkOp(const pir::Block& block, const DoEachOpT& DoEachOp) {
-    for (const auto& block_op : block) {
-      auto* mut_op = const_cast<pir::Operation*>(&block_op);
-      mut_op->Walk([&](pir::Operation* op) {
-        const auto& const_op = *op;
-        DoEachOp(const_op);
-      });
-    }
-  }
-
-  template <typename DoEachBlockT>
-  void WalkBlock(const pir::Block& block, const DoEachBlockT& DoEachBlock) {
-    for (const auto& block_op : block) {
-      auto* mut_op = const_cast<pir::Operation*>(&block_op);
-      mut_op->Walk([&](pir::Block* block) {
-        const auto& const_block = *block;
-        DoEachBlock(const_block);
-      });
-    }
-    DoEachBlock(block);
-  }
-
   std::vector<pir::Value> GetFreeVars(const pir::Block& block) {
-    const auto internal_values = [&] {
-      std::unordered_set<pir::Value> internal_values;
-      WalkOp(block, [&](const pir::Operation& op) {
-        for (int i = 0; i < op.num_results(); ++i) {
-          internal_values.insert(op.result(i));
-        }
-      });
-      return internal_values;
-    }();
-    const auto args = [&] {
-      std::unordered_set<pir::Value> args;
-      WalkBlock(block, [&args](const pir::Block& sub_block) {
-        args.insert(sub_block.args().begin(), sub_block.args().end());
-      });
-      return args;
-    }();
-    const auto kwargs = [&] {
-      std::unordered_set<pir::Value> kwargs;
-      WalkBlock(block, [&kwargs](const pir::Block& sub_block) {
-        for (const auto& [_, value] : sub_block.kwargs()) {
-          kwargs.insert(value);
-        }
-      });
-      return kwargs;
-    }();
     std::vector<pir::Value> inputs;
-    WalkOp(block, [&](const pir::Operation& op) {
-      for (int i = 0; i < op.num_operands(); ++i) {
-        pir::Value input = op.operand_source(i);
-        if (!input) continue;
-        if (internal_values.count(input)) continue;
-        if (args.count(input)) continue;
-        if (kwargs.count(input)) continue;
-        if (std::find(inputs.begin(), inputs.end(), input) != inputs.end()) {
-          continue;
-        }
-        inputs.push_back(input);
-      }
-    });
+    for (const auto& value : GetUsedExternalValue(block)) {
+      if (!value) continue;
+      if (std::find(inputs.begin(), inputs.end(), value) != inputs.end())
+        continue;
+      inputs.push_back(value);
+    }
     return inputs;
   }
 
