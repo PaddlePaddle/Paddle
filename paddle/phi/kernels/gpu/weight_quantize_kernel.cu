@@ -37,7 +37,6 @@ void WeightQuantizeKernel(const Context& dev_ctx,
           "Currently, group_size only support -1(per-channel), 64 or 128."));
 
   DenseTensor quanted_x;
-  dev_ctx.template Alloc<int8_t>(out);
   size_t m = x.dims()[0];
   size_t n = x.dims()[1];
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
@@ -52,19 +51,21 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
     dev_ctx.template Alloc<int8_t>(&quanted_x);
     dev_ctx.template Alloc<float>(scale);
+    dev_ctx.template Alloc<int8_t>(out);
     std::vector<int> axis = {1, 0};
     funcs::Transpose<Context, int8_t, 2> trans;
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<float>(),
-                                 weight_shape
+                                 weight_shape,
                                  algo);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
     dev_ctx.template Alloc<int8_t>(&quanted_x);
     dev_ctx.template Alloc<T>(scale);
+    dev_ctx.template Alloc<int8_t>(out);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
@@ -78,8 +79,11 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 arch,
                                 algo);
   } else if (algo == "weight_only_int4") {
-    quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n / 2)});
+    quanted_x.Resize({static_cast<int64_t>(m / 2), static_cast<int64_t>(n)});
     dev_ctx.template Alloc<int8_t>(&quanted_x);
+    dev_ctx.template Alloc<T>(scale);
+    out->Resize({static_cast<int64_t>(n), static_cast<int64_t>(m / 2)});
+    dev_ctx.template Alloc<int8_t>(out);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
