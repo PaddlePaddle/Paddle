@@ -279,7 +279,7 @@ class TestEmptyError(unittest.TestCase):
             dtype = 'uint8'
             result = paddle.empty_like(x, dtype=dtype)
 
-        self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':
