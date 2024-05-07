@@ -113,7 +113,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   const std::vector<int64_t> out_shape = common::vectorize(out.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(out_shape.size());
-  const TensorDistAttr& out_dist_attr_src = out.dist_attr();
+  TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
