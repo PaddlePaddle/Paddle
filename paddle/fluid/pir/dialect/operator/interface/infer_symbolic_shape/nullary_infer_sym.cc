@@ -292,9 +292,20 @@ bool GaussianOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Currently shape must comes from FullIntArrayOp in GaussianOp's "
-        "InferSymbolicShape."));
+    pir::Value operand_source = op->operand_source(0);
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(operand_source);
+    PADDLE_ENFORCE_EQ(
+        operand_shape_or_data.data().has_value(),
+        true,
+        common::errors::InvalidArgument(
+            "The data of input dim_expr shape is null. When input of empty op "
+            "is a tensor, the data of input dim_expr shape must have value."));
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::TensorShapeOrDataDimExprs{
+            operand_shape_or_data.data().value()});
     return true;
   }
 }
