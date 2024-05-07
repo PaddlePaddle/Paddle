@@ -378,6 +378,8 @@ class RunnableProgram:
                 ):
                     old_name = name_defining_op.attrs()['output_name']
                     new_name = value2name[ufset.find_root(value)]
+                    if old_name == new_name:
+                        continue
                     paddle.core.pir.reset_shadow_output_name(
                         name_defining_op, new_name
                     )
@@ -385,10 +387,13 @@ class RunnableProgram:
                         continue
                     block = program2.global_block()
                     kwargs = block.kwargs()
-                    if old_name in kwargs and new_name not in kwargs:
-                        new_value = block.add_kwarg(
-                            new_name, kwargs[old_name].type()
-                        )
+                    if old_name in kwargs:
+                        if new_name not in kwargs:
+                            new_value = block.add_kwarg(
+                                new_name, kwargs[old_name].type()
+                            )
+                        else:
+                            new_value = kwargs[new_name]
                         kwargs[old_name].replace_all_uses_with(new_value)
                         block.erase_kwarg(old_name)
 

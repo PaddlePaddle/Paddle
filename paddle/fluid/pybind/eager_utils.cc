@@ -1083,6 +1083,14 @@ PyObject* ToPyObject(const phi::DataType& dtype) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
+  PyObject* result = PyList_New((Py_ssize_t)dtypes.size());
+  for (size_t i = 0; i < dtypes.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(dtypes[i]));
+  }
+  return result;
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
