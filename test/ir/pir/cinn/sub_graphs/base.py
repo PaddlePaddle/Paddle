@@ -25,8 +25,8 @@ class TestBase(unittest.TestCase):
         self.net = None
         self.inputs = None
         self.input_specs = None
-        self.with_prim = False
-        self.with_cinn = False
+        self.with_prim = True
+        self.with_cinn = True
         self.atol = 1e-6
         # override customized settting
         self.init()
@@ -54,6 +54,7 @@ class TestBase(unittest.TestCase):
                     net, full_graph=True, input_spec=self.input_specs
                 )
         paddle.seed(123)
+        net.eval()
         outs = net(*self.inputs)
         return outs
 
