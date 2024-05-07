@@ -1671,6 +1671,13 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
+- op : global_gather
+  backward : global_gather_grad
+  inputs :
+    x : X
+  outputs:
+    out : Out
+
 - op : global_scatter
   inputs :
     {x : X}

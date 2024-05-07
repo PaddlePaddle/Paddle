@@ -33,6 +33,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_pull_sparse_v2_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_random_routing_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_limit_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_global_scatter_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_global_gather_translator)
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INTERP_CASES ${DISTRIBUTED_OP_TRANSLATOR_TEST})

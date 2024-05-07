@@ -20,12 +20,12 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestGlobalScatterOpTranslator(
+class TestGlobalGatherOpTranslator(
     test_op_translator.TestOpWithBackwardTranslator
 ):
     def append_op(self):
-        self.forward_op_type = "global_scatter"
-        self.backward_op_type = "global_gather"
+        self.forward_op_type = "global_gather"
+        self.backward_op_type = "global_scatter"
         x = paddle.ones(
             shape=(
                 1,
