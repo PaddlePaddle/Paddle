@@ -708,6 +708,18 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cudnn_lstm
+  args: (Tensor x, Tensor init_h, Tensor init_c, Tensor w, Tensor[] weight_list, Tensor sequence_length, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0)
+  output: Tensor (out), Tensor (last_h), Tensor (last_c), Tensor (reserve), Tensor (state_out)
+  infer_meta:
+    func: CudnnLSTMInferMeta
+  kernel:
+    func: cudnn_lstm
+    data_type: x
+  optional: w, weight_list, sequence_length
+  intermediate: reserve
+  backward: cudnn_lstm_grad
+
 - op : cummax
   args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
@@ -1097,6 +1109,18 @@
   backward : flash_attn_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : flash_attn_qkvpacked
+  args : (Tensor qkv, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset, attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_qkvpacked
+    data_type : qkv
+  backward : flash_attn_qkvpacked_grad
+
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -1109,6 +1133,19 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+
+- op : flash_attn_varlen_qkvpacked
+  args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional :  fixed_seed_offset , attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_varlen_qkvpacked
+    data_type : qkv
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_varlen_qkvpacked_grad
 
 - op : flash_attn_with_sparse_mask
   args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -3225,6 +3262,15 @@
     func : yolo_box
     data_type : x
 
+- op : yolo_box_head
+  args : (Tensor x, int[] anchors, int class_num)
+  output : Tensor(out)
+  infer_meta :
+    func : YoloBoxHeadInferMeta
+  kernel :
+    func : yolo_box_head
+    data_type : x
+
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -3236,3 +3282,12 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: moe
+  args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
+    str act_type = "gelu")
+  output: Tensor (out)
+  infer_meta:
+    func: MoeInferMeta
+  kernel:
+    func: moe

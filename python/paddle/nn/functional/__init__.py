@@ -87,6 +87,8 @@ from .extension import (
 )
 from .flash_attention import (
     flash_attention_with_sparse_mask,
+    flash_attn_qkvpacked,
+    flash_attn_varlen_qkvpacked,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
@@ -279,5 +281,7 @@ __all__ = [
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
     'flash_attention_with_sparse_mask',
+    'flash_attn_qkvpacked',
+    'flash_attn_varlen_qkvpacked',
     'group_norm',
 ]

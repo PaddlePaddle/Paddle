@@ -301,6 +301,12 @@ inline T AmpAutoCast(const std::string& input_name,
           input_name == "Ln1Scale" || input_name == "Ln1Bias") {
         return input;
       }
+      if (input_name == "ln_scale" || input_name == "ln_bias" ||
+          input_name == "ln_scale_2" || input_name == "ln_bias_2" ||
+          input_name == "ln1_scale" || input_name == "ln1_bias" ||
+          input_name == "ln2_scale" || input_name == "ln2_bias") {
+        return input;
+      }
     }
   }
   if (NeedCast(input, dst_dtype)) {
