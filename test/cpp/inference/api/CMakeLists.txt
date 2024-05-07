@@ -612,16 +612,32 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     # build test binary to be used in subsequent tests
     inference_analysis_api_test_build(${LEXICAL_TEST_APP}
                                       ${LEXICAL_TEST_APP_SRC})
-
+    # run lexcial analysis test
+    inference_analysis_api_lexical_test_run(
+      test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
+      ${GRU_DATA_PATH})
+    # run bfloat16 lexical analysis test
+    inference_analysis_api_lexical_bfloat16_test_run(
+      test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
+      ${GRU_DATA_PATH})
+    # run post-training quantization lexical analysis test
+    inference_analysis_api_lexical_int8_test_run(
+      test_analyzer_lexical_gru_int8
+      ${LEXICAL_TEST_APP}
+      ${GRU_MODEL_PATH}
+      ${GRU_DATA_PATH}
+      true # enable_int8_ptq
+      false # enable_int8_qat
+      false) # fuse_multi_gru
     # run post-training quantization lexical analysis test with multi_gru fuse
-    # inference_analysis_api_lexical_int8_test_run(
-    #  test_analyzer_lexical_gru_int8_multi_gru
-    #  ${LEXICAL_TEST_APP}
-    #  ${GRU_MODEL_PATH}
-    #  ${GRU_DATA_PATH}
-    #  true # enable_int8_ptq
-    #  false # enable_int8_qat
-    #  true) # fuse_multi_gru
+    inference_analysis_api_lexical_int8_test_run(
+      test_analyzer_lexical_gru_int8_multi_gru
+      ${LEXICAL_TEST_APP}
+      ${GRU_MODEL_PATH}
+      ${GRU_DATA_PATH}
+      true # enable_int8_ptq
+      false # enable_int8_qat
+      true) # fuse_multi_gru
 
     # run qat gru test
     set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
