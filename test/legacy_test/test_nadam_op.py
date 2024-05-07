@@ -461,7 +461,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.NAdam(0.01, parameters=model.parameters())
+        optimizer = paddle.optimizer.NAdam(0.1, parameters=model.parameters())
         optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
@@ -491,7 +491,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.NAdam(0.01)
+        optimizer = paddle.optimizer.NAdam(0.1)
         optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
