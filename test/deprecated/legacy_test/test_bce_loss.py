@@ -256,7 +256,9 @@ class TestBceLossOp(OpTest):
         self.init_test_dtype()
         self.init_test_case()
         self.op_type = "bce_loss"
+        self.prim_op_type = "comp"
         self.python_api = bce_wrapper
+        self.public_python_api = bce_wrapper
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype(self.dtype)
         label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
         output_np = bce_loss(input_np, label_np)
@@ -265,7 +267,7 @@ class TestBceLossOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -289,7 +291,7 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFP16(TestBceLossOp):
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
