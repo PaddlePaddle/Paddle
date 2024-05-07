@@ -10,8 +10,6 @@ math_library(concat_and_split DEPS phi common)
 math_library(context_project DEPS phi common)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
-math_library(sample_prob)
-math_library(sampler DEPS phi common)
 
 if(WITH_XPU)
   math_library(beam_search DEPS phi common beam_search_xpu)
