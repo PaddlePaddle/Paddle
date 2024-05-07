@@ -50,7 +50,9 @@ class FusedWeightOnlyLinearWithBiasPattern
   FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
                                        std::string algo,
                                        int sm_version)
-      : reverse_add_(reverse_add), algo_(std::move(algo)), sm_version_(sm_version) {}
+      : reverse_add_(reverse_add),
+        algo_(std::move(algo)),
+        sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";

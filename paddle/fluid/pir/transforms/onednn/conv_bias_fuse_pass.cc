@@ -32,9 +32,9 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
   std::string fused_conv_name_;
 
  public:
-  ConvBiasFusePattern(std::string conv_name,
-                      std::string fused_conv_name)
-      : conv_name_(std::move(conv_name)), fused_conv_name_(std::move(fused_conv_name)) {}
+  ConvBiasFusePattern(std::string conv_name, std::string fused_conv_name)
+      : conv_name_(std::move(conv_name)),
+        fused_conv_name_(std::move(fused_conv_name)) {}
 
   std::string name() const override { return "ConvBiasFusePattern"; }
 
