@@ -244,11 +244,12 @@ def fused_allreduce_gradients(parameter_list, hcg):
     if hcg is not None:
         dp_enabled = hcg.get_data_parallel_world_size() > 1
         sep_enabled = hcg.get_sep_parallel_world_size() > 1
+        cp_enabled = hcg.get_cp_parallel_world_size() > 1
         assert (
-            dp_enabled or sep_enabled
-        ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
+            dp_enabled or sep_enabled or cp_enabled
+        ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}, cp_enabled {cp_enabled}"
         group = None
-        # sep all reduce is not scaled
+        # sep/cp all reduce is not scaled
         scale = 1.0
         if dp_enabled:
             group = hcg.get_data_parallel_group()
@@ -257,8 +258,12 @@ def fused_allreduce_gradients(parameter_list, hcg):
             sep_group = hcg.get_sep_parallel_group()
             dp_sep_group = hcg.get_dp_sep_parallel_group()
             group = sep_group if group is None else dp_sep_group
+        if cp_enabled:
+            cp_group = hcg.get_cp_parallel_group()
+            dp_cp_group = hcg.get_dp_cp_parallel_group()
+            group = cp_group if group is None else dp_cp_group
 
-    logger.debug("dp or sep start fuse allreduce gradients")
+    logger.debug("dp or sep/cp start fuse allreduce gradients")
     fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
 
 
@@ -279,6 +284,12 @@ def broadcast_sep_parameters(model, hcg):
     src_rank = hcg.get_sep_parallel_group_src_rank()
     sync_params_buffers(model, sep_group, src_rank, is_model_parallel=False)
 
+def broadcast_cp_parameters(model, hcg):
+    # TODO TO save memory, use un-fused broadcast to avoid potential OOM
+    logger.debug("cp start init parameters sync")
+    cp_group = hcg.get_cp_parallel_group()
+    src_rank = hcg.get_cp_parallel_group_src_rank()
+    sync_params_buffers(model, cp_group, src_rank, is_model_parallel=False)
 
 def unwrap_optimizer(optimizer, optimizer_instances=()):
     _inner_opt = optimizer

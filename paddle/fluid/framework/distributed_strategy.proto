@@ -105,6 +105,7 @@ message HybridConfig {
   optional MpConfig mp_configs = 6;
   optional PpConfig pp_configs = 7;
   optional DygraphShardingConfig sharding_configs = 8;
+  optional int32 cp_degree = 9 [ default = 1 ];
 }
 
 message AMPConfig {

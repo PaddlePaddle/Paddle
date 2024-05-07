@@ -22,6 +22,7 @@ from .meta_parallel import (
     PipelineParallelWithInterleave,
     PipelineParallelWithInterleaveFthenB,
     SegmentParallel,
+    ContextParallel,
     ShardingParallel,
     TensorParallel,
 )
@@ -149,6 +150,8 @@ def distributed_model(model):
         )
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEGMENT_PARALLEL:
         model = SegmentParallel(model, fleet_env._hcg, strategy=strategy)
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.CONTEXT_PARALLEL:
+        model = ContextParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:

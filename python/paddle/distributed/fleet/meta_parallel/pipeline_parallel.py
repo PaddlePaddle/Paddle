@@ -26,6 +26,7 @@ from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
+    broadcast_cp_parameters,
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
@@ -156,6 +157,7 @@ class PipelineParallel(MetaParallelBase):
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sep_parallel = self._hcg.get_sep_parallel_world_size() > 1
+        self.use_cp_parallel = self._hcg.get_cp_parallel_world_size() > 1
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
@@ -182,9 +184,11 @@ class PipelineParallel(MetaParallelBase):
 
         self.dp_group = self._hcg.get_data_parallel_group()
 
-        # fused sep and dp
+        # fused sep/cp and dp
         if self.use_sep_parallel:
             self.dp_group = self._hcg.get_dp_sep_parallel_group()
+        if self.use_cp_parallel:
+            self.dp_group = self._hcg.get_dp_cp_parallel_group()
 
         self.sharding_group = self._hcg.get_sharding_parallel_group()
 
@@ -311,6 +315,10 @@ class PipelineParallel(MetaParallelBase):
         if self.use_sep_parallel:
             logger.info("start broadcast sep parameters")
             broadcast_sep_parameters(self._layers, self._hcg)
+
+        if self.use_cp_parallel:
+            logger.info("start broadcast cp parameters")
+            broadcast_cp_parameters(self._layers, self._hcg)
 
         if self.use_sharding_parallel:
             logger.info("start broadcast sharding parameters")
