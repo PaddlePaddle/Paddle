@@ -90,7 +90,7 @@ __global__ void weight_permute_kernel_wint4(const int8_t* input_data_dev,
                      (temp_k_expr_2 + 1) % 2 * k_mod_8 * 2 / 2 +
                      temp_k_expr_1 * temp_k_expr_2) % 8 * 2 + 
                      (k_id % 16) / 8 + k_id / 16 * 16;
-    int permute_index = permute_kk % 32 + permute_kk / 32 * 128 +
+    int permute_index = permute_kk % 32 + permute_kk / 32 * 128 + 
                         32 * (n_id % 4) + total_k * 4 * (n_id / 4);
     int8_t shift_quant_weight = input_data_dev[linear_idx];
     output_data_dev[permute_index] =
@@ -189,8 +189,8 @@ __global__ void weight_interleave_add_bias_kernel_wint4(
     uint8_t offseted_weight = 0;
     uint8_t shift_quant_weight = static_cast<uint8_t>(
         static_cast<int32_t>(input_data_dev[linear_idx]));
-    uint8_t shift_quant_weight_low = ((shift_quant_weight & 0x0F) + 7) & 0x0F;
-    uint8_t shift_quant_weight_high = ((shift_quant_weight >> 4 & 0x0F) + 7) & 0x0F;
+    uint8_t shift_quant_weight_low = ((shift_quant_weight & 0x0F) + 8) & 0x0F;
+    uint8_t shift_quant_weight_high = ((shift_quant_weight >> 4 & 0x0F) + 8) & 0x0F;
     offseted_weight = shift_quant_weight_low | (shift_quant_weight_high << 4);
     output_data_dev[interleave_idx] =
         *reinterpret_cast<int8_t*>(&offseted_weight);
@@ -206,6 +206,7 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
                         const std::string& algo) {
   auto total_k = shape[0];
   auto total_n = shape[1];
+  printf("total_k: %d, total_n: %d", total_k, total_n);
   auto numel = total_k * total_n;
   auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
@@ -213,6 +214,7 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   if ((arch == 80) || (arch == 86) || (arch == 75)) {
     if (algo == "weight_only_int4") {
       total_k /= 2;
+      numel /= 2;
       weight_permute_kernel_wint4<<<grid_size, block_size>>>(
         input_data, output_data, numel, total_k, total_n);
     } else {
@@ -222,6 +224,7 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   } else if (arch == 70) {
     if (algo == "weight_only_int4") {
       total_k /= 2;
+      numel /= 2;
       weight_permute_kernel_wint4<<<grid_size, block_size>>>(
         input_data, output_data, numel, total_k, total_n);
     } else {

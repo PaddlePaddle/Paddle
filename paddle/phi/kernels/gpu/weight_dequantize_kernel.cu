@@ -34,12 +34,12 @@ void WeightDequantizeKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUTLASS)
   auto out_dims = out->dims();
   if (algo == "weight_only_int4") {
-    out->Resize({out_dims[0], out_dims[1] * 2});
+    out->Resize({out_dims[1], out_dims[0] * 2});
   }
   dev_ctx.template Alloc<T>(out);
   WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, group_size, out);
   if (algo == "weight_only_int4") {
-    out->Resize({out_dims[1], out_dims[0] * 2});
+    out->Resize({out_dims[1] , out_dims[0] * 2});
   } else {
     out->Resize({{out_dims[1], out_dims[0]}});
   }
