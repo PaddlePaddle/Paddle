@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/yolo_box_util.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T>
 inline __device__ T SigmoidGPU(const T& x) {
@@ -63,45 +65,37 @@ __global__ void YoloBoxHeadCudaKernel(const T* input,
   }
 }
 
-template <typename T, typename DeviceContext>
-class YoloBoxHeadKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<phi::DenseTensor>("X");
-    auto* out = context.Output<phi::DenseTensor>("Out");
-    auto anchors = context.Attr<std::vector<int>>("anchors");
-    auto class_num = context.Attr<int>("class_num");
-    auto& device_ctx = context.template device_context<phi::GPUContext>();
-    auto x_dims = x->dims();
-    const int batch_size = x_dims[0];
-    const int h = x_dims[2];
-    const int w = x_dims[3];
-    const int grid_size_x = w;
-    const int grid_size_y = h;
-    const int anchors_num = anchors.size() / 2;
-    const T* input_data = x->data<T>();
-    T* output_data = device_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    auto stream = device_ctx.stream();
-    const int volume = x_dims[1] * h * w;
-    dim3 block(16, 16, 4);
-    dim3 grid((grid_size_x / block.x) + 1,
-              (grid_size_y / block.y) + 1,
-              (anchors_num / block.z) + 1);
-    for (int n = 0; n < batch_size; n++) {
-      YoloBoxHeadCudaKernel<<<grid, block, 0, stream>>>(
-          input_data + n * volume,
-          output_data + n * volume,
-          grid_size_x,
-          grid_size_y,
-          class_num,
-          anchors_num);
-    }
+template <typename T, typename Context>
+void YoloBoxHeadKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const std::vector<int>& anchors,
+                       int class_num,
+                       DenseTensor* out) {
+  auto x_dims = x.dims();
+  const int batch_size = x_dims[0];
+  const int h = x_dims[2];
+  const int w = x_dims[3];
+  const int grid_size_x = w;
+  const int grid_size_y = h;
+  const int anchors_num = anchors.size() / 2;
+  const T* input_data = x.data<T>();
+  T* output_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+  auto stream = dev_ctx.stream();
+  const int volume = x_dims[1] * h * w;
+  dim3 block(16, 16, 4);
+  dim3 grid((grid_size_x / block.x) + 1,
+            (grid_size_y / block.y) + 1,
+            (anchors_num / block.z) + 1);
+  for (int n = 0; n < batch_size; n++) {
+    YoloBoxHeadCudaKernel<<<grid, block, 0, stream>>>(input_data + n * volume,
+                                                      output_data + n * volume,
+                                                      grid_size_x,
+                                                      grid_size_y,
+                                                      class_num,
+                                                      anchors_num);
   }
-};
+}
+}  // namespace phi
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(
-    yolo_box_head, GPU, ALL_LAYOUT, ops::YoloBoxHeadKernel, float) {}
+PD_REGISTER_KERNEL(
+    yolo_box_head, GPU, ALL_LAYOUT, phi::YoloBoxHeadKernel, float) {}

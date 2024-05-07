@@ -621,6 +621,12 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaTensor* scores,
                       MetaConfig config = MetaConfig());
 
+void YoloBoxHeadInferMeta(const MetaTensor& x,
+                          const std::vector<int>& anchors,
+                          int class_num,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
+
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
