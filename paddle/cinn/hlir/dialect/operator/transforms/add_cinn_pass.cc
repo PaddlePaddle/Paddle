@@ -52,6 +52,7 @@
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
+COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -84,7 +85,9 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+  if (FLAGS_enable_fuse_parallel_matmul_pass) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
