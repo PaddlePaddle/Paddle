@@ -133,7 +133,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("q_slice_out2") = slice_q_1(pat.Tensor("q"), full_3(), full_4());
 
     scale_op({&pat.Tensor("q_slice_out2"), &full_op()},
-             {{&pat.Tensor("scale_out")}});
+             {&pat.Tensor("scale_out")});
 
     std::vector<const paddle::drr::Tensor *> combine_in;
     combine_in.push_back(&pat.Tensor("scale_out"));
@@ -157,7 +157,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         slice_k_1(pat.Tensor("k"), full_7(), full_14());
 
     scale_op_k({&pat.Tensor("k_slice_out2"), &full_op_1()},
-               {{&pat.Tensor("scale_out_k")}});
+               {&pat.Tensor("scale_out_k")});
 
     std::vector<const paddle::drr::Tensor *> combine_in_k;
     combine_in_k.push_back(&pat.Tensor("scale_out_k"));
