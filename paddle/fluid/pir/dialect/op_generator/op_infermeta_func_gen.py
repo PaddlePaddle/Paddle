@@ -281,9 +281,12 @@ def GenBuildOutputsPart2(
   }}
  """
 
+    # In cudnn_lstm operator, the output weight_list_grad requires the use of optional input weight_list,
+    # so "pir::VectorType {name}" outside the "if" block.
     CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_{name};
+  pir::VectorType {name};
   if ({name}_.impl() != nullptr) {{
-    pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>();
+    {name} = {name}_.type().dyn_cast<pir::VectorType>();
     for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
         if({name}[i].isa<paddle::dialect::DenseTensorType>()) {{
           auto {name}_type = {name}[i].dyn_cast<paddle::dialect::DenseTensorType>();

@@ -26,7 +26,7 @@ class Pass;
 IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
 
 void InferSymExprForBlock(const Block &block,
-                          ShapeConstraintIRAnalysis *shape_analysis);
+                          InferSymbolicShapeContext *infer_context);
 
 }  // namespace pir
 
