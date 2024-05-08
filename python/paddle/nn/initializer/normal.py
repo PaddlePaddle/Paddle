@@ -169,17 +169,23 @@ class TruncatedNormalInitializer(Initializer):
         loc (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
         scale (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
         seed (int, optional): random seed. Default is 0.
+        a (float, optional): The minimum cutoff value
+        b (float, optional): The maximum cutoff value
 
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(self, loc=0.0, scale=1.0, seed=0, a=-2.0, b=2.0):
         assert loc is not None
         assert scale is not None
         assert seed is not None
+        assert a is not None
+        assert b is not None
         super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
+        self._a = a
+        self._b = b
 
     def forward(self, var, block=None):
         """Initialize the input tensor with TruncatedNormal distribution.
@@ -222,6 +228,8 @@ class TruncatedNormalInitializer(Initializer):
                 self._mean,
                 self._std_dev,
                 self._seed,
+                self._a,
+                self._b,
                 out_dtype,
                 _current_expected_place(),
             )
@@ -245,6 +253,8 @@ class TruncatedNormalInitializer(Initializer):
                     "mean": self._mean,
                     "std": self._std_dev,
                     "seed": self._seed,
+                    "a": self._a,
+                    "b": self._b,
                 },
                 stop_gradient=True,
             )
@@ -269,6 +279,8 @@ class TruncatedNormal(TruncatedNormalInitializer):
     Args:
         mean (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
         std (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
+        a (float, optional): The minimum cutoff value
+        b (float, optional): The maximum cutoff value
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -305,7 +317,9 @@ class TruncatedNormal(TruncatedNormalInitializer):
              [[-0.11380529 -3.0696259 ]]])
     """
 
-    def __init__(self, mean=0.0, std=1.0, name=None):
+    def __init__(self, mean=0.0, std=1.0, a=-2.0, b=2.0, name=None):
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
-        super().__init__(loc=mean, scale=std, seed=0)
+        assert a is not None, 'a should not be None'
+        assert b is not None, 'b should not be None'
+        super().__init__(loc=mean, scale=std, seed=0, a=a, b=b)

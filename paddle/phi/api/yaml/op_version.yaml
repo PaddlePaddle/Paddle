@@ -490,6 +490,15 @@
         - delete_attr : dim2
           comment : The attribute 'dim2' is not recommend according to the specification 2.0.
 
+- op : truncated_gaussian_random
+  version :
+    - checkpoint : Upgrade truncated_gaussian_random add 2 new attribute [a, b]
+      action :
+        - add_attr : a
+          comment : the minimum cutoff value
+        - add_attr : b
+          comment : the maximum cutoff value
+
 - op : unique_consecutive
   version :
     - checkpoint : Upgrade unique_consecutive, add 2 outputs [Indices, Counts] and 3 attribute [return_inverse, return_counts, axis].
