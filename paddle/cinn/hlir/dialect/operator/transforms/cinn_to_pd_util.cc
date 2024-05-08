@@ -37,8 +37,8 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
 }
 
 const auto& handler_reduce_max_op =
-    [&](::pir::Operation* op,
-        const ::pir::Builder& builder) -> ::pir::Operation* {
+    [](::pir::Operation* op,
+       const ::pir::Builder& builder) -> ::pir::Operation* {
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
   auto cinn_op = op->dyn_cast<cinn::dialect::ReduceMaxOp>();
   auto attr = cinn_op.attributes();
