@@ -247,7 +247,7 @@ bool DiagonalOpInferSymbolicShape(
 }
 
 bool DistributeFpnProposalsOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();
   int32_t min_level =
       attributes.at("min_level").dyn_cast<pir::Int32Attribute>().data();
@@ -258,7 +258,7 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   symbol::DimExpr num_rois = [&]() {
     pir::Value rois_num = op->operand_source(1);
     const auto &rois_num_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(rois_num);
+        infer_context->GetShapeOrDataForValue(rois_num);
 
     PADDLE_ENFORCE_EQ(
         rois_num_shape_or_data.shape()[0],
@@ -290,7 +290,7 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
     } else {
       symbol::DimExpr last_dim = num_rois;
       for (int i = 0; i < num_levels - 1; i++) {
-        const auto &next_sym_name = shape_analysis->GetNextSymName();
+        const auto &next_sym_name = infer_context->GetNextSymName();
         std::vector<symbol::DimExpr> level_dim = {next_sym_name, 4};
         multi_rois_out_shape.emplace_back(
             symbol::TensorShapeOrDataDimExprs(level_dim));
@@ -314,15 +314,15 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
     return symbol::TensorShapeOrDataDimExprs({num_rois, 1});
   }();
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), multi_rois_out_shape);
-  shape_analysis->SetShapeOrDataForValue(op->result(1),
-                                         rois_num_per_level_out_shape);
-  shape_analysis->SetShapeOrDataForValue(op->result(2), restore_ind);
+  infer_context->SetShapeOrDataForValue(op->result(0), multi_rois_out_shape);
+  infer_context->SetShapeOrDataForValue(op->result(1),
+                                        rois_num_per_level_out_shape);
+  infer_context->SetShapeOrDataForValue(op->result(2), restore_ind);
   return true;
 }
 
-bool EinsumOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+bool EinsumOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
