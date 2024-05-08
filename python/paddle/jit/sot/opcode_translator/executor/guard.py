@@ -177,7 +177,7 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
 
 def stringify_pyobject(obj: object) -> tuple[str, dict[str, Any]]:
     if isinstance(obj, paddle.core.VarDesc.VarType):
-        return f"paddle.core.DataType({obj.value})", {"paddle": paddle}
+        return f"paddle.core.VarDesc.VarType({obj.value})", {"paddle": paddle}
     elif isinstance(obj, paddle.core.DataType):
         return f"paddle.core.DataType({obj.value})", {"paddle": paddle}
     # For builtin values
