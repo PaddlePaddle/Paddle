@@ -2387,6 +2387,7 @@
   kernel :
     func : random_routing
     data_type : prob
+  inplace : (topk_idx -> out)
 
 - op : real
   args : (Tensor x)
