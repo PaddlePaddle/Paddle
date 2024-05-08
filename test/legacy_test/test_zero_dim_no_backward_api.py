@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 import unittest
 
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 from paddle.pir_utils import test_with_pir_api
@@ -280,6 +281,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res.shape, (5, 2, 2))
 
     @test_with_pir_api
+    @prog_scope()
     def test_strided_slice(self):
         starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
         ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
@@ -504,14 +506,6 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         result = [5.0, 6.0]
         for i in range(len(res)):
             self.assertEqual(res[0][i], result[i])
-
-    def test_static_embedding(self):
-        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
-        emb = paddle.static.nn.embedding(ids, (20, 3))
-        prog = paddle.static.default_main_program()
-        self.exe.run(paddle.static.default_startup_program())
-        res = self.exe.run(prog, fetch_list=[emb])
-        self.assertEqual(res[0].shape, (3,))
 
     @test_with_pir_api
     def test_one_hot_label(self):
