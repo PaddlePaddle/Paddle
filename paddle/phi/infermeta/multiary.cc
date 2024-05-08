@@ -1209,6 +1209,7 @@ void CrfDecodingInferMeta(const MetaTensor& emission,
   } else {
     viterbi_path->set_dims({emission_dims[0], 1});
   }
+  viterbi_path->set_dtype(emission.dtype());
 }
 
 void CudnnLSTMInferMeta(
