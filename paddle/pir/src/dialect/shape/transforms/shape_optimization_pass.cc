@@ -189,7 +189,7 @@ void CheckInferSymWithInferMeta(
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
                      << infer_sym_shape.size() << "].";
-        VLOG(vlog_level) << print_stream.str();
+        LOG(ERROR) << print_stream.str();
         continue;
       }
 
@@ -205,7 +205,7 @@ void CheckInferSymWithInferMeta(
                 << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
             continue;
           }
 
@@ -218,7 +218,7 @@ void CheckInferSymWithInferMeta(
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
           }
         }
       }

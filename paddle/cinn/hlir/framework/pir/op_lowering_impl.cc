@@ -180,7 +180,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     bool apply_op_schedule,
     bool apply_group_schedule,
     bool apply_pass) {
-  VLOG(4) << "BucketLower Group : \n" << *group;
+  VLOG(0) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -1170,6 +1170,7 @@ void OpLowererImpl::CollectOutputInfo(
       const auto& dims = type_info.dims();
       if (::common::contain_unknown_dim(dims)) {  // dynamic shape
         const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+        // VLOG(0) << "#### out dynamic shape: " << sym_vec;
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);

@@ -40,4 +40,9 @@ IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
 IR_API std::unordered_set<std::string> CollectDimExprSymbols(
     const DimExpr& dim_expr);
 
+// IR_API bool IsDimExprGreaterThanOne(const DimExpr& dim_expr);
+
+IR_API std::pair<DimExpr, DimExpr> SimplifyDimExprEqualCstr(const DimExpr& lhs,
+                                                            const DimExpr& rhs);
+
 }  // namespace symbol

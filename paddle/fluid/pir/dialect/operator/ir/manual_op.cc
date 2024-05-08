@@ -4102,6 +4102,8 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
     output_data.emplace_back(large_shape.at(i));
   }
   for (size_t i = 0; i < small_shape.size(); ++i) {
+    const auto &lhs = large_shape.at(i + rank_gap);
+    const auto &rhs = small_shape.at(i);
     output_data.emplace_back(
         GetBroadcastDimExpr(large_shape.at(i + rank_gap), small_shape.at(i)));
   }

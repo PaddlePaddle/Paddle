@@ -17,6 +17,7 @@
  * something.
  */
 #pragma once
+#include <glog/logging.h>
 #include <cstring>
 #include <map>
 #include <string>
@@ -121,10 +122,10 @@ class UnionFindSet {
     parent_[Find(q)] = Find(p);
   }
 
-  std::vector<std::vector<T>> Clusters() const {
+  std::vector<std::vector<T>> Clusters() {
     std::unordered_map<T, std::vector<T>> clusters_map;
     for (auto it = parent_.begin(); it != parent_.end(); it++) {
-      clusters_map[it->second].emplace_back(it->first);
+      clusters_map[Find(it->first)].emplace_back(it->first);
     }
     std::vector<std::vector<T>> clusters;
     for (auto it = clusters_map.begin(); it != clusters_map.end(); it++) {

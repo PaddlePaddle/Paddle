@@ -537,18 +537,61 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
   os << ", inputs=";
+  pir::ShapeConstraintIRAnalysis &shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   auto operands = (*this)->operands_source();
   pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        // if (shape_analysis.HasShapeOrDataForValue(v)) {
+        //   os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() <<
+        //   ">";
+        // } else {
+        //   os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() <<
+        //   "]";
+        // }
+      },
       [&]() { os << ", "; });
   os << ") { \n";
   os << printer.indentation() << "^";
   pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        // if (shape_analysis.HasShapeOrDataForValue(v)) {
+        //   os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() <<
+        //   ">";
+        // } else {
+        //   os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() <<
+        //   "]";
+        // }
+      },
+      [&]() { os << ", "; });
+  os << "\n";
+  os << printer.indentation() << "@";
+  const auto &results = [&] {
+    std::vector<pir::Value> results;
+    for (uint32_t i = 0; i < num_results(); ++i) {
+      results.push_back(result(i));
+    }
+    return results;
+  }();
+  pir::detail::PrintInterleave(
+      results.begin(),
+      results.end(),
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        // if (shape_analysis.HasShapeOrDataForValue(v)) {
+        //   os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() <<
+        //   ">";
+        // } else {
+        //   os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() <<
+        //   "]";
+        // }
+      },
       [&]() { os << ", "; });
   os << "\n";
   printer.AddIndentation();
@@ -593,13 +636,13 @@ void WhileOp::VerifySig() {
                         "The result size (%d) not equal to input size(%d) + 1.",
                         num_results(),
                         input_size));
-  for (size_t index = 0; index < output_size; ++index) {
-    PADDLE_ENFORCE_EQ(
-        operand_type(index + 1),
-        result_type(index),
-        phi::errors::PreconditionNotMet(
-            "The (%d) result and operand type is not equal.", index));
-  }
+  // for (size_t index = 0; index < output_size; ++index) {
+  //   PADDLE_ENFORCE_EQ(
+  //       operand_type(index + 1),
+  //       result_type(index),
+  //       phi::errors::PreconditionNotMet(
+  //           "The (%d) result and operand type is not equal.", index));
+  // }
 }
 
 void WhileOp::VerifyRegion() {
@@ -761,7 +804,6 @@ bool WhileOp::InferSymbolicShape(
 
   pir::InferSymExprForBlock(body(), infer_context);
 
-  // add constraints for args
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
         infer_context->GetShapeOrDataForValue(body_args[i]).shape();

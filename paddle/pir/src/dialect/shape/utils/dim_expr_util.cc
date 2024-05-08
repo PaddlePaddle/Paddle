@@ -912,9 +912,36 @@ DimExpr Simplify(const DimExpr& expr) {
   return ret;
 }
 
+template <typename T>
+bool IsDimExprGTOne(const T& dim_expr) {
+  return false;
+}
+
+bool IsDimExprGTOne(const std::int64_t& dim_expr) { return dim_expr > 1; }
+
+bool IsDimExprGTOne(const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
+  for (const auto& expr : *(dim_expr.operands)) {
+    if (IsDimExprGTOne(expr)) return true;
+  }
+  return false;
+}
+
+bool IsDimExprGTOne(const symbol::Add<symbol::DimExpr>& dim_expr) {
+  return true;
+}
+
+bool IsDimExprGTOne(const symbol::DimExpr& dim_expr) {
+  return std::visit([](const auto& expr) { return IsDimExprGTOne(expr); },
+                    dim_expr.variant());
+}
+
 }  // namespace
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
+
+// bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
+//   return IsDimExprGTOne(dim_expr);
+// }
 
 }  // namespace symbol
 
@@ -1157,6 +1184,48 @@ std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   // clang-format on
   std::visit(lambdas, dim_expr.variant());
   return symbols;
+}
+
+int64_t GetConstValue(const symbol::Add<DimExpr>& add) {
+  int64_t ret = 0;
+  for (const auto& operand : *add.operands) {
+    if (operand.isa<std::int64_t>()) ret += operand.dyn_cast<std::int64_t>();
+  }
+  return ret;
+}
+
+symbol::List<symbol::DimExpr> GetSymbolExprs(const symbol::Add<DimExpr>& add) {
+  symbol::List<symbol::DimExpr> ret;
+  for (const auto& operand : *add.operands) {
+    if (!operand.isa<std::int64_t>()) {
+      ret->push_back(operand);
+    }
+  }
+  return ret;
+}
+
+std::pair<DimExpr, DimExpr> SimplifyDimExprEqualCstr(const DimExpr& lhs,
+                                                     const DimExpr& rhs) {
+  if (lhs.variant().index() != rhs.variant().index()) return {lhs, rhs};
+
+  if (lhs.isa<symbol::Add<DimExpr>>()) {
+    const auto& lhs_add = lhs.dyn_cast<symbol::Add<DimExpr>>();
+    const auto& rhs_add = rhs.dyn_cast<symbol::Add<DimExpr>>();
+
+    int64_t lhs_const = GetConstValue(lhs_add);
+    int64_t rhs_const = GetConstValue(rhs_add);
+    if (lhs_const != 0 && lhs_const == rhs_const) {
+      const symbol::List<symbol::DimExpr>& lhs_symbols =
+          GetSymbolExprs(lhs_add);
+      const symbol::List<symbol::DimExpr>& rhs_symbols =
+          GetSymbolExprs(rhs_add);
+      if (lhs_symbols->size() == 1 && rhs_symbols->size() == 1) {
+        return {lhs_symbols->at(0), rhs_symbols->at(0)};
+      }
+    }
+  }
+
+  return {lhs, rhs};
 }
 
 }  // namespace symbol

@@ -45,6 +45,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -86,7 +87,7 @@ void ApplyPdToCinnPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
-    pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -182,6 +183,7 @@ void ApplyCinnLowerPass(
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
   if (FLAGS_enable_cinn_accuracy_check) {
     VLOG(0) << "Enable CINN Accuracy Check Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
@@ -220,12 +222,24 @@ int64_t GetOpCount(const ::pir::Operation* op) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  std::cout << "Program before ApplyPdToCinnPass: \n" << *program << std::endl;
+
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyBuildGroupOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyBuildGroupOpPass(program, CreatePassManager);
   PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
   ApplyGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyDivideGroupOpToFusionOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
+  std::cout << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
   PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())

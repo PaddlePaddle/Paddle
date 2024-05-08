@@ -102,6 +102,8 @@ void GroupOp::VerifySig() {}
 void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   printer.PrintOpResult(op);
   os << " = " << name() << " [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
@@ -111,6 +113,9 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   for (auto& sub_op : GetOperators()) {
     os << "\n  ";
     printer.PrintOperation(sub_op);
+    for (const auto& v : sub_op->results()) {
+      os << " #<" << shape_analysis.GetShapeOrDataForValue(v) << "># ";
+    }
   }
   os << " \n }";
 }

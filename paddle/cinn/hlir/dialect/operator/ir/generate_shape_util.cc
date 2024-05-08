@@ -427,6 +427,9 @@ bool InputDimExprsAllSupported(
   const auto& AllSupported =
       [](const std::vector<symbol::DimExpr>& dim_exprs) -> bool {
     for (const auto& dim_expr : dim_exprs) {
+      if (!IsAtomic(dim_expr)) {
+        LOG(INFO) << "####### Unsupported dim_expr: " << dim_expr;
+      }
       if (!IsAtomic(dim_expr)) return false;
     }
     return true;

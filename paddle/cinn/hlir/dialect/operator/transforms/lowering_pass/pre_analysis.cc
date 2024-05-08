@@ -25,7 +25,7 @@ using cinn::hlir::framework::PirCompiler;
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   OpLoweringGroupPtr group_ptr = BuildOpLoweringGroup(fusion_op);
-  VLOG(6) << "Gather Group " << group_ptr->FuncName()
+  VLOG(1) << "Gather Group " << group_ptr->FuncName()
           << " for fusion_op : " << fusion_op->id();
   group_infos_->insert({fusion_op, group_ptr});
 }
