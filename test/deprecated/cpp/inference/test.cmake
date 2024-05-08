@@ -58,7 +58,8 @@ function(inference_download_and_uncompress_without_verify INSTALL_DIR URL
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
   set(EXTERNAL_PROJECT_NAME "extern_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
-  if(NOT TARGET EXTERNAL_PROJECT_NAME)
+  get_property(TARGET_EXIST GLOBAL PROPERTY ${EXTERNAL_PROJECT_NAME})
+  if(NOT ${TARGET_EXIST} STREQUAL EXIST)
     ExternalProject_Add(
       ${EXTERNAL_PROJECT_NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -72,6 +73,7 @@ function(inference_download_and_uncompress_without_verify INSTALL_DIR URL
                     tar xzf ${DOWNLOAD_NAME}
       UPDATE_COMMAND ""
       INSTALL_COMMAND "")
+    set_property(GLOBAL PROPERTY ${EXTERNAL_PROJECT_NAME} "EXIST")
   endif()
 endfunction()
 
