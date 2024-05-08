@@ -2047,9 +2047,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
             pycode_gen.extend_instrs(
                 origin_instrs[loop_body_start_idx:loop_body_end_idx]
             )
-            # for instr in origin_instrs[loop_body_start_idx:loop_body_end_idx]:
-            #     if instr.opname in ["LIST_APPEND", "MAP_ADD"]:
-            #         raise FallbackError("")
 
             # break should jump to this nop
             nop_for_break = pycode_gen.add_instr("NOP")
