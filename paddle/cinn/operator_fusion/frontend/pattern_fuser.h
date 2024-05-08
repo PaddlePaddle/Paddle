@@ -41,9 +41,4 @@ StmtPattern<FrontendStage> MergePatternImpl(
     const TrivialPattern<FrontendStage>& first,
     const TrivialPattern<FrontendStage>& second);
 
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const HorizontalFusionPattern<FrontendStage>& first,
-    const HorizontalFusionPattern<FrontendStage>& second);
-
 }  // namespace cinn::fusion

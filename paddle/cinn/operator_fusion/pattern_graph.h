@@ -241,8 +241,9 @@ struct MergeTrivialPatternOperation {
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    node->set_stmt_pattern(
-        HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
+    node->set_stmt_pattern(HorizontalFusionPattern<Phrase>(
+        {typename HorizontalFusionPattern<Phrase>::PaddingStmtPattern(
+            node->stmt_pattern(), {})}));
   }
 };
 
@@ -251,6 +252,7 @@ struct HorizontalFusionOperation {
   void operator()(PatternGraph<Phrase>* graph,
                   const PatternNodePtr<Phrase>& i,
                   const PatternNodePtr<Phrase>& j) {
+    VLOG(4) << "Start HorizontalFusionOperation";
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
         HorizontalFusionPattern<Phrase>::name(),
@@ -265,9 +267,13 @@ struct HorizontalFusionOperation {
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));
-    graph->MergeNode(i, j, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(i, j, MergePattern<Phrase>);
+    VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
+            << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
+    VLOG(4) << "After HorizontalFusionOperation, Graph is"
+            << graph->GraphInfo();
   }
 };
 
@@ -322,29 +328,25 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+template <typename T>
 struct HorizontalFusionConstrain {
-  template <typename T>
   bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& first,
-                  const PatternNodePtr<T>& second) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, first)) {
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, lhs)) {
       return false;
     }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, second)) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, rhs)) {
       return false;
     }
-    const auto& first_dim = first->sink_op()
-                                ->result(0)
-                                .type()
-                                .template dyn_cast<pir::DenseTensorType>()
-                                .dims();
-    const auto& second_dim = second->sink_op()
-                                 ->result(0)
-                                 .type()
-                                 .template dyn_cast<pir::DenseTensorType>()
-                                 .dims();
-    return graph.topo_manager().CanFuse(first, second) &&
-           first_dim == second_dim;
+    const auto& lhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
+    const auto& rhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
+
+    return graph.topo_manager().CanFuse(lhs, rhs) &&
+           IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
+                                rhs_pattern.padding_patterns_.back().pattern);
   }
 };
 
@@ -387,11 +389,22 @@ struct And {
   }
 };
 
-template <typename A, typename B>
-struct Or {
+template <typename... Args>
+struct Or {};
+
+template <typename A>
+struct Or<A> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) || B()(graph, node);
+    return A()(graph, node);
+  }
+};
+
+template <typename A, typename... Args>
+struct Or<A, Args...> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node) || Or<Args...>()(graph, node);
   }
 };
 
