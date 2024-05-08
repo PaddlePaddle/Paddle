@@ -671,7 +671,6 @@ if(WITH_DISTRIBUTE)
            glog
            index_sampler
            index_wrapper
-           sampler
            index_dataset_proto
            lod_rank_table
            framework_io
