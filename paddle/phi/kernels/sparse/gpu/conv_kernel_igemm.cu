@@ -152,6 +152,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   phi::funcs::TransposeGPUKernelDriver<T>(
       dev_ctx, kernel, perm, &kernel_transpose);
 
+#ifdef PADDLE_WITH_CUDA
   conv_forward_implicit_gemm_cuda(dev_ctx,
                                   x.values(),
                                   kernel_transpose,
@@ -159,6 +160,10 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                                   out->nnz(),
                                   out_channels,
                                   *(out->mutable_values()));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "conv_forward_implicit_gemm_cuda is only supported on CUDA."));
+#endif
 }
 
 /**
@@ -179,6 +184,7 @@ void Conv3dImplicitGemmKernel(const Context& dev_ctx,
                               const bool subm,
                               const std::string& key,
                               SparseCooTensor* out) {
+#ifdef PADDLE_WITH_CUDA
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "Conv3dImplicitGemmGPUKernel", ([&] {
         // Conv3dImplicitGemmGPUKernel<T, data_t>(dev_ctx,
@@ -193,6 +199,10 @@ void Conv3dImplicitGemmKernel(const Context& dev_ctx,
                                                 key,
                                                 out);
       }));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Conv3dImplicitGemmKernel is only supported on CUDA."));
+#endif
 }
 }  // namespace sparse
 }  // namespace phi

@@ -214,7 +214,10 @@ void InferSymbolicShapeForSubgraph(
     auto infer_symbolic_shape_interface =
         op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
+      // is done.
+      infer_symbolic_shape_interface.InferSymbolicShape(
+          shape_analysis->GetInferSymbolicShapeContext());
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
@@ -348,7 +351,6 @@ bool ReplaceShapeOpsToGenerateShape(
   auto ShapeOrDataDimExprs4Value =
       [&shape_analysis](
           pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-    CHECK(shape_analysis->HasShapeOrDataForValue(value));
     return shape_analysis->GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =

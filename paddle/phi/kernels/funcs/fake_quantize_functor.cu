@@ -113,6 +113,31 @@ __global__ void FindMovingAverageAbsMaxKernel(const T *in_state,
   *out_scale = accum / state;
 }
 
+template <typename T>
+__global__ void FindRangeAbsMaxAndFillArray(const T *cur_scale,
+                                            const T *last_scale,
+                                            const int64_t *iter,
+                                            const int window_size,
+                                            T *scale_arr,
+                                            T *out_scale,
+                                            int *need_find_max,
+                                            int *out_size) {
+  int it = iter[0];
+  int idx = it % window_size;
+  T removed = scale_arr[idx];
+  T cur = cur_scale[0];
+  scale_arr[idx] = cur;
+  T max = last_scale[0];
+  out_scale[0] = max < cur ? cur : max;
+  if (fabs(static_cast<typename QuantizeDataType<T>::type>(removed - max)) <
+      1e-6) {
+    need_find_max[0] = 1;
+    out_size[0] = it > window_size ? window_size : it;
+  } else {
+    need_find_max[0] = 0;
+  }
+}
+
 template <typename Context, typename T>
 void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
                                                const T *in,
@@ -175,12 +200,65 @@ void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
                                   out_scale_data);
 }
 
+template <typename Context, typename T>
+void FindRangeAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &cur_scale,
+    const DenseTensor &last_scale,
+    const DenseTensor &iter,
+    const int window_size,
+    DenseTensor *scales_arr,
+    DenseTensor *out_scale) {
+  const auto gpu_place = ctx.GetPlace();
+  T *scale_arr = ctx.template Alloc<T>(scales_arr);
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+
+  phi::DenseTensor need_find_max, out_size;
+  need_find_max.Resize({1});
+  out_size.Resize({1});
+  int *find_max = ctx.template Alloc<int>(&need_find_max);
+  int *out_size_data = ctx.template Alloc<int>(&out_size);
+
+  FindRangeAbsMaxAndFillArray<T>
+      <<<1, 1, 0, ctx.stream()>>>(cur_scale.data<T>(),
+                                  last_scale.data<T>(),
+                                  iter.data<int64_t>(),
+                                  window_size,
+                                  scale_arr,
+                                  out_scale_data,
+                                  find_max,
+                                  out_size_data);
+
+  int g_find_max;
+  memory_utils::Copy(phi::CPUPlace(),
+                     &g_find_max,
+                     gpu_place,
+                     find_max,
+                     sizeof(int),
+                     ctx.stream());
+  ctx.Wait();
+  if (g_find_max) {
+    int len;
+    memory_utils::Copy(phi::CPUPlace(),
+                       &len,
+                       gpu_place,
+                       out_size_data,
+                       sizeof(int),
+                       ctx.stream());
+    ctx.Wait();
+    phi::funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
+        ctx, scale_arr, len, out_scale_data);
+  }
+}
+
 template class FindAbsMaxFunctor<GPUContext, float16>;
 template class FindAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantFunctor<GPUContext, float>;
 template class FindMovingAverageAbsMaxFunctor<GPUContext, float16>;
 template class FindMovingAverageAbsMaxFunctor<GPUContext, float>;
+template class FindRangeAbsMaxFunctor<GPUContext, float16>;
+template class FindRangeAbsMaxFunctor<GPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi
