@@ -63,7 +63,7 @@ class Net_Sub_Block_FP32(nn.Layer):
 class TestD2SAmpWithControlFlowOp(unittest.TestCase):
     def test_cond_op(self):
         model = Net_Cond()
-        model = paddle.jit.to_static(model)
+        model = paddle.jit.to_static(model, full_graph=True)
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype="float32"
         )
@@ -72,7 +72,7 @@ class TestD2SAmpWithControlFlowOp(unittest.TestCase):
 
     def test_while_op(self):
         model = Net_While()
-        model = paddle.jit.to_static(model)
+        model = paddle.jit.to_static(model, full_graph=True)
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype="float32"
         )
@@ -81,7 +81,7 @@ class TestD2SAmpWithControlFlowOp(unittest.TestCase):
 
     def test_sub_block_fp32_op(self):
         model = Net_Sub_Block_FP32()
-        model = paddle.jit.to_static(model)
+        model = paddle.jit.to_static(model, full_graph=True)
         model = paddle.amp.decorate(
             models=model, level='O2', save_dtype="float32"
         )
