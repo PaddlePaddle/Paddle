@@ -47,7 +47,7 @@
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-class Node;
+struct Node;
 
 struct SrcNode {
   bool operator==(const SrcNode& rhs) const { return true; }

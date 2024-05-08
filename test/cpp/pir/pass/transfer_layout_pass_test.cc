@@ -59,8 +59,6 @@ ProgramDesc load_from_file(const std::string& file_name) {
 
 TEST(transfer_layout_pass, pass_test) {
   // Load Unet Program
-  // const std::string model_name =
-  // "/home/lvyongkang/PaddleMIX/ppdiffusers/deploy/sd15/static_model/stable-diffusion-v1-5/vae_decoder/inference.pdmodel";
   const std::string model_name = "sd15_unet.pdmodel";
   auto p = load_from_file(model_name);
   EXPECT_EQ(p.Size(), 1u);
@@ -79,17 +77,9 @@ TEST(transfer_layout_pass, pass_test) {
   }
   pass_pm.Run(program.get());
 
-  std::ofstream before_modify(
-      "/home/lvyongkang/Paddle/logs/sd15_unet_before.txt", std::ios::out);
-  before_modify << *program << std::endl;
-
   pir::PassManager transfer_layout_manager(::pir::IrContext::Instance(), 3);
   transfer_layout_manager.AddPass(pir::CreateTransferLayoutPass());
   transfer_layout_manager.Run(program.get());
-
-  std::ofstream after_modify("/home/lvyongkang/Paddle/logs/sd15_unet_after.txt",
-                             std::ios::out);
-  after_modify << *program << std::endl;
 
   // insert transpose between
 }
