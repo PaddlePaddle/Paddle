@@ -1307,6 +1307,7 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     ln2_variance->set_dims(mean_dim);
   }
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 static bool IsUnaryCompound(const std::vector<std::string>& functor_list) {
