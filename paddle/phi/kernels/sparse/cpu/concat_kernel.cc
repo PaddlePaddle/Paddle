@@ -83,13 +83,6 @@ void ConcatCooKernel(const Context& dev_ctx,
   // 迁移到对应的代码里面去,或者查看其他方式
   EmptyLikeCooKernel<T, Context>(dev_ctx, *x[0], out);
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
-  VLOG(7) << "rabit hole" << '1';
-  VLOG(7) << axis;
-  VLOG(7) << sparse_dim;
-  VLOG(7) << x.size();
-  VLOG(7) << "out_dim" << out_dims.size();
-  VLOG(7) << "" << out_dims[0];
-  VLOG(7) << "" << out_dims[1];
   if (axis < sparse_dim) {
     int64_t out_nnz = 0;
     for (const auto* t : x) {
@@ -97,23 +90,19 @@ void ConcatCooKernel(const Context& dev_ctx,
       values.emplace_back(t->values());
       out_nnz += t->nnz();
     }
-    VLOG(7) << "rabit hole" << '2';
-    DenseTensor out_indices =
-        phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
+    out_indices = phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
     // TODO(bapijun)  改掉这个 参考可能得算法写出来
 
     DDim v_dim = x[0]->values().dims();
     v_dim[0] = out_nnz;
     IntArray v_shape(v_dim.GetMutable(), v_dim.size());
-    DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, v_shape);
-    VLOG(7) << "out_values" << '2';
-    VLOG(7) << out_values.dims()[0];
-    VLOG(7) << out_values.dims().size();
+    out_values = phi::Empty<T, Context>(dev_ctx, v_shape);
+
     // 因为在前面进行了检查,所以这个维度的nnz都一样
     concat_functor_indice(dev_ctx, indices, static_cast<int>(1), &out_indices);
-    VLOG(7) << "rabit holeXX";
+
     concat_functor_value(dev_ctx, values, static_cast<int>(0), &out_values);
-    VLOG(7) << "rabit hole" << '3';
+
     int64_t col = 0;
     int64_t cumulative_offset = 0;
     auto* out_indices_data = out_indices.data<int64_t>();
@@ -211,11 +200,6 @@ void ConcatCsrKernel(const Context& dev_ctx,
     values_data_vec.push_back(t->values().data<T>());
     cols_data_vec.push_back(t->cols().data<int64_t>());
     // nnz == 0 时候,如果crow = [0] 这样的情况,补全0,避免之后的拼接遗漏
-    if (t->nnz() == 0 && t->crows().numel() < (t->dims()[0] + 1)) {
-      DenseTensor* crows = out->mutable_crows();
-      phi::Full<T, Context>(
-          dev_ctx, common::vectorize({t->dims()[0] + 1}), 0, crows);
-    }
     crows_data_vec.push_back(t->crows().data<int64_t>());
     out_values_size += t->nnz();
   }
@@ -287,34 +271,33 @@ void ConcatCsrKernel(const Context& dev_ctx,
     } else {  // axis == 1
               // num_split >= 2
               // 除了最后一位 crow_numel 列数都相等
-      VLOG(7) << "rabit hole" << '1';
+
       int64_t rows = static_cast<size_t>(x[0]->dims()[0]);
       out_crows_size = rows + 1;
-      VLOG(7) << "out_crows_size hole" << out_crows_size;
+
       DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
       int64_t* out_crows_data = out_crows.data<int64_t>();
-      VLOG(7) << "rabit hole" << '2';
+
       int64_t out_index = 0;
 
-      VLOG(7) << "rabit hole" << '3';
       out_crows_data[0] = 0;
       std::vector<int64_t> offset_vec(num_split, 0);
-      int64_t column_index = 0;
+      int64_t column_offset = 0;
       for (int64_t j = 1; j < out_crows_size; j++) {
-        column_index = 0;
+        column_offset = 0;
         for (size_t i = 0; i < num_split; i++) {
           for (int64_t k = 0;
                k < crows_data_vec[i][j] - crows_data_vec[i][j - 1];
                k++) {
             // 针对col需要添加之前的列数作为额外的offset
             out_cols_data[out_index] =
-                cols_data_vec[i][offset_vec[i]] + column_index;
+                cols_data_vec[i][offset_vec[i]] + column_offset;
             out_values_data[out_index] = values_data_vec[i][offset_vec[i]];
             offset_vec[i]++;
             out_index++;
           }
           out_crows_data[j] = out_index;
-          column_index += static_cast<size_t>(x[i]->dims()[1]);
+          column_offset += static_cast<size_t>(x[i]->dims()[1]);
         }
       }
 
@@ -323,32 +306,25 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
   } else {
     // dim==3
-    VLOG(7) << "rabit hole" << '0';
     if (axis == 0) {
-      VLOG(7) << "rabit hole" << '1';
       std::vector<DenseTensor> crows;
       std::vector<DenseTensor> values;
       std::vector<DenseTensor> cols;
 
-      int64_t out_crows_size = 0;
       for (size_t i = 0; i < num_split; i++) {
         crows.emplace_back(x[i]->crows());
         values.emplace_back(x[i]->values());
         cols.emplace_back(x[i]->cols());
         out_crows_size += x[i]->crows().numel();
       }
-      VLOG(7) << "out_crows_size:" << out_crows_size;
-      VLOG(7) << "rabit hole" << '2';
+
       // axis==0 简单拼接所有的三个即可即可完成
       funcs::ConcatFunctor<Context, T> concat_functor;
       concat_functor(dev_ctx, values, static_cast<T>(0), &out_values);
-      VLOG(7) << "rabit hole" << '3';
       // cols的形状与value一致
       funcs::ConcatFunctor<Context, int64_t> concat_functor_indices;
       concat_functor_indices(dev_ctx, cols, static_cast<int64_t>(0), &out_cols);
-
       DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
-
       concat_functor_indices(
           dev_ctx, crows, static_cast<int64_t>(0), &out_crows);
 
@@ -358,16 +334,21 @@ void ConcatCsrKernel(const Context& dev_ctx,
       // 对于dim == 1的情况类似于拆分到2d下dim=0的情况
       // 对于dim==1 的情况下batch必然要一致
       size_t batch = static_cast<int>(x[0]->dims()[0]);
-      std::vector<int64_t> nnz_vec;
-      for (size_t b = 0; b < batch; b++) {
-        out_crows_size += 1;
-        for (size_t i = 0; i < num_split; i++) {
-          int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
-          crows_numel.push_back(rows + 1);
-          out_crows_size += rows;
-        }
+      // TODO(bapijun) 这里可以优化掉,只用一个
+      // for (size_t b = 0; b < batch; b++) {
+      //   out_crows_size += 1;
+      //   for (size_t i = 0; i < num_split; i++) {
+      //     int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
+      //     crows_numel.push_back(rows + 1);
+      //     out_crows_size += rows;
+      //   }
+      // }
+      out_crows_size = batch;
+      for (size_t i = 0; i < num_split; i++) {
+        int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
+        crows_numel.push_back(rows + 1);
+        out_crows_size += batch * rows;
       }
-
       DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
       int64_t* out_crows_data = out_crows.data<int64_t>();
       // TODO(bapijun) 姑且这样写,之后我感觉可以优化?
@@ -378,28 +359,20 @@ void ConcatCsrKernel(const Context& dev_ctx,
       std::vector<int64_t> values_index(num_split + 1, 0);
       for (size_t b = 0; b < batch; b++) {
         // 针对每一轮batch的初始化
-
-        VLOG(7) << "stage:";
         out_crows_data[crow_index] = 0;
         crow_index++;
         cumulative_offset = 0;
-        VLOG(7) << "stage:";
+
         for (size_t i = 0; i < num_split; i++) {
           const int64_t* x_crows_ptr = x[i]->crows().data<int64_t>();
           // crows_numel[i] == 第i组的row+1
           int64_t x_crows_nnz = x_crows_ptr[(b + 1) * (crows_numel[i]) - 1];
-          VLOG(7) << "x_crows_nnz" << x_crows_nnz;
           now_crows_ptr = crows_data_vec[i] + b * crows_numel[i];
-
-          VLOG(7) << "crows_offset" << b * crows_numel[i];
-          VLOG(7) << "values_offset" << values_index[i];
           now_value_ptr = values_data_vec[i] + values_index[i];
           now_cols_ptr = cols_data_vec[i] + values_index[i];
           values_index[i] += x_crows_nnz;
 
           if (x_crows_nnz) {
-            VLOG(7) << "memcpy" << x_crows_nnz;
-            VLOG(7) << "ptr" << out_values_data + value_offset;
             // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
             std::memcpy(out_values_data + value_offset,
                         now_value_ptr,
@@ -422,76 +395,46 @@ void ConcatCsrKernel(const Context& dev_ctx,
     } else {  // axis = 2
               // axis == 2的情况类似于拆分到2d下axis=1的情况
               // 对于concat axis = 2的情况下,batch下 row的大小都一致
-      size_t batch = static_cast<int>(x[0]->dims()[0]);
+      int64_t batch = static_cast<int>(x[0]->dims()[0]);
       int64_t rows = static_cast<int>(x[0]->dims()[1]);
       int64_t now_crow_numel = rows + 1;
 
-      out_crows_size = now_crow_numel * batch;
-      DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
+      DenseTensor out_crows =
+          phi::Empty<int64_t>(dev_ctx, {now_crow_numel * batch});
       int64_t* out_crows_data = out_crows.data<int64_t>();
-      // const T * now_value_ptr = nullptr;
-      // const int64_t * now_cols_ptr = nullptr;
+
       const int64_t* now_crow_ptr = nullptr;
-      std::vector<std::vector<int64_t>> values_index(
-          batch + 1, std::vector<int64_t>(num_split + 1, 0));
-
-      int64_t out_index = 0, batch_out_index = 0;
-      int64_t column_index = 0;
+      int64_t cumulative_offset = 0;
+      int64_t column_offset = 0;
       std::vector<int64_t> offset_vec(num_split, 0);
-      for (size_t b = 0; b < batch; b++) {
-        for (size_t i = 0; i < num_split; i++) {
-          const int64_t* x_crows_ptr = x[i]->crows().data<int64_t>();
-          // x_crows_nnz 为当前的二维数组下的nnz
-          int64_t x_crows_nnz = x_crows_ptr[(b + 1) * (now_crow_numel)-1];
-
-          VLOG(7) << "crows_offset" << (b + 1) * (now_crow_numel)-1;
-
-          // values_index[i] 表示当前batch下
-          // 当前维度下在对应的out_values开始位置和起始位置的差值
-          values_index[b + 1][i] += x_crows_nnz;
-        }
-
+      for (int64_t b = 0; b < batch; b++) {
         out_crows_data[0] = 0;
-        batch_out_index = 0;
+        cumulative_offset = 0;
         // TODO(bapijun) 优化
 
         for (int64_t j = 1; j < now_crow_numel; j++) {
-          column_index = 0;
+          column_offset = 0;
           for (size_t i = 0; i < num_split; i++) {
             // TODO(bapijun) 修正
-            // now_value_ptr = values_data_vec[i] + values_index[b][i];
-            // now_cols_ptr = cols_data_vec[i] + values_index[b][i];
             now_crow_ptr = crows_data_vec[i] + b * now_crow_numel;
 
             for (int64_t k = 0; k < now_crow_ptr[j] - now_crow_ptr[j - 1];
                  k++) {
-              // 针对col需要添加之前的列数作为额外的offset
-              // out_cols_data[out_index] = now_cols_ptr[offset_vec[i]] +
-              // column_index;
-
-              // out_values_data[out_index] =  now_value_ptr[offset_vec[i]];
-              out_cols_data[out_index] =
-                  cols_data_vec[i][offset_vec[i]] + column_index;
-              out_values_data[out_index] = values_data_vec[i][offset_vec[i]];
+              *out_cols_data = cols_data_vec[i][offset_vec[i]] + column_offset;
+              *out_values_data = values_data_vec[i][offset_vec[i]];
               offset_vec[i]++;
-
-              out_index++;
-              batch_out_index++;
+              out_cols_data++;
+              out_values_data++;
+              cumulative_offset++;
             }
             // 加的是前面的值
-            column_index += static_cast<size_t>(x[i]->dims()[2]);
-            out_crows_data[j] = batch_out_index;
-
-            // out_crows_data[j + crow_offset] = batch_out_index;
+            column_offset += static_cast<size_t>(x[i]->dims()[2]);
+            out_crows_data[j] = cumulative_offset;
           }
         }
-        // now_value_ptr += batch_out_index;
-        // now_cols_ptr += batch_out_index;
         out_crows_data += now_crow_numel;
       }
-      VLOG(7) << "rabit hole";
-      VLOG(7) << "out_crows" << out_crows.numel();
-      VLOG(7) << "out_values" << out_values.numel();
+
       out->SetMember(out_crows, out_cols, out_values, out_dims);
     }
   }

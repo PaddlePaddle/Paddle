@@ -169,5 +169,36 @@ void SparseCooTensorInferMeta(const MetaTensor& values,
   out->set_layout(values.layout());
 }
 
+void ConcatInferMeta(std::vector<const phi::MetaTensor*> x_metas,
+                     MetaTensor* out) {
+  PADDLE_ENFORCE_GE(x_metas.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The size of input meta vector should be greater"
+                        "than 0."));
+
+  out->set_dtype(x_metas.at(0)->dtype());
+  out->set_layout(x_metas.at(0)->layout());
+}
+
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
+                             std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
+  for (size_t i = 0; i < x.size(); ++i) {
+    if (out[i]) {
+      out[i]->share_meta(*x[i]);
+      out[i]->set_dtype(x[0]->dtype());
+      out[i]->set_layout(x[0]->layout());
+    }
+  }
+}
+
 }  // namespace sparse
 }  // namespace phi

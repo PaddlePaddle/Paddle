@@ -48,5 +48,10 @@ void SparseCooTensorInferMeta(const MetaTensor& values,
                               const std::vector<int64_t>& shape,
                               MetaTensor* out);
 
+void ConcatInferMeta(std::vector<const phi::MetaTensor*> x_metas,
+                     MetaTensor* out);
+
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
+                             std::vector<MetaTensor*> out);
 }  // namespace sparse
 }  // namespace phi
