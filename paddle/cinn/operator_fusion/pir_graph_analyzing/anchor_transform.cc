@@ -80,9 +80,6 @@ std::optional<AnchorTransform> CreateAnchorTransformForSpecialOps(
   if (info.op->name() == "cinn_op.generate_shape") {
     return CreateDefaultAnchorTransform(info);
   }
-  if (info.op->name() == "cinn_op.yield_store") {
-    return CreateDefaultAnchorTransform(info);
-  }
   if (info.op->name() == "cinn_op.reshape") {
     return CreateDefaultAnchorTransform(info);
   }

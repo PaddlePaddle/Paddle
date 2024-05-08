@@ -170,6 +170,18 @@ struct FuseUpstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
+    VLOG(4) << "upstream anchor: "
+            << std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())
+                   .anchor()
+                   .impl()
+            << ", downstream anchor: "
+            << std::get<AnchorPattern<Phrase>>(downstream->stmt_pattern())
+                   .anchor()
+                   .impl()
+            << ", merged node anchor: "
+            << std::get<AnchorPattern<Phrase>>(merged_node->stmt_pattern())
+                   .anchor()
+                   .impl();
     return merged_node;
   }
 };
@@ -208,6 +220,18 @@ struct FuseDownstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
+    VLOG(4) << "upstream anchor: "
+            << std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())
+                   .anchor()
+                   .impl()
+            << ", downstream anchor: "
+            << std::get<AnchorPattern<Phrase>>(downstream->stmt_pattern())
+                   .anchor()
+                   .impl()
+            << ", merged node anchor: "
+            << std::get<AnchorPattern<Phrase>>(merged_node->stmt_pattern())
+                   .anchor()
+                   .impl();
     return merged_node;
   }
 };

@@ -64,8 +64,12 @@ std::optional<AnchorTransformRoute> FindAnchorTransformRoute(
   std::unordered_set<pir::Value> visited;
   visited.emplace(begin);
 
-  return SearchAnchorTransformRecursively(
-      begin, end, &cur_route, &visited, ops);
+  auto result =
+      SearchAnchorTransformRecursively(begin, end, &cur_route, &visited, ops);
+  if (VLOG_IS_ON(4)) {
+    // TODO(@wuzhanfei) add log
+  }
+  return result;
 }
 
 template <typename T>
@@ -103,14 +107,21 @@ AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
 template <typename T>
 bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  return FindUpstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
+  auto result =
+      FindUpstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
+  VLOG(4) << "[AnchorSearchPolicy] HasUpstreamAnchor between " << upstream
+          << ", " << downstream << " : " << result;
+  return result;
 }
 
 template <typename T>
 bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  return FindDownstreamAnchorTransformRoute(upstream, downstream) !=
-         std::nullopt;
+  auto result =
+      FindDownstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
+  VLOG(4) << "[AnchorSearchPolicy] HasDownstreamAnchor between " << upstream
+          << ", " << downstream << " : " << result;
+  return result;
 }
 
 template class AnchorSearchPolicy<FrontendStage>;

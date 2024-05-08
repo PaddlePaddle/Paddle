@@ -44,6 +44,14 @@ struct TransformInfo {
     }
   }
 
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "op: " << op << ", input_idx: " << input_idx
+       << ", output_idx: " << output_idx
+       << ", is_upstream_anchor: " << is_upstream_anchor;
+    return ss.str();
+  }
+
   pir::Operation* op;
   size_t input_idx;
   size_t output_idx;
@@ -53,11 +61,21 @@ struct TransformInfo {
 struct UnsupportTransform {
   explicit UnsupportTransform(const TransformInfo& info_) : info(info_) {}
   TransformInfo info;
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "UnsupportTransform || " << info.DebugStr();
+    return ss.str();
+  }
 };
 
 struct IdentityTransform {
   explicit IdentityTransform(const TransformInfo& info_) : info(info_) {}
   TransformInfo info;
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "IdentityTransform || " << info.DebugStr();
+    return ss.str();
+  }
 };
 
 struct AppendDimTransform {
@@ -66,6 +84,11 @@ struct AppendDimTransform {
       : info(info_), append_dims(append_dims_) {}
   TransformInfo info;
   std::vector<size_t> append_dims;
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "AppendDimTransform || " << info.DebugStr();
+    return ss.str();
+  }
 };
 
 struct DeleteDimTransform {
@@ -74,6 +97,11 @@ struct DeleteDimTransform {
       : info(info_), delete_dims(delete_dims_) {}
   TransformInfo info;
   std::vector<size_t> delete_dims;
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "DeleteDimTransform || " << info.DebugStr();
+    return ss.str();
+  }
 };
 
 using UnsupportTransformPtr = std::shared_ptr<UnsupportTransform>;
