@@ -1,4 +1,4 @@
-// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,16 @@
 
 #pragma once
 
-#include <string>
-#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn {
-namespace ir {
+namespace phi {
 
-std::unique_ptr<ScheduleTactic> CreateLoopReorderAlignmentTactic();
+template <typename T, typename Context>
+void DequantizeAbsMaxKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& scale,
+                            float max_range,
+                            DenseTensor* out);
 
-}  // namespace ir
-}  // namespace cinn
+}  // namespace phi

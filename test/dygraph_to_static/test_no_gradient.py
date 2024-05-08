@@ -15,7 +15,7 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
 
 import paddle
 
@@ -33,6 +33,7 @@ def main_func(x, index):
 
 
 class TestNoGradientCase(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_no_gradient(self):
         paddle.disable_static()
         x = paddle.randn([10, 3])
