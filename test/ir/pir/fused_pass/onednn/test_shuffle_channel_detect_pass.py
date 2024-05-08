@@ -55,7 +55,7 @@ class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
                     transpose_out, shape=[0, -1, 2, 3]
                 )
                 out = paddle.assign(reshape_out_1)
-                self.pass_list = ['shuffle_channel_detect_pass']
+                self.pass_attr_list = [{'shuffle_channel_detect_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 64, 2, 3)).astype("float32"),
                 }
