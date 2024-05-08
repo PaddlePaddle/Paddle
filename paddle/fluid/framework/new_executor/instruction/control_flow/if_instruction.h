@@ -29,6 +29,9 @@ class PirInterpreter;
 class ValueExecutionInfo;
 
 class IfInstruction : public InstructionBase {
+ private:
+  using InnerOutputGCHook = std::function<void(Variable*, InstructionBase*)>;
+
  public:
   IfInstruction(size_t id,
                 const platform::Place& place,
@@ -52,6 +55,8 @@ class IfInstruction : public InstructionBase {
 
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
+  void SetInnerOutputGCHook(const InnerOutputGCHook& hook);
+
  private:
   ::pir::Operation* op_;
 
@@ -74,6 +79,8 @@ class IfInstruction : public InstructionBase {
   std::vector<std::string> true_skip_gc_names_;
 
   std::vector<std::string> false_skip_gc_names_;
+
+  InnerOutputGCHook inner_outputs_gc_hook_;
 };
 
 }  // namespace framework
