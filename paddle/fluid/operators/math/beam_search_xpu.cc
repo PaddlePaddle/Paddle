@@ -1,26 +1,27 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/memory/memcpy.h"
+#include "glog/logging.h"
 #include "paddle/fluid/operators/math/beam_search.h"
+#include "paddle/phi/common/memory_utils.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#endif
 
 namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace operators {
 namespace math {
 template <typename T>
 int CopyData(const T *x, T **y, int len, const Place &place) {
@@ -29,8 +30,7 @@ int CopyData(const T *x, T **y, int len, const Place &place) {
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
 
-  paddle::memory::Copy(
-      paddle::platform::CPUPlace(), *y, place, x, len * sizeof(T));
+  phi::memory_utils::Copy(phi::CPUPlace(), *y, place, x, len * sizeof(T));
   return xpu::Error_t::SUCCESS;
 }
 
@@ -60,7 +60,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -94,15 +94,15 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     // the output tensor shape should be [num_instances, 1]
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
-    auto *selected_ids_data =
-        selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
-    auto *selected_scores_data =
-        selected_scores->mutable_data<float>(dims, platform::CPUPlace());
+    selected_ids->Resize(dims);
+    auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    selected_scores->Resize(dims);
+    auto *selected_scores_data = context.template Alloc<float>(selected_scores);
+    if (parent_idx != nullptr) {
+      parent_idx->Resize({static_cast<int64_t>(num_instances)});
+    }
     auto *parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_instances)}, platform::CPUPlace())
-            : nullptr;
+        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;
@@ -121,14 +121,14 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    framework::LoD lod(2);
+    phi::LoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
-    if (!framework::CheckLoD(lod)) {
+    if (!CheckLoD(lod)) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("lod %s is not right in"
                                        " beam_search, please check your code.",
-                                       framework::LoDToString(lod)));
+                                       LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
@@ -179,7 +179,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
    * since the end tokens must be writed out.
    */
   void PruneEndBeams(const phi::DenseTensor *pre_ids,
-                     const framework::LoD &abs_lod,
+                     const phi::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id,
@@ -274,7 +274,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
 
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
@@ -360,5 +360,4 @@ template class BeamSearchFunctor<platform::XPUDeviceContext, float>;
 template class BeamSearchFunctor<platform::XPUDeviceContext, double>;
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

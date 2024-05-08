@@ -1,23 +1,22 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
 
 struct Triple {
@@ -417,7 +416,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = framework::ToAbsOffset(scores->lod());
+    auto abs_lod = phi::ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
     const float* pre_scores_data = pre_scores->data<float>();
@@ -433,17 +432,18 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     // Reserve a big enough memory.
     auto selected_dims =
         common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
-    int64_t* selected_ids_data =
-        selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
+    selected_ids->Resize(selected_dims);
+    int64_t* selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    selected_scores->Resize(selected_dims);
     float* selected_scores_data =
-        selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
+        context.template Alloc<float>(selected_scores);
+    if (parent_idx != nullptr) {
+      parent_idx->Resize({static_cast<int64_t>(num_seqs * beam_size)});
+    }
     int* parent_idx_data =
-        parent_idx ? parent_idx->mutable_data<int>(
-                         {static_cast<int64_t>(num_seqs * beam_size)},
-                         context.GetPlace())
-                   : nullptr;
+        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
 
-    framework::LoD selected_lod(2);
+    phi::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);
@@ -456,7 +456,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
       int num_used_threads = GetNumUsedThreads(kMaxThreadsPerSeq,
                                                static_cast<int>(seq_width),
                                                static_cast<int>(beam_size));
-      switch (platform::RoundToPowerOfTwo(beam_size * seq_width)) {
+      switch (phi::backends::gpu::RoundToPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq>
             <<<1, kMaxThreadsPerSeq, 0, context.stream()>>>(
@@ -483,7 +483,8 @@ class BeamSearchFunctor<phi::GPUContext, T> {
       int num_used_threads = GetNumUsedThreads(kMaxThreadsPerSeq,
                                                static_cast<int>(seq_width),
                                                static_cast<int>(beam_size));
-      switch (platform::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
+      switch (
+          phi::backends::gpu::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs>
             <<<1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
@@ -510,11 +511,11 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
     context.Wait();
     mix_vector.CopyToCPU();
-    if (!framework::CheckLoD(selected_lod)) {
+    if (!CheckLoD(selected_lod)) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("lod %s is not right in"
                                        " beam_search, please check your code.",
-                                       framework::LoDToString(selected_lod)));
+                                       LoDToString(selected_lod)));
     }
 
     selected_ids->set_lod(selected_lod);
@@ -537,5 +538,4 @@ template class BeamSearchFunctor<phi::GPUContext, float>;
 template class BeamSearchFunctor<phi::GPUContext, double>;
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
