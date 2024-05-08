@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/custom_all_reduce.h"
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-#include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
+#include "paddle/fluid/operators/fused/fused_multi_transformer_helper.cu.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 
 namespace paddle {
@@ -343,21 +345,33 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
           cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
       phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
+      int cache_bsz = 0;
+      if (cache_kv) {
+        cache_bsz = cache_kv->dims()[1];
+      }
+
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
-        phi::fusion::fmha<T>(dev_ctx,
-                             qkv_out,
-                             *qkv_bias,
-                             *src_mask,
-                             cache_kv_out,
-                             &fmha_out,
-                             bsz,
-                             max_seq_len,
-                             num_head,
-                             dim_head,
-                             time_step->data<int>()[0],
-                             1. / std::sqrt(dim_head));
+        fmha<T>(dev_ctx,
+                qkv_out,
+                *qkv_bias,
+                src_mask,
+                nullptr,
+                sequence_lengths,
+                rotary_tensor,
+                beam_cache_offset,
+                cache_kv_out,
+                &fmha_out,
+                bsz,
+                cache_bsz,
+                seq_len,
+                max_seq_len,
+                num_head,
+                dim_head,
+                time_step->data<int>()[0],
+                rotary_emb_dims,
+                1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(qkv_out,
@@ -662,10 +676,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer_int8,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerINT8OpKernel,
                           float,
-                          phi::dtype::float16) {}
+                          plat::float16) {}

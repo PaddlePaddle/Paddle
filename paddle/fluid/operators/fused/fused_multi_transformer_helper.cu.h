@@ -18,6 +18,7 @@ limitations under the License. */
 // "paddle/fluid/operators/fused/cutlass/cutlass_kernels/gemm_dequant.h"
 // #include
 // "paddle/fluid/operators/fused/cutlass/cutlass_kernels/intA_intB_interleaved_gemm/intA_intB_gemm_template.h"
+#include "paddle/fluid/operators/fused/cublaslt.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 
@@ -449,8 +450,9 @@ class Int8GEMMHelper {
         workspace_(workspace),
         input_workspace_(input_workspace),
         out_workspace_(out_workspace) {
-    cublaslt_helper = std::make_unique<CublasLtHelper<int32_t>>(
-        m, k, n, dev_ctx.cublaslt_handle());
+    cublaslt_helper =
+        std::make_unique<paddle::operators::CublasLtHelper<int32_t>>(
+            m, k, n, dev_ctx.cublaslt_handle());
   }
 
   void Compute(const phi::DenseTensor *input,
@@ -528,7 +530,7 @@ class Int8GEMMHelper {
   phi::DenseTensor &input_workspace_;  // int8_t
   phi::DenseTensor &out_workspace_;    // int32_t
 
-  std::unique_ptr<CublasLtHelper<int32_t>> cublaslt_helper;
+  std::unique_ptr<paddle::operators::CublasLtHelper<int32_t>> cublaslt_helper;
 };
 
 template <typename T>
@@ -537,8 +539,9 @@ class LtGEMMHelper {
   LtGEMMHelper(
       const phi::GPUContext &dev_ctx, int m, int k, int n, bool transpose_y)
       : dev_ctx_(dev_ctx), m_(m), k_(k), n_(n) {
-    cublaslt_helper = std::make_unique<CublasLtHelper<T, float>>(
-        m, k, n, dev_ctx.cublaslt_handle(), transpose_y);
+    cublaslt_helper =
+        std::make_unique<paddle::operators::CublasLtHelper<T, float>>(
+            m, k, n, dev_ctx.cublaslt_handle(), transpose_y);
   }
 
   void Compute(const phi::DenseTensor *input,
@@ -558,7 +561,7 @@ class LtGEMMHelper {
   int k_;
   int n_;
 
-  std::unique_ptr<CublasLtHelper<T, float>> cublaslt_helper;
+  std::unique_ptr<paddle::operators::CublasLtHelper<T, float>> cublaslt_helper;
 };
 
 template <typename T>

@@ -206,8 +206,16 @@ class FusedMultiTransformerINT8OpMaker
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
         .AsDispensable()
         .AsDuplicable();
+    AddInput("RotaryPosEmb",
+             "(optional) The RoPE embeddings for generation inference.")
+        .AsDispensable();
+    AddInput("BeamCacheOffset",
+             "(optional) The offset of CacheKV when using BeamSearch.")
+        .AsDispensable();
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
+        .AsDispensable();
+    AddInput("SeqLengths", "(optional) The sequence length tensor of inputs.")
         .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
@@ -267,6 +275,18 @@ class FusedMultiTransformerINT8OpMaker
                   "else, uses post_layer_norm architecture. "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<int>("rotary_emb_dims",
+                 "the Attr(dims) for RotaryPosEmb's Computation  [default 0].")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &rotary_emb_dims) {
+          PADDLE_ENFORCE_EQ(
+              rotary_emb_dims >= 0 && rotary_emb_dims <= 2,
+              true,
+              phi::errors::InvalidArgument(
+                  "'rotary_emb_dims' in Op(Rotray) should be between"
+                  "0 and 2, But received [%s].",
+                  rotary_emb_dims));
+        });
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)

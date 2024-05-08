@@ -23,7 +23,7 @@ limitations under the License. */
 
 PD_DECLARE_int64(cublaslt_exhaustive_search_times);
 
-namespace dyl = paddle::platform::dynload;
+namespace dyl2 = paddle::platform::dynload;
 
 namespace paddle {
 namespace operators {
@@ -86,14 +86,14 @@ class CublasLtAlgoCache {
                      cudaStream_t stream) {
     cublasStatus_t status;
     cublasLtMatmulHeuristicResult_t heuristic_result;
-    status = dyl::cublasLtMatmulAlgoCheck(handle,
-                                          matmul_desc,
-                                          a_desc,
-                                          b_desc,
-                                          c_desc,
-                                          c_desc,
-                                          &param.algo,
-                                          &heuristic_result);
+    status = dyl2::cublasLtMatmulAlgoCheck(handle,
+                                           matmul_desc,
+                                           a_desc,
+                                           b_desc,
+                                           c_desc,
+                                           c_desc,
+                                           &param.algo,
+                                           &heuristic_result);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCheck);
     if (status != CUBLAS_STATUS_SUCCESS ||
         heuristic_result.workspaceSize > param.workspace_size) {
@@ -106,22 +106,22 @@ class CublasLtAlgoCache {
     int repeats = search_times_;
 
     for (int loop = 0; loop < repeats; loop++) {
-      status = dyl::cublasLtMatmul(handle,
-                                   matmul_desc,
-                                   alpha,
-                                   a,
-                                   a_desc,
-                                   b,
-                                   b_desc,
-                                   beta,
-                                   c,
-                                   c_desc,
-                                   c,
-                                   c_desc,
-                                   &param.algo,
-                                   param.workspace,
-                                   param.workspace_size,
-                                   stream);
+      status = dyl2::cublasLtMatmul(handle,
+                                    matmul_desc,
+                                    alpha,
+                                    a,
+                                    a_desc,
+                                    b,
+                                    b_desc,
+                                    beta,
+                                    c,
+                                    c_desc,
+                                    c,
+                                    c_desc,
+                                    &param.algo,
+                                    param.workspace,
+                                    param.workspace_size,
+                                    stream);
       if (status != CUBLAS_STATUS_SUCCESS) {
         param.time = std::numeric_limits<float>::max();
         return;
@@ -200,16 +200,16 @@ class CublasLtAlgoCache {
     int algo_ids[requested_algo_count_];  // NOLINT
 
     int num_algo_ids;
-    status = dyl::cublasLtMatmulAlgoGetIds(handle,
-                                           compute_type,
-                                           scale_type,
-                                           a_type,
-                                           b_type,
-                                           c_type,
-                                           c_type,
-                                           requested_algo_count_,
-                                           algo_ids,
-                                           &num_algo_ids);
+    status = dyl2::cublasLtMatmulAlgoGetIds(handle,
+                                            compute_type,
+                                            scale_type,
+                                            a_type,
+                                            b_type,
+                                            c_type,
+                                            c_type,
+                                            requested_algo_count_,
+                                            algo_ids,
+                                            &num_algo_ids);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoGetIds);
 
     // Traverse all posssible algo combinations
@@ -222,22 +222,22 @@ class CublasLtAlgoCache {
 
       /* Initialize algo structure with given Algp ID */
       // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoInit
-      status = dyl::cublasLtMatmulAlgoInit(handle,
-                                           compute_type,
-                                           scale_type,
-                                           a_type,
-                                           b_type,
-                                           c_type,
-                                           c_type,
-                                           algo_ids[idx],
-                                           &algo);
+      status = dyl2::cublasLtMatmulAlgoInit(handle,
+                                            compute_type,
+                                            scale_type,
+                                            a_type,
+                                            b_type,
+                                            c_type,
+                                            c_type,
+                                            algo_ids[idx],
+                                            &algo);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoInit);
 
       // Query the tiles enums supported by that algo which is used to alloc
       // enough space to store it
       // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoCapGetAttribute
       size_t attr_size = 0;
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo, CUBLASLT_ALGO_CAP_TILE_IDS, nullptr, 0, &attr_size);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
 
@@ -248,16 +248,16 @@ class CublasLtAlgoCache {
         num_tiles = 1;
       } else {
         status =
-            dyl::cublasLtMatmulAlgoCapGetAttribute(&algo,
-                                                   CUBLASLT_ALGO_CAP_TILE_IDS,
-                                                   tiles.data(),
-                                                   sizeof(int) * num_tiles,
-                                                   &attr_size);
+            dyl2::cublasLtMatmulAlgoCapGetAttribute(&algo,
+                                                    CUBLASLT_ALGO_CAP_TILE_IDS,
+                                                    tiles.data(),
+                                                    sizeof(int) * num_tiles,
+                                                    &attr_size);
         PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
       }
 
       // Query the stages enums supported by that algo (cuda must >= 11.0)
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo, CUBLASLT_ALGO_CAP_STAGES_IDS, nullptr, 0, &attr_size);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
       int num_stages = static_cast<int>(attr_size / sizeof(int));
@@ -266,36 +266,36 @@ class CublasLtAlgoCache {
         stages[0] = CUBLASLT_MATMUL_STAGES_UNDEFINED;
         num_stages = 1;
       } else {
-        status =
-            dyl::cublasLtMatmulAlgoCapGetAttribute(&algo,
-                                                   CUBLASLT_ALGO_CAP_STAGES_IDS,
-                                                   stages.data(),
-                                                   sizeof(int) * num_stages,
-                                                   &attr_size);
+        status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
+            &algo,
+            CUBLASLT_ALGO_CAP_STAGES_IDS,
+            stages.data(),
+            sizeof(int) * num_stages,
+            &attr_size);
         PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
       }
 
       // Retrieve Other Algo Capabilities attributes
       int splitk_support, red_mask, swizzling_max, custom_option_max;
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo,
           CUBLASLT_ALGO_CAP_SPLITK_SUPPORT,
           &splitk_support,
           sizeof(splitk_support),
           &attr_size);
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo,
           CUBLASLT_ALGO_CAP_REDUCTION_SCHEME_MASK,
           &red_mask,
           sizeof(red_mask),
           &attr_size);
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo,
           CUBLASLT_ALGO_CAP_CTA_SWIZZLING_SUPPORT,
           &swizzling_max,
           sizeof(swizzling_max),
           &attr_size);
-      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+      status = dyl2::cublasLtMatmulAlgoCapGetAttribute(
           &algo,
           CUBLASLT_ALGO_CAP_CUSTOM_OPTION_MAX,
           &custom_option_max,
@@ -322,38 +322,38 @@ class CublasLtAlgoCache {
 
               for (int l = 0; (l < (1 + splir_k_trial)) && (step < limit);
                    l++) {
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
                     CUBLASLT_ALGO_CONFIG_TILE_ID,
                     &tiles[tile_id],
                     sizeof(tiles[tile_id]));
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
                     CUBLASLT_ALGO_CONFIG_STAGES_ID,
                     &stages[stage_id],
                     sizeof(stages[stage_id]));
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
                     CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
                     &custom_option,
                     sizeof(custom_option));
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &k, sizeof(k));
                 int split_k_val = 0;
                 int reduction_scheme = CUBLASLT_REDUCTION_SCHEME_NONE;
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
                     CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
                     &split_k_val,
                     sizeof(split_k_val));
-                status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
                     CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
                     &reduction_scheme,
                     sizeof(int));
                 if (l > 0) {  // Split-K case
                   split_k_val = split_k_candidates[l - 1];
-                  status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                  status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                       &algo,
                       CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
                       &split_k_candidates[l - 1],
@@ -364,7 +364,7 @@ class CublasLtAlgoCache {
                        (step < limit);
                        reduction_scheme = reduction_scheme << 1) {
                     if (reduction_scheme & red_mask) {
-                      status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
+                      status = dyl2::cublasLtMatmulAlgoConfigSetAttribute(
                           &algo,
                           CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
                           &reduction_scheme,
@@ -373,14 +373,14 @@ class CublasLtAlgoCache {
                           cublasLtMatmulAlgoConfigSetAttribute);
 
                       cublasLtMatmulHeuristicResult_t heurResult;
-                      status = dyl::cublasLtMatmulAlgoCheck(handle,
-                                                            matmul_desc,
-                                                            a_desc,
-                                                            b_desc,
-                                                            c_desc,
-                                                            c_desc,
-                                                            &algo,
-                                                            &heurResult);
+                      status = dyl2::cublasLtMatmulAlgoCheck(handle,
+                                                             matmul_desc,
+                                                             a_desc,
+                                                             b_desc,
+                                                             c_desc,
+                                                             c_desc,
+                                                             &algo,
+                                                             &heurResult);
                       if (status == CUBLAS_STATUS_SUCCESS) {
                         CublasLtAlgoSelectorParam algo_select_params;
                         algo_select_params.algo = algo;
@@ -405,14 +405,14 @@ class CublasLtAlgoCache {
                   // Prepare algos
                   cublasLtMatmulHeuristicResult_t heurResult;
                   // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoCheck
-                  status = dyl::cublasLtMatmulAlgoCheck(handle,
-                                                        matmul_desc,
-                                                        a_desc,
-                                                        b_desc,
-                                                        c_desc,
-                                                        c_desc,
-                                                        &algo,
-                                                        &heurResult);
+                  status = dyl2::cublasLtMatmulAlgoCheck(handle,
+                                                         matmul_desc,
+                                                         a_desc,
+                                                         b_desc,
+                                                         c_desc,
+                                                         c_desc,
+                                                         &algo,
+                                                         &heurResult);
                   if (status == CUBLAS_STATUS_SUCCESS) {
                     CublasLtAlgoSelectorParam algo_select_params;
                     algo_select_params.algo = algo;
@@ -496,7 +496,7 @@ class CublasLtAlgoCache {
       if (dev == 0) {
         std::ofstream outfile;
         outfile.open(config_filename_, std::ios::out | std::ios::trunc);
-        outfile << dyl::cublasLtGetCudartVersion() << std::endl;
+        outfile << dyl2::cublasLtGetCudartVersion() << std::endl;
 
         for (const auto p : map_) {
           outfile << p.first << " ";
@@ -528,7 +528,7 @@ class CublasLtAlgoCache {
     infile >> cublaslt_version;
     VLOG(1) << "cublaslt_version " << cublaslt_version;
 
-    if (dyl::cublasLtGetCudartVersion() != cublaslt_version) {
+    if (dyl2::cublasLtGetCudartVersion() != cublaslt_version) {
       LOG(INFO) << config_filename_
                 << " is not compatible with current cublaslt_version "
                 << real_cublaslt_version;
@@ -572,27 +572,27 @@ class CublasLtAlgoCache {
     uint32_t epilogue;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dyl::cublasLtMatmulDescGetAttribute(desc,
-                                            CUBLASLT_MATMUL_DESC_TRANSA,
-                                            &trans_a,
-                                            sizeof(trans_a),
-                                            &size_to_write));
+        dyl2::cublasLtMatmulDescGetAttribute(desc,
+                                             CUBLASLT_MATMUL_DESC_TRANSA,
+                                             &trans_a,
+                                             sizeof(trans_a),
+                                             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_a));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dyl::cublasLtMatmulDescGetAttribute(desc,
-                                            CUBLASLT_MATMUL_DESC_TRANSB,
-                                            &trans_b,
-                                            sizeof(trans_b),
-                                            &size_to_write));
+        dyl2::cublasLtMatmulDescGetAttribute(desc,
+                                             CUBLASLT_MATMUL_DESC_TRANSB,
+                                             &trans_b,
+                                             sizeof(trans_b),
+                                             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(trans_b));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dyl::cublasLtMatmulDescGetAttribute(desc,
-                                            CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                            &epilogue,
-                                            sizeof(epilogue),
-                                            &size_to_write));
+        dyl2::cublasLtMatmulDescGetAttribute(desc,
+                                             CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                             &epilogue,
+                                             sizeof(epilogue),
+                                             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(epilogue));
   }
 
@@ -606,14 +606,14 @@ class CublasLtAlgoCache {
     int64_t ld, batch_offset;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        dyl::cublasLtMatrixLayoutGetAttribute(desc,
-                                              CUBLASLT_MATRIX_LAYOUT_TYPE,
-                                              &dtype,
-                                              sizeof(dtype),
-                                              &size_to_write));
+        dyl2::cublasLtMatrixLayoutGetAttribute(desc,
+                                               CUBLASLT_MATRIX_LAYOUT_TYPE,
+                                               &dtype,
+                                               sizeof(dtype),
+                                               &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(dtype));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
         desc,
         CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
         &batch,
@@ -621,33 +621,33 @@ class CublasLtAlgoCache {
         &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(batch));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
         desc, CUBLASLT_MATRIX_LAYOUT_ROWS, &row, sizeof(row), &size_to_write));
     HashValue_(seed, hash_fn, RoundToNextHighPowOfTwo(row, 32));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
         desc, CUBLASLT_MATRIX_LAYOUT_COLS, &col, sizeof(col), &size_to_write));
     HashValue_(seed, hash_fn, RoundToNextHighPowOfTwo(col, 32));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
         desc, CUBLASLT_MATRIX_LAYOUT_LD, &ld, sizeof(ld), &size_to_write));
     HashValue_(seed, hash_fn, RoundToNextHighPowOfTwo(ld, 32));
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_ROWS, &row, sizeof(row),
     //     &size_to_write));
     // HashValue_(seed, hash_fn, row);
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_COLS, &col, sizeof(col),
     //     &size_to_write));
     // HashValue_(seed, hash_fn, col);
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_LD, &ld, sizeof(ld), &size_to_write));
     // HashValue_(seed, hash_fn, ld);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    PADDLE_ENFORCE_GPU_SUCCESS(dyl2::cublasLtMatrixLayoutGetAttribute(
         desc,
         CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
         &batch_offset,
@@ -678,7 +678,7 @@ class CublasLtHelper {
         transpose_y_(transpose_y) {
     cublasStatus_t status;
     // handle and matmul desc
-    // status = dyl::cublasLtCreate(&handle_);
+    // status = dyl2::cublasLtCreate(&handle_);
     // PADDLE_CUBLASLT_STATUS_CHECK(cublasLtCreate);
     if (std::is_same<T, phi::dtype::float16>::value) {
       scale_type_ = CUDA_R_16F;
@@ -728,9 +728,9 @@ class CublasLtHelper {
     }
 
 #if CUBLAS_VER_MAJOR < 11
-    status = dyl::cublasLtMatmulDescCreate(&matmul_desc_, compute_type_);
+    status = dyl2::cublasLtMatmulDescCreate(&matmul_desc_, compute_type_);
 #else
-    status = dyl::cublasLtMatmulDescCreate(
+    status = dyl2::cublasLtMatmulDescCreate(
         &matmul_desc_, compute_type_, scale_type_);
 #endif
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescCreate);
@@ -740,23 +740,23 @@ class CublasLtHelper {
     // matrix desc
 
     if (std::is_same<T, phi::dtype::bfloat16>::value && !transpose_y_) {
-      status = dyl::cublasLtMatrixLayoutCreate(&b_desc_, b_type_, n, k, n);
+      status = dyl2::cublasLtMatrixLayoutCreate(&b_desc_, b_type_, n, k, n);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
     } else {
       cublasOperation_t op_transpose = CUBLAS_OP_T;
-      status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
-                                                   CUBLASLT_MATMUL_DESC_TRANSA,
-                                                   &op_transpose,
-                                                   sizeof(op_transpose));
+      status = dyl2::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                                    CUBLASLT_MATMUL_DESC_TRANSA,
+                                                    &op_transpose,
+                                                    sizeof(op_transpose));
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
-      status = dyl::cublasLtMatrixLayoutCreate(&b_desc_, b_type_, k, n, k);
+      status = dyl2::cublasLtMatrixLayoutCreate(&b_desc_, b_type_, k, n, k);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
     }
 
-    status = dyl::cublasLtMatrixLayoutCreate(&a_desc_, a_type_, k, m, k);
+    status = dyl2::cublasLtMatrixLayoutCreate(&a_desc_, a_type_, k, m, k);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
 
-    status = dyl::cublasLtMatrixLayoutCreate(&c_desc_, c_type_, n, m, n);
+    status = dyl2::cublasLtMatrixLayoutCreate(&c_desc_, c_type_, n, m, n);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
 
 #if CUDA_VERSION >= 11010
@@ -787,45 +787,45 @@ class CublasLtHelper {
       reductionScheme = 0;
     }
 
-    dyl::cublasLtMatmulAlgoInit(handle_,
-                                compute_type_,
-                                scale_type_,
-                                b_type_,
-                                a_type_,
-                                c_type_,
-                                c_type_,
-                                algoId,
-                                &algo_);
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+    dyl2::cublasLtMatmulAlgoInit(handle_,
+                                 compute_type_,
+                                 scale_type_,
+                                 b_type_,
+                                 a_type_,
+                                 c_type_,
+                                 c_type_,
+                                 algoId,
+                                 &algo_);
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_,
         CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
         &(customOption),
         sizeof(customOption));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(&algo_,
-                                              CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
-                                              &(splitK_val),
-                                              sizeof(splitK_val));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(&algo_,
+                                               CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                                               &(splitK_val),
+                                               sizeof(splitK_val));
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_,
         CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
         &(swizzle),
         sizeof(swizzle));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_,
         CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
         &(reductionScheme),
         sizeof(int));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(
+    dyl2::cublasLtMatmulAlgoConfigSetAttribute(
         &algo_, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
 #endif  // #if CUDA_VERSION >= 11010
   }
   ~CublasLtHelper() {
-    dyl::cublasLtMatmulDescDestroy(matmul_desc_);
-    dyl::cublasLtMatrixLayoutDestroy(a_desc_);
-    dyl::cublasLtMatrixLayoutDestroy(b_desc_);
-    dyl::cublasLtMatrixLayoutDestroy(c_desc_);
+    dyl2::cublasLtMatmulDescDestroy(matmul_desc_);
+    dyl2::cublasLtMatrixLayoutDestroy(a_desc_);
+    dyl2::cublasLtMatrixLayoutDestroy(b_desc_);
+    dyl2::cublasLtMatrixLayoutDestroy(c_desc_);
   }
 
   template <typename InT, typename OutT = T>
@@ -862,28 +862,28 @@ class CublasLtHelper {
 
 #endif
 
-    status = dyl::cublasLtMatmul(handle_,
-                                 matmul_desc_,
-                                 &alpha_,
-                                 b_dev,
-                                 b_desc_,
-                                 a_dev,
-                                 a_desc_,
-                                 &beta_,
-                                 c_dev,
-                                 c_desc_,
-                                 c_dev,
-                                 c_desc_,
+    status = dyl2::cublasLtMatmul(handle_,
+                                  matmul_desc_,
+                                  &alpha_,
+                                  b_dev,
+                                  b_desc_,
+                                  a_dev,
+                                  a_desc_,
+                                  &beta_,
+                                  c_dev,
+                                  c_desc_,
+                                  c_dev,
+                                  c_desc_,
 #if CUDA_VERSION >= 11020
-                                 &algo_,
-                                 workspace,
-                                 workspace_size,
+                                  &algo_,
+                                  workspace,
+                                  workspace_size,
 #else
-                                 nullptr,
-                                 nullptr,
-                                 0,
+                                  nullptr,
+                                  nullptr,
+                                  0,
 #endif
-                                 stream);
+                                  stream);
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
