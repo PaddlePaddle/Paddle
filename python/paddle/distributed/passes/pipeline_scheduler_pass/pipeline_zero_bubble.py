@@ -391,6 +391,8 @@ class VScheduleCreator:
             )
         ]
 
+        less_forward_number = self._get_stage_forward_number(0)
+
         for i in stage_order[1:]:
             backward_b_start_time = (
                 backward_b_start_time
@@ -404,6 +406,7 @@ class VScheduleCreator:
                 i,
                 backward_b_start_time,
                 insert_order=forward_insert_order,
+                less_forward_number=less_forward_number,
             )
 
         # # Step1: Insert forward jobs after forward1 to fill the bubble
@@ -622,10 +625,15 @@ class VScheduleCreator:
         stage_id,
         next_job_start_time,
         insert_order="down",
+        less_forward_number=0,
     ):
         chunk_id = chunk_ids[0]
         while self._check_before_insert(
-            "forward", chunk_ids, stage_id, next_job_start_time
+            "forward",
+            chunk_ids,
+            stage_id,
+            next_job_start_time,
+            less_forward_number,
         ):
             # After insert forward job, we need to check whether we can insert backward_b job
             if (
@@ -641,18 +649,30 @@ class VScheduleCreator:
                 stage_order = range(self.num_stage - 1, stage_id - 1, -1)
 
             for stage_id in stage_order:
-                if self._can_schedule_f_task(
-                    stage_id, chunk_id
-                ) and self._time_check(
-                    "forward", chunk_id, stage_id, next_job_start_time
-                ):
+                if self._can_schedule_f_task(stage_id, chunk_id):
+                    stage_forward_number = self._get_stage_forward_number(
+                        stage_id
+                    )
+                    if stage_forward_number >= less_forward_number:
+                        if not self._time_check(
+                            "forward", chunk_id, stage_id, next_job_start_time
+                        ):
+                            continue
                     self._put_job_into_schedule("forward", chunk_id, stage_id)
 
             chunk_id = (chunk_id + 1) % len(chunk_ids)
 
     def _check_before_insert(
-        self, job_type, chunk_ids, stage_id, next_job_start_time
+        self,
+        job_type,
+        chunk_ids,
+        stage_id,
+        next_job_start_time,
+        less_forward_number,
     ):
+        if self._get_stage_forward_number(stage_id) < less_forward_number:
+            return True
+
         micro_batch_id_check = False
         for chunk_id in chunk_ids:
             micro_batch_id_check |= self._micro_batch_id_check(
@@ -892,3 +912,9 @@ class VScheduleCreator:
         expected_time = fbw_cost * self.num_micro_batch * self.num_model_chunks
         bubble_rate = max_bubble / expected_time
         return bubble_rate
+
+    def _get_stage_forward_number(self, stage):
+        job_number = 0
+        for chunk_id in range(self.num_model_chunks):
+            job_number += self._job_counters[stage][f"forward{chunk_id}"]
+        return job_number
