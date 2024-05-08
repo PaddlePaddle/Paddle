@@ -325,6 +325,7 @@ if(WITH_XPU)
   pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(sine_pos_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(pad2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(quant_dequant_xpu_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(roformer_relative_pos_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})

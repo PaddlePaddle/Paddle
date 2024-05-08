@@ -134,7 +134,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
 lod_tensor unpooling lod_rank_table context_project executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor    concat_and_split sampler sample_prob tree2col)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor    concat_and_split tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} beam_search)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)

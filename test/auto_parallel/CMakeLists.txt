@@ -142,7 +142,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 600)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 800)
 
   py_test_modules(test_semi_auto_parallel_for_llama_subnet MODULES
                   test_semi_auto_parallel_for_llama_subnet)
@@ -308,4 +308,4 @@ endif()
 py_test_modules(test_job_schedule_profiler_range MODULES
                 test_job_schedule_profiler_range)
 
-set_pit_tests_properties()
+set_pir_tests_properties()

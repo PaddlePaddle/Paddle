@@ -21,6 +21,7 @@
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
@@ -379,7 +380,8 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
   auto node = make_shared<Store>();
   node->tensor = tensor;
   node->value = value;
-  node->indices = indices;
+  node->indices =
+      utils::GetCompitableStoreLoadIndices(tensor.as_tensor_ref(), indices);
 
   if (tensor->type() != Void()) {
     node->set_type(
@@ -584,8 +586,10 @@ Var &Var::operator=(const _Var_ *x) {
   return *this;
 }
 
-Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
+Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   CHECK(tensor->type().valid());
+  const auto indices = utils::GetCompitableStoreLoadIndices(
+      tensor.as_tensor_ref(), origin_indices);
   CHECK(!indices.empty());
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {

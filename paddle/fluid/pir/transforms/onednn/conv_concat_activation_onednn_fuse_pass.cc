@@ -147,7 +147,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -155,7 +155,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
         return true;
       });
     }
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu") {
         float negative_slope = match_ctx.Attr<float>("negative_slope");
         // leaky relu alpha is a positive number
@@ -393,7 +393,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -611,7 +611,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -845,7 +845,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
         pat.Tensor("concat_out"), pat.Tensor("min"), pat.Tensor("max"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "glog/logging.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -76,14 +77,66 @@ phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type) {
   return phi::distributed::DistMetaTensor(type.global_ddim(), phi_attr);
 }
 
-TensorDistAttribute CvtToPirDistAttr(
-    const phi::distributed::ArgDistAttr& dist_attr) {
-  auto& attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
-  if (attr.process_mesh().empty()) return nullptr;
-  return TensorDistAttribute::get(pir::IrContext::Instance(),
-                                  attr.process_mesh(),
-                                  attr.dims_mapping(),
-                                  attr.partial_status());
+pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
+  auto ctx = pir::IrContext::Instance();
+  if (holds_alternative<phi::distributed::TensorDistAttr>(dist_attr)) {
+    auto& attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
+    return TensorDistAttribute::get(
+        ctx, attr.process_mesh(), attr.dims_mapping(), attr.partial_status());
+  } else {
+    auto& vec = PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
+                                 dist_attr);
+    std::vector<pir::Attribute> array;
+    for (auto& attr : vec) {
+      array.push_back(TensorDistAttribute::get(ctx,
+                                               attr.process_mesh(),
+                                               attr.dims_mapping(),
+                                               attr.partial_status()));
+    }
+    return pir::ArrayAttribute::get(ctx, array);
+  }
+}
+
+pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr) {
+  if (!prim_type) return nullptr;
+  auto ctx = pir::IrContext::Instance();
+  if (auto dense_tensor_type = prim_type.dyn_cast<pir::DenseTensorType>()) {
+    auto tensor_dist_attr = dist_attr.dyn_cast<TensorDistAttribute>();
+    if (!tensor_dist_attr) {
+      VLOG(0) << "Convert dense tensor type to dist type with attribute {"
+              << dist_attr << "}.";
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Only allowed convert a densor tensor type to dist dense tensor type "
+          "with non-empty TensorDistAttr"));
+    }
+    return DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr);
+  } else if (auto vec_type = prim_type.dyn_cast<pir::VectorType>()) {
+    auto array_attr = dist_attr.dyn_cast<pir::ArrayAttribute>();
+    if (!array_attr) {
+      VLOG(0) << "Convert vector type to dist type with attribute {"
+              << dist_attr << "}.";
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Only allowed convert a vector type to dist vector type with "
+          "non-empty ArrayAttr"));
+    }
+    PADDLE_ENFORCE_EQ(
+        vec_type.size(),
+        array_attr.size(),
+        common::errors::InvalidArgument(
+            "The vector type size must equal to array attribute size."));
+    std::vector<pir::Type> dist_vec_type;
+    for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+      dist_vec_type.push_back(CvtToPirDistType(vec_type[idx], array_attr[idx]));
+    }
+    return pir::VectorType::get(ctx, dist_vec_type);
+  } else {
+    VLOG(0) << "Convert type{" << prim_type << "} to dist type with attribute {"
+            << dist_attr << "}.";
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently only support convert dense_tensor_type r vector type to "
+        "dist."));
+  }
+  return nullptr;
 }
 
 void CopyLeafOpToMesh(pir::Value value, ProcessMeshAttribute mesh_attr) {
