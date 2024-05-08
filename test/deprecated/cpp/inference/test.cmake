@@ -59,7 +59,7 @@ function(inference_download_and_uncompress_without_verify INSTALL_DIR URL
   set(EXTERNAL_PROJECT_NAME "extern_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
   get_property(TARGET_EXIST GLOBAL PROPERTY ${EXTERNAL_PROJECT_NAME})
-  if(NOT ${TARGET_EXIST} STREQUAL EXIST)
+  if(NOT "${TARGET_EXIST}" STREQUAL EXIST)
     ExternalProject_Add(
       ${EXTERNAL_PROJECT_NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
