@@ -74,21 +74,7 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                     out, parameter_list=[x, out]
                 )
 
-                # 1) Test Program
                 res = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
-                for item in res:
-                    self.assertEqual(item.shape, ())
-
-                # TODO(cleanup-legacy-ir): In PIR mode, CompiledProgram can be
-                # cleanup.
-                if paddle.framework.use_pir_api():
-                    continue
-
-                # 2) Test CompiledProgram Program
-                compile_prog = paddle.static.CompiledProgram(main_prog)
-                res = exe.run(
-                    compile_prog, fetch_list=[x, out, x_grad, out_grad]
-                )
                 for item in res:
                     self.assertEqual(item.shape, ())
 
