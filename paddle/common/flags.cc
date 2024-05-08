@@ -1271,13 +1271,22 @@ PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
 /**
  * CINN accuracy check related FLAG
  * Name: FLAGS_enable_cinn_accuracy_check
- * Since Version: 2.7.0
+ * Since Version: 3.0 beta
  * Value Range: bool, default=false
- * Example:
  */
 PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
                          false,
                          "Whether enable accuracy check in cinn.");
+
+/**
+ * CINN fuse parallel matmul pass related FLAG
+ * Name: FLAGS_enable_fuse_parallel_matmul_pass
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
+                         true,
+                         "Whether enable fuse_parallel_matmul_pass in cinn.");
 
 /**
  * Conv Search cache max number related FLAG

@@ -101,20 +101,14 @@ void SimplifyDimExpr(pir::Operation* module_op) {
 
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
-      if (!shape_analysis->HasShapeOrDataForValue(value)) {
-        VLOG(4) << "SimplifyDimExpr: shape_analysis can't find ShapeOrData for "
-                   "value of the op:"
-                << op.name();
-      } else {
-        const symbol::ShapeOrDataDimExprs& shape_or_data =
-            shape_analysis->GetShapeOrDataForValue(value);
-        VLOG(8) << op.name() << "     origin_shape_or_data: " << shape_or_data;
-        symbol::ShapeOrDataDimExprs simplified_shape_or_data =
-            SimplifyShapeOrData(shape_or_data);
-        VLOG(8) << op.name()
-                << " simplified_shape_or_data: " << simplified_shape_or_data;
-        shape_analysis->SetShapeOrDataForValue(value, simplified_shape_or_data);
-      }
+      const symbol::ShapeOrDataDimExprs& shape_or_data =
+          shape_analysis->GetShapeOrDataForValue(value);
+      VLOG(8) << op.name() << "     origin_shape_or_data: " << shape_or_data;
+      symbol::ShapeOrDataDimExprs simplified_shape_or_data =
+          SimplifyShapeOrData(shape_or_data);
+      VLOG(8) << op.name()
+              << " simplified_shape_or_data: " << simplified_shape_or_data;
+      shape_analysis->SetShapeOrDataForValue(value, simplified_shape_or_data);
     });
     if (op.num_results() > 0) {
       pir::shape::SetShapeAttrForOp(
