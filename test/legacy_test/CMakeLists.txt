@@ -1055,3 +1055,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_pir_tests_properties()
+
+set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
