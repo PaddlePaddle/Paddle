@@ -80,6 +80,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.argmax",
     "pd_op.print",
     "pd_op.accuracy",
+    "pd_op.randint",
     "pd_op.uniform",
     "pd_op.gaussian",
     "pd_op.bernoulli",
