@@ -76,7 +76,7 @@ symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
 
 symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = ::common::Overloaded{
       [](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(
             SimplifyTensorShapeOrData(tensor_shape_or_data));
