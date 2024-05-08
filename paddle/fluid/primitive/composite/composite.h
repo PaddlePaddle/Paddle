@@ -90,6 +90,8 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     for (size_t i = 1; i < axis_.size(); ++i) {
       value = value * get_slice<T>(x_shape, axis_[i]);
     }
+
+    value = cast<T>(value, x_tmp.dtype());
   } else {
     int64_t value_ = 1;
     for (size_t i = 0; i < axis_.size(); i++) {
