@@ -495,9 +495,11 @@
     - checkpoint : Upgrade truncated_gaussian_random add 2 new attribute [a, b]
       action :
         - add_attr : a
-          comment : the minimum cutoff value
+          comment : The minimum cutoff value.
+          default: -2.0
         - add_attr : b
-          comment : the maximum cutoff value
+          comment : The maximum cutoff value.
+          default: 2.0
 
 - op : unique_consecutive
   version :
