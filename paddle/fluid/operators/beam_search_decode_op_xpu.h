@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/beam_search_decode_op_def.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {

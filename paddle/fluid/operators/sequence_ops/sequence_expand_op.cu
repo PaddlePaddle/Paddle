@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {

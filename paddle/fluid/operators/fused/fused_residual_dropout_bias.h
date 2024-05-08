@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {

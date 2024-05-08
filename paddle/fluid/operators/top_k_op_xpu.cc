@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "xpu/refactor/math.h"
 
 namespace paddle {
