@@ -22,8 +22,6 @@ from paddle.base import core
 
 paddle.enable_static()
 
-position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
-
 
 class TestFusedRotaryPositionEmbeddingPass(PassTest):
     r"""
