@@ -45,6 +45,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -179,6 +180,7 @@ void ApplyCinnLowerPass(
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
   if (FLAGS_enable_cinn_accuracy_check) {
     VLOG(0) << "Enable CINN Accuracy Check Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());

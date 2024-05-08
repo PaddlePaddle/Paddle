@@ -398,14 +398,6 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    // if (op->num_regions() > 0) {
-    //   auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-    //       op->GetParentProgram());
-    //   std::cout << "Program before CreateCinnGroupClusterPass: \n"
-    //         << pir::CustomPrintHelper(*op->GetParentProgram(),
-    //         shape_analysis.PrintHook()) << std::endl;
-    // }
-
     return op->num_regions() > 0;
   }
 };

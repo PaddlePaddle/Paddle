@@ -75,10 +75,7 @@ class AddAccuracyCheckPattern
         }
       }
       pir::Operation* pd_op =
-          cinn::dialect::details::RewriteCinnOpToPdOp(op, builder);
-      for (uint32_t i = 0; i < op->num_results(); ++i) {
-        ir_mapping.Add(op->result(i), pd_op->result(i));
-      }
+          cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, builder);
     };
 
     const auto& ClonePdOp = [&](::pir::Operation* op) -> void {
