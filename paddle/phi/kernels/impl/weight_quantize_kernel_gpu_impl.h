@@ -233,10 +233,10 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
     if (algo == "weight_only_int4") {
       total_k /= 2;
       numel /= 2;
-      weight_permute_kernel_wint4<<<grid_size, block_size>>>(
+      weight_interleave_add_bias_kernel_wint4<<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
     } else {
-      weight_permute_kernel_wint8<<<grid_size, block_size>>>(
+      weight_interleave_add_bias_kernel_wint8<<<grid_size, block_size>>>(
           input_data, output_data, numel, total_k, total_n);
     }
   }
