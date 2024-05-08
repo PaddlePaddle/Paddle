@@ -56,7 +56,7 @@ class LayerCase(paddle.nn.Layer):
 
 
 class TestLayer(TestBase):
-    def setUp(self):
+    def init(self):
         self.input_specs = [
             InputSpec(
                 shape=(-1, -1, -1),
@@ -90,12 +90,6 @@ class TestLayer(TestBase):
             paddle.randint(low=0, high=10, shape=[16, 49], dtype=paddle.int64),
         )
         self.net = LayerCase()
-        self.atol = 1
-
-    def set_flags(self):
-        # TODO(Aurelius84): deny cinn_op.gather
-        paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
-        st_out = self.train(self.net, to_static=True)
 
 
 if __name__ == '__main__':
