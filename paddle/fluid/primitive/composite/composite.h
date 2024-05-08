@@ -730,6 +730,14 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
+  auto x_cast = cast<T>(x, DataType::INT64);
+  auto y_cast = cast<T>(y, DataType::INT64);
+  auto res = x_cast / y_cast;
+  return cast<T>(res, x.dtype());
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,

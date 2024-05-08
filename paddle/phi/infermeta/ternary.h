@@ -115,6 +115,12 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset);
 
+void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
+                                 MetaTensor* out,
+                                 MetaTensor* softmax,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* seed_offset);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
@@ -123,6 +129,13 @@ void InstanceNormInferMeta(const MetaTensor& x,
                            MetaTensor* saved_mean,
                            MetaTensor* saved_variance,
                            MetaConfig config = MetaConfig());
+
+void GlobalGatherInferMeta(const MetaTensor& x,
+                           const MetaTensor& local_count,
+                           const MetaTensor& global_count,
+                           int ring_id,
+                           bool use_calc_stream,
+                           MetaTensor* out);
 
 void GlobalScatterInferMeta(const MetaTensor& x,
                             const MetaTensor& local_count,
