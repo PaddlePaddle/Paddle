@@ -569,9 +569,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       pir::PatternRewriter &rewriter) const {  // NOLINT
     const int axis = GetAxis(split);
     const std::vector<int64_t> &sections = GetSections(split);
-    for (auto section : sections) {
-      VLOG(0) << " " << section;
-    }
     const int index = slice->attribute<::pir::Int32Attribute>("index").data();
     int64_t start =
         std::accumulate(sections.begin(), sections.begin() + index, 0);
