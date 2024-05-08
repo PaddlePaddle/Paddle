@@ -203,6 +203,9 @@ class OpLoweringGroup {
   std::unordered_set<::pir::Operation*> output_ops_;
   // op pattern kind.
   OpPatternKind op_pattern_kind_{kElementWise};
+  // FIXME(Aurelius84): Need more elegent way to deal with SymDimExprs
+  // from local and global ShapeAnalysis. It will be removed after
+  // refactoring logic of OpLoweringGroup.
   bool is_broadcast_leaf_{false};
 
   std::vector<std::string> input_names_;

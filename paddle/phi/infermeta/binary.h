@@ -42,6 +42,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
+                    bool log_target,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
@@ -180,6 +181,11 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
+
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out);
 
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
@@ -473,6 +479,13 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PullBoxSparseInferMeta(const MetaTensor& w,
+                            const std::vector<const MetaTensor*>& ids,
+                            bool is_sparse,
+                            bool is_distributed,
+                            int size,
+                            std::vector<MetaTensor*> out);
+
 void PullGpupsSparseInferMeta(const MetaTensor& w,
                               const std::vector<const MetaTensor*>& ids,
                               const std::vector<int>& size,
@@ -607,6 +620,12 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaTensor* boxes,
                       MetaTensor* scores,
                       MetaConfig config = MetaConfig());
+
+void YoloBoxHeadInferMeta(const MetaTensor& x,
+                          const std::vector<int>& anchors,
+                          int class_num,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,

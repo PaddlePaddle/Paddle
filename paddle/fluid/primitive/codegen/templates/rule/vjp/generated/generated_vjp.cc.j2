@@ -27,7 +27,7 @@ std::vector<std::vector<paddle::Tensor>> vjp_res;
 for (auto arg: stop_gradients) {
   vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
 }
-  {% if 'composite' in api and api.name in vjp_comp_white_list %}
+  {% if api.name in vjp_comp_white_list %}
 std::string op_name = "{{api.name}}";
 auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(op_name);
 if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() && !need_skip) {
@@ -115,7 +115,13 @@ for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {
     {% endif %}
   {% endfor %}
 {{get_mutable_attribute(api.attrs, api.name)}}
-details::{{api.composite.func_name}}<LazyTensor>({{api.composite.func_args}});
+
+{%- set args_names=[] -%}
+{%- for i in api.inputs -%} {%- do args_names.append(i.name) -%} {%- endfor -%}
+{%- for i in api.attrs -%} {%- do args_names.append(i.name) -%} {%- endfor %}
+{%- set outputs_names=[] -%}
+{%- for i in api.outputs -%} {%- do outputs_names.append(i.name) -%} {%- endfor -%}
+details::{{api.name}}<LazyTensor>({{common.args(args_names, outputs_names)}});
 {% endmacro %}
 
 {%- set api_map = {} -%}
