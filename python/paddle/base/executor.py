@@ -1165,9 +1165,9 @@ class _ExecutorCache:
                 data_op_infos.append(tup)
         from paddle.decomposition import decomp
 
-        core._set_prim_all_enabled(True)
-        decomp.decompose(program, [])
-        core._set_prim_all_enabled(False)
+        if core._enable_dist_prim_all():
+            with decomp.prim_guard():
+                decomp.decompose_dis_program(program)
         return program, new_exe, data_op_infos
 
 

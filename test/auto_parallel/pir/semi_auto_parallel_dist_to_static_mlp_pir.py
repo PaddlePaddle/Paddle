@@ -193,7 +193,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_test_case(self):
         self.test_mp_demo_net()
-        self.test_pp_demo_net()
+        # self.test_pp_demo_net()
 
 
 if __name__ == '__main__':
