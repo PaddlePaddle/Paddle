@@ -26,6 +26,16 @@
     func : accuracy
     data_type : x
 
+- op : accuracy_check
+  args : (Tensor x, Tensor y, str fn_name, int64_t res_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : accuracy_check
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
+
 - op : acos
   args : (Tensor x)
   output : Tensor(out)
@@ -698,6 +708,18 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cudnn_lstm
+  args: (Tensor x, Tensor init_h, Tensor init_c, Tensor w, Tensor[] weight_list, Tensor sequence_length, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0)
+  output: Tensor (out), Tensor (last_h), Tensor (last_c), Tensor (reserve), Tensor (state_out)
+  infer_meta:
+    func: CudnnLSTMInferMeta
+  kernel:
+    func: cudnn_lstm
+    data_type: x
+  optional: w, weight_list, sequence_length
+  intermediate: reserve
+  backward: cudnn_lstm_grad
+
 - op : cummax
   args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
@@ -765,6 +787,15 @@
     func : depthwise_conv2d
     data_type : input
   backward : depthwise_conv2d_grad
+
+- op : dequantize_abs_max
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : DequantizeAbsMaxInferMeta
+  kernel :
+    func : dequantize_abs_max
+    data_type : x
 
 - op : det
   args : (Tensor x)
@@ -995,6 +1026,16 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
 
+- op : fake_quantize_range_abs_max
+  args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale), Tensor(out_scales)
+  infer_meta :
+    func : FakeQuantizeRangeAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_range_abs_max
+    data_type : x
+  optional : iter, out_scales
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -1068,6 +1109,18 @@
   backward : flash_attn_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : flash_attn_qkvpacked
+  args : (Tensor qkv, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset, attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_qkvpacked
+    data_type : qkv
+  backward : flash_attn_qkvpacked_grad
+
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -1080,6 +1133,19 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+
+- op : flash_attn_varlen_qkvpacked
+  args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional :  fixed_seed_offset , attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_varlen_qkvpacked
+    data_type : qkv
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_varlen_qkvpacked_grad
 
 - op : flash_attn_with_sparse_mask
   args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -1577,7 +1643,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction = "mean")
+  args : (Tensor x, Tensor label, str reduction = "mean", bool log_target = false)
   output : Tensor(out)
   infer_meta :
     func : KLDivInferMeta
@@ -1978,6 +2044,7 @@
     data_type : query
   optional : bias, cu_seqlens_q, cu_seqlens_k, causal_diagonal, seqlen_k
   backward : memory_efficient_attention_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : merge_selected_rows
   args : (Tensor x)
@@ -2396,6 +2463,7 @@
     func : reverse
     data_type : x
   backward : reverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
@@ -3194,6 +3262,15 @@
     func : yolo_box
     data_type : x
 
+- op : yolo_box_head
+  args : (Tensor x, int[] anchors, int class_num)
+  output : Tensor(out)
+  infer_meta :
+    func : YoloBoxHeadInferMeta
+  kernel :
+    func : yolo_box_head
+    data_type : x
+
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -3205,3 +3282,12 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: moe
+  args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
+    str act_type = "gelu")
+  output: Tensor (out)
+  infer_meta:
+    func: MoeInferMeta
+  kernel:
+    func: moe

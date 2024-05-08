@@ -458,9 +458,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_forward")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_fwd_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_fwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -469,9 +469,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_backward")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_bwd_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_bwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -480,9 +480,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_all")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_all_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_all_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -637,3 +637,6 @@ def check_and_set_prim_all_enabled():
         __sync_prim_forward_status()
     else:
         __sync_stat_with_flag("FLAGS_prim_all")
+
+
+check_and_set_prim_all_enabled()

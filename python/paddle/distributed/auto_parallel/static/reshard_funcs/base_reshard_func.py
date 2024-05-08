@@ -20,7 +20,7 @@ class ReshardFunction:
     def is_suitable(self, dist_tensor, dist_attr):
         raise NotImplementedError
 
-    def reshard(self, program, op, src_tensor, dst_dist_attr):
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         raise NotImplementedError
 
 
@@ -40,6 +40,13 @@ def register_reshard_func(reshard_func):
 def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
+
+
+def is_shard(dist_attr):
+    for v in dist_attr.dims_mapping:
+        if v != -1:
+            return True
+    return False
 
 
 def is_partial(dist_attr):

@@ -138,9 +138,6 @@ WhileInstruction::WhileInstruction(
     external_input_names_.insert(name);
     skip_gc_vars.insert(name);
   }
-  for (const auto& var_name : skip_gc_vars) {
-    skip_gc_vars.insert(var_name);
-  }
   body_inter_->SetSkipGcVars(skip_gc_vars);
 
   if (VLOG_IS_ON(6)) {
