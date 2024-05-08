@@ -558,12 +558,13 @@ class FusedCommBuffer:
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
 
-        task = group.process_group.all_gather(
-            full_buffer, slice_buffer, sync_op=sync
-        )
         if sync:
-            task.wait()
+            # default sync_op is False, so we need to wait here.
+            # this will call distributed_py.cc in paddle. In distributed_py.cc, there defines two all gather function, their parameters are different.
+            group.process_group.all_gather(slice_buffer, full_buffer).wait()
         else:
+            # default sync_op is False, so we don't need to to set sync_op = false here.
+            task = group.process_group.all_gather(slice_buffer, full_buffer)
             for param in self.params:
                 assert param.name not in param2task
                 param2task[param.name] = task
