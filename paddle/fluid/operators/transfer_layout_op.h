@@ -39,7 +39,7 @@ class TransferLayoutFunctor {
  public:
   TransferLayoutFunctor(const framework::Variable *in,
                         framework::Variable *out,
-                        const phi::DeviceContext &dev_ctx,
+                        const platform::DeviceContext &dev_ctx,
                         const int src_layout,
                         const int dst_layout,
                         std::string in_name)
@@ -130,7 +130,7 @@ class TransferLayoutFunctor {
   }
 
  private:
-  void TransDataLayout(const phi::DeviceContext &dev_ctx,
+  void TransDataLayout(const platform::DeviceContext &dev_ctx,
                        const phi::DenseTensor &in,
                        phi::DenseTensor *out) const {
     PADDLE_ENFORCE_EQ(
@@ -159,7 +159,7 @@ class TransferLayoutFunctor {
 
   const framework::Variable *in_;
   framework::Variable *out_;
-  const phi::DeviceContext &dev_ctx_;
+  const platform::DeviceContext &dev_ctx_;
   const int src_layout_;
   const int dst_layout_;
   std::string in_name_;
