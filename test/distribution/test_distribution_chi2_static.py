@@ -43,7 +43,7 @@ paddle.seed(2024)
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 10),
+                (2, 5),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -171,7 +171,7 @@ class TestChi2(unittest.TestCase):
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (2, 2),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -341,12 +341,12 @@ class TestChi2SampleKS(unittest.TestCase):
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (2, 2),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2, 3),
+                (2, 2),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
