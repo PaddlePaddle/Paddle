@@ -34,7 +34,7 @@ class SameStatusReshardFunction(ReshardFunction):
             return False
         return True
 
-    def reshard(self, program, op, src_dist_attr, dst_dist_attr):
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         src_mesh = src_dist_attr.process_mesh
         dst_mesh = dst_dist_attr.process_mesh
 
@@ -45,14 +45,13 @@ class SameStatusReshardFunction(ReshardFunction):
 
         cur_global_rank = paddle.distributed.get_rank()
         comm_group = new_process_group(all_process_ids)
-        paddle.pir.set_insertion_point(op)
 
         is_send = True
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src == cur_global_rank:
                 dst_local_rank = all_process_ids.index(dst)
                 paddle._pir_ops.send_v2(
-                    op.operand_source(0),
+                    src_value,
                     comm_group.id,
                     dst_local_rank,
                     True,
@@ -72,11 +71,11 @@ class SameStatusReshardFunction(ReshardFunction):
             elif dst == cur_global_rank:
                 src_local_rank = all_process_ids.index(src)
                 assert (
-                    -1 not in op.result(0).shape
+                    -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
                 recv_value = paddle._pir_ops.recv_v2(
-                    op.result(0).shape,
-                    op.result(0).dtype,
+                    dst_type.shape,
+                    dst_type.dtype,
                     src_local_rank,
                     comm_group.id,
                     True,
@@ -88,14 +87,11 @@ class SameStatusReshardFunction(ReshardFunction):
                         dst_mesh, [], [dst_dist_attr]
                     )
                 )
-                recv_value.set_type(op.result(0).type())
-                op.result(0).replace_all_uses_with(recv_value)
+                recv_value.update_dist_attr(dst_dist_attr)
                 is_send = False
                 break
 
-        program.global_block().remove_op(op)
-
         if is_send:
-            return None, None
+            return None
         else:
-            return new_op, dst_dist_attr
+            return recv_value

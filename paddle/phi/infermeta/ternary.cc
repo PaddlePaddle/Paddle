@@ -17,7 +17,10 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/layout.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -433,6 +436,31 @@ void FlashAttnInferMeta(const MetaTensor& q,
     seed_offset->set_dims({2});
   }
 }
+void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
+                                 MetaTensor* out,
+                                 MetaTensor* softmax,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* seed_offset) {
+  const auto& qkvdims = qkv.dims();
+  PADDLE_ENFORCE(qkvdims.size() == 4 || qkvdims.size() == 5,
+                 phi::errors::InvalidArgument(
+                     "qkv dims must be 4(unpadded) or 5(padded batch)"));
+  // qkv [total_*,nheads/nheads_k+2,nheads_k,headdim]
+  auto out_dims = DDim({qkvdims[0], (qkvdims[1] - 2) * qkvdims[2], qkvdims[3]});
+  if (qkvdims.size() == 5) {
+    // qkv [batchsize,seqlen,nheads/nheads_k+2,nheads_k,headdim]
+    out_dims =
+        DDim{qkvdims[0], qkvdims[1], (qkvdims[2] - 2) * qkvdims[3], qkvdims[4]};
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(qkv.dtype());
+  out->set_layout(qkv.layout());
+  softmax->set_dtype(qkv.dtype());
+  softmax_lse->set_dtype(qkv.dtype());
+  if (seed_offset) {
+    seed_offset->set_dtype(phi::DataType::INT64);
+  }
+}
 
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
@@ -562,6 +590,32 @@ void InstanceNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({NxC});
     saved_variance->set_dtype(param_type);
   }
+}
+
+void GlobalGatherInferMeta(const MetaTensor& x,
+                           const MetaTensor& local_count,
+                           const MetaTensor& global_count,
+                           int ring_id,
+                           bool use_calc_stream,
+                           MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      phi::errors::InvalidArgument(
+          "The ring_id (%d) for global gather op must be non-negative.",
+          ring_id));
+  auto input_dims = x.dims();
+  auto ndim_input = input_dims.size();
+  // dim check
+  PADDLE_ENFORCE_EQ(
+      ndim_input,
+      2,
+      phi::errors::InvalidArgument("The input tensor's dimension must be 2. "
+                                   "But received input's dimension = %d.",
+                                   ndim_input));
+  phi::DDim out_dims = common::make_ddim({-1, -1});
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 void GlobalScatterInferMeta(const MetaTensor& x,

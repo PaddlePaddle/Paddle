@@ -28,7 +28,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from test_jit_save_load import train
+from test_jit_save_load_rename import train
 
 import paddle
 from paddle.autograd.py_layer import PyLayer

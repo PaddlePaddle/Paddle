@@ -519,6 +519,18 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_op : cudnn_lstm_grad
+  forward: cudnn_lstm (Tensor x, Tensor init_h, Tensor init_c, Tensor w, Tensor[] weight_list, Tensor sequence_length, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0) -> Tensor (out), Tensor (last_h), Tensor (last_c), Tensor (reserve), Tensor (state_out)
+  args: (Tensor x, Tensor init_h, Tensor init_c, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor reserve, Tensor state_out, Tensor out_grad, Tensor last_h_grad, Tensor last_c_grad, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0)
+  output: Tensor (x_grad), Tensor (init_h_grad), Tensor (init_c_grad), Tensor[](weight_list_grad){weight_list.size()}
+  infer_meta:
+    func: CudnnLSTMGradInferMeta
+    param : [x, init_h, init_c, weight_list]
+  kernel:
+    func: cudnn_lstm_grad
+    data_type : out_grad
+  optional: weight_list, sequence_length, weight_list_grad
+
 - backward_op : cummax_grad
   forward : cummax(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
   args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
@@ -870,6 +882,18 @@
     func : flash_attn_grad
     data_type: q
 
+- backward_op : flash_attn_qkvpacked_grad
+  forward : flash_attn_qkvpacked (Tensor qkv,  Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  args : (Tensor qkv, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, float dropout = 0.0, bool causal = false)
+  optional : attn_mask
+  output : Tensor(qkv_grad)
+  infer_meta :
+    func : FlashAttnQKVPackedGradInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_qkvpacked_grad
+    data_type: qkv
+
 - backward_op : flash_attn_unpadded_grad
   forward : flash_attn_unpadded (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false)
@@ -881,6 +905,18 @@
   kernel :
     func : flash_attn_unpadded_grad
     data_type: q
+
+- backward_op : flash_attn_varlen_qkvpacked_grad
+  forward : flash_attn_varlen_qkvpacked (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true) -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  args : (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool varlen_padded = true)
+  optional : attn_mask
+  output : Tensor(qkv_grad)
+  infer_meta :
+    func : FlashAttnQKVPackedGradInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_varlen_qkvpacked_grad
+    data_type: qkv
 
 - backward_op : flash_attn_with_sparse_mask_grad
   forward : flash_attn_with_sparse_mask (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -1052,6 +1088,18 @@
   kernel :
     func : gelu_grad
   composite: gelu_grad(x, out_grad, approximate, x_grad)
+
+- backward_op : global_gather_grad
+  forward : global_gather(Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false) -> Tensor(out)
+  args : (Tensor out_grad, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
+  output : Tensor(x_grad)
+  invoke : global_scatter(out_grad, local_count, global_count, ring_id, use_calc_stream)
+
+- backward_op : global_scatter_grad
+  forward : global_scatter(Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false) -> Tensor(out)
+  args : (Tensor out_grad, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
+  output : Tensor(x_grad)
+  invoke : global_gather(out_grad, local_count, global_count, ring_id, use_calc_stream)
 
 - backward_op : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
