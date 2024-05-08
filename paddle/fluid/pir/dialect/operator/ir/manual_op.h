@@ -394,7 +394,7 @@ class SliceArrayOp
   using Op::Op;
   static const char *name() { return "pd_op.slice_array"; }
   static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 2;
+  static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
 
   void VerifySig();
@@ -558,7 +558,7 @@ class ExpandOp : public pir::Op<ExpandOp,
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IncrementOp
@@ -604,7 +604,7 @@ class IncrementOp
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class Increment_Op
@@ -651,7 +651,7 @@ class Increment_Op
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class AssignOut_Op
@@ -760,7 +760,7 @@ class IR_API ShapeBroadcastOp
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class ArrayPopOp : public pir::Op<ArrayPopOp,

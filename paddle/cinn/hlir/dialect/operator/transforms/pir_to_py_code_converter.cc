@@ -583,7 +583,7 @@ struct PirToPyCodeConverterHelper {
 
     std::string operator()(AdtTypeId<::pir::VectorType>) {
       std::stringstream ss;
-      const auto& name = ::pir::DenseTensorType::name();
+      const auto& name = ::pir::VectorType::name();
       const auto& vec_type = type.dyn_cast<::pir::VectorType>();
       ss << "self." << name << "(";
       for (int i = 0; i < vec_type.size(); ++i) {
