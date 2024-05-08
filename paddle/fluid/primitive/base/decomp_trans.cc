@@ -428,9 +428,6 @@ void DecompProgram::decomp_block(
     }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
-    if (enable_prim && check_decomp_dynamic_shape(op)) {
-      enable_prim = false;
-    }
     if (enable_prim && check_decomp_dynamic_shape(op) &&
         dynamic_shape_blacklist.find(op->name()) !=
             dynamic_shape_blacklist.end()) {
