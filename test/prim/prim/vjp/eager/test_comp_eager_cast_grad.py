@@ -76,9 +76,7 @@ class TestCastGradComp(unittest.TestCase):
 
             TO_NUMPY_DTYPE = _PADDLE_DTYPE_2_NUMPY_DTYPE
 
-        self.assertEqual(
-            _PADDLE_DTYPE_2_NUMPY_DTYPE[actual[0].dtype], desired.dtype
-        )
+        self.assertEqual(TO_NUMPY_DTYPE[actual[0].dtype], desired.dtype)
         np.testing.assert_allclose(
             actual=actual[0],
             desired=desired,
