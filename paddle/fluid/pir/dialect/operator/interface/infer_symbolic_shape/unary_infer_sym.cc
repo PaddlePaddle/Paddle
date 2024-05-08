@@ -254,32 +254,35 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   int32_t max_level =
       attributes.at("max_level").dyn_cast<pir::Int32Attribute>().data();
   int32_t num_levels = max_level - min_level + 1;
+  int64_t batch_size = 1;
 
   symbol::DimExpr num_rois = [&]() {
     pir::Value rois_num = op->operand_source(1);
     const auto &rois_num_shape_or_data =
         infer_context->GetShapeOrDataForValue(rois_num);
 
-    PADDLE_ENFORCE_EQ(
-        rois_num_shape_or_data.shape()[0],
-        1,
-        phi::errors::InvalidArgument("DistributeFpnProposalsOp in pir model "
-                                     "only support batch_size=1 now."));
-
+    batch_size = rois_num_shape_or_data.shape()[0].Get<int64_t>();
     PADDLE_ENFORCE_EQ(rois_num_shape_or_data.data().has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "InferSymbolicShape of DistributeFpnProposalsdOp "
                           "only support input with rois_num."));
 
-    const auto &rois_num_value = rois_num_shape_or_data.data().value()[0];
-    CHECK(rois_num_value.isa<int64_t>() || rois_num_value.isa<std::string>())
-        << "rois_num must be int64 or SymName.";
-    if (rois_num_value.isa<int64_t>()) {
-      return symbol::DimExpr(rois_num_value.Get<int64_t>());
-    } else {
-      return symbol::DimExpr(rois_num_value.Get<std::string>());
+    symbol::DimExpr rois_total_num = 0;
+    for (int i = 0; i < batch_size; i++) {
+      const auto &rois_num_value = rois_num_shape_or_data.data().value()[i];
+
+      CHECK(rois_num_value.isa<int64_t>() || rois_num_value.isa<std::string>())
+          << "rois_num must be int64 or SymName.";
+      if (rois_num_value.isa<int64_t>()) {
+        return symbol::DimExpr(rois_num_value.Get<int64_t>());
+      } else {
+        return symbol::DimExpr(rois_num_value.Get<std::string>());
+      }
+      rois_total_num = rois_total_num + rois_num_value;
     }
+
+    return rois_total_num;
   }();
 
   const auto &multi_rois_out_shape = [&]() {
@@ -305,8 +308,8 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
 
   const auto &rois_num_per_level_out_shape = [&]() {
     symbol::TensorListShapeOrDataDimExprs rois_num_per_level_out_shape;
-    rois_num_per_level_out_shape.resize(num_levels,
-                                        symbol::TensorShapeOrDataDimExprs({1}));
+    rois_num_per_level_out_shape.resize(
+        num_levels, symbol::TensorShapeOrDataDimExprs({batch_size}));
     return rois_num_per_level_out_shape;
   }();
 
