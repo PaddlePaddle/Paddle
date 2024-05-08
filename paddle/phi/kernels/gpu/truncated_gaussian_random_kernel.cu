@@ -37,7 +37,7 @@ struct GPUTruncatedNormal {
 
   __host__ __device__
   GPUTruncatedNormal(T mean, T std, T numeric_min, int seed, T a, T b)
-      : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
+      : mean(mean), std(std), seed(seed), numeric_min(numeric_min), a(a), b(b) {
     a_normal_cdf = (1.0 + erff(a / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff(b / sqrtf(2.0))) / 2.0;
   }
@@ -69,7 +69,9 @@ struct TruncatedNormalOffset {
         std(std),
         seed(seed),
         numeric_min(numeric_min),
-        offset_(offset) {
+        offset_(offset),
+        a(a),
+        b(b) {
     a_normal_cdf = (1.0 + erff(a / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff(b / sqrtf(2.0))) / 2.0;
   }
