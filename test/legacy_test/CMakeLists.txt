@@ -492,7 +492,7 @@ foreach(TEST_OP ${TEST_OPS_WITH_GC})
 endforeach()
 
 # Switch some dy2st UT to eager mode
-set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
+set(TEST_EAGER_OPS test_jit_save_load_rename test_translated_layer)
 foreach(TEST_OP ${TEST_EAGER_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
@@ -1055,4 +1055,4 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
-set_pit_tests_properties()
+set_pir_tests_properties()

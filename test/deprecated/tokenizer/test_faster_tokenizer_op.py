@@ -408,6 +408,7 @@ class TestBertTokenizerOp(unittest.TestCase):
                     shape=[None], dtype=core.VarDesc.VarType.STRINGS
                 ),  # texts
             ],
+            full_graph=True,
         )
         # Save in static graph model.
         paddle.jit.save(static_model, self.inference_path)
