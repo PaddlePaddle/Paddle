@@ -244,9 +244,7 @@ struct FlowGraph {
     for (auto& op : *(program.block())) {
       // we need to ensure the edge from src node to real src node in
       // calculation graph
-      //   if (!op.HasTrait<pir::ImmutableLayoutTrait>() &&
-      //   op.num_operands() > 0 &&
-      //       op.name() != "builtin.combine") {
+
       if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() > 0) {
         continue;
       }
@@ -339,8 +337,7 @@ struct FlowGraph {
                 if (!v) return true;
                 auto vt = v.type();
                 if (!vt) return true;
-                // maybe not DenseTensor, but we can handle other types
-                // later
+                // maybe not DenseTensor, but we can handle other types later
                 if (auto vdt =
                         vt.dyn_cast<paddle::dialect::DenseTensorType>()) {
                   std::cout << "judging var: " << v.defining_op() << " "
@@ -458,9 +455,9 @@ struct FlowGraph {
   }
 
   float max_flow() {
-    std::cout << "--------------------[max flow "
-                 "start]---------------------------"
-              << std::endl;
+    std::cout
+        << "--------------------[max flow start]---------------------------"
+        << std::endl;
     float total_flow = 0.0f;
     while (ConstructLevelGraph()) {
       for (auto& [node, nexts] : adjs) {
@@ -543,9 +540,9 @@ class TransferLayoutPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     auto* program = module_op.program();
 
-    std::cout << "---------------------[program before "
-                 "pass]---------------------"
-              << std::endl;
+    std::cout
+        << "---------------------[program before pass]---------------------"
+        << std::endl;
     std::cout << *program << std::endl;
 
     // MinCut
@@ -631,25 +628,25 @@ class TransferLayoutPass : public pir::Pass {
       q.push_front(op_node);
     }
 
-    std::cout << "-----------------------[topological "
-                 "sort]------------------------"
-              << std::endl;
+    std::cout
+        << "-----------------------[topological sort]------------------------"
+        << std::endl;
 
     for (auto n : q) {
       std::cout << n << std::endl;
     }
 
-    std::cout << "-----------------------[rewrite "
-                 "begin]------------------------"
-              << std::endl;
+    std::cout
+        << "-----------------------[rewrite begin]------------------------"
+        << std::endl;
 
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
 
-      for (size_t i = 0; i < 10; i++) std::cout << std::endl;
+      // not in cut set and its layout should not be changed
       if (src_set.find(node) == src_set.end()) {
-        std::cout << *program << std::endl;
+        // process layout transformation
         if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
           auto* op = const_cast<pir::Operation*>(
               std::get<const pir::Operation*>(node.data));
@@ -663,8 +660,7 @@ class TransferLayoutPass : public pir::Pass {
                 op, common::DataLayout::NHWC);
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
-                "Op %s should have a specialized RewriteByLayout "
-                "function",
+                "Op %s should have a specialized RewriteByLayout function",
                 op->name()));
           }
         }
@@ -685,20 +681,21 @@ class TransferLayoutPass : public pir::Pass {
                   << (dst_value ? (dst_value.defining_op()) : nullptr)
                   << " t:" << (dst_value ? (dst_value.type()) : pir::Type())
                   << std::endl;
-        transpose_op->set_attribute(
-            "source",
-            pir::StrAttribute::get(transpose_op->ir_context(),
-                                   "transfer_layout_pass"));
         // TODO(lyk): special process for reshape, we cannot only just
         // insert a transpose op temporarily ignore reshape if
         // (dst_value.defining_op()->name() == "pd_op.reshape") continue;
 
         // enforce dst value.defining_op = src
-        ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
-                                   : layout_to_perm("NHWC", "NCHW"));
+        const auto& perm =
+            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
+                                       : layout_to_perm("NHWC", "NCHW"));
         builder.SetInsertionPointAfter(dst_value.defining_op());
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
+        transpose_op->set_attribute(
+            "source",
+            pir::StrAttribute::get(transpose_op->ir_context(),
+                                   "transfer_layout_pass"));
         auto replace_uses_without_self = [&](pir::OpOperand arg) {
           return arg.owner() != transpose_op.operation();
         };
@@ -726,10 +723,15 @@ class TransferLayoutPass : public pir::Pass {
         }
         std::cout << std::endl;
         const auto& perm =
+            ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
         builder.SetInsertionPointAfter(value.defining_op());
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(value, perm);
+        transpose_op->set_attribute(
+            "source",
+            pir::StrAttribute::get(transpose_op->ir_context(),
+                                   "transfer_layout_pass"));
         auto replace_uses_in_cut_set = [&](pir::OpOperand arg) {
           return (operation_set.find(arg.owner()) != operation_set.end()) &&
                  (arg.owner() != transpose_op.operation());
