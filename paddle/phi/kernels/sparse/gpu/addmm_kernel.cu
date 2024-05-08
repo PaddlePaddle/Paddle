@@ -91,7 +91,6 @@ void AddmmKernelImpl(const Context& dev_ctx,
           "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
-
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
@@ -133,7 +132,9 @@ PD_REGISTER_KERNEL(addmm_coo_dense,
                    phi::sparse::AddmmCooDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+				   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 

@@ -452,6 +452,34 @@ struct CUBlas<phi::dtype::float16> {
 
 template <>
 struct CUBlas<phi::dtype::complex<float>> {
+  static void SCAL(cublasHandle_t handle,
+                   int n,
+                   const phi::dtype::complex<float> *alpha,
+                   phi::dtype::complex<float> *x,
+                   int incx) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCscal(
+        handle,
+        n,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<cuFloatComplex *>(x),
+        incx));
+  }
+
+  static void VCOPY(cublasHandle_t handle,
+                    int n,
+                    const phi::dtype::complex<float> *x,
+                    int incx,
+                    phi::dtype::complex<float> *y,
+                    int incy) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasCcopy(handle,
+                                  n,
+                                  reinterpret_cast<const cuFloatComplex *>(x),
+                                  incx,
+                                  reinterpret_cast<cuFloatComplex *>(y),
+                                  incy));
+  }
+
   static void GEMV(cublasHandle_t handle,
                    cublasOperation_t transa,
                    int m,
@@ -689,6 +717,33 @@ struct CUBlas<phi::dtype::complex<float>> {
 
 template <>
 struct CUBlas<phi::dtype::complex<double>> {
+  static void SCAL(cublasHandle_t handle,
+                   int n,
+                   const phi::dtype::complex<double> *alpha,
+                   phi::dtype::complex<double> *x,
+                   int incx) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZscal(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<cuDoubleComplex *>(x),
+        incx));
+  }
+
+  static void VCOPY(cublasHandle_t handle,
+                    int n,
+                    const phi::dtype::complex<double> *x,
+                    int incx,
+                    phi::dtype::complex<double> *y,
+                    int incy) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasZcopy(handle,
+                                  n,
+                                  reinterpret_cast<const cuDoubleComplex *>(x),
+                                  incx,
+                                  reinterpret_cast<cuDoubleComplex *>(y),
+                                  incy));
+  }
   static void GEMV(cublasHandle_t handle,
                    cublasOperation_t transa,
                    int m,

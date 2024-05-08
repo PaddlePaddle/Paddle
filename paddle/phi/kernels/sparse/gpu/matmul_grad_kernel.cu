@@ -269,7 +269,9 @@ PD_REGISTER_KERNEL(matmul_coo_dense_grad,
                    ALL_LAYOUT,
                    phi::sparse::MatmulCooDenseGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 

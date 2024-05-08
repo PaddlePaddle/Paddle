@@ -37,15 +37,40 @@ def get_cuda_version():
 
 class TestAddmm(unittest.TestCase):
     # input: dense, x: sparse, y: dense, out: dense
-    def check_result(self, input_shape, x_shape, y_shape, format):
-        if len(x_shape) == 3:
-            mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
-        else:
-            mask = paddle.randint(0, 2, x_shape)
 
-        origin_input = paddle.rand(input_shape)
-        origin_x = paddle.rand(x_shape) * mask
-        origin_y = paddle.rand(y_shape)
+    def generate_complex(self, input_shape, dtype='complex64'):
+        if dtype == 'complex64':
+            rc_type = 'float32'
+        else:  # 'complex128'
+            rc_type = 'float64'
+        origin_real = paddle.rand(input_shape, rc_type)
+        origin_com = paddle.rand(input_shape, rc_type)
+        origin_x = (origin_real + 1j * origin_com).astype(dtype)
+        return origin_x
+
+    def check_result(
+        self, input_shape, x_shape, y_shape, format, dtype='float64'
+    ):
+        if dtype == 'complex64' or dtype == 'complex128':
+            real_type = "float32" if (dtype == 'complex64') else "float64"
+            if len(x_shape) == 3:
+                mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]]).astype(
+                    real_type
+                )
+            else:
+                mask = paddle.randint(0, 2, x_shape).astype(real_type)
+            origin_input = self.generate_complex(input_shape, dtype=dtype)
+            origin_x = self.generate_complex(x_shape, dtype=dtype) * mask
+            origin_y = self.generate_complex(y_shape, dtype=dtype)
+
+        else:
+            if len(x_shape) == 3:
+                mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
+            else:
+                mask = paddle.randint(0, 2, x_shape)
+            origin_input = paddle.rand(input_shape, dtype=dtype)
+            origin_x = paddle.rand(x_shape, dtype=dtype) * mask
+            origin_y = paddle.rand(y_shape, dtype=dtype)
 
         dense_input = origin_input.detach()
         dense_input.stop_gradient = False
@@ -90,6 +115,9 @@ class TestAddmm(unittest.TestCase):
     )
     def test_addmm_2d(self):
         self.check_result([16, 10], [16, 12], [12, 10], 'coo')
+        self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'float32')
+        self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'complex64')
+        self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'complex128')
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
@@ -98,6 +126,12 @@ class TestAddmm(unittest.TestCase):
     )
     def test_addmm_3d(self):
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo')
+        # Precision loss occurs in float32 and complex64.
+        # self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo', 'float32')
+        # self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo', 'complex64')
+        self.check_result(
+            [8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo', 'complex128'
+        )
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'csr')
 
 
