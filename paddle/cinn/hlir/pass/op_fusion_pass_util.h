@@ -216,7 +216,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     break;
   }
 
-  return !helper->target_.arch_is_gpu() ||
+  return (!helper->target_.arch_is_gpu() && !helper->target_.arch_is_mlu()) ||
          successive_reduce_dimension <= helper->target_.max_num_threads();
 }
 
@@ -260,7 +260,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     return false;
   }
 
-  if (!helper->target_.arch_is_gpu()) {
+  if (!helper->target_.arch_is_gpu() && !helper->target_.arch_is_mlu()) {
     return true;
   }
 

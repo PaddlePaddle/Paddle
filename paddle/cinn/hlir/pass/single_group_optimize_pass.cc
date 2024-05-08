@@ -142,6 +142,10 @@ void NodeToMemcpyCustomCallImpl(Node* node,
       node->attrs.attr_store["custom_call"] =
           std::string("cinn_call_hip_memcpy");
       break;
+    case Target::Language::sycl:
+      node->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_sycl_memcpy");
+      break;
     default:
       PADDLE_THROW(
           phi::errors::Fatal("%s not support custom call memset!", language));
@@ -216,7 +220,7 @@ bool SingleGroupOptimizePass::CanReplaceToMemcpy(Node* node) const {
 }
 
 void SingleGroupOptimizePassImpl(Graph* graph) {
-  if (!graph->target_.arch_is_gpu()) {
+  if (!graph->target_.arch_is_gpu() && !graph->target_.arch_is_mlu()) {
     return;
   }
   graph->fusion_groups = SingleGroupOptimizePass(graph).Apply();

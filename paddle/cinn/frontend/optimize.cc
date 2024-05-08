@@ -107,7 +107,7 @@ OptimizeOptions DefaultTrainingOptimizeOptions(common::Target target) {
   } else {
     options.graph_passes.emplace_back("BuildNonFusedGroupsPass");
   }
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     options.graph_passes.emplace_back("SingleGroupOptimizePass");
   }
 

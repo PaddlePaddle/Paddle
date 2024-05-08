@@ -294,7 +294,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
 #ifdef CINN_WITH_GPU
-  if (apply_pass) {
+  if (target_.arch_is_gpu() && apply_pass) {
     optim::OptimizeExprGPU(&(func_body));
   }
 #endif
@@ -340,6 +340,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
                                      this->shape_dict_,
                                      group_func_arg_tensors,
                                      tensor_map));
+    assert(strategy.Find(node->op()));
     auto op_impl =
         OpStrategy::SelectImpl(strategy[node->op()](node->attrs,
                                                     op_func_arg_tensors,
@@ -404,7 +405,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        !this->target_.arch_is_gpu()) {
+        (!this->target_.arch_is_gpu() && !this->target_.arch_is_mlu())) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }

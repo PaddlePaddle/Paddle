@@ -125,6 +125,16 @@ if(WITH_GPU)
                                              /usr/lib /usr/lib64 REQUIRED)
 endif()
 
+if(WITH_CNNL)
+  message(STATUS "Enable CINN CNNL")
+  add_definitions(-DCINN_WITH_CNNL)
+  include_directories($ENV{NEUWARE_HOME}/include)
+  find_library(CNNL libcnnl.so HINTS $ENV{NEUWARE_HOME}/lib64 /usr/local/neuware/lib64 REQUIRED)
+  if(NOT CNNL)
+    message(FATAL_ERROR "CNNL not found")
+  endif()
+endif()
+
 set(cinnapi_src CACHE INTERNAL "" FORCE)
 set(core_src CACHE INTERNAL "" FORCE)
 set(core_includes CACHE INTERNAL "" FORCE)
@@ -221,6 +231,10 @@ endif()
 
 if(CINN_WITH_ROCM)
   target_link_libraries(cinnapi ${ROCM_HIPRTC_LIB})
+endif()
+
+if(CINN_WITH_CNNL)
+  target_link_libraries(cinnapi ${CNNL})
 endif()
 
 if(WITH_CUTLASS)

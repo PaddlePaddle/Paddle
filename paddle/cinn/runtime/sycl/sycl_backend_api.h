@@ -22,38 +22,38 @@ using cinn::common::Target;
 
 namespace cinn {
 namespace runtime {
-namespace Sycl {
+namespace sycl {
 
 inline const char* SYCLGetErrorString(std::error_code error_code) {
-  sycl::errc error_code_value = static_cast<sycl::errc>(error_code.value());
+  ::sycl::errc error_code_value = static_cast<::sycl::errc>(error_code.value());
   switch (error_code_value) {
-    case sycl::errc::runtime:
+    case ::sycl::errc::runtime:
       return "RUNTIME ERROR";
-    case sycl::errc::kernel:
+    case ::sycl::errc::kernel:
       return "KERNEL ERROR";
-    case sycl::errc::accessor:
+    case ::sycl::errc::accessor:
       return "ACCESSOR ERROR";
-    case sycl::errc::nd_range:
+    case ::sycl::errc::nd_range:
       return "NDRANGE ERROR";
-    case sycl::errc::event:
+    case ::sycl::errc::event:
       return "EVENT ERROR";
-    case sycl::errc::kernel_argument:
+    case ::sycl::errc::kernel_argument:
       return "KERNEL ARGUMNET ERROR";
-    case sycl::errc::build:
+    case ::sycl::errc::build:
       return "BUILD ERROR";
-    case sycl::errc::invalid:
+    case ::sycl::errc::invalid:
       return "INVALID ERROR";
-    case sycl::errc::memory_allocation:
+    case ::sycl::errc::memory_allocation:
       return "MEMORY ALLOCATION";
-    case sycl::errc::platform:
+    case ::sycl::errc::platform:
       return "PLATFORM ERROR";
-    case sycl::errc::profiling:
+    case ::sycl::errc::profiling:
       return "PROFILING ERROR";
-    case sycl::errc::feature_not_supported:
+    case ::sycl::errc::feature_not_supported:
       return "FEATURE NOT SUPPORTED";
-    case sycl::errc::kernel_not_supported:
+    case ::sycl::errc::kernel_not_supported:
       return "kERNEL NOT SUPPORTED";
-    case sycl::errc::backend_mismatch:
+    case ::sycl::errc::backend_mismatch:
       return "BACKEND MISMATCH";
     default:
       return "";
@@ -68,7 +68,7 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
   {                                                         \
     try {                                                   \
       func;                                                 \
-    } catch (const sycl::exception& e) {                    \
+    } catch (const ::sycl::exception& e) {                    \
       LOG(FATAL)  << "SYCL Error, error code"               \
                   << " = " << e.get_cl_code()               \
                   << ", message:" << e.what();              \
@@ -101,22 +101,22 @@ class SYCLBackendAPI final : public BackendAPI {
               MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
-  sycl::queue* get_now_queue();
+  ::sycl::queue* get_now_queue();
   std::string GetGpuVersion();
 
  private:
   Target::Arch arch;
   // all devices
-  std::vector<sycl::device> devices;
+  std::vector<::sycl::device> devices;
   // all contexts
-  std::vector<sycl::context*> contexts;
+  std::vector<::sycl::context*> contexts;
   // all queues in all devices
-  std::vector<std::vector<sycl::queue*>> queues;
+  std::vector<std::vector<::sycl::queue*>> queues;
   // now_device_id, change by set_device()
   int now_device_id = -1;
   // whether the BackendAPI is initialized.
   bool initialized_{false};
 };
-}  // namespace Sycl
+}  // namespace sycl
 }  // namespace runtime
 }  // namespace cinn

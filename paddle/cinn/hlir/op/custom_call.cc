@@ -29,6 +29,9 @@
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
 #endif
+#ifdef CINN_WITH_CNNL
+#include <cnnl.h>
+#endif
 
 namespace cinn {
 namespace hlir {
@@ -706,6 +709,434 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
 }
 #endif
 
+#ifdef CINN_WITH_CNNL
+std::vector<ir::Expr> CustomCallArgsForCnnlConvForward(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 2UL);
+  // CHECK_EQ(output_shapes.size(), 1UL);
+  const auto &attr_store = attrs.attr_store;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  CHECK(attr_store.count("padding"));
+  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  CHECK(attr_store.count("stride"));
+  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto dilation = attr_store.count("dilation")
+                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      : std::vector<int>({1, 1});
+  std::string data_format =
+      attr_store.count("data_format")
+          ? absl::get<std::string>(attr_store.at("data_format"))
+          : "NCHW";
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+
+  int groups =
+      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+  cnnlTensorLayout_t format =
+      data_format == "NCHW" ? CNNL_LAYOUT_NCHW : CNNL_LAYOUT_NHWC;
+
+  std::vector<Expr> input = inputs[0]->shape;
+  std::vector<Expr> filter = inputs[1]->shape;
+  std::vector<Expr> output = {};
+  std::transform(output_shapes[0].begin(),
+                 output_shapes[0].end(),
+                 std::back_inserter(output),
+                 [](const int dim) { return ir::Expr(dim); });
+  // if format is nhwc
+  // if (format == CNNL_LAYOUT_NHWC) {
+  //   input = {input[0], input[3], input[1], input[2]};
+  //   filter = {filter[0], filter[3], filter[1], filter[2]};
+  //   output = {output[0], output[3], output[1], output[2]};
+  // }
+
+  std::vector<ir::Expr> args = {
+      ir::Expr(static_cast<int>(format)), ir::Expr(alpha), ir::Expr(beta)};
+  args.insert(args.end(), input.begin(), input.end());
+  args.insert(args.end(), filter.begin(), filter.end());
+  args.push_back(ir::Expr(padding[0]));
+  args.push_back(ir::Expr(padding[1]));
+  args.push_back(ir::Expr(stride[0]));
+  args.push_back(ir::Expr(stride[1]));
+  args.push_back(ir::Expr(dilation[0]));
+  args.push_back(ir::Expr(dilation[1]));
+  args.push_back(ir::Expr(groups));
+  args.insert(args.end(), output.begin(), output.end());
+
+  return args;
+}
+
+std::vector<ir::Expr> CustomCallArgsForCnnlConvBackwardData(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 2UL);
+  CHECK_EQ(output_shapes.size(), 1UL);
+  const auto &attr_store = attrs.attr_store;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  CHECK(attr_store.count("padding"));
+  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  CHECK(attr_store.count("stride"));
+  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto dilation = attr_store.count("dilation")
+                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      : std::vector<int>({1, 1});
+  std::string data_format =
+      attr_store.count("data_format")
+          ? absl::get<std::string>(attr_store.at("data_format"))
+          : "NCHW";
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+
+  int groups =
+      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+  cnnlTensorLayout_t format =
+      data_format == "NCHW" ? CNNL_LAYOUT_NCHW : CNNL_LAYOUT_NHWC;
+
+  std::vector<Expr> input = {};
+  std::transform(output_shapes[0].begin(),
+                 output_shapes[0].end(),
+                 std::back_inserter(input),
+                 [](const int dim) { return ir::Expr(dim); });
+  std::vector<Expr> filter = inputs[0]->shape;
+  std::vector<Expr> output = inputs[1]->shape;
+  // if format is nhwc
+  // if (format == CNNL_LAYOUT_NHWC) {
+  //   input = {input[0], input[3], input[1], input[2]};
+  //   filter = {filter[0], filter[3], filter[1], filter[2]};
+  //   output = {output[0], output[3], output[1], output[2]};
+  // }
+
+  std::vector<ir::Expr> args = {
+      ir::Expr(static_cast<int>(format)), ir::Expr(alpha), ir::Expr(beta)};
+  args.insert(args.end(), input.begin(), input.end());
+  args.insert(args.end(), filter.begin(), filter.end());
+  args.push_back(ir::Expr(padding[0]));
+  args.push_back(ir::Expr(padding[1]));
+  args.push_back(ir::Expr(stride[0]));
+  args.push_back(ir::Expr(stride[1]));
+  args.push_back(ir::Expr(dilation[0]));
+  args.push_back(ir::Expr(dilation[1]));
+  args.push_back(ir::Expr(groups));
+  args.insert(args.end(), output.begin(), output.end());
+  return args;
+}
+
+std::vector<ir::Expr> CustomCallArgsForCnnlConvBackwardFilter(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 2UL);
+  CHECK_EQ(output_shapes.size(), 1UL);
+  const auto &attr_store = attrs.attr_store;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  CHECK(attr_store.count("padding"));
+  auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
+  CHECK(attr_store.count("stride"));
+  auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
+  auto dilation = attr_store.count("dilation")
+                      ? absl::get<std::vector<int>>(attr_store.at("dilation"))
+                      : std::vector<int>({1, 1});
+  std::string data_format =
+      attr_store.count("data_format")
+          ? absl::get<std::string>(attr_store.at("data_format"))
+          : "NCHW";
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+
+  int groups =
+      attr_store.count("groups") ? absl::get<int>(attr_store.at("groups")) : 1;
+
+  cnnlTensorLayout_t format =
+      data_format == "NCHW" ? CNNL_LAYOUT_NCHW : CNNL_LAYOUT_NHWC;
+
+  std::vector<Expr> input = inputs[0]->shape;
+  std::vector<Expr> filter = {};
+  std::transform(output_shapes[0].begin(),
+                 output_shapes[0].end(),
+                 std::back_inserter(filter),
+                 [](const int dim) { return ir::Expr(dim); });
+  std::vector<Expr> output = inputs[1]->shape;
+  // if format is nhwc
+  // if (format == CNNL_LAYOUT_NHWC) {
+  //   input = {input[0], input[3], input[1], input[2]};
+  //   filter = {filter[0], filter[3], filter[1], filter[2]};
+  //   output = {output[0], output[3], output[1], output[2]};
+  // }
+
+  std::vector<ir::Expr> args = {
+      ir::Expr(static_cast<int>(format)), ir::Expr(alpha), ir::Expr(beta)};
+  args.insert(args.end(), input.begin(), input.end());
+  args.insert(args.end(), filter.begin(), filter.end());
+  args.push_back(ir::Expr(padding[0]));
+  args.push_back(ir::Expr(padding[1]));
+  args.push_back(ir::Expr(stride[0]));
+  args.push_back(ir::Expr(stride[1]));
+  args.push_back(ir::Expr(dilation[0]));
+  args.push_back(ir::Expr(dilation[1]));
+  args.push_back(ir::Expr(groups));
+  args.insert(args.end(), output.begin(), output.end());
+  return args;
+}
+
+std::vector<ir::Expr> CustomCallArgsForCnnlMatmul(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 2);
+  CHECK_EQ(output_shapes.size(), 1);
+  CHECK_LE(inputs[0]->shape.size(), 4);
+  CHECK_LE(inputs[1]->shape.size(), 4);
+
+  const auto &attr_store = attrs.attr_store;
+  bool trans_a = attr_store.count("trans_a")
+                     ? absl::get<bool>(attr_store.at("trans_a"))
+                     : false;
+  bool trans_b = attr_store.count("trans_b")
+                     ? absl::get<bool>(attr_store.at("trans_b"))
+                     : false;
+  bool trans_out = attr_store.count("trans_out")
+                       ? absl::get<bool>(attr_store.at("trans_out"))
+                       : false;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  int x_num_col_dims = attr_store.count("x_num_col_dims")
+                           ? absl::get<int>(attr_store.at("x_num_col_dims"))
+                           : 0;
+  int y_num_col_dims = attr_store.count("y_num_col_dims")
+                           ? absl::get<int>(attr_store.at("y_num_col_dims"))
+                           : 0;
+  bool is_infer = attr_store.count("is_infer")
+                      ? absl::get<bool>(attr_store.at("is_infer"))
+                      : false;
+  CHECK((x_num_col_dims == 0 && y_num_col_dims == 0) ||
+        (x_num_col_dims > 0 && y_num_col_dims > 0));
+
+  std::vector<ir::Expr> a_shape, b_shape;
+  if (x_num_col_dims == 0 && y_num_col_dims == 0) {
+    int a_rank = inputs[0]->shape.size();
+    int b_rank = inputs[1]->shape.size();
+
+    if (a_rank == 1) {
+      a_shape.resize(4, ir::Expr(1));
+
+      if (trans_a) {
+        a_shape[2] = inputs[0]->shape[0];
+      } else {
+        a_shape[3] = inputs[0]->shape[0];
+      }
+    } else {
+      a_shape = inputs[0]->shape;
+      int insert_1_to_a = 4 - a_shape.size();
+      for (int idx = 0; idx < insert_1_to_a; ++idx) {
+        a_shape.insert(a_shape.begin(), ir::Expr(1));
+      }
+    }
+
+    if (b_rank == 1) {
+      b_shape.resize(4, ir::Expr(1));
+
+      if (trans_b) {
+        b_shape[3] = inputs[1]->shape[0];
+      } else {
+        b_shape[2] = inputs[1]->shape[0];
+      }
+    } else {
+      b_shape = inputs[1]->shape;
+      int insert_1_to_b = 4 - b_shape.size();
+      for (int idx = 0; idx < insert_1_to_b; ++idx) {
+        b_shape.insert(b_shape.begin(), ir::Expr(1));
+      }
+    }
+  } else if (x_num_col_dims > 0 && y_num_col_dims > 0) {
+    // input a shape.
+    a_shape = {Expr(1), Expr(1)};
+    int a_height = 1;
+    int a_width = 1;
+    for (int idx = 0; idx < x_num_col_dims; ++idx) {
+      a_height *= inputs[0]->shape[idx].as_int32();
+    }
+    for (int idx = x_num_col_dims; idx < inputs[0]->shape.size(); ++idx) {
+      a_width *= inputs[0]->shape[idx].as_int32();
+    }
+    a_shape.emplace_back(a_height);
+    a_shape.emplace_back(a_width);
+
+    // input b shape.
+    b_shape = {Expr(1), Expr(1)};
+    int b_height = 1;
+    int b_width = 1;
+    for (int idx = 0; idx < y_num_col_dims; ++idx) {
+      b_height *= inputs[1]->shape[idx].as_int32();
+    }
+    for (int idx = y_num_col_dims; idx < inputs[1]->shape.size(); ++idx) {
+      b_width *= inputs[1]->shape[idx].as_int32();
+    }
+    b_shape.emplace_back(b_height);
+    b_shape.emplace_back(b_width);
+
+    if (is_infer) {
+      CHECK_EQ(a_width, b_width)
+          << "The K dimension of mul should be equal! Please check.";
+      trans_b = true;
+    } else {
+      CHECK_EQ(a_width, b_height)
+          << "The K dimension of mul should be equal! Please check.";
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
+  }
+
+  CHECK_EQ(a_shape.size(), 4);
+  CHECK_EQ(b_shape.size(), 4);
+  // func args
+  std::vector<ir::Expr> args = {ir::Expr(trans_a),
+                                ir::Expr(trans_b),
+                                ir::Expr(trans_out),
+                                ir::Expr(alpha),
+                                ir::Expr(beta)};
+  args.insert(args.end(), a_shape.begin(), a_shape.end());
+  args.insert(args.end(), b_shape.begin(), b_shape.end());
+  return args;
+}
+
+std::vector<ir::Expr> CustomCallArgsForCnnlPoolForward(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 1UL);
+  CHECK_EQ(output_shapes.size(), 1UL);
+  const auto &attr_store = attrs.attr_store;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  CHECK(attr_store.count("kernel_size"));
+  auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
+  CHECK(attr_store.count("padding_size"));
+  auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
+  CHECK(attr_store.count("stride_size"));
+  auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
+  CHECK(attr_store.count("pool_type"));
+  auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
+  CHECK(attr_store.count("data_format"));
+  std::string data_format =
+      absl::get<std::string>(attr_store.at("data_format"));
+
+  bool exclusive = attr_store.count("exclusive")
+                       ? absl::get<bool>(attrs.attr_store.at("exclusive"))
+                       : true;
+  cnnlPoolingMode_t mode =
+      pool_type == "max"
+          ? CNNL_POOLING_MAX
+          : (exclusive ? CNNL_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
+                       : CNNL_POOLING_AVERAGE_COUNT_INCLUDE_PADDING);
+  cnnlTensorLayout_t format =
+      data_format == "NCHW" ? CNNL_LAYOUT_NCHW : CNNL_LAYOUT_NHWC;
+
+  std::vector<Expr> input = inputs[0]->shape;
+  std::vector<Expr> output;
+  std::transform(output_shapes[0].begin(),
+                 output_shapes[0].end(),
+                 std::back_inserter(output),
+                 [](const int dim) { return ir::Expr(dim); });
+
+  std::vector<ir::Expr> args = {ir::Expr(static_cast<int>(mode)),
+                                ir::Expr(static_cast<int>(format)),
+                                ir::Expr(alpha),
+                                ir::Expr(beta)};
+  args.insert(args.end(), input.begin(), input.end());
+  args.push_back(ir::Expr(kernel[0]));
+  args.push_back(ir::Expr(kernel[1]));
+  args.push_back(ir::Expr(padding[0]));
+  args.push_back(ir::Expr(padding[1]));
+  args.push_back(ir::Expr(stride[0]));
+  args.push_back(ir::Expr(stride[1]));
+  args.insert(args.end(), output.begin(), output.end());
+  return args;
+}
+
+std::vector<ir::Expr> CustomCallArgsForCnnlPoolBackward(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<std::vector<int>> &output_shapes) {
+  CHECK_EQ(inputs.size(), 3UL);
+  CHECK_EQ(output_shapes.size(), 1UL);
+  const auto &attr_store = attrs.attr_store;
+  float alpha = attr_store.count("alpha")
+                    ? absl::get<float>(attr_store.at("alpha"))
+                    : 1.0f;
+  float beta =
+      attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
+
+  CHECK(attr_store.count("kernel_size"));
+  auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
+  CHECK(attr_store.count("padding_size"));
+  auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
+  CHECK(attr_store.count("stride_size"));
+  auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
+  CHECK(attr_store.count("pool_type"));
+  auto pool_type = absl::get<std::string>(attrs.attr_store.at("pool_type"));
+  CHECK(attr_store.count("data_format"));
+  std::string data_format =
+      absl::get<std::string>(attrs.attr_store.at("data_format"));
+
+  bool exclusive = attr_store.count("exclusive")
+                       ? absl::get<bool>(attrs.attr_store.at("exclusive"))
+                       : true;
+  cnnlPoolingMode_t mode =
+      pool_type == "max"
+          ? CNNL_POOLING_MAX
+          : (exclusive ? CNNL_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
+                       : CNNL_POOLING_AVERAGE_COUNT_INCLUDE_PADDING);
+  cnnlTensorLayout_t format =
+      data_format == "NCHW" ? CNNL_LAYOUT_NCHW : CNNL_LAYOUT_NHWC;
+
+  std::vector<Expr> input = inputs[0]->shape;   // 'x'
+  std::vector<Expr> output = inputs[1]->shape;  // 'y'
+
+  std::vector<ir::Expr> args = {ir::Expr(static_cast<int>(mode)),
+                                ir::Expr(static_cast<int>(format)),
+                                ir::Expr(alpha),
+                                ir::Expr(beta)};
+  args.insert(args.end(), input.begin(), input.end());
+  args.push_back(ir::Expr(kernel[0]));
+  args.push_back(ir::Expr(kernel[1]));
+  args.push_back(ir::Expr(padding[0]));
+  args.push_back(ir::Expr(padding[1]));
+  args.push_back(ir::Expr(stride[0]));
+  args.push_back(ir::Expr(stride[1]));
+  args.insert(args.end(), output.begin(), output.end());
+
+  return args;
+}
+#endif
+
 std::vector<ir::Expr> CustomCallArgsForAssertTrue(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1031,6 +1462,54 @@ bool RegisterCustomCallArgsFunc() {
       "cinn_call_cholesky_host",
       cinn::common::DefaultHostTarget(),
       CustomCallArgsForCholesky);
+
+#endif
+
+#ifdef CINN_WITH_SYCL
+
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_sycl_memcpy",
+      cinn::common::SYCLTarget(),
+      CustomCallArgsForMemcpy);
+
+#ifdef CINN_WITH_CNNL
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_gaussian_random",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForGaussianRandom);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_uniform_random",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForUniformRandom);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_randint",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForRandInt);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_matmul",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlMatmul);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_conv2d_forward",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlConvForward);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_conv2d_backward_data",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlConvBackwardData);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_conv2d_backward_filter",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlConvBackwardFilter);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_pool2d_forward",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlPoolForward);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cnnl_pool2d_backward",
+      cinn::common::SYCLTarget(cinn::common::Target::Arch::CambriconMLU),
+      CustomCallArgsForCnnlPoolBackward);
+#endif
 
 #endif
 

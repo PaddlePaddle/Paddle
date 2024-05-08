@@ -114,7 +114,8 @@ class Decomposer {
   static std::vector<::cinn::common::Target> all_targets = {         \
       ::cinn::common::DefaultHostTarget(),                           \
       ::cinn::common::DefaultNVGPUTarget(),                          \
-      ::cinn::common::DefaultROCMTarget()};                          \
+      ::cinn::common::DefaultROCMTarget(),                           \
+      ::cinn::common::SYCLTarget()};                                 \
   for (auto& target : all_targets) {                                 \
     ::cinn::frontend::InstrDecomposerRegistry::Global()              \
         ->__REGISTER__(std::string(#name) + "_" + target.arch_str()) \

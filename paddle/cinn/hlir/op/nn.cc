@@ -2014,6 +2014,12 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
       std::vector<CINNValue> res{
           CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = CINNValuePack{res};
+    } else if (target.arch_is_mlu()) {
+      // TODO: add MLU schedule
+      pe::IRSoftmaxScheduleCPU(ir_sch, axis);
+      std::vector<CINNValue> res{
+          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = CINNValuePack{res};
     } else if (target.arch == Target::Arch::X86) {
       pe::IRSoftmaxScheduleCPU(ir_sch, axis);
       std::vector<CINNValue> res{

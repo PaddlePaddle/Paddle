@@ -366,7 +366,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
-    if (!temp.as_tensor_ref()->buffer.defined() || !target.arch_is_gpu()) {
+    if (!temp.as_tensor_ref()->buffer.defined() || (!target.arch_is_gpu() && !target.arch_is_mlu())) {
       all_arg_tensors.push_back(temp.as_tensor_ref());
     }
   }

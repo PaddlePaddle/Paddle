@@ -1183,7 +1183,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
+      // PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }

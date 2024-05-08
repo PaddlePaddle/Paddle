@@ -18,32 +18,12 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/runtime/custom_function.h"
 
-#include "paddle/cinn/runtime/sycl/sycl_module.h"
-using cinn::runtime::Sycl::cinn_call_sycl_kernel;
+#include "paddle/cinn/runtime/sycl/sycl_util.h"
+using cinn::runtime::sycl::cinn_call_sycl_kernel;
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 using cinn::backends::GlobalSymbolRegistry;
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
-using cinn::runtime::Sycl::SYCLBackendAPI;
-
-CINN_REGISTER_HELPER(cinn_sycl_host_api) {
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_sycl_kernel,
-                              cinn::common::DefaultHostTarget())
-      .SetRetType<void>()
-      .AddInputType<void *>()  // kernel_fn
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // num_args
-      .AddInputType<int>()     // grid_x
-      .AddInputType<int>()     // grid_y
-      .AddInputType<int>()     // grid_z
-      .AddInputType<int>()     // block_x
-      .AddInputType<int>()     // block_y
-      .AddInputType<int>()     // block_z
-      .AddInputType<void *>()  // stream
-      .End();
-  GlobalSymbolRegistry::Global().RegisterFn(
-      "backend_api.sycl", reinterpret_cast<void *>(SYCLBackendAPI::Global()));
-  return true;
-}
+using cinn::runtime::sycl::SYCLBackendAPI;
 
 CINN_REGISTER_HELPER(sycl_intrinsics) {
   auto target = cinn::common::SYCLTarget();
@@ -448,5 +428,230 @@ CINN_REGISTER_HELPER(sycl_intrinsics) {
       .AddInputType<int>()
       .End();
 
+  return true;
+}
+
+CINN_REGISTER_HELPER(cinn_sycl_host_api) {
+  using cinn::runtime::sycl::cinn_call_sycl_kernel;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_sycl_kernel,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // kernel_fn
+      .AddInputType<void *>()  // args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // grid_x
+      .AddInputType<int>()     // grid_y
+      .AddInputType<int>()     // grid_z
+      .AddInputType<int>()     // block_x
+      .AddInputType<int>()     // block_y
+      .AddInputType<int>()     // block_z
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_sycl_memcpy;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_sycl_memcpy,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<size_t>()  // count
+      .End();
+
+#ifdef CINN_WITH_CNNL
+  using cinn::runtime::sycl::cinn_call_cnnl_gaussian_random;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_gaussian_random,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<float>()   // mean
+      .AddInputType<float>()   // std
+      .AddInputType<int>()     // seed
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_uniform_random;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_uniform_random,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<float>()   // min
+      .AddInputType<float>()   // max
+      .AddInputType<int>()     // seed
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_randint;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_randint,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // seed
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_matmul;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_matmul,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<bool>()    // trans_a
+      .AddInputType<bool>()    // trans_b
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // a1
+      .AddInputType<int>()     // a2
+      .AddInputType<int>()     // a3
+      .AddInputType<int>()     // a4
+      .AddInputType<int>()     // b1
+      .AddInputType<int>()     // b2
+      .AddInputType<int>()     // b3
+      .AddInputType<int>()     // b4
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_conv2d_forward;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_conv2d_forward,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // format
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // in
+      .AddInputType<int>()     // ic
+      .AddInputType<int>()     // ih
+      .AddInputType<int>()     // iw
+      .AddInputType<int>()     // fn
+      .AddInputType<int>()     // fc
+      .AddInputType<int>()     // fh
+      .AddInputType<int>()     // fw
+      .AddInputType<int>()     // ph
+      .AddInputType<int>()     // pw
+      .AddInputType<int>()     // sh
+      .AddInputType<int>()     // sw
+      .AddInputType<int>()     // dh
+      .AddInputType<int>()     // dw
+      .AddInputType<int>()     // g
+      .AddInputType<int>()     // on
+      .AddInputType<int>()     // oc
+      .AddInputType<int>()     // oh
+      .AddInputType<int>()     // ow
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_conv2d_backward_data;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_conv2d_backward_data,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // format
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // in
+      .AddInputType<int>()     // ic
+      .AddInputType<int>()     // ih
+      .AddInputType<int>()     // iw
+      .AddInputType<int>()     // fn
+      .AddInputType<int>()     // fc
+      .AddInputType<int>()     // fh
+      .AddInputType<int>()     // fw
+      .AddInputType<int>()     // ph
+      .AddInputType<int>()     // pw
+      .AddInputType<int>()     // sh
+      .AddInputType<int>()     // sw
+      .AddInputType<int>()     // dh
+      .AddInputType<int>()     // dw
+      .AddInputType<int>()     // g
+      .AddInputType<int>()     // on
+      .AddInputType<int>()     // oc
+      .AddInputType<int>()     // oh
+      .AddInputType<int>()     // ow
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_conv2d_backward_filter;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_conv2d_backward_filter,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // format
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // in
+      .AddInputType<int>()     // ic
+      .AddInputType<int>()     // ih
+      .AddInputType<int>()     // iw
+      .AddInputType<int>()     // fn
+      .AddInputType<int>()     // fc
+      .AddInputType<int>()     // fh
+      .AddInputType<int>()     // fw
+      .AddInputType<int>()     // ph
+      .AddInputType<int>()     // pw
+      .AddInputType<int>()     // sh
+      .AddInputType<int>()     // sw
+      .AddInputType<int>()     // dh
+      .AddInputType<int>()     // dw
+      .AddInputType<int>()     // g
+      .AddInputType<int>()     // on
+      .AddInputType<int>()     // oc
+      .AddInputType<int>()     // oh
+      .AddInputType<int>()     // ow
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_pool2d_forward;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_pool2d_forward,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // mode
+      .AddInputType<int>()     // format
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // in
+      .AddInputType<int>()     // ic
+      .AddInputType<int>()     // ih
+      .AddInputType<int>()     // iw
+      .AddInputType<int>()     // kh
+      .AddInputType<int>()     // kw
+      .AddInputType<int>()     // ph
+      .AddInputType<int>()     // pw
+      .AddInputType<int>()     // sh
+      .AddInputType<int>()     // sw
+      .AddInputType<int>()     // on
+      .AddInputType<int>()     // oc
+      .AddInputType<int>()     // oh
+      .AddInputType<int>()     // ow
+      .End();
+
+  using cinn::runtime::sycl::cinn_call_cnnl_pool2d_backward;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cnnl_pool2d_backward,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // mode
+      .AddInputType<int>()     // format
+      .AddInputType<float>()   // alpha
+      .AddInputType<float>()   // beta
+      .AddInputType<int>()     // in
+      .AddInputType<int>()     // ic
+      .AddInputType<int>()     // ih
+      .AddInputType<int>()     // iw
+      .AddInputType<int>()     // kh
+      .AddInputType<int>()     // kw
+      .AddInputType<int>()     // ph
+      .AddInputType<int>()     // pw
+      .AddInputType<int>()     // sh
+      .AddInputType<int>()     // sw
+      .AddInputType<int>()     // on
+      .AddInputType<int>()     // oc
+      .AddInputType<int>()     // oh
+      .AddInputType<int>()     // ow
+      .End();
+#endif // CINN_WITH_CNNL
+
+  GlobalSymbolRegistry::Global().RegisterFn(
+      "backend_api.sycl", reinterpret_cast<void *>(SYCLBackendAPI::Global()));
   return true;
 }

@@ -2817,7 +2817,7 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     if (fused_shape > target.max_num_threads()) {
       stages[last_output]->Split(0, target.max_num_threads());
       stages[last_output]->Bind(0, "blockIdx.x");

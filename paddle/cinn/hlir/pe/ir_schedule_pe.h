@@ -44,6 +44,10 @@ void IRScheduleInjectiveCPU(ir::IRSchedule &ir_sch,  // NOLINT
                             const cinn::common::Target &target,
                             bool vectorizable = true);
 
+void IRScheduleInjectiveMLU(ir::IRSchedule &ir_sch,  // NOLINT
+                            const std::vector<int> &output_shape,
+                            const cinn::common::Target &target);
+
 void IRCudaScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
                              const std::vector<int> &output_shape,
                              const cinn::common::Target &target);

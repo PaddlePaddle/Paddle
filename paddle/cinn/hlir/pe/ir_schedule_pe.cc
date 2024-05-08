@@ -83,6 +83,10 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
+  } else if (target.arch_is_mlu()) {
+    // TODO: add MLU schedule
+    auto blocks = ir_sch.GetAllBlocks();
+    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), true);
   } else {
     // IRScheduleInjectiveCPU(ir_sch, output_shape, target, false);
     auto blocks = ir_sch.GetAllBlocks();
@@ -111,6 +115,10 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
+  } else if (target.arch_is_mlu()) {
+    // TODO: add MLU schedule
+    auto blocks = ir_sch.GetAllBlocks();
+    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), false);
   } else {
     // IRScheduleInjectiveCPU(ir_sch, output_shape, target, false);
     auto blocks = ir_sch.GetAllBlocks();
@@ -154,6 +162,30 @@ void IRScheduleInjectiveCPU(ir::IRSchedule &ir_sch,  // NOLINT
       }
     } */
   VLOG(3) << "After IRScheduleInjectiveCPU, new ir is : "
+          << ir_sch.GetModule().GetExprs().at(0);
+}
+
+// TODO: add MLU schedule
+void IRScheduleInjectiveMLU(ir::IRSchedule &ir_sch,  // NOLINT
+                            const std::vector<int> &output_shape,
+                            const cinn::common::Target &target) {
+  VLOG(3) << "Begin IRScheduleInjectiveMLU"
+          << ir_sch.GetModule().GetExprs().at(0);
+  auto all_blocks = ir_sch.GetAllBlocks();
+  auto loops = ir_sch.GetLoops(all_blocks[0]);
+  int dims = output_shape.size();
+  int factor = GetBasicFactor(GetTensor(all_blocks[0])->type(), target);
+  auto fused = loops[0];
+  if (dims >= 5) {
+    CHECK_GE(loops.size(), 3U);
+    fused = ir_sch.Fuse({loops[0], loops[1], loops[2]});
+    dims = dims - 2;
+  } else if (dims >= 3) {
+    CHECK_GE(loops.size(), 2U);
+    fused = ir_sch.Fuse({loops[0], loops[1]});
+    dims = dims - 1;
+  }
+  VLOG(3) << "After IRScheduleInjectiveMLU, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 

@@ -817,8 +817,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());
 #ifdef CINN_WITH_GPU
-    optim::EliminateCommonGlobalMemoryRead(&(func_body));
-    optim::OptimizeExprGPU(&(func_body));
+    if (target_.arch_is_gpu()) {
+      optim::EliminateCommonGlobalMemoryRead(&(func_body));
+      optim::OptimizeExprGPU(&(func_body));
+    }
 #endif
 
     // 2.Prepare temp buffers
@@ -977,7 +979,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        !this->target_.arch_is_gpu()) {
+        (!this->target_.arch_is_gpu() && !this->target_.arch_is_mlu())) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }

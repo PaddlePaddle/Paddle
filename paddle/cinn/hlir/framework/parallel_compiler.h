@@ -68,7 +68,7 @@ class ParallelCompiler {
     std::unique_ptr<runtime::cuda::CUDAModule> cumodule;
 #endif
 #ifdef CINN_WITH_SYCL
-    std::unique_ptr<runtime::Sycl::SYCLModule> sycl_module;
+    std::unique_ptr<runtime::sycl::SYCLModule> sycl_module;
 #endif
 #ifdef CINN_WITH_ROCM
     std::unique_ptr<runtime::hip::HIPModule> hip_module;

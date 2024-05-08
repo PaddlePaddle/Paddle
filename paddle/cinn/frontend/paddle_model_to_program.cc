@@ -643,7 +643,7 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
           << "The y data's shape size of op [mul] is not equal to 2! Please "
              "check.";
       TransposeData(data, tensor->shape().data()[0], tensor->shape().data()[1]);
-    } else if (target_.arch_is_gpu()) {
+    } else if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
       using cinn::runtime::BackendAPI;
       using cinn::runtime::IsCompiledWithCUDNN;
       if (target_.language == Target::Language::cuda && IsCompiledWithCUDNN()) {
@@ -699,7 +699,7 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data, tensor->shape().data());
-    } else if (target_.arch_is_gpu()) {
+    } else if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
       using cinn::runtime::BackendAPI;
       std::vector<float> data(tensor->shape().numel());
       BackendAPI::get_backend(target_)->memcpy(

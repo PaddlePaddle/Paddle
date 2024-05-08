@@ -445,7 +445,7 @@ bool PruneInvalid(const ir::LoweredFunc& lowered_func,
   static const size_t kGPUSharedMemoryLimitBytes = GetGPUSharedMemoryLimit();
   static const size_t kGPULocalStackLimitBytes = GetGPULocalStackLimit();
 
-  if (target.arch_is_gpu()) {
+  if (target.arch_is_gpu() || target.arch_is_mlu()) {
     if (IsGPUMemoryUsageExceedLimit(lowered_func,
                                     ir::MemoryType::GPUShared,
                                     kGPUSharedMemoryLimitBytes)) {

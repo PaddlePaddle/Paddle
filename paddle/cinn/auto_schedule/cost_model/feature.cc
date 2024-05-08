@@ -52,7 +52,7 @@ std::vector<float> Feature::ToFixedSizeVector() {
   std::vector<float> ret(LoopBlockFeature::kTotalSize + 1,
                          0);  // LoopBlockFeature::kTotalSize plus 1 for target
 
-  if (target_.arch_is_gpu()) {
+  if (target_.arch_is_gpu() || target_.arch_is_mlu()) {
     ret[0] = 1;
   }  // else 0 for other cases
 

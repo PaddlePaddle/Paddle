@@ -1315,7 +1315,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  CHECK(target.arch_is_gpu()) << "Op IndexAdd only support NV/AMD/Intel/Hygon "
+  CHECK(target.arch_is_gpu() || target.arch_is_mlu()) << "Op IndexAdd only support NV/AMD/Intel/Hygon "
                                  "GPU now ! Please Check.\n";
 
   CHECK_EQ(index->type(), cinn::common::Int(32))

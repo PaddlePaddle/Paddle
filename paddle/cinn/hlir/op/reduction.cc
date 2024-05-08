@@ -170,6 +170,9 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
             cinn_values.emplace_back(stages);
             *ret = CINNValuePack{cinn_values};
           }
+        } else if (target.arch_is_mlu()) {
+          // TODO: add MLU schedule
+          NaiveCompute();
         } else {
           NaiveCompute();
         }
@@ -307,6 +310,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
+    } else if (target.arch_is_mlu()) {
+      // TODO: add MLU schedule
+      std::vector<CINNValue> res{
+          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = CINNValuePack{res};
     } else {
       std::vector<CINNValue> res{
           CINNValue(ir_sch.GetModule().GetExprs().at(0))};

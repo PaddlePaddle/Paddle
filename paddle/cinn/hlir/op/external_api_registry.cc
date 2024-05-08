@@ -109,5 +109,48 @@ CINN_REGISTER_HELPER(op_external_api) {
   CINN_OP_REGISTER_EXTERNAL_API(pool2d_grad, default_nvgpu)
       .set_api_name("cinn_call_cudnn_pool2d_backward");
 #endif
+
+#if defined(CINN_WITH_SYCL) && defined(CINN_WITH_CNNL)
+  const auto& sycl_mlu = ::cinn::common::SYCLTarget(::cinn::common::Target::Arch::CambriconMLU);
+  CINN_OP_REGISTER_EXTERNAL_API(gaussian_random, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_gaussian_random");
+  CINN_OP_REGISTER_EXTERNAL_API(uniform_random, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_uniform_random");
+  CINN_OP_REGISTER_EXTERNAL_API(randint, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_randint");
+  CINN_OP_REGISTER_EXTERNAL_API(matmul, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_matmul");
+  CINN_OP_REGISTER_EXTERNAL_API(mul, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_matmul");
+  CINN_OP_REGISTER_EXTERNAL_API(conv2d, sycl_mlu)
+      .set_trans_func([](const ::cinn::hlir::framework::Node* node) {
+        CHECK(node->attrs.attr_store.count("conv_type"));
+        std::string conv_type =
+            absl::get<std::string>(node->attrs.attr_store.at("conv_type"));
+        CHECK(conv_type == "forward" || conv_type == "backward_data" ||
+              conv_type == "backward_filter")
+            << "unknown conv_type=" << conv_type;
+        return "cinn_call_cnnl_conv2d_" + conv_type;
+      });
+  CINN_OP_REGISTER_EXTERNAL_API(depthwise_conv2d, sycl_mlu)
+      .set_trans_func([](const ::cinn::hlir::framework::Node* node) {
+        std::string conv_type =
+            node->attrs.attr_store.count("conv_type")
+                ? absl::get<std::string>(node->attrs.attr_store.at("conv_type"))
+                : "forward";
+        CHECK(conv_type == "forward" || conv_type == "backward_data" ||
+              conv_type == "backward_filter")
+            << "unknown conv_type=" << conv_type;
+        return "cinn_call_cnnl_conv2d_" + conv_type;
+      });
+  CINN_OP_REGISTER_EXTERNAL_API(pool2d, default_nvgpu)
+      .set_api_name("cinn_call_cudnn_pool2d_forward");
+  CINN_OP_REGISTER_EXTERNAL_API(pool2d_grad, default_nvgpu)
+      .set_api_name("cinn_call_cudnn_pool2d_backward");
+  CINN_OP_REGISTER_EXTERNAL_API(pool2d, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_pool2d_forward");
+  CINN_OP_REGISTER_EXTERNAL_API(pool2d_grad, sycl_mlu)
+      .set_api_name("cinn_call_cnnl_pool2d_backward");
+#endif
   return true;
 }

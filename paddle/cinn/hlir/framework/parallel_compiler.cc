@@ -323,7 +323,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
         << device_module;
     VLOG(4) << "[SYCL]:\n" << source_code;
     cinn::backends::SourceCodePrint::GetInstance()->write(source_code);
-    using runtime::Sycl::SYCLModule;
+    using runtime::sycl::SYCLModule;
     backends::syclrtc::Compiler compiler;
     std::string share_library = compiler(source_code, context->target.arch);
     CHECK(!share_library.empty())

@@ -18,7 +18,7 @@
 #endif
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
-using cinn::runtime::Sycl::SYCLBackendAPI;
+using cinn::runtime::sycl::SYCLBackendAPI;
 #else
 #include "paddle/cinn/runtime/backend_api.h"
 #endif
@@ -78,7 +78,7 @@ int Target::runtime_arch() const {
 
 int Target::max_num_threads() const {
   PADDLE_ENFORCE_EQ(
-      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      arch_is_gpu() || arch_is_mlu(),
       true,
       ::common::errors::Fatal("The target cannot get MaxThreadsPerBlock"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
@@ -87,7 +87,7 @@ int Target::max_num_threads() const {
 
 int Target::get_warp_size() const {
   PADDLE_ENFORCE_EQ(
-      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      arch_is_gpu() || arch_is_mlu(),
       true,
       ::common::errors::Fatal("The target cannot get MaxThreadsPerBlock"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
@@ -96,7 +96,7 @@ int Target::get_warp_size() const {
 
 int Target::get_multi_processor_count() const {
   PADDLE_ENFORCE_EQ(
-      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      arch_is_gpu() || arch_is_mlu(),
       true,
       ::common::errors::Fatal("The target cannot get multi processor count"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
@@ -105,7 +105,7 @@ int Target::get_multi_processor_count() const {
 
 int Target::get_max_threads_per_sm() const {
   PADDLE_ENFORCE_EQ(
-      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      arch_is_gpu() || arch_is_mlu(),
       true,
       ::common::errors::Fatal(
           "The target cannot get max threads per stream processor"));
@@ -115,7 +115,7 @@ int Target::get_max_threads_per_sm() const {
 
 int Target::get_max_blocks_per_sm() const {
   PADDLE_ENFORCE_EQ(
-      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      arch_is_gpu() || arch_is_mlu(),
       true,
       ::common::errors::Fatal(
           "The target cannot get max blocks per stream processor"));

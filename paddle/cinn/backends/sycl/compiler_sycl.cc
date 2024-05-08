@@ -16,7 +16,7 @@
 #include <sys/stat.h>  // for mkdir
 #include <fstream>
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
-using cinn::runtime::Sycl::SYCLBackendAPI;
+using cinn::runtime::sycl::SYCLBackendAPI;
 
 namespace cinn {
 namespace backends {
