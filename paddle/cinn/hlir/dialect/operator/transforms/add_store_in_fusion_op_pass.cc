@@ -25,7 +25,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class AddYieldStoreInFusionOpPattern
+class AddYieldStoreInGroupOpPattern
     : public pir::OpRewritePattern<::pir::YieldOp> {
  public:
   using pir::OpRewritePattern<::pir::YieldOp>::OpRewritePattern;
@@ -35,10 +35,6 @@ class AddYieldStoreInFusionOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
-      if (op->operand_source(i).use_count() == 1) {
-        continue;
-      }
-
       rewriter.SetInsertionPointAfter(op->operand_source(i).defining_op());
       auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
@@ -63,7 +59,7 @@ class AddStoreInGroupOpPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<AddYieldStoreInFusionOpPattern>(context);
+    ps.Add<AddYieldStoreInGroupOpPattern>(context);
 
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
