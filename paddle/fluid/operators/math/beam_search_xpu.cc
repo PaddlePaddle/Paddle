@@ -94,15 +94,15 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     // the output tensor shape should be [num_instances, 1]
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
-    auto *selected_ids_data =
-        selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
-    auto *selected_scores_data =
-        selected_scores->mutable_data<float>(dims, platform::CPUPlace());
+    selected_ids->Resize(dims);
+    auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    selected_scores->Resize(dims);
+    auto *selected_scores_data = context.template Alloc<float>(selected_scores);
+    if (parent_idx != nullptr) {
+      parent_idx->Resize({static_cast<int64_t>(num_instances)});
+    }
     auto *parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_instances)}, platform::CPUPlace())
-            : nullptr;
+        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;
