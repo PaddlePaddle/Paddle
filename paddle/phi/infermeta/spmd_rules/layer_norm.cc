@@ -241,10 +241,9 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   // tensor's dims mapping the same as output tensor's dims mapping.
   // step2.1 merge dims mappings of output, mean, variance.
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
-  axes_sharding_info.emplace_back(std::make_pair(mean_axes, mean_dims_mapping));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, variance_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
+  axes_sharding_info.emplace_back(mean_axes, mean_dims_mapping);
+  axes_sharding_info.emplace_back(variance_axes, variance_dims_mapping);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 

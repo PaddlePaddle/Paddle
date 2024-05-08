@@ -310,8 +310,8 @@ for stype in support_types:
     core.get_xpu_device_version(0) != core.XPUVersion.XPU3,
     "only supported on XPU3",
 )
-class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
-    def _floa32_bfloat16_or_float16_add(self, y_dtype):
+class TestTensorFloat32Bfloat16OrFloat16Add(unittest.TestCase):
+    def _float32_bfloat16_or_float16_add(self, y_dtype):
         paddle.disable_static()
         test_num = 5
         val_range = 10000
@@ -329,11 +329,11 @@ class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
             np.testing.assert_equal(x.numpy(), x_copy.numpy())
             del x, x_copy
 
-    def test_floa32_bfloat16_add(self):
-        self._floa32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
+    def test_float32_bfloat16_add(self):
+        self._float32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
 
-    def test_floa32_float16_add(self):
-        self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
+    def test_float32_float16_add(self):
+        self._float32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
 
 if __name__ == '__main__':
