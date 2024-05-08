@@ -384,6 +384,12 @@ template <typename T>
 ExprPromise<T> InitExprPromiseImpl(const ReducePattern<T>& pattern,
                                    pir::Value anchor);
 
+template <typename T>
+ExprPromise<T> InitExprPromiseImpl(const ReduceTreePattern<T>& pattern,
+                                   pir::Value anchor) {
+  return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
+}
+
 template <typename T, template <typename> typename PATTERN>
 ExprPromise<T> InitExprPromiseImpl(const PATTERN<T>& pattern,
                                    pir::Value anchor) {

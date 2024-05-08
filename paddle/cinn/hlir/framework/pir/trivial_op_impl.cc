@@ -584,6 +584,7 @@ std::vector<ir::Expr> OperationFusion(
   std::vector<cinn::fusion::BackendContent> contents;
   for (int i = 0; i < ops.size(); i++) {
     contents.emplace_back(ops[i], op_compute_bodies[i]);
+    VLOG(4) << "Input Funcbody: " << op_compute_bodies[i];
   }
   const auto& fusion_nodes =
       cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
