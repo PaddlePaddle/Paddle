@@ -214,6 +214,7 @@ def log_(x, name=None):
         return _C_ops.log_(x)
 
 
+# TODO(megemini): type checking
 def scale(
     x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None
 ) -> int:
