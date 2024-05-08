@@ -66,10 +66,14 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   const auto& general_topo_policy =
       std::make_shared<fusion::GeneralTopoPolicy<T>>();
 
+  const auto& anchor_search_policy =
+      std::make_shared<fusion::AnchorSearchPolicy<T>>();
+
   fusion::PolicyManager<T> policy_manager;
 
   policy_manager.SetPolicy(relative_judge_policy);
   policy_manager.SetPolicy(general_topo_policy);
+  policy_manager.SetPolicy(anchor_search_policy);
 
   VLOG(4) << "Start Create PatternGraph";
   fusion::PatternGraph<T> graph(content_without_yield, outputs, policy_manager);

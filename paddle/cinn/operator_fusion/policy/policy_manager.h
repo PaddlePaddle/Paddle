@@ -36,11 +36,9 @@ class PolicyManager {
   template <template <typename> typename POLICY>
   std::shared_ptr<POLICY<T>> GetPolicy() const {
     auto key = POLICY<T>::Kind;
-    PADDLE_ENFORCE_NE(
-        policies.find(key),
-        policies.end(),
-        phi::errors::NotFound(
-            "The upstream nodes of the merged node are not unique."));
+    PADDLE_ENFORCE_NE(policies.find(key),
+                      policies.end(),
+                      phi::errors::NotFound("Policy %d Not Found", key));
     return std::static_pointer_cast<POLICY<T>>(policies.at(key));
   }
 
