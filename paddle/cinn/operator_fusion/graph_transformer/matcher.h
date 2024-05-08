@@ -88,6 +88,21 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+struct LiftToAnchorPatternMatcher {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    bool not_reduce_tree =
+        !StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
+        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>()(graph,
+                                                                    node);
+    bool reduce_tree_with_single_reduce =
+        StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
+        std::get<ReduceTreePattern<T>>(node->stmt_pattern()).childs().size() ==
+            0;
+    return not_reduce_tree || reduce_tree_with_single_reduce;
+  }
+};
+
 struct RecomputeNodeMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
@@ -103,8 +118,11 @@ struct HasUpstreamAnchorMatcher {
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
     return graph.policy_manager()
-        .template GetPolicy<AnchorSearchPolicy>()
-        ->HasUpstreamAnchor(upstream, downstream);
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(upstream, downstream) &&
+           graph.policy_manager()
+               .template GetPolicy<AnchorSearchPolicy>()
+               ->HasUpstreamAnchor(upstream, downstream);
   }
 };
 
@@ -114,8 +132,11 @@ struct HasDownstreamAnchorMatcher {
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
     return graph.policy_manager()
-        .template GetPolicy<AnchorSearchPolicy>()
-        ->HasDownstreamAnchor(upstream, downstream);
+               .template GetPolicy<GeneralTopoPolicy>()
+               ->CanFuse(upstream, downstream) &&
+           graph.policy_manager()
+               .template GetPolicy<AnchorSearchPolicy>()
+               ->HasDownstreamAnchor(upstream, downstream);
   }
 };
 
