@@ -50,9 +50,11 @@ void GemmEpilogueKernel(const Context& dev_ctx,
           "Weight padding in gemm_epilogue can not be used in GPU scope."));
 
   auto weight_dims = w.dims();
-  CHECK_EQ(weight_dims.size() == 2UL, true);
-  // gemm_epilogue_out should be reshape when run since can not get lod in
-  // infershape
+  PADDLE_ENFORCE_EQ(weight_dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "In gemm_epilogue kernel, weight_dims should be 2."));
+  // gemm_epilogue_out should be reshape since can not get lod in infershape
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
@@ -164,7 +166,10 @@ void GemmEpilogueKernel(const Context& dev_ctx,
 
   void* dlhandler = phi::dynload::GetCutlassGemmEpilogueHandle();
   func gemm_epilogue_func = NULL;
-  CHECK_EQ(dlhandler == NULL, false);
+  PADDLE_ENFORCE_NOT_NULL(
+      dlhandler,
+      phi::errors::PreconditionNotMet(
+          "CutlassGemmEpilogueHandle should not be NULL, dynload error."));
   if (activation_type == "identity" || activation_type == "") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAdd"));
   } else if (activation_type == "relu") {
