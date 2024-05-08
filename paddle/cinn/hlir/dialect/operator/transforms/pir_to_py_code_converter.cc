@@ -29,10 +29,12 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 
 namespace cinn::dialect::ir {
@@ -138,33 +140,23 @@ struct PirToPyCodeConverterHelper {
     return ret;
   }
 
-  std::vector<pir::Value> GetInputs(const pir::Block& block) {
-    std::unordered_set<pir::Value> values;
-    for (const auto& op : block) {
-      for (int i = 0; i < op.num_results(); ++i) {
-        values.insert(op.result(i));
-      }
-    }
+  std::vector<pir::Value> GetFreeVars(const pir::Block& block) {
     std::vector<pir::Value> inputs;
-    for (const auto& op : block) {
-      for (int i = 0; i < op.num_operands(); ++i) {
-        pir::Value input = op.operand_source(i);
-        if (values.count(input)) continue;
-        if (std::find(inputs.begin(), inputs.end(), input) != inputs.end()) {
-          continue;
-        }
-        inputs.push_back(input);
-      }
+    for (const auto& value : GetUsedExternalValue(block)) {
+      if (!value) continue;
+      if (std::find(inputs.begin(), inputs.end(), value) != inputs.end())
+        continue;
+      inputs.push_back(value);
     }
     return inputs;
   }
 
   std::string ConvertFreeVarsAsArgs(const pir::Block& block) {
-    const std::vector<pir::Value> inputs = GetInputs(block);
-    return ConvertInputsAsArgs(inputs);
+    const std::vector<pir::Value> inputs = GetFreeVars(block);
+    return ConvertValuesAsArgs(inputs);
   }
 
-  std::string ConvertInputsAsArgs(const std::vector<pir::Value>& inputs) {
+  std::string ConvertValuesAsArgs(const std::vector<pir::Value>& inputs) {
     std::stringstream ss;
     for (int i = 0; i < inputs.size(); ++i) {
       if (i > 0) {
@@ -180,10 +172,13 @@ struct PirToPyCodeConverterHelper {
     for (const auto& [_, value] : block.kwargs()) {
       values.push_back(value);
     }
-    return ConvertInputsAsArgs(values);
+    return ConvertValuesAsArgs(values);
   }
 
   std::string ConvertValue(pir::Value value) {
+    if (!value) {
+      return "None";
+    }
     const auto* op = value.defining_op();
     if (op == nullptr) {
       return std::string("arg_") +
@@ -242,7 +237,7 @@ struct PirToPyCodeConverterHelper {
     }
     const std::string ret_lambda_name = "ret_lambda";
     const auto GetRetLambda = [&]() {
-      const auto& args_str = ConvertInputsAsArgs(block.args());
+      const auto& args_str = ConvertValuesAsArgs(block.args());
       const auto& kwargs_str = ConvertKwargsToString(block);
       IString ret_lambda_declare(
           std::string("def ") + ret_lambda_name + "(" + args_str +
