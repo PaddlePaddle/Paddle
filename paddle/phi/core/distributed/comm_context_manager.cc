@@ -213,6 +213,7 @@ void CommContextManager::CreateBKCLCommContext(
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::XPUContext> dev_ctx(
         new phi::XPUContext(phi::XPUPlace(CommContextManager::device_id)));
+    dev_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
     dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
         CommContextManager::device_id, dev_ctx->stream()));
     dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
