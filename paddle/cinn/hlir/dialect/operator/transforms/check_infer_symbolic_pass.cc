@@ -25,6 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -143,7 +144,10 @@ class BlockDimExprsAsserter {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
     } else {
-      bool infer_result = interface.InferSymbolicShape(shape_analysis.get());
+      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
+      // is done.
+      bool infer_result = interface.InferSymbolicShape(
+          shape_analysis->GetInferSymbolicShapeContext());
       PADDLE_ENFORCE_EQ(infer_result,
                         true,
                         ::common::errors::PreconditionNotMet(
@@ -260,7 +264,8 @@ class BlockDimExprsAsserter {
                 input_tensors, output_dim_expr_attrs, symbol_bindings)
             .out();
     return builder_
-        .Build<paddle::dialect::CastOp>(out_shape_value, phi::DataType::INT32)
+        .Build<cinn::dialect::GenerateShapeOp>(
+            input_tensors, output_dim_expr_attrs, symbol_bindings)
         .out();
   }
 
@@ -275,7 +280,18 @@ class BlockDimExprsAsserter {
     auto opt_shape_tensor_from_dim_exprs =
         BuildShapeTensorFromDataDimExprs(inputs, output, OpDimExprs4Value);
     if (!opt_shape_tensor_from_dim_exprs.has_value()) return;
-    AddAssertEqual(op, opt_shape_tensor_from_dim_exprs.value(), output);
+    pir::Value flatten_output = [&] {
+      const auto& output_dims =
+          output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      if (output_dims.size() > 1) {
+        return builder_
+            .Build<paddle::dialect::FlattenOp>(
+                output, 0, output_dims.size() - 1)
+            .out();
+      }
+      return output;
+    }();
+    AddAssertEqual(op, opt_shape_tensor_from_dim_exprs.value(), flatten_output);
   }
 
   size_t GetNumel(pir::Value value) {
@@ -302,12 +318,28 @@ class BlockDimExprsAsserter {
                           "received lhs's numel is [%d], rhs's numel is [%d]",
                           lhs_numel,
                           rhs_numel));
+
+    pir::Value rhs_value = [&] {
+      const auto& lhs_dtype =
+          lhs.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+      const auto& rhs_dtype =
+          rhs.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+      if (lhs_dtype != rhs_dtype) {
+        return builder_
+            .Build<paddle::dialect::CastOp>(
+                rhs, paddle::dialect::TransToPhiDataType(lhs_dtype))
+            .out();
+      }
+      return rhs;
+    }();
+
     pir::Value lhs_eq_rhs =
-        builder_.Build<paddle::dialect::EqualOp>(lhs, rhs).out();
+        builder_.Build<paddle::dialect::EqualOp>(lhs, rhs_value).out();
     pir::Value all_eq =
         builder_.Build<paddle::dialect::AllOp>(lhs_eq_rhs).out();
     pir::Value assert_data =
-        builder_.Build<pir::CombineOp>(std::vector<pir::Value>{lhs, rhs}).out();
+        builder_.Build<pir::CombineOp>(std::vector<pir::Value>{lhs, rhs_value})
+            .out();
     auto assert_op = builder_.Build<paddle::dialect::AssertOp>(
         all_eq, assert_data, lhs_numel);
     const std::string error_msg = "Check [" + op->name() + "_" +

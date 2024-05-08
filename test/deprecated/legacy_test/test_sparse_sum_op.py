@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 
@@ -176,6 +177,7 @@ class TestSparseSumStatic(unittest.TestCase):
                 )
             paddle.disable_static()
 
+    @compare_legacy_with_pt
     def test_sum(self):
         # 1d
         self.check_result_coo([5], None, False)
