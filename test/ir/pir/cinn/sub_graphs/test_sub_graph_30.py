@@ -15,11 +15,10 @@
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^SqueezeNet^SqueezeNet1_0
 # api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.pooling.max_pool2d||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.pooling.max_pool2d||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.pooling.max_pool2d||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.tensor.manipulation.concat||api:paddle.nn.functional.common.dropout||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.relu||api:paddle.nn.functional.pooling.adaptive_avg_pool2d||api:paddle.tensor.manipulation.squeeze
-import unittest
+from base import *  # noqa: F403
+from paddle.static import InputSpec
 
-import numpy as np
 
-import paddle
 
 
 class LayerCase(paddle.nn.Layer):
@@ -681,40 +680,16 @@ class LayerCase(paddle.nn.Layer):
         return var_66
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+
+    def init(self):
+        self.input_specs = [InputSpec(shape=(-1, -1, -1, -1), dtype=paddle.float32, name=None, stop_gradient=True)]
         self.inputs = (
             paddle.rand(shape=[10, 3, 224, 224], dtype=paddle.float32),
         )
         self.net = LayerCase()
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
     # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        # TODO(Aurelius84): can't satisfy atol=1e-6 if with_cinn=True
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-1)
-
 
 if __name__ == '__main__':
     unittest.main()

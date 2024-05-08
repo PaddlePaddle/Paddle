@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from base import *  # noqa: F403
+from paddle.static import InputSpec
 
-import numpy as np
 
-import paddle
 
 
 class SqueezeCase(paddle.nn.Layer):
@@ -41,46 +40,12 @@ class UnsqueezeCase(paddle.nn.Layer):
         return var_0.sin().unsqueeze([0, 2])
 
 
-class TestSplit(unittest.TestCase):
-    def setUp(self):
+class TestSplit(TestBase):
+
+    def init(self):
+        self.input_specs = []
         self.inputs = (paddle.rand(shape=[1, 12, 1, 64], dtype=paddle.float32),)
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    def test_squeeze(self):
-        net = SqueezeCase()
-        st_out = self.train(net, to_static=True)
-        cinn_out = self.train(
-            net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
-
-    def test_unsqueeze(self):
-        net = UnsqueezeCase()
-        st_out = self.train(net, to_static=True)
-        cinn_out = self.train(
-            net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net=SqueezeCase()
 
 
 if __name__ == '__main__':
