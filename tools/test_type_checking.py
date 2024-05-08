@@ -14,7 +14,7 @@
 
 import unittest
 
-from type_hints import MypyChecker, get_test_results
+from tools.type_checking import MypyChecker, get_test_results
 
 
 class TestMypyChecker(unittest.TestCase):
@@ -347,7 +347,7 @@ class TestMypyChecker(unittest.TestCase):
 
             """,
         }
-        doctester = MypyChecker('./mypy.ini')
+        doctester = MypyChecker('../pyproject.toml')
 
         test_results = get_test_results(doctester, docstrings_pass)
         self.assertEqual(len(test_results), 3)
@@ -412,7 +412,7 @@ class TestMypyChecker(unittest.TestCase):
             """,
         }
 
-        doctester = MypyChecker('./mypy.ini')
+        doctester = MypyChecker('../pyproject.toml')
 
         test_results = get_test_results(doctester, docstrings_fail)
         self.assertEqual(len(test_results), 3)
@@ -457,7 +457,7 @@ class TestMypyChecker(unittest.TestCase):
             """
         }
 
-        doctester = MypyChecker('./mypy.ini')
+        doctester = MypyChecker('../pyproject.toml')
 
         test_results = get_test_results(doctester, docstrings_fail)
         self.assertEqual(len(test_results), 2)
@@ -465,3 +465,166 @@ class TestMypyChecker(unittest.TestCase):
         tr_0, tr_1 = test_results
         self.assertTrue(tr_0.fail)
         self.assertFalse(tr_1.fail)
+
+    def test_mypy_ignore(self):
+        docstrings_ignore = {
+            'fail_simple': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> # type: ignore
+                    >>> import blabla
+            """,
+            'multi': """
+            placeholder
+
+            .. code-block:: python
+                :name: code-example-0
+
+                this is some blabla...
+
+                >>> # doctest: +SKIP('skip')
+                >>> print(1+1)
+                2
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> # type: ignore
+                    >>> # doctest: -REQUIRES(env:GPU)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+
+                .. code-block:: python
+                    :name: code-example-2
+
+                    this is some blabla...
+
+                    >>> # type: ignore
+                    >>> # doctest: +REQUIRES(env:GPU, env:XPU, env: DISTRIBUTED)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+            """,
+        }
+
+        doctester = MypyChecker('../pyproject.toml')
+
+        test_results = get_test_results(doctester, docstrings_ignore)
+        self.assertEqual(len(test_results), 3)
+
+        for tr in test_results:
+            print(tr.msg)
+            self.assertFalse(tr.fail)
+
+        docstrings_pass = {
+            'pass': """
+            placeholder
+
+            .. code-block:: python
+                :name: code-example-0
+
+                this is some blabla...
+
+                >>> # doctest: +SKIP('skip')
+                >>> print(1+1)
+                2
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> a = 1
+                    >>> # type: ignore
+                    >>> # doctest: -REQUIRES(env:GPU)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+
+                .. code-block:: python
+                    :name: code-example-2
+
+                    this is some blabla...
+
+                    >>> b = 2
+                    >>> # type: ignore
+                    >>> # doctest: +REQUIRES(env:GPU, env:XPU, env: DISTRIBUTED)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+            """,
+        }
+
+        doctester = MypyChecker('../pyproject.toml')
+
+        test_results = get_test_results(doctester, docstrings_pass)
+        self.assertEqual(len(test_results), 2)
+
+        for tr in test_results:
+            print(tr.msg)
+            self.assertFalse(tr.fail)
+
+        docstrings_fail = {
+            'fail': """
+            placeholder
+
+            .. code-block:: python
+                :name: code-example-0
+
+                this is some blabla...
+
+                >>> # doctest: +SKIP('skip')
+                >>> print(1+1)
+                2
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import blabla
+                    >>> a = 1
+                    >>> # type: ignore
+                    >>> # doctest: -REQUIRES(env:GPU)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+
+                .. code-block:: python
+                    :name: code-example-2
+
+                    this is some blabla...
+
+                    >>> import blabla
+                    >>> # type: ignore
+                    >>> # doctest: +REQUIRES(env:GPU, env:XPU, env: DISTRIBUTED)
+                    >>> blabla
+                    >>> print(1-1)
+                    0
+            """,
+        }
+
+        doctester = MypyChecker('../pyproject.toml')
+
+        test_results = get_test_results(doctester, docstrings_fail)
+        self.assertEqual(len(test_results), 2)
+
+        for tr in test_results:
+            print(tr.msg)
+            self.assertTrue(tr.fail)

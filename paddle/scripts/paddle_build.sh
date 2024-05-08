@@ -3514,10 +3514,10 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --debug --mode cpu; example_error=$?
+        python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug --mode gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -3525,7 +3525,19 @@ function exec_samplecode_test() {
     fi
 }
 
-function exec_type_hints() {
+function run_type_checking() {
+    # use "git commit -m 'message, test=type_checking'" to force ci to run
+    COMMIT_CHECK=$(git log -1 --pretty=format:"%s" | grep -w "test=type_checking" || true)
+    # check pr title
+    TITLE_CHECK=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking" || true)
+    if [[ ${COMMIT_CHECK} || ${TITLE_CHECK} ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function exec_type_checking() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
         pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
     else
@@ -3537,9 +3549,18 @@ function exec_type_hints() {
 
     cd ${PADDLE_ROOT}/tools
     
-    python type_hints.py --debug; type_hints_error=$?
+    # check all sample code
+    # use "git commit -m 'message, test=type_checking_all'" to force ci to run
+    COMMIT_CHECK_ALL=$(git log -1 --pretty=format:"%s" | grep -w "test=type_checking_all" || true)
+    TITLE_CHECK_ALL=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking all" || true)
 
-    if [ "$type_hints_error" != "0" ];then
+    if [[ ${COMMIT_CHECK_ALL} || ${TITLE_CHECK_ALL} ]]; then
+        python type_checking.py --full-test; type_checking_error=$?
+    else
+        python type_checking.py; type_checking_error=$?
+    fi
+
+    if [ "$type_checking_error" != "0" ];then
       echo "Example code type checking failed" >&2
       exit 5
     fi
@@ -3585,12 +3606,10 @@ function test_model_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
 }
 
-function summary_check_problems() {
+function summary_check_example_code_problems() {
     set +x
     local example_code=$1
     local example_info=$2
-    local type_hints_code=$3
-    local type_hints_info=$4
 
     if [ $example_code -ne 0 ];then
         echo "==============================================================================="
@@ -3610,21 +3629,29 @@ function summary_check_problems() {
         echo "*****Example code PASS*****"
         echo "==============================================================================="
     fi
+    set -x
+}
 
-    if [ $type_hints_code -ne 0 ];then
+
+function summary_type_checking_problems() {
+    set +x
+    local type_checking_code=$1
+    local type_checking_info=$2
+
+    if [ $type_checking_code -ne 0 ];then
         echo "==============================================================================="
         echo "*****Example code type checking error***** Please fix the error listed in the information:"
         echo "==============================================================================="
-        echo "$type_hints_info"
+        echo "$type_checking_info"
         echo "==============================================================================="
         echo "*****Example code type checking FAIL*****"
         echo "==============================================================================="
-        exit $type_hints_code
+        exit $type_checking_code
     else
         echo "==============================================================================="
         echo "*****Example code type checking info*****"
         echo "==============================================================================="
-        echo "$type_hints_info"
+        echo "$type_checking_info"
         echo "==============================================================================="
         echo "*****Example code type checking PASS*****"
         echo "==============================================================================="
@@ -4317,10 +4344,14 @@ function main() {
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
 
-        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
-        type_hints_code=$?
-        
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"  $type_hints_code "$type_hints_info"
+        summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+
+        if run_type_checking; then
+            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+            type_checking_code=$?
+            
+            summary_type_checking_problems $type_checking_code "$type_checking_info"
+        fi
 
         assert_api_spec_approvals
         ;;
@@ -4342,10 +4373,14 @@ function main() {
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
 
-        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
-        type_hints_code=$?
+        summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
 
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}" $type_hints_code "$type_hints_info"
+        if run_type_checking; then
+            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+            type_checking_code=$?
+
+            summary_type_checking_problems $type_checking_code "$type_checking_info"
+        fi
 
         assert_api_spec_approvals
         ;;
@@ -4591,10 +4626,14 @@ function main() {
         { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
 
-        { type_hints_info=$(exec_type_hints 2>&1 1>&3 3>/dev/null); } 3>&1
-        type_hints_code=$?
+        summary_check_example_code_problems $example_code "$example_info"
 
-        summary_check_problems $example_code "$example_info" $type_hints_code "$type_hints_info"
+        if run_type_checking; then    
+            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+            type_checking_code=$?
+
+            summary_type_checking_problems $type_checking_code "$type_checking_info"
+        fi
         ;;
       test_op_benchmark)
         test_op_benchmark

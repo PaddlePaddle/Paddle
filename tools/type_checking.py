@@ -64,11 +64,23 @@ class MypyChecker(TypeChecker):
         super().__init__(*args, **kwargs)
 
     def run(self, api_name: str, codeblock: str) -> TestResult:
+        # skip checking when the codeblock startswith `>>> # type: ignore`
+        codeblock_for_checking = []
+        for line in codeblock.splitlines():
+            if line.strip().startswith('>>> # type: ignore'):
+                break
+            codeblock_for_checking.append(line)
+        codeblock_for_checking = '\n'.join(codeblock_for_checking)
+
         # remove `doctest` in the codeblock, or the module `doctest` cannot `get_examples`` correctly
-        codeblock = re.sub(r'#\s*x?doctest\s*:.*', '', codeblock)
+        codeblock_for_checking = re.sub(
+            r'#\s*x?doctest\s*:.*', '', codeblock_for_checking
+        )
 
         # `get_examples` codes with `>>>` and `...` stripped
-        _example_code = doctest.DocTestParser().get_examples(codeblock)
+        _example_code = doctest.DocTestParser().get_examples(
+            codeblock_for_checking
+        )
         example_code = '\n'.join(
             [l for e in _example_code for l in e.source.splitlines()]
         )
@@ -203,7 +215,9 @@ def get_test_results(
     return test_results
 
 
-def run_type_hints(args: argparse.Namespace, type_checker: TypeChecker) -> None:
+def run_type_checker(
+    args: argparse.Namespace, type_checker: TypeChecker
+) -> None:
     # init logger
     init_logger(debug=args.debug, log_file=args.logf)
 
@@ -224,6 +238,8 @@ def run_type_hints(args: argparse.Namespace, type_checker: TypeChecker) -> None:
 if __name__ == '__main__':
     args = parse_args()
     mypy_checker = MypyChecker(
-        config_file=args.config_file if args.config_file else './mypy.ini'
+        config_file=(
+            args.config_file if args.config_file else '../pyproject.toml'
+        )
     )
-    run_type_hints(args, mypy_checker)
+    run_type_checker(args, mypy_checker)

@@ -48,6 +48,12 @@ API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
 API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 TEST_TIMEOUT = 10
 
+PAT_API_SPEC_MEMBER = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
+# insert ArgSpec for changing the API's type annotation can trigger the CI
+PAT_API_SPEC_SIGNATURE = re.compile(
+    r'^(paddle[^,]+)\s+\((ArgSpec.*),.*document\W*([0-9a-z]{32})'
+)
+
 
 class Result:
     # name/key for result
@@ -333,21 +339,15 @@ def get_api_md5(path):
     API_spec = os.path.abspath(os.path.join(os.getcwd(), "..", path))
     if not os.path.isfile(API_spec):
         return api_md5
-    pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
-
-    # insert ArgSpec for changing the API's type annotation can trigger the CI
-    patArgSpec = re.compile(
-        r'^(paddle[^,]+)\s+\((ArgSpec.*),.*document\W*([0-9a-z]{32})'
-    )
 
     with open(API_spec) as f:
         for line in f.readlines():
-            mo = pat.search(line)
+            mo = PAT_API_SPEC_MEMBER.search(line)
 
             if mo:
                 api_md5[mo.group(1)] = mo.group(2)
             else:
-                mo = patArgSpec.search(line)
+                mo = PAT_API_SPEC_SIGNATURE.search(line)
                 api_md5[mo.group(1)] = f'{mo.group(2)}, {mo.group(3)}'
 
     return api_md5
