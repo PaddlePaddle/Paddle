@@ -40,6 +40,7 @@ from ..guard import (
     StringifyExpression,
     check_guard,
     object_equal_stringify_guard,
+    stringify_pyobject,
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
@@ -260,11 +261,15 @@ class TensorDtypeVariable(DataVariable):
             tensor_value_tracer = (
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
+            dtype_str, dtype_free_vars = stringify_pyobject(self.value)
             return [
                 StringifyExpression(
-                    f"str(MetaInfo.from_tensor({{}}).dtype) == '{str(self.value)}'",
+                    f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
                     [tensor_value_tracer],
-                    {"MetaInfo": MetaInfo},
+                    union_free_vars(
+                        {"MetaInfo": MetaInfo},
+                        dtype_free_vars,
+                    ),
                 )
             ]
         else:
