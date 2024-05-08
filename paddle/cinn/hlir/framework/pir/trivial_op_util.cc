@@ -304,7 +304,7 @@ ExprSetFinder ChildTensorLoads = Collector(
 
 ExprSetFinder ChildTensorStores = Collector(
     [](const ir::Expr* e) {
-      return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
+      return e->As<ir::Store>() && e->As<ir::Store>()->is_addr_tensor();
     },
     "ChildTensorStores");
 
