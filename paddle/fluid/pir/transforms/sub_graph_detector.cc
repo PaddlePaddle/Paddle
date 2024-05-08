@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
@@ -538,18 +539,18 @@ struct IncrementalOrder {
 std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     const pir::Operation* position_op,
     const pir::Block* block,
-    const pir::Operation* op,
+    pir::Operation* op,
     std::unordered_set<pir::Operation*>* visited_ops) {
   std::unordered_set<pir::Operation*> ops;
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
-    for (auto& op : *block) {
-      if (src_op == &op) return true;
+    for (auto& item : *block) {
+      if (src_op->id() == item.id()) return true;
     }
     return false;
   };
-
-  for (auto value : op->operands_source()) {
+  std::vector<pir::Value> op_inputs = pir::GetUsedExternalValue(*op);
+  for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
     if (visited_ops->count(defining_op)) continue;
@@ -580,7 +581,8 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
   }();
 
   for (auto& op : moved_ops) {
-    VLOG(5) << "Move " << op->name() << " before " << insert_point_op->name();
+    VLOG(5) << "Move " << op->id() << " " << op->name() << " before "
+            << insert_point_op->id() << " " << insert_point_op->name();
     op->MoveTo(block, insert_point_op->operator Block::Iterator());
   }
 }

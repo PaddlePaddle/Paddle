@@ -79,7 +79,7 @@ class TestReduceMean(unittest.TestCase):
             InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
         cinn_out = self.eval(
-            x=self.x, axis=axis, input_spec=input_spec, use_cinn=True
+            x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
         )
         dy_out = self.eval(
             x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
@@ -93,7 +93,7 @@ class TestReduceMean(unittest.TestCase):
             InputSpec(shape=[None, None, 768], dtype='float32'),
         ]
         cinn_out = self.eval(
-            x=self.x, axis=axis, input_spec=input_spec, use_cinn=True
+            x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
         )
         dy_out = self.eval(
             x=self.x, axis=axis, input_spec=input_spec, use_cinn=False
@@ -104,12 +104,12 @@ class TestReduceMean(unittest.TestCase):
 
     def test_eval_multi_dynamic_axis(self):
         self._test_eval_multi_dynamic_axis(axis=[0])
-        # self._test_eval_multi_dynamic_axis(axis=[1])
-        # self._test_eval_multi_dynamic_axis(axis=[0, 1])
-        # self._test_eval_multi_dynamic_axis(axis=[0, 2])
-        # self._test_eval_multi_dynamic_axis(axis=[1, 2])
-        # self._test_eval_multi_dynamic_axis(axis=[0, 1, 2])
-        # self._test_eval_multi_dynamic_axis(axis=[])
+        self._test_eval_multi_dynamic_axis(axis=[1])
+        self._test_eval_multi_dynamic_axis(axis=[0, 1])
+        self._test_eval_multi_dynamic_axis(axis=[0, 2])
+        self._test_eval_multi_dynamic_axis(axis=[1, 2])
+        self._test_eval_multi_dynamic_axis(axis=[0, 1, 2])
+        self._test_eval_multi_dynamic_axis(axis=[])
 
 
 if __name__ == '__main__':

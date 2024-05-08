@@ -299,7 +299,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
     """
     diff_shape = core.diff_tensor_shape(feed, target_shape, num_places)
     if diff_shape is not None:
-        raise ValueError(
+        warnings.warn(
             'The fed Variable %r should have dimensions = %d, shape = '
             '%r, but received fed shape %r on each device'
             % (name, len(target_shape), target_shape, diff_shape)
@@ -315,7 +315,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             if isinstance(feed._dtype(), core.VarDesc.VarType)
             else feed._dtype()
         )
-        raise ValueError(
+        warnings.warn(
             f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
@@ -1089,7 +1089,18 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p)
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)

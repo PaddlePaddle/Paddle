@@ -70,7 +70,22 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      if (absl::holds_alternative<std::vector<int64_t>>(
+              attrs.attr_store.at("dim"))) {
+        const auto &dim_attr =
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+        return std::vector<int>(dim_attr.begin(), dim_attr.end());
+      } else if (absl::holds_alternative<std::vector<int>>(
+                     attrs.attr_store.at("dim"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "reduce dimension's type is invalid!"));
+      }
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
@@ -205,7 +220,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (!FLAGS_cinn_new_group_scheduler && target.arch == Target::Arch::NVGPU) {
+    const auto ReduceSchedule = [&]() {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
           CHECK_EQ(vec_tensor.size(), 2);
@@ -307,11 +322,29 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
-    } else {
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    }
+    };
+    target.arch.Visit(adt::match{
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
+          std::vector<CINNValue> res{
+              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+        },
+        [&](common::ARMArch) {
+          std::vector<CINNValue> res{
+              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+        },
+        [&](common::NVGPUArch) {
+          if (!FLAGS_cinn_new_group_scheduler) {
+            ReduceSchedule();
+          } else {
+            std::vector<CINNValue> res{
+                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+            *ret = CINNValuePack{res};
+          }
+        },
+    });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -334,7 +367,22 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
-    reduce_axes = absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+    reduce_axes = [&] {
+      if (absl::holds_alternative<std::vector<int64_t>>(
+              attrs.attr_store.at("dim"))) {
+        const auto &dim_attr =
+            absl::get<std::vector<int64_t>>(attrs.attr_store.at("dim"));
+        return std::vector<int>(dim_attr.begin(), dim_attr.end());
+      } else if (absl::holds_alternative<std::vector<int>>(
+                     attrs.attr_store.at("dim"))) {
+        return absl::get<std::vector<int>>(attrs.attr_store.at("dim"));
+      } else if (absl::holds_alternative<bool>(attrs.attr_store.at("dim"))) {
+        return std::vector<int>{};
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "reduce dimension's type is invalid!"));
+      }
+    }();
     if (reduce_axes.empty()) {
       for (int i = 0; i < ndim; ++i) {
         reduce_axes.push_back(i);
@@ -345,7 +393,6 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       });
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
-    // check reduce_axes
     CHECK_LE(reduce_axes.size(), ndim);
     CHECK_LT(reduce_axes.back(), ndim);
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {

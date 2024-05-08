@@ -123,7 +123,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       }
     } else {
       if (root_id == comm->rank()) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
             numel,
             dtype,
@@ -137,7 +137,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
             *platform::DeviceContextPool::Instance().Get(place),
             static_cast<phi::DenseTensor*>(&temp));
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             out_ptr, numel, dtype, root_id, comm->comm(), stream));
       }
     }
@@ -167,7 +167,6 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_scatter,
                           GPU,
