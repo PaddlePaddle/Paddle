@@ -104,54 +104,38 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
                        GraphMatcher,
                        GraphOperation> {
   PatternGraph<Phrase>* graph_;
-  std::queue<PatternNodePtr<Phrase>> reverse_topo_nodes;
+  std::queue<PatternNodePtr<Phrase>> reverse_topo_queue;
+  std::unordered_map<PatternNodePtr<Phrase>, int> degree;
 
   explicit SearchAlgorithm(PatternGraph<Phrase>* graph) {
     VLOG(4) << "Create ReverseTopoNodePairPattern algorithm.";
     graph_ = graph;
-
-    // Do reverse topological sort, and store the results in reverse_topo_nodes.
-    auto reverse_topo_sort_result = graph->SortByReverseTopoOrder();
-    for (const auto& node : reverse_topo_sort_result) {
-      reverse_topo_nodes.push(node);
-    }
-  }
-
-  std::optional<std::pair<PatternNodePtr<Phrase>, PatternNodePtr<Phrase>>>
-  FindMatchedPair() {
-    //  Keep picking the front element of reverse_topo_nodes as candidate of
-    //  upstream node. Please make sure that the downstream node is merged into
-    //  the upstream node during merging, and the upstream node will not
-    //  disappear after merging, else the logic here should be modified.
-    while (!reverse_topo_nodes.empty()) {
-      const auto& upstream_candidate = reverse_topo_nodes.front();
-
-      // If the node has downstream, try searching for its candidate downstream
-      // using GraphMatcher.
-      if (!upstream_candidate->downstream().empty()) {
-        for (const auto& downstream_candidate :
-             upstream_candidate->downstream()) {
-          if (GraphMatcher()(
-                  *graph_, upstream_candidate, downstream_candidate)) {
-            VLOG(4) << "Find Matched Node Pair: (" << upstream_candidate << ", "
-                    << downstream_candidate << ")";
-            return std::make_pair(upstream_candidate, downstream_candidate);
-          }
-        }
+    for (const auto& node : graph_->all_pattern_nodes()) {
+      degree[node] = node->downstream().size();
+      if (degree[node] == 0) {
+        reverse_topo_queue.push(node);
       }
-      reverse_topo_nodes.pop();
     }
-
-    VLOG(4) << "Can't find matched node any more.";
-    return {};
   }
 
   void operator()() {
-    while (true) {
-      const auto& node = FindMatchedPair();
-      if (!node.has_value()) break;
-      const auto& [upstream, downstream] = node.value();
-      GraphOperation()(graph_, upstream, downstream);
+    while (!reverse_topo_queue.empty()) {
+      PatternNodePtr<Phrase> node = reverse_topo_queue.front();
+      reverse_topo_queue.pop();
+
+      for (const auto& upstream : node->upstream()) {
+        degree[upstream]--;
+        if (degree[upstream] == 0) {
+          reverse_topo_queue.push(upstream);
+        }
+      }
+
+      auto fusion_candidates = node->downstream();
+      for (const auto& downstream : fusion_candidates) {
+        if (GraphMatcher()(*graph_, node, downstream)) {
+          node = GraphOperation()(graph_, node, downstream);
+        }
+      }
     }
   }
 };
