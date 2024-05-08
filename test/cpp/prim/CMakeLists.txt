@@ -22,14 +22,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
   add_dependencies(init_env_utils ${prim_eager_deps} ${prim_generated_deps})
-  paddle_test(
-    test_comp_eager
-    SRCS
-    test_eager_prim.cc
-    DEPS
-    init_env_utils
-    phi
-    pir)
+  paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils phi)
 endif()
 
 # skip win32 since wget is not installed by default on windows machine.
