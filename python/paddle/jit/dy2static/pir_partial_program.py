@@ -598,11 +598,11 @@ class PartialProgramLayer:
 
             def pass_fn(forward_program, backward_program):
                 # common pass
-                pm = paddle.base.libpaddle.pir.PassManager()
-                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-                    pm, forward_program
-                )
-                pm.run(forward_program)
+                # pm = paddle.base.libpaddle.pir.PassManager()
+                # paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
+                #     pm, forward_program
+                # )
+                # pm.run(forward_program)
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):

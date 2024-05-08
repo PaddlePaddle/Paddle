@@ -84,7 +84,7 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+  //pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
@@ -158,6 +158,8 @@ void ApplyDivideGroupOpToFusionOpPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   }
+
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -192,6 +194,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
