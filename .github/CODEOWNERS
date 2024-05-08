@@ -1,3 +1,6 @@
+# this file is migrated from CI script, it's an effort of modenizing our dev infra.
+# code owners are expected to take responsibility for review patches to respective file.
+
 CMakeLists.txt @wanghuancoder @luotao1 @Aurelius84 @XiaoguangHu01 @qili93
 paddle/fluid/eager/autograd_meta.cc @JiabinYang @phlrain
 paddle/fluid/eager/autograd_meta.h @JiabinYang @phlrain
