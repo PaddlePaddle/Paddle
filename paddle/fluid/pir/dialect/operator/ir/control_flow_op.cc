@@ -167,12 +167,12 @@ void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = pd_op.if";
+  os << " = \"" << name() << "\"";
   printer.PrintOpOperands(op);
   printer.PrintAttributeMap(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << "{\n";
+  os << " {\n";
   printer.AddIndentation();
   for (auto &item : true_block()) {
     printer.PrintOperation(&item);
@@ -427,11 +427,11 @@ void PyLayerOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = pd_op.pylayer";
+  os << " = \"" << name() << "\"";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << "{";
+  os << " {";
   for (auto &item : forward_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
@@ -534,7 +534,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = \"" << name() << "\"(cond=";
+  os << " = \"" << name() << "\" (cond=";
   printer.PrintValue(cond());
   os << ", inputs=";
   auto operands = (*this)->operands_source();
