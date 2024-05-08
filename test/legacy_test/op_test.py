@@ -3283,20 +3283,21 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = self.check_grad_with_place_for_static(
-            user_defined_grads,
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs,
-            numeric_place,
-            numeric_grad_delta,
-            in_place,
-            check_cinn,
-            max_relative_error,
-            atol,
-        )
+        with paddle.pir_utils.OldIrGuard():
+            numeric_grads = self.check_grad_with_place_for_static(
+                user_defined_grads,
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+                numeric_place,
+                numeric_grad_delta,
+                in_place,
+                check_cinn,
+                max_relative_error,
+                atol,
+            )
 
         if check_pir_onednn and isinstance(
             place, paddle.base.libpaddle.CPUPlace
