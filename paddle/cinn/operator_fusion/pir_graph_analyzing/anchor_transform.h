@@ -46,7 +46,7 @@ struct TransformInfo {
 
   std::string DebugStr() const {
     std::stringstream ss;
-    ss << "op: " << op << ", input_idx: " << input_idx
+    ss << "op: " << op->name() << ", input_idx: " << input_idx
        << ", output_idx: " << output_idx
        << ", is_upstream_anchor: " << is_upstream_anchor;
     return ss.str();
@@ -133,4 +133,5 @@ struct AnchorState {
 AnchorTransform CreateAnchorTransform(const TransformInfo& info);
 std::vector<AnchorTransform> PossibleTransform(pir::Value v);
 TransformInfo GetTransformInfo(AnchorTransform trans);
+std::string DebugStrOfAnchorTransform(AnchorTransform trans);
 }  // namespace cinn::fusion

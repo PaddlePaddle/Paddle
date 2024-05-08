@@ -67,7 +67,14 @@ std::optional<AnchorTransformRoute> FindAnchorTransformRoute(
   auto result =
       SearchAnchorTransformRecursively(begin, end, &cur_route, &visited, ops);
   if (VLOG_IS_ON(4)) {
-    // TODO(@wuzhanfei) add log
+    if (result == std::nullopt) {
+      VLOG(4) << "FindAnchorTransformRoute: Not Found";
+    } else {
+      VLOG(4) << "FindAnchorTransformRoute: ";
+      for (const auto& trans : result.value()) {
+        VLOG(4) << DebugStrOfAnchorTransform(trans);
+      }
+    }
   }
   return result;
 }

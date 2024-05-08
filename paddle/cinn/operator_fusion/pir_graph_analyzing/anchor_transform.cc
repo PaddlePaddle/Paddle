@@ -132,11 +132,20 @@ std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
     }
   }
 
+  VLOG(4) << "PossibleTransform Result:";
+  for (const auto& trans : result) {
+    VLOG(4) << DebugStrOfAnchorTransform(trans);
+  }
+
   return result;
 }
 
 TransformInfo GetTransformInfo(AnchorTransform trans) {
   return std::visit([](auto&& arg) { return arg->info; }, trans);
+}
+
+std::string DebugStrOfAnchorTransform(AnchorTransform trans) {
+  return std::visit([](auto&& arg) { return arg->DebugStr(); }, trans);
 }
 
 }  // namespace cinn::fusion

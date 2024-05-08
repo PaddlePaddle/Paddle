@@ -102,6 +102,10 @@ struct HasUpstreamAnchorMatcher {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
+    if (!StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, upstream) ||
+        !StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, downstream)) {
+      return false;
+    }
     return graph.policy_manager()
         .template GetPolicy<AnchorSearchPolicy>()
         ->HasUpstreamAnchor(upstream, downstream);
@@ -113,6 +117,10 @@ struct HasDownstreamAnchorMatcher {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& upstream,
                   const PatternNodePtr<T>& downstream) {
+    if (!StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, upstream) ||
+        !StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, downstream)) {
+      return false;
+    }
     return graph.policy_manager()
         .template GetPolicy<AnchorSearchPolicy>()
         ->HasDownstreamAnchor(upstream, downstream);
