@@ -169,8 +169,8 @@ class TruncatedNormalInitializer(Initializer):
         loc (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
         scale (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
         seed (int, optional): random seed. Default is 0.
-        a (float, optional): The minimum cutoff value
-        b (float, optional): The maximum cutoff value
+        a (float, optional): The minimum cutoff value. Default is -2.0.
+        b (float, optional): The maximum cutoff value. Default is 2.0.
 
     """
 
@@ -279,8 +279,8 @@ class TruncatedNormal(TruncatedNormalInitializer):
     Args:
         mean (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
         std (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
-        a (float, optional): The minimum cutoff value
-        b (float, optional): The maximum cutoff value
+        a (float, optional): The minimum cutoff value. Default is -2.0.
+        b (float, optional): The maximum cutoff value. Default is 2.0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
