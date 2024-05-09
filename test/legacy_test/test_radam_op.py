@@ -628,14 +628,17 @@ def main_test_func(place, dtype):
             radam_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.text.datasets.UCIHousing, batch_size=1
+            train_reader = list(
+                zip(
+                    np.random.rand(101, 13),
+                    np.random.randint(12, size=(101, 1)),
+                )
             )
             feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
-            for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+            for data in train_reader:
+                exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
 
     paddle.disable_static()
 
