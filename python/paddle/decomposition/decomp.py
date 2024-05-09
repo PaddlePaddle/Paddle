@@ -833,8 +833,6 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
 
 
 def decompose_dis_program(pir_program):
-    # decompose
-    # _decomp_bwd_program(pir_program, pir_grad_var_to_var)
     decompose(pir_program, [])
 
 
