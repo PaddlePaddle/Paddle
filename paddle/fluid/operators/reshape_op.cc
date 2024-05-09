@@ -435,7 +435,7 @@ class ReshapeKernel {
 #endif
 #ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
                               *in,
                               pt_scalar_shape,
@@ -466,7 +466,7 @@ class ReshapeGradKernel {
 #endif
 #ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, d_x);
     }
@@ -496,7 +496,7 @@ class ReshapeDoubleGradKernel {
 #endif
 #ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
-      auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }

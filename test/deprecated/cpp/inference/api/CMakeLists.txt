@@ -470,6 +470,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   # resnet50
   set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+  download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
   inference_analysis_api_test_with_fake_data_run(
     test_analyzer_resnet50 ${IMG_CLASS_TEST_APP} ${RESNET50_MODEL_DIR} true)
   if(WIN32)

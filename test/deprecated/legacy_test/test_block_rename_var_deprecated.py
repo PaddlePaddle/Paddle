@@ -19,6 +19,7 @@ import paddle
 
 class TestBlockRenameVar(unittest.TestCase):
     def setUp(self):
+        paddle.enable_static()
         self.program = paddle.static.Program()
         self.block = self.program.current_block()
         self.var = self.block.create_var(
