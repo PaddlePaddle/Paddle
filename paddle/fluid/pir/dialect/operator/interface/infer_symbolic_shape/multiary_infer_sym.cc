@@ -311,26 +311,37 @@ bool FullWithTensorOpInferSymbolicShape(
 
 bool FlashAttnOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+
+     std::cerr << "begin\n";
   pir::Value operand_source = op->operand_source(0);
   const symbol::ShapeOrDataDimExprs &q =
       infer_context->GetShapeOrDataForValue(operand_source);
 
+  std::cerr << "begin 1\n";
   const symbol::ShapeOrDataDimExprs &k =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
+  std::cerr << "begin 2\n";
   const symbol::ShapeOrDataDimExprs &v =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
+  std::cerr << "begin 3\n";
   PADDLE_ENFORCE_EQ(q.shape().size(),
                     4,
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
+ std::cerr << "begin 5\n"; 
+ std::cerr << "q " << q.shape().size() << "\t" << k.shape().size() << "\t" << v.shape().size() << std::endl;
+ std::cerr << q.shape()[0] << "\t" << k.shape()[0] << "\t" << v.shape()[0] << "\t" << k.shape()[1] << "\t" << v.shape()[1] << std::endl;
   infer_context->AddEqualCstr(q.shape()[0], k.shape()[0]);
+  std::cerr << "equal 1\n";
   infer_context->AddEqualCstr(q.shape()[0], v.shape()[0]);
+  std::cerr << "equal 2\n";
   infer_context->AddEqualCstr(k.shape()[1], v.shape()[1]);
 
+  std::cerr << "11\n";
   if (op->operand_source(4)) {
     const symbol::ShapeOrDataDimExprs &attn_mask =
         infer_context->GetShapeOrDataForValue(op->operand_source(4));
@@ -339,6 +350,7 @@ bool FlashAttnOpInferSymbolicShape(
     infer_context->AddEqualCstr(attn_mask.shape()[3], k.shape()[1]);
   }
 
+  std::cerr << "22\n";
   std::vector<symbol::DimExpr> out_shape = q.shape();
 
   out_shape.back() = v.shape().back();
@@ -357,6 +369,8 @@ bool FlashAttnOpInferSymbolicShape(
   auto num_heads_expr = q.shape()[2];
   auto seqlen_q_rounded_expr = round_multiple(q.shape()[1]);
   auto seqlen_k_rounded_expr = round_multiple(k.shape()[1]);
+
+  std::cerr << "133\n";
   if (op->result(1)) {
     std::vector<symbol::DimExpr> softmax_shape{batch_size_expr,
                                                num_heads_expr,
@@ -365,17 +379,23 @@ bool FlashAttnOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(
         op->result(1), symbol::TensorShapeOrDataDimExprs(softmax_shape));
   }
+
+  std::cerr << "44\n";
   if (op->result(2)) {
     std::vector<symbol::DimExpr> softmax_lse_shape{
         batch_size_expr, num_heads_expr, seqlen_q_rounded_expr};
     infer_context->SetShapeOrDataForValue(
         op->result(2), symbol::TensorShapeOrDataDimExprs(softmax_lse_shape));
   }
+
+  std::cerr << "55\n";
   if (op->result(3)) {
     std::vector<symbol::DimExpr> seed_offset_shape{symbol::DimExpr{2}};
     infer_context->SetShapeOrDataForValue(
         op->result(3), symbol::TensorShapeOrDataDimExprs(out_shape));
   }
+
+  std::cerr << "66\n";
   return true;
 }
 
