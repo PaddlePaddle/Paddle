@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
-from paddle.base import core
-
-core._set_prim_backward_enabled(True)
-
-import autograd
-import autograd.numpy
 import numpy as np
 import parameterized as param
 
 import paddle
+from paddle.base import core
 
 
 def apply_to_static(net, use_cinn):
@@ -41,21 +37,44 @@ class PrimeNet(paddle.nn.Layer):
 
     def forward(self, x):
         tmp = self.fc(x)
-        out = paddle.tanh(tmp)
+        out = paddle.cast(tmp, paddle.float64)
         return out
 
 
 @param.parameterized_class(
-    ('primal', 'cotangent', 'dtype'),
+    ('primal', 'cotangent', 'src_dtype', 'dst_type'),
     [
-        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+        (
+            np.random.rand(10, 10),
+            np.random.rand(10, 10),
+            np.float32,
+            np.float64,
+        ),
+        (
+            np.random.rand(10, 10),
+            np.random.rand(10, 10),
+            np.float64,
+            np.float32,
+        ),
+        (
+            np.random.rand(10, 10),
+            np.random.rand(10, 10),
+            np.float32,
+            np.float32,
+        ),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestCastGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.primal = cls.primal.astype(cls.dtype)
-        cls.cotangent = cls.cotangent.astype(cls.dtype)
+        cls.primal = cls.primal.astype(cls.src_dtype)
+        cls.cotangent = cls.cotangent.astype(cls.src_dtype)
+
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
 
     def train(self, use_prim, use_cinn):
         paddle.seed(2022)
@@ -69,21 +88,9 @@ class TestTanhGradComp(unittest.TestCase):
 
         return res
 
-    def test_cinn(self):
-        paddle.disable_static()
-        dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
+    def test_cast_grad_comp(self):
+        core._set_prim_backward_enabled(True)
 
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                comp_st_cinn_res[i].numpy(),
-                dy_res[i].numpy(),
-                rtol=1e-7,
-                atol=1e-7,
-            )
-        paddle.enable_static()
-
-    def test_tanh_grad_comp(self):
         def actual(primal, cotangent):
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
@@ -92,22 +99,30 @@ class TestTanhGradComp(unittest.TestCase):
                 v = paddle.static.data(
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
-                y = paddle.tanh(x)
+                y = paddle.cast(x, self.dst_type)
                 x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
+            if paddle.framework.in_pir_mode():
+                fetch_list = mp.blocks[0].ops[-1].result(0)
+            else:
+                fetch_list = mp.blocks[0].ops[-1].output('Out')[0]
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=[x_cotangent[0].name],
+                fetch_list=fetch_list,
             )[0]
 
         def desired(primal, cotangent):
-            return autograd.make_vjp(autograd.numpy.tanh)(primal)[0](cotangent)
+            return (cotangent * np.ones_like(primal)).astype(primal.dtype)
 
+        actual = actual(self.primal, self.cotangent)
+        desired = desired(self.primal, self.cotangent)
+
+        self.assertEqual(actual.dtype, desired.dtype)
         np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent),
-            desired=desired(self.primal, self.cotangent),
+            actual=actual,
+            desired=desired,
             rtol=1e-6,
             atol=0,
         )

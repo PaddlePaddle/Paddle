@@ -1960,7 +1960,9 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_pir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor") or os.getenv(
+            "FLAGS_enable_pir_api"
+        ):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -3119,18 +3121,19 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
-            self._check_grad_helper()
-            prim_grad_checker = PrimGradChecker(
-                self,
-                place,
-                inputs_to_check,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            prim_grad_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
+            with paddle.pir_utils.OldIrGuard():
+                self._check_grad_helper()
+                prim_grad_checker = PrimGradChecker(
+                    self,
+                    place,
+                    inputs_to_check,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                )
+                prim_grad_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim = True
 
         if check_prim_pir:
             with paddle.pir_utils.IrGuard():

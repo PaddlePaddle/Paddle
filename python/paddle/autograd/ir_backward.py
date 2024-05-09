@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
@@ -166,8 +167,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     % (i, str(grad.shape), i, str(output.shape))
                 )
             if output.dtype != grad.dtype:
-                raise ValueError(
-                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                warnings.warn(
+                    "The dtype of grad_output[%d] %s is not same as the dtype of output[%d] %s"
                     % (i, str(grad.dtype), i, str(output.dtype))
                 )
             feedop = grad.get_defining_op()
