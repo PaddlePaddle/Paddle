@@ -14,6 +14,7 @@
 
 #pragma once
 #include <sstream>
+#include "paddle/common/overloaded.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -48,7 +49,23 @@ class ShapeOrData {
               shape[0].template Get<std::int64_t>(),
               data.size()));
     } else {
-      IR_THROW("Size of shape should be 0 or 1, but got %d", shape.size());
+      int64_t numel = 1;
+      for (const auto& expr : shape) {
+        PADDLE_ENFORCE_EQ(expr.template isa<int64_t>(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "When data has value, the expr of shape should "
+                              "be int, but got %s.",
+                              ToString(expr)));
+        numel *= expr.template Get<int64_t>();
+      }
+      PADDLE_ENFORCE_EQ(numel,
+                        data.size(),
+                        ::common::errors::InvalidArgument(
+                            "Size of data should be the same as "
+                            "product of value[%d] of shape, but got [%d].",
+                            numel,
+                            data.size()));
     }
   }
 
@@ -125,6 +142,8 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   const ShapeOrDataDimExprsBase& variant() const {
     return static_cast<const ShapeOrDataDimExprsBase&>(*this);
   }
+
+  DEFINE_MATCH_METHOD();
 
   bool operator==(const ShapeOrDataDimExprs& other) const {
     return this->variant() == other.variant();

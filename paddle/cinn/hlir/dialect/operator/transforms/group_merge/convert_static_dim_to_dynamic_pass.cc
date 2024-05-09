@@ -150,7 +150,6 @@ struct StaticDimToDynamicConverter {
         &pir::ShapeAnalysisManager::Instance().Get(
             this->fusion_op->GetParentProgram());
     ForEachValue([&](pir::Value value) {
-      CHECK(shape_analysis->HasShapeOrDataForValue(value));
       const auto& origin_shape = GetOriginValueShape(value);
       const auto& target_shape = GetTargetValueShape(
           shape_analysis->GetShapeOrDataForValue(value).shape());
@@ -369,26 +368,8 @@ struct StaticDimToDynamicConverter {
       pir::Value value,
       int64_t constant,
       const std::string& symbol) {
-    if (shape_analysis->HasShapeOrDataForValue(value)) {
-      const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
-      return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-    } else {
-      auto& dims = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-      const auto& int_dims = ::common::vectorize<int>(dims);
-      std::vector<symbol::DimExpr> old{};
-      for (int dim : int_dims) {
-        old.emplace_back(static_cast<std::int64_t>(dim));
-      }
-      const auto& opt_exprs =
-          ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-      if (opt_exprs.has_value()) {
-        return opt_exprs.value();
-      } else {
-        return symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(old)};
-      }
-    }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
+    return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
   }
 
   template <typename ConverterT>

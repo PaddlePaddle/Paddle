@@ -1133,9 +1133,12 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
-    auto filter_data_type = scope->FindVar(conv->Op()->Input("Filter")[0])
-                                ->GetMutable<phi::DenseTensor>()
-                                ->dtype();
+    auto filter_name_0 = conv->Op()->Input("Filter")[0];
+    Node* filter_node = FindNodeWithName(graph, filter_name_0);
+    if (!filter_node->Var()->Persistable()) return;
+
+    auto filter_data_type =
+        scope->FindVar(filter_name_0)->GetMutable<phi::DenseTensor>()->dtype();
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
       op_weights_precision = "int8";

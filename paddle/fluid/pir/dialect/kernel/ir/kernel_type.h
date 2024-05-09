@@ -109,6 +109,118 @@ class AllocatedSelectedRowsType
   size_t offset() const;
 };
 
+class AllocatedSparseCooTensorType
+    : public pir::Type::TypeBase<AllocatedSparseCooTensorType,
+                                 pir::Type,
+                                 AllocatedSparseCooTensorTypeStorage,
+                                 pir::WrapTypeInterface> {
+ public:
+  using Base::Base;
+
+  static AllocatedSparseCooTensorType get(pir::IrContext *ctx,
+                                          const phi::Place &place,
+                                          dialect::SparseCooTensorType type) {
+    return pir::TypeManager::template get<AllocatedSparseCooTensorType>(
+        ctx, place, type);
+  }
+
+  static AllocatedSparseCooTensorType get(
+      pir::IrContext *ctx,
+      const phi::Place &place,
+      const pir::Type &dtype,
+      const phi::DDim &dims,
+      const phi::DDim &non_zero_dims,
+      const phi::DataLayout &layout,
+      pir::DenseTensorType non_zero_indices,
+      pir::DenseTensorType non_zero_elements,
+      bool coalesced) {
+    dialect::SparseCooTensorType type =
+        dialect::SparseCooTensorType::get(ctx,
+                                          dtype,
+                                          dims,
+                                          non_zero_dims,
+                                          layout,
+                                          non_zero_indices,
+                                          non_zero_elements,
+                                          coalesced);
+
+    return pir::TypeManager::template get<AllocatedSparseCooTensorType>(
+        ctx, place, type);
+  }
+
+  pir::Type prim_type();
+
+  const phi::Place &place() const;
+
+  const pir::Type dtype() const;
+
+  const phi::DDim &dims() const;
+
+  const phi::DDim &non_zero_dims() const;
+
+  phi::DataLayout data_layout() const;
+
+  pir::DenseTensorType non_zero_indices() const;
+
+  pir::DenseTensorType non_zero_elements() const;
+
+  bool coalesced() const;
+};
+
+class AllocatedSparseCsrTensorType
+    : public pir::Type::TypeBase<AllocatedSparseCsrTensorType,
+                                 pir::Type,
+                                 AllocatedSparseCsrTensorTypeStorage,
+                                 pir::WrapTypeInterface> {
+ public:
+  using Base::Base;
+
+  static AllocatedSparseCsrTensorType get(pir::IrContext *ctx,
+                                          const phi::Place &place,
+                                          dialect::SparseCsrTensorType type) {
+    return pir::TypeManager::template get<AllocatedSparseCsrTensorType>(
+        ctx, place, type);
+  }
+
+  static AllocatedSparseCsrTensorType get(
+      pir::IrContext *ctx,
+      const phi::Place &place,
+      const pir::Type &dtype,
+      const phi::DDim &dims,
+      const phi::DataLayout &layout,
+      pir::DenseTensorType non_zero_crows,
+      pir::DenseTensorType non_zero_cols,
+      pir::DenseTensorType non_zero_elements) {
+    dialect::SparseCsrTensorType type =
+        dialect::SparseCsrTensorType::get(ctx,
+                                          dtype,
+                                          dims,
+                                          layout,
+                                          non_zero_crows,
+                                          non_zero_cols,
+                                          non_zero_elements);
+
+    return pir::TypeManager::template get<AllocatedSparseCsrTensorType>(
+        ctx, place, type);
+  }
+
+  pir::Type prim_type();
+
+  const phi::Place &place() const;
+
+  pir::Type dtype() const;
+
+  const phi::DDim &dims() const;
+
+  phi::DataLayout data_layout() const;
+
+  pir::DenseTensorType non_zero_crows() const;
+
+  pir::DenseTensorType non_zero_cols() const;
+
+  pir::DenseTensorType non_zero_elements() const;
+};
+
 class AllocatedDenseTensorArrayType
     : public pir::Type::TypeBase<AllocatedDenseTensorArrayType,
                                  pir::Type,
@@ -152,4 +264,6 @@ class AllocatedDenseTensorArrayType
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSparseCooTensorType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSparseCsrTensorType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorArrayType)

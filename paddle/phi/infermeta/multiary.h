@@ -294,6 +294,23 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void DetectionMapInferMeta(const MetaTensor& detect_res,
+                           const MetaTensor& label,
+                           const MetaTensor& has_state,
+                           const MetaTensor& pos_count,
+                           const MetaTensor& true_pos,
+                           const MetaTensor& false_pos,
+                           int class_num,
+                           int background_label,
+                           float overlap_threshold,
+                           bool evaluate_difficult,
+                           const std::string& ap_type,
+                           MetaTensor* accum_pos_count,
+                           MetaTensor* accum_true_pos,
+                           MetaTensor* accum_false_pos,
+                           MetaTensor* m_ap,
+                           MetaConfig config = MetaConfig());
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
@@ -320,6 +337,20 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            bool normalized,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
+
+void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& in_scale,
+    const MetaTensor& in_accum,
+    const MetaTensor& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    MetaTensor* out,
+    MetaTensor* out_scale,
+    MetaTensor* out_state,
+    MetaTensor* out_accum);
 
 void FtrlInferMeta(const MetaTensor& param,
                    const MetaTensor& squared_accumulator,
