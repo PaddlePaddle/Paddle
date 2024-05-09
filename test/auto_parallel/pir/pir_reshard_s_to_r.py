@@ -66,10 +66,10 @@ class TestReshardSToR:
                 reshard_tensor = paddle._C_ops.reshard(
                     input_tensor, self._mesh, [dist.Replicate()]
                 )
-            dist_program = apply_reshard_pass(main_program)
-        ops = [op.name() for op in dist_program.global_block().ops]
+            apply_reshard_pass(main_program)
+        ops = [op.name() for op in main_program.global_block().ops]
         if self._shard == 0:
-            np.testing.assert_equal(dist_program.num_ops(), 4)
+            np.testing.assert_equal(main_program.num_ops(), 4)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
@@ -81,7 +81,7 @@ class TestReshardSToR:
                 std_ops,
             )
         elif self._shard == 1:
-            np.testing.assert_equal(dist_program.num_ops(), 10)
+            np.testing.assert_equal(main_program.num_ops(), 10)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
@@ -100,7 +100,7 @@ class TestReshardSToR:
                 std_ops,
             )
 
-        for op in dist_program.global_block().ops:
+        for op in main_program.global_block().ops:
             if op.name() == 'pd_op.c_allgather':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
