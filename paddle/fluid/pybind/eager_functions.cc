@@ -288,13 +288,13 @@ PyObject* eager_api_get_grads_types(PyObject* self,
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
-  std::vector<int> ret;
+  std::vector<phi::DataType> ret;
 
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (!meta || meta->StopGradient()) {
-      ret.emplace_back(-1);
+      ret.emplace_back(phi::DataType::UNDEFINED);
       continue;
     }
 
@@ -304,11 +304,10 @@ PyObject* eager_api_get_grads_types(PyObject* self,
           (tensor.dtype() == phi::DataType::FLOAT32 ||
            tensor.dtype() == phi::DataType::FLOAT16 ||
            tensor.dtype() == phi::DataType::BFLOAT16)) {
-        ret.emplace_back(
-            paddle::framework::TransToProtoVarType(tensor.dtype()));
+        ret.emplace_back(tensor.dtype());
       }
     } else {
-      ret.emplace_back(-1);
+      ret.emplace_back(phi::DataType::UNDEFINED);
     }
   }
 

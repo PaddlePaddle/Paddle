@@ -64,7 +64,7 @@ class TestBase(IPUD2STest):
             ),
             paddle.static.InputSpec(name="target", shape=[32], dtype="int64"),
         ]
-        model = paddle.jit.to_static(model, input_spec=specs)
+        model = paddle.jit.to_static(model, input_spec=specs, full_graph=True)
         optim = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=model.parameters()
         )

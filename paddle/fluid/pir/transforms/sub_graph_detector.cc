@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
@@ -484,34 +485,6 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(Operation* op) {  // NOLINT
-  if (!op->isa<cinn::dialect::GroupOp>()) {
-    return op->operands_source();
-  }
-  // Get all ops in group
-  const auto all_ops = [&]() -> decltype(auto) {
-    const auto all_ops = op->dyn_cast<cinn::dialect::GroupOp>().GetOperators();
-    return std::unordered_set<pir::Operation*>(all_ops.begin(), all_ops.end());
-  }();
-  std::unordered_set<pir::Value> value_set;
-  const auto& IsOutsideInput = [&](const pir::Value& value) -> bool {
-    const bool is_outside =
-        value && value.defining_op() && !all_ops.count(value.defining_op());
-    const bool has_visited = value_set.count(value);
-    if (!has_visited) value_set.insert(value);
-    return is_outside && !has_visited;
-  };
-
-  std::vector<::pir::Value> inputs;
-  // count all op's input Value
-  for (auto inner_op : all_ops) {
-    for (auto& value : inner_op->operands_source()) {
-      if (IsOutsideInput(value)) inputs.push_back(value);
-    }
-  }
-  return inputs;
-}
-
 namespace {
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
@@ -576,7 +549,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = AnalysisExternalInputs(op);
+  std::vector<pir::Value> op_inputs = pir::GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();
