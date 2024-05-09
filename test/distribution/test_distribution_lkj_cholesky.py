@@ -61,7 +61,7 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
         self._test_sample_shape_dim(sample_method)
 
     def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 3):
+        for dim in range(2, 4):
             self._test_sample_shape(dim, sample_method)
 
     def _test_sample_shape(self, dim, sample_method):
@@ -117,7 +117,7 @@ class TestLKJCholeskyShapeMulti(unittest.TestCase):
         self._test_sample_shape_dim(sample_method)
 
     def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 3):
+        for dim in range(2, 4):
             self._test_sample_shape(dim, sample_method)
 
     def _test_sample_shape(self, dim, sample_method):
@@ -140,21 +140,17 @@ class TestLKJCholeskyShapeMulti(unittest.TestCase):
 class TestLKJCholeskyLogProb(unittest.TestCase):
     def test_log_prob_onion(self):
         sample_method = 'onion'
-        for dim in range(2, 3):
-            self.dim = dim
-            self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
-                dim, [1.0], sample_method
-            )
-            self._test_log_prob()
+        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
+            2, [1.0], sample_method
+        )
+        self._test_log_prob()
 
     def test_log_prob_cvine(self):
         sample_method = 'cvine'
-        for dim in range(2, 3):
-            self.dim = dim
-            self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
-                dim, [1.0], sample_method
-            )
-            self._test_log_prob()
+        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
+            2, [1.0], sample_method
+        )
+        self._test_log_prob()
 
     def _test_log_prob(self):
         log_probs = []

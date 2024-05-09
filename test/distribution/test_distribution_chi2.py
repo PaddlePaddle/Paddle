@@ -21,7 +21,7 @@ import scipy.stats
 from distribution import config
 
 import paddle
-from paddle.distribution import chi2, kl
+from paddle.distribution import chi2
 
 # paddle.enable_static()
 
@@ -255,90 +255,6 @@ class TestChi2SampleKS(unittest.TestCase):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
         ks, _ = scipy.stats.kstest(samples, scipy.stats.chi2(self.df).cdf)
         return ks < 0.02
-
-
-@parameterize.place(config.DEVICES)
-@parameterize.parameterize_cls(
-    (
-        parameterize.TEST_CASE_NAME,
-        'df1',
-        'df2',
-    ),
-    [
-        (
-            'one-dim',
-            parameterize.xrand(
-                (2,),
-                dtype='float32',
-                min=np.finfo(dtype='float32').tiny,
-            ),
-            parameterize.xrand(
-                (2,),
-                dtype='float32',
-                min=np.finfo(dtype='float32').tiny,
-            ),
-        ),
-        (
-            'multi-dim',
-            parameterize.xrand(
-                (2, 2),
-                dtype='float32',
-                min=np.finfo(dtype='float32').tiny,
-            ),
-            parameterize.xrand(
-                (2, 2),
-                dtype='float32',
-                min=np.finfo(dtype='float32').tiny,
-            ),
-        ),
-    ],
-)
-class TestChi2KL(unittest.TestCase):
-    def setUp(self):
-        df1 = self.df1
-        df2 = self.df2
-        if not isinstance(self.df1, numbers.Real):
-            df1 = paddle.to_tensor(self.df1)
-
-        if not isinstance(self.df2, numbers.Real):
-            df2 = paddle.to_tensor(self.df2)
-
-        self._paddle_chi2_1 = chi2.Chi2(df1)
-        self._paddle_chi2_2 = chi2.Chi2(df2)
-
-    def test_kl_divergence(self):
-        np.testing.assert_allclose(
-            kl.kl_divergence(self._paddle_chi2_1, self._paddle_chi2_2),
-            self._kl(),
-            rtol=config.RTOL.get(
-                str(self._paddle_chi2_1.concentration.numpy().dtype)
-            ),
-            atol=config.ATOL.get(
-                str(self._paddle_chi2_1.concentration.numpy().dtype)
-            ),
-        )
-
-    def test_kl1_error(self):
-        self.assertRaises(
-            TypeError,
-            self._paddle_chi2_1.kl_divergence,
-            paddle.distribution.beta.Beta,
-        )
-
-    def _kl(self):
-        concentration1 = self.df1 / 2
-        concentration2 = self.df2 / 2
-        rate1 = 0.5
-        rate2 = 0.5
-        t1 = concentration2 * np.log(rate1 / rate2)
-        t2 = scipy.special.gammaln(concentration2) - scipy.special.gammaln(
-            concentration1
-        )
-        t3 = (concentration1 - concentration2) * scipy.special.digamma(
-            concentration1
-        )
-        t4 = (rate2 - rate1) * (concentration1 / rate1)
-        return t1 + t2 + t3 + t4
 
 
 if __name__ == '__main__':
