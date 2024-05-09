@@ -4357,8 +4357,8 @@ void WhereInferMeta(const MetaTensor& condition,
           "But received Condition's rank is [%d], X's rank is [%d]",
           cond_dims.size(),
           x_dims.size()));
-
-  for (size_t i = 0; i < cond_dims.size(); ++i) {
+  size_t cond_dims_size = static_cast<size_t>(cond_dims.size());
+  for (size_t i = 0; i < cond_dims_size; ++i) {
     if (cond_dims[i] == -1 || x_dims[i] == -1) {
       continue;
     }
@@ -4380,8 +4380,8 @@ void WhereInferMeta(const MetaTensor& condition,
                         "But received X's shape is [%d], Y's shape is [%d]",
                         x_dims.size(),
                         y_dims.size()));
-
-  for (size_t i = 0; i < x_dims.size(); ++i) {
+  size_t x_dims_size = static_cast<size_t>(x_dims.size());
+  for (size_t i = 0; i < x_dims_size; ++i) {
     if (x_dims[i] == -1 || y_dims[i] == -1) {
       continue;
     }

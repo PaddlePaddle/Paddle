@@ -179,6 +179,7 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 namespace cinn::dialect {
 using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
+using paddle::dialect::SelectOpInferSymbolicShape;
 }  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT

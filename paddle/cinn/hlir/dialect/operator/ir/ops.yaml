@@ -107,8 +107,8 @@
   args : (Tensor condition, Tensor true_value, Tensor false_value )
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param : [condition]
+    func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   interfaces : paddle::dialect::InferSymbolicShapeInterface

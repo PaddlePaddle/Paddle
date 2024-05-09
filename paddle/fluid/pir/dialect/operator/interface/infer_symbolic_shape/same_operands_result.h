@@ -135,4 +135,5 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sigmoid_)
 namespace cinn::dialect {
 using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
+using paddle::dialect::SelectOpInferSymbolicShape;
 }  // namespace cinn::dialect
