@@ -1167,7 +1167,7 @@ class _ExecutorCache:
 
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
-                decomp.decompose_dis_program(program)
+                decomp.decompose_dist_program(program)
         return program, new_exe, data_op_infos
 
 

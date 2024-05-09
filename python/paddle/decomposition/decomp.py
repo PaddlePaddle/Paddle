@@ -832,7 +832,11 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     )
 
 
-def decompose_dis_program(pir_program):
+def decompose_dist_program(pir_program):
+    '''
+    Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
+    '''
+    # Todo(CZ): Decompose backward ops.
     decompose(pir_program, [])
 
 
