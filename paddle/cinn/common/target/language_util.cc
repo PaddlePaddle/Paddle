@@ -14,26 +14,24 @@
 
 #pragma once
 
-#include "paddle/cinn/common/arch_util.h"
+#include "paddle/cinn/common/target/language_util.h"
 
 namespace cinn {
 namespace common {
 
-std::string GetArchNameImpl(UnknownArch arch) { return "Unk"; }
+std::string GetLanguageNameImpl(Language_Unknown language) { return "Unk"; }
 
-std::string GetArchNameImpl(X86Arch arch) { return "X86"; }
+std::string GetLanguageNameImpl(Language_Host language) { return "llvm_host"; }
 
-std::string GetArchNameImpl(ARMArch arch) { return "ARM"; }
+std::string GetLanguageNameImpl(Language_CUDA language) { return "cuda"; }
 
-std::string GetArchNameImpl(NVGPUArch arch) { return "NVGPU"; }
-
-std::string GetArchName(Arch arch) {
-  return std::visit([](const auto& impl) { return GetArchNameImpl(impl); },
-                    arch.variant());
+std::string GetLanguageName(Language language) {
+  return std::visit([](const auto& impl) { return GetLanguageNameImpl(impl); },
+                    language.variant());
 }
 
-std::ostream& operator<<(std::ostream& os, Arch arch) {
-  os << GetArchName(arch);
+std::ostream& operator<<(std::ostream& os, Language language) {
+  os << GetLanguageName(language);
   return os;
 }
 

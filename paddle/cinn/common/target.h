@@ -20,7 +20,8 @@
 #include <variant>
 #include <vector>
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/common/arch.h"
+#include "paddle/cinn/common/target/arch.h"
+#include "paddle/cinn/common/target/language.h"
 
 namespace cinn {
 namespace common {
@@ -44,6 +45,7 @@ struct Target {
 
   OS os{OS::Unk};
   Arch arch{UnknownArch{}};
+  Language language{Language_Unknown{}};
   Bit bits{Bit::Unk};
 
   enum class Feature : int {
@@ -63,6 +65,7 @@ struct Target {
 
   explicit Target(OS o = OS::Linux,
                   Arch a = UnknownArch{},
+                  Language l = Language_Unknown{},
                   Bit b = Bit::Unk,
                   const std::vector<Feature>& features = {},
                   const std::vector<Lib>& libs = {});

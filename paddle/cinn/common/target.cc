@@ -22,8 +22,9 @@
 #include <sstream>
 
 #include "paddle/cinn/backends/cuda_util.h"
-#include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/target/arch_util.h"
+#include "paddle/cinn/common/target/language_util.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
 
@@ -32,55 +33,42 @@ namespace common {
 
 Target::Target(OS o,
                Arch a,
+               Language l,
                Bit b,
                const std::vector<Feature> &features,
                const std::vector<Lib> &libs)
-    : os(o), arch(a), bits(b), features(features), libs(libs) {}
+    : os(o), arch(a), language(l), bits(b), features(features), libs(libs) {}
 
 bool Target::operator==(const Target &other) const {
-  return os == other.os &&      //
-         arch == other.arch &&  //
-         bits == other.bits &&  //
+  return os == other.os &&              //
+         arch == other.arch &&          //
+         language == other.language &&  //
+         bits == other.bits &&          //
          features == other.features;
 }
 
-int GetRuntimeArchImpl(UnknownArch) { return cinn_unk_device; }
-
-int GetRuntimeArchImpl(X86Arch) { return cinn_x86_device; }
-
-int GetRuntimeArchImpl(ARMArch) { return cinn_arm_device; }
-
-int GetRuntimeArchImpl(NVGPUArch) {
-  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
+int Target::runtime_arch() const {
+  return arch.Visit(adt::match{
+      [&](common::UnknownArch) -> int { return cinn_unk_device; },
+      [&](common::X86Arch) -> int { return cinn_x86_device; },
+      [&](common::ARMArch) -> int { return cinn_arm_device; },
+      [&](common::NVGPUArch) -> int {
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("GPU Not support runtime_arch()"));
+      },
+  });
 }
 
-int GetRuntimeArch(Arch arch) {
-  return std::visit([](const auto &impl) { return GetRuntimeArchImpl(impl); },
-                    arch.variant());
+int Target::max_num_threads() const {
+  return arch.Visit(adt::match{
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>)
+          -> int {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The target is not GPU! Cannot get max number of threads."));
+      },
+      [&](common::NVGPUArch) -> int { return 1024; },
+  });
 }
-
-int Target::runtime_arch() const { return GetRuntimeArch(arch); }
-
-int GetMaxNumThreadsImpl(UnknownArch arch) {
-  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
-}
-
-int GetMaxNumThreadsImpl(X86Arch arch) {
-  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
-}
-
-int GetMaxNumThreadsImpl(ARMArch arch) {
-  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
-}
-
-int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
-
-int GetMaxNumThreads(Arch arch) {
-  return std::visit([](const auto &impl) { return GetMaxNumThreadsImpl(impl); },
-                    arch.variant());
-}
-
-int Target::max_num_threads() const { return GetMaxNumThreads(arch); }
 
 int GetMultiProcessCountImpl(UnknownArch arch) {
   LOG(FATAL) << "The target is not GPU! Cannot get multi processor count.";
@@ -216,6 +204,8 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
   os << ",";
   os << target.arch;
   os << ",";
+  os << target.language;
+  os << ",";
 
   switch (target.bits) {
     case Target::Bit::k32:
@@ -234,18 +224,27 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
 }
 
 const Target &UnkTarget() {
-  static Target target(
-      Target::OS::Unk, UnknownArch{}, Target::Bit::Unk, {}, {});
+  static Target target(Target::OS::Unk,
+                       UnknownArch{},
+                       Language_Unknown{},
+                       Target::Bit::Unk,
+                       {},
+                       {});
   return target;
 }
 const Target &DefaultHostTarget() {
-  static Target target(Target::OS::Linux, X86Arch{}, Target::Bit::k64, {}, {});
+  static Target target(
+      Target::OS::Linux, X86Arch{}, Language_Host{}, Target::Bit::k64, {}, {});
   return target;
 }
 
 const Target &DefaultNVGPUTarget() {
-  static Target target(
-      Target::OS::Linux, NVGPUArch{}, Target::Bit::k64, {}, {});
+  static Target target(Target::OS::Linux,
+                       NVGPUArch{},
+                       Language_CUDA{},
+                       Target::Bit::k64,
+                       {},
+                       {});
   return target;
 }
 

@@ -51,19 +51,15 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
+  target.language.Visit(adt::match{
+      [&](common::Language_Unknown) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
       },
-      [&](common::X86Arch) {
+      [&](common::Language_Host) {
         find_func_name.assign("cinn_host_next_smallest_int32");
       },
-      [&](common::ARMArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
-      },
-      [&](common::NVGPUArch) {
+      [&](common::Language_CUDA) {
         find_func_name.assign("cinn_nvgpu_next_smallest_int32");
       },
   });

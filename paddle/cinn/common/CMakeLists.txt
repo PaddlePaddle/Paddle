@@ -7,7 +7,8 @@ gather_srcs(
   cinn_value.cc
   type.cc
   target.cc
-  arch_util.cc
+  target/arch_util.cc
+  target/language_util.cc
   object.cc
   debug_manager.cc
   info_registry.cc

@@ -338,19 +338,15 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-void CheckCompileOptionImpl(cinn::common::UnknownArch) {
-  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+void CheckCompileOptionImpl(cinn::common::Language_Unknown) {
+  PADDLE_THROW(phi::errors::Fatal("unknown language"));
 }
 
-void CheckCompileOptionImpl(cinn::common::X86Arch) {
+void CheckCompileOptionImpl(cinn::common::Language_Host) {
   // Do nothing.
 }
 
-void CheckCompileOptionImpl(cinn::common::ARMArch) {
-  // Do nothing.
-}
-
-void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
+void CheckCompileOptionImpl(cinn::common::Language_CUDA) {
 #if defined(CINN_WITH_CUDNN)
   // Do nothing;
 #else
@@ -360,15 +356,15 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 #endif
 }
 
-void CheckCompileOption(cinn::common::Arch arch) {
+void CheckCompileOption(cinn::common::Language language) {
   return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
-                    arch.variant());
+                    language.variant());
 }
 
 cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
-  CheckCompileOption(target.arch);
+  CheckCompileOption(target.language);
   target_ = target;
 }
 

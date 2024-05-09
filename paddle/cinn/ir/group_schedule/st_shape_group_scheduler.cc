@@ -555,7 +555,14 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
+  bool arch_return_flag;
+  target_.arch.Visit(adt::match{
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        arch_return_flag = true;
+      },
+      [&](common::NVGPUArch) { arch_return_flag = false; },
+  });
+  if (arch_return_flag) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -594,7 +601,14 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
+  bool arch_return_flag;
+  target_.arch.Visit(adt::match{
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        arch_return_flag = true;
+      },
+      [&](common::NVGPUArch) { arch_return_flag = false; },
+  });
+  if (arch_return_flag) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 

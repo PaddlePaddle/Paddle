@@ -19,9 +19,9 @@
 
 #include <memory>
 
-#include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/target/arch_util.h"
 
 namespace cinn {
 namespace hlir {

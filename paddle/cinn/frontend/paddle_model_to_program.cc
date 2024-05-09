@@ -694,13 +694,14 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
+    if (std::holds_alternative<common::Language_Host>(target_.language)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 2)
           << "The y data's shape size of op [mul] is not equal to 2! Please "
              "check.";
       TransposeData(data, tensor->shape().data()[0], tensor->shape().data()[1]);
-    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
+    } else if (std::holds_alternative<common::Language_CUDA>(
+                   target_.language)) {
 #ifdef CINN_WITH_CUDA
       // To use cublas mul api, there is no need to transpose data.
 #ifndef CINN_WITH_CUDNN
@@ -750,13 +751,14 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
+    if (std::holds_alternative<common::Language_Host>(target_.language)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 4)
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data, tensor->shape().data());
-    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
+    } else if (std::holds_alternative<common::Language_CUDA>(
+                   target_.language)) {
 #ifdef CINN_WITH_CUDA
       std::vector<float> data(tensor->shape().numel());
       CUDA_CALL(cudaMemcpy(

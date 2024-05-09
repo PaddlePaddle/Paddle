@@ -64,11 +64,13 @@ void BindTarget(py::module *m) {
       .def_static("X86Arch", []() -> common::Arch { return common::X86Arch{}; })
       .def_static("NVGPUArch",
                   []() -> common::Arch { return common::NVGPUArch{}; })
+      .def_readwrite("language", &Target::language)
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
       .def(py::init<Target::OS,
                     Arch,
+                    cinn::common::Language,
                     Target::Bit,
                     const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)

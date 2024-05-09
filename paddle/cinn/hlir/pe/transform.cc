@@ -1381,17 +1381,17 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
   CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
   std::string extern_fun_name;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+  target.language.Visit(adt::match{
+      [&](common::Language_Unknown) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
       },
-      [&](common::X86Arch) { extern_fun_name.assign("cinn_host_find_int"); },
-      [&](common::ARMArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+      [&](common::Language_Host) {
+        extern_fun_name.assign("cinn_host_find_int");
       },
-      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
+      [&](common::Language_CUDA) {
+        extern_fun_name.assign("cinn_cuda_find_int");
+      },
   });
 
   auto pos_axis = axis;

@@ -55,17 +55,13 @@ ir::Tensor Resize(const ir::Tensor &input,
                   const std::string &mode,
                   const std::string &output_name) {
   std::string func_name;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "Resize only supports X86 and NVGPU ! Please Check.\n"));
+  target.language.Visit(adt::match{
+      [&](common::Language_Unknown) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
       },
-      [&](common::X86Arch) { func_name.assign("cinn_host_resize_"); },
-      [&](common::ARMArch) {
-        PADDLE_THROW(phi::errors::Fatal(
-            "Resize only supports X86 and NVGPU ! Please Check.\n"));
-      },
-      [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); },
+      [&](common::Language_Host) { func_name.assign("cinn_host_resize_"); },
+      [&](common::Language_CUDA) { func_name.assign("cinn_cuda_resize_"); },
   });
 
   if (mode == "bilinear") {

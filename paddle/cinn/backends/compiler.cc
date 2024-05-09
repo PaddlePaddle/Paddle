@@ -230,20 +230,25 @@ void SourceCodePrint::write(const std::string& source_code) {
 }
 
 void Compiler::Build(const Module& module, const std::string& code) {
-  auto PatternMatch =
-      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { CompileX86Module(module); },
-                 [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) { CompileCudaModule(module, code); }};
-  return std::visit(PatternMatch, target_.arch.variant());
+  auto PatternMatch = adt::match{
+      [&](common::Language_Unknown) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
+      },
+      [&](common::Language_Host) { CompileX86Module(module); },
+      [&](common::Language_CUDA) { CompileCudaModule(module, code); },
+  };
+  return std::visit(PatternMatch, target_.language.variant());
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  return target_.arch.Visit(adt::match{
-      [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
-      [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) -> std::string {
+  return target_.language.Visit(adt::match{
+      [&](common::Language_Unknown) -> std::string {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
+      },
+      [&](common::Language_Host) -> std::string { CINN_NOT_IMPLEMENTED; },
+      [&](common::Language_CUDA) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
             SplitCudaAndHostModule(module);  // NOLINT
@@ -255,15 +260,18 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-      }});
+      },
+  });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CompileX86Module(module); },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module); },
+  target_.language.Visit(adt::match{
+      [&](common::Language_Unknown) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Unknown Target Language! Please Check.\n"));
+      },
+      [&](common::Language_Host) { CompileX86Module(module); },
+      [&](common::Language_CUDA) { CompileCudaModule(module); },
   });
 }
 

@@ -19,13 +19,13 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include "paddle/cinn/common/arch.h"
+#include "paddle/cinn/common/target/language.h"
 
 namespace cinn {
 namespace common {
 
-std::string GetArchName(Arch arch);
-std::ostream& operator<<(std::ostream& os, Arch arch);
+std::string GetLanguageName(Language language);
+std::ostream& operator<<(std::ostream& os, Language language);
 
 }  // namespace common
 }  // namespace cinn
