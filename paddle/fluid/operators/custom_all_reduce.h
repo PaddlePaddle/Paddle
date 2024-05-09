@@ -23,8 +23,8 @@
 #ifdef _LINUX
 #include <sys/mman.h>
 #include <sys/stat.h>
-#endif
 #include <unistd.h>
+#endif
 
 #include <vector>
 #include "paddle/fluid/framework/scope.h"
