@@ -183,7 +183,7 @@ void CheckInferSymWithInferMeta(
       // Check rank.
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         LOG(ERROR) << "value infer_sym_shape is ["
-                   << shape_analysis->GetShapeOrDataForValue(res)
+                   << infer_context->GetShapeOrDataForValue(res)
                    << "], real shape is [" << res.type() << "].";
         PADDLE_THROW(common::errors::PreconditionNotMet(
             "Error : Check InferSymbolicShape for %s [id:%d] carefully! rank "
@@ -200,7 +200,7 @@ void CheckInferSymWithInferMeta(
         if (infer_meta_shape[i] != -1) {
           if (!infer_sym_shape[i].isa<int64_t>()) {
             LOG(ERROR) << "value infer_sym_shape is ["
-                       << shape_analysis->GetShapeOrDataForValue(res)
+                       << infer_context->GetShapeOrDataForValue(res)
                        << "], real shape is [" << res.type() << "].";
             PADDLE_THROW(common::errors::PreconditionNotMet(
                 "Error : Check InferSymbolicShape for %s [id:%d] carefully!  "
@@ -213,7 +213,7 @@ void CheckInferSymWithInferMeta(
           // Check Static shape should be consist.
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             LOG(ERROR) << "value infer_sym_shape is ["
-                       << shape_analysis->GetShapeOrDataForValue(res)
+                       << infer_context->GetShapeOrDataForValue(res)
                        << "], real shape is [" << res.type() << "].";
             PADDLE_THROW(common::errors::PreconditionNotMet(
                 "Error : Check InferSymbolicShape for %s [id:%d] carefully! "
