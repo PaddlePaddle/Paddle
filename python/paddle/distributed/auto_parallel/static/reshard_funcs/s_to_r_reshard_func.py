@@ -84,8 +84,9 @@ class SToRReshardFunction(ReshardFunction):
             )
             return new_value, dst_dist_attr
         else:
-            # TODO(ywt01) support unbalanced split
-            pass
+            raise RuntimeError(
+                "unsupport unbalanced split now"
+                )
 
     def reshard_s_to_r_with_padding(
         self,
