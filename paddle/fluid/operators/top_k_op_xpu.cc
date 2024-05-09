@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "xpu/refactor/math.h"
 
 namespace paddle {
@@ -40,11 +41,11 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     // get k from input tensor
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
-      memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&k),
-                   ctx.GetPlace(),
-                   static_cast<const void*>(k_t->data<int>()),
-                   sizeof(int));
+      phi::memory_utils::Copy(platform::CPUPlace(),
+                              static_cast<void*>(&k),
+                              ctx.GetPlace(),
+                              static_cast<const void*>(k_t->data<int>()),
+                              sizeof(int));
       framework::DDim output_dims = output->dims();
       output_dims[output_dims.size() - 1] = k;
       output->Resize(output_dims);
