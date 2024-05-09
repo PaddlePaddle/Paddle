@@ -88,7 +88,8 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     auto x_shape = shape<T>(x);
     value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
     for (size_t i = 1; i < axis_.size(); ++i) {
-      value *= slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
+      value =
+          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
     }
 
     value = cast<T>(value, x_tmp.dtype());
