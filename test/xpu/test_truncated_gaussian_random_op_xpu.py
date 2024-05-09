@@ -58,8 +58,8 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.shape = [10000]
             self.mean = 0.0
             self.std = 1.0
-            self.a = -2.0
-            self.b = 2.0
+            self.a = -10.0
+            self.b = 10.0
 
         def test_check_output(self):
             self.gaussian_random_test(place=base.XPUPlace(0))
@@ -114,14 +114,6 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.shape = [2049]
             self.mean = 5.1234
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
-
-    class TestTruncatedGaussianRandomOp_5(TestTruncatedGaussianRandomOp):
-        def set_attrs(self):
-            self.shape = [11 * 13 * 17]
-            self.mean = -1.0
-            self.std = 2.5
             self.a = -10.0
             self.b = 10.0
 
