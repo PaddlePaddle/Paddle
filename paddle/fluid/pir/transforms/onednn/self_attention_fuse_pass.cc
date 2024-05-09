@@ -176,7 +176,7 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
     return false;
 #endif
     if (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f)) {
-      return;
+      return false;
     }
 
     return op->num_regions() > 0;
