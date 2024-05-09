@@ -164,6 +164,10 @@ bool InferSymbolicShapeContext::IsBroadcastable(
   return constraints_manager_.IsBroadcastable(lhs, rhs);
 }
 
+symbol::ConstraintsManager* InferSymbolicShapeContext::GetConstraintsManager() {
+  return &constraints_manager_;
+}
+
 namespace {
 
 bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
@@ -371,7 +375,7 @@ bool ShapeConstraintIRAnalysis::IsBroadcastable(
 }
 
 symbol::ConstraintsManager* ShapeConstraintIRAnalysis::GetConstraintsManager() {
-  return &constraints_manager_;
+  return context_.GetConstraintsManager();
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {

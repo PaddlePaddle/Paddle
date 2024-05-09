@@ -57,6 +57,7 @@ class IR_API InferSymbolicShapeContext {
                        const symbol::DimExpr& rhs) const;
 
   symbol::ConstraintsManager* GetConstraintsManager();
+
   void PrintShapeOrDatas() const;
 
  private:
@@ -97,6 +98,8 @@ class IR_API ShapeConstraintIRAnalysis final
 
   bool IsBroadcastable(const symbol::DimExpr& lhs,
                        const symbol::DimExpr& rhs) const;
+
+  symbol::ConstraintsManager* GetConstraintsManager();
 
   // Used to debug
   void PrintShapeOrDatas() const;
