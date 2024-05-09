@@ -30,7 +30,7 @@ class ValueExecutionInfo;
 
 class IfInstruction : public InstructionBase {
  private:
-  using InnerOutputGCHook = std::function<void(Variable*, InstructionBase*)>;
+  using InnerOutputGCFunc = std::function<void(Variable*, InstructionBase*)>;
 
  public:
   IfInstruction(size_t id,
@@ -55,7 +55,7 @@ class IfInstruction : public InstructionBase {
 
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
-  void SetInnerOutputGCHook(const InnerOutputGCHook& hook);
+  void SetInnerOutputGCFunc(const InnerOutputGCFunc& func);
 
  private:
   ::pir::Operation* op_;
@@ -80,7 +80,7 @@ class IfInstruction : public InstructionBase {
 
   std::vector<std::string> false_skip_gc_names_;
 
-  InnerOutputGCHook inner_outputs_gc_hook_;
+  InnerOutputGCFunc inner_outputs_gc_;
 };
 
 }  // namespace framework

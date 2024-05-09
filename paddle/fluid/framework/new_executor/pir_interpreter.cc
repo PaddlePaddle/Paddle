@@ -733,7 +733,7 @@ void PirInterpreter::BuildInstruction() {
         if_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         if_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
 
-        if_instr_ptr->SetInnerOutputGCHook(
+        if_instr_ptr->SetInnerOutputGCFunc(
             [this](Variable* var, InstructionBase* instr) {
               this->gc_->Add(var, instr);
             });

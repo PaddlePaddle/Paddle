@@ -207,8 +207,8 @@ void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
   false_branch_inter_->SetInputHooks(hookfuncs);
 }
 
-void IfInstruction::SetInnerOutputGCHook(const InnerOutputGCHook& hook) {
-  inner_outputs_gc_hook_ = hook;
+void IfInstruction::SetInnerOutputGCFunc(const InnerOutputGCFunc& func) {
+  inner_outputs_gc_ = func;
 }
 
 void IfInstruction::Run() {
@@ -251,11 +251,11 @@ void IfInstruction::Run() {
     true_branch_inter_->Run({}, false);
     CopyBranchOutput(
         true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
-    if (inner_outputs_gc_hook_) {
+    if (inner_outputs_gc_) {
       for (auto var_name : true_branch_outputs_) {
         auto* inner_outpuut =
             true_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_hook_(inner_outpuut, this);
+        inner_outputs_gc_(inner_outpuut, this);
       }
     }
   } else {
@@ -268,11 +268,11 @@ void IfInstruction::Run() {
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(
         false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
-    if (inner_outputs_gc_hook_) {
+    if (inner_outputs_gc_) {
       for (auto var_name : false_branch_outputs_) {
         auto* inner_outpuut =
             false_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_hook_(inner_outpuut, this);
+        inner_outputs_gc_(inner_outpuut, this);
       }
     }
   }
