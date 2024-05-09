@@ -253,6 +253,13 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void CrfDecodingInferMeta(const MetaTensor& emission,
+                          const MetaTensor& transition,
+                          const MetaTensor& label,
+                          const MetaTensor& length,
+                          MetaTensor* viterbi_path,
+                          MetaConfig config = MetaConfig());
+
 void CudnnLSTMInferMeta(
     const MetaTensor& x,
     const MetaTensor& init_h,
