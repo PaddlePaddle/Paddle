@@ -68,8 +68,8 @@ BufferedReader::BufferedReader(
   if (platform::is_xpu_place(place_)) {
     int dev_idx = place_.device;
     compute_stream_ =
-        ((platform::XPUDeviceContext *)(platform::DeviceContextPool::Instance()
-                                            .Get(place_)))
+        ((phi::XPUContext *)(platform::DeviceContextPool::Instance().Get(
+             place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {

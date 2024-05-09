@@ -55,7 +55,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     // allocate temp memory for int32 index
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* indices_int_data = RAII_GUARD.alloc_l3_or_gm<int>(indices->numel());
