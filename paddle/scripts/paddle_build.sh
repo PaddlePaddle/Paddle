@@ -3529,9 +3529,10 @@ function run_type_checking() {
     set +x
 
     # use "git commit -m 'message, test=type_checking'" to force ci to run
-    COMMIT_CHECK=$(git log -1 --pretty=format:"%s" | grep -w "test=type_checking" || true)
+    COMMIT_CHECK=`git log -1 --pretty=format:"%s" | grep -w "test=type_checking" || true`
     # check pr title
-    TITLE_CHECK=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking" || true)
+    TITLE_CHECK=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking" || true`
+
     if [[ ${COMMIT_CHECK} || ${TITLE_CHECK} ]]; then
         set -x
         return 0
@@ -3555,8 +3556,8 @@ function exec_type_checking() {
     
     # check all sample code
     # use "git commit -m 'message, test=type_checking_all'" to force ci to run
-    COMMIT_CHECK_ALL=$(git log -1 --pretty=format:"%s" | grep -w "test=type_checking_all" || true)
-    TITLE_CHECK_ALL=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking all" || true)
+    COMMIT_CHECK_ALL=`git log -1 --pretty=format:"%s" | grep -w "test=type_checking_all" || true`
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking all" || true`
 
     if [[ ${COMMIT_CHECK_ALL} || ${TITLE_CHECK_ALL} ]]; then
         python type_checking.py --full-test; type_checking_error=$?
