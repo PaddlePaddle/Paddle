@@ -675,6 +675,16 @@
   backward : cosh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : crf_decoding
+  args: (Tensor emission, Tensor transition, Tensor label, Tensor length)
+  output: Tensor (viterbi_path)
+  infer_meta:
+    func: CrfDecodingInferMeta
+  kernel:
+    func: crf_decoding
+    data_type: emission
+  optional: label, length
+
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
   output : Tensor(out)
@@ -2391,6 +2401,17 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : prob
+  inplace : (topk_idx -> out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)

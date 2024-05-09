@@ -1441,16 +1441,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait
 
-- op : random_routing
-  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
-  output : Tensor(out)
-  infer_meta :
-    func : RandomRoutingInferMeta
-  kernel :
-    func : random_routing
-    data_type : dtype
-  traits : pir::SideEffectTrait
-
 - op : randperm
   args : (int n, DataType dtype, Place place={})
   output : Tensor(out)
