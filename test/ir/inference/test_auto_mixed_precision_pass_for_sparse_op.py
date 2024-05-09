@@ -91,9 +91,12 @@ class AutoMixedPrecisionPassForSparseOp(InferencePassTest):
             config.enable_use_gpu(100, 0, PrecisionType.Half)
             white_list = ["sparse_batch_norm", "sparse_relu"]
             config.exp_enable_mixed_precision_ops(set(white_list))
+            config.enable_new_ir()
+            config.enbale_new_executor()
         else:
             config.enable_use_gpu(100, 0, PrecisionType.Float32)
-
+            config.enable_new_ir()
+            config.enbale_new_executor()
         # predictor
         predictor = create_predictor(config)
 
