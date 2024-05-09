@@ -514,7 +514,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
   if (post == 1) {
     int h = pre;
     int w = n;
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
                                         CompoundFunctor,
@@ -549,7 +549,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
               : intermediate_out->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast2CUDA<T,
                                         CompoundFunctor,
@@ -1271,7 +1271,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     int h = pre;
     int w = n;
 
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T,
                                             DX_OP,
@@ -1322,7 +1322,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
               : dintermediate->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T,
                                             DX_OP,

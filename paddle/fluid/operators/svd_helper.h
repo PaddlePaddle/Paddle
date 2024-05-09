@@ -477,7 +477,7 @@ struct DeviceIndependenceTensorOperations {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(common::make_ddim(out_shape));
-    if (platform::is_gpu_place(context.GetPlace())) {
+    if (context.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.

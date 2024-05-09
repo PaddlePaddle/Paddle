@@ -1646,7 +1646,7 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -1668,7 +1668,7 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input_grad =

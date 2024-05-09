@@ -157,7 +157,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");

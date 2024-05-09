@@ -26,7 +26,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
@@ -187,7 +187,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 

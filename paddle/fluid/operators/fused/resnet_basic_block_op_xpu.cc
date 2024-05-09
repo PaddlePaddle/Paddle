@@ -298,7 +298,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
@@ -703,7 +703,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 

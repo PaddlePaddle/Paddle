@@ -124,9 +124,9 @@ phi::KernelKey GetReduceExpectedKernelType(
 
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_xpu_place(ctx.GetPlace()) ||
-            platform::is_custom_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+            ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+            ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
         true,
         phi::errors::InvalidArgument(
             "float16 can only be used on GPU or NPU or XPU place"));
@@ -232,9 +232,9 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_xpu_place(ctx.GetPlace()) ||
-            platform::is_custom_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+            ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+            ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
         true,
         phi::errors::InvalidArgument(
             "float16 can only be used on GPU/XPU and custom place"));
@@ -252,9 +252,9 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
   auto input_data_type =
       op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
   if (input_data_type == framework::proto::VarType::FP16) {
-    if (!(platform::is_gpu_place(ctx.GetPlace()) ||
-          platform::is_xpu_place(ctx.GetPlace()) ||
-          platform::is_custom_place(ctx.GetPlace())))
+    if (!(ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+          ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+          ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM))
       PADDLE_THROW(phi::errors::InvalidArgument(
           "float16 can only be used on GPU/XPU and custom place"));
   }
@@ -270,7 +270,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
   if (is_in_var_array) {
     auto& tensor_array = in_var->Get<framework::LoDTensorArray>();
     for (auto& tensor : tensor_array) {
-      if (!platform::is_cuda_pinned_place(tensor.place())) {
+      if (!(tensor.place().GetType() == phi::AllocationType::GPUPINNED)) {
         PADDLE_ENFORCE_EQ(
             platform::is_same_place(tensor.place(),
                                     ctx.device_context().GetPlace()),
@@ -287,7 +287,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
   }
   // NOTE: cuda pinned tensor need to copy its data to target place
   auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
-  if (platform::is_cuda_pinned_place(in_tensor->place())) {
+  if (in_tensor->place().GetType() == phi::AllocationType::GPUPINNED) {
     return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
                           ctx.GetPlace());
   }

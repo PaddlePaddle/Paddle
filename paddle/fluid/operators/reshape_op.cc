@@ -391,8 +391,8 @@ class ReshapeKernel {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
       for (auto &tensor : list_new_shape_tensor) {
-        if (platform::is_gpu_place(tensor->place()) ||
-            platform::is_xpu_place(tensor->place())) {
+        if (tensor->place().GetType() == phi::AllocationType::GPU ||
+            tensor->place().GetType() == phi::AllocationType::XPU) {
           phi::DenseTensor temp;
           paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -403,8 +403,8 @@ class ReshapeKernel {
       pt_scalar_shape = phi::IntArray(pt_vec_shape);
     } else if (shape_tensor) {
       phi::DenseTensor pt_shape;
-      if (platform::is_gpu_place(shape_tensor->place()) ||
-          platform::is_xpu_place(shape_tensor->place())) {
+      if (shape_tensor->place().GetType() == phi::AllocationType::GPU ||
+          shape_tensor->place().GetType() == phi::AllocationType::XPU) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
             *shape_tensor, phi::CPUPlace(), &temp);
@@ -417,7 +417,7 @@ class ReshapeKernel {
       auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
       pt_scalar_shape = phi::IntArray(shape_attr);
     }
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
                               *in,
@@ -425,7 +425,7 @@ class ReshapeKernel {
                               out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
                               *in,
@@ -434,7 +434,7 @@ class ReshapeKernel {
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
       phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
                               *in,
@@ -452,20 +452,20 @@ class ReshapeGradKernel {
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, d_x);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::GPUContext &>(dev_ctx), *d_out, d_x);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, d_x);
@@ -482,20 +482,20 @@ class ReshapeDoubleGradKernel {
     auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::GPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::XPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);

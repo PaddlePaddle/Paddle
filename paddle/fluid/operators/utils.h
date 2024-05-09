@@ -39,7 +39,7 @@ inline std::vector<T> GetDataFromTensorList(
 
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
-      if (!platform::is_cpu_place(tensor->place())) {
+      if (!(tensor->place().GetType() == phi::AllocationType::CPU)) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
@@ -48,7 +48,7 @@ inline std::vector<T> GetDataFromTensorList(
       }
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
-      if (!platform::is_cpu_place(tensor->place())) {
+      if (!(tensor->place().GetType() == phi::AllocationType::CPU)) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
@@ -89,7 +89,7 @@ inline phi::DDim GetShape(const framework::ExecutionContext& ctx) {
 template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
-  if (!platform::is_cpu_place(x->place())) {
+  if (!(x->place().GetType() == phi::AllocationType::CPU)) {
     phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)

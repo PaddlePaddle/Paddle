@@ -53,7 +53,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
@@ -62,7 +62,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     }
     auto global_count_len = 0;
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
@@ -234,7 +234,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
@@ -243,7 +243,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     }
     auto global_count_len = 0;
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
