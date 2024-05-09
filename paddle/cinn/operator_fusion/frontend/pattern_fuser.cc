@@ -58,21 +58,7 @@ StmtPattern<FrontendStage> MergePatternImpl(
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
                          GetOpsInPattern<FrontendStage>(second));
-  return TrivialPattern<FrontendStage>(contents, second.sink());
-}
-
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const TrivialPattern<FrontendStage>& first,
-    const ReduceTreePattern<FrontendStage>& second) {
-  // TODO(@wuzhanfei)
-}
-
-template <>
-StmtPattern<FrontendStage> MergePatternImpl(
-    const TrivialPattern<FrontendStage>& first,
-    const ReduceTreePlusTrivialPattern<FrontendStage>& second) {
-  // TODO(@wuzhanfei)
+  return TrivialPattern<FrontendStage>(contents, second.sink_op());
 }
 
 template <>

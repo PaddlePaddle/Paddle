@@ -386,6 +386,30 @@ std::vector<U> VectorFlatMap(
   return result;
 }
 
+template <typename T>
+bool AnyTargetInCandidate(const std::vector<T>& targets,
+                          const std::vector<T>& candidate) {
+  std::unordered_set<T> pool = ToUnorderedSet(candidate);
+  for (const auto& item : targets) {
+    if (pool.find(item) != pool.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::vector<pir::Operation*> FindDownstreamOps(pir::Operation* op) {
+  std::vector<pir::Operation*> result;
+  for (int i = 0; i < op->num_results(); i++) {
+    auto v = op->result(i);
+    for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+         ++consumer_it) {
+      result.emplace_back(consumer_it->owner());
+    }
+  }
+  return result;
+}
+
 static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
   size_t i = 0;
   for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
@@ -418,4 +442,5 @@ static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
   PADDLE_THROW(phi::errors::NotFound(
       "Can not find the value %s as result of op %s", v.impl(), op->name()));
 }
+
 }  // namespace cinn::fusion

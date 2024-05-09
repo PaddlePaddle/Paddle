@@ -86,7 +86,7 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const TrivialPattern<T>& pattern) {
-    pir::Operation* t_op = pattern.sink();
+    pir::Operation* t_op = pattern.sink_op();
     const auto& exprs = GetDimExprsFromValue(t_op->result(0));
     return exprs;
   }
@@ -327,6 +327,17 @@ StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
   return HorizontalFusionPattern<T>({pad_first, pad_second});
 }
 
+template <typename A, typename B>
+B FusePatternIfConnected(A up_pattern,
+                         B down_pattern,
+                         std::vector<pir::Operation*> connect_ops) {
+  if (AnyTargetInCandidate(connect_ops, down_pattern.ops())) {
+    return std::get<B>(MergePatternImpl(up_pattern, down_pattern));
+  } else {
+    return down_pattern;
+  }
+}
+
 template <typename T>
 StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& first,
                                 const TrivialPattern<T>& second);
@@ -341,11 +352,29 @@ StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReduceTreePattern<T>& second);
+                                const ReduceTreePattern<T>& second) {
+  auto connect_ops = FindDownstreamOps(first.sink_op());
+
+  auto old_childs = second.childs();
+  std::vector<ReduceTreePattern<T>> new_childs;
+  for (const auto& old_child : old_childs) {
+    new_childs.emplace_back(
+        FusePatternIfConnected(first, old_child, connect_ops));
+  }
+
+  return ReduceTreePattern<T>(
+      new_childs,
+      FusePatternIfConnected(first, second.GetRootPattern(), connect_ops));
+}
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReduceTreePlusTrivialPattern<T>& second);
+                                const ReduceTreePlusTrivialPattern<T>& second) {
+  auto connect_ops = FindDownstreamOps(first.sink_op());
+  return ReduceTreePlusTrivialPattern<T>(
+      FusePatternIfConnected(first, second.tree, connect_ops),
+      FusePatternIfConnected(first, second.sink_trivial, connect_ops));
+}
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,

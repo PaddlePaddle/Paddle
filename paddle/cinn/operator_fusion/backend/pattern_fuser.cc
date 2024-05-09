@@ -74,21 +74,7 @@ StmtPattern<BackendStage> MergePatternImpl(
   const auto& trivial_op =
       cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
           first.trivial_op, second.trivial_op);
-  return TrivialPattern<BackendStage>(ops, second.sink(), trivial_op);
-}
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const TrivialPattern<BackendStage>& first,
-    const ReduceTreePattern<BackendStage>& second) {
-  // TODO(@wuzhanfei)
-}
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const TrivialPattern<BackendStage>& first,
-    const ReduceTreePlusTrivialPattern<BackendStage>& second) {
-  // TODO(@wuzhanfei)
+  return TrivialPattern<BackendStage>(ops, second.sink_op(), trivial_op);
 }
 
 template <>

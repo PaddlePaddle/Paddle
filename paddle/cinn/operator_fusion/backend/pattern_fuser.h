@@ -44,16 +44,6 @@ StmtPattern<BackendStage> MergePatternImpl(
 template <>
 StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
-    const ReduceTreePattern<BackendStage>& second);
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const TrivialPattern<BackendStage>& first,
-    const ReduceTreePlusTrivialPattern<BackendStage>& second);
-
-template <>
-StmtPattern<BackendStage> MergePatternImpl(
-    const TrivialPattern<BackendStage>& first,
     const AnchorPattern<BackendStage>& second);
 
 template <>
