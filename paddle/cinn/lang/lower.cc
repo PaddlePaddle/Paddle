@@ -361,9 +361,14 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
-    if (std::hold_alternative<NVGPUArch>(target.arch)) {
-      res->device_api = ir::DeviceAPI::GPU;
-    }
+    target.arch.Visit(adt::match{[&](std::variant<common::NVGPUArch>) {
+                                   res->device_api = ir::DeviceAPI::GPU;
+                                 },
+                                 [&](std::variant<common::UnknownArch,
+                                                  common::ARMArch,
+                                                  common::X86Arch>) {
+                                   // Do nothing
+                                 }});
   }
   return result;
 }
@@ -406,9 +411,14 @@ ir::LoweredFunc Lower(const std::string& name,
           break;
         }
       }
-      if (std::hold_alternative<NVGPUArch>(target.arch)) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Visit(adt::match{[&](std::variant<common::NVGPUArch>) {
+                                     res->device_api = ir::DeviceAPI::GPU;
+                                   },
+                                   [&](std::variant<common::UnknownArch,
+                                                    common::ARMArch,
+                                                    common::X86Arch>) {
+                                     // Do nothing
+                                   }});
     }
     if (b) {
       b->AddFunction(res);
@@ -460,9 +470,14 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
         }
       }
 
-      if (std::hold_alternative<NVGPUArch>(target.arch)) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Visit(adt::match{[&](std::variant<common::NVGPUArch>) {
+                                     res->device_api = ir::DeviceAPI::GPU;
+                                   },
+                                   [&](std::variant<common::UnknownArch,
+                                                    common::ARMArch,
+                                                    common::X86Arch>) {
+                                     // Do nothing
+                                   }});
     }
     if (b) {
       b->AddFunction(res);

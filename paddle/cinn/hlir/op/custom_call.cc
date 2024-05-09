@@ -100,12 +100,18 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
     // if target is nvgpu, add stream.
-    if (std::hold_alternative<common::NVGPUArch>(targe.arch)) {
-      ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+    target.arch.Visit(adt::match{
+        [&](std::variant<common::NVGPUArch>) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
 
-      host_args.push_back(kernel_stream);
-      arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
-    }
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        },
+        [&](std::variant < common::UnknownArch,
+            common::ARMArch,
+            <common::X86Arch>) {
+          // Do nothing
+        }});
     auto call_extern_api = ir::Call::Make(Void(),
                                           custom_call_api,
                                           host_args,

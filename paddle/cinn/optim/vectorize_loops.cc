@@ -763,15 +763,21 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (std::hold_alternative<common::NVGPUArch>(target.arch)) {
-        if (!forloop->extent.As<IntImm>() ||
-            forloop->extent.as_int32() % forloop->vectorize_info().factor !=
-                0) {
-          vectorizable_ = false;
-          VLOG(5)
-              << "GPU vectorize only support extent is a multiple of factor";
-        }
-      }
+      target.arch.Visit(adt::match{
+          [&](std::variant<common::NVGPUArch>) {
+            if (!forloop->extent.As<IntImm>() ||
+                forloop->extent.as_int32() % forloop->vectorize_info().factor !=
+                    0) {
+              vectorizable_ = false;
+              VLOG(5) << "GPU vectorize only support extent is a multiple of "
+                         "factor";
+            }
+          },
+          [&](std::variant < common::UnknownArch,
+              common::ARMArch,
+              <common::X86Arch>) {
+            // Do nothing
+          }});
 
       if (extent_min || extent_max || !vectorizable_) {
         // not vectorize if has tail blocks, for llvm to optimize

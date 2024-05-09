@@ -68,7 +68,7 @@ class _Tensor_ : public Object {
 
   inline void* mutable_data(const Target& target, const Type& type) {
     set_type(type);
-    target.arch.Visit(
+    target.arch.Visit(adt::match{
         [&](std::variant<common::X86Arch>) {
           buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
         },
@@ -76,7 +76,8 @@ class _Tensor_ : public Object {
                          common::ARMArch,
                          common::NVGPUArch>) {
           buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
-        }, );
+        },
+    });
     return reinterpret_cast<void*>(buffer_->data()->memory);
   }
 
