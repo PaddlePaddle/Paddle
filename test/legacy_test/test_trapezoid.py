@@ -155,7 +155,7 @@ class TestTrapezoidAxis1(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.random.random((3, 3, 4)).astype('float32')
         self.x = None
-        self.dx = 1
+        self.dx = 1.0
         self.axis = 1
 
 
