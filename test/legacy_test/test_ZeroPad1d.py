@@ -16,12 +16,17 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import to_tensor
 from paddle.nn import ZeroPad1D
 
 
 class TestZeroPad1dAPI(unittest.TestCase):
     def setUp(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.device.set_device('gpu:0')
+        else:
+            paddle.device.set_device('cpu')
         self.shape = [4, 6, 6]
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 

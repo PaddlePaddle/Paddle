@@ -22,6 +22,10 @@ from paddle.nn import ZeroPad3D
 
 class TestZeroPad3DAPI(unittest.TestCase):
     def setUp(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.device.set_device('gpu:0')
+        else:
+            paddle.device.set_device('cpu')
         self.shape = [4, 3, 6, 6, 6]
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
