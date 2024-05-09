@@ -4353,8 +4353,7 @@ function main() {
 
         run_type_checking
         run_tc=$?
-
-        if [[ ${run_tc} ]]; then
+        if [[ ${run_tc} -eq 0 ]]; then
             { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
             type_checking_code=$?
             
@@ -4383,7 +4382,9 @@ function main() {
 
         summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
 
-        if run_type_checking; then
+        run_type_checking
+        run_tc=$?
+        if [[ ${run_tc} -eq 0 ]]; then
             { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
             type_checking_code=$?
 
@@ -4636,7 +4637,9 @@ function main() {
 
         summary_check_example_code_problems $example_code "$example_info"
 
-        if run_type_checking; then    
+        run_type_checking
+        run_tc=$?
+        if [[ ${run_tc} -eq 0 ]]; then
             { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
             type_checking_code=$?
 
