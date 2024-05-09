@@ -3526,13 +3526,17 @@ function exec_samplecode_test() {
 }
 
 function run_type_checking() {
+    set +x
+
     # use "git commit -m 'message, test=type_checking'" to force ci to run
     COMMIT_CHECK=$(git log -1 --pretty=format:"%s" | grep -w "test=type_checking" || true)
     # check pr title
     TITLE_CHECK=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking" || true)
     if [[ ${COMMIT_CHECK} || ${TITLE_CHECK} ]]; then
+        set -x
         return 0
     else
+        set -x
         return 1
     fi
 }
