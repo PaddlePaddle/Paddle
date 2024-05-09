@@ -675,6 +675,16 @@
   backward : cosh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : crf_decoding
+  args: (Tensor emission, Tensor transition, Tensor label, Tensor length)
+  output: Tensor (viterbi_path)
+  infer_meta:
+    func: CrfDecodingInferMeta
+  kernel:
+    func: crf_decoding
+    data_type: emission
+  optional: label, length
+
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
   output : Tensor(out)
