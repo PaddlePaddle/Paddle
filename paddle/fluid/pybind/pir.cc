@@ -46,6 +46,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1789,6 +1790,17 @@ std::shared_ptr<Program> RemoveNoNeedShadowOutput(const Program &program) {
   return cloned_program;
 }
 
+std::shared_ptr<Program> ApplyFusedBnAddActPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  pm.AddPass(pir::CreateFusedBnAddActPass());
+  pm.Run(program.get());
+
+  std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+  std::cout << *program << std::endl;
+  return program;
+}
+
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -2125,6 +2137,7 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("remove_no_need_shadow_output", RemoveNoNeedShadowOutput);
+  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);

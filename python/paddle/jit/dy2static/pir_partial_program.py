@@ -554,7 +554,11 @@ class ValuePreservePass:
 
 class RemoveUnusedParameters(ValuePreservePass):
     def apply(self, program):
-        return paddle.base.libpaddle.pir.remove_no_need_shadow_output(program)
+        program = paddle.base.libpaddle.pir.remove_no_need_shadow_output(
+            program
+        )
+        program = paddle.base.libpaddle.pir.apply_bn_add_act_pass(program)
+        return program
 
 
 class PartialProgramLayer:
