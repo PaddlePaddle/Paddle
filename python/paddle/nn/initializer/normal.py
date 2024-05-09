@@ -165,6 +165,10 @@ class Normal(NormalInitializer):
 class TruncatedNormalInitializer(Initializer):
     """Implements the Random TruncatedNormal(Gaussian) distribution initializer
 
+    Note:
+        It is better to set `mean` in the range of [`a`, `b`].
+        If `mean` is more than 2 `std` from [`a`, `b`], the distribution of values may be incorrect.
+
     Args:
         loc (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
         scale (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
@@ -275,6 +279,10 @@ class TruncatedNormalInitializer(Initializer):
 
 class TruncatedNormal(TruncatedNormalInitializer):
     """The truncated normal distribution (Gaussian distribution) initializer.
+
+    Note:
+        It is better to set `mean` in the range of [`a`, `b`].
+        If `mean` is more than 2 `std` from [`a`, `b`], the distribution of values may be incorrect.
 
     Args:
         mean (float, optional): Mean of the normal distribution. Default is :math:`0.0`.
