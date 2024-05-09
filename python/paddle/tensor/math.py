@@ -779,8 +779,11 @@ def logaddexp(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
-
-    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
+    log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
+    maximum = paddle.maximum(x, y)
+    if maximum.dtype == paddle.int32 or maximum.dtype == paddle.int64:
+        maximum = maximum.astype(log_1p.dtype)
+    return log_1p + maximum
 
 
 def subtract(x, y, name=None):
@@ -1103,11 +1106,6 @@ def multiply(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
-        if x.dtype != y.dtype:
-            raise TypeError(
-                f'Input tensors must be same type, but received type of x: {x.dtype}, type of y: {y.dtype} '
-            )
-
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 

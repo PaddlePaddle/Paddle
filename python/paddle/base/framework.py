@@ -58,14 +58,44 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
-    "elementwise_add": ["X", "Y"],
-    "elementwise_add_grad": ["X", "Y"],
-    "elementwise_sub": ["X", "Y"],
-    "elementwise_sub_grad": ["X", "Y"],
-    "elementwise_mul": ["X", "Y"],
-    "elementwise_mul_grad": ["X", "Y"],
-    "where": ["X", "Y"],
-    "where_grad": ["X", "Y"],
+    "elementwise_add": ['X', 'Y'],
+    "elementwise_add_grad": ['X', 'Y'],
+    "elementwise_sub": ['X', 'Y'],
+    "elementwise_sub_grad": ['X', 'Y'],
+    "elementwise_mul": ['X', 'Y'],
+    "elementwise_mul_grad": ['X', 'Y'],
+    "elementwise_div": ['X', 'Y'],
+    "elementwise_div_grad": ['X', 'Y'],
+    "elementwise_floordiv": ['X', 'Y'],
+    "elementwise_floordiv_grad": ['X', 'Y'],
+    "elementwise_pow": ['X', 'Y'],
+    "elementwise_pow_grad": ['X', 'Y'],
+    "where": ['X', 'Y'],
+    "where_grad": ['X', 'Y'],
+    "equal": ['X', 'Y'],
+    "not_equal": ['X', 'Y'],
+    "less_than": ['X', 'Y'],
+    "less_equal": ['X', 'Y'],
+    "greater_than": ['X', 'Y'],
+    "greater_equal": ['X', 'Y'],
+    "logical_and": ['X', 'Y'],
+    "logical_or": ['X', 'Y'],
+    "logical_xor": ['X', 'Y'],
+    "elementwise_fmax": ['X', 'Y'],
+    "elementwise_fmax_grad": ['X', 'Y'],
+    "elementwise_fmin": ['X', 'Y'],
+    "elementwise_fmin_grad": ['X', 'Y'],
+    "elementwise_max": ['X', 'Y'],
+    "elementwise_max_grad": ['X', 'Y'],
+    "elementwise_min": ['X', 'Y'],
+    "elementwise_min_grad": ['X', 'Y'],
+    "elementwise_mod": ['X', 'Y'],
+    "elementwise_mod_grad": ['X', 'Y'],
+    "huber_loss": ['X', 'Y'],
+    "huber_loss_grad": ['X', 'Y'],
+    "nextafter": ['x', 'y'],
+    "atan2": ['X1', 'X2'],
+    "atan2_grad": ['X1', 'X2'],
 }
 
 
@@ -8178,8 +8208,12 @@ def dtype_to_str(in_dtype):
         return "fp32"
     elif in_dtype == paddle.float64:
         return "fp64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX64:
+        return "complex64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX128:
+        return "complex128"
     else:
-        return None
+        raise TypeError(f"got unspport data type for promotion: {in_dtype}.")
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
@@ -8269,7 +8303,9 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if core.need_type_promotion(*all_dtypes):
+            if len(all_dtypes) == 2 and core.need_type_promotion(
+                op.type, *all_dtypes
+            ):
                 common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)
