@@ -15,8 +15,7 @@ set -e
 cd cutlass_kernels
 cutlass_repo_directory="cutlass"
 if [ ! -d "$cutlass_repo_directory" ]; then
-    export http_proxy="http://10.162.37.16:8128" 
-    export https_proxy="http://10.162.37.16:8128"
+
     git clone --depth=1 https://github.com/NVIDIA/cutlass.git
 fi
 
