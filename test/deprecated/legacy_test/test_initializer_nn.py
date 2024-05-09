@@ -530,7 +530,7 @@ class TestTruncatedNormal(unittest.TestCase):
         paddle.disable_static()
 
         weight_attr = paddle.framework.ParamAttr(
-            name="linear_weight",
+            name="linear_weight2",
             initializer=paddle.nn.initializer.TruncatedNormal(
                 mean=0.0, std=1.0, a=-1.0, b=1.0
             ),
