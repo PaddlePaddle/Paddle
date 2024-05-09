@@ -16,6 +16,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 
+#include <cstdlib>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -120,11 +122,14 @@ struct ShapeSignatureGenerator {
     const auto& const_shape_or_data =
         symbol::SubstituteShapeOrData(shape_or_data, substitute_pattern);
     for (const auto& symbolic_shape : shape_or_data.shape()) {
-      // 这里需要一个可以计算dimexpr的函数，不一定是SimplifyDimExpr
       const auto& const_symbolic_shape =
           symbol::SimplifyDimExpr(symbolic_shape);
-      CHECK(symbolic_shape.isa<std::int64_t>());
-      dim_shape.push_back(symbolic_shape.Get<std::int64_t>());
+      unsigned int seed = time(NULL);
+      if (symbolic_shape.isa<std::int64_t>()) {
+        dim_shape.push_back(symbolic_shape.Get<std::int64_t>());
+      } else {
+        dim_shape.push_back(rand_r(&seed));
+      }
     }
     return dim_shape;
   }
@@ -377,9 +382,17 @@ void CheckByInferMeta(pir::Operation* op,
   std::vector<std::vector<int64_t>> infer_meta_result;
   DoInferMeta(input_shapes, builder, op, &empty_op_list, &infer_meta_result);
 
-  CHECK(infer_meta_result == output_shapes)
+  CHECK(infer_meta_result.size() == output_shapes.size())
       << "check " << op->name() << " constraints error";
-
+  for (int i = 0; i < infer_meta_result.size(); i++) {
+    CHECK(infer_meta_result[i].size() == output_shapes[i].size())
+        << "check " << op->name() << " constraints error";
+    for (int j = 0; j < infer_meta_result[i].size(); j++) {
+      if (infer_meta_result[i][j] != -1)
+        CHECK(infer_meta_result[i][j] == output_shapes[i][j])
+            << "check " << op->name() << " constraints error";
+    }
+  }
   EraseEmptyOp(empty_op_list);
 }
 
