@@ -14,9 +14,16 @@
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include <fcntl.h>
+#ifdef _LINUX
 #include <sys/mman.h>
 #include <sys/stat.h>
+#endif
 #include <unistd.h>
 
 #include <vector>
