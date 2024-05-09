@@ -67,9 +67,9 @@ class SplitFunctor<phi::CPUContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::XPUDeviceContext, T> {
+class ConcatFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
@@ -119,9 +119,9 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
 };
 
 template <typename T>
-class SplitFunctor<platform::XPUDeviceContext, T> {
+class SplitFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
@@ -185,9 +185,9 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 #ifdef PADDLE_WITH_XPU
-#define DEFINE_XPU_FUNCTOR(type)                                  \
-  template class ConcatFunctor<platform::XPUDeviceContext, type>; \
-  template class SplitFunctor<platform::XPUDeviceContext, type>;
+#define DEFINE_XPU_FUNCTOR(type)                       \
+  template class ConcatFunctor<phi::XPUContext, type>; \
+  template class SplitFunctor<phi::XPUContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
 DEFINE_XPU_FUNCTOR(phi::dtype::float16)
