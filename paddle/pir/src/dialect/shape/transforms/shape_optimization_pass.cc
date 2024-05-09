@@ -187,7 +187,7 @@ void CheckInferSymWithInferMeta(
                    << shape_analysis->GetShapeOrDataForValue(res)
                    << "], real shape is [" << res.type() << "].";
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "Error : Check InferSymbolicShape for %s (op_ %d) carefully! rank "
+            "Error : Check InferSymbolicShape for %s [id:%d] carefully! rank "
             "of infer_meta_shape is [%d], but rank of infer_sym_shape is [%d].",
             op->name(),
             op->id(),
@@ -204,7 +204,7 @@ void CheckInferSymWithInferMeta(
                        << shape_analysis->GetShapeOrDataForValue(res)
                        << "], real shape is [" << res.type() << "].";
             PADDLE_THROW(common::errors::PreconditionNotMet(
-                "Error : Check InferSymbolicShape for %s (op_ %d) carefully!  "
+                "Error : Check InferSymbolicShape for %s [id:%d] carefully!  "
                 "shape [%d] of infer_sym_shape shoule be int64_t.",
                 op->name(),
                 op->id(),
@@ -217,7 +217,7 @@ void CheckInferSymWithInferMeta(
                        << shape_analysis->GetShapeOrDataForValue(res)
                        << "], real shape is [" << res.type() << "].";
             PADDLE_THROW(common::errors::PreconditionNotMet(
-                "Error : Check InferSymbolicShape for %s (op_ %d) carefully! "
+                "Error : Check InferSymbolicShape for %s [id:%d] carefully! "
                 "infer_meta_shape index(%d) is [%d], but infer_sym_shape is "
                 "[%d].",
                 op->name(),
