@@ -83,7 +83,7 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             outs = exe.run(program, fetch_list=fetch_list)
             tensor = outs[0]
             np.testing.assert_allclose(np.mean(tensor), self.mean, atol=0.05)
-            np.testing.assert_allclose(np.var(tensor), 0.773, atol=0.05)
+            np.testing.assert_allclose(np.var(tensor), self.std, atol=0.05)
 
     class TestTruncatedGaussianRandomOp_1(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
@@ -114,6 +114,14 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.shape = [2049]
             self.mean = 5.1234
             self.std = 1.0
+            self.a = -10.0
+            self.b = 10.0
+
+    class TestTruncatedGaussianRandomOp_5(TestTruncatedGaussianRandomOp):
+        def set_attrs(self):
+            self.shape = [11 * 13 * 17]
+            self.mean = -1.0
+            self.std = 2.5
             self.a = -10.0
             self.b = 10.0
 
