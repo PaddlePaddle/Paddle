@@ -42,7 +42,6 @@ class TestBuildFakeProgram(unittest.TestCase):
                 )
 
         paddle.base.libpaddle.pir.apply_mix2dist_pass(main_program)
-        # print(dist_program)
 
 
 if __name__ == "__main__":

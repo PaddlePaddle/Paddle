@@ -134,7 +134,7 @@ void VerifyDistBlock(pir::Block* block) {
 
 void MixToDistPass(pir::Program* prog) {
   if (FLAGS_print_ir) {
-    std::cout << "IR before MixToDist Pass = " << *prog << std::endl;
+    VLOG(0) << "IR before MixToDist Pass = " << *prog << std::endl;
   }
 
   pir::IrMapping mapper;
@@ -148,7 +148,7 @@ void MixToDistPass(pir::Program* prog) {
   VerifyDistBlock(prog->block());
 
   if (FLAGS_print_ir) {
-    std::cout << "IR after MixToDist Pass = " << *prog << std::endl;
+    VLOG(0) << "IR after MixToDist Pass = " << *prog << std::endl;
   }
 
   // return prog;
