@@ -3313,6 +3313,7 @@ void StftInferMeta(const MetaTensor& x,
   output_shape.push_back(n_frames);
 
   out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(phi::dtype::ToComplex(x.dtype()));
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
