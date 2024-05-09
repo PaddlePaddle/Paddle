@@ -161,6 +161,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
     'lars_momentum_',
