@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -90,6 +91,7 @@ using paddle::dialect::WhileOp;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
 
+using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
@@ -414,22 +416,8 @@ void BindBlock(py::module *m) {
       .def("kwargs", &Block::kwargs, return_value_policy::reference)
       .def("add_kwarg", &Block::AddKwarg)
       .def("erase_kwarg", &Block::EraseKwarg)
-      .def(
-          "remove_op",
-          [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), *op);
-            self.erase(op_iter);
-          },
-          R"DOC(
-        Remove the specific position operator.
-
-        Args:
-            index(int): the position that the operator to insert.
-
-        Returns:
-            None
-
-      )DOC")
+      .def("remove_op",
+           [](Block &self, const Operation &op) { self.erase(op); })
       .def(
           "move_op",
           [](Block &self, Operation *op, uint32_t offset) {
@@ -661,6 +649,7 @@ void BindOperation(py::module *m) {
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
           return_value_policy::reference)
+      .def("erase", &Operation::Erase)
       .def("move_before",
            [](Operation &self, Operation &other) {
              self.MoveTo(other.GetParent(), Block::Iterator{other});
@@ -766,6 +755,33 @@ phi::DataType GetValueDtype(Value value) {
   }
 }
 
+std::string GetValueName(Value value) {
+  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
+    return param_op.param_name();
+  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
+    return data_op.attribute<pir::StrAttribute>("name").AsString();
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    if (block_arg.is_kwarg()) {
+      return block_arg.keyword();
+    } else {
+      return "arg_" + std::to_string(block_arg.index());
+    }
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value that "
+        "is persistable"));
+  }
+}
+
 const phi::DDim &GetValueDims(Value value) {
   if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
@@ -816,6 +832,18 @@ pir::Value apply(Value self, py::object func) {
 }
 
 #define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return bool_data && bool_data.data();                                 \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_STOP_GRADIENT_PROPERTY(name)                                \
   def_property(                                                               \
       name,                                                                   \
       [](Value self) {                                                        \
@@ -885,36 +913,8 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
-      .def_property_readonly(
-          "name",
-          [](Value self) {
-            if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
-              return param_op.param_name();
-            } else if (auto data_op =
-                           self.defining_op<paddle::dialect::DataOp>()) {
-              return data_op.attribute<pir::StrAttribute>("name").AsString();
-            } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
-              if (block_arg.is_kwarg()) {
-                return block_arg.keyword();
-              } else {
-                return "arg_" + std::to_string(block_arg.index());
-              }
-            } else if (self.first_use()) {
-              auto nextOp = self.first_use().owner();
-              if (nextOp->isa<::pir::ShadowOutputOp>()) {
-                return nextOp->attribute<pir::StrAttribute>("output_name")
-                    .AsString();
-              } else {
-                PADDLE_THROW(phi::errors::InvalidArgument(
-                    "Currently, we can only get name of Value which is "
-                    "shadowoutput "));
-              }
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of Value that "
-                  "is persistable"));
-            }
-          })
+      .def_property_readonly("name",
+                             [](Value self) { return GetValueName(self); })
       .def_property_readonly(
           "has_name",
           [](Value self) {
@@ -964,7 +964,7 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_STOP_GRADIENT_PROPERTY("stop_gradient")
       .DEF_VALUE_BOOL_PROPERTY("trainable")
       .DEF_VALUE_BOOL_PROPERTY("persistable")
       .DEF_VALUE_BOOL_PROPERTY("need_clip")
@@ -1031,6 +1031,8 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
+      .def("is_combine",
+           [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
       .def(
@@ -1064,9 +1066,10 @@ void BindOpOperand(py::module *m) {
 
   )DOC");
   op_operand.def("source", [](OpOperand &self) { return self.source(); })
-      .def(
-          "set_source",
-          [](OpOperand &self, const Value &result) { self.set_source(result); })
+      .def("set_source",
+           [](OpOperand &self, Value *value) {
+             value ? self.set_source(*value) : self.set_source(nullptr);
+           })
       .def("owner", &OpOperand::owner, return_value_policy::reference)
       .def("index", &OpOperand::index);
 }
@@ -1078,12 +1081,11 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", [](Type &self, Type &other) { return self == other; })
-      .def("__str__", [](Type &self) {
-        std::ostringstream print_stream;
-        print_stream << self;
-        return print_stream.str();
-      });
+  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {
@@ -1116,11 +1118,30 @@ void BindType(py::module *m) {
 
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
-  ir_attr.def("__str__", [](Attribute &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_attr.def("__eq__", &Attribute::operator==)
+      .def("__str__",
+           [](Attribute &self) {
+             std::ostringstream print_stream;
+             print_stream << self;
+             return print_stream.str();
+           })
+      .def("as_tensor_dist_attr",
+           [](Attribute &self) -> py::object {
+             if (auto dist_attr = self.dyn_cast<TensorDistAttribute>()) {
+               return py::cast(dist_attr);
+             }
+             return py::cast<py::none>(Py_None);
+           })
+      .def("as_array_attr", [](Attribute &self) -> py::object {
+        if (auto array_attr = self.dyn_cast<ArrayAttribute>()) {
+          return py::cast(array_attr);
+        }
+        return py::cast<py::none>(Py_None);
+      });
+  py::class_<ArrayAttribute, Attribute> array_attr(*m, "ArrayAttribute");
+  array_attr.def("__len__", [](ArrayAttribute &self) { return self.size(); })
+      .def("__getitem__",
+           [](ArrayAttribute &self, int idx) { return self.at(idx); });
 }
 
 struct PyInsertionPoint {
@@ -1853,6 +1874,35 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
   }
 }
 
+static void inline CreateVariableIfNotExist(
+    const std::vector<pir::Value> &var_list,
+    framework::Scope *scope,
+    const framework::Executor *exe = nullptr) {
+  size_t len = var_list.size();
+
+  for (size_t i = 0; i < len; ++i) {
+    pir::Value value = var_list[i];
+    std::string para_name = GetValueName(value);
+    auto var = scope->FindVar(para_name);
+    if (var == nullptr) {
+      PADDLE_ENFORCE_NOT_NULL(exe,
+                              phi::errors::InvalidArgument(
+                                  "Parameter not Initialized, "
+                                  "Please set argument [executor] not None "
+                                  "or run startup program first"));
+      var = scope->Var(para_name);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(
+          common::make_ddim(phi::vectorize(GetValueDims(value))));
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(exe->GetPlace());
+      dev_ctx->Alloc(tensor_temp, GetValueDtype(value));
+    }
+  }
+  return;
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1861,6 +1911,7 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
 }
 
 void BindUtils(pybind11::module *m) {
+  m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
