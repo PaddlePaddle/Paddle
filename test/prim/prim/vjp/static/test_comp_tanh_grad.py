@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 
+from paddle.base import core
+
+core._set_prim_backward_enabled(True)
+
+import autograd
+import autograd.numpy
 import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.base import core, framework
 
 
 def apply_to_static(net, use_cinn):
@@ -37,44 +41,21 @@ class PrimeNet(paddle.nn.Layer):
 
     def forward(self, x):
         tmp = self.fc(x)
-        out = paddle.cast(tmp, paddle.float64)
+        out = paddle.tanh(tmp)
         return out
 
 
 @param.parameterized_class(
-    ('primal', 'cotangent', 'src_dtype', 'dst_type'),
+    ('primal', 'cotangent', 'dtype'),
     [
-        (
-            np.random.rand(10, 10),
-            np.random.rand(10, 10),
-            np.float32,
-            np.float64,
-        ),
-        (
-            np.random.rand(10, 10),
-            np.random.rand(10, 10),
-            np.float64,
-            np.float32,
-        ),
-        (
-            np.random.rand(10, 10),
-            np.random.rand(10, 10),
-            np.float32,
-            np.float32,
-        ),
+        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
     ],
 )
-class TestCastGradComp(unittest.TestCase):
+class TestTanhGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.primal = cls.primal.astype(cls.src_dtype)
-        cls.cotangent = cls.cotangent.astype(cls.src_dtype)
-
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
+        cls.primal = cls.primal.astype(cls.dtype)
+        cls.cotangent = cls.cotangent.astype(cls.dtype)
 
     def train(self, use_prim, use_cinn):
         paddle.seed(2022)
@@ -88,29 +69,8 @@ class TestCastGradComp(unittest.TestCase):
 
         return res
 
-    def test_cinn(self):
-        paddle.disable_static()
-        use_cinn = True
-        if isinstance(
-            framework._current_expected_place(), framework.core.CPUPlace
-        ):
-            # TODO(jiabin): CINN will crashed in this case open it when fixed
-            use_cinn = False
-
-        dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=use_cinn)
-
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                comp_st_cinn_res[i].numpy(),
-                dy_res[i].numpy(),
-                rtol=1e-15,
-                atol=1e-15,
-            )
+    def test_tanh_grad_comp(self):
         paddle.enable_static()
-
-    def test_cast_grad_comp(self):
-        core._set_prim_backward_enabled(True)
 
         def actual(primal, cotangent):
             mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -120,30 +80,27 @@ class TestCastGradComp(unittest.TestCase):
                 v = paddle.static.data(
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
-                y = paddle.cast(x, self.dst_type)
+                y = paddle.tanh(x)
                 x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+                fetch_list=[x_cotangent[0]],
             )[0]
 
         def desired(primal, cotangent):
-            return (cotangent * np.ones_like(primal)).astype(primal.dtype)
+            return autograd.make_vjp(autograd.numpy.tanh)(primal)[0](cotangent)
 
-        actual = actual(self.primal, self.cotangent)
-        desired = desired(self.primal, self.cotangent)
-
-        self.assertEqual(actual.dtype, desired.dtype)
         np.testing.assert_allclose(
-            actual=actual,
-            desired=desired,
+            actual=actual(self.primal, self.cotangent),
+            desired=desired(self.primal, self.cotangent),
             rtol=1e-6,
             atol=0,
         )
         core._set_prim_backward_enabled(False)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
