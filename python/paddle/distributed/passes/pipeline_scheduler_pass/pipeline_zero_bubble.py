@@ -441,7 +441,7 @@ class VScheduleCreator:
                 while not self._memory_check("backward_b", 0, stage_id):
                     if len(self._pending_w[stage_id]) == 0:
                         raise ValueError(
-                            "No pending backward_w job and backward_b job exceeds the memory limit."
+                            f"No pending backward_w job and backward_b0 job exceeds the memory limit at stage {stage_id}."
                         )
                     self._put_w_job_into_schedule(stage_id)
 
@@ -635,12 +635,21 @@ class VScheduleCreator:
             next_job_start_time,
             less_forward_number,
         ):
+            available_memory = self.max_memory - self._stage_mem_usage[stage_id]
             # After insert forward job, we need to check whether we can insert backward_b job
+            available_memory -= self.program_max_mem_usages[stage_id][
+                f"backward_b{chunk_id}"
+            ]
+
+            for i in range(1, self.num_model_chunks):
+                if self._job_counters[stage_id][f"forward{i}"] == 0:
+                    available_memory -= self.program_max_mem_usages[stage_id][
+                        f"forward{i}"
+                    ]
             if (
-                self._stage_mem_usage[stage_id]
-                + self.program_mem_usages[stage_id][f"forward{chunk_id}"]
-                + self.program_max_mem_usages[stage_id][f"backward_b{chunk_id}"]
-            ) > self.max_memory:
+                available_memory
+                < self.program_max_mem_usages[stage_id][f"forward{chunk_id}"]
+            ):
                 break
 
             if insert_order == "down":
@@ -745,7 +754,7 @@ class VScheduleCreator:
             > self.max_memory
         ):
             raise ValueError(
-                f"Job {job_type}{chunk_id} exceeds the memory limit."
+                f"Job {job_type}{chunk_id} exceeds the memory limit at stage {stage_id}."
             )
 
         self._check_job_chunk_order(
