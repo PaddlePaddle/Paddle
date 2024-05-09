@@ -103,7 +103,7 @@ class AddAccuracyCheckPattern
 
 class AccuarcyCheckPass : public pir::Pass {
  public:
-  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/0) {}
+  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/4) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
