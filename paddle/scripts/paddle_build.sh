@@ -3628,34 +3628,48 @@ function clang-tidy_check() {
     set +x
     trap 'abort' 0
     set -e
-    apt-get install -y libomp5 libomp-dev
-    dpkg -s libomp5 libomp-dev
-    current_branch=`git branch | grep \* | cut -d ' ' -f2`
-    echo "current_branch : $current_branch"
-    num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' | wc -l)
-    commit_files=on
+
+    diff_files=$(git diff --name-only --diff-filter=ACMR ${BRANCH})
+    num_diff_files=$(echo "$diff_files" | wc -l)
+    echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
+
+    echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
-    for file_name in `git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' |awk '{print $NF}'`;do
-        if ! pre-commit run clang-tidy --files ${PADDLE_ROOT}/$file_name ; then
-            commit_files=off
-        fi
-    done
+    pre-commit run clang-tidy --files ${diff_files};check_error=$?
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
-    echo "File Count: $[ $num_diff_files ]"
+    echo "Files Num: $[ $num_diff_files ]"
     echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-    if [ $commit_files == 'off' ];then
+
+    echo -e '\n************************************************************************************'
+    if [ ${check_error} != 0 ];then
         echo "Your PR code style clang-tidy check failed."
-        exit 1
+        echo "Please install clang-tidy locally:"
+        echo ""
+        echo "    pip install clang-tidy==15.0.2.1"
+        echo ""
+        echo ""
+        if [[ $num_diff_files -le 100 ]];then
+            echo "After the build is completed, run clang-tidy to check codestyle issues in your PR:"
+            echo ""
+            echo "    pre-commit run clang-tidy --files" $(echo ${diff_files} | tr "\n" " ")
+            echo ""
+        fi
+        echo "For more information, please refer to our codestyle check guide:"
+        echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
+    else
+        echo "Your PR code style clang-tidy check passed."
     fi
+    echo -e '************************************************************************************\n'
 
     trap : 0
     set -x
+
+    # exit ${check_error} 
 }
 
 function build_pr_and_develop() {
     run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-    clang-tidy_check
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/
     fi
@@ -3698,6 +3712,7 @@ function build_pr_and_develop() {
     fi
 
     generate_api_spec "$1" "DEV"
+    clang-tidy_check
 
 }
 
