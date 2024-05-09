@@ -78,6 +78,7 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::Load* load, Expr* op) override;
   void Visit(const ir::Store* store, Expr* op) override;
   void Visit(const ir::Reduce* reduce, Expr* op) override;
+  void Visit(const ir::For* for_node, Expr* op) override;
 
  private:
   ir::Expr source_;
@@ -132,7 +133,7 @@ template <typename Teller>
 ExprSetFinder Collector(Teller t, std::string name = "") {
   return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
-        const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
+        const auto& rs = cinn::ir::ir_utils::CollectIRNodesInOrder(x, t);
         return std::vector(rs.begin(), rs.end());
       },
       name);
@@ -169,6 +170,8 @@ extern ExprSetFinder IsFor;
 extern ExprSetFinder ChildScheduleBlocks;
 
 extern ExprSetFinder ChildScheduleBlockRealizes;
+
+extern ExprSetFinder ChildRootScheduleBlockRealizes;
 
 extern ExprSetFinder For2Min;
 
@@ -229,6 +232,14 @@ std::vector<ir::Var> CreateInnerBlockVars(
 
 ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
                                      const std::vector<ir::Var>& dest_vars);
+
+ExprTransformer ReplaceVarTransformer(const std::vector<ir::Var>& target_vars,
+                                      const std::vector<ir::Expr>& dest_exprs);
+
+// insert after followed_finder. only support For and ScheduleBlockRealizer
+ExprTransformer UnsqueezeForTransformer(
+    const ExprSetFinderUtils::ExprSetFinder& followed_finder,
+    const ir::Var& to_append_var);
 
 ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
 
