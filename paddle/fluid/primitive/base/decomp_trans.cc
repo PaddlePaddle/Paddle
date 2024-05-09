@@ -43,8 +43,8 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.batch_norm",
                                                           "pd_op.batch_norm_"};
 //
-std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
-                                                           "pd_op.unsqueeze"};
+std::unordered_set<std::string> dynamic_shape_blacklist = {
+    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
