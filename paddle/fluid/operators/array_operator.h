@@ -54,7 +54,7 @@ class ArrayOp : public framework::OperatorBase {
         i_tensor.place().GetType() == phi::AllocationType::CUSTOM) {
       // FIXME: Avoid copy from GPU to CPU
       phi::DenseTensor t;
-      framework::TensorCopy(i_tensor, phi::CPUPlace(), dev_ctx, &t);
+      phi::Copy(dev_ctx, i_tensor, phi::CPUPlace(), false, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());
     } else {
