@@ -22,6 +22,8 @@ from functools import lru_cache
 import numpy as np
 
 from paddle import pir
+from paddle.base.framework import in_cinn_mode
+from paddle.base.libpaddle.pir import apply_cinn_pass
 
 from ..pir import (
     Program as PirProgram,
@@ -1072,6 +1074,9 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if in_cinn_mode():
+                        apply_cinn_pass(pir_program)
+
                     type_to_program = {"default": pir_program}
 
                 else:
@@ -1089,7 +1094,18 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p, {})
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)

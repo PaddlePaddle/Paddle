@@ -15,9 +15,11 @@
 from __future__ import annotations
 
 import logging
+import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
+    ALLOW_NO_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -32,6 +34,7 @@ from paddle.autograd.backward_utils import (
     get_real_op_inputs,
     get_split_op,
     inverse_sort_op,
+    is_builtin_op,
     is_control_flow,
     is_inplace_net,
     parent_total_ops,
@@ -164,8 +167,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     % (i, str(grad.shape), i, str(output.shape))
                 )
             if output.dtype != grad.dtype:
-                raise ValueError(
-                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                warnings.warn(
+                    "The dtype of grad_output[%d] %s is not same as the dtype of output[%d] %s"
                     % (i, str(grad.dtype), i, str(output.dtype))
                 )
             feedop = grad.get_defining_op()
@@ -837,7 +840,13 @@ def append_backward_ops(
                         else:
                             state.op_to_opgrad[op] = []
                 else:
-                    logging.warning("%s op has no grad op", op.name())
+                    if (
+                        not is_builtin_op(op)
+                        and op.name() not in ALLOW_NO_GRAD_OPS
+                    ):
+                        raise ValueError(
+                            f"op '{op.name()}' has no grad op, consider enable prim to decompose it."
+                        )
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
@@ -1205,9 +1214,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         input_inputs_grad.append(
             (
                 input,
-                input_to_inputgrad_map[input][0][0]
-                if input_to_inputgrad_map[input] != []
-                else None,
+                (
+                    input_to_inputgrad_map[input][0][0]
+                    if input_to_inputgrad_map[input] != []
+                    else None
+                ),
             )
         )
 

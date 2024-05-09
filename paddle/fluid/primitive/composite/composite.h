@@ -85,12 +85,14 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
   if (switch_dynamic) {
-    // dynamic shape branch
-    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
-    Tensor idx =
-        reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
-    auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
-    value = prod<T>(axis_dims, {0}, false, false);
+    auto x_shape = shape<T>(x);
+    value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
+    for (size_t i = 1; i < axis_.size(); ++i) {
+      value =
+          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
+    }
+
+    value = cast<T>(value, x_tmp.dtype());
   } else {
     int64_t value_ = 1;
     for (size_t i = 0; i < axis_.size(); i++) {
@@ -249,6 +251,14 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
 template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
   return full<T>(empty_shape, 1.0, x.dtype()) / x;
+}
+
+template <typename T>
+Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
+  auto one = full<T>(empty_shape, 1, x.dtype());
+  auto ans = full<T>(empty_shape, -1, x.dtype()) *
+             (label * log<T>(x) + (one - label) * log<T>(one - x));
+  return ans;
 }
 
 template <typename T>
@@ -536,6 +546,55 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
+  int64_t rank = x.size();
+  std::vector<Tensor> res;
+  std::vector<int64_t> tar_shape(rank, 1);
+  for (int64_t i = 0; i < rank; i++) {
+    if (x[i].shape().size() == 1) {
+      tar_shape[i] = x[i].shape()[0];
+    }
+  }
+  if (has_dynamic_shape(tar_shape)) {
+    std::vector<Tensor> tmp_shape;
+    for (int64_t i = 0; i < rank; i++) {
+      if (tar_shape[i] == 1) {
+        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT32));
+      } else {
+        tmp_shape.push_back(shape<T>(x[i]));
+      }
+    }
+    auto tar_tensor_shape = concat<T>(tmp_shape);
+
+    for (int64_t i = 0; i < rank; i++) {
+      if (tar_shape[i] == 1) {
+        res.push_back(backend::expand_with_tensor<T>(x[i], tar_tensor_shape));
+      } else {
+        std::vector<int64_t> unsqueeze_dim;
+        for (int64_t k = 0; k < rank; k++) {
+          if (i != k) {
+            unsqueeze_dim.push_back(k);
+          }
+        }
+        res.push_back(backend::expand_with_tensor<T>(
+            unsqueeze<T>(x[i], unsqueeze_dim), tar_tensor_shape));
+      }
+    }
+
+  } else {
+    for (int64_t i = 0; i < rank; i++) {
+      std::vector<int64_t> view_shape(rank, 1);
+      if (x[i].shape().size() == 1) {
+        view_shape[i] = x[i].shape()[0];
+      }
+      res.push_back(expand<T>(reshape<T>(x[i], view_shape), tar_shape));
+    }
+  }
+
+  return res;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
@@ -670,6 +729,14 @@ Tensor full_like_decomp(const Tensor& x,
   } else {
     return full<T>(x_shape, value, dtype, place);
   }
+}
+
+template <typename T>
+Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
+  auto x_cast = cast<T>(x, DataType::INT64);
+  auto y_cast = cast<T>(y, DataType::INT64);
+  auto res = x_cast / y_cast;
+  return cast<T>(res, x.dtype());
 }
 
 template <typename T>
