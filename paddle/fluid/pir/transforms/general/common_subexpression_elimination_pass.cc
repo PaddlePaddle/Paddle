@@ -15,11 +15,11 @@
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -33,7 +33,7 @@ namespace {
 // TODO(SigureMo): Consider use trait to check whether the operation is
 // commutative.
 static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
-    commutative_ops = {
+    kCommutativeOps = {
         {"pd_op.multiply", {{0, 1}}},
         {"pd_op.add", {{0, 1}}},
         {"pd_op.maximum", {{0, 1}}},
@@ -46,6 +46,13 @@ static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
         {"pd_op.bitwise_or", {{0, 1}}},
         {"pd_op.bitwise_xor", {{0, 1}}},
         {"pd_op.bitwise_and", {{0, 1}}},
+};
+
+// If an op results used by these ops, we should not replace it.
+static std::unordered_set<std::string> kBlockedUserOps = {
+    "builtin.shadow_output",
+    "cf.yield",
+    "pd_op.while",  // while op will trigger a early gc bug
 };
 
 template <typename T>
@@ -102,9 +109,9 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation* op) {
 }
 
 bool IsTerminateOp(pir::Operation* op) {
-  return op->num_operands() == 0;
-  // return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
-  //        op->isa<pir::ConstantTensorOp>();
+  // return op->num_operands() == 0;
+  return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
+         op->isa<pir::ConstantTensorOp>();
 }
 bool IsTerminateValue(const pir::Value& value) {
   return !value.defining_op() || IsTerminateOp(value.defining_op());
@@ -171,8 +178,8 @@ struct ExpressionTable {
     for (auto& value : op->operands_source()) {
       values_hash.push_back(CalcValueHash(value));
     }
-    if (commutative_ops.count(op->name())) {
-      for (auto& commutative_indices : commutative_ops[op->name()]) {
+    if (kCommutativeOps.count(op->name())) {
+      for (auto& commutative_indices : kCommutativeOps[op->name()]) {
         values_hash = SortElementsAtIndices(values_hash, commutative_indices);
       }
     }
@@ -235,15 +242,20 @@ struct ExpressionTable {
               << " has side effect";
       return false;
     }
-    for (auto& value : op->operands_source()) {
-      if (!IsTerminateValue(value) &&
-          !GetOperationCanBeSafeToReplace(value.defining_op())) {
+    for (auto& value : op->results()) {
+      if (!value.type().isa<paddle::dialect::DenseTensorType>()) {
         VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-                << " has operand " << value.defining_op()->name()
-                << " which can not be safe to replace";
+                << " has result " << value.defining_op()->name()
+                << " which is not DenseTensorType";
         return false;
       }
       for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+        if (kBlockedUserOps.count(it->owner()->name())) {
+          VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+                  << " has result " << value.defining_op()->name()
+                  << " which is used by " << it->owner()->name();
+          return false;
+        }
         auto inplace_info = GetOpInplaceInfo(it->owner());
         for (auto& [out_idx, in_idx] : inplace_info) {
           if (it->owner()->operands()[in_idx].source() == value) {
@@ -255,6 +267,17 @@ struct ExpressionTable {
         }
       }
     }
+    for (auto& value : op->operands_source()) {
+      if (!IsTerminateValue(value) &&
+          !GetOperationCanBeSafeToReplace(value.defining_op())) {
+        VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+                << " has operand " << value.defining_op()->name()
+                << " which can not be safe to replace";
+        return false;
+      }
+    }
+    VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+            << " can be safe to replace";
     return true;
   }
 
@@ -306,40 +329,6 @@ struct CSEAnalyzer {
   std::vector<std::pair<pir::Operation*, pir::Operation*>> to_erase_ops;
 };
 
-pir::Value CreateAssignOp(const pir::Value& value,
-                          pir::Operation* op,
-                          pir::Block* block) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  pir::Builder builder(ctx, block);
-  builder.SetInsertionPointAfter(op);
-  auto assign_op = builder.Build<paddle::dialect::AssignOp>(value);
-  return assign_op.result(0);
-}
-
-void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
-  VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
-          << new_op->name() << " [" << new_op << "]";
-  PADDLE_ENFORCE_EQ(
-      op->num_results(),
-      new_op->num_results(),
-      phi::errors::InvalidArgument("the num of result should be the same."));
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    auto value = op->result(i);
-    auto new_value = new_op->result(i);
-    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-      // NOTE(SigureMo): If the value has a shadow output, we could not replace
-      // it directly. It will cause a value has two shadow outputs. It is
-      // invalid for executor, so we make a copy by inserting a assign op.
-      if (it->owner()->isa<pir::ShadowOutputOp>()) {
-        new_value = CreateAssignOp(new_value, new_op, op->GetParent());
-        break;
-      }
-    }
-    value.ReplaceAllUsesWith(new_value);
-  }
-  op->Erase();
-}
-
 class CommonSubexpressionEliminationPass : public pir::Pass {
  public:
   CommonSubexpressionEliminationPass()
@@ -354,12 +343,33 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
                                &root_expression_table);
     std::cout << "Found " << cse_analyzer.to_erase_ops.size()
               << " common subexpression" << std::endl;
+
+    // TODO(SigureMo): For debug only, remove it before merge
+    size_t cse_count = 0;
+    const size_t cse_max_count = []() {
+      size_t cse_max_count;
+      const char* cse_max_count_str_ptr = getenv("CSE_MAX_COUNT");
+      if (cse_max_count_str_ptr == nullptr) {
+        return std::numeric_limits<size_t>::max();
+      }
+      const std::string cse_max_count_str = cse_max_count_str_ptr;
+      VLOG(3) << "CSE_MAX_COUNT: " << cse_max_count_str;
+      std::numeric_limits<size_t>::max();
+      if (cse_max_count_str != "") {
+        cse_max_count = std::stoi(cse_max_count_str);
+      }
+      return cse_max_count;
+    }();
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
-      VLOG(3) << "Erasing op " << op->name() << " [" << op << "]";
-      VLOG(3) << "Replace to op " << existing_op->name() << " [" << existing_op
-              << "]";
-      ReplaceOpWith(op, existing_op);
+      if (cse_count >= cse_max_count) {
+        break;
+      }
+      VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
+              << existing_op->name() << " [" << existing_op << "]";
+      op->ReplaceAllUsesWith(existing_op->results());
+      op->Erase();
       num_erasers++;
+      cse_count++;
     }
     AddStatistics(num_erasers);
   }
