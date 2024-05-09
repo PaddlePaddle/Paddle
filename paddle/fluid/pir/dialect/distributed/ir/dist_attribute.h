@@ -105,28 +105,26 @@ class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
   using Base::Base;
   ProcessMeshAttribute process_mesh_attr() const;
 
-  const std::vector<Attribute>& operand_attrs() const;
-  TensorDistAttribute operand_dist_attr(uint32_t index) const;
-  pir::ArrayAttribute operand_array_attr(uint32_t index) const;
+  const std::vector<Attribute>& operands() const;
+  pir::Attribute operand(uint32_t index) const { return operands().at(index); }
   uint32_t num_operands() const;
 
-  const std::vector<Attribute>& result_attrs() const;
-  TensorDistAttribute result_dist_attr(uint32_t index) const;
-  pir::ArrayAttribute result_array_attr(uint32_t index) const;
+  const std::vector<Attribute>& results() const;
+
+  pir::Attribute result(uint32_t index) const { return results().at(index); }
+
   uint32_t num_results() const;
 
   static OperationDistAttribute get(pir::IrContext* ctx,
                                     ProcessMeshAttribute mesh,
-                                    const std::vector<Attribute>& operand_attrs,
-                                    const std::vector<Attribute>& result_attrs);
+                                    const std::vector<Attribute>& operands,
+                                    const std::vector<Attribute>& results);
 
-  static OperationDistAttribute get(
-      pir::IrContext* ctx,
-      const phi::distributed::ProcessMesh& mesh,
-      const std::vector<Attribute>& operand_attrs,
-      const std::vector<Attribute>& result_attrs) {
-    return get(
-        ctx, ProcessMeshAttribute::get(ctx, mesh), operand_attrs, result_attrs);
+  static OperationDistAttribute get(pir::IrContext* ctx,
+                                    const phi::distributed::ProcessMesh& mesh,
+                                    const std::vector<Attribute>& operands,
+                                    const std::vector<Attribute>& results) {
+    return get(ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results);
   }
 };
 

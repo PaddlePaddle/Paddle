@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
