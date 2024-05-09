@@ -591,6 +591,11 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_TESTING)
     if(NOT APPLE)
+      if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
+        inference_download_and_uncompress_without_verify(
+          ${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL}
+          "word2vec.inference.model.tar.gz")
+      endif()
       inference_base_test(
         test_api_impl
         SRCS
