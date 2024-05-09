@@ -2500,6 +2500,7 @@
     data_type : x
   optional : boxes_num
   backward : roi_align_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : roi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0)
