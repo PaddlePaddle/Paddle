@@ -34,7 +34,7 @@ class TestShadowOutputSlice(unittest.TestCase):
                 y = paddle.static.data(
                     name="y", shape=[3, 9, 5], dtype="float32"
                 )
-                paddle.rand([10])  # will be eliminated
+                z = x * y  # will be eliminated
 
                 _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
                 helper = LayerHelper('shadow_output')
@@ -47,20 +47,18 @@ class TestShadowOutputSlice(unittest.TestCase):
 
         new_program = pir.translate_to_pir(main_program.desc)
         op_names = [op.name() for op in new_program.global_block().ops]
-        # print(op_names)
-        self.assertTrue('pd_op.uniform' in op_names)
+        self.assertTrue('pd_op.multiply' in op_names)
         pm = pir.PassManager()
         pm.add_pass(
             'dead_code_elimination_pass', {}
         )  # apply pass to eliminate dead code
         pm.run(new_program)
         op_names = [op.name() for op in new_program.global_block().ops]
-        # print(op_names)
         self.assertEqual(pm.passes(), ['dead_code_elimination_pass'])
         self.assertFalse(pm.empty())
         self.assertTrue(
-            'pd_op.uniform' not in op_names
-        )  # uniform is eliminated because its output is not used
+            'pd_op.multiply' not in op_names
+        )  # multiply is eliminated because its output is not used
 
 
 if __name__ == "__main__":

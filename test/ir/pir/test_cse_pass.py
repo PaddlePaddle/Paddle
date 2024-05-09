@@ -219,7 +219,7 @@ class TestCSECommutative(unittest.TestCase, AssertOpCountEqualMixin):
 
             def expr(x1, x2, x3):
                 a = x1 + x2
-                b = x1 * x2
+                b = x2 * x1
                 c = paddle.maximum(b, a)
                 d = paddle.minimum(c, x3)
                 e = paddle.logical_and(d, c)
@@ -287,12 +287,12 @@ class TestCSESubBlock(unittest.TestCase, AssertOpCountEqualMixin):
             def expr(x1, x2):
                 return x1 * x2
 
-            # Expr1
+            # Expr1 in global block
             a = expr(x1, x2)
 
             # Expr2 in subblock
             def loop_body(loop_var):
-                inner_var = expr(x1, x2)
+                tmp_var = expr(x1, x2)
                 return [loop_var + 1]
 
             def get_cond(loop_var):
@@ -304,9 +304,91 @@ class TestCSESubBlock(unittest.TestCase, AssertOpCountEqualMixin):
             apply_cse(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.multiply": 1})
 
+    def test_nested_subblock(self):
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+            x2 = paddle.static.data("x2", [2, 2], dtype="float32")
+            cond = paddle.static.data("cond", [], dtype="bool")
+            loop_var = paddle.static.data("i", [], dtype="int32")
 
-# TODO: random
-# TODO: side effect
-# TODO: inplace
+            def expr(x1, x2):
+                return x1 * x2
+
+            # Expr1 in global block
+            a = expr(x1, x2)
+
+            # Expr2 in outer subblock
+            def outer_loop_body(loop_var):
+                # Expr3 in inner subblock
+                def inner_loop_body(loop_var):
+                    inner_tmp_var = expr(x1, x2)
+                    return [loop_var + 1]
+
+                def inner_get_cond(loop_var):
+                    return cond
+
+                outer_tmp_var = expr(x1, x2)
+                paddle.static.nn.while_loop(
+                    inner_get_cond, inner_loop_body, [loop_var]
+                )
+                return [loop_var + 1]
+
+            def outer_get_cond(loop_var):
+                return cond
+
+            paddle.static.nn.while_loop(
+                outer_get_cond, outer_loop_body, [loop_var]
+            )
+
+            self.assert_op_count_equal(main_program, {"pd_op.multiply": 3})
+            apply_cse(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.multiply": 1})
+
+
+class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
+    def test_can_not_replace_random(self):
+        # Random OP will change the global state, it has side effect
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.rand([2, 2], dtype="float32")
+            x2 = paddle.rand([2, 2], dtype="float32")
+
+            self.assert_op_count_equal(main_program, {"pd_op.uniform": 2})
+            apply_cse(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.uniform": 2})
+
+    def test_can_not_replace_print(self):
+        # print op will output to stdout, it has side effect
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+
+            paddle.static.Print(x1)
+            paddle.static.Print(x1)
+
+            print(main_program)
+
+            self.assert_op_count_equal(main_program, {"pd_op.print": 2})
+            apply_cse(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.print": 2})
+
+    def test_can_not_replace_used_by_inplace_op(self):
+        # If the op results is used by inplace op, i.e. the results
+        # will be modified, we can not replace it
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+            x2 = paddle.static.data("x2", [2, 2], dtype="float32")
+
+            a = x1 + x2
+            b = x1 + x2
+            paddle.assign(paddle.full([2, 2], 0, dtype="float32"), b)
+
+            self.assert_op_count_equal(main_program, {"pd_op.add": 2})
+            apply_cse(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.add": 2})
+
+
 if __name__ == "__main__":
     unittest.main()
