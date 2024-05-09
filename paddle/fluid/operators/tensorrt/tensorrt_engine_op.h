@@ -38,6 +38,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -320,11 +321,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                   t,
                   DataType::INT32);
             }
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 int32_host.data(),
-                                 platform::CPUPlace(),
-                                 int32_tensor.data<int>(),
-                                 int32_tensor.numel() * sizeof(int));
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    int32_host.data(),
+                                    platform::CPUPlace(),
+                                    int32_tensor.data<int>(),
+                                    int32_tensor.numel() * sizeof(int));
           } else if (platform::is_gpu_place(t.place())) {
 #if defined(PADDLE_WITH_CUDA)
             auto *dev_ctx = pool.Get(t.place());
@@ -335,12 +336,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                   t,
                   DataType::INT32);
             }
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 int32_host.data(),
-                                 int32_tensor.place(),
-                                 int32_tensor.data<int>(),
-                                 int32_tensor.numel() * sizeof(int),
-                                 nullptr);
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    int32_host.data(),
+                                    int32_tensor.place(),
+                                    int32_tensor.data<int>(),
+                                    int32_tensor.numel() * sizeof(int),
+                                    nullptr);
 #endif
           }
           runtime_shape_tensor[name] = int32_host;
@@ -619,12 +620,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 t.place(),
-                                 t.data<int32_t>(),
-                                 t.numel() * sizeof(int),
-                                 nullptr);
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    shape_v.data(),
+                                    t.place(),
+                                    t.data<int32_t>(),
+                                    t.numel() * sizeof(int),
+                                    nullptr);
           } else if (t.dtype() == phi::DataType::INT64) {
             std::string x_t = x + "_cast_to_INT32";
             if (scope.FindVar(x_t) == nullptr) {
@@ -636,12 +637,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 int32_tensor->place(),
-                                 int32_tensor->data<int32_t>(),
-                                 int32_tensor->numel() * sizeof(int),
-                                 nullptr);
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    shape_v.data(),
+                                    int32_tensor->place(),
+                                    int32_tensor->data<int32_t>(),
+                                    int32_tensor->numel() * sizeof(int),
+                                    nullptr);
           }
           trt_context->setTensorAddress(x.c_str(), shape_v.data());
         } else {
@@ -656,12 +657,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 t.place(),
-                                 t.data<int32_t>(),
-                                 t.numel() * sizeof(int),
-                                 nullptr);
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    shape_v.data(),
+                                    t.place(),
+                                    t.data<int32_t>(),
+                                    t.numel() * sizeof(int),
+                                    nullptr);
           } else if (t.dtype() == phi::DataType::INT64) {
             std::string x_t = x + "_cast_to_INT32";
             if (scope.FindVar(x_t) == nullptr) {
@@ -673,12 +674,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 int32_tensor->place(),
-                                 int32_tensor->data<int32_t>(),
-                                 int32_tensor->numel() * sizeof(int),
-                                 nullptr);
+            phi::memory_utils::Copy(platform::CPUPlace(),
+                                    shape_v.data(),
+                                    int32_tensor->place(),
+                                    int32_tensor->data<int32_t>(),
+                                    int32_tensor->numel() * sizeof(int),
+                                    nullptr);
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }

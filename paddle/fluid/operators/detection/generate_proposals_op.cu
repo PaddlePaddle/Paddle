@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/bbox_util.cu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -79,12 +80,12 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
                                               keep_index.data<int>());
   int keep_num;
   const auto gpu_place = ctx.GetPlace();
-  memory::Copy(platform::CPUPlace(),
-               &keep_num,
-               gpu_place,
-               keep_num_t.data<int>(),
-               sizeof(int),
-               ctx.stream());
+  phi::memory_utils::Copy(platform::CPUPlace(),
+                          &keep_num,
+                          gpu_place,
+                          keep_num_t.data<int>(),
+                          sizeof(int),
+                          ctx.stream());
   ctx.Wait();
   keep_index.Resize({keep_num});
 
@@ -221,18 +222,18 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       phi::DenseTensor &proposals = box_score_pair.first;
       phi::DenseTensor &scores = box_score_pair.second;
 
-      memory::Copy(place,
-                   rpn_rois_data + num_proposals * 4,
-                   place,
-                   proposals.data<T>(),
-                   sizeof(T) * proposals.numel(),
-                   dev_ctx.stream());
-      memory::Copy(place,
-                   rpn_roi_probs_data + num_proposals,
-                   place,
-                   scores.data<T>(),
-                   sizeof(T) * scores.numel(),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rpn_rois_data + num_proposals * 4,
+                              place,
+                              proposals.data<T>(),
+                              sizeof(T) * proposals.numel(),
+                              dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rpn_roi_probs_data + num_proposals,
+                              place,
+                              scores.data<T>(),
+                              sizeof(T) * scores.numel(),
+                              dev_ctx.stream());
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
       tmp_num.push_back(proposals.dims()[0]);
@@ -241,12 +242,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
-      memory::Copy(place,
-                   num_data,
-                   cpu_place,
-                   &tmp_num[0],
-                   sizeof(int) * num,
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              num_data,
+                              cpu_place,
+                              &tmp_num[0],
+                              sizeof(int) * num,
+                              dev_ctx.stream());
       rpn_rois_num->Resize({num});
     }
     framework::LoD lod;
