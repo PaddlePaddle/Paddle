@@ -24,6 +24,7 @@ class IrMapping;
 class Block;
 class Operation;
 class Builder;
+class IrMapping;
 }  // namespace pir
 
 namespace cinn::dialect::details {

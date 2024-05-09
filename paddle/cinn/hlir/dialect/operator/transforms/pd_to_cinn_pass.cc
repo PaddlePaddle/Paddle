@@ -56,6 +56,7 @@ class SumOpPattern : public paddle::drr::DrrPatternBase {
     const auto &cinn_reduce_sum =
         res.Op(cinn::dialect::ReduceSumOp::name(),
                {{"dim", pattern.Attr("axis_info")},
+                {"dtype", pattern.Attr("dtype")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
@@ -128,8 +129,10 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
                     {"dtype", pattern.Attr("dtype_2")},
                     {"place", pattern.Attr("place_2")}});
 
-    const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
-                                    {{"keep_dim", pattern.Attr("keep_dim")}});
+    const auto &pd_max =
+        pattern.Op(paddle::dialect::ProdOp::name(),
+                   {{"keep_dim", pattern.Attr("keep_dim")},
+                    {"reduce_all", pattern.Attr("reduce_all")}});
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
@@ -137,7 +140,8 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceProdOp::name(),
                {{"dim", pattern.Attr("axis_info")},
-                {"keep_dim", pattern.Attr("keep_dim")}});
+                {"keep_dim", pattern.Attr("keep_dim")},
+                {"reduce_all", pattern.Attr("reduce_all")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
 };
