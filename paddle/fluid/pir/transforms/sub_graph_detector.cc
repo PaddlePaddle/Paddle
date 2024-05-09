@@ -278,6 +278,17 @@ struct RecursiveOpGetter {
   }
 };
 
+static OperatorSet SetDifference(const OperatorSet& upstream,
+                                 const OperatorSet& downstream) {
+  OperatorSet diff_set;
+  for (auto& item : upstream) {
+    if (!downstream.count(item)) {
+      diff_set.insert(item);
+    }
+  }
+  return diff_set;
+}
+
 static OperatorSet UpstreamSet(const OperatorSet& unioned_set) {
   // memory search:
   OperatorSet upstream_set;
@@ -286,17 +297,17 @@ static OperatorSet UpstreamSet(const OperatorSet& unioned_set) {
     auto producers = GetProducerOpsRecursive(op);
     upstream_set.insert(producers.begin(), producers.end());
   }
-  return upstream_set;
+  return SetDifference(upstream_set, unioned_set);
 }
 
 static OperatorSet DownstreamSet(const OperatorSet& unioned_set) {
-  OperatorSet downsream;
+  OperatorSet downstream;
   auto GetConsumerOpsRecursive = RecursiveOpGetter(GetConsumerOps);
   for (auto& op : unioned_set) {
     auto producers = GetConsumerOpsRecursive(op);
-    downsream.insert(producers.begin(), producers.end());
+    downstream.insert(producers.begin(), producers.end());
   }
-  return downsream;
+  return SetDifference(downstream, unioned_set);
 }
 
 static bool HasLoopAfterMerge(const OperatorSet& upstream,
