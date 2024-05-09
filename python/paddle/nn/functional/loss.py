@@ -4292,8 +4292,8 @@ def adaptive_log_softmax_with_loss(
     Args:
         input (Tensor): Input tensor, the data type should be float32 or float64.
         label (Tensor): Label tensor, the data type should be float32 or float64.
-        head_weight (Tensor): weight tensor for linear computation, the data type should be float32 or float64.
-        tail_weights (Tensor): weight tensor for linear computation, the data type should be float32 or float64.
+        head_weight (Tensor): weight tensor for linear computation, the data type should be float32 or float64, the shape should be [input.shape[1], shortlist_size + n_clusters], where shortlist_size is the first element in the cutoffs list, and n_clusters is the length of the cutoffs list minus 1.
+        tail_weights (list[Tensor]): weight tensor list for linear computation, the data type should be float32 or float64. The number of elements in the tail_weights depends on the value of the n_clusters, and each element contains the weights of two linear layers, their dimensions are [input.shape[1], hsz] and [hsz, osz], where hsz is the number of input features in_features divided by div_value to the power (i + 1), where i is the cyclic variable, from 0 to n_clusters - 1, and osz is the (i + 1) The difference between the cutoff and the ith cutoff.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
         head_bias (Tensor, optional): bias tensor for linear computation, the data type should be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
