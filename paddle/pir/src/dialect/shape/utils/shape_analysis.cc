@@ -181,7 +181,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     if (gtone_list->size() == 1) {
       simplified_dim_expr = gtone_list->at(0);
     } else if (gtone_list->size() > 1) {
-      for (int i = 1; i <= gtone_list->size(); i++) {
+      for (size_t i = 1; i < gtone_list->size(); i++) {
         AddEqualCstr(gtone_list->at(0), gtone_list->at(i));
       }
       simplified_dim_expr = gtone_list->at(0);
@@ -189,32 +189,33 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     return simplified_dim_expr;
   };
 
-  auto SimplifyInShapeOrData =
+  auto DimExprsVisitor =
+      [&](const std::vector<symbol::DimExpr>& original_dim_expr)
+      -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> simplified_dim_exprs{};
+    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
+      // TODO(jiawenxuan): recursively evaluate each dim expr
+      if (dim_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
+        const auto& simplified_dim_expr = SimplifyBroadcast(
+            dim_expr.Get<symbol::Broadcast<symbol::DimExpr>>());
+        simplified_dim_exprs.push_back(simplified_dim_expr);
+      } else {
+        simplified_dim_exprs.push_back(dim_expr);
+      }
+    }
+    return simplified_dim_exprs;
+  };
+
+  auto TensorShapeOrDataVisitor =
       [&](const symbol::TensorShapeOrDataDimExprs& shape_or_data)
       -> symbol::TensorShapeOrDataDimExprs {
-    auto SimplifyOneDimExpr =
-        [&](const std::vector<symbol::DimExpr>& original_dim_expr)
-        -> std::vector<symbol::DimExpr> {
-      std::vector<symbol::DimExpr> simplified_dim_exprs{};
-      for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-        // TODO(jiawenxuan): recursively evaluate each dim expr
-        if (dim_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
-          const auto& simplified_dim_expr = SimplifyBroadcast(
-              dim_expr.Get<symbol::Broadcast<symbol::DimExpr>>());
-          simplified_dim_exprs.push_back(simplified_dim_expr);
-        } else {
-          simplified_dim_exprs.push_back(dim_expr);
-        }
-      }
-      return simplified_dim_exprs;
-    };
     std::vector<symbol::DimExpr> simplified_shape =
-        SimplifyOneDimExpr(shape_or_data.shape());
+        DimExprsVisitor(shape_or_data.shape());
     if (!shape_or_data.data().has_value()) {
       return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
     } else {
       std::vector<symbol::DimExpr> simplified_data =
-          SimplifyOneDimExpr(shape_or_data.data().value());
+          DimExprsVisitor(shape_or_data.data().value());
       return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
                                                   simplified_data);
     }
@@ -223,14 +224,14 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
   auto ShapeOrDataVisitor = common::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(
-            SimplifyInShapeOrData(tensor_shape_or_data));
+            TensorShapeOrDataVisitor(tensor_shape_or_data));
       },
       [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
         symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
         for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
              tensor_list) {
           simplified_tensor_list.push_back(
-              SimplifyInShapeOrData(tensor_shape_or_data));
+              TensorShapeOrDataVisitor(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       }};
