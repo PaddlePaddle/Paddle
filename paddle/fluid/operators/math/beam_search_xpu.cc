@@ -46,9 +46,9 @@ void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
 }
 
 template <typename T>
-class BeamSearchFunctor<platform::XPUDeviceContext, T> {
+class BeamSearchFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const platform::XPUDeviceContext &context,
+  void operator()(const phi::XPUContext &context,
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,
@@ -354,10 +354,10 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
   }
 };
 
-template class BeamSearchFunctor<platform::XPUDeviceContext, int>;
-template class BeamSearchFunctor<platform::XPUDeviceContext, int64_t>;
-template class BeamSearchFunctor<platform::XPUDeviceContext, float>;
-template class BeamSearchFunctor<platform::XPUDeviceContext, double>;
+template class BeamSearchFunctor<phi::XPUContext, int>;
+template class BeamSearchFunctor<phi::XPUContext, int64_t>;
+template class BeamSearchFunctor<phi::XPUContext, float>;
+template class BeamSearchFunctor<phi::XPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

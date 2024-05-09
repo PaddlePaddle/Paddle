@@ -63,7 +63,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     std::vector<const XPUType *> x_list = {
         reinterpret_cast<const XPUType *>(input_x->data<T>())};
@@ -223,7 +223,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     bool fuse_add = ctx.Attr<bool>("fuse_add");
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     std::vector<const XPUType *> x_list = {
         reinterpret_cast<const XPUType *>(x->data<T>())};

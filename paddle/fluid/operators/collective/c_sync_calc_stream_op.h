@@ -54,7 +54,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
                       phi::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
 
-    auto dev_ctx = static_cast<platform::XPUDeviceContext*>(
+    auto dev_ctx = static_cast<phi::XPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
 #else
