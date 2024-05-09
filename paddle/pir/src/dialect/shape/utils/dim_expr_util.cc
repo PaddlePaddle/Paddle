@@ -1063,7 +1063,7 @@ DimExpr SubstituteDimExpr(
 namespace symbol {
 
 IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
-  return std::visit(Overloaded{
+  return std::visit(common::Overloaded{
                         [&](std::int64_t) { return 0; },
                         [&](const std::string&) { return 1; },
                         [&](const Negative<DimExpr>&) { return 2; },
@@ -1087,7 +1087,7 @@ IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
                                        : PriorityComparisonStatus::LOWER;
   }
 
-  auto CompareForEqualPriority = Overloaded{
+  auto CompareForEqualPriority = common::Overloaded{
       [](const std::string& lhs, const std::string& rhs) {
         if (lhs.size() != rhs.size()) {
           return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
@@ -1130,7 +1130,7 @@ void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
 std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   std::unordered_set<std::string> symbols;
   // clang-format off
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](std::int64_t dim_expr) { return; },
       [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
       [&](const Negative<DimExpr>& dim_expr) {
