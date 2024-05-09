@@ -3846,6 +3846,13 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: detection_map
+  backward: detection_map_grad
+  inputs:
+    {detect_res : DetectRes, label : Label, has_state : HasState, pos_count : PosCount, true_pos : TruePos, false_pos : FalsePos}
+  outputs:
+    {accum_pos_count : AccumPosCount, accum_true_pos : AccumTruePos, accum_false_pos : AccumFalsePos, m_ap : MAP}
+
 - op: dgc
   inputs:
     {u: U, v: V, grad: Grad}
