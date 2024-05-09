@@ -1665,7 +1665,7 @@
   backward : shuffle_batch_grad
 
 - op : shuffle_channel
-  args : (Tensor x, int groups = 1)
+  args : (Tensor x, int group = 1)
   output : Tensor(out)
   infer_meta :
     func : ShuffleChannelInferMeta
