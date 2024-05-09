@@ -168,7 +168,7 @@ namespace {
 
 bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
                                   const symbol::DimExpr& rhs) {
-  auto CanSubstitutePredictor = symbol::Overloaded{
+  auto CanSubstitutePredictor = ::common::Overloaded{
       [](std::int64_t lhs, const auto& rhs) { return true; },
       [](const std::string& lhs, const std::string& rhs) { return true; },
       [](const std::string& lhs,
@@ -545,7 +545,8 @@ ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
   return instance;
 }
 
-ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
+ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(
+    const pir::Program* program) {
   auto it = tables_.find(program->module_op().operation()->id());
 
   if (it == tables_.end()) {
