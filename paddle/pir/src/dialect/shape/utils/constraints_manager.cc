@@ -236,11 +236,10 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
   substitution_pattern[origin] = substituted;
 
   EqualConstraints substituted_equals;
-  auto substituted_equals_map = substituted_equals.GetMap();
   EqualConstraintsVisitor([&](auto it) {
     DimExpr key = SubstituteDimExpr(it->first, substitution_pattern);
     DimExpr value = SubstituteDimExpr(it->second, substitution_pattern);
-    (*substituted_equals_map)[key] = value;
+    substituted_equals.Union(key, value);
   });
   equals_ = substituted_equals;
 
