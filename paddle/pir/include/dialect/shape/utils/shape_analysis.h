@@ -146,7 +146,7 @@ class IR_API ShapeConstraintIRAnalysis final
 class IR_API ShapeAnalysisManager {
  public:
   static ShapeAnalysisManager& Instance();
-  ShapeConstraintIRAnalysis& Get(pir::Program* program);
+  ShapeConstraintIRAnalysis& Get(const pir::Program* program);
 
   ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
   ShapeAnalysisManager(ShapeAnalysisManager&&) = delete;

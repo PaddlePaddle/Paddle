@@ -23,7 +23,7 @@ using cinn::dialect::ir::details::OpLoweringGroup;
 using cinn::dialect::ir::details::OpLoweringGroupPtr;
 
 bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [](std::int64_t dim_expr) { return false; },
       [](const std::string& dim_expr) { return false; },
       [](const symbol::Negative<symbol::DimExpr>& dim_expr) { return true; },
@@ -62,7 +62,7 @@ void VisitEachDimExprFromTensorShapeOrData(
 template <typename DoEachT>
 void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
                       const DoEachT& DoEach) {
-  auto lambdas = symbol::Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
       },
