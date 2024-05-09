@@ -248,13 +248,17 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
                 'selected_rows',
                 'sparse_coo',
                 'sparse_csr',
-            ], f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                'vec::sparse_coo',
+                'vec::sparse_csr',
+            ], f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' , 'sparse_csr' , 'vec::sparse_coo' and 'vec::sparse_csr' ."
         for item in outputs:
             assert item in [
                 'dense',
                 'selected_rows',
                 'sparse_coo',
                 'sparse_csr',
+                'vec::sparse_coo',
+                'vec::sparse_csr',
             ], f"{op_name} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
 
         return (inputs, outputs)

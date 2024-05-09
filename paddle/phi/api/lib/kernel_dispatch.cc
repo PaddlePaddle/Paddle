@@ -176,7 +176,9 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
 
 phi::DataLayout ParseLayout(phi::DataLayout layout) { return layout; }
 phi::DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
-
+phi::DataLayout ParseLayout(const std::vector<Tensor>& x) {
+  return x[0].layout();
+}
 phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
                                           const Tensor& tensor) {
   return layout != phi::DataLayout::UNDEFINED ? layout : ParseLayout(tensor);

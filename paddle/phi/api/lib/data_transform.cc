@@ -550,6 +550,26 @@ paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
   return paddle::none;
 }
 
+std::shared_ptr<std::vector<phi::SparseCooTensor>>
+PrepareDataForVecSparseCooTensor(const std::vector<Tensor>& inputs) {
+  auto pt_tensors = std::make_unique<std::vector<phi::SparseCooTensor>>();
+  pt_tensors->reserve(inputs.size());
+  for (const auto& input : inputs) {
+    auto i = PrepareDataForSparseCooTensor(input);
+    pt_tensors->emplace_back(*i);
+  }
+  return pt_tensors;
+}
+
+paddle::optional<std::vector<phi::SparseCooTensor>>
+PrepareDataForVecSparseCooTensor(
+    const paddle::optional<std::vector<Tensor>>& inputs) {
+  if (inputs) {
+    return *PrepareDataForVecSparseCooTensor(*inputs);
+  }
+  return paddle::none;
+}
+
 std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const Tensor& input) {
   const auto& tensor_in = input.impl();
@@ -585,6 +605,26 @@ paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const paddle::optional<Tensor>& input) {
   if (input) {
     return *PrepareDataForSparseCsrTensor(*input);
+  }
+  return paddle::none;
+}
+
+std::shared_ptr<std::vector<phi::SparseCsrTensor>>
+PrepareDataForVecSparseCsrTensor(const std::vector<Tensor>& inputs) {
+  auto pt_tensors = std::make_unique<std::vector<phi::SparseCsrTensor>>();
+  pt_tensors->reserve(inputs.size());
+  for (const auto& input : inputs) {
+    auto i = PrepareDataForSparseCsrTensor(input);
+    pt_tensors->emplace_back(*i);
+  }
+  return pt_tensors;
+}
+
+paddle::optional<std::vector<phi::SparseCsrTensor>>
+PrepareDataForVecSparseCsrTensor(
+    const paddle::optional<std::vector<Tensor>>& inputs) {
+  if (inputs) {
+    return *PrepareDataForVecSparseCsrTensor(*inputs);
   }
   return paddle::none;
 }

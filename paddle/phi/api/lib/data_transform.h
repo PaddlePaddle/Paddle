@@ -128,12 +128,28 @@ std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
 paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
     const paddle::optional<Tensor>& input);
 
+// The function implementation relies on PrepareDataForVecSparseCooTensor
+std::shared_ptr<std::vector<phi::SparseCooTensor>>
+PrepareDataForVecSparseCooTensor(const std::vector<Tensor>& inputs);
+
+paddle::optional<std::vector<phi::SparseCooTensor>>
+PrepareDataForVecSparseCooTensor(
+    const paddle::optional<std::vector<Tensor>>& inputs);
+
 // Only support transfering contiguous for SparseCsrTensor
 std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const Tensor& input);
 
 paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const paddle::optional<Tensor>& input);
+
+// The function implementation relies on PrepareDataForVecSparseCsrTensor
+std::shared_ptr<std::vector<phi::SparseCsrTensor>>
+PrepareDataForVecSparseCsrTensor(const std::vector<Tensor>& inputs);
+
+paddle::optional<std::vector<phi::SparseCsrTensor>>
+PrepareDataForVecSparseCsrTensor(
+    const paddle::optional<std::vector<Tensor>>& inputs);
 
 // Only support transfering contiguous
 std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(

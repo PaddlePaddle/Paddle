@@ -94,6 +94,13 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return false;
   }
 
+  bool IsSparseCooTensorVectorInput(const std::string& name) const override {
+    return false;
+  }
+  bool IsSparseCsrTensorVectorInput(const std::string& name) const override {
+    return false;
+  }
+
   bool IsSparseCooTensorOutput(const std::string& name) const override {
     return false;
   }

@@ -241,6 +241,7 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
 phi::DataLayout ParseLayout(phi::DataLayout layout);
 phi::DataLayout ParseLayout(const Tensor& tensor);
+phi::DataLayout ParseLayout(const std::vector<Tensor>& x);
 phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
                                           const Tensor& tensor);
 

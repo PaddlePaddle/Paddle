@@ -44,6 +44,9 @@ class PluginArgumentMappingContext : public ::phi::ArgumentMappingContext {
 
   bool IsDenseTensorInputs(const std::string& name) const override;
 
+  bool IsSparseCooTensorVectorInput(const std::string& name) const override;
+  bool IsSparseCsrTensorVectorInput(const std::string& name) const override;
+
   bool IsSelectedRowsInput(const std::string& name) const override;
 
   bool IsSelectedRowsInputs(const std::string& name) const override;

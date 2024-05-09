@@ -676,7 +676,18 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
       return var->IsType<framework::LoDTensorArray>();
     });
   }
-
+  bool IsSparseCooTensorVectorInput(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SparseCooTensor>();
+    });
+  }
+  bool IsSparseCsrTensorVectorInput(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SparseCsrTensor>();
+    });
+  }
   bool IsSparseCooTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SparseCooTensor>();

@@ -101,6 +101,16 @@ bool PluginArgumentMappingContext::IsDenseTensorInputs(
   return true;
 }
 
+bool PluginArgumentMappingContext::IsSparseCooTensorVectorInput(
+    const std::string& name) const {
+  return true;
+}
+
+bool PluginArgumentMappingContext::IsSparseCsrTensorVectorInput(
+    const std::string& name) const {
+  return true;
+}
+
 bool PluginArgumentMappingContext::IsDenseTensorVectorInput(
     const std::string& name) const {
   PADDLE_THROW(phi::errors::Unimplemented(

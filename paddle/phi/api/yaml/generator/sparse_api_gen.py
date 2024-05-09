@@ -106,6 +106,7 @@ class SparseAPI(ForwardAPI):
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
         input_types = self.inputs['tensor_type']
+        output_types = self.outputs['types']
 
         tensor_type_map = {
             'dense': 'phi::DenseTensor',
@@ -198,6 +199,15 @@ class SparseAPI(ForwardAPI):
                         + f"""
     kernel_context.EmplaceBackInput({param} ? &(*{PREFIX_TENSOR_NAME}{param}) : nullptr);"""
                     )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
+                    kernel_context_code = (
+                        kernel_context_code
+                        + f"""
+    kernel_context.EmplaceBackInputs({PREFIX_TENSOR_NAME}{param});"""
+                    )
                 else:
                     kernel_context_code = (
                         kernel_context_code
@@ -222,12 +232,19 @@ class SparseAPI(ForwardAPI):
     kernel_context.EmplaceBackAttr({param});"""
             )
 
-        for out_name in kernel_output_names:
-            kernel_context_code = (
-                kernel_context_code
-                + f"""
-    kernel_context.EmplaceBackOutput({out_name});"""
-            )
+        for i, out_name in enumerate(kernel_output_names):
+            if output_types[i] == 'std::vector<Tensor>':
+                kernel_context_code = (
+                    kernel_context_code
+                    + f"""
+        kernel_context.EmplaceBackOutputs({out_name});"""
+                )
+            else:
+                kernel_context_code = (
+                    kernel_context_code
+                    + f"""
+        kernel_context.EmplaceBackOutput({out_name});"""
+                )
 
         return kernel_context_code
 
@@ -280,6 +297,37 @@ class SparseAPI(ForwardAPI):
                             + "PrepareDataForDenseTensorInSparse("
                             + param
                             + ");\n"
+                        )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
+                    var_name = (
+                        "    auto " + PREFIX_TENSOR_NAME + param + "_vec = "
+                    )
+                    if inputsname2tensortype[param] == "vec::sparse_coo":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForVecSparseCooTensor("
+                            + param
+                            + ");\n"
+                            + "    std::vector<const phi::SparseCooTensor*> input_x(input_x_vec->size());\n"
+                            + "    for (size_t i = 0; i < input_x.size(); ++i) {\n"
+                            + "        input_x[i] = &input_x_vec->at(i);\n"
+                            + "    }\n"
+                        )
+                    elif inputsname2tensortype[param] == "vec::sparse_csr":
+                        create_input_var_code = (
+                            create_input_var_code
+                            + var_name
+                            + "PrepareDataForVecSparseCsrTensor("
+                            + param
+                            + ");\n"
+                            + "    std::vector<const phi::SparseCsrTensor*> input_x(input_x_vec->size());\n"
+                            + "    for (size_t i = 0; i < input_x.size(); ++i) {\n"
+                            + "        input_x[i] = &input_x_vec->at(i);\n"
+                            + "    }\n"
                         )
                 elif param in self.optional_vars:
                     tensor_type = 'phi::DenseTensor'
@@ -371,6 +419,14 @@ class SparseAPI(ForwardAPI):
                 if in_type == 'sparse_coo':
                     condition_list.append(
                         f"{self.inputs['names'][i]}.is_sparse_coo_tensor()"
+                    )
+                elif in_type == 'vec::sparse_coo':
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}[0].is_sparse_coo_tensor()"
+                    )
+                elif in_type == 'vec::sparse_csr':
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}[0].is_sparse_csr_tensor()"
                     )
                 else:
                     condition_list.append(

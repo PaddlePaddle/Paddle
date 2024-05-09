@@ -216,6 +216,10 @@ ctx.IsSelectedRowsInput("{{input["fluid_name"]}}"){{" && " if not loop.last}}
 ctx.IsSparseCooTensorInput("{{input["fluid_name"]}}"){{" && " if not loop.last}}
       {%- elif kernel_in_type_list[input_idx.idx] == "sparse_csr" %}
 ctx.IsSparseCsrTensorInput("{{input["fluid_name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "vec::sparse_coo" %}
+ctx.IsSparseCooTensorVectorInput("{{input["fluid_name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "vec::sparse_csr" %}
+ctx.IsSparseCsrTensorVectorInput("{{input["fluid_name"]}}"){{" && " if not loop.last}}
       {%- endif %}
       {% set input_idx.idx = input_idx.idx + 1 %}
     {%- endif %}

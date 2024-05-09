@@ -356,14 +356,18 @@ class BaseAPI:
                     'selected_rows',
                     'sparse_coo',
                     'sparse_csr',
-                ], f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                    'vec::sparse_coo',
+                    'vec::sparse_csr',
+                ], f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' , 'sparse_csr' , 'vec::sparse_coo' and 'vec::sparse_csr'."
             for item in outputs:
                 assert item in [
                     'dense',
                     'selected_rows',
                     'sparse_coo',
                     'sparse_csr',
-                ], f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                    'vec::sparse_coo',
+                    'vec::sparse_csr',
+                ], f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr', 'vec::sparse_coo' and 'vec::sparse_csr'."
 
             return (inputs, outputs)
 
