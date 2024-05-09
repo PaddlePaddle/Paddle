@@ -1,4 +1,4 @@
-# this file is migrated from CI script, it's an effort of modenizing our dev infra.
+# This file is migrated from CI script, it's an effort of modenizing our dev infra.
 # code owners are expected to take responsibility for review patches to respective file.
 
 CMakeLists.txt @wanghuancoder @luotao1 @Aurelius84 @XiaoguangHu01 @qili93
@@ -45,6 +45,7 @@ paddle/phi/core/tensor_meta.h @phlrain @zyfncg @YuanRisheng
 paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @zhiqiu
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder @luotao1 @Aurelius84
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
+pyproject.toml @SigureMo @gouzil
 python/paddle/autograd/backward_utils.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
 python/paddle/autograd/ir_backward.py @Aurelius84 @cxxly @xiaoguoguo626807 @changeyoung98
 python/paddle/base/backward.py @XiaoguangHu01 @zhiqiu @Xreki @luotao1 @qili93 @Aurelius84
@@ -63,9 +64,13 @@ python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py @juncaip
 python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py @juncaipeng @zhangting2020 @luotao1 @Aurelius84
 python/paddle/distributed/fleet/__init__.py @sneaxiy @raindrops2sea
 python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
-python/paddle/distributed/__init @sneaxiy @raindrops2sea
+python/paddle/distributed/__init__.py @sneaxiy @raindrops2sea
 python/paddle/incubate/autograd/composite_rules.py @cyber-pioneer @xiaoguoguo626807 @Charles-hit @JiabinYang
 python/paddle/incubate/autograd/primitives.py @cyber-pioneer @xiaoguoguo626807 @Charles-hit @JiabinYang
+python/paddle/jit @SigureMo @2742195759 @Aurelius84 @gouzil
 python/requirements.txt @phlrain @jzhang533 @kolinwei
+test/dygraph_to_static @SigureMo @2742195759 @Aurelius84 @gouzil
+test/sot @SigureMo @2742195759 @Aurelius84 @gouzil
 tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder @luotao1 @Aurelius84
 tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder @luotao1 @Aurelius84
+.pre-commit-config.yaml @SigureMo @gouzil
