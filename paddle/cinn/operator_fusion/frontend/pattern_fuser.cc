@@ -108,7 +108,15 @@ ExprPromise<FrontendStage> InitExprPromiseImpl(
 template <>
 TrivialPattern<FrontendStage> RecoverAnchorPatternToTrivial(
     const AnchorPattern<FrontendStage>& anchor_pattern) {
-  // TODO(@wuzhanfei)
+  PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "Can only recover AnchorPattern whose anchor_state "
+                        "size is 1 (exact %d)",
+                        anchor_pattern.anchor_state.promise.size()));
+
+  return TrivialPattern<FrontendStage>(anchor_pattern.ops(),
+                                       anchor_pattern.anchor().defining_op());
 }
 
 }  // namespace cinn::fusion
