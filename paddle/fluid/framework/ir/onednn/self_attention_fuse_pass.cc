@@ -55,12 +55,9 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   return;
 #endif
 
-#ifdef PADDLE_WITH_DNNL
-  if (!phi::backends::cpu::MayIUse(
-          phi::backends::cpu::cpu_isa_t::avx512_core)) {
+  if (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f)) {
     return;
   }
-#endif
 
   // do something;
   GraphPatternDetector gpd;
