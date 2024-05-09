@@ -28,7 +28,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
