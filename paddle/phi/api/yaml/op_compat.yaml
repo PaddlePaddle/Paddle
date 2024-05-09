@@ -1671,6 +1671,13 @@
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
+- op : global_gather
+  backward : global_gather_grad
+  inputs :
+    x : X
+  outputs:
+    out : Out
+
 - op : global_scatter
   inputs :
     {x : X}
@@ -3701,6 +3708,12 @@
   outputs :
     {boxes : Boxes, scores : Scores}
 
+- op : yolo_box_head
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
 - op : yolo_loss (yolov3_loss)
   backward: yolo_loss_grad (yolov3_loss_grad)
   inputs :
@@ -3818,6 +3831,14 @@
     {x: X}
   outputs:
     {out: Out}
+
+- op: cudnn_lstm
+  backward: cudnn_lstm_grad
+  inputs:
+    {x: Input, init_h: InitH, init_c: InitC, w: W, weight_list: WeightList, sequence_length: SequenceLength}
+  outputs:
+    {reserve: Reserve, state_out: StateOut, out: Out, last_h: LastH, last_c: LastC}
+  drop_empty_grad : [weight_list_grad]
 
 - op: decayed_adagrad
   inputs:
@@ -3984,6 +4005,17 @@
     x : X
   outputs :
     out : Out
+
+- op: moe
+  inputs:
+    x: X
+    gate: Gate
+    bmm0: Bmm0
+    bias0: Bias0
+    bmm1: Bmm1
+    bias1: Bias1
+  outputs:
+    out: Out
 
 - op: nce
   backward: nce_grad
