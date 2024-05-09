@@ -15,7 +15,7 @@
 import logging
 
 import paddle
-from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.base.log_helper import get_logger
@@ -113,8 +113,8 @@ class FakeQuantAbsMax(Layer):
             (
                 out,
                 _,
-            ) = _legacy_C_ops.fake_quantize_dequantize_abs_max(
-                input, quant_out, out_scale, *attrs
+            ) = _C_ops.fake_quantize_dequantize_abs_max(
+                input, self._quant_bits, 1
             )
             return out
 
@@ -234,16 +234,15 @@ class FakeQuantMovingAverageAbsMax(Layer):
                 _,
                 _,
                 _,
-            ) = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
                 input,
                 self._scale,
                 accum,
                 state,
-                quant_out,
-                self._scale,
-                state,
-                accum,
-                *attrs,
+                self._moving_rate,
+                self._quant_bits,
+                not self.training,
+                1,
             )
 
             return out

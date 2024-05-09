@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.framework import ParamAttr, core
@@ -163,16 +163,16 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             _,
             _,
             _,
-        ) = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
+        ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
             input,
             self._scale,
             accum,
             state,
+            self._moving_rate,
+            self._bit_length,
             quant_out,
-            self._scale,
-            state,
-            accum,
-            *attrs,
+            not self.training,
+            1,
         )
 
         return out
