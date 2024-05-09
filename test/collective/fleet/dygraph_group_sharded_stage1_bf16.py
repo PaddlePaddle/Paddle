@@ -229,7 +229,7 @@ def test_stage1_bf16():
             acc_steps=acc_steps,
             broadcast_overlap=True,
         )
-
+        mlp1.set_state_dict(state_dict)
         (
             o1_losses_no_overlap,
             model_param_dict_o1_no_overlap,
