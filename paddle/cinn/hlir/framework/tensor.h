@@ -68,11 +68,15 @@ class _Tensor_ : public Object {
 
   inline void* mutable_data(const Target& target, const Type& type) {
     set_type(type);
-    if (target == cinn::common::DefaultHostTarget()) {
-      buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
-    } else {
-      buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
-    }
+    target.arch.Visit(
+        [&](std::variant<common::X86Arch>) {
+          buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::ARMArch,
+                         common::NVGPUArch>) {
+          buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
+        }, );
     return reinterpret_cast<void*>(buffer_->data()->memory);
   }
 

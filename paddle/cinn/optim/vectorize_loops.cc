@@ -763,7 +763,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
+      if (std::hold_alternative<common::NVGPUArch>(target.arch)) {
         if (!forloop->extent.As<IntImm>() ||
             forloop->extent.as_int32() % forloop->vectorize_info().factor !=
                 0) {
