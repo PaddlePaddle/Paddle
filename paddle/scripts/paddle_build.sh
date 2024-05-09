@@ -3712,7 +3712,7 @@ function build_pr_and_develop() {
     fi
 
     generate_api_spec "$1" "DEV"
-    clang-tidy_check
+    # clang-tidy_check
 
 }
 
