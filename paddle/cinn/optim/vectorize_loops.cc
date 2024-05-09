@@ -773,9 +773,9 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                          "factor";
             }
           },
-          [&](std::variant < common::UnknownArch,
-              common::ARMArch,
-              <common::X86Arch>) {
+          [&](std::variant<common::UnknownArch,
+                           common::ARMArch,
+                           common::X86Arch>) {
             // Do nothing
           }});
 

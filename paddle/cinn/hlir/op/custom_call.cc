@@ -107,9 +107,9 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
           host_args.push_back(kernel_stream);
           arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
         },
-        [&](std::variant < common::UnknownArch,
-            common::ARMArch,
-            <common::X86Arch>) {
+        [&](std::variant<common::UnknownArch,
+                         common::ARMArch,
+                         common::X86Arch>) {
           // Do nothing
         }});
     auto call_extern_api = ir::Call::Make(Void(),
