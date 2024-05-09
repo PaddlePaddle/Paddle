@@ -445,7 +445,15 @@ void FusedConv2dAddActKernel(const Context& ctx,
       b_dims[1] = static_cast<int>(bias.dims()[0]);
     }
   } else {
-    b_dims[input_rank - 1] = static_cast<int>(bias.dims()[0]);
+    auto bias_rank = bias.dims().size();
+    if (input_rank == bias_rank) {
+      b_dims[input_rank - 1] = static_cast<int>(bias.dims()[input_rank - 1]);
+    } else {
+      // TODO(lyk): remains same before modification, but its correctness is
+      // suspucious. Since it works a long time for some scenarios, we keep this
+      // line temporarily. But this branch still should be reviewed.
+      b_dims[input_rank - 1] = static_cast<int>(bias.dims()[0]);
+    }
   }
 
   auto search_func = [&](cudnnConvolutionFwdAlgo_t* cudnn_algo,

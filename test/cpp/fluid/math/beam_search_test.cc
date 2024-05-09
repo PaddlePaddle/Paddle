@@ -73,6 +73,9 @@ void TestBeamSearch() {
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
+  context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
