@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
