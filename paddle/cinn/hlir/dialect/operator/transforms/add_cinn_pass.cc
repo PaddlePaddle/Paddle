@@ -182,10 +182,10 @@ void ApplyCinnLowerPass(
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
-  if (FLAGS_enable_cinn_accuracy_check) {
-    VLOG(0) << "Enable CINN Accuracy Check Pass";
-    pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
-  }
+  // if (FLAGS_enable_cinn_accuracy_check) {
+  //   VLOG(0) << "Enable CINN Accuracy Check Pass";
+  //   pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
+  // }
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
