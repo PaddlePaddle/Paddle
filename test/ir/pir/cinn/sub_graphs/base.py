@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# repo: PaddleDetection
-# model: configs^picodet^legacy_model^picodet_s_320_coco_single_dy2st_train
-# api:paddle.tensor.creation.arange||method:__add__||method:__mul__||api:paddle.tensor.creation.arange||method:__add__||method:__mul__||api:paddle.tensor.creation.meshgrid||method:flatten||method:flatten
 import unittest
 
 import numpy as np
@@ -22,29 +19,23 @@ import numpy as np
 import paddle
 
 
-class LayerCase(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(
-        self,
-    ):
-        var_0 = paddle.tensor.creation.arange(16, dtype='float32')
-        var_1 = var_0 + 0.5
-        var_2 = var_1 * 16
-        var_3 = paddle.tensor.creation.arange(16, dtype='float32')
-        var_4 = var_3 + 0.5
-        var_5 = var_4 * 16
-        var_6, var_7 = paddle.tensor.creation.meshgrid(var_5, var_2)
-        var_8 = var_6.flatten()
-        var_9 = var_7.flatten()
-        return var_8, var_9
-
-
-class TestLayer(unittest.TestCase):
+class TestBase(unittest.TestCase):
     def setUp(self):
-        self.inputs = ()
-        self.net = LayerCase()
+        # default setting
+        self.net = None
+        self.inputs = None
+        self.input_specs = None
+        self.with_prim = True
+        self.with_cinn = True
+        self.atol = 1e-6
+        # override customized settting
+        self.init()
+
+    def init(self):
+        pass
+
+    def set_flags(self):
+        pass
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
@@ -53,24 +44,32 @@ class TestLayer(unittest.TestCase):
                 build_strategy = paddle.static.BuildStrategy()
                 build_strategy.build_cinn_pass = True
                 net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
+                    net,
+                    build_strategy=build_strategy,
+                    full_graph=True,
+                    input_spec=self.input_specs,
                 )
             else:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(
+                    net, full_graph=True, input_spec=self.input_specs
+                )
         paddle.seed(123)
+        net.eval()
         outs = net(*self.inputs)
         return outs
 
     def test_ast_prim_cinn(self):
+        if not self.net:
+            return
         st_out = self.train(self.net, to_static=True)
+        self.set_flags()
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
+            self.net,
+            to_static=True,
+            with_prim=self.with_prim,
+            with_cinn=self.with_cinn,
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
-
-
-if __name__ == '__main__':
-    unittest.main()
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)

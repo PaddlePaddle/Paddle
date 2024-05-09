@@ -934,6 +934,95 @@ class UnsqueezeOpPattern
   }
 };
 
+class FlattenOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FlattenOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FlattenOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::FlattenOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    return !is_denied && is_dyshape;
+  }
+
+  void Rewrite(paddle::dialect::FlattenOp op,
+               pir::PatternRewriter &rewriter) const override {
+    int start_axis =
+        op.attribute("start_axis").dyn_cast<::pir::Int32Attribute>().data();
+    int end_axis =
+        op.attribute("stop_axis").dyn_cast<::pir::Int32Attribute>().data();
+
+    // build output shape
+    std::vector<pir::Value> out_shape;
+    auto x_rank = op->operand_source(0)
+                      .type()
+                      .dyn_cast<paddle::dialect::DenseTensorType>()
+                      .dims()
+                      .size();
+    auto x_shape =
+        rewriter.Build<paddle::dialect::ShapeOp>(op->operand_source(0))
+            .result(0);
+    for (size_t i = 0; i < x_rank;) {
+      if (i == static_cast<size_t>(start_axis)) {
+        auto new_single_dim =
+            rewriter
+                .Build<cinn::dialect::SliceOp>(x_shape,
+                                               std::vector<int64_t>({0}),
+                                               std::vector<int64_t>({i}),
+                                               std::vector<int64_t>({i + 1}),
+                                               std::vector<int64_t>({}),
+                                               std::vector<int64_t>({}))
+                .result(0);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          auto dim_t =
+              rewriter
+                  .Build<cinn::dialect::SliceOp>(x_shape,
+                                                 std::vector<int64_t>({0}),
+                                                 std::vector<int64_t>({t}),
+                                                 std::vector<int64_t>({t + 1}),
+                                                 std::vector<int64_t>({}),
+                                                 std::vector<int64_t>({}))
+                  .result(0);
+          new_single_dim =
+              rewriter.Build<paddle::dialect::MultiplyOp>(new_single_dim, dim_t)
+                  .result(0);
+        }
+        out_shape.push_back(new_single_dim);
+        i = end_axis + 1;
+      } else {
+        auto t =
+            rewriter
+                .Build<cinn::dialect::SliceOp>(x_shape,
+                                               std::vector<int64_t>({0}),
+                                               std::vector<int64_t>({i}),
+                                               std::vector<int64_t>({i + 1}),
+                                               std::vector<int64_t>({}),
+                                               std::vector<int64_t>({}))
+                .result(0);
+        out_shape.push_back(t);
+        i++;
+      }
+    }
+
+    auto new_shape =
+        rewriter.Build<cinn::dialect::ConcatOp>(out_shape, -1).result(0);
+
+    auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
+        op->operand_source(0), new_shape);
+
+    reshape_op.result(0).set_type(op.result(0).type());
+
+    rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
+
+    rewriter.EraseOp(op);
+  }
+};
+
 class SigmoidOpPattern
     : public pir::OpRewritePattern<paddle::dialect::SigmoidOp> {
  public:
@@ -1062,6 +1151,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SigmoidOpPattern>(context);
   ps.Add<GatherOpPattern>(context);
   ps.Add<WhereOpPattern>(context);
+  ps.Add<FlattenOpPattern>(context);
 
   return ps;
 }

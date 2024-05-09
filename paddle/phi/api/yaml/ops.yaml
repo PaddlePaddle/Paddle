@@ -806,6 +806,19 @@
     func : determinant
   backward : det_grad
 
+- op : detection_map
+  args: (Tensor detect_res, Tensor label, Tensor has_state, Tensor pos_count, Tensor
+    true_pos, Tensor false_pos, int class_num, int background_label = 0, float overlap_threshold
+    = .5f, bool evaluate_difficult = true, str ap_type = "integral")
+  output: Tensor (accum_pos_count), Tensor (accum_true_pos), Tensor (accum_false_pos),
+    Tensor (m_ap)
+  infer_meta:
+    func: DetectionMapInferMeta
+  kernel:
+    func: detection_map
+    data_type: detect_res
+  optional: has_state, pos_count, true_pos, false_pos
+
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
   output : Tensor
@@ -2500,6 +2513,7 @@
     data_type : x
   optional : boxes_num
   backward : roi_align_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : roi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0)
