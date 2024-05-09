@@ -70,7 +70,7 @@ std::pair<DimExpr, DimExpr> EliminateCommonFactor(const OpT<DimExpr>& lhs,
 
 std::pair<DimExpr, DimExpr> SimplifyEqCstr(const DimExpr& lhs,
                                            const DimExpr& rhs) {
-  auto DoSimplify = Overloaded{
+  auto DoSimplify = common::Overloaded{
       [](const Add<DimExpr>& lhs,
          const Add<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
         return EliminateCommonFactor<Add>(lhs, rhs);
@@ -175,20 +175,20 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
   };
 
   auto IsGTOnePredicater =
-      Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
-                 [&](const Add<DimExpr>& dim_expr) {
-                   if (AllOperandGTOne(dim_expr.operands)) return true;
-                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
-                     return true;
-                   return false;
-                 },
-                 [&](const Mul<DimExpr>& dim_expr) {
-                   if (AllOperandGTOne(dim_expr.operands)) return true;
-                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
-                     return true;
-                   return false;
-                 },
-                 [&](const auto& dim_expr) { return false; }};
+      common::Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
+                         [&](const Add<DimExpr>& dim_expr) {
+                           if (AllOperandGTOne(dim_expr.operands)) return true;
+                           if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                             return true;
+                           return false;
+                         },
+                         [&](const Mul<DimExpr>& dim_expr) {
+                           if (AllOperandGTOne(dim_expr.operands)) return true;
+                           if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                             return true;
+                           return false;
+                         },
+                         [&](const auto& dim_expr) { return false; }};
 
   return std::visit(IsGTOnePredicater, dim_expr.variant());
 }

@@ -34,6 +34,7 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 
@@ -334,6 +335,171 @@ struct PirToPyCodeConverterHelper {
     return std::visit(AttrConverter{attr}, adt_type_id.variant());
   }
 
+  static std::string ConvertShapeOrData(
+      const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    return shape_or_data.Match(
+        [](const symbol::TensorShapeOrDataDimExprs& impl) {
+          return ConvertTensorShapeOrData(impl);
+        },
+        [](const symbol::TensorListShapeOrDataDimExprs& impl) {
+          return ConvertTensorListShapeOrData(impl);
+        });
+  }
+
+  static std::string ConvertTensorListShapeOrData(
+      const symbol::TensorListShapeOrDataDimExprs& tensor_list_shape_or_data) {
+    std::ostringstream ss;
+    ss << "self.s_tensor_list_shape_or_data(";
+    int i = 0;
+    for (const auto& shape_or_data : tensor_list_shape_or_data) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << ConvertTensorShapeOrData(shape_or_data);
+    }
+    ss << ")";
+    return ss.str();
+  }
+
+  static std::string ConvertTensorShapeOrData(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    std::string shape = ConvertSymbolShape(shape_or_data);
+    std::string data = ConvertSymbolData(shape_or_data);
+    std::ostringstream ss;
+    ss << "self.s_tensor_shape_or_data(" << shape << ", " << data << ")";
+    return ss.str();
+  }
+
+  static std::string ConvertSymbolShape(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    return ConvertDimExprs(shape_or_data.shape());
+  }
+
+  static std::string ConvertSymbolData(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    const auto& data = shape_or_data.data();
+    if (!data.has_value()) {
+      return "None";
+    } else {
+      return ConvertDimExprs(data.value());
+    }
+  }
+
+  static std::string ConvertDimExprs(
+      const std::vector<symbol::DimExpr>& dim_exprs) {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& dim_expr : dim_exprs) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << ConvertDimExpr(dim_expr);
+    }
+    ss << "]";
+    return ss.str();
+  }
+
+  static std::string ConvertDimExpr(const symbol::DimExpr& dim_expr) {
+    return dim_expr.Match(
+        [](int64_t constant) {
+          std::ostringstream ss;
+          ss << "self.s_int64(" << constant << ")";
+          return ss.str();
+        },
+        [](const std::string& symbol) {
+          std::ostringstream ss;
+          ss << "self.s_str(" << std::quoted(symbol) << ")";
+          return ss.str();
+        },
+        [](const symbol::Negative<symbol::DimExpr>& negative) {
+          std::ostringstream ss;
+          const auto& [operand] = *negative;
+          ss << "self.s_negative(";
+          ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Reciprocal<symbol::DimExpr>& reciprocal) {
+          std::ostringstream ss;
+          const auto& [operand] = *reciprocal;
+          ss << "self.s_reciprocal(";
+          ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Add<symbol::DimExpr>& add) {
+          std::ostringstream ss;
+          ss << "self.s_add(";
+          const auto& operands = add.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Mul<symbol::DimExpr>& mul) {
+          std::ostringstream ss;
+          ss << "self.s_mul(";
+          const auto& operands = mul.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Max<symbol::DimExpr>& max) {
+          std::ostringstream ss;
+          ss << "self.s_max(";
+          const auto& operands = max.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Min<symbol::DimExpr>& min) {
+          std::ostringstream ss;
+          ss << "self.s_min(";
+          const auto& operands = min.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Broadcast<symbol::DimExpr>& broadcast) {
+          std::ostringstream ss;
+          ss << "self.s_broadcast(";
+          const auto& operands = broadcast.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        });
+  }
+
   struct AttrConverter {
     pir::Attribute attr_;
 
@@ -446,7 +612,10 @@ struct PirToPyCodeConverterHelper {
     }
     std::string operator()(TypeId<pir::shape::SymbolAttribute>) {
       const auto& name = pir::shape::SymbolAttribute::name();
-      return "self." + name + "()";
+      const auto& data = attr_.dyn_cast<pir::shape::SymbolAttribute>().data();
+      const std::string& shape_or_data =
+          PirToPyCodeConverterHelper::ConvertShapeOrData(data);
+      return "self." + name + "(" + shape_or_data + ")";
     }
     std::string operator()(TypeId<paddle::dialect::KernelAttribute>) {
       const auto& name = paddle::dialect::KernelAttribute::name();
@@ -537,6 +706,55 @@ struct PirToPyCodeConverterHelper {
       if (attr_name == "sym_shape_str") continue;
       DoEachAttr(attr_name, attr);
     }
+    DoEachAttr("__operands_symbols_signature__",
+               GetOpOperandsSymbolsSignature(op));
+    DoEachAttr("__results_symbols_signature__",
+               GetOpResultsSymbolsSignature(op));
+  }
+
+  pir::Attribute GetOpOperandsSymbolsSignature(const pir::Operation* op) {
+    std::vector<pir::Attribute> attrs = GetOpOperandsSymbolDimsAttributes(op);
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs);
+  }
+
+  pir::Attribute GetOpResultsSymbolsSignature(const pir::Operation* op) {
+    std::vector<pir::Attribute> attrs = GetOpResultsSymbolDimsAttributes(op);
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs);
+  }
+
+  std::vector<pir::Attribute> GetOpOperandsSymbolDimsAttributes(
+      const pir::Operation* op) {
+    std::vector<pir::Attribute> attrs;
+    attrs.reserve(op->num_operands());
+    for (int i = 0; i < op->num_operands(); ++i) {
+      attrs.push_back(GetValueSymbolDimsAttribute(op->operand_source(i)));
+    }
+    return attrs;
+  }
+
+  std::vector<pir::Attribute> GetOpResultsSymbolDimsAttributes(
+      const pir::Operation* op) {
+    std::vector<pir::Attribute> attrs;
+    attrs.reserve(op->num_results());
+    for (int i = 0; i < op->num_results(); ++i) {
+      attrs.push_back(GetValueSymbolDimsAttribute(op->result(i)));
+    }
+    return attrs;
+  }
+
+  pir::Attribute GetValueSymbolDimsAttribute(pir::Value value) {
+    auto* ctx = pir::IrContext::Instance();
+    using SymbolAttr = pir::shape::SymbolAttribute;
+    if (!value) {
+      return SymbolAttr::get(ctx, symbol::TensorShapeOrDataDimExprs{});
+    }
+    const auto* shape_or_data = GetShapeOrDataDimExprs(value);
+    return SymbolAttr::get(ctx, *shape_or_data);
+  }
+
+  const symbol::ShapeOrDataDimExprs* GetShapeOrDataDimExprs(pir::Value value) {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program_);
+    return &shape_analysis.GetShapeOrDataForValue(value);
   }
 
   std::string ConvertInputTypes(const pir::Operation* op) {

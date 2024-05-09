@@ -63,7 +63,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(input_value);
         }
       };
-  const auto& IsDimTensorOrListDimExpr = symbol::Overloaded{
+  const auto& IsDimTensorOrListDimExpr = ::common::Overloaded{
       [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
         return dim_expr.data().has_value();
       },
