@@ -1172,9 +1172,9 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  RecordStreamForGC(instr);
-#endif
+// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+//   RecordStreamForGC(instr);
+// #endif
 
   for (auto var_id : instr->GCCheckVars()) {
     VLOG(4) << "GC:" << value_exe_info_->GetNameById(static_cast<int>(var_id))

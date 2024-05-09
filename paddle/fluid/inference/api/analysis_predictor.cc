@@ -110,6 +110,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -977,6 +978,8 @@ bool AnalysisPredictor::PrepareExecutor() {
       // Apply some basic passes required by the framework
       ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                        config_.pm_opt_level_);
+
+      //basic_pass_pm.AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
 
       auto params_sync_among_devices_pass =
           ::pir::CreateParamsSyncAmongDevicesPass();

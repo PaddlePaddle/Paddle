@@ -413,7 +413,12 @@ class ConcatOpPattern
   bool Match(paddle::dialect::ConcatOp op) const override {
     const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
     auto axis_gen_op = op->operand_source(1).defining_op();
-    return !is_denied && axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+
+    auto concat_size = op->operand_source(0)
+                         .defining_op()
+                         ->dyn_cast<pir::CombineOp>()
+                         .inputs().size();
+    return !is_denied && axis_gen_op->dyn_cast<paddle::dialect::FullOp>() && (concat_size < 8);
   }
 
   void Rewrite(paddle::dialect::ConcatOp op,
