@@ -107,7 +107,6 @@ struct RecomputeNodeMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, node) &&
-           node->downstream().size() > 1 &&
            (std::get<AnchorPattern<T>>(node->stmt_pattern()).can_recompute());
   }
 };

@@ -251,13 +251,22 @@ struct SplitRecomputeOperation {
         upstream->downstream();
     upstream->ClearDownstream();
 
+    upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
+        std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())));
+
     for (const auto& downstream : fusion_candidate) {
-      bool can_fuse = graph->policy_manager()
-                          .template GetPolicy<AnchorSearchPolicy>()
-                          ->HasDownstreamAnchor(upstream, downstream) ||
-                      graph->policy_manager()
-                          .template GetPolicy<AnchorSearchPolicy>()
-                          ->HasUpstreamAnchor(upstream, downstream);
+      bool can_fuse =
+          std::holds_alternative<ReducePattern<Phrase>>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<TrivialPattern<Phrase>>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<ReduceTreePattern<Phrase>>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<ReduceTreePlusTrivialPattern<Phrase>>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<AnchorPattern<Phrase>>(
+              downstream->stmt_pattern());
+
       if (can_fuse) {
         auto merged_node =
             graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
@@ -301,8 +310,6 @@ struct HorizontalFusionOperation {
             << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
-    VLOG(4) << "After HorizontalFusionOperation, Graph is"
-            << graph->GraphInfo();
     return merged_node;
   }
 };

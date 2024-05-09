@@ -340,6 +340,18 @@ StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
                                 const TrivialPattern<T>& second);
 
 template <typename T>
+StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
+                                const ReduceTreePattern<T>& second);
+
+template <typename T>
+StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
+                                const ReduceTreePlusTrivialPattern<T>& second);
+
+template <typename T>
+StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
+                                const AnchorPattern<T>& second);
+
+template <typename T>
 StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& source,
                                 const AnchorPattern<T>& dest);
 
@@ -359,6 +371,16 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const TrivialPattern<T>& lhs, const TrivialPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern<T>& lhs, const ReduceTreePattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern<T>& lhs,
+          const ReduceTreePlusTrivialPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern<T>& lhs, const AnchorPattern<T>& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
       [&](const AnchorPattern<T>& lhs, const AnchorPattern<T>& rhs) {
@@ -403,6 +425,10 @@ ExprPromise<T> InitExprPromise(const StmtPattern<T>& pattern,
       [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
       pattern.variant());
 }
+
+template <typename T>
+TrivialPattern<T> RecoverAnchorPatternToTrivial(
+    const AnchorPattern<T>& anchor_pattern);
 
 template <typename T>
 AnchorState<T> GetAnchorState(const AnchorPattern<T>& pattern) {

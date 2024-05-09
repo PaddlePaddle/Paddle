@@ -143,8 +143,6 @@ void PatternGraph<T>::ReduceLiftReduceTree() {
 
 template <typename T>
 void PatternGraph<T>::HorizontalFusion() {
-  // TODO(@wuzhanfei) need a new matcher, or check under fusion pattern
-  // operation?
   GraphTransformer<NodePattern,
                    T,
                    Or<StmtPatternGraphMatcher<TrivialPattern<T>>,

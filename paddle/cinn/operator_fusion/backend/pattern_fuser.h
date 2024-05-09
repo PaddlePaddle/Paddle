@@ -43,6 +43,21 @@ StmtPattern<BackendStage> MergePatternImpl(
 
 template <>
 StmtPattern<BackendStage> MergePatternImpl(
+    const TrivialPattern<BackendStage>& first,
+    const ReduceTreePattern<BackendStage>& second);
+
+template <>
+StmtPattern<BackendStage> MergePatternImpl(
+    const TrivialPattern<BackendStage>& first,
+    const ReduceTreePlusTrivialPattern<BackendStage>& second);
+
+template <>
+StmtPattern<BackendStage> MergePatternImpl(
+    const TrivialPattern<BackendStage>& first,
+    const AnchorPattern<BackendStage>& second);
+
+template <>
+StmtPattern<BackendStage> MergePatternImpl(
     const AnchorPattern<BackendStage>& source,
     const AnchorPattern<BackendStage>& dest);
 
@@ -56,4 +71,9 @@ ExprPromise<BackendStage> InitExprPromiseImpl(
 template <>
 ExprPromise<BackendStage> InitExprPromiseImpl(
     const ReducePattern<BackendStage>& pattern, pir::Value anchor);
+
+template <>
+TrivialPattern<BackendStage> RecoverAnchorPatternToTrivial(
+    const AnchorPattern<BackendStage>& anchor_pattern);
+
 }  // namespace cinn::fusion
