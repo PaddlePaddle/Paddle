@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .base_reshard_func import register_reshard_func
-from .same_status_reshard_func import SameStatusReshardFunction
 from .p_to_r_reshard_func import (
     PToRReshardFunction,
     PToRReshardFunctionCrossMesh,
@@ -26,6 +25,8 @@ from .s_to_r_reshard_func import (
     SToRReshardFunction,
     SToRReshardFunctionCrossMesh,
 )
+from .same_status_reshard_func import SameStatusReshardFunction
+
 
 def register_reshard_funcs():
     register_reshard_func(PToRReshardFunction())
