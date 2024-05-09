@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import to_tensor
 from paddle.nn import ZeroPad3D
 
