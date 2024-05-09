@@ -94,7 +94,7 @@ macro(safe_set_nvflag flag_name)
   if(${safe_name})
     if(WITH_ROCM)
       set(SAFE_GPU_COMMON_FLAGS
-          "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
+          "${SAFE_GPU_COMMON_FLAGS} -Xcompiler \"${flag_name}\"")
     else()
       set(SAFE_GPU_COMMON_FLAGS
           "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
