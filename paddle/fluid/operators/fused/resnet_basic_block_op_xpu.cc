@@ -369,7 +369,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int r = XPU_SUCCESS;
 
@@ -822,7 +822,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int r = XPU_SUCCESS;
 

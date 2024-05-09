@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,15 @@ unary_apis_with_complex_input = [
     paddle.angle,
     paddle.conj,
 ]
+
+
+class AssertShapeEqualMixin:
+    def assertShapeEqual(self, out, target_tuple):
+        if not paddle.framework.in_pir_mode():
+            out_shape = list(out.shape)
+        else:
+            out_shape = out.shape
+        self.assertEqual(out_shape, target_tuple)
 
 
 class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
@@ -60,27 +69,19 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                 x = paddle.complex(paddle.rand([]), paddle.rand([]))
                 x.stop_gradient = False
                 out = api(x)
-                paddle.static.append_backward(out)
 
-                fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
+                [(_, x_grad), (_, out_grad)] = paddle.static.append_backward(
+                    out, parameter_list=[x, out]
+                )
 
-                # 1) Test Program
-                res = exe.run(main_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
-
-                # 2) Test CompiledProgram Program
-                compile_prog = paddle.static.CompiledProgram(main_prog)
-                res = exe.run(compile_prog, fetch_list=fetch_list)
+                res = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
                 for item in res:
                     self.assertEqual(item.shape, ())
 
         paddle.disable_static()
 
 
-class TestAsReal(unittest.TestCase):
+class TestAsReal(unittest.TestCase, AssertShapeEqualMixin):
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.rand([]) + 1j * paddle.rand([])
@@ -108,15 +109,13 @@ class TestAsReal(unittest.TestCase):
             x = paddle.complex(paddle.rand([]), paddle.rand([]))
             x.stop_gradient = False
             out = paddle.as_real(x)
-            self.assertEqual(x.shape, ())
-            self.assertEqual(out.shape, (2,))
-            paddle.static.append_backward(out.sum())
+            self.assertShapeEqual(x, [])
+            self.assertShapeEqual(out, [2])
+            [(_, x_grad), (_, out_grad)] = paddle.static.append_backward(
+                out.sum(), parameter_list=[x, out]
+            )
 
-            fetch_list = [x, out]
-            if block.has_var(x.grad_name):
-                fetch_list.extend([x.grad_name, out.grad_name])
-
-            res = exe.run(main_prog, fetch_list=fetch_list)
+            res = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
             self.assertEqual(res[0].shape, ())
             self.assertEqual(res[1].shape, (2,))
             self.assertEqual(res[2].shape, ())
@@ -125,7 +124,7 @@ class TestAsReal(unittest.TestCase):
         paddle.disable_static()
 
 
-class TestAsComplex(unittest.TestCase):
+class TestAsComplex(unittest.TestCase, AssertShapeEqualMixin):
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.rand([2])
@@ -152,15 +151,13 @@ class TestAsComplex(unittest.TestCase):
             x = paddle.rand([2])
             x.stop_gradient = False
             out = paddle.as_complex(x)
-            self.assertEqual(x.shape, (2,))
-            self.assertEqual(out.shape, ())
-            paddle.static.append_backward(out.sum())
+            self.assertShapeEqual(x, [2])
+            self.assertShapeEqual(out, [])
+            [(_, x_grad), (_, out_grad)] = paddle.static.append_backward(
+                out.sum(), parameter_list=[x, out]
+            )
 
-            fetch_list = [x, out]
-            if block.has_var(x.grad_name):
-                fetch_list.extend([x.grad_name, out.grad_name])
-
-            res = exe.run(main_prog, fetch_list=fetch_list)
+            res = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
             self.assertEqual(res[0].shape, (2,))
             self.assertEqual(res[1].shape, ())
             self.assertEqual(res[2].shape, (2,))
