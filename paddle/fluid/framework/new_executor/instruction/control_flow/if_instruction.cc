@@ -253,9 +253,9 @@ void IfInstruction::Run() {
         true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
     if (inner_outputs_gc_) {
       for (auto var_name : true_branch_outputs_) {
-        auto* inner_outpuut =
+        auto* inner_output =
             true_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_(inner_outpuut, this);
+        inner_outputs_gc_(inner_output, this);
       }
     }
   } else {
@@ -270,9 +270,9 @@ void IfInstruction::Run() {
         false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
     if (inner_outputs_gc_) {
       for (auto var_name : false_branch_outputs_) {
-        auto* inner_outpuut =
+        auto* inner_output =
             false_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_(inner_outpuut, this);
+        inner_outputs_gc_(inner_output, this);
       }
     }
   }
