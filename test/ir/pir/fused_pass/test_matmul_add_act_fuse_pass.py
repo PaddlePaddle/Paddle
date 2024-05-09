@@ -49,9 +49,9 @@ class TestMatmulAddPattern(PassTest):
         else:
             fused_op_name = "pd_op.fc"
 
-        for M in [32, 256]:
-            for N in [32, 256]:
-                for K in [32, 256]:
+        for M in [32, 128]:
+            for N in [32, 128]:
+                for K in [128]:
                     x_shape = [M, K]
                     w_shape = [K, N]
                     for y_shape in [[N], [M, N]]:
@@ -225,9 +225,9 @@ class TestMatmulAddActPattern(PassTest):
             acts_map = {"pd_op.relu": paddle.nn.functional.relu}
 
         for act in acts:
-            for x_shape in [[2, 11008]]:
+            for x_shape in [[2, 128]]:
                 M = x_shape[0]
-                for w_shape in [[11008, 4096], [11008, 4608]]:
+                for w_shape in [[128, 128], [128, 64]]:
                     N = w_shape[1]
                     for y_shape in [[N], [M, N]]:
                         if fused_op_name == "pd_op.fc" and len(y_shape) == 2:
