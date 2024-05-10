@@ -679,6 +679,15 @@
   extra :
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : correlation
+  backward : correlation_grad
+  inputs :
+    {input1 : Input1, input2 : Input2}
+  outputs :
+    out : Output
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : cos
   backward : cos_grad, cos_double_grad, cos_triple_grad
   inputs :
@@ -2566,6 +2575,7 @@
     x : X
   outputs :
     out : Out
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2579,6 +2589,7 @@
     x : X
   outputs :
     out : Out
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3831,6 +3842,15 @@
     {x: X}
   outputs:
     {out: Out}
+
+- op: crf_decoding
+  inputs:
+    emission: Emission
+    transition: Transition
+    label: Label
+    length: Length
+  outputs:
+    viterbi_path: ViterbiPath
 
 - op: cudnn_lstm
   backward: cudnn_lstm_grad

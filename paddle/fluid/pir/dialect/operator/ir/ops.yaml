@@ -1282,16 +1282,6 @@
     func : partial_allgather
   inplace : (x -> out)
 
-- op : partial_concat
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialConcatInferMeta
-  kernel :
-    func : partial_concat
-    data_type : x
-  backward : partial_concat_grad
-
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
@@ -1300,16 +1290,6 @@
   kernel :
     func : partial_recv
     data_type : dtype
-
-- op : partial_sum
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialSumInferMeta
-  kernel :
-    func : partial_sum
-    data_type : x
-  backward : partial_sum_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1439,15 +1419,6 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : random_routing
-  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
-  output : Tensor(out)
-  infer_meta :
-    func : RandomRoutingInferMeta
-  kernel :
-    func : random_routing
-    data_type : dtype
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
