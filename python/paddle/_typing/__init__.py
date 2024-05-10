@@ -24,12 +24,7 @@ from .basic import (
 
 # Device
 from .device_like import (
-    CPUPlace as CPUPlace,
-    CUDAPlace as CUDAPlace,
-    CustomPlace as CustomPlace,
-    IPUPlace as IPUPlace,
     PlaceLike as PlaceLike,
-    XPUPlace as XPUPlace,
 )
 
 # DType
