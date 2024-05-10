@@ -26,7 +26,6 @@ constexpr unsigned int str2int(const char *str, int h = 0) {
   return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
 
-// Too many params seem to seriously slow down kernel start
 template <typename T>
 struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
@@ -83,7 +82,7 @@ struct Masked_multihead_attention_params {
   bool add_qkv_bias;
   bool neox_rotary_style;
 
-  int steps_per_block_kai;
+  int steps_per_block;
 };
 
 template <typename T,
@@ -145,6 +144,7 @@ __global__ void masked_multihead_attention_kernel(
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
   const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
+
   const int tid = threadIdx.x;
 
   const int bi_seq_len_offset = bi * params.max_seq_length;
@@ -153,15 +153,20 @@ __global__ void masked_multihead_attention_kernel(
   float qk = 0;
 
   int act_time_step = params.sequence_lengths == nullptr
-                          ? params.timestep + 1
-                          : params.sequence_lengths[bi] + 1;
+                          ? params.timestep
+                          : params.sequence_lengths[bi];
 
   // The last single q*k*v is computed by the last threadBlock of split_index
   const int split_index = blockIdx.x;
-  const int start_seq = split_index * params.steps_per_block_kai;
-  if (start_seq >= act_time_step) return;
+  const int start_seq = split_index * params.steps_per_block;
+  if (act_time_step == 0) {
+    params.real_split_each_batch[bi] = 1;
+    if (split_index > 0) return;
+  } else {
+    if (start_seq >= act_time_step) return;
+  }
 
-  int end_seq = start_seq + params.steps_per_block_kai;
+  int end_seq = start_seq + params.steps_per_block;
   bool is_last_block = false;
   if (end_seq >= act_time_step) {
     params.real_split_each_batch[bi] = split_index + 1;
@@ -185,16 +190,26 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
   constexpr int QK_VECS_IN_16B = 16 / sizeof(Qk_vec);
 
+  // const T *q_base = params.qkv;
+  // const T *k_base = params.qkv + params.num_head * Dh;
+  T *q_bias_base = nullptr;
+  T *k_bias_base = nullptr;
+
+  if (params.add_qkv_bias) {
+    q_bias_base = params.qkv_bias;
+    k_bias_base = params.qkv_bias + params.num_head * Dh;
+  }
+
   // q and k have only head_dim scalar elements.
   // below only compute q dot k = 1 element.
   // q has QK_VECS_PER_WARP elements, [Qk_vec, Qk_vec, ..., Qk_vec]
   // k has QK_VECS_PER_WARP elements: [Qk_vec, Qk_vec, ..., Qk_vec]
   // per cuda thread read a Qk_vec of q and k and compute q dot k.
-  /// All threadBlock load single Q. The last threadBlock loads single K.
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
+    int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    int k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
 
-    /// q with bias
     Qk_vec q;
     zero(q);
     // q = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
@@ -204,29 +219,47 @@ __global__ void masked_multihead_attention_kernel(
       load_func.template load<Qk_vec>(q, qk_offset);
     }
 
-    T *q_bias_base = nullptr;
-    int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    Qk_vec k;
+    zero(k);
+    // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+    //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
+    //         : k;
+    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) && is_last_block) {
+      load_func.template load<Qk_vec>(k,
+                                      params.num_head * Dh + qk_offset -
+                                          hi * Dh +
+                                          hi / num_head_per_group * Dh);
+    }
+
     if (params.add_qkv_bias) {
-      q_bias_base = params.qkv_bias;
       Qk_vec q_bias;
       zero(q_bias);
+      Qk_vec k_bias;
+      zero(k_bias);
+
       q_bias =
           (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
               ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[q_bias_offset])
               : q_bias;
+      k_bias =
+          (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
+              : k_bias;
+
       q = add(q, q_bias);
+      // TODO(wangxi): See this https://github.com/microsoft/unilm/issues/510
+      //   we may not require k_bias.
+      k = add(k, k_bias);
     }
 
-    Qk_vec_RoPE cos_emb, sin_emb;
-    zero(cos_emb);
-    zero(sin_emb);
-    float alpha = 0.;
-    int right_id = -1;
-    if (params.rotary_emb_dims != 0) {
-      if (!params.neox_rotary_style) {
+    if (!params.neox_rotary_style) {
+      if (params.rotary_emb_dims != 0) {
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
         const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        Qk_vec_RoPE cos_emb, sin_emb;
+        zero(cos_emb);
+        zero(sin_emb);
         cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
                       ? *reinterpret_cast<const Qk_vec_RoPE *>(
                             &cos_base[rotary_offset])
@@ -235,9 +268,11 @@ __global__ void masked_multihead_attention_kernel(
                       ? *reinterpret_cast<const Qk_vec_RoPE *>(
                             &sin_base[rotary_offset])
                       : sin_emb;
-        apply_rotary_embedding(q, cos_emb, sin_emb);
-      } else {
-        /* old rotary pos emb */
+        apply_rotary_embedding(q, k, cos_emb, sin_emb);
+      }
+    } else {
+      /* old rotary pos emb */
+      if (params.rotary_emb_dims != 0) {
         int last_dim = Dh / params.rotary_emb_dims;
         int half_lastdim = last_dim / 2;
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
@@ -245,21 +280,12 @@ __global__ void masked_multihead_attention_kernel(
         const float *sin_base = params.rotary_emb + params.batch_size * Dh;
         int stride = half_lastdim / QK_VEC_SIZE;
         int stride_all_lastdim = 2 * stride;
-        right_id = tid / stride_all_lastdim * stride_all_lastdim +
-                   (tid + stride) % (stride_all_lastdim);
+        int right_id = tid / stride_all_lastdim * stride_all_lastdim +
+                       (tid + stride) % (stride_all_lastdim);
         int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
-        cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                            &cos_base[rotary_offset])
-                      : cos_emb;
-        sin_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
-                            &sin_base[rotary_offset])
-                      : sin_emb;
-        alpha = (tid % stride_all_lastdim) < stride ? static_cast<float>(-1)
-                                                    : static_cast<float>(1);
-
         int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+        int k_right_bias_offset =
+            hi / num_head_per_group * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
         // q_right =
@@ -269,6 +295,19 @@ __global__ void masked_multihead_attention_kernel(
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
           load_func.template load<Qk_vec>(q_right, qk_right_offset);
         }
+        Qk_vec k_right;
+        zero(k_right);
+        // k_right =
+        //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+        //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
+        //         : k_right;
+        if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
+          load_func.template load<Qk_vec>(k_right,
+                                          params.num_head * Dh +
+                                              qk_right_offset - hi * Dh +
+                                              hi / num_head_per_group * Dh);
+        }
+
         if (params.add_qkv_bias) {
           Qk_vec q_right_bias;
           zero(q_right_bias);
@@ -276,125 +315,87 @@ __global__ void masked_multihead_attention_kernel(
                              ? *reinterpret_cast<const Qk_vec *>(
                                    &q_bias_base[q_right_bias_offset])
                              : q_right_bias;
+          Qk_vec k_right_bias;
+          zero(k_right_bias);
+          k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
+                             ? *reinterpret_cast<const Qk_vec *>(
+                                   &k_bias_base[k_right_bias_offset])
+                             : k_right_bias;
+
           q_right = add(q_right, q_right_bias);
+          k_right = add(k_right, k_right_bias);
         }
+
+        Qk_vec_RoPE cos_emb;
+        zero(cos_emb);
+        cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
+
+        Qk_vec_RoPE sin_emb;
+        zero(sin_emb);
+        sin_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
+        float alpha = (tid % stride_all_lastdim) < stride
+                          ? static_cast<float>(-1)
+                          : static_cast<float>(1);
         q = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
             q, q_right, cos_emb, sin_emb, alpha);
+        k = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
+            k, k_right, cos_emb, sin_emb, alpha);
       }
     }
-    // q to sharedMem
+
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
     if (is_last_block) {
-      // load single K.
-      Qk_vec k;
-      zero(k);
-      // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-      //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
-      //         : k;
-      if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-        load_func.template load<Qk_vec>(k,
-                                        params.num_head * Dh + qk_offset -
-                                            hi * Dh +
-                                            hi / num_head_per_group * Dh);
-      }
-      // k with bias
-      T *k_bias_base = nullptr;
-      int k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
-      if (params.add_qkv_bias) {
-        k_bias_base = params.qkv_bias + params.num_head * Dh;
-        Qk_vec k_bias;
-        zero(k_bias);
-        k_bias =
-            (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-                ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
-                : k_bias;
-        // TODO(wangxi): See this https://github.com/microsoft/unilm/issues/510
-        //   we may not require k_bias.
-        k = add(k, k_bias);
-      }
-      if (params.rotary_emb_dims != 0) {
-        if (!params.neox_rotary_style) {
-          apply_rotary_embedding(k, cos_emb, sin_emb);
-        } else {
-          int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
-          int k_right_bias_offset =
-              hi / num_head_per_group * Dh + right_id * QK_VEC_SIZE;
-          Qk_vec k_right;
-          zero(k_right);
-          // k_right =
-          //     (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-          //         ? *reinterpret_cast<const Qk_vec
-          //         *>(&k_base[qk_right_offset]) : k_right;
-          if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-            load_func.template load<Qk_vec>(k_right,
-                                            params.num_head * Dh +
-                                                qk_right_offset - hi * Dh +
-                                                hi / num_head_per_group * Dh);
-          }
-          if (params.add_qkv_bias) {
-            Qk_vec k_right_bias;
-            zero(k_right_bias);
-            k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-                               ? *reinterpret_cast<const Qk_vec *>(
-                                     &k_bias_base[k_right_bias_offset])
-                               : k_right_bias;
-            k_right = add(k_right, k_right_bias);
-          }
-          k = apply_rotary_emb<Qk_vec, Qk_vec_RoPE>(
-              k, k_right, cos_emb, sin_emb, alpha);
-        }
-      }
-      // write back K
       int co = tid / QK_VECS_IN_16B;
       int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
       int offset = kv_bhi * params.max_seq_length * Dh +
                    co * params.max_seq_length * QK_ELTS_IN_16B +
-                   (act_time_step - 1) * QK_ELTS_IN_16B + ci;
+                   act_time_step * QK_ELTS_IN_16B + ci;
       if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
         *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      }
+
+      qk = dot<Qk_vec, Qk_vec>(q, k);
+      // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
+      if (QK_VECS_PER_WARP <= WARP_SIZE) {
+#pragma unroll
+        for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+          qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+        }
       }
     }
   }
 
-  /// load single V, add_bias, write back
-  // V_PER_ITER is used to strip-mined the seq dimension.
-  constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
-  constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
-  using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
-
-  int vo = tid / THREADS_PER_VALUE + start_seq;
-  int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
-
-  T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
-                                    params.max_seq_length * Dh +
-                                kv_bhi * params.max_seq_length * Dh + vi];
-  T *v_cache_batch = &params.cache_kv[params.batch_size * params.num_head *
-                                          params.max_seq_length * Dh +
-                                      bbhi * params.max_seq_length * Dh + vi];
-  V_vec v_bias;
-  zero(v_bias);
-  if (is_last_block && vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
-    // V_vec v = *reinterpret_cast<const V_vec *>(
-    //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
-    V_vec v;
-    load_func.template load<V_vec>(v,
-                                   qkv_base_offset + vi - hi * Dh +
-                                       params.num_head * Dh + kv_num_head * Dh +
-                                       hi / num_head_per_group * Dh);
-    if (params.add_qkv_bias) {
-      v_bias = *reinterpret_cast<const V_vec *>(
-          &params.qkv_bias[(kv_num_head + params.num_head) * Dh +
-                           hi / num_head_per_group * Dh + vi]);
-      v = add(v, v_bias);
-    }
-
-    *reinterpret_cast<V_vec *>(&v_cache[(act_time_step - 1) * Dh]) = v;
+  // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
+  if (QK_VECS_PER_WARP > WARP_SIZE && is_last_block) {
+    constexpr int WARPS_PER_RED =
+        (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
+    qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
 
+  // Let only the last cuda TheradBlock compute the final q*k.
+  if (tid == 0 && is_last_block) {
+    // NOTE(wangxi): mask must be 0.0
+    // T mask = params.attn_mask[
+    //    bi * (params.timestep + 1) + params.timestep];
+    // qk += static_cast<float>(mask);
+    qk *= params.inv_sqrt_dh;
+    if (params.attn_mask) {
+      auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
+    qk_max = qk;
+    qk_smem[act_time_step - start_seq] = qk;
+  }
   __syncthreads();
 
-  /// load cacheK and its corresponding Q
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
@@ -471,7 +472,6 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-  /// reduce/softmax
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
@@ -494,8 +494,12 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
+  int useful_smem_index = end_seq - start_seq;
+  if (!is_last_block) {
+    useful_smem_index = end_seq - start_seq - 1;
+  }
   float sum = 0.f;
-  for (int ti = tid; ti < end_seq - start_seq; ti += THREADS_PER_BLOCK) {
+  for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
     // float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
     float logit = __expf(qk_smem[ti] - qk_max);
@@ -510,25 +514,50 @@ __global__ void masked_multihead_attention_kernel(
     float2 sum_max = {sum, qk_max};
     *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + split_index) * 2]) = sum_max;
+    // params.qk_sum_max_split_seq[(bhsi + split_index) * 2] = sum;
+    // params.qk_sum_max_split_seq[(bhsi + split_index) * 2 + 1] = qk_max;
   }
 
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
-  for (int ti = tid; ti < end_seq - start_seq; ti += THREADS_PER_BLOCK) {
+  for (int ti = tid; ti <= end_seq - start_seq; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
   }
 
   __syncthreads();
 
-  /// load cacheV && logits dot cacheV
+  constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
+  using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
+
+  // now we have got [1, seq] ，distributed in logits_smem.
+  // next we compute [1, seq] * [seq, head_dim] = [1, head_dim]
+  // THREADS_PER_VALUE means num of threads per value's head_dim.
+  // we split the seq dimension for more cuda threads to compute.
+  // vo means the first seq index processed by this cuda thread in the value.
+  // vi means the head_dim index processed by this cuda thread in the value.
+  // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
+  // from vo and increases by a step V_PER_ITER.
+  int vo = tid / THREADS_PER_VALUE + start_seq;
+  int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
+
+  T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
+                                    params.max_seq_length * Dh +
+                                kv_bhi * params.max_seq_length * Dh + vi];
+  T *v_cache_batch = &params.cache_kv[params.batch_size * params.num_head *
+                                          params.max_seq_length * Dh +
+                                      bbhi * params.max_seq_length * Dh + vi];
+
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
   using V_vec_acum = typename V_vec_acum_fp32_<V_vec>::Type;
 #else
   using V_vec_acum = V_vec;
 #endif
+
   V_vec_acum out;
   zero(out);
+  // V_PER_ITER is used to strip-mined the seq dimension.
+  constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int ti = vo; ti < end_seq; ti += V_PER_ITER) {
@@ -554,57 +583,131 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
+  V_vec v_bias;
+  zero(v_bias);
+  // now we process the last v.
+  if (vo == (act_time_step % V_PER_ITER + start_seq) &&
+      (Dh == Dh_MAX || vi < Dh) && is_last_block) {
+    // V_vec v = *reinterpret_cast<const V_vec *>(
+    //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
+    V_vec v;
+    load_func.template load<V_vec>(v,
+                                   qkv_base_offset + vi - hi * Dh +
+                                       params.num_head * Dh + kv_num_head * Dh +
+                                       hi / num_head_per_group * Dh);
+    if (params.add_qkv_bias) {
+      v_bias = *reinterpret_cast<const V_vec *>(
+          &params.qkv_bias[(kv_num_head + params.num_head) * Dh +
+                           hi / num_head_per_group * Dh + vi]);
+      v = add(v, v_bias);
+    }
+
+    *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
+
+#if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
+    out = fma(logits_smem[act_time_step - start_seq], cast_to_float(v), out);
+#else
+    out = fma(logits_smem[act_time_step - start_seq], v, out);
+#endif
+  }
+
   __syncthreads();
 
-  /// reduce, result write back
+  // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
-    vo -= start_seq;
-
+    // If a warp handles at least two lines of V, warpLevel reduce first
+    if constexpr (THREADS_PER_VALUE < WARP_SIZE) {
+      for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_VALUE; mask /= 2) {
+        for (int out_vec_iter = 0; out_vec_iter < V_VEC_SIZE; out_vec_iter++) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+          auto curr_ele = reinterpret_cast<float *>(&out)[out_vec_iter];
+          reinterpret_cast<float *>(&out)[out_vec_iter] +=
+              __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
+#else
+          auto curr_ele = reinterpret_cast<T *>(&out)[out_vec_iter];
+          reinterpret_cast<T *>(&out)[out_vec_iter] +=
+              __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
+#endif
+        }
+      }
+      // threadBlock level reduce
+      if (lane / THREADS_PER_VALUE == 0) {
 #pragma unroll
-    for (int active_groups = V_PER_ITER; active_groups >= 2;
-         active_groups /= 2) {
-      int midpoint = active_groups / 2;
+        for (int active_groups = WARPS_PER_BLOCK; active_groups >= 2;
+             active_groups /= 2) {
+          int midpoint = active_groups / 2;
+          if (warp >= midpoint && warp < active_groups) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+            convert_from_float(*reinterpret_cast<V_vec *>(
+                                   &out_smem[(warp - midpoint) * Dh + vi]),
+                               out);
+#else
+            *reinterpret_cast<V_vec *>(&out_smem[(warp - midpoint) * Dh + vi]) =
+                out;
+#endif
+          }
+          __syncthreads();
+          if (warp < midpoint) {
+            out =
+                add(*reinterpret_cast<const V_vec *>(&out_smem[warp * Dh + vi]),
+                    out);
+          }
+          __syncthreads();
+        }
+      }
+    } else {
+      // threadBlock level reduce
+#pragma unroll
+      for (int active_groups = V_PER_ITER; active_groups >= 2;
+           active_groups /= 2) {
+        int midpoint = active_groups / 2;
+        if ((vo - start_seq) >= midpoint && (vo - start_seq) < active_groups &&
+            (Dh == Dh_MAX || vi < Dh)) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+          convert_from_float(
+              *reinterpret_cast<V_vec *>(
+                  &out_smem[(vo - start_seq - midpoint) * Dh + vi]),
+              out);
+#else
+          *reinterpret_cast<V_vec *>(
+              &out_smem[(vo - start_seq - midpoint) * Dh + vi]) = out;
+#endif
+        }
+        __syncthreads();
+        if ((vo - start_seq) < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+          out = add(*reinterpret_cast<const V_vec *>(
+                        &out_smem[(vo - start_seq) * Dh + vi]),
+                    out);
+        }
+        __syncthreads();
+      }
+    }
+  }
 
-      if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
+  // for shortSeq postProcessKernel is not necessary
+  if (params.split_seq == 1) {
+    if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
+      int out_offset = thi != -1 ? thi * Dh + vi : bhi * Dh + vi;
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        convert_from_float(
-            *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]),
-            out);
+      convert_from_float(*reinterpret_cast<V_vec *>(&params.out[out_offset]),
+                         out);
 #else
-        *reinterpret_cast<V_vec *>(&out_smem[(vo - midpoint) * Dh + vi]) = out;
+      *reinterpret_cast<V_vec *>(&params.out[out_offset]) = out;
 #endif
-      }
-      __syncthreads();
-      if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-        out =
-            add(*reinterpret_cast<const V_vec *>(&out_smem[vo * Dh + vi]), out);
-      }
-      __syncthreads();
     }
-    // for short seq_len postProcessKernel is not necessary
-    if (params.split_seq == 1) {
-      if (vo == 0) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        convert_from_float(
-            *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]), out);
-#else
-        *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
-#endif
-      }
-      return;
-    }
+    return;
+  }
 
-    if (vo == 0) {
-      // params.cum_offsets case needs to be considered
+  /// TODO: cum_offsets should be considered here
+  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-      *(reinterpret_cast<V_vec_acum *>(
-          &params.split_out[(bhsi + split_index) * Dh + vi])) = out;
+    *(reinterpret_cast<V_vec_acum *>(
+        &params.split_out[(bhsi + split_index) * Dh + vi])) = out;
 #else
-      *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(
-          &params.split_out[(bhsi + split_index) * Dh + vi])) =
-          cast_to_float(out);
+    *(reinterpret_cast<V_vec_acum_fp32_<V_vec>::Type *>(
+        &params.split_out[(bhsi + split_index) * Dh + vi])) =
+        cast_to_float(out);
 #endif
-    }
   }
 
 #else
@@ -659,7 +762,8 @@ __global__ void post_process_kernel_kai_v2(
 }
 
 // v3 launch more threads to handle long loop delays caused by very long seq
-// e.g. 10240Seq / 128StepsPerBlock = 80 loops. With 4x threads that's 20 loops
+// (e.g.) 10240Seq / 128StepsPerBlock = 80 loops. With 4x threads that's 20
+// loops
 template <typename T,
           int Dh,
           int Dh_MAX,
@@ -720,7 +824,7 @@ __global__ void post_process_kernel_kai_v3(
       v += real_this_sum * this_v;
       sum += real_this_sum;
     }
-    // Multi split_seq merge into one
+    //  Multi split_seq merge into one
     for (int active_groups = SPLTS_PER_BLOCK; active_groups >= 2;
          active_groups /= 2) {
       int midpoint = active_groups / 2;
@@ -749,7 +853,7 @@ inline size_t smem_size_in_bytes(
     int dim_head,
     int threads_per_value,
     int threads_per_block) {
-  size_t qk_sz = div_up(params.steps_per_block_kai + 1, 4) * 16;
+  size_t qk_sz = div_up(params.steps_per_block + 1, 4) * 16;
   size_t logits_sz = 0;
 
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS  // NOLINT
@@ -765,7 +869,6 @@ inline size_t smem_size_in_bytes(
   return max(softmax_sz, red_sz);
 }
 
-/// TODO: Test it out in a variety of situations
 template <typename T>
 inline size_t smem_size_in_bytes_kai(
     const Masked_multihead_attention_params<T> &params,
@@ -773,7 +876,10 @@ inline size_t smem_size_in_bytes_kai(
     int threads_per_value,
     int threads_per_block) {
   // for qk_smem and logits_smem(both float)
-  size_t qk_sz = div_up(params.steps_per_block_kai, 4) * 16;
+  size_t qk_sz = div_up(params.steps_per_block, 4) * 16;
+  if (params.split_seq == 1) {
+    qk_sz = div_up(params.timestep, 4) * 16;
+  }
   // for reduce (logits dot V) result
   int rows_per_red = threads_per_block / threads_per_value;
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
@@ -810,13 +916,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                         const cudaStream_t &stream,
                         LoadFunc load_func) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
-  if (params.timestep < 512) {
-    MMHA_LAUNCH_KERNEL(
-        T, Dh, Dh_MAX, 2, THREADS_PER_VALUE, 128, stream, load_func);
-  } else {
-    MMHA_LAUNCH_KERNEL(
-        T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func);
-  }
+  // If try adjusting the hyperparam, THDS_PER_KEY can try [1, 2, 4]
+  // for LLM: multiBatch(8)/longSeq(>2048) case, reduce THDS_PER_KEY may work
+  // for super longSeq(>3072) case, larger steps_per_block（256） may work
+  MMHA_LAUNCH_KERNEL(
+      T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func);
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc_kai>
@@ -826,14 +930,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                LoadFunc load_func,
                StoreFunc_kai store_func_kai) {
   switch (dim_head) {
-    case 10:
-      fmha_launch_kernel<T, 10, 32>(params, dev_ctx.stream(), load_func);
-      break;
     case 16:
       fmha_launch_kernel<T, 16, 32>(params, dev_ctx.stream(), load_func);
-      break;
-    case 26:
-      fmha_launch_kernel<T, 26, 32>(params, dev_ctx.stream(), load_func);
       break;
     case 32:
       fmha_launch_kernel<T, 32, 32>(params, dev_ctx.stream(), load_func);
@@ -841,6 +939,7 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
     case 64:
       fmha_launch_kernel<T, 64, 64>(params, dev_ctx.stream(), load_func);
       break;
+    // for opt model
     case 80:
       fmha_launch_kernel<T, 80, 128>(params, dev_ctx.stream(), load_func);
       break;
@@ -853,59 +952,44 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
     case 192:
       fmha_launch_kernel<T, 192, 256>(params, dev_ctx.stream(), load_func);
       break;
-    case 256:
-      fmha_launch_kernel<T, 256, 256>(params, dev_ctx.stream(), load_func);
-      break;
     default:
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
-  // for short seq_len postProcessKernel is not necessary
+
+  // for shortSeq postProcessKernel is not necessary
   if (params.split_seq == 1) return;
 
   dim3 grid(params.num_head, params.batch_size);
-  // For small device 64KB/SM sharedMem, max split_seq should not exceed 8K
   int smem_sz = params.split_seq * sizeof(float2);
   switch (dim_head) {
-    case 10:
-      post_process_kernel_kai_v2<T, 10, 32, StoreFunc_kai>
-          <<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
     case 16:
-      post_process_kernel_kai_v2<T, 16, 32, StoreFunc_kai>
-          <<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 26:
-      post_process_kernel_kai_v2<T, 26, 32, StoreFunc_kai>
-          <<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 16, 32, 8, StoreFunc_kai>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 32:
-      post_process_kernel_kai_v2<T, 32, 32, StoreFunc_kai>
-          <<<grid, 32, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 32, 32, 8, StoreFunc_kai>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 64:
-      post_process_kernel_kai_v2<T, 64, 64, StoreFunc_kai>
-          <<<grid, 64, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 64, 64, 4, StoreFunc_kai>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 80:
-      post_process_kernel_kai_v2<T, 80, 128, StoreFunc_kai>
-          <<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 80, 128, 4, StoreFunc_kai>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 96:
-      post_process_kernel_kai_v2<T, 96, 128, StoreFunc_kai>
-          <<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 96, 128, 4, StoreFunc_kai>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 128:
-      post_process_kernel_kai_v2<T, 128, 128, StoreFunc_kai>
-          <<<grid, 128, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 128, 128, 4, StoreFunc_kai>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     case 192:
-      post_process_kernel_kai_v2<T, 192, 256, StoreFunc_kai>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
-      break;
-    case 256:
-      post_process_kernel_kai_v2<T, 256, 256, StoreFunc_kai>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 192, 256, 4, StoreFunc_kai>
+          <<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
       break;
     default:
       PADDLE_THROW(
@@ -1103,6 +1187,8 @@ void DispatchWithDtype(const Context &dev_ctx,
   }
 
   if (cum_offsets) {
+    PADDLE_THROW(phi::errors::PermissionDenied(
+        "Current mmha kernel does not support cum_offsets param."));
     params.cum_offsets = cum_offsets->data<int>();
   } else {
     params.cum_offsets = nullptr;
@@ -1131,13 +1217,14 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
-
-  int steps_per_block_kai = timestep < 512 ? 512 : 128;
-  params.steps_per_block_kai = steps_per_block_kai;
-  params.split_seq = timestep / steps_per_block_kai + 1;
+  // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
+  int steps_per_block = timestep < 256 ? 256 : 128;
+  params.steps_per_block = steps_per_block;
+  params.split_seq = timestep / steps_per_block + 1;
   int split_seq = params.split_seq;
 
   phi::DenseTensor qk_sum_max_split_seq;
+  // 2 means sum and max.
   qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
   dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
                                 qk_sum_max_split_seq.numel() * sizeof(float));

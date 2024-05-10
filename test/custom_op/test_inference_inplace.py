@@ -72,6 +72,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
                     shape=[None, 4], dtype='float32', name='x'
                 ),
             ],
+            full_graph=True,
         )
         paddle.jit.save(
             model,
