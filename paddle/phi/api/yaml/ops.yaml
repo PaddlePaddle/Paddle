@@ -652,6 +652,16 @@
   inplace: (x -> out)
   backward : copysign_grad
 
+- op : correlation
+  args : (Tensor input1, Tensor input2, int pad_size, int kernel_size, int max_displacement, int stride1, int stride2, int corr_type_multiply=1)
+  output : Tensor(out)
+  infer_meta :
+    func : CorrelationInferMeta
+  kernel :
+    func : correlation
+    data_type : input1
+  backward : correlation_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor(out)
@@ -674,6 +684,16 @@
   inplace: (x -> out)
   backward : cosh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : crf_decoding
+  args: (Tensor emission, Tensor transition, Tensor label, Tensor length)
+  output: Tensor (viterbi_path)
+  infer_meta:
+    func: CrfDecodingInferMeta
+  kernel:
+    func: crf_decoding
+    data_type: emission
+  optional: label, length
 
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
@@ -2287,6 +2307,26 @@
   backward : pad3d_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_concat
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialConcatInferMeta
+  kernel :
+    func : partial_concat
+    data_type : x
+  backward : partial_concat_grad
+
+- op : partial_sum
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialSumInferMeta
+  kernel :
+    func : partial_sum
+    data_type : x
+  backward : partial_sum_grad
+
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
   output : Tensor
@@ -2391,6 +2431,16 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : prob
+  inplace : (topk_idx -> out)
 
 - op : real
   args : (Tensor x)
