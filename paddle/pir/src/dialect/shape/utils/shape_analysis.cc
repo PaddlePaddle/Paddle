@@ -221,7 +221,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     }
   };
 
-  shape_or_data.Match(
+  return shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(
             TensorShapeOrDataVisitor(tensor_shape_or_data));
