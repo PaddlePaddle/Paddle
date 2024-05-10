@@ -550,7 +550,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // check the input_tensor
       if (!(t.place().GetType() == phi::AllocationType::GPU)) {
         phi::DenseTensor out;
-        framework::TensorCopy(t, dev_place, dev_ctx, &out);
+        phi::Copy(dev_ctx, t, dev_place, false, &out);
         t.ShareDataWith(out);
       }
       auto t_shape = common::vectorize<int64_t>(t.dims());
@@ -855,7 +855,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto int32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
-        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);
+        phi::Copy(dev_ctx, *fluid_t, dev_place, false, int32_tensor);
         *fluid_t = phi::Cast<int32_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             *int32_tensor,
@@ -871,7 +871,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto fp32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
         fp32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<float>(fp32_tensor);
-        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, fp32_tensor);
+        phi::Copy(dev_ctx, *fluid_t, dev_place, false, fp32_tensor);
         *fluid_t =
             phi::Cast<float>(reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                              *fp32_tensor,
