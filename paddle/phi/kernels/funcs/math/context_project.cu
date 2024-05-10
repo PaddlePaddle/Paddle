@@ -11,20 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
 
-#include "paddle/pir/include/core/program.h"
+#include "paddle/phi/kernels/funcs/math/context_project.h"
 
-namespace paddle {
-namespace dialect {
+namespace phi {
+namespace math {
 
-// pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+template class ContextProjectFunctor<phi::GPUContext, float>;
+template class ContextProjectFunctor<phi::GPUContext, double>;
 
-TEST_API std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog);
-
-void ProcessMixBlock(pir::Block* block);
-
-void VerifyDistBlock(pir::Block* block);
-
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace math
+}  // namespace phi

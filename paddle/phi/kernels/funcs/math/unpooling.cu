@@ -1,22 +1,21 @@
-/* Copyright (c) 2022 paddlepaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "paddle/fluid/operators/math/unpooling.h"
+#include "paddle/phi/kernels/funcs/math/unpooling.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
 template <typename T>
 __global__ void KernelUnpool2dMax(const int nthreads,
@@ -125,7 +124,7 @@ class Unpool2dMaxFunctor<phi::GPUContext, T> {
     const int output_width = output->dims()[3];
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMax<T>
@@ -162,7 +161,7 @@ class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMaxGrad<T>
@@ -197,7 +196,7 @@ class Unpool3dMaxFunctor<phi::GPUContext, T> {
     const int output_width = output->dims()[4];
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMax<T>
@@ -238,7 +237,7 @@ class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
     const int* indices_data = indices.data<int>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMaxGrad<T>
@@ -267,5 +266,4 @@ template class Unpool3dMaxGradFunctor<phi::GPUContext, double>;
 template class Unpool3dMaxFunctor<phi::GPUContext, float>;
 template class Unpool3dMaxFunctor<phi::GPUContext, double>;
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
