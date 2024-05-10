@@ -21,15 +21,18 @@ paddle.enable_static()
 main_program = paddle.static.default_main_program()
 startup_program = paddle.static.default_startup_program()
 with paddle.static.program_guard(main_program, startup_program):
-    dtype = "float8_e4m3fn"
-    input1 = paddle.ones([16, 16], dtype=dtype)
-    input2 = paddle.ones([16, 16], dtype=dtype)
+    type = "float8_e4m3fn"
+
+    input1 = paddle.ones([16, 16], dtype='float32')
+    input2 = paddle.ones([16, 16], dtype='float32')
 
     # input1 = paddle.static.data(name='x', shape=[16,16],dtype="float32")
     # input2 = paddle.static.data(name='y', shape=[16,16],dtype="float32")
     # output0 = paddle.matmul(paddle.cast(input1,dtype), paddle.cast(input2,dtype))
 
-    output0 = paddle.matmul(input1, input2)
+    output0 = paddle.linalg.fp8_fp8_fp16_gemm_fused(paddle.cast(input1,type), paddle.cast(input2,type))
+    print("output0: ",output0)
+
 
     b = paddle.create_parameter(
         shape=[16, 16],
@@ -39,7 +42,7 @@ with paddle.static.program_guard(main_program, startup_program):
 
     output1 = paddle.add(output0, b)
 
-    exe = paddle.static.Executor(paddle.CPUPlace())
+    exe = paddle.static.Executor(paddle.CUDAPlace(0))
 
     exe.run(startup_program)
 

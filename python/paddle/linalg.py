@@ -78,4 +78,6 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'fp8_fp8_fp16_gemm_fused',
+    'fp8_fp8_bf16_gemm_fused',   
 ]

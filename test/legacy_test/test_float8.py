@@ -136,8 +136,17 @@ class TestFP8MatmulOp(unittest.TestCase):
                 input5 = np.ones((16, 32)).astype("float32")
                 input6 = np.ones((32, 64)).astype("float32")
 
+
+
+                input7 = paddle.ones([4, 16, 32], dtype="float16")
+                input8 = paddle.ones([4, 64, 32], dtype="float16")
+
+
+
+
+
                 output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
-                    input1,
+                    paddle.cast(input7, "float8_e4m3fn"),
                     input2,
                     transpose_x=False,
                     transpose_y=True,

@@ -145,6 +145,8 @@ def convert_dtype(dtype):
             'uint8',
             'complex64',
             'complex128',
+            'float8_e4m3fn',
+            'float8_e5m2',
         ]:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need

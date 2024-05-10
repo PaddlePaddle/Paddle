@@ -130,6 +130,8 @@ def transpose(x, perm, name=None):
                 'uint16',
                 'complex64',
                 'complex128',
+                'float8_e5m2',
+                'float8_e4m3fn',                
             ],
             'transpose',
         )
@@ -320,7 +322,34 @@ def fp8_fp8_fp16_gemm_fused(
             x, y, bias, transpose_x, transpose_y, scale, act
         )
     else:
-        return x
+        attrs = {'transpose_x': transpose_x, 'transpose_y': transpose_y, 'scale': scale, 'act':act}
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val,
+                    name,
+                    [
+                        'float8_e5m2',
+                        'float8_e4m3fn',
+                    ],
+                    'fp8_fp8_fp16_gemm_fused',
+                )
+        __check_input(x, y)
+
+        helper = LayerHelper('fp8_fp8_fp16_gemm_fused', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype='float16'
+        )
+        print("x: ",x)
+        print("x: ",y)
+        helper.append_op(
+            type='fp8_fp8_fp16_gemm_fused',
+            inputs={'x': x, 'y': y},
+            outputs={'out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def fp8_fp8_bf16_gemm_fused(
@@ -338,8 +367,33 @@ def fp8_fp8_bf16_gemm_fused(
             x, y, bias, transpose_x, transpose_y, scale, act
         )
     else:
-        return x
+        attrs = {'transpose_x': transpose_x, 'transpose_y': transpose_y, 'scale': scale, 'act':act}
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val,
+                    name,
+                    [
+                        'float8_e5m2',
+                        'float8_e4m3fn',
+                    ],
+                    'fp8_fp8_bf16_gemm_fused',
+                )
+        __check_input(x, y)
 
+        helper = LayerHelper('fp8_fp8_bf16_gemm_fused', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype='bfloat16'
+        )
+
+        helper.append_op(
+            type='fp8_fp8_bf16_gemm_fused',
+            inputs={'x': x, 'y': y},
+            outputs={'out': out},
+            attrs=attrs,
+        )
+        return out
 
 def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """

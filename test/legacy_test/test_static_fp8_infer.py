@@ -35,7 +35,8 @@ def init_predictor(args):
     # config.switch_ir_optim(False)
 
     config.enable_new_executor()
-    config.enable_new_ir()
+    #config.enable_new_ir()
+
     predictor = create_predictor(config)
     return predictor
 
