@@ -20,7 +20,7 @@ namespace dialect {
 
 // pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
 
-TEST_API std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog);
+TEST_API void MixToDistPass(pir::Program* prog);
 
 void ProcessMixBlock(pir::Block* block);
 

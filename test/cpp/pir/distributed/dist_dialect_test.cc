@@ -591,9 +591,8 @@ TEST(mix_to_dist_pass_test, base) {
             (uint32_t)1);
 
   // Apply Pass
-  std::shared_ptr<pir::Program> new_program =
-      paddle::dialect::MixToDistPass(&program);
-  pir::Block* new_block = new_program->block();
+  paddle::dialect::MixToDistPass(&program);
+  pir::Block* new_block = program.block();
   EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
   std::vector<pir::Operation*> ops;
   for (auto& op : *new_block) {
