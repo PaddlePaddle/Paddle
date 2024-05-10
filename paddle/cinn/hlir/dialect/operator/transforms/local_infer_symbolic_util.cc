@@ -76,7 +76,7 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
         return symbol::ShapeOrDataDimExprs(ret);
       };
   auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {
-    auto patterns = symbol::Overloaded{NewSymbolReplacedTensor,
+    auto patterns = common::Overloaded{NewSymbolReplacedTensor,
                                        NewSymbolReplacedTensorList};
     return std::visit(patterns, value_dim_exprs.variant());
   };
@@ -100,7 +100,8 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
     PADDLE_THROW(phi::errors::Unimplemented(
         op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   } else {
-    bool infer_result = interface.InferSymbolicShape(shape_analysis.get());
+    bool infer_result = interface.InferSymbolicShape(
+        shape_analysis.get()->GetInferSymbolicShapeContext());
     PADDLE_ENFORCE(
         infer_result, "InferSymbolicShape for %s failed.", op->name());
   }

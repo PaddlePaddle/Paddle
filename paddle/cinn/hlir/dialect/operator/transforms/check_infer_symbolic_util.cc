@@ -139,7 +139,6 @@ struct ShapeSignatureGenerator {
                            const SymbolBindings& bindings) {
     ShapeList list;
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
-      CHECK(op_shape_analysis->HasShapeOrDataForValue(op.operand_source(i)));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.operand_source(i));
       const auto& dim_shape = ConvertSymbolToDim(shape_or_data, bindings);
@@ -153,7 +152,6 @@ struct ShapeSignatureGenerator {
                             const SymbolBindings& bindings) {
     ShapeList list;
     for (std::size_t i = 0; i < op.num_results(); ++i) {
-      CHECK(op_shape_analysis->HasShapeOrDataForValue(op.result(i)));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
       const auto& shape = ConvertSymbolToDim(shape_or_data, bindings);
