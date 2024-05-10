@@ -17,12 +17,12 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelStaticPirDecorate(
+class Test3DSemiAutoParallelStaticPirDecorate(
     test_base.CommunicationTestDistBase
 ):
     def setUp(self):
         super().setUp(
-            num_of_devices=2,
+            num_of_devices=8,
             timeout=300,
         )
         self._default_envs = {"dtype": "float32", "seed": "2023"}
@@ -35,7 +35,7 @@ class TestSemiAutoParallelStaticPirDecorate(
         # self._log_dir.name = "./log"
         for envs in envs_list:
             self.run_test_case(
-                "mlp_demo.py",
+                "../pir/mlp_demo_3d.py",
                 user_defined_envs=envs,
             )
 
