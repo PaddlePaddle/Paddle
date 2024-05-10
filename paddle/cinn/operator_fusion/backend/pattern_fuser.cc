@@ -81,20 +81,22 @@ template <>
 StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
     const AnchorPattern<BackendStage>& second) {
-  for (auto promise : second.anchor_state.promise) {
-    promise.root_fusion_op = std::visit(
+  AnchorState<BackendStage> new_anchor_state = second.anchor_state;
+
+  for (int i = 0; i < new_anchor_state.promise.size(); i++) {
+    new_anchor_state.promise[i].root_fusion_op = std::visit(
         [first](const auto& arg) -> FusionOp {
           return cinn::hlir::framework::pir::trivial_fusion_detail::
               TrivalxOther_Fusion(first.trivial_op, arg);
         },
-        promise.root_fusion_op);
+        new_anchor_state.promise[i].root_fusion_op);
   }
 
   return AnchorPattern<BackendStage>(
       UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
                          GetOpsInPattern<BackendStage>(second)),
       second.anchor(),
-      second.anchor_state);
+      new_anchor_state);
 }
 
 template <>
@@ -387,7 +389,7 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
   for (const auto& op : op_exprs) {
     auto inputs = GetInputTensors(op);
     auto outputs = GetOutputTensors(op);
-    if (VLOG_IS_ON(4)) {
+    if (VLOG_IS_ON(5)) {
       VLOG(4) << "Ir::Expr is: \n" << op;
       VLOG(4) << "Inputs: ";
       for (const auto& input : inputs) {
