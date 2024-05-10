@@ -77,12 +77,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
     MatchMatrixTensorGradOp::name(),
-    PartialConcatOp::name(),
-    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    PartialSumOp::name(),
-    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
@@ -95,7 +91,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::QuantizeOp::name(),
-    paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
     paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
@@ -105,6 +100,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     CReduceProdOp::name(),
     CScatterOp::name(),
+    PullBoxSparseOp::name(),
+    PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
     PartialRecvOp::name()};
@@ -336,6 +333,12 @@ phi::DataType GetValueDataType(const pir::Type& type) {
   } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCooTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCsrTensorType>().dtype());
   } else if (type.isa<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<DenseTensorArrayType>().dtype());
@@ -347,6 +350,8 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
                                  "DenseTensorType and SelectedRowsType."));

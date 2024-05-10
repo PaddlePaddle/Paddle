@@ -776,8 +776,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 #ifdef PADDLE_WITH_XPU_KP
-    auto& dev_ctx =
-        context.template device_context<paddle::platform::XPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
 #else
     auto& dev_ctx = context.cuda_device_context();
 #endif

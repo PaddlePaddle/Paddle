@@ -59,6 +59,7 @@ from .io_utils import (
     _safe_load_pickle,
 )
 from .pir_io import (
+    get_pir_parameters,
     load_pir,
     load_pir_inference_model,
     load_vars_pir,
@@ -1205,7 +1206,9 @@ def load_vars(
 
     """
     if in_pir_mode():
-        return load_vars_pir(dirname, main_program, vars, predicate, filename)
+        return load_vars_pir(
+            executor, dirname, main_program, vars, predicate, filename
+        )
 
     vars_from_memory = False
     if dirname is not None:
@@ -1731,7 +1734,11 @@ def set_program_state(program, state_dict):
             >>> static.set_program_state(prog, program_state)
     """
     state_dict = _pack_loaded_dict(state_dict)
-    parameter_list = list(filter(is_persistable, program.list_vars()))
+    if in_pir_mode():
+        params, opts = get_pir_parameters(program)
+        parameter_list = params + opts
+    else:
+        parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}
     for para in parameter_list:

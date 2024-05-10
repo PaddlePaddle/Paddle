@@ -127,15 +127,29 @@ struct CachedDimExprToValueConverter {
           ->Build<paddle::dialect::CastOp>(value, phi::DataType::INT64)
           .out();
     };
+    auto FlattenValueIfNeed = [&](pir::Value value) {
+      const auto& dims =
+          value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      if (dims.size() <= 1) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::FlattenOp>(value, 0, dims.size() - 1)
+          .out();
+    };
     if (tensor_dim.value.type()
             .dyn_cast<paddle::dialect::DenseTensorType>()
             .dims()
             .size() == 0) {
-      return CastToInt64IfNeed(tensor_dim.value);
+      return CastToInt64IfNeed(
+          rewriter
+              ->Build<paddle::dialect::ReshapeOp>(tensor_dim.value,
+                                                  std::vector<int64_t>{1})
+              .out());
     }
     return CastToInt64IfNeed(rewriter
                                  ->Build<paddle::dialect::SliceOp>(
-                                     tensor_dim.value,
+                                     FlattenValueIfNeed(tensor_dim.value),
                                      std::vector<int64_t>{0LL},
                                      std::vector<int64_t>{tensor_dim.axis},
                                      std::vector<int64_t>{tensor_dim.axis + 1},

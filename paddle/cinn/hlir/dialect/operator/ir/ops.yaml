@@ -84,6 +84,15 @@
     func : reshape
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : reverse
+  args : (Tensor x, int[] axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : scale
   args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
@@ -92,6 +101,16 @@
     param : [x]
   kernel :
     func : scale
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : select
+  args : (Tensor condition, Tensor true_value, Tensor false_value )
+  output : Tensor(out)
+  infer_meta :
+    func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
+  kernel :
+    func : where
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : slice

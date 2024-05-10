@@ -900,6 +900,12 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
+void Pad2dXPUInferMeta(const MetaTensor& x,
+                       const std::vector<int>& paddings,
+                       const std::string& mode,
+                       float pad_value,
+                       const std::string& data_format,
+                       MetaTensor* out);
 void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
                                      const MetaTensor& sin_emb,
                                      const MetaTensor& cos_emb,
@@ -934,6 +940,15 @@ void MultiGruInferMeta(
     float shift_data,
     bool force_fp32_output,
     MetaTensor* hidden);
+
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len);
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out);
 
 void FusionLstmInferMeta(const MetaTensor& x,
                          const MetaTensor& weight_x,
