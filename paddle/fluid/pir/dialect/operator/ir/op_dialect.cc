@@ -170,12 +170,14 @@ struct SliceOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
-    const auto output_value =
-        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
-            .dyn_cast<pir::Value>();
-
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), infer_context->GetShapeOrDataForValue(output_value));
+    const auto& input_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
+        input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    const symbol::TensorShapeOrDataDimExprs& output_shape =
+        data_shape_list[index];
+    infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
 
     return true;
   }
