@@ -436,6 +436,16 @@
     func : copysign_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : correlation_grad
+  forward : correlation (Tensor input1, Tensor input2, int pad_size, int kernel_size, int max_displacement, int stride1, int stride2, int corr_type_multiply=1) -> Tensor(out)
+  args : (Tensor input1, Tensor input2, Tensor out_grad, int pad_size, int kernel_size, int max_displacement, int stride1, int stride2, int corr_type_multiply=1)
+  output : Tensor(input1_grad), Tensor(input2_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input1, input2]
+  kernel :
+    func : correlation_grad
+
 - backward_op : cos_double_grad
   forward : cos_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
@@ -1815,6 +1825,26 @@
     func : pad3d_grad
   no_need_buffer : x
   backward : pad3d_double_grad
+
+- backward_op : partial_concat_grad
+  forward : partial_concat (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : PartialConcatGradInferMeta
+    param : [x]
+  kernel :
+    func : partial_concat_grad
+
+- backward_op : partial_sum_grad
+  forward : partial_sum (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
+  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
+  output : Tensor[](x_grad){x.size()}
+  infer_meta :
+    func : PartialSumGradInferMeta
+    param : [x]
+  kernel :
+    func : partial_sum_grad
 
 - backward_op : pixel_shuffle_grad
   forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
