@@ -421,7 +421,13 @@ class VScheduleCreator:
     ):
         backward_b_job_number = self.num_model_chunks * self.num_micro_batch
 
-        for _ in range(backward_b_job_number):
+        first_backward_b_stage = (
+            0 if self.num_model_chunks % 2 == 0 else self.num_stage - 1
+        )
+        while (
+            self._get_stage_backward_b_number(first_backward_b_stage)
+            < backward_b_job_number
+        ):
             # Step1: Check memory usage, if not enough, put pending backward_w job into schedule
             for stage_id in range(self.num_stage):
                 while not self._memory_check("backward_b", 0, stage_id):
@@ -882,4 +888,12 @@ class VScheduleCreator:
             chunk_ids = range(self.num_model_chunks)
         for chunk_id in chunk_ids:
             job_number += self._job_counters[stage][f"forward{chunk_id}"]
+        return job_number
+
+    def _get_stage_backward_b_number(self, stage, chunk_ids=None):
+        job_number = 0
+        if chunk_ids is None:
+            chunk_ids = range(self.num_model_chunks)
+        for chunk_id in chunk_ids:
+            job_number += self._job_counters[stage][f"backward_b{chunk_id}"]
         return job_number
