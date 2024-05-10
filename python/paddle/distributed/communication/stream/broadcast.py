@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from framework import in_pir_mode
-
 from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -22,6 +20,7 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import _to_inplace_op
+from paddle.framework import in_pir_mode
 
 
 def _broadcast_in_dygraph(
