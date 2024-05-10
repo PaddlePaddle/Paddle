@@ -21,6 +21,7 @@
 
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -67,8 +68,8 @@ BufferedReader::BufferedReader(
   if (platform::is_xpu_place(place_)) {
     int dev_idx = place_.device;
     compute_stream_ =
-        ((platform::XPUDeviceContext *)(platform::DeviceContextPool::Instance()
-                                            .Get(place_)))
+        ((phi::XPUContext *)(platform::DeviceContextPool::Instance().Get(
+             place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -161,11 +162,11 @@ void BufferedReader::ReadAsync(size_t i) {
                 cuda[i].mutable_data(cuda_pinned_place, cpu[i].type());
             auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
 
-            memory::Copy(cuda_pinned_place,
-                         cuda_pinned_ptrs[i],
-                         cpu[i].place(),
-                         cpu[i].data(),
-                         size);
+            phi::memory_utils::Copy(cuda_pinned_place,
+                                    cuda_pinned_ptrs[i],
+                                    cpu[i].place(),
+                                    cpu[i].data(),
+                                    size);
 
             cuda[i].set_lod(cpu[i].lod());
           } else {
@@ -215,7 +216,7 @@ void BufferedReader::ReadAsync(size_t i) {
           auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
           if (platform::is_cuda_pinned_place(cpu_place) ||
               platform::is_gpu_place(cpu_place)) {
-            memory::Copy(
+            phi::memory_utils::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
             platform::CUDAPinnedPlace cuda_pinned_place;
@@ -223,14 +224,14 @@ void BufferedReader::ReadAsync(size_t i) {
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
                 cuda_pinned_place, cpu[i].type());
-            memory::Copy(
+            phi::memory_utils::Copy(
                 cuda_pinned_place, cuda_pinned_ptr, cpu_place, cpu_ptr, size);
-            memory::Copy(place_,
-                         gpu_ptr,
-                         cuda_pinned_place,
-                         cuda_pinned_ptr,
-                         size,
-                         stream_.get());
+            phi::memory_utils::Copy(place_,
+                                    gpu_ptr,
+                                    cuda_pinned_place,
+                                    cuda_pinned_ptr,
+                                    size,
+                                    stream_.get());
 
             platform::GpuStreamSync(stream_.get());
           }
@@ -290,7 +291,7 @@ void BufferedReader::ReadAsync(size_t i) {
               xpu_ptr, tmp, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
           delete[] tmp;
         } else {
-          memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
+          phi::memory_utils::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
         }
         xpu[i].set_lod(cpu[i].lod());
       }
@@ -339,10 +340,12 @@ void BufferedReader::ReadAsync(size_t i) {
         auto custom_device_ptr = custom_device_ptrs[i];
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_custom_place(cpu_place))) {
-          memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
+          phi::memory_utils::Copy(
+              place_, custom_device_ptr, cpu_place, cpu_ptr, size);
           custom_device_stream_->Synchronize();
         } else {
-          memory::Copy(place_, custom_device_ptr, cpu_place, cpu_ptr, size);
+          phi::memory_utils::Copy(
+              place_, custom_device_ptr, cpu_place, cpu_ptr, size);
         }
         custom_device[i].set_lod(cpu[i].lod());
       }
