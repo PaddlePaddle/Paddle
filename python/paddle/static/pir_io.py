@@ -159,6 +159,42 @@ def pir_prune_with_input(program, feed_vars, target_vars):
             program.global_block().remove_op(op)
 
 
+def _inference_optimize(program, prune_read_op=True):
+    """
+    This method will create a new program and do following adjustments on it:
+    1. Remove all reader variables and their creator ops if exist.
+
+    2. Remove the :code:`read_op` if exists.
+
+    3. change the :code:`is_test`
+    attribute of operators to :code:`True`. All the :code:`Parameter`
+    information will be lost.
+
+    Args:
+        prune_read_op(bool): remove the read ops that are added by py_reader
+                             for cpp inference library
+
+    Notes: This API is a very low level API. Use
+    :code:`Program.clone(for_test=True)` instead.
+
+    Returns:
+        Program: The new program.
+    """
+
+    # remove all readers and the read_op if exist
+    if prune_read_op:
+        warnings.warn("WAINING : need to remove the read_op, please add code ")
+
+    # change all `is_test` attributes to True
+    for block in program.blocks:
+        for op in block.ops:
+            if op.has_attr("is_test"):
+                op.set_bool_attr("is_test", True)
+            if op.name() == "pd_op.batch_norm":
+                # Remove the output ReserveSpace of batch_norm if exists.
+                pass
+
+
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
@@ -242,7 +278,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     # if feed var is not conect with target_vars, it will be delete.
     if not skip_prune_program:
         pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
-    # copy_program = copy_program._inference_optimize(prune_read_op=True)
+    _inference_optimize(copy_program, prune_read_op=True)
 
     fetch_vars_tuple = []
     for i, var in enumerate(clone_fetch_vars):
@@ -341,7 +377,10 @@ def save_vars_pir(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
                 save_var_names.append(name)
-
+            # print("pir jit save :")
+            # import numpy
+            # for tensor, name in zip(save_var_list, save_var_names):
+            #     print(name, " ", numpy.mean(tensor))
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
