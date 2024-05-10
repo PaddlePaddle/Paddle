@@ -15,8 +15,6 @@
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
