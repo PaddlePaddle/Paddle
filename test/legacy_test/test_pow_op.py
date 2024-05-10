@@ -31,7 +31,7 @@ class TestPowOp(OpTest):
         self.op_type = "pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.outputs = None
         self.custom_setting()
         if not self.outputs:
@@ -98,8 +98,6 @@ class TestPowOpFP16(TestPowOp):
             'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
         }
         self.attrs = {"factor": float(np.random.uniform(0, 10, []))}
-        # NOTE(dev): atol is overflow for 0.001 if prim_op_type="comp"
-        self.prim_op_type = "prim"
 
     def test_check_grad(self):
         self.check_grad(

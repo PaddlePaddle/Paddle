@@ -523,18 +523,20 @@ void pow_grad(const Tensor& x,
               const Tensor& out_grad,
               const Scalar& y,
               Tensor* x_grad) {
-  if (!x_grad) return;
-  auto y_value = y.to<float>();
-  auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
-  set_output<T>(dx_res, x_grad);
+  if (x_grad) {
+    auto y_value = y.to<float>();
+    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+    set_output<T>(dx_res, x_grad);
+  }
 }
 
 template <typename T>
 void scale_grad(const Tensor& out_grad, const Scalar& scale, Tensor* x_grad) {
-  if (!x_grad) return;
-  auto dx_res = primitive::scale<T>(
-      out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
-  set_output<T>(dx_res, x_grad);
+  if (x_grad) {
+    auto dx_res = primitive::scale<T>(
+        out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
+    set_output<T>(dx_res, x_grad);
+  }
 }
 
 template <typename T>

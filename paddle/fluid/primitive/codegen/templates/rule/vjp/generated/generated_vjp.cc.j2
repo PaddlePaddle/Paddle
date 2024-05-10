@@ -24,18 +24,20 @@ std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs
 
 {% macro join_need_skip(attrs, api_name) %}
   {% for i in attrs %}
-    {% if i.typename is scalar %}
+    {%- if i is mutable_attribute -%}
+      {% if i.typename is scalar %}
 auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
 if({{i.name}}_define_op->name() != "pd_op.full") {
   need_skip = true;
   VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
 }
-    {% elif i.typename is intarray %}
+      {% elif i.typename is intarray %}
 auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
 if({{i.name}}_define_op->name() != "pd_op.full_int_array") {
   need_skip = true;
   VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
 }
+      {% endif %}
     {% endif %}
   {% endfor %}
 {% endmacro %}

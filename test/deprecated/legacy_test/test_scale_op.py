@@ -33,8 +33,7 @@ class TestScaleOp(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.public_python_api = paddle.scale
-        self.prim_op_type = "comp"
-        self.rev_comp_rtol = 1e-7
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}
         self.outputs = {
@@ -169,8 +168,7 @@ class TestScaleBF16Op(OpTest):
         self.op_type = "scale"
         self.python_api = paddle.scale
         self.public_python_api = paddle.scale
-        self.prim_op_type = "comp"
-        self.rev_comp_rtol = 1e-7
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.attrs = {'scale': -2.3}
         x = np.random.random((10, 10)).astype(np.float32)
