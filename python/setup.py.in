@@ -465,6 +465,11 @@ def get_paddle_extra_install_requirements():
 
 packages=['paddle',
           'paddle.libs',
+          'paddle.cinn',
+          'paddle.cinn.auto_schedule',
+          'paddle.cinn.auto_schedule.cost_model',
+          'paddle.cinn.ir',
+          'paddle.cinn.runtime',
           'paddle.utils',
           'paddle.utils.gast',
           'paddle.utils.cpp_extension',
@@ -746,6 +751,7 @@ if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     if '${CINN_WITH_SYCL}' == 'ON':
         shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h', libs_path)
+        package_data['paddle.libs']+=['cinn_sycl_runtime_source.h']
     if '${CINN_WITH_ROCM}' == 'ON':
         shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']

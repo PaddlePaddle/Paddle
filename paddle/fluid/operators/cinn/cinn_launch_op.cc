@@ -35,12 +35,17 @@ namespace operators {
 namespace details {
 
 const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
+  VLOG(4) << "Current place: " << place.DebugString();
   if (platform::is_cpu_place(place)) {
     return ::cinn::common::DefaultHostTarget();
   } else if (platform::is_gpu_place(place)) {
     return ::cinn::common::DefaultGPUTarget();
   }
 
+#if defined(CINN_WITH_SYCL) && defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (platform::is_custom_place(place))
+    return ::cinn::common::SYCLTarget();
+#endif
   PADDLE_THROW(platform::errors::InvalidArgument(
       "CINN is not supported on current place:%s", place));
   return ::cinn::common::UnkTarget();

@@ -1466,7 +1466,10 @@ bool RegisterCustomCallArgsFunc() {
 #endif
 
 #ifdef CINN_WITH_SYCL
-
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_sycl_memset",
+      cinn::common::SYCLTarget(),
+      CustomCallArgsForMemset);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_sycl_memcpy",
       cinn::common::SYCLTarget(),

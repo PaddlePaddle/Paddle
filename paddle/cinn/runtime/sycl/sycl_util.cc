@@ -53,8 +53,11 @@ void cinn_call_sycl_kernel(void* kernel_fn,
     cinn_pod_value_t* args = static_cast<cinn_pod_value_t*>(v_args);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t*>()) {
-        kernel_args.emplace_back(
-            &(static_cast<cinn_buffer_t*>(args[idx]))->memory);
+        void *addr = static_cast<cinn_buffer_t*>(args[idx])->memory;
+        std::stringstream ss;
+        ss << std::hex << addr;
+        VLOG(4) << "sycl kernel arg[" << idx << "] is a buffer, addr=" << ss.str();
+        kernel_args.emplace_back(&addr);
       } else {
         kernel_args.emplace_back((args[idx].data_addr()));
       }
@@ -77,8 +80,29 @@ void cinn_call_sycl_kernel(void* kernel_fn,
     ::sycl::range<3> Block(block_z, block_y, block_x);
     // need malloc_shared
     // LOG(INFO) << "kernel args :" << (float* )(*(void **)(kernel_args[0]))[0]
-    kernel_func(*Queue, Grid, Block, kernel_args.data());
+    SYCL_CALL(kernel_func(*Queue, Grid, Block, kernel_args.data()));
   }
+}
+
+void cinn_call_sycl_memset(
+    void *v_args, int num_args, int value, size_t count) {
+  PADDLE_ENFORCE_EQ(num_args,
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "The cinn_call_sycl_memset only accept a output."));
+  VLOG(4) << "call cinn_call_sycl_memset with value=" << value
+          << ", count=" << count;
+
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  void *output = args[0].operator cinn_buffer_t *()->memory;
+
+  std::stringstream ss;
+  ss << std::hex << output;
+  VLOG(4) << "cinn_call_sycl_memset: " << ss.str();
+
+  auto Queue = SYCLBackendAPI::Global()->get_now_queue();
+
+  SYCL_CALL(Queue->memset(output, value, count));
 }
 
 void cinn_call_sycl_memcpy(void *v_args,
@@ -95,9 +119,18 @@ void cinn_call_sycl_memcpy(void *v_args,
   void *input = args[0].operator cinn_buffer_t *()->memory;
   void *output = args[1].operator cinn_buffer_t *()->memory;
 
+  if (input == output) {
+    VLOG(3) << "cinn_call_sycl_memcpy: skip copy as input addr is the same as output.";
+    return;
+  }
+
+  std::stringstream ss;
+  ss << std::hex << input << " -> " << output;
+  VLOG(4) << "cinn_call_sycl_memcpy: " << ss.str();
+
   auto Queue = SYCLBackendAPI::Global()->get_now_queue();
 
-  Queue->memcpy(output, input, count);
+  SYCL_CALL(Queue->memcpy(output, input, count));
 }
 
 #ifdef CINN_WITH_CNNL

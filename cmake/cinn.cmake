@@ -316,7 +316,7 @@ gen_cinncore(SHARED)
 set(PUBLISH_LIBS ON)
 if(PUBLISH_LIBS)
   set(core_includes
-      "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
+      "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh;paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})

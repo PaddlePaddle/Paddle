@@ -839,6 +839,8 @@ void BuildOpFuncList(const platform::Place& place,
           op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
         }
         auto kernel_type = *(op_with_kernel->kernel_type());
+        if (op_with_kernel->Type() == "cinn_launch" || op_with_kernel->Type() == "cinn_instruction_run")
+          kernel_type.place_ = place;
         if (kernel_type.place_ != dev_ctx->GetPlace()) {
           dev_ctx = pool.Get(kernel_type.place_);
         }

@@ -1126,6 +1126,7 @@ def get_package_data_and_package_dir():
                 + '/paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h',
                 libs_path,
             )
+            package_data['paddle.libs'] += ['cinn_sycl_runtime_source.h']
         if env_dict.get("CINN_WITH_ROCM") == 'ON':
             shutil.copy(
                 env_dict.get("CINN_INCLUDE_DIR")
@@ -1480,6 +1481,11 @@ def get_setup_parameters():
     packages = [
         'paddle',
         'paddle.libs',
+        'paddle.cinn',
+        'paddle.cinn.auto_schedule',
+        'paddle.cinn.auto_schedule.cost_model',
+        'paddle.cinn.ir',
+        'paddle.cinn.runtime',
         'paddle.utils',
         'paddle.utils.gast',
         'paddle.utils.cpp_extension',
