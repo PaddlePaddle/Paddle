@@ -27,7 +27,7 @@ void ViewShapeKernel(const Context& dev_ctx,
   auto infer_dim = -1;
   auto new_size = 1;
   auto numel = input.numel();
-  for (int dim = 0; ndim = dims.size(); dim != ndim; ++dim) {
+  for (int dim = 0, ndim = dims.size(); dim != ndim; ++dim) {
     if (dims[dim] == -1) {
       if (infer_dim >= 0) {
         PADDLE_THROW(phi::errors::Fatal(
