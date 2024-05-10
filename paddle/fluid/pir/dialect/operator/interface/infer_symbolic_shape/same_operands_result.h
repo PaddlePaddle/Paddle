@@ -109,6 +109,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Scale_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(ScatterNdAdd)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Scatter)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Scatter_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Select)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sign)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sin)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sin_)
@@ -134,4 +135,5 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Sigmoid_)
 namespace cinn::dialect {
 using paddle::dialect::ReverseOpInferSymbolicShape;
 using paddle::dialect::ScaleOpInferSymbolicShape;
+using paddle::dialect::SelectOpInferSymbolicShape;
 }  // namespace cinn::dialect
