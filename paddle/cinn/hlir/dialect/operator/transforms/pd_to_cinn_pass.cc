@@ -1081,6 +1081,8 @@ class WhereOpPattern : public pir::OpRewritePattern<paddle::dialect::WhereOp> {
     rewriter.ReplaceAllUsesWith(op.result(0), select_op.result(0));
 
     rewriter.EraseOp(op);
+
+    return true;
   }
 };
 
