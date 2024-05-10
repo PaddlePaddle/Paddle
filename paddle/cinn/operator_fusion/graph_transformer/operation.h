@@ -240,13 +240,6 @@ struct SplitRecomputeOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph,
                   PatternNodePtr<Phrase> upstream) {
-    PADDLE_ENFORCE_GT(upstream->downstream().size(),
-                      1,
-                      phi::errors::PreconditionNotMet(
-                          "The downstream of node for recomputation should be "
-                          "more than 1, but got %d.",
-                          upstream->downstream().size()));
-
     std::vector<PatternNodePtr<Phrase>> fusion_candidate =
         upstream->downstream();
     upstream->ClearDownstream();
