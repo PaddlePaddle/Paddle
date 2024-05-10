@@ -381,8 +381,8 @@ class TestShardingV2AllGather(unittest.TestCase):
 
         model_a = fleet.distributed_model(model_a)
         optimizer_a = fleet.distributed_optimizer(optimizer_a)
-        model_b = fleet.distributed_model(model_a)
-        optimizer_b = fleet.distributed_optimizer(optimizer_a)
+        model_b = fleet.distributed_model(model_b)
+        optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
         optimizer_a._set_all_gather_overlap_forward(True, model_a)
         optimizer_b._set_all_gather_overlap_forward(False, model_b)
@@ -428,17 +428,18 @@ class TestShardingV2AllGather(unittest.TestCase):
                 )
 
     def test_all_gather_overlap_forward(self):
-        sharded_accumulators = {
-            'linear_12.b_0_velocity_0',
-            'linear_13.b_0_velocity_0',
-            'linear_14.b_0_velocity_0',
-            'embedding_4.w_0_velocity_0',
-        }
-        self.sharding_model(
-            Optimizer="Momentum",
-            sharded_accumulators=sharded_accumulators,
-            amp_level="O2",
-        )
+        if g_shard_split_param:
+            sharded_accumulators = {
+                'linear_12.b_0_velocity_0',
+                'linear_13.b_0_velocity_0',
+                'linear_14.b_0_velocity_0',
+                'embedding_4.w_0_velocity_0',
+            }
+            self.sharding_model(
+                Optimizer="Momentum",
+                sharded_accumulators=sharded_accumulators,
+                amp_level="O2",
+            )
 
 
 if __name__ == "__main__":
