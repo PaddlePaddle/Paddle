@@ -31,7 +31,7 @@ class TestPowOp(OpTest):
         self.op_type = "pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.outputs = None
         self.custom_setting()
         if not self.outputs:
