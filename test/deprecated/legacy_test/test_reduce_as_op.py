@@ -52,7 +52,7 @@ class TestSumAsOp(OpTest):
         self.inputs = {'x': self.x, 'target': self.y}
         self.outputs = {'out': self.out}
         self.if_enable_cinn()
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.public_python_api = paddle.reduce_as
 
     def init_dtype(self):
