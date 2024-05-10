@@ -207,24 +207,6 @@ std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
   return ops;
 }
 
-void InferSymbolicShapeForSubgraph(
-    const std::vector<pir::Operation*>& ops,
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  for (auto* op : ops) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    if (infer_symbolic_shape_interface) {
-      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
-      // is done.
-      infer_symbolic_shape_interface.InferSymbolicShape(
-          shape_analysis->GetInferSymbolicShapeContext());
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-    }
-  }
-}
-
 void UpdateLocalShapeAnalysis(
     const std::vector<pir::Value>& input_tensors,
     pir::Value shape,
@@ -261,10 +243,6 @@ void UpdateLocalShapeAnalysis(
           input_tensor, symbol::TensorShapeOrDataDimExprs(new_shape));
     }
   }
-  // infer new symbol shape for shape value
-  std::vector<pir::Operation*> sub_graph_ops =
-      GetSubGraphFromOutputToInputsValue(input_tensors, shape);
-  InferSymbolicShapeForSubgraph(sub_graph_ops, shape_analysis);
 }
 
 std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(

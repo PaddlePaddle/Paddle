@@ -21,6 +21,7 @@
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
@@ -128,13 +129,13 @@ class IR_API ShapeConstraintIRAnalysis final
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
 
-  // TODO(hongqing-work): make it a private component only for infer friend
-  // class
+ private:
   InferSymbolicShapeContext* GetInferSymbolicShapeContext() {
     return &context_;
   }
 
- private:
+  friend void InferSymExprForAllValues(ModuleOp module_op);
+
   void SetStaticShapeForValue(Value val);
 
   void InferShapeOrDataForValue(Value val);
