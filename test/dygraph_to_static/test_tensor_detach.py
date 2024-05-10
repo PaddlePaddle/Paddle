@@ -25,7 +25,8 @@ import paddle
 
 def detach_fn(x, y):
     u = x + y
-    o1 = u.detach() + 1
+    v = u.detach()
+    o1 = v + 1
 
     return o1, u
 
