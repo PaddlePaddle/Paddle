@@ -30,6 +30,7 @@ class TestPEReduction(unittest.TestCase):
 
         self.target = Target()
         self.target.arch = Target.X86Arch()
+        self.target.language = Target.Language_Host()
         self.target.bits = Target.Bit.k64
         self.target.os = Target.OS.Linux
 

@@ -24,6 +24,7 @@ class TensorTest(unittest.TestCase):
     def test_basic(self):
         target = Target()
         target.arch = Target.X86Arch()
+        self.target.language = Target.Language_Host()
         target.bits = Target.Bit.k64
         target.os = Target.OS.Linux
         tensor = Tensor()

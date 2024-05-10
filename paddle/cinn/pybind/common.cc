@@ -65,6 +65,11 @@ void BindTarget(py::module *m) {
       .def_static("NVGPUArch",
                   []() -> common::Arch { return common::NVGPUArch{}; })
       .def_readwrite("language", &Target::language)
+      .def_static("Language_Host",
+                  []() -> common::Language { return common::Language_Host{}; })
+      .def_static("Language_CUDA",
+                  []() -> common::Language { return common::Language_CUDA{}; })
+
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())

@@ -339,7 +339,7 @@ bool IsCompiledWithCUDNN() {
 }
 
 void CheckCompileOptionImpl(cinn::common::Language_Unknown) {
-  PADDLE_THROW(phi::errors::Fatal("unknown language"));
+  PADDLE_THROW(phi::errors::Fatal("Unknown Target Language! Please Check."));
 }
 
 void CheckCompileOptionImpl(cinn::common::Language_Host) {

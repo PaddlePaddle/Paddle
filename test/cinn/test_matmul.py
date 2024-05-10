@@ -28,6 +28,7 @@ class TestMatmul(unittest.TestCase):
         np.random.seed(0)
         self.target = Target()
         self.target.arch = Target.X86Arch()
+        self.target.language = Target.Language_Host()
         self.target.bits = Target.Bit.k32
         self.target.os = Target.OS.Linux
         self.m = 1024
