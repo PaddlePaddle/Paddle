@@ -70,6 +70,8 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_avg_',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'c_allreduce_min_',
     'c_allreduce_prod_',
     'distributed_fused_lamb_init',
@@ -187,8 +189,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
-    'c_reduce_avg',
-    'c_reduce_avg_',
     'c_reduce_max',
     'c_reduce_max_',
     'c_reduce_min',
