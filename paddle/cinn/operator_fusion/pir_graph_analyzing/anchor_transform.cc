@@ -119,10 +119,12 @@ std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
 
   // Transform to Upstream
   auto defining_op = v.defining_op();
-  size_t output_idx = GetResultIdx(v, defining_op);
-  for (size_t i = 0; i < defining_op->num_operands(); ++i) {
-    result.emplace_back(
-        CreateAnchorTransform(TransformInfo(defining_op, i, output_idx, true)));
+  if (defining_op != nullptr) {
+    size_t output_idx = GetResultIdx(v, defining_op);
+    for (size_t i = 0; i < defining_op->num_operands(); ++i) {
+      result.emplace_back(CreateAnchorTransform(
+          TransformInfo(defining_op, i, output_idx, true)));
+    }
   }
 
   // Transform to Downstream
@@ -148,8 +150,16 @@ TransformInfo GetTransformInfo(AnchorTransform trans) {
   return std::visit([](auto&& arg) { return arg->info; }, trans);
 }
 
-std::string DebugStrOfAnchorTransform(AnchorTransform trans) {
+std::string DebugStrOfAnchorTransform(const AnchorTransform& trans) {
   return std::visit([](auto&& arg) { return arg->DebugStr(); }, trans);
+}
+
+std::string DebugStrOfAnchorTransformRoute(const AnchorTransformRoute& route) {
+  std::stringstream ss;
+  for (const auto& trans : route) {
+    ss << DebugStrOfAnchorTransform(trans) << "\n";
+  }
+  return ss.str();
 }
 
 }  // namespace cinn::fusion

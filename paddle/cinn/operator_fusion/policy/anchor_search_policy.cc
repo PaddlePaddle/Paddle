@@ -30,11 +30,12 @@ std::optional<AnchorTransformRoute> SearchAnchorTransformRecursively(
     AnchorTransformRoute* cur_route,
     std::unordered_set<pir::Value>* visited,
     const std::unordered_set<pir::Operation*>& ops) {
+  VLOG(4) << "[SearchAnchorTransformRecursively] Curent Route:\n"
+          << DebugStrOfAnchorTransformRoute(*cur_route);
   auto transforms = PossibleTransform(begin);
   for (auto anchor_transform : transforms) {
     auto info = GetTransformInfo(anchor_transform);
     auto dst_value = info.DstValue();
-    cur_route->emplace_back(anchor_transform);
 
     if (std::holds_alternative<UnsupportTransformPtr>(anchor_transform) ||
         ops.find(info.op) == ops.end() ||
@@ -46,13 +47,14 @@ std::optional<AnchorTransformRoute> SearchAnchorTransformRecursively(
       return *cur_route;
     }
 
+    cur_route->emplace_back(anchor_transform);
     auto recursive_result = SearchAnchorTransformRecursively(
         dst_value, end, cur_route, visited, ops);
+    cur_route->pop_back();
+
     if (recursive_result != std::nullopt) {
       return recursive_result;
     }
-
-    cur_route->pop_back();
   }
 
   return std::nullopt;
