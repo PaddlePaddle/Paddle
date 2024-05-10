@@ -36,8 +36,6 @@ class TestDetach(Dy2StTestBase):
         static_fn = paddle.jit.to_static(detach_fn)
         x = paddle.ones([], 'float32')
         y = paddle.ones([], 'float32')
-        # x.stop_gradient = False
-        # y.stop_gradient = False
         static_res = static_fn(x, y)
         dygraph_res = detach_fn(x, y)
         np.testing.assert_allclose(
