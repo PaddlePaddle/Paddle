@@ -25,12 +25,16 @@ class Test3DSemiAutoParallelStaticPirDecorate(
             num_of_devices=8,
             timeout=300,
         )
-        self._default_envs = {"dtype": "float32", "seed": "2023"}
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+            "FLAGS_enable_pir_api": "1",
+        }
         self._changeable_envs = {"backend": ["gpu"]}
 
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
-            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+            self._default_envs, self._changeable_envs
         )
         # self._log_dir.name = "./log"
         for envs in envs_list:
