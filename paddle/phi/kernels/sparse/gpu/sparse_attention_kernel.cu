@@ -1,34 +1,32 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <math.h>
 
 #include <limits>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/memory_utils.h"
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/fluid/platform/dynload/cusparse.h"
+#include "paddle/phi/backends/dynload/cusparse.h"
 #endif
+#include "paddle/utils/optional.h"
 
-namespace ops = paddle::operators;
-namespace plf = paddle::platform;
-
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
@@ -418,8 +416,8 @@ void SparseSoftmaxBackward(const phi::GPUContext& ctx,
   }
 }
 
-using VarType = framework::proto::VarType;
-inline cudaDataType_t GetGpuType(const VarType::Type data_type) {
+using VarType = phi::ProtoDataType;
+inline cudaDataType_t GetGpuType(const int data_type) {
   if (data_type == VarType::FP32) {
     return CUDA_R_32F;
   } else if (data_type == VarType::FP64) {
@@ -427,7 +425,7 @@ inline cudaDataType_t GetGpuType(const VarType::Type data_type) {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s",
-        framework::DataTypeToString(data_type)));
+        phi::DataTypeToString(phi::TransToPhiDataType(data_type))));
   }
 }
 
@@ -469,7 +467,7 @@ void DotSdd(const phi::GPUContext& ctx,
   T* c_value_data = c_value->data<T>();
 
   cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c_value->dtype()));
+      GetGpuType(phi::TransToProtoVarType(c_value->dtype()));
   cusparseHandle_t handle = nullptr;
   cusparseDnMatDescr_t mat_a, mat_b;
   cusparseSpMatDescr_t mat_c;
@@ -520,7 +518,7 @@ void DotSdd(const phi::GPUContext& ctx,
                                          gpu_type,
                                          CUSPARSE_SDDMM_ALG_DEFAULT,
                                          &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(
+  auto d_buffer_ptr = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -563,8 +561,7 @@ void DotDsd(const phi::GPUContext& ctx,
   const T* b_data = b->data<T>();
   T* c_data = c->data<T>();
 
-  cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c->dtype()));
+  cudaDataType_t gpu_type = GetGpuType(phi::TransToProtoVarType(c->dtype()));
   cusparseHandle_t handle = nullptr;
   cusparseSpMatDescr_t mat_a;
   cusparseDnMatDescr_t mat_b, mat_c;
@@ -617,7 +614,7 @@ void DotDsd(const phi::GPUContext& ctx,
                                         gpu_type,
                                         CUSPARSE_SPMM_ALG_DEFAULT,
                                         &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(
+  auto d_buffer_ptr = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -652,254 +649,270 @@ std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {
   return input->Split(1, 0);
 }
 
-template <typename T, typename DeviceContext>
-class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto query = *ctx.Input<phi::DenseTensor>("Q");
-    auto key = *ctx.Input<phi::DenseTensor>("K");
-    auto value = *ctx.Input<phi::DenseTensor>("V");
-    auto offset = *ctx.Input<phi::DenseTensor>("Offset");
-    auto columns = *ctx.Input<phi::DenseTensor>("Columns");
-    auto output_ptr = ctx.Output<phi::DenseTensor>("Out");
-    output_ptr->mutable_data<T>(ctx.GetPlace());
-    auto sparse_dot_sdd_ptr = ctx.Output<phi::DenseTensor>("SparseDotSdd");
-    sparse_dot_sdd_ptr->mutable_data<T>(ctx.GetPlace());
-    auto softmax_ptr = ctx.Output<phi::DenseTensor>("Softmax");
-    softmax_ptr->mutable_data<T>(ctx.GetPlace());
-    // add Mask
-    auto* key_padding_mask = ctx.HasInput("KeyPaddingMask")
-                                 ? ctx.Input<phi::DenseTensor>("KeyPaddingMask")
-                                 : nullptr;
-    auto* attn_mask = ctx.HasInput("AttnMask")
-                          ? ctx.Input<phi::DenseTensor>("AttnMask")
-                          : nullptr;
+template <typename T, typename Context>
+void SparseAttentionCUDAKernel(
+    const Context& dev_ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& offset,
+    const DenseTensor& columns,
+    const paddle::optional<DenseTensor>& key_padding_mask,
+    const paddle::optional<DenseTensor>& attn_mask,
+    DenseTensor* out,
+    DenseTensor* sparse_dot_sdd,
+    DenseTensor* softmax) {
+  auto query = q;
+  auto key = k;
+  auto value = v;
+  auto output_ptr = out;
+  dev_ctx.template Alloc<T>(out);
+  auto sparse_dot_sdd_ptr = sparse_dot_sdd;
+  dev_ctx.template Alloc<T>(sparse_dot_sdd);
+  auto softmax_ptr = softmax;
+  dev_ctx.template Alloc<T>(softmax);
 
-    auto output = *output_ptr;
-    auto result_sdd = *sparse_dot_sdd_ptr;
-    auto result_softmax = *softmax_ptr;
+  auto output = *output_ptr;
+  auto result_sdd = *sparse_dot_sdd_ptr;
+  auto result_softmax = *softmax_ptr;
 
-    auto query_dims = query.dims();
-    int batch_size = query_dims[0];
-    int num_heads = query_dims[1];
-    int M = query_dims[2];
-    int N = query_dims[3];
+  auto query_dims = query.dims();
+  int batch_size = query_dims[0];
+  int num_heads = query_dims[1];
+  int M = query_dims[2];
+  int N = query_dims[3];
 
-    std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
-    std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
-    std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
-    std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset);
-    std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns);
-    std::vector<phi::DenseTensor> result_sdd_lists =
-        GetSplitTensor(&result_sdd);
-    std::vector<phi::DenseTensor> result_softmax_lists =
-        GetSplitTensor(&result_softmax);
-    std::vector<phi::DenseTensor> output_lists = GetSplitTensor(&output);
+  DenseTensor q2 = q;
+  DenseTensor k2 = k;
+  DenseTensor v2 = v;
+  DenseTensor offset2 = offset;
+  DenseTensor columns2 = columns;
+  std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&q2);
+  std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&k2);
+  std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&v2);
+  std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset2);
+  std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns2);
+  std::vector<phi::DenseTensor> result_sdd_lists = GetSplitTensor(&result_sdd);
+  std::vector<phi::DenseTensor> result_softmax_lists =
+      GetSplitTensor(&result_softmax);
+  std::vector<phi::DenseTensor> output_lists = GetSplitTensor(&output);
 
-    const auto& dev_ctx = ctx.cuda_device_context();
-    const int iter_num = batch_size * num_heads;
-    for (int i = 0; i < iter_num; i++) {
-      DotSdd<DeviceContext, T>(dev_ctx,
-                               &query_lists[i],
-                               &key_lists[i],
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &result_sdd_lists[i],
-                               M,
-                               N,
-                               false,
-                               true);
+  const int iter_num = batch_size * num_heads;
+  for (int i = 0; i < iter_num; i++) {
+    DotSdd<Context, T>(dev_ctx,
+                       &query_lists[i],
+                       &key_lists[i],
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &result_sdd_lists[i],
+                       M,
+                       N,
+                       false,
+                       true);
 
-      if (key_padding_mask != nullptr && attn_mask != nullptr) {
-        SparseSoftmaxForward<DeviceContext, T>(
-            dev_ctx,
-            &offset_lists[i],
-            &columns_lists[i],
-            &result_sdd_lists[i],
-            &result_softmax_lists[i],
-            1,
-            M,
-            N,
-            key_padding_mask + (i / num_heads) * M,
-            attn_mask);
-      } else if (key_padding_mask != nullptr && attn_mask == nullptr) {
-        SparseSoftmaxForward<DeviceContext, T>(
-            dev_ctx,
-            &offset_lists[i],
-            &columns_lists[i],
-            &result_sdd_lists[i],
-            &result_softmax_lists[i],
-            1,
-            M,
-            N,
-            key_padding_mask + (i / num_heads) * M,
-            nullptr);
-      } else if (key_padding_mask == nullptr && attn_mask != nullptr) {
-        SparseSoftmaxForward<DeviceContext, T>(dev_ctx,
-                                               &offset_lists[i],
-                                               &columns_lists[i],
-                                               &result_sdd_lists[i],
-                                               &result_softmax_lists[i],
-                                               1,
-                                               M,
-                                               N,
-                                               nullptr,
-                                               attn_mask);
-      } else {
-        SparseSoftmaxForward<DeviceContext, T>(dev_ctx,
-                                               &offset_lists[i],
-                                               &columns_lists[i],
-                                               &result_sdd_lists[i],
-                                               &result_softmax_lists[i],
-                                               1,
-                                               M,
-                                               N,
-                                               nullptr,
-                                               nullptr);
-      }
-
-      DotDsd<DeviceContext, T>(dev_ctx,
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &result_softmax_lists[i],
-                               &value_lists[i],
-                               &output_lists[i],
-                               M,
-                               N,
-                               false,
-                               false);
+    if (key_padding_mask && attn_mask) {
+      SparseSoftmaxForward<Context, T>(
+          dev_ctx,
+          &offset_lists[i],
+          &columns_lists[i],
+          &result_sdd_lists[i],
+          &result_softmax_lists[i],
+          1,
+          M,
+          N,
+          key_padding_mask.get_ptr() + (i / num_heads) * M,
+          attn_mask.get_ptr());
+    } else if (key_padding_mask && !attn_mask.initialized()) {
+      SparseSoftmaxForward<Context, T>(
+          dev_ctx,
+          &offset_lists[i],
+          &columns_lists[i],
+          &result_sdd_lists[i],
+          &result_softmax_lists[i],
+          1,
+          M,
+          N,
+          key_padding_mask.get_ptr() + (i / num_heads) * M,
+          nullptr);
+    } else if (!key_padding_mask.initialized() && attn_mask) {
+      SparseSoftmaxForward<Context, T>(dev_ctx,
+                                       &offset_lists[i],
+                                       &columns_lists[i],
+                                       &result_sdd_lists[i],
+                                       &result_softmax_lists[i],
+                                       1,
+                                       M,
+                                       N,
+                                       nullptr,
+                                       attn_mask.get_ptr());
+    } else {
+      SparseSoftmaxForward<Context, T>(dev_ctx,
+                                       &offset_lists[i],
+                                       &columns_lists[i],
+                                       &result_sdd_lists[i],
+                                       &result_softmax_lists[i],
+                                       1,
+                                       M,
+                                       N,
+                                       nullptr,
+                                       nullptr);
     }
+
+    DotDsd<Context, T>(dev_ctx,
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &result_softmax_lists[i],
+                       &value_lists[i],
+                       &output_lists[i],
+                       M,
+                       N,
+                       false,
+                       false);
   }
-};
+}
 
-template <typename T, typename DeviceContext>
-class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto query = *ctx.Input<phi::DenseTensor>("Q");
-    auto key = *ctx.Input<phi::DenseTensor>("K");
-    auto value = *ctx.Input<phi::DenseTensor>("V");
-    auto offset = *ctx.Input<phi::DenseTensor>("Offset");
-    auto columns = *ctx.Input<phi::DenseTensor>("Columns");
-    auto sparse_dot_sdd = *ctx.Input<phi::DenseTensor>("SparseDotSdd");
-    auto softmax = *ctx.Input<phi::DenseTensor>("Softmax");
-    auto dout = *ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dquery_ptr =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("Q"));
-    auto* dkey_ptr = ctx.Output<phi::DenseTensor>(framework::GradVarName("K"));
-    auto* dvalue_ptr =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("V"));
-    dquery_ptr->mutable_data<T>(ctx.GetPlace());
-    dkey_ptr->mutable_data<T>(ctx.GetPlace());
-    dvalue_ptr->mutable_data<T>(ctx.GetPlace());
-    auto dquery = *dquery_ptr;
-    auto dkey = *dkey_ptr;
-    auto dvalue = *dvalue_ptr;
+template <typename T, typename Context>
+void SparseAttentionGradCUDAKernel(const Context& dev_ctx,
+                                   const DenseTensor& q,
+                                   const DenseTensor& k,
+                                   const DenseTensor& v,
+                                   const DenseTensor& offset,
+                                   const DenseTensor& columns,
+                                   const DenseTensor& sparse_dot_sdd,
+                                   const DenseTensor& softmax,
+                                   const DenseTensor& out_grad,
+                                   DenseTensor* q_grad,
+                                   DenseTensor* k_grad,
+                                   DenseTensor* v_grad) {
+  auto query = q;
+  auto key = k;
+  auto value = v;
 
-    auto query_dims = query.dims();
-    int batch_size = query_dims[0];
-    int num_heads = query_dims[1];
-    int M = query_dims[2];
-    int N = query_dims[3];
+  auto dout = out_grad;
+  auto* dquery_ptr = q_grad;
+  auto* dkey_ptr = k_grad;
+  auto* dvalue_ptr = v_grad;
+  dev_ctx.template Alloc<T>(q_grad);
+  dev_ctx.template Alloc<T>(k_grad);
+  dev_ctx.template Alloc<T>(v_grad);
 
-    std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
-    std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
-    std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
-    std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset);
-    std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns);
-    std::vector<phi::DenseTensor> sparse_dot_sdd_lists =
-        GetSplitTensor(&sparse_dot_sdd);
-    std::vector<phi::DenseTensor> softmax_lists = GetSplitTensor(&softmax);
-    std::vector<phi::DenseTensor> dout_lists = GetSplitTensor(&dout);
-    std::vector<phi::DenseTensor> dquery_lists = GetSplitTensor(&dquery);
-    std::vector<phi::DenseTensor> dkey_lists = GetSplitTensor(&dkey);
-    std::vector<phi::DenseTensor> dvalue_lists = GetSplitTensor(&dvalue);
+  auto dquery = *dquery_ptr;
+  auto dkey = *dkey_ptr;
+  auto dvalue = *dvalue_ptr;
 
-    const int iter_num = batch_size * num_heads;
-    const auto& dev_ctx = ctx.cuda_device_context();
-    for (int i = 0; i < iter_num; i++) {
-      // dValue = transpose(result_softmax) * dOut
-      DotDsd<DeviceContext, T>(dev_ctx,
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &softmax_lists[i],
-                               &dout_lists[i],
-                               &dvalue_lists[i],
-                               M,
-                               N,
-                               true,
-                               false);
+  auto query_dims = query.dims();
+  int batch_size = query_dims[0];
+  int num_heads = query_dims[1];
+  int M = query_dims[2];
+  int N = query_dims[3];
 
-      // dSoftmax = dOut * transpose(Value)
-      int nnz_num = columns_lists[i].numel();
-      phi::DenseTensor dsoftmax;
-      dsoftmax.Resize({nnz_num});
-      dsoftmax.mutable_data<T>(ctx.GetPlace());
-      DotSdd<DeviceContext, T>(dev_ctx,
-                               &dout_lists[i],
-                               &value_lists[i],
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &dsoftmax,
-                               M,
-                               N,
-                               false,
-                               true);
+  DenseTensor q2 = q;
+  DenseTensor k2 = k;
+  DenseTensor v2 = v;
+  DenseTensor offset2 = offset;
+  DenseTensor columns2 = columns;
+  DenseTensor sparse_dot_sdd2 = sparse_dot_sdd;
+  DenseTensor softmax2 = softmax;
+  DenseTensor dout2 = out_grad;
+  std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&q2);
+  std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&k2);
+  std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&v2);
+  std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset2);
+  std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns2);
+  std::vector<phi::DenseTensor> sparse_dot_sdd_lists =
+      GetSplitTensor(&sparse_dot_sdd2);
+  std::vector<phi::DenseTensor> softmax_lists = GetSplitTensor(&softmax2);
+  std::vector<phi::DenseTensor> dout_lists = GetSplitTensor(&dout2);
+  std::vector<phi::DenseTensor> dquery_lists = GetSplitTensor(dquery);
+  std::vector<phi::DenseTensor> dkey_lists = GetSplitTensor(dkey);
+  std::vector<phi::DenseTensor> dvalue_lists = GetSplitTensor(dvalue);
 
-      // dSparseDotSdd = dSoftmax * softmax'(SparseDotSdd)
-      phi::DenseTensor dsparse_dot_sdd;
-      dsparse_dot_sdd.Resize({nnz_num});
-      dsparse_dot_sdd.mutable_data<T>(ctx.GetPlace());
-      SparseSoftmaxBackward<DeviceContext, T>(dev_ctx,
-                                              &offset_lists[i],
-                                              &columns_lists[i],
-                                              &dsparse_dot_sdd,
-                                              &dsoftmax,
-                                              &softmax_lists[i],
-                                              1,
-                                              M,
-                                              N);
+  const int iter_num = batch_size * num_heads;
+  for (int i = 0; i < iter_num; i++) {
+    // dValue = transpose(result_softmax) * dOut
+    DotDsd<Context, T>(dev_ctx,
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &softmax_lists[i],
+                       &dout_lists[i],
+                       &dvalue_lists[i],
+                       M,
+                       N,
+                       true,
+                       false);
 
-      // dQuery = dSparseDotSdd * Key
-      DotDsd<DeviceContext, T>(dev_ctx,
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &dsparse_dot_sdd,
-                               &key_lists[i],
-                               &dquery_lists[i],
-                               M,
-                               N,
-                               false,
-                               false);
+    // dSoftmax = dOut * transpose(Value)
+    int nnz_num = columns_lists[i].numel();
+    phi::DenseTensor dsoftmax;
+    dsoftmax.Resize({nnz_num});
+    dev_ctx.template Alloc<T>(&dsoftmax);
+    DotSdd<Context, T>(dev_ctx,
+                       &dout_lists[i],
+                       &value_lists[i],
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &dsoftmax,
+                       M,
+                       N,
+                       false,
+                       true);
 
-      // dKey = transpose(dSparseDotSdd) * Query
-      DotDsd<DeviceContext, T>(dev_ctx,
-                               &offset_lists[i],
-                               &columns_lists[i],
-                               &dsparse_dot_sdd,
-                               &query_lists[i],
-                               &dkey_lists[i],
-                               M,
-                               N,
-                               true,
-                               false);
-    }
+    // dSparseDotSdd = dSoftmax * softmax'(SparseDotSdd)
+    phi::DenseTensor dsparse_dot_sdd;
+    dsparse_dot_sdd.Resize({nnz_num});
+    dev_ctx.template Alloc<T>(&dsparse_dot_sdd);
+    SparseSoftmaxBackward<Context, T>(dev_ctx,
+                                      &offset_lists[i],
+                                      &columns_lists[i],
+                                      &dsparse_dot_sdd,
+                                      &dsoftmax,
+                                      &softmax_lists[i],
+                                      1,
+                                      M,
+                                      N);
+
+    // dQuery = dSparseDotSdd * Key
+    DotDsd<Context, T>(dev_ctx,
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &dsparse_dot_sdd,
+                       &key_lists[i],
+                       &dquery_lists[i],
+                       M,
+                       N,
+                       false,
+                       false);
+
+    // dKey = transpose(dSparseDotSdd) * Query
+    DotDsd<Context, T>(dev_ctx,
+                       &offset_lists[i],
+                       &columns_lists[i],
+                       &dsparse_dot_sdd,
+                       &query_lists[i],
+                       &dkey_lists[i],
+                       M,
+                       N,
+                       true,
+                       false);
   }
-};
+}
+}  // namespace phi
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(sparse_attention,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SparseAttentionCUDAKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(sparse_attention_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SparseAttentionGradCUDAKernel,
-                          float,
-                          double) {}
+PD_REGISTER_KERNEL(sparse_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SparseAttentionCUDAKernel,
+                   float,
+                   double) {
+  kernel->InputAt(3).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::INT32);
+}
+PD_REGISTER_KERNEL(sparse_attention_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SparseAttentionGradCUDAKernel,
+                   float,
+                   double) {
+  kernel->InputAt(3).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::INT32);
+}

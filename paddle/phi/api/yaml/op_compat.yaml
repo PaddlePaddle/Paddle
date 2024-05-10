@@ -4168,6 +4168,13 @@
   outputs :
     out : Out
 
+- op: sparse_attention
+  backward: sparse_attention_grad
+  inputs:
+    {q : Q, k : K, v : V, offset : Offset, columns : Columns, key_padding_mask : KeyPaddingMask, attn_mask : AttnMask}
+  outputs:
+    {out : Out, sparse_dot_sdd : SparseDotSdd, softmax : Softmax}
+
 - op: sparse_momentum
   inputs :
     {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
