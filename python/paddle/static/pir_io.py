@@ -74,6 +74,14 @@ def get_pir_parameters(program):
     return params, opts
 
 
+def get_pir_feed_names(program):
+    feed_name_list = []
+    for op in program.global_block().ops:
+        if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
+            feed_name_list.append(op.attrs()["name"])
+    return feed_name_list
+
+
 def set_var(name, ndarray):
     t = global_scope().find_var(name).get_tensor()
     p = t._place()
@@ -352,6 +360,7 @@ def save_vars_pir(
 
 
 def load_vars_pir(
+    executor,
     dirname,
     main_program=None,
     vars=None,
@@ -374,6 +383,7 @@ def load_vars_pir(
     use `filename` to specify it.
 
     Args:
+        executor(Executor): The executor to create variables in scope.
         dirname(str): The folder where to load the variables.
         main_program(Program, optional): The program whose variables will be loaded.
                                     If it is None, the default main program will
@@ -391,6 +401,7 @@ def load_vars_pir(
     Returns:
         None
     """
+    assert executor is None or isinstance(executor, Executor)
 
     vars_from_memory = False
     if dirname is not None:
@@ -407,6 +418,7 @@ def load_vars_pir(
         param, opt = get_pir_parameters(main_program)
         vars_list = param + opt
         load_vars_pir(
+            executor,
             dirname=dirname,
             main_program=main_program,
             vars=vars_list,  # list(filter(predicate, vars_list)),
@@ -418,7 +430,9 @@ def load_vars_pir(
 
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
-
+        paddle.base.libpaddle.pir.create_loaded_parameter(
+            vars, global_scope(), executor._default_executor
+        )
         for v in vars:
             var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
@@ -768,6 +782,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         if len(params + opts) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
+                executor,
                 dirname=None,
                 main_program=program,
                 # predicate=persistable,
@@ -815,7 +830,6 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         # deserialize bytes to program
         program = paddle.static.Program()
         paddle.base.core.deserialize_pir_program(model_path, program, 1)
-
         # load parameters
         params, opts = get_pir_parameters(program)
         if len(params + opts) > 0:
@@ -823,10 +837,13 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
             params_filename = os.path.basename(params_path)
 
             load_vars_pir(
+                executor,
                 dirname=load_dirname,
                 main_program=program,
                 # predicate=persistable,
                 filename=params_filename,
             )
 
-    return [program, [], []]
+    feed_names = get_pir_feed_names(program)
+    # pir load program has fetch op, so if use exe.run to execute load program, don't need to set fetch_list
+    return [program, feed_names, []]
