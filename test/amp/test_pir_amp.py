@@ -39,7 +39,7 @@ class TestAmpAttrs(unittest.TestCase):
 
 class TestPirAMPProgram(unittest.TestCase):
     def test_linear_amp_o1(self):
-        if not core.is_compiled_with_cuda():
+        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
             return
         with paddle.pir_utils.IrGuard():
             startup = paddle.static.Program()
@@ -105,7 +105,7 @@ class TestPirAMPProgram(unittest.TestCase):
             )
 
     def test_linear_amp_o2(self):
-        if not core.is_compiled_with_cuda():
+        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
             return
         with paddle.pir_utils.IrGuard():
             startup = paddle.static.Program()
@@ -139,7 +139,10 @@ class TestPirAMPProgram(unittest.TestCase):
                 if op.name() == 'pd_op.cast':
                     cast_op_count += 1
             np.testing.assert_equal(cast_op_count, 5)
-            place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif core.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(startup)
             result = exe.run(

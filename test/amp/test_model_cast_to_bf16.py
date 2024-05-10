@@ -294,7 +294,12 @@ class TestStaticBF16(AmpTestBase):
 
         max_iters = 2
         x_fp32, x_bf16 = self._generate_feed_x()
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         losses_o1 = _run(place, exe, x_fp32, max_iters, 'O1')
         losses_o2 = _run(place, exe, x_bf16, max_iters, 'O2')
