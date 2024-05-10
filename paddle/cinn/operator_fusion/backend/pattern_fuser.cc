@@ -82,9 +82,12 @@ StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
     const AnchorPattern<BackendStage>& second) {
   for (auto promise : second.anchor_state.promise) {
-    promise.root_fusion_op =
-        cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
-            first.trivial_op, promise.root_fusion_op);
+    promise.root_fusion_op = std::visit(
+        [first](const auto& arg) -> FusionOp {
+          return cinn::hlir::framework::pir::trivial_fusion_detail::
+              TrivalxOther_Fusion(first.trivial_op, arg);
+        },
+        promise.root_fusion_op);
   }
 
   return AnchorPattern<BackendStage>(
