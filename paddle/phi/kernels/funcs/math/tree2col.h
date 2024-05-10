@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 namespace math {
 class TreeNode {
  public:
@@ -89,5 +88,4 @@ class Col2TreeFunctor {
                   int max_depth);
 };
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

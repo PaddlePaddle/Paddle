@@ -1,16 +1,16 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
@@ -25,10 +25,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
-
-using LoD = framework::LoD;
+namespace phi {
+namespace funcs {
 
 template <typename DeviceContext, typename T>
 void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
@@ -47,8 +45,8 @@ void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
-template <typename T>
-void call_gemm(const framework::ExecutionContext& ctx,
+template <typename T, typename Context>
+void call_gemm(const Context& dev_ctx,
                const CBLAS_TRANSPOSE TransA,
                const CBLAS_TRANSPOSE TransB,
                const int M,
@@ -61,7 +59,7 @@ void call_gemm(const framework::ExecutionContext& ctx,
                T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+  // auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
   auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
@@ -84,8 +82,8 @@ void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
-template <typename T>
-void call_gemm_batched(const framework::ExecutionContext& ctx,
+template <typename T, typename Context>
+void call_gemm_batched(const Context& ctx,
                        const CBLAS_TRANSPOSE TransA,
                        const CBLAS_TRANSPOSE TransB,
                        const int M,
@@ -198,5 +196,5 @@ inline void axpy_noadd(const int8_t* x,
       "int8_t input of axpy_noadd is not supported"));
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
