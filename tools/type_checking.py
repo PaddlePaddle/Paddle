@@ -89,17 +89,17 @@ class MypyChecker(TypeChecker):
             [f'--config-file={self.config_file}', '-c', example_code]
         )
 
-        logger.info('-' * 20)
-        logger.info(f'>>> Type hints with api {api_name} start ...')
+        logger.debug('-' * 20)
+        logger.debug(f'>>> Type hints with api {api_name} start ...')
         logger.debug(example_code)
-        logger.info('>>> Results ...')
-        logger.info('>>> mypy normal_report is ...')
-        logger.info(normal_report)
-        logger.info('>>> mypy error_report is ...')
-        logger.info(error_report)
-        logger.info('>>> mypy exit_status is ...')
-        logger.info(exit_status)
-        logger.info(f'>>> Type hints with api {api_name} end...')
+        logger.debug('>>> Results ...')
+        logger.debug('>>> mypy normal_report is ...')
+        logger.debug(normal_report)
+        logger.debug('>>> mypy error_report is ...')
+        logger.debug(error_report)
+        logger.debug('>>> mypy exit_status is ...')
+        logger.debug(exit_status)
+        logger.debug(f'>>> Type hints with api {api_name} end...')
 
         return TestResult(
             api_name=api_name,
@@ -150,8 +150,8 @@ class MypyChecker(TypeChecker):
                     logger.error(test_result.msg)
 
                 else:
-                    logger.info(test_result.api_name)
-                    logger.info(test_result.msg)
+                    logger.debug(test_result.api_name)
+                    logger.debug(test_result.msg)
 
             if is_fail:
                 logger.warning(">>> Mistakes found in type checking!")
