@@ -170,7 +170,6 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             state,
             self._moving_rate,
             self._bit_length,
-            quant_out,
             not self.training,
             1,
         )
