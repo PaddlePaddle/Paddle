@@ -156,7 +156,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
                     f"The feed_var create by: '{op.name()}' is not involved in the target_vars calculation"
                     f"Please remove it from feed_vars ."
                 )
-            program.global_block().remove_op(op)
+                program.global_block().remove_op(op)
 
 
 def _inference_optimize(program, prune_read_op=True):
@@ -454,6 +454,11 @@ def load_vars_pir(
         if main_program is None:
             main_program = default_main_program()
 
+        if not isinstance(main_program, paddle.static.Program):
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
+                % type(main_program)
+            )
         param, opt = get_pir_parameters(main_program)
         vars_list = param + opt
         load_vars_pir(
