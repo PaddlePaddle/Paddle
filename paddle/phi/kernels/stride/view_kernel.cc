@@ -27,16 +27,17 @@ void ViewShapeKernel(const Context& dev_ctx,
   auto infer_dim = -1;
   auto new_size = 1;
   auto numel = input.numel();
-  for (int dim = 0, ndim = dims.size(); dim != ndim; ++dim) {
-    if (dims[dim] == -1) {
+  std::vector<int64_t> dims_copy = dims
+  for (int dim = 0, ndim = dims_copy.size(); dim != ndim; ++dim) {
+    if (dims_copy[dim] == -1) {
       if (infer_dim >= 0) {
         PADDLE_THROW(phi::errors::Fatal(
         "Only one dimension can be inferred"));
       }
       infer_dim = dim;
     }
-    else if (shape[dim] >= 0) {
-      new_size *= dims[dim];
+    else if (dims_copy[dim] >= 0) {
+      new_size *= dims_copy[dim];
     } else {
       PADDLE_THROW(phi::errors::OutOfRange(
         "Tensor idx is out of range"));
@@ -47,10 +48,10 @@ void ViewShapeKernel(const Context& dev_ctx,
       PADDLE_THROW(phi::errors::Fatal(
         "cannot reshape tensor of 0 elements into shape "));
     }
-    dims[infer_dim] = numel / new_size;
+    dims_copy[infer_dim] = numel / new_size;
   }
   
-  DDim new_dims = DDim(dims.data(), static_cast<int>(dims.size()));
+  DDim new_dims = DDim(dims_copy.data(), static_cast<int>(dims_copy.size()));
   DDim stride;
   if (ReshapeStride(input.dims(), input.strides(), new_dims, stride)) {
     auto meta = input.meta();
