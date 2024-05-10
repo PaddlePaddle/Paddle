@@ -43,6 +43,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
 
@@ -622,6 +623,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
+    spmd_rule: EmbeddingInferSpmdUnsupportVocabParallel
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -1533,6 +1535,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1691,6 +1694,7 @@
   output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : softmax
   inplace : (x -> out)
@@ -1791,6 +1795,7 @@
   output : Tensor(out)
   infer_meta :
     func : TileInferMeta
+    spmd_rule : TileInferSpmdDynamic
   kernel :
     func : tile
   backward : tile_grad
