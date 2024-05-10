@@ -149,6 +149,10 @@ def no_eval_frame(func):
     return no_eval_frame_func
 
 
+def is_comprehensive_name(name):
+    return name in ["<listcomp>", "<dictcomp>", "<setcomp>", "<genexpr>"]
+
+
 def is_paddle_api(func):
     if isinstance(func, paddle.nn.Layer):  # ignore all the classes
         return False

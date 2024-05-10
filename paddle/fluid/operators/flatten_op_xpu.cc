@@ -18,16 +18,14 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(
-    flatten2,
-    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, float>,
-    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int>,
-    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int8_t>,
-    ops::Flatten2Kernel<paddle::platform::XPUDeviceContext, int64_t>);
-REGISTER_OP_XPU_KERNEL(
-    flatten2_grad,
-    ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int8_t>,
-    ops::Flatten2GradKernel<paddle::platform::XPUDeviceContext, int64_t>);
+REGISTER_OP_XPU_KERNEL(flatten2,
+                       ops::Flatten2Kernel<phi::XPUContext, float>,
+                       ops::Flatten2Kernel<phi::XPUContext, int>,
+                       ops::Flatten2Kernel<phi::XPUContext, int8_t>,
+                       ops::Flatten2Kernel<phi::XPUContext, int64_t>);
+REGISTER_OP_XPU_KERNEL(flatten2_grad,
+                       ops::Flatten2GradKernel<phi::XPUContext, float>,
+                       ops::Flatten2GradKernel<phi::XPUContext, int>,
+                       ops::Flatten2GradKernel<phi::XPUContext, int8_t>,
+                       ops::Flatten2GradKernel<phi::XPUContext, int64_t>);
 #endif
