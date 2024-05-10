@@ -130,8 +130,11 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // copy batch id list to GPU
     phi::DenseTensor roi_batch_id_list_gpu;
-    framework::TensorCopy(
-        roi_batch_id_list, dev_ctx.GetPlace(), &roi_batch_id_list_gpu);
+    phi::Copy(dev_ctx,
+              roi_batch_id_list,
+              dev_ctx.GetPlace(),
+              false,
+              &roi_batch_id_list_gpu);
 
     phi::DenseTensor index_in_t;
     int* idx_in =

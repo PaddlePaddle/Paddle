@@ -101,11 +101,11 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto out_dims = GetOutputShape(axes, x_dims, true);
 
     out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in,
-        context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(),
-        out);
+    phi::Copy(context.template device_context<platform::DeviceContext>(),
+              *in,
+              context.GetPlace(),
+              false,
+              out);
     out->Resize(out_dims);
   }
 };

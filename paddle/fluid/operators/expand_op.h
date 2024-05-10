@@ -217,8 +217,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* out0 =
           context.Output<phi::DenseTensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(
-          *in0, context.GetPlace(), context.device_context(), out0);
+      phi::Copy(
+          context.device_context(), *in0, context.GetPlace(), false, out0);
     } else {
       PADDLE_ENFORCE_GE(dims,
                         1,
