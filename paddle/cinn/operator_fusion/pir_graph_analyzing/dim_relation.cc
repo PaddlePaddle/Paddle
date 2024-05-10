@@ -151,7 +151,7 @@ static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
 static DimUsageRelation GetSingleOpRelation(pir::Operation* op) {
   const auto& special_result = CreateOpRelativenessForSpecialOps(op);
   if (special_result != std::nullopt) {
-    VLOG(4) << "[DimUsageRelation] GetSingleOpRelation for special op: \n"
+    VLOG(5) << "[DimUsageRelation] GetSingleOpRelation for special op: \n"
             << op->name() << " : " << RelationDebugStr(special_result.value());
     return special_result.value();
   }
@@ -167,7 +167,7 @@ static DimUsageRelation GetSingleOpRelation(pir::Operation* op) {
   } else {
     result = CreateOpRelativenessForDefault(op);
   }
-  VLOG(4) << "[DimUsageRelation] GetSingleOpRelation: \n"
+  VLOG(5) << "[DimUsageRelation] GetSingleOpRelation: \n"
           << op->name() << " : " << RelationDebugStr(result);
   return result;
 }

@@ -264,7 +264,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
 
   const auto CombineAxes = [&](const ShardableAxes& root,
                                const ShardableAxes& non_root) {
-    VLOG(4) << "start CombineAxes: " << root.DebugStr() << " with "
+    VLOG(5) << "start CombineAxes: " << root.DebugStr() << " with "
             << non_root.DebugStr();
     PADDLE_ENFORCE_EQ(
         root.axis_names.size(),
@@ -280,7 +280,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_operands(); ++i) {
       auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
-      VLOG(4) << op->name() << " " << i << "-th input " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th input " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
@@ -294,7 +294,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_results(); ++i) {
       auto value = op->result(i);
       auto axes = axes_signature.outputs[i];
-      VLOG(4) << op->name() << " " << i << "-th output " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th output " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
@@ -307,7 +307,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     }
   }
 
-  VLOG(4) << NameUnionDebugStr();
+  VLOG(5) << NameUnionDebugStr();
 }
 
 std::string ShardableAxes::DebugStr() const {

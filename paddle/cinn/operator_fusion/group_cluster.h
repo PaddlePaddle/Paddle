@@ -83,7 +83,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   for (const auto& node : result) {
     VLOG(4) << "\n"
             << node->DebugStr() << "\n"
-            << fusion::StmtPatternDebugStr(node->stmt_pattern());
+            << fusion::StmtPatternDebugStr(node->stmt_pattern()) << "\n";
   }
 
   return result;
