@@ -81,7 +81,17 @@ template <>
 StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
     const AnchorPattern<BackendStage>& second) {
-  // TODO(@wuzhanfei)
+  for (auto promise : second.anchor_state.promise) {
+    promise.root_fusion_op =
+        cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
+            first.trivial_op, promise.root_fusion_op);
+  }
+
+  return AnchorPattern<BackendStage>(
+      UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
+                         GetOpsInPattern<BackendStage>(second)),
+      second.anchor(),
+      second.anchor_state);
 }
 
 template <>
@@ -126,8 +136,7 @@ std::vector<FusionOp> ReduceTreeTrivialTransformRecursive(
   VLOG(4) << "ReduceTrivialTransformRecursive: "
           << *_GetFuncBodyPointer(root_op);
   std::vector<FusionOp> result;
-  // for (const auto& child_tree : ) {
-  //
+
   const auto& child_tree = rt_pattern.tree;
   const auto& child_reduce_op = child_tree.GetRootPattern().reduce_op;
   auto transformed_nodes = cinn::hlir::framework::pir::trivial_fusion_detail::
