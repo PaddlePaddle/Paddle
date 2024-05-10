@@ -170,3 +170,6 @@ std::unique_ptr<Pass> CreateDeleteQuantDequantLinearOpPass() {
 }
 
 }  // namespace pir
+
+REGISTER_IR_PASS(delete_quant_dequant_linear_op_pass,
+                 DeleteQuantDequantLinearOpPass);

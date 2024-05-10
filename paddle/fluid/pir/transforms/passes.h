@@ -40,6 +40,8 @@ USE_PIR_PASS(add_norm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(fused_flash_attn_pass);
 USE_PIR_PASS(remove_redundant_transpose_pass);
+USE_PIR_PASS(delete_weight_dequant_linear_op_pass);
+USE_PIR_PASS(delete_quant_dequant_linear_op_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);

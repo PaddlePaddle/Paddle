@@ -214,3 +214,6 @@ std::unique_ptr<Pass> CreateDeleteWeightDequantLinearOpPass() {
 }
 
 }  // namespace pir
+
+REGISTER_IR_PASS(delete_weight_dequant_linear_op_pass,
+                 DeleteWeightDequantLinearOpPass);
