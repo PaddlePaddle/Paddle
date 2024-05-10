@@ -221,7 +221,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     }
   };
 
-  auto ShapeOrDataVisitor = common::Overloaded{
+  shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(
             TensorShapeOrDataVisitor(tensor_shape_or_data));
@@ -234,8 +234,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
               TensorShapeOrDataVisitor(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
-      }};
-  return std::visit(ShapeOrDataVisitor, shape_or_data.variant());
+      });
 }
 
 namespace {
