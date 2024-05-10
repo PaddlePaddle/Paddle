@@ -377,10 +377,7 @@ def save_vars_pir(
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
                 save_var_names.append(name)
-            # print("pir jit save :")
-            # import numpy
-            # for tensor, name in zip(save_var_list, save_var_names):
-            #     print(name, " ", numpy.mean(tensor))
+
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
