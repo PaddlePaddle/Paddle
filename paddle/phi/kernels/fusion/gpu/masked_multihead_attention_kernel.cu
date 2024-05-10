@@ -1184,7 +1184,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
   int steps_per_block = timestep < 256 ? 256 : 128;
   params.steps_per_block = steps_per_block;
-  params.split_seq = timestep / steps_per_block + 1;
+  params.split_seq = (timestep - 1) / steps_per_block + 1;
   int split_seq = params.split_seq;
 
   phi::DenseTensor qk_sum_max_split_seq;
