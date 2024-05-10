@@ -14,6 +14,7 @@
 
 #pragma once
 #include <sstream>
+#include "paddle/common/overloaded.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
@@ -141,6 +142,8 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   const ShapeOrDataDimExprsBase& variant() const {
     return static_cast<const ShapeOrDataDimExprsBase&>(*this);
   }
+
+  DEFINE_MATCH_METHOD();
 
   bool operator==(const ShapeOrDataDimExprs& other) const {
     return this->variant() == other.variant();
