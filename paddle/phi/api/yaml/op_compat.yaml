@@ -4138,7 +4138,7 @@
       data_type : int64_t
       tensors_name : StepsTensorList
 
-- op: share_data
+- op: share_data_ (share_data)
   inputs :
     x : X
   outputs :

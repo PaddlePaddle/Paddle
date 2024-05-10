@@ -2933,7 +2933,7 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
     if (!op_info) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Op share_buffer should have corresponding OpInfo "
-          "pd_op.share_data"));
+          "pd_op.share_data_"));
     }
 
     return op_info;
