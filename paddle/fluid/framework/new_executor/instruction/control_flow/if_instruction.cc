@@ -252,11 +252,7 @@ void IfInstruction::Run() {
     CopyBranchOutput(
         true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
     if (inner_outputs_gc_) {
-      for (auto var_name : true_branch_outputs_) {
-        auto* inner_output =
-            true_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_(inner_output, this);
-      }
+      InnerOutputGC(true_branch_outputs_, true_branch_inter_);
     }
   } else {
 #ifdef PADDLE_WITH_DNNL
@@ -269,14 +265,23 @@ void IfInstruction::Run() {
     CopyBranchOutput(
         false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
     if (inner_outputs_gc_) {
-      for (auto var_name : false_branch_outputs_) {
-        auto* inner_output =
-            false_branch_inter_->InnerScope()->FindVar(var_name);
-        inner_outputs_gc_(inner_output, this);
-      }
+      InnerOutputGC(false_branch_outputs_, false_branch_inter_);
     }
   }
   // copy output
+}
+
+void IfInstruction::InnerOutputGC(const std::vector<std::string>& outputs,
+                                  PirInterpreter* inter) {
+  for (const auto& var_name : outputs) {
+    VLOG(4) << "GC inner output: " << var_name;
+    auto* inner_output = inter->InnerScope()->FindVar(var_name);
+    if (inter->GetParameterVarNames().count(var_name)) {
+      VLOG(4) << var_name << "is a parameter, skip GC.";
+    } else {
+      inner_outputs_gc_(inner_output, this);
+    }
+  }
 }
 
 }  // namespace framework

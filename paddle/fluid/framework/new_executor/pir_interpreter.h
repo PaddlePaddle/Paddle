@@ -124,6 +124,10 @@ class PirInterpreter : public InterpreterBaseImpl {
     force_events_to_wait_ = force_events_to_wait;
   }
 
+  const std::unordered_set<std::string>& GetParameterVarNames() const {
+    return parameter_var_names_;
+  }
+
  private:
   // build graph
   void UpdateSyncOpNum();

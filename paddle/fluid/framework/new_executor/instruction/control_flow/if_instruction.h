@@ -81,6 +81,9 @@ class IfInstruction : public InstructionBase {
   std::vector<std::string> false_skip_gc_names_;
 
   InnerOutputGCFunc inner_outputs_gc_;
+
+  void InnerOutputGC(const std::vector<std::string>& outputs,
+                     PirInterpreter* inter);
 };
 
 }  // namespace framework
