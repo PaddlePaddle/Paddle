@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
@@ -360,6 +363,72 @@ class TestCumprodReverse(TestCumprod):
 
 
 # test function.
+class TestCumprodReverseCase1(TestCumprod):
+    def init_params(self):
+        self.shape = (240,)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    # test backward.
+    def test_check_grad(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.init_grad_input_output(dim)
+                if self.dtype == np.float64:
+                    self.check_grad(
+                        ['X'], 'Out', check_pir=True, max_relative_error=2e-7
+                    )
+                else:
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_pir=True,
+                    )
+
+
+# test function.
+class TestCumprodReverseCase2(TestCumprod):
+    def init_params(self):
+        self.shape = (12, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+
+# test function.
+class TestCumprodReverseCase3(TestCumprod):
+    def init_params(self):
+        self.shape = (3, 4, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+
+# test function.
+class TestCumprodReverseCase4(TestCumprod):
+    def init_params(self):
+        self.shape = (3, 4, 5, 6, 7)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    # test backward.
+    def test_check_grad(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.init_grad_input_output(dim)
+                if self.dtype == np.float64:
+                    self.check_grad(
+                        ['X'], 'Out', check_pir=True, max_relative_error=3e-7
+                    )
+                else:
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_pir=True,
+                    )
+
+
+# test function.
 class TestCumprodExclusive(TestCumprod):
     def init_dtype(self):
         self.dtype = np.float64
@@ -430,6 +499,224 @@ class TestCumprodExclusive(TestCumprod):
         else:
             self.grad_x = self.grad_x.reshape(self.shape)
             self.grad_out = self.grad_out.reshape(self.shape)
+
+
+# test function.
+class TestCumprodExclusiveCase1(TestCumprodExclusive):
+    def init_params(self):
+        self.shape = (240,)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = (1,)
+        x_temp = self.x[:-1]
+        self.out = np.concatenate(
+            (
+                np.ones(ones_shape, dtype=self.dtype),
+                x_temp.cumprod(axis=dim),
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True}
+
+    # test backward.
+    def test_check_grad(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.init_grad_input_output(dim)
+                if self.dtype == np.float64:
+                    self.check_grad(
+                        ['X'], 'Out', check_pir=True, max_relative_error=2e-7
+                    )
+                else:
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_pir=True,
+                    )
+
+
+# test function.
+class TestCumprodExclusiveCase2(TestCumprodExclusive):
+    def init_params(self):
+        self.shape = (12, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -2 or dim == 0:
+            x_temp = self.x[:-1, :]
+        elif dim == -1 or dim == 1:
+            x_temp = self.x[:, :-1]
+        self.out = np.concatenate(
+            (
+                np.ones(ones_shape, dtype=self.dtype),
+                x_temp.cumprod(axis=dim),
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True}
+
+
+# test function.
+class TestCumprodExclusiveCase3(TestCumprodExclusive):
+    def init_params(self):
+        self.shape = (3, 4, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -3 or dim == 0:
+            x_temp = self.x[:-1, :, :]
+        elif dim == -2 or dim == 1:
+            x_temp = self.x[:, :-1, :]
+        elif dim == -1 or dim == 2:
+            x_temp = self.x[:, :, :-1]
+        self.out = np.concatenate(
+            (
+                np.ones(ones_shape, dtype=self.dtype),
+                x_temp.cumprod(axis=dim),
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True}
+
+
+# test function.
+class TestCumprodExclusiveCase4(TestCumprodExclusive):
+    def init_params(self):
+        self.shape = (3, 4, 5, 6, 7)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -5 or dim == 0:
+            x_temp = self.x[:-1, :, :, :, :]
+        elif dim == -4 or dim == 1:
+            x_temp = self.x[:, :-1, :, :, :]
+        elif dim == -3 or dim == 2:
+            x_temp = self.x[:, :, :-1, :, :]
+        elif dim == -2 or dim == 3:
+            x_temp = self.x[:, :, :, :-1, :]
+        elif dim == -1 or dim == 4:
+            x_temp = self.x[:, :, :, :, :-1]
+        self.out = np.concatenate(
+            (
+                np.ones(ones_shape, dtype=self.dtype),
+                x_temp.cumprod(axis=dim),
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True}
+
+    # test backward.
+    def test_check_grad(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.init_grad_input_output(dim)
+                if self.dtype == np.float64:
+                    self.check_grad(
+                        ['X'], 'Out', check_pir=True, max_relative_error=2e-7
+                    )
+                else:
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_pir=True,
+                    )
 
 
 # # test function.
@@ -506,6 +793,196 @@ class TestCumprodExclusiveAndReverse(TestCumprod):
         else:
             self.grad_x = self.grad_x.reshape(self.shape)
             self.grad_out = self.grad_out.reshape(self.shape)
+
+
+class TestCumprodExclusiveAndReverseCase1(TestCumprodExclusiveAndReverse):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def init_params(self):
+        self.shape = (120,)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -1 or dim == 0:
+            x_temp = self.x[1:]
+        self.out = np.flip(
+            np.concatenate(
+                (
+                    np.ones(ones_shape, dtype=self.dtype),
+                    np.flip(x_temp, axis=dim).cumprod(axis=dim),
+                ),
+                axis=dim,
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True, 'reverse': True}
+
+
+class TestCumprodExclusiveAndReverseCase2(TestCumprodExclusiveAndReverse):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def init_params(self):
+        self.shape = (12, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -2 or dim == 0:
+            x_temp = self.x[1:, :]
+        elif dim == -1 or dim == 1:
+            x_temp = self.x[:, 1:]
+        self.out = np.flip(
+            np.concatenate(
+                (
+                    np.ones(ones_shape, dtype=self.dtype),
+                    np.flip(x_temp, axis=dim).cumprod(axis=dim),
+                ),
+                axis=dim,
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True, 'reverse': True}
+
+
+class TestCumprodExclusiveAndReverseCase3(TestCumprodExclusiveAndReverse):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def init_params(self):
+        self.shape = (3, 4, 10)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -3 or dim == 0:
+            x_temp = self.x[1:, :, :]
+        elif dim == -2 or dim == 1:
+            x_temp = self.x[:, 1:, :]
+        elif dim == -1 or dim == 2:
+            x_temp = self.x[:, :, 1:]
+        self.out = np.flip(
+            np.concatenate(
+                (
+                    np.ones(ones_shape, dtype=self.dtype),
+                    np.flip(x_temp, axis=dim).cumprod(axis=dim),
+                ),
+                axis=dim,
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True, 'reverse': True}
+
+
+class TestCumprodExclusiveAndReverseCase4(TestCumprodExclusiveAndReverse):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def init_params(self):
+        self.shape = (3, 4, 5, 6, 7)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = (
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
+        )
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        ones_shape = list(self.shape)
+        ones_shape[dim] = 1
+        if dim == -5 or dim == 0:
+            x_temp = self.x[1:, :, :, :, :]
+        elif dim == -4 or dim == 1:
+            x_temp = self.x[:, 1:, :, :, :]
+        elif dim == -3 or dim == 2:
+            x_temp = self.x[:, :, 1:, :, :]
+        elif dim == -2 or dim == 3:
+            x_temp = self.x[:, :, :, 1:, :]
+        elif dim == -1 or dim == 4:
+            x_temp = self.x[:, :, :, :, 1:]
+        self.out = np.flip(
+            np.concatenate(
+                (
+                    np.ones(ones_shape, dtype=self.dtype),
+                    np.flip(x_temp, axis=dim).cumprod(axis=dim),
+                ),
+                axis=dim,
+            ),
+            axis=dim,
+        )
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        else:
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim, 'exclusive': True, 'reverse': True}
 
 
 # # test function.
