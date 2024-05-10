@@ -13,26 +13,26 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
 
-from paddle import (
-    CPUPlace,
-    CUDAPinnedPlace,
-    CUDAPlace,
-    CustomPlace,
-    IPUPlace,
-    XPUPlace,
-)
+if TYPE_CHECKING:
+    from paddle import (
+        CPUPlace,
+        CUDAPinnedPlace,
+        CUDAPlace,
+        CustomPlace,
+        IPUPlace,
+        XPUPlace,
+    )
 
 PlaceLike: TypeAlias = Union[
-    CPUPlace,
-    CUDAPlace,
-    CUDAPinnedPlace,
-    IPUPlace,
-    CustomPlace,
-    XPUPlace,
-    # It seems that we cannot define the literal for dev:id in nowadays python type-hinting.
-    str,
+    "CPUPlace",
+    "CUDAPlace",
+    "CUDAPinnedPlace",
+    "IPUPlace",
+    "CustomPlace",
+    "XPUPlace",
+    str,  # some string like "cpu", "gpu:0", etc.
 ]

@@ -13,12 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Literal, Type, Union
+from typing import TYPE_CHECKING, Literal, Type, Union
 
 import numpy as np
 from typing_extensions import TypeAlias
 
-from paddle import dtype
+if TYPE_CHECKING:
+    from paddle import dtype
 
 _DTypeLiteral: TypeAlias = Literal[
     "uint8",
@@ -54,4 +55,4 @@ _DTypeNumpy: TypeAlias = Union[
     np.dtype,
 ]
 
-DTypeLike: TypeAlias = Union[dtype, _DTypeNumpy, _DTypeLiteral]
+DTypeLike: TypeAlias = Union["dtype", _DTypeNumpy, _DTypeLiteral]
