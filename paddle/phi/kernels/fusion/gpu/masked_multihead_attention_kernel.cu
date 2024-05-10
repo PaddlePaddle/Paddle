@@ -31,7 +31,6 @@ struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
   float *qk_sum_max_split_seq;
-  int *real_split_each_batch;
   int split_seq = -1;
   float *split_out;
 
@@ -159,17 +158,13 @@ __global__ void masked_multihead_attention_kernel(
   // The last single q*k*v is computed by the last threadBlock of split_index
   const int split_index = blockIdx.x;
   const int start_seq = split_index * params.steps_per_block;
-  if (act_time_step == 0) {
-    params.real_split_each_batch[bi] = 1;
-    if (split_index > 0) return;
-  } else {
-    if (start_seq >= act_time_step) return;
-  }
-
   int end_seq = start_seq + params.steps_per_block;
+
+  int real_split_each_batch_kai =
+      (act_time_step - 1) / params.steps_per_block + 1;
+  if (split_index >= real_split_each_batch_kai) return;
   bool is_last_block = false;
-  if (end_seq >= act_time_step) {
-    params.real_split_each_batch[bi] = split_index + 1;
+  if (split_index == real_split_each_batch_kai - 1) {
     end_seq = act_time_step;
     is_last_block = true;
   }
@@ -615,72 +610,29 @@ __global__ void masked_multihead_attention_kernel(
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
-    // If a warp handles at least two lines of V, warpLevel reduce first
-    if constexpr (THREADS_PER_VALUE < WARP_SIZE) {
-      for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_VALUE; mask /= 2) {
-        for (int out_vec_iter = 0; out_vec_iter < V_VEC_SIZE; out_vec_iter++) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-          auto curr_ele = reinterpret_cast<float *>(&out)[out_vec_iter];
-          reinterpret_cast<float *>(&out)[out_vec_iter] +=
-              __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
-#else
-          auto curr_ele = reinterpret_cast<T *>(&out)[out_vec_iter];
-          reinterpret_cast<T *>(&out)[out_vec_iter] +=
-              __shfl_xor_sync(uint32_t(-1), curr_ele, mask);
-#endif
-        }
-      }
-      // threadBlock level reduce
-      if (lane / THREADS_PER_VALUE == 0) {
 #pragma unroll
-        for (int active_groups = WARPS_PER_BLOCK; active_groups >= 2;
-             active_groups /= 2) {
-          int midpoint = active_groups / 2;
-          if (warp >= midpoint && warp < active_groups) {
+    for (int active_groups = V_PER_ITER; active_groups >= 2;
+         active_groups /= 2) {
+      int midpoint = active_groups / 2;
+      if ((vo - start_seq) >= midpoint && (vo - start_seq) < active_groups &&
+          (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-            convert_from_float(*reinterpret_cast<V_vec *>(
-                                   &out_smem[(warp - midpoint) * Dh + vi]),
-                               out);
+        convert_from_float(
+            *reinterpret_cast<V_vec *>(
+                &out_smem[(vo - start_seq - midpoint) * Dh + vi]),
+            out);
 #else
-            *reinterpret_cast<V_vec *>(&out_smem[(warp - midpoint) * Dh + vi]) =
-                out;
+        *reinterpret_cast<V_vec *>(
+            &out_smem[(vo - start_seq - midpoint) * Dh + vi]) = out;
 #endif
-          }
-          __syncthreads();
-          if (warp < midpoint) {
-            out =
-                add(*reinterpret_cast<const V_vec *>(&out_smem[warp * Dh + vi]),
-                    out);
-          }
-          __syncthreads();
-        }
       }
-    } else {
-      // threadBlock level reduce
-#pragma unroll
-      for (int active_groups = V_PER_ITER; active_groups >= 2;
-           active_groups /= 2) {
-        int midpoint = active_groups / 2;
-        if ((vo - start_seq) >= midpoint && (vo - start_seq) < active_groups &&
-            (Dh == Dh_MAX || vi < Dh)) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-          convert_from_float(
-              *reinterpret_cast<V_vec *>(
-                  &out_smem[(vo - start_seq - midpoint) * Dh + vi]),
-              out);
-#else
-          *reinterpret_cast<V_vec *>(
-              &out_smem[(vo - start_seq - midpoint) * Dh + vi]) = out;
-#endif
-        }
-        __syncthreads();
-        if ((vo - start_seq) < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-          out = add(*reinterpret_cast<const V_vec *>(
-                        &out_smem[(vo - start_seq) * Dh + vi]),
-                    out);
-        }
-        __syncthreads();
+      __syncthreads();
+      if ((vo - start_seq) < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+        out = add(*reinterpret_cast<const V_vec *>(
+                      &out_smem[(vo - start_seq) * Dh + vi]),
+                  out);
       }
+      __syncthreads();
     }
   }
 
@@ -726,7 +678,13 @@ __global__ void post_process_kernel_kai_v2(
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
   extern __shared__ float2 qk_sum_max_smem[];
 
-  for (int i = tid; i < params.real_split_each_batch[bi]; i += blockDim.x) {
+  int act_time_step = params.sequence_lengths == nullptr
+                          ? params.timestep
+                          : params.sequence_lengths[bi];
+  int real_split_each_batch_kai =
+      (act_time_step - 1) / params.steps_per_block + 1;
+
+  for (int i = tid; i < real_split_each_batch_kai; i += blockDim.x) {
     qk_sum_max_smem[i] = *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
   }
@@ -737,13 +695,13 @@ __global__ void post_process_kernel_kai_v2(
   float v = 0;
   if (tid < Dh) {
 #pragma unroll
-    for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
+    for (int i = 0; i < params.real_split_each_batch_kai; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       float tmp_max = sum_max.y;
       max = tmp_max > max ? tmp_max : max;
     }
 #pragma unroll
-    for (int i = 0; i < params.real_split_each_batch[bi]; ++i) {
+    for (int i = 0; i < params.real_split_each_batch_kai; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       // split_out:[bsz , num_head, split_seq, dim_head]
       float this_v = params.split_out[(bhsi + i) * Dh + tid];
@@ -777,12 +735,18 @@ __global__ void post_process_kernel_kai_v3(
   const int bhi = (bi * params.num_head + hi);
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
 
+  int act_time_step = params.sequence_lengths == nullptr
+                          ? params.timestep
+                          : params.sequence_lengths[bi];
+  int real_split_each_batch_kai =
+      (act_time_step - 1) / params.steps_per_block + 1;
+
   extern __shared__ float2 qk_sum_max_smem[];
   float max = -FLT_MAX;
   const int WARP_SIZE = 32;
   int WARPS_PER_BLOCK = blockDim.x / WARP_SIZE;
 
-  for (int i = tid; i < params.real_split_each_batch[bi]; i += blockDim.x) {
+  for (int i = tid; i < real_split_each_batch_kai; i += blockDim.x) {
     float2 sum_max = *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + i) * 2]);
     max = fmaxf(sum_max.y, max);
@@ -815,7 +779,7 @@ __global__ void post_process_kernel_kai_v3(
   int split_group_idx = tid / Dh_MAX;
   if ((tid % Dh_MAX) < Dh) {
 #pragma unroll
-    for (int i = split_group_idx; i < params.real_split_each_batch[bi];
+    for (int i = split_group_idx; i < real_split_each_batch_kai;
          i += SPLTS_PER_BLOCK) {
       float2 sum_max = qk_sum_max_smem[i];
       float this_v = params.split_out[(bhsi + i) * Dh + (tid % Dh_MAX)];
@@ -1229,12 +1193,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
                                 qk_sum_max_split_seq.numel() * sizeof(float));
   params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
-
-  phi::DenseTensor real_split_each_batch;
-  real_split_each_batch.Resize({{bsz}});
-  dev_ctx.template Alloc<int>(&real_split_each_batch,
-                              real_split_each_batch.numel() * sizeof(int));
-  params.real_split_each_batch = real_split_each_batch.data<int>();
 
   phi::DenseTensor split_out;
   split_out.Resize({{bsz, num_head, split_seq, dim_head}});
