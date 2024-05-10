@@ -22,6 +22,8 @@ from functools import lru_cache
 import numpy as np
 
 from paddle import pir
+from paddle.base.framework import in_cinn_mode
+from paddle.base.libpaddle.pir import apply_cinn_pass
 
 from ..pir import (
     Program as PirProgram,
@@ -1073,6 +1075,9 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if in_cinn_mode():
+                        apply_cinn_pass(pir_program)
+
                     type_to_program = {"default": pir_program}
 
                 else:
@@ -1164,6 +1169,11 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
+        from paddle.decomposition import decomp
+
+        if core._enable_dist_prim_all():
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(program)
         return program, new_exe, data_op_infos
 
 

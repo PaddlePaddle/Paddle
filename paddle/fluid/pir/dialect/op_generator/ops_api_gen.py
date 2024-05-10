@@ -121,6 +121,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'coalesce_tensor_',
     'send_v2',
     'recv_v2',
+    'c_allgather',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -130,7 +131,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'assign_pos',
     'batch_fc',
     'barrier',
-    'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
     'c_allreduce_min',
@@ -161,6 +161,10 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'fused_elementwise_add',
+    'fused_elementwise_div',
+    'fused_elementwise_mul',
+    'fused_elementwise_sub',
     'nce',
     'lars_momentum',
     'lars_momentum_',
@@ -206,6 +210,11 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
+    'global_gather',
+    'pull_box_sparse',
+    'pull_box_sparse_',
+    'push_box_sparse',
+    'push_box_sparse_',
 ]
 
 

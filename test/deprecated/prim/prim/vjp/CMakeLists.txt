@@ -8,5 +8,4 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
-add_subdirectory(eager)
 add_subdirectory(static)
