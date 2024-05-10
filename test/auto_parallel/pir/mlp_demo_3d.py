@@ -120,6 +120,7 @@ class TestML3DParallel(unittest.TestCase):
         dist_program = engine._fwd_main_progs["train"]
 
         paddle.base.libpaddle.pir.apply_mix2dist_pass(dist_program)
+
         loss = dist_program.get_output_value_by_name(engine._loss_names[0])
         with paddle.static.program_guard(dist_program):
             params_grads = paddle.autograd.ir_backward.append_backward(loss)
