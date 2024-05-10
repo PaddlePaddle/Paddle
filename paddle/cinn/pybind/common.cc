@@ -57,7 +57,7 @@ void BindTarget(py::module *m) {
       .def("IsNVGPUArch", [](const common::Arch &arch) {
         return std::holds_alternative<common::NVGPUArch>(arch);
       });
-
+  py::class_<common::Language>(*m, "Language");
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
       .def_readwrite("arch", &Target::arch)
