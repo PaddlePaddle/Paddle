@@ -38,7 +38,7 @@ class FusionShapeOpsPattern
     if (fusion_op.num_results() == 1) {
       const auto& shape =
           shape_analysis.GetShapeOrDataForValue(fusion_op.result(0));
-      if (shape.data()) {
+      if (shape.data() && shape.data()->size() <= 9) {
         return true;
       }
     }
