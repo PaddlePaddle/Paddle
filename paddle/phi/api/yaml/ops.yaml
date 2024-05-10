@@ -505,6 +505,7 @@
   infer_meta :
     func : CheckFiniteAndUnscaleInferMeta
     param : [x, scale]
+    spmd_rule : CheckFiniteAndUnscaleSpmd
   kernel :
     func : check_finite_and_unscale
     param : [x, scale]
@@ -3204,6 +3205,7 @@
   infer_meta :
     func : UpdateLossScalingInferMeta
     param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+    spmd_rule : UpdateLossScalingSpmd
   kernel :
     func : update_loss_scaling
     data_type : x

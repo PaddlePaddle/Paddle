@@ -23,5 +23,16 @@ namespace phi {
 namespace distributed {
 SpmdInfo CheckFiniteAndUnscaleSpmd(const std::vector<DistMetaTensor>& xs,
                                    const DistMetaTensor& scale);
-}
+
+SpmdInfo UpdateLossScalingSpmd(const std::vector<DistMetaTensor>& xs,
+                               const DistMetaTensor& found_infinite,
+                               const DistMetaTensor& prev_loss_scaling,
+                               const DistMetaTensor& in_good_steps,
+                               const DistMetaTensor& in_bad_steps,
+                               int incr_every_n_steps,
+                               int decr_every_n_nan_or_inf,
+                               float incr_ratio,
+                               float decr_ratio,
+                               Scalar stop_update = false);
+}  // namespace distributed
 }  // namespace phi

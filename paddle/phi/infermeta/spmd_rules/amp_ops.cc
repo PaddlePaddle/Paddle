@@ -46,5 +46,37 @@ SpmdInfo CheckFiniteAndUnscaleSpmd(const std::vector<DistMetaTensor>& xs,
   }
   return {{xs_attrs, scale.dist_attr()}, {xs_attrs, found_infinite_attr}};
 }
+
+SpmdInfo UpdateLossScalingSpmd(const std::vector<DistMetaTensor>& xs,
+                               const DistMetaTensor& found_infinite,
+                               const DistMetaTensor& prev_loss_scaling,
+                               const DistMetaTensor& in_good_steps,
+                               const DistMetaTensor& in_bad_steps,
+                               int incr_every_n_steps,
+                               int decr_every_n_nan_or_inf,
+                               float incr_ratio,
+                               float decr_ratio,
+                               Scalar stop_update = false) {
+  std::vector<TensorDistAttr> xs_attrs;
+  for (auto& x : xs) {
+    auto dist_attr = x.dist_attr();
+    dist_attr.clean_partial_status();
+    xs_attrs.emplace_back(dist_attr);
+  }
+  TensorDistAttr found_infinite_attr =
+      CopyTensorDistAttrForOutput(found_infinite.dist_attr());
+  return {
+    {xs_attrs,
+     found_infinite_attr,
+     prev_loss_scaling.dist_attr(),
+     in_good_steps.dist_attr(),
+     in_bad_steps.dist_attr()},
+    {
+      xs_attrs, found_infinite_attr, in_good_steps.dist_attr(),
+          in_bad_steps.dist_attr()
+    }
+  }
+}
+
 }  // namespace distributed
 }  // namespace phi
