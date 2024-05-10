@@ -661,7 +661,7 @@ def group_norm(
             Default: None.
         bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
-        data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
+        data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -702,8 +702,10 @@ def group_norm(
               [[-1.34163547, -0.44721183],
                [ 0.44721183,  1.34163547]]]])
     """
-    if data_format not in ['NCHW', 'NHWC']:
+    if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
         raise ValueError("unsupported data layout:" + data_format)
+
+    data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
     if in_dynamic_or_pir_mode():
         return _C_ops.group_norm(

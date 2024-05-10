@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -23,15 +23,16 @@ namespace operators {
 namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
-    typename platform::CudnnDataType<T>::BatchNormParamType;
+    typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;
 
 #if CUDNN_VERSION >= 8000
 
 template <typename T>
 struct BNStatsFinalizeArgs {
   BNStatsFinalizeArgs() {
-    dtype = platform::CudnnDataType<T>::type;
-    param_dtype = platform::CudnnDataType<BatchNormParamType<T>>::type;
+    dtype = phi::backends::gpu::CudnnDataType<T>::type;
+    param_dtype =
+        phi::backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
     format = CUDNN_TENSOR_NHWC;
   }
 
