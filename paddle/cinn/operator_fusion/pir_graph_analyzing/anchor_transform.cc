@@ -86,6 +86,10 @@ std::optional<AnchorTransform> CreateAnchorTransformForSpecialOps(
   if (info.op->name() == "pd_op.reshape") {
     return CreateDefaultAnchorTransform(info);
   }
+  // these op has no OpPatternKind
+  if (info.op->name() == "pd_op.if" || info.op->name() == "pd_op.embedding") {
+    return CreateDefaultAnchorTransform(info);
+  }
   return std::nullopt;
 }
 
