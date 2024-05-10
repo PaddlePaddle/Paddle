@@ -109,27 +109,27 @@ void VerifyDenseBlock(pir::Block* block) {
   }
 }
 
-std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
+void DistToDensePass(pir::Program* prog) {
   if (FLAGS_print_ir) {
     VLOG(0) << "IR before DistToDense Pass = " << *prog;
   }
 
   pir::IrMapping mapper;
-  auto new_prog = prog->Clone(mapper);
+  // auto new_prog = prog->Clone(mapper);
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessDistBlock(new_prog->block());
-  VLOG(6) << "IR before VerifyDenseBlock Pass = " << *new_prog;
-  VerifyDenseBlock(new_prog->block());
+  ProcessDistBlock(prog->block());
+  VLOG(6) << "IR before VerifyDenseBlock Pass = " << *prog;
+  VerifyDenseBlock(prog->block());
 
   if (FLAGS_print_ir) {
-    VLOG(0) << "IR after DistToDense Pass = " << *new_prog;
+    VLOG(0) << "IR after DistToDense Pass = " << *prog;
   }
 
-  return new_prog;
+  // return prog;
 }
 
 }  // namespace dialect
