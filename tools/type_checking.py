@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import doctest
+import os
 import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -59,8 +60,11 @@ class TestResult:
 
 
 class MypyChecker(TypeChecker):
-    def __init__(self, config_file: str, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, config_file: str, cache_dir: str, *args: Any, **kwargs: Any
+    ) -> None:
         self.config_file = config_file
+        self.cache_dir = cache_dir
         super().__init__(*args, **kwargs)
 
     def run(self, api_name: str, codeblock: str) -> TestResult:
@@ -86,7 +90,12 @@ class MypyChecker(TypeChecker):
         )
 
         normal_report, error_report, exit_status = mypy_api.run(
-            [f'--config-file={self.config_file}', '-c', example_code]
+            [
+                f'--config-file={self.config_file}',
+                f'--cache-dir={self.cache_dir}',
+                '-c',
+                example_code,
+            ]
         )
 
         logger.debug('-' * 20)
@@ -136,9 +145,10 @@ class MypyChecker(TypeChecker):
             for test_result in test_results:
                 if test_result.fail:
                     logger.error(
-                        "In addition, mistakes found in type checking: %s",
+                        ">>> In addition, mistakes found in type checking: %s",
                         test_result.api_name,
                     )
+                    logger.error(test_result.msg)
             log_exit(1)
 
         else:
@@ -154,8 +164,8 @@ class MypyChecker(TypeChecker):
                     logger.debug(test_result.msg)
 
             if is_fail:
-                logger.warning(">>> Mistakes found in type checking!")
-                logger.warning(">>> Please recheck the type annotations.")
+                logger.error(">>> Mistakes found in type checking!")
+                logger.error(">>> Please recheck the type annotations.")
                 log_exit(1)
 
         logger.warning(">>> Type checking is successful!")
@@ -179,6 +189,13 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help='config file for type checker',
+    )
+    parser.add_argument(
+        '--cache-dir',
+        dest='cache_dir',
+        type=str,
+        default=None,
+        help='cache dir for mypy',
     )
     parser.add_argument('--full-test', dest='full_test', action="store_true")
 
@@ -236,10 +253,19 @@ def run_type_checker(
 
 
 if __name__ == '__main__':
+    base_path = os.path.abspath(os.path.dirname(__file__))
+
     args = parse_args()
     mypy_checker = MypyChecker(
         config_file=(
-            args.config_file if args.config_file else '../pyproject.toml'
-        )
+            args.config_file
+            if args.config_file
+            else (base_path + '/../pyproject.toml')
+        ),
+        cache_dir=(
+            args.cache_dir
+            if args.cache_dir
+            else (base_path + '/../.mypy_cache')
+        ),
     )
     run_type_checker(args, mypy_checker)
