@@ -350,9 +350,10 @@ void DoInferMeta(const std::vector<std::vector<int64_t>>& input_shapes,
     empty_op_list->push_back(empty_op);
     input_values.push_back(empty_op.out());
   }
+
+  pir::AttributeMap attribute_map = op->attributes();
   paddle::dialect::InferMetaInterface interface =
       op->dyn_cast<paddle::dialect::InferMetaInterface>();
-  pir::AttributeMap attribute_map;
   const auto& types = interface.InferMeta(input_values, &attribute_map);
   for (const auto& type : types) {
     infer_meta_result->push_back(
