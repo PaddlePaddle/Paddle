@@ -304,6 +304,57 @@ void RewriteByLayoutImpl<pir::CombineOp>(pir::Operation* op,
   return;
 }
 
+template <>
+std::vector<pir::Value> RelevantInputsImpl<Pool2dOp>(pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<Pool2dOp>();
+  return {concrete_op.x()};
+}
+
+template <>
+void RewriteByLayoutImpl<Pool2dOp>(pir::Operation* op,
+                                   common::DataLayout new_layout) {
+  op->set_attribute(
+      "data_format",
+      pir::StrAttribute::get(pir::IrContext::Instance(),
+                             common::DataLayoutToString(new_layout)));
+
+  std::vector<pir::Type> new_outputs = Pool2dOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+}
+
+template <>
+void RewriteByLayoutImpl<MultiplyOp>(pir::Operation* op,
+                                     common::DataLayout new_layout) {
+  std::vector<pir::Type> new_outputs = MultiplyOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+}
+
+template <>
+void RewriteByLayoutImpl<AssignOp>(pir::Operation* op,
+                                   common::DataLayout new_layout) {
+  std::vector<pir::Type> new_outputs = AssignOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+}
+
+template <>
+void RewriteByLayoutImpl<SwishOp>(pir::Operation* op,
+                                  common::DataLayout new_layout) {
+  std::vector<pir::Type> new_outputs = SwishOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+}
+
 }  // namespace dialect
 }  // namespace paddle
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LayoutTransformationInterface)

@@ -124,6 +124,19 @@ class ConcatOp;
 OVERLOAD_REWRITE_BY_LAYOUT(ConcatOp);
 OVERLOAD_RELEVANT_INPUTS(ConcatOp);
 
+class Pool2dOp;
+OVERLOAD_RELEVANT_INPUTS(Pool2dOp);
+OVERLOAD_REWRITE_BY_LAYOUT(Pool2dOp);
+
+class MultiplyOp;
+OVERLOAD_REWRITE_BY_LAYOUT(MultiplyOp);
+
+class AssignOp;
+OVERLOAD_REWRITE_BY_LAYOUT(AssignOp);
+
+class SwishOp;
+OVERLOAD_REWRITE_BY_LAYOUT(SwishOp);
+
 }  // namespace dialect
 }  // namespace paddle
 

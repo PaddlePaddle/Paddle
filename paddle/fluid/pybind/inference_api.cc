@@ -1153,6 +1153,7 @@ void BindAnalysisPredictor(py::module *m) {
       .def("program",
            &AnalysisPredictor::program,
            py::return_value_policy::reference)
+      .def("pir_program", &AnalysisPredictor::pir_program)
       .def("get_serialized_program", &AnalysisPredictor::GetSerializedProgram)
       .def("mkldnn_quantize", &AnalysisPredictor::MkldnnQuantize)
       .def(
@@ -1194,6 +1195,13 @@ void BindPaddleInferPredictor(py::module *m) {
              return self.Clone(stream.raw_stream());
            })
 #endif
+      .def(
+          "to_analysis_predictor",
+          [](paddle_infer::Predictor &self) {
+            return dynamic_cast<paddle::AnalysisPredictor *>(
+                self.predictor_.get());
+          },
+          py::return_value_policy::reference)
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor)

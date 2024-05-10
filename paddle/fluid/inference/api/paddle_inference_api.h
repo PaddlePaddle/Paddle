@@ -211,7 +211,7 @@ class PD_INFER_DECL Predictor {
   ///
   void* GetExecStream() const;
 
- private:
+ public:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
   friend class paddle_infer::experimental::InternalUtils;
 };

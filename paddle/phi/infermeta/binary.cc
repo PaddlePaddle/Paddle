@@ -1085,6 +1085,15 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void DequantizeAbsMaxInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               float max_range,
+                               MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
+}
+
 void DequantizeLogInferMeta(const MetaTensor& x,
                             const MetaTensor& dict,
                             MetaTensor* out) {

@@ -650,9 +650,7 @@ class TransferLayoutPass : public pir::Pass {
         if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
           auto* op = const_cast<pir::Operation*>(
               std::get<const pir::Operation*>(node.data));
-          for (size_t i = 0; i < 10; i++) std::cout << std::endl;
           std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
-          std::cout << *program << std::endl;
           auto layout_transformation_iface =
               op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
           if (layout_transformation_iface) {
