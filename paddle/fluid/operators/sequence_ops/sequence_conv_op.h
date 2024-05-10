@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/context_project.h"
+#include "paddle/phi/kernels/funcs/math/context_project.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -68,7 +68,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, &col, static_cast<T>(0));
-    math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
+    phi::math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
     seq_project_functor(dev_ctx,
                         *in,
@@ -131,8 +131,9 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, &col, static_cast<T>(0));
       blas.MatMul(*out_g, false, *filter, true, &col);
     }
-    math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
-    math::ContextProjectGradFunctor<DeviceContext, T> seq_project_grad_functor;
+    phi::math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
+    phi::math::ContextProjectGradFunctor<DeviceContext, T>
+        seq_project_grad_functor;
 
     if (in_g) {
       in_g->mutable_data<T>(context.GetPlace());

@@ -1,29 +1,27 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 
-namespace paddle {
-namespace operators {
-
+namespace phi {
 namespace math {
 
 /*
@@ -169,8 +167,7 @@ class ContextProjectFunctor {
             phi::DenseTensor out_t_sub = out_t.Slice(
                 k * context_length, k * context_length + padding_size);
             phi::DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
-            framework::TensorCopy(
-                w_sub, context.GetPlace(), context, &out_t_sub);
+            phi::Copy(context, w_sub, context.GetPlace(), false, &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -200,8 +197,7 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             phi::DenseTensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            framework::TensorCopy(
-                w_sub, context.GetPlace(), context, &out_t_sub);
+            phi::Copy(context, w_sub, context.GetPlace(), false, &out_t_sub);
           }
         }
         out_t.Resize({sequence_height,
@@ -350,5 +346,4 @@ class ContextProjectGradFunctor {
 };
 
 }  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
