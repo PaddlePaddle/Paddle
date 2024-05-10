@@ -143,6 +143,33 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                              stream));
 }
 
+void NCCLCommContext::ReduceScatterAdd(phi::DenseTensor* out_tensor,
+                                       const phi::DenseTensor& in_tensor,
+                                       const phi::DenseTensor& bias_tensor,
+                                       ncclRedOp_t reduce_type,
+                                       gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
+                                                      in_tensor,
+                                                      /*dst_rank*/ rank_,
+                                                      /*cur_rank*/ rank_,
+                                                      size_);
+  if (FLAGS_enable_nccl_dynamic_check) {
+    phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
+                                                   /*root_rank*/ 0,
+                                                   rank_,
+                                                   nccl_comm_);
+  }
+  NCCL_CHECK(
+      phi::dynload::ncclReduceScatterAdd(in_tensor.data(),
+                                         out_tensor->data(),
+                                         bias_tensor.data(),
+                                         out_tensor->numel(),
+                                         ToNCCLDataType(in_tensor.type()),
+                                         reduce_type,
+                                         nccl_comm_,
+                                         stream));
+}
+
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,

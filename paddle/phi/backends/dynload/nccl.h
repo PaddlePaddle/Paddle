@@ -75,6 +75,7 @@ extern void* nccl_dso_handle;
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
+  __macro(ncclReduceScatterAdd);        \
   __macro(ncclCommGetAsyncError);       \
   __macro(ncclGetErrorString);
 

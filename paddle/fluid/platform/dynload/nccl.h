@@ -44,6 +44,7 @@ namespace dynload {
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
+  __macro(ncclReduceScatterAdd);        \
   __macro(ncclCommGetAsyncError);       \
   __macro(ncclGetErrorString);
 
