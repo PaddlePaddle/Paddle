@@ -11,10 +11,13 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   FLAGS_enable_pir_api=1)
   py_test_modules(test_pir_mse_spmd MODULES test_mse_spmd_rule ENVS
                   FLAGS_enable_pir_api=1)
+  py_test_modules(test_pir_reshard_s_to_r MODULES test_pir_reshard_s_to_r)
+  set_tests_properties(test_pir_reshard_s_to_r PROPERTIES TIMEOUT 120)
   py_test_modules(test_mlp MODULES test_mlp ENVS FLAGS_enable_pir_api=1)
   py_test_modules(
     test_semi_auto_parallel_dist_to_static_pir MODULES
-    test_semi_auto_parallel_dist_to_static_pir ENVS FLAGS_enable_pir_api=1)
+    test_semi_auto_parallel_dist_to_static_pir ENVS FLAGS_enable_pir_api=1
+    FLAGS_dist_prim_all=1)
   py_test_modules(test_reshard MODULES test_reshard ENVS FLAGS_enable_pir_api=1)
   py_test_modules(test_learning_rate MODULES test_learning_rate ENVS
                   FLAGS_enable_pir_api=1)
