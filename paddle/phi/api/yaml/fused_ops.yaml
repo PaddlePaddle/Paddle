@@ -232,6 +232,58 @@
   backward : fused_dropout_add_grad
   support_dygraph_mode : true
 
+- op : fused_elementwise_add
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_add
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_div
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_div
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_mul
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_mul
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_sub
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_sub
+    data_type : x
+  support_dygraph_mode : true
+
 - op : fused_embedding_eltwise_layernorm
   args : (Tensor[] ids, Tensor[] embs, Tensor bias, Tensor scale, float epsilon = 0.00001f)
   output : Tensor(out)
@@ -403,6 +455,15 @@
     func : layer_norm_act_xpu
     data_type : x
 
+- op : mask_adaptive_xpu
+  args : (Tensor mask)
+  output : Tensor (length), Tensor (seq_lod), Tensor (pad_seq_len)
+  infer_meta :
+    func : MaskAdaptiveXPUInferMeta
+  kernel :
+    func : mask_adaptive_xpu
+    data_type : mask
+
 # This op is implemented using CUDNN Frontend API, which serves as a supplement to
 # legacy max pooling implementation. It shows better performance with NHWC layout and
 # half precision.
@@ -437,6 +498,15 @@
     func : multihead_matmul
     data_type : input
   optional : bias_qk
+
+- op : pad2d_xpu
+  args : (Tensor x, int[] paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad2dXPUInferMeta
+  kernel :
+    func : pad2d_xpu
+    data_type : x
 
 - op : qkv_attention_xpu
   args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, Tensor qk_max, Tensor qkv_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
@@ -473,6 +543,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : sequence_unpad_xpu
+  args : (Tensor x, Tensor length)
+  output : Tensor(out)
+  infer_meta :
+    func : SequenceUnpadXPUInferMeta
+  kernel :
+    func : sequence_unpad_xpu
     data_type : x
 
 - op : sine_pos_xpu

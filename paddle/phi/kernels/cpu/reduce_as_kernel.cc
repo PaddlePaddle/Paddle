@@ -17,6 +17,8 @@
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
 
@@ -46,4 +48,6 @@ PD_REGISTER_KERNEL(reduce_as,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {}
+                   int8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

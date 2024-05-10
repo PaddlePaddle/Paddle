@@ -32,18 +32,6 @@ struct Compare {
 };
 
 template <typename T>
-struct FindAbsMaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const T *in,
-                  const int num,
-                  T *out) {
-    *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
-  }
-};
-
-template struct FindAbsMaxFunctor<phi::CPUContext, float>;
-
-template <typename T>
 struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &in_tensor,
@@ -89,37 +77,6 @@ struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
 template struct FindChannelAbsMaxFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct ClipAndFakeQuantFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  const int round_type,
-                  phi::DenseTensor *out) {
-    T s = scale.data<T>()[0];
-    T inv_s = inverse(s);
-    phi::Transform<phi::CPUContext> trans;
-    if (round_type == 0) {
-      trans(ctx,
-            in.data<T>(),
-            in.data<T>() + in.numel(),
-            out->mutable_data<T>(ctx.GetPlace()),
-            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-    } else {
-      trans(ctx,
-            in.data<T>(),
-            in.data<T>() + in.numel(),
-            out->mutable_data<T>(ctx.GetPlace()),
-            phi::ClipFunctor<T>(-s, s));
-      auto out_e = phi::EigenVector<T>::Flatten(*out);
-      out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
-    }
-  }
-};
-
-template struct ClipAndFakeQuantFunctor<phi::CPUContext, float>;
-
-template <typename T>
 struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &in,
@@ -128,7 +85,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
                   const int round_type,
                   phi::DenseTensor *out) {
     T s = scale.data<T>()[0];
-    T inv_s = inverse(s);
+    T inv_s = phi::funcs::inverse(s);
 
     phi::Transform<phi::CPUContext> trans;
     if (round_type == 0) {
@@ -136,7 +93,7 @@ struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
             in.data<T>(),
             in.data<T>() + in.numel(),
             out->mutable_data<T>(ctx.GetPlace()),
-            QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+            phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
       auto out_e = phi::EigenVector<T>::Flatten(*out);
       out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
     } else {
@@ -182,13 +139,14 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
         T s = scale_data[i];
         auto *start = in_data + i * channel_size;
         auto *end = in_data + (i + 1) * channel_size;
-        T inv_s = inverse(s);
+        T inv_s = phi::funcs::inverse(s);
         if (round_type == 0) {
           trans(ctx,
                 start,
                 end,
                 out_data + i * channel_size,
-                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+                phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt),
+                                                  inv_s));
         } else {
           trans(ctx,
                 start,
@@ -200,7 +158,7 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
       if (round_type == 1) {
         for (int64_t i = 0; i < channel; i++) {
           T s = scale_data[i];
-          T inv_s = inverse(s);
+          T inv_s = phi::funcs::inverse(s);
           phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
           auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
           out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
@@ -212,7 +170,7 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
       for (int i = 0; i < in_dims[0]; i++) {
         for (int j = 0; j < in_dims[1]; j++) {
           T s = scale_data[j];
-          T inv_s = inverse(s);
+          T inv_s = phi::funcs::inverse(s);
           auto *start = in_data + i * step_i + j * step_j;
           auto *end = in_data + i * step_i + (j + 1) * step_j;
           auto *cur_out_data = out_data + i * step_i + j * step_j;
@@ -221,7 +179,8 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
                   start,
                   end,
                   cur_out_data,
-                  QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+                  phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt),
+                                                    inv_s));
           } else {
             trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
             for (int k = 0; k < step_j; k++) {
@@ -264,12 +223,13 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
         auto *start = in_data + i * channel_size;
         auto *end = in_data + (i + 1) * channel_size;
         if (round_type == 0) {
-          T inv_s = inverse(s);
+          T inv_s = phi::funcs::inverse(s);
           trans(ctx,
                 start,
                 end,
                 out_data + i * channel_size,
-                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+                phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt),
+                                                  inv_s));
         } else {
           trans(ctx,
                 start,
@@ -286,7 +246,7 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
           out_e.device(*ctx.eigen_device()) =
               out_e * s / static_cast<T>(bin_cnt);
         } else {
-          T inv_s = inverse(s);
+          T inv_s = phi::funcs::inverse(s);
           out_e.device(*ctx.eigen_device()) =
               (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
         }
@@ -297,7 +257,7 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
       for (int i = 0; i < in_dims[0]; i++) {
         for (int j = 0; j < in_dims[1]; j++) {
           T s = scale_data[j];
-          T inv_s = inverse(s);
+          T inv_s = phi::funcs::inverse(s);
           auto *start = in_data + i * step_i + j * step_j;
           auto *end = in_data + i * step_i + (j + 1) * step_j;
           auto *cur_out_data = out_data + i * step_i + j * step_j;
@@ -306,7 +266,8 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
                   start,
                   end,
                   cur_out_data,
-                  QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+                  phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt),
+                                                    inv_s));
           } else {
             trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
           }
@@ -323,62 +284,6 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
     }
   }
 };
-
-template struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, float>;
-template <typename T>
-struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &cur_scale,
-                  const phi::DenseTensor &last_scale,
-                  const phi::DenseTensor &iter,
-                  const int window_size,
-                  phi::DenseTensor *scales_arr,
-                  phi::DenseTensor *out_scale) {
-    T *scale_arr = scales_arr->mutable_data<T>(ctx.GetPlace());
-    int64_t it = iter.data<int64_t>()[0];
-    int idx = static_cast<int>(it % window_size);
-    T removed = scale_arr[idx];
-    T cur = cur_scale.data<T>()[0];
-    scale_arr[idx] = cur;
-
-    T max = last_scale.data<T>()[0];
-    if (max < cur) {
-      max = cur;
-    } else if (fabs(removed - max) < 1e-6) {
-      int size = static_cast<int>((it > window_size) ? window_size : it);
-      FindAbsMaxFunctor<phi::CPUContext, T>()(ctx, scale_arr, size, &max);
-    }
-    out_scale->mutable_data<T>(ctx.GetPlace())[0] = max;
-  }
-};
-
-template struct FindRangeAbsMaxFunctor<phi::CPUContext, float>;
-
-template <typename T>
-struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &ctx,
-                  const phi::DenseTensor &in_accum,
-                  const phi::DenseTensor &in_state,
-                  const T *cur_scale,
-                  const float rate,
-                  phi::DenseTensor *out_state,
-                  phi::DenseTensor *out_accum,
-                  phi::DenseTensor *out_scale) {
-    T accum = in_accum.data<T>()[0];
-    T state = in_state.data<T>()[0];
-    T scale = cur_scale[0];
-
-    state = rate * state + 1;
-    accum = rate * accum + scale;
-    scale = accum / state;
-
-    out_state->mutable_data<T>(ctx.GetPlace())[0] = state;
-    out_accum->mutable_data<T>(ctx.GetPlace())[0] = accum;
-    out_scale->mutable_data<T>(ctx.GetPlace())[0] = scale;
-  }
-};
-
-template struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, float>;
 
 class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
@@ -603,77 +508,6 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
-
-class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
- public:
-  FakeQuantizeRangeAbsMaxOp(const std::string &type,
-                            const framework::VariableNameMap &inputs,
-                            const framework::VariableNameMap &outputs,
-                            const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Out"), "Output", "Out", "FakeQuantizeRangeAbsMax");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
-                   "Output",
-                   "OutScale",
-                   "FakeQuantizeRangeAbsMax");
-    if (ctx->HasOutput("OutScales")) {
-      int window_size = ctx->Attrs().Get<int>("window_size");
-      ctx->SetOutputDim("OutScales", {window_size});
-    }
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.device_context().GetPlace());
-  }
-};
-
-class FakeQuantizeRangeAbsMaxOpMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
-    AddInput("InScale", "Last scale.");
-    AddInput("Iter", "Global step iteration.").AsDispensable();
-    AddOutput("Out", "(Tensor) Output of quantized low level tensor.");
-    AddOutput("OutScale", " Current scale");
-    AddOutput("OutScales", "(Tensor) scale buffer.").AsDispensable();
-    AddAttr<int>("window_size", "(int, default 10000) window range size.")
-        .SetDefault(10000);
-    AddAttr<int>("bit_length", "(int, default 8), quantization bit number.")
-        .SetDefault(8)
-        .AddCustomChecker([](const int &bit_length) {
-          PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
-                            true,
-                            phi::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16, but "
-                                "the received is %d",
-                                bit_length));
-        });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddComment(R"DOC(
-FakeQuantize operator is used in static quantization.
-
-$$scale = max(max(abs(x)), history_abs_max)$$
-$$range = 2^{bit_length - 1} - 1$$
-$$Out = round(X/scale * range)$$
-
-)DOC");
-  }
-};
-
 class FakeQuantOrWithDequantMovingAverageAbsMaxOp
     : public framework::OperatorWithKernel {
  public:
@@ -873,18 +707,6 @@ namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    fake_quantize_abs_max,
-    ops::FakeQuantOrWithDequantAbsMaxOp,
-    ops::FakeQuantOrWithDequantAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeAbsMaxKernel,
-                          float) {}
-
-REGISTER_OPERATOR(
     fake_quantize_dequantize_abs_max,
     ops::FakeQuantOrWithDequantAbsMaxOp,
     ops::FakeQuantOrWithDequantAbsMaxOpMaker,
@@ -894,30 +716,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           CPU,
                           ALL_LAYOUT,
                           ops::FakeQuantizeDequantizeAbsMaxKernel,
-                          float) {}
-
-REGISTER_OPERATOR(
-    fake_quantize_range_abs_max,
-    ops::FakeQuantizeRangeAbsMaxOp,
-    ops::FakeQuantizeRangeAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_range_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeRangeAbsMaxKernel,
-                          float) {}
-
-REGISTER_OPERATOR(
-    fake_quantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_quantize_moving_average_abs_max,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeQuantizeMovingAverageAbsMaxKernel,
                           float) {}
 
 REGISTER_OPERATOR(

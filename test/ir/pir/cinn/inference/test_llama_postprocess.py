@@ -90,8 +90,8 @@ class TestLlamaPostProcess(unittest.TestCase):
         self.input_ids = paddle.randint(0, 512, [1, 32], dtype="int64")
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 10)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 10})
+        utils.check_jit_kernel_number(static_fn, 8)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 8})
 
     def eval(self, use_cinn):
         paddle.seed(2024)
@@ -109,8 +109,6 @@ class TestLlamaPostProcess(unittest.TestCase):
         return out
 
     def test_eval(self):
-        # TODO(Aurelius84):disable compilation cache
-        paddle.set_flags({"FLAGS_enable_cinn_compile_cache": False})
         dy_out = self.eval(use_cinn=False)
         cinn_out = self.eval(use_cinn=True)
         # TODO(Aurelius84): fix the precision with inf
