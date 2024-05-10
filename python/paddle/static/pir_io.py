@@ -156,7 +156,7 @@ def pir_prune_with_input(program, feed_vars, target_vars):
                     f"The feed_var create by: '{op.name()}' is not involved in the target_vars calculation"
                     f"Please remove it from feed_vars ."
                 )
-                program.global_block().remove_op(op)
+            program.global_block().remove_op(op)
 
 
 def _inference_optimize(program, prune_read_op=True):
