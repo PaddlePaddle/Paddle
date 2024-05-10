@@ -49,4 +49,4 @@ NestedSequence: TypeAlias = Union[
 
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 
-TensorOrTensors: TypeAlias = Union[Tensor, Sequence[Tensor]]
+TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
