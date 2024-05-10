@@ -232,6 +232,58 @@
   backward : fused_dropout_add_grad
   support_dygraph_mode : true
 
+- op : fused_elementwise_add
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_add
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_div
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_div
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_mul
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_mul
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_sub
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_sub
+    data_type : x
+  support_dygraph_mode : true
+
 - op : fused_embedding_eltwise_layernorm
   args : (Tensor[] ids, Tensor[] embs, Tensor bias, Tensor scale, float epsilon = 0.00001f)
   output : Tensor(out)
