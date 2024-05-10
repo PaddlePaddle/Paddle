@@ -270,13 +270,13 @@ TEST(operation_dist_attr_test, base) {
   EXPECT_NE(op_attr, op_attr_2);
   EXPECT_EQ(op_attr.process_mesh_attr(), mesh_attr);
   EXPECT_EQ(op_attr.process_mesh_attr().process_mesh(), process_mesh);
-  EXPECT_EQ(op_attr.operand_attrs(), operand_attrs);
-  EXPECT_EQ(op_attr.operand_dist_attr(0), operand_attrs.at(0));
-  EXPECT_EQ(op_attr.operand_dist_attr(1), operand_attrs.at(1));
+  EXPECT_EQ(op_attr.operands(), operand_attrs);
+  EXPECT_EQ(op_attr.operand(0), operand_attrs.at(0));
+  EXPECT_EQ(op_attr.operand(1), operand_attrs.at(1));
   EXPECT_EQ(op_attr.num_operands(), (uint32_t)2);
 
-  EXPECT_EQ(op_attr.result_attrs(), result_attrs);
-  EXPECT_EQ(op_attr.result_dist_attr(0), result_attrs.at(0));
+  EXPECT_EQ(op_attr.results(), result_attrs);
+  EXPECT_EQ(op_attr.result(0), result_attrs.at(0));
   EXPECT_EQ(op_attr.num_results(), (uint32_t)1);
 }
 
@@ -591,9 +591,8 @@ TEST(mix_to_dist_pass_test, base) {
             (uint32_t)1);
 
   // Apply Pass
-  std::shared_ptr<pir::Program> new_program =
-      paddle::dialect::MixToDistPass(&program);
-  pir::Block* new_block = new_program->block();
+  paddle::dialect::MixToDistPass(&program);
+  pir::Block* new_block = program.block();
   EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
   std::vector<pir::Operation*> ops;
   for (auto& op : *new_block) {

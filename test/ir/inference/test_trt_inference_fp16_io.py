@@ -30,7 +30,9 @@ class TestEnableLowPrecisionIO:
         self.temp_dir = tempfile.TemporaryDirectory()
         net = alexnet(True)
         model = to_static(
-            net, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
+            net,
+            input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')],
+            full_graph=True,
         )
         paddle.jit.save(
             model, os.path.join(self.temp_dir.name, 'alexnet/inference')

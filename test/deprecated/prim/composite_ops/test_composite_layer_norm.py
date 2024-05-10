@@ -272,7 +272,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False)
+    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
 
 
 class PrimeNet(paddle.nn.Layer):

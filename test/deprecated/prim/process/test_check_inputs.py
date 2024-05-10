@@ -32,7 +32,7 @@ class TestIntarrayInput(unittest.TestCase):
         core._set_prim_all_enabled(True)
         np_data = np.random.random([3, 4]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
-        net = paddle.jit.to_static(fn)
+        net = paddle.jit.to_static(fn, full_graph=True)
 
         _ = net(tensor_data, shape=[2, 3, 4]).numpy()
         core._set_prim_all_enabled(False)

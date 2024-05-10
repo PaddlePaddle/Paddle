@@ -238,6 +238,35 @@ class ReshapeOpPattern
   }
 };
 
+class FlipOpPattern : public pir::OpRewritePattern<paddle::dialect::FlipOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FlipOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::FlipOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied;
+  }
+
+  void Rewrite(paddle::dialect::FlipOp op,
+               pir::PatternRewriter &rewriter) const override {
+    std::vector<int> axis_value;
+    auto axis_attr =
+        op.attribute("axis").dyn_cast<pir::ArrayAttribute>().AsVector();
+    if (axis_attr.size() > 0) {
+      for (size_t i = 0; i < axis_attr.size(); ++i) {
+        PADDLE_ENFORCE(axis_attr[i].dyn_cast<::pir::Int32Attribute>(),
+                       ::common::errors::PreconditionNotMet(
+                           "Reqiured attr element must be Int32Attribute."));
+        axis_value.push_back(
+            axis_attr[i].dyn_cast<::pir::Int32Attribute>().data());
+      }
+    }
+    auto cinn_reverse = rewriter.Build<cinn::dialect::ReverseOp>(
+        op->operand_source(0), axis_value);
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reverse.result(0));
+    rewriter.EraseOp(op);
+  }
+};
 class Pool2dOpPattern
     : public pir::OpRewritePattern<paddle::dialect::Pool2dOp> {
  public:
@@ -540,9 +569,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
       pir::PatternRewriter &rewriter) const {  // NOLINT
     const int axis = GetAxis(split);
     const std::vector<int64_t> &sections = GetSections(split);
-    for (auto section : sections) {
-      VLOG(0) << " " << section;
-    }
     const int index = slice->attribute<::pir::Int32Attribute>("index").data();
     int64_t start =
         std::accumulate(sections.begin(), sections.begin() + index, 0);
@@ -825,8 +851,11 @@ class SqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
@@ -876,8 +905,11 @@ class UnsqueezeOpPattern
       auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
       std::set<int64_t> axis_set(axis_vec.begin(), axis_vec.end());
 
-      auto in_shape = phi::vectorize(
-          op.operand_source(0).type().dyn_cast<phi::DenseTensor>().dims());
+      auto in_shape =
+          phi::vectorize(op.operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims());
 
       std::vector<int> output_shape;
 
@@ -902,13 +934,105 @@ class UnsqueezeOpPattern
   }
 };
 
+class FlattenOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FlattenOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FlattenOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::FlattenOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+
+    bool is_dyshape = op->operand_source(0)
+                          .type()
+                          .dyn_cast<pir::ShapedTypeInterface>()
+                          .IsDynamicShape();
+    return !is_denied && is_dyshape;
+  }
+
+  void Rewrite(paddle::dialect::FlattenOp op,
+               pir::PatternRewriter &rewriter) const override {
+    int start_axis =
+        op.attribute("start_axis").dyn_cast<::pir::Int32Attribute>().data();
+    int end_axis =
+        op.attribute("stop_axis").dyn_cast<::pir::Int32Attribute>().data();
+
+    // build output shape
+    std::vector<pir::Value> out_shape;
+    auto x_rank = op->operand_source(0)
+                      .type()
+                      .dyn_cast<paddle::dialect::DenseTensorType>()
+                      .dims()
+                      .size();
+    auto x_shape =
+        rewriter.Build<paddle::dialect::ShapeOp>(op->operand_source(0))
+            .result(0);
+    for (size_t i = 0; i < x_rank;) {
+      if (i == static_cast<size_t>(start_axis)) {
+        auto new_single_dim =
+            rewriter
+                .Build<cinn::dialect::SliceOp>(x_shape,
+                                               std::vector<int64_t>({0}),
+                                               std::vector<int64_t>({i}),
+                                               std::vector<int64_t>({i + 1}),
+                                               std::vector<int64_t>({}),
+                                               std::vector<int64_t>({}))
+                .result(0);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          auto dim_t =
+              rewriter
+                  .Build<cinn::dialect::SliceOp>(x_shape,
+                                                 std::vector<int64_t>({0}),
+                                                 std::vector<int64_t>({t}),
+                                                 std::vector<int64_t>({t + 1}),
+                                                 std::vector<int64_t>({}),
+                                                 std::vector<int64_t>({}))
+                  .result(0);
+          new_single_dim =
+              rewriter.Build<paddle::dialect::MultiplyOp>(new_single_dim, dim_t)
+                  .result(0);
+        }
+        out_shape.push_back(new_single_dim);
+        i = end_axis + 1;
+      } else {
+        auto t =
+            rewriter
+                .Build<cinn::dialect::SliceOp>(x_shape,
+                                               std::vector<int64_t>({0}),
+                                               std::vector<int64_t>({i}),
+                                               std::vector<int64_t>({i + 1}),
+                                               std::vector<int64_t>({}),
+                                               std::vector<int64_t>({}))
+                .result(0);
+        out_shape.push_back(t);
+        i++;
+      }
+    }
+
+    auto new_shape =
+        rewriter.Build<cinn::dialect::ConcatOp>(out_shape, -1).result(0);
+
+    auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
+        op->operand_source(0), new_shape);
+
+    reshape_op.result(0).set_type(op.result(0).type());
+
+    rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
+
+    rewriter.EraseOp(op);
+  }
+};
+
 class SigmoidOpPattern
     : public pir::OpRewritePattern<paddle::dialect::SigmoidOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SigmoidOp>::OpRewritePattern;
+  bool Match(paddle::dialect::SigmoidOp op) const override {
+    return !CompatibleInfo::IsDeniedForCinn(*op.operation());
+  }
 
-  bool MatchAndRewrite(paddle::dialect::SigmoidOp op,
-                       pir::PatternRewriter &rewriter) const override {
+  void Rewrite(paddle::dialect::SigmoidOp op,
+               pir::PatternRewriter &rewriter) const override {
     auto input_dtype = paddle::dialect::TransToPhiDataType(
         op->operand_source(0)
             .type()
@@ -941,46 +1065,59 @@ class SigmoidOpPattern
     }
 
     rewriter.ReplaceAllUsesWith(op.result(0), div);
+    rewriter.EraseOp(op);
+  }
+};
+
+class WhereOpPattern : public pir::OpRewritePattern<paddle::dialect::WhereOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::WhereOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::WhereOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto select_op = rewriter.Build<cinn::dialect::SelectOp>(
+        op->operand_source(0), op->operand_source(1), op->operand_source(2));
+
+    rewriter.ReplaceAllUsesWith(op.result(0), select_op.result(0));
 
     rewriter.EraseOp(op);
 
     return true;
   }
 };
+
 class GatherOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::GatherOp>::OpRewritePattern;
 
-  bool MatchAndRewrite(paddle::dialect::GatherOp op,
-                       pir::PatternRewriter &rewriter) const override {
+  bool Match(paddle::dialect::GatherOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    auto axis_gen_op = op->operand_source(2).defining_op();
+    auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+    return !is_denied && full_op;
+  }
+
+  void Rewrite(paddle::dialect::GatherOp op,
+               pir::PatternRewriter &rewriter) const override {
     auto gather_op = op->dyn_cast<paddle::dialect::GatherOp>();
     auto x = op.operand_source(0);
     auto index = op->operand_source(1);
     const int axis = [&]() -> int {
-      int axis = 0;
-      if (gather_op->attributes().count("index")) {
-        axis =
-            gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
-      } else {
-        auto axis_gen_op = op.operand_source(2).defining_op();
-        PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
-                          true,
-                          ::phi::errors::InvalidArgument(
-                              "Not Supported: The gather operator for CINN "
-                              "only supports constant value"));
-        auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-        axis = static_cast<int>(full_op.attribute("value")
-                                    .dyn_cast<::pir::FloatAttribute>()
-                                    .data());
-        return axis;
-      }
+      auto axis_gen_op = op.operand_source(2).defining_op();
+      PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
+                        true,
+                        ::phi::errors::InvalidArgument(
+                            "Not Supported: The gather operator for CINN "
+                            "only supports constant value"));
+      auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+      return static_cast<int>(
+          full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
     }();
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
     rewriter.ReplaceAllUsesWith(op->result(0), out);
     rewriter.EraseOp(op);
-    return true;
   }
 };
 
@@ -1004,6 +1141,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
+  ps.Add<FlipOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
   ps.Add<FullWithTensorOpPattern>(context);
@@ -1012,6 +1150,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<UnsqueezeOpPattern>(context);
   ps.Add<SigmoidOpPattern>(context);
   ps.Add<GatherOpPattern>(context);
+  ps.Add<WhereOpPattern>(context);
+  ps.Add<FlattenOpPattern>(context);
 
   return ps;
 }

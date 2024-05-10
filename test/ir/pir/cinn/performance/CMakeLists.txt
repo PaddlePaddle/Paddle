@@ -4,7 +4,7 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "test_*.py")
 
-  foreach(cinn_pir_test_name ${CINN_PIR_SYMBOLIC_TEST})
+  foreach(cinn_pir_test_name ${CINN_PERFORMANCE_TEST})
     string(REGEX REPLACE ".py" "" cinn_pir_test_name ${cinn_pir_test_name})
     add_test(
       NAME ${cinn_pir_test_name}
