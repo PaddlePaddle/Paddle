@@ -1302,6 +1302,11 @@ def get_package_data_and_package_dir():
         ext_modules = []
     elif sys.platform == 'darwin':
         ext_modules = []
+
+    # type hints
+    package_data['paddle.framework'] = package_data.get(
+        'paddle.framework', []
+    ) + ['*.pyi']
     return package_data, package_dir, ext_modules
 
 

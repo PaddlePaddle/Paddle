@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Protocol, Union
+from typing import Union
 
 from typing_extensions import TypeAlias
 
@@ -25,23 +26,12 @@ from paddle import (
     XPUPlace,
 )
 
-
-class _Place(Protocol):
-    def __init__(self, id: int) -> None:
-        ...
-
-
-NPUPlace = _Place
-MLUPlace = _Place
-
 PlaceLike: TypeAlias = Union[
     CPUPlace,
     CUDAPlace,
     CUDAPinnedPlace,
-    NPUPlace,
     IPUPlace,
     CustomPlace,
-    MLUPlace,
     XPUPlace,
     # It seems that we cannot define the literal for dev:id in nowadays python type-hinting.
     str,

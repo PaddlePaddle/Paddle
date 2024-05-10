@@ -28,8 +28,6 @@ from .device_like import (
     CUDAPlace as CUDAPlace,
     CustomPlace as CustomPlace,
     IPUPlace as IPUPlace,
-    MLUPlace as MLUPlace,
-    NPUPlace as NPUPlace,
     PlaceLike as PlaceLike,
     XPUPlace as XPUPlace,
 )
