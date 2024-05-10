@@ -90,9 +90,12 @@ template <typename T,
           int THREADS_PER_KEY,
           int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK,
-          typename LoadFunc>
+          typename LoadFunc,
+          typename StoreFunc>
 __global__ void masked_multihead_attention_kernel(
-    Masked_multihead_attention_params<T> params, LoadFunc load_func) {
+    Masked_multihead_attention_params<T> params,
+    LoadFunc load_func,
+    StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.z;
   // params.sequence_lengths[bi] means how many k and v we have cached in
@@ -639,12 +642,14 @@ __global__ void masked_multihead_attention_kernel(
   // for shortSeq postProcessKernel is not necessary
   if (params.split_seq == 1) {
     if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
-      int out_offset = thi != -1 ? thi * Dh + vi : bhi * Dh + vi;
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-      convert_from_float(*reinterpret_cast<V_vec *>(&params.out[out_offset]),
-                         out);
+      V_vec tmp_out;
+      convert_from_float(tmp_out, out);
+      store_func.template store<V_vec>(
+          tmp_out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
-      *reinterpret_cast<V_vec *>(&params.out[out_offset]) = out;
+      store_func.template store<V_vec>(
+          out, thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
     }
     return;
@@ -714,7 +719,7 @@ __global__ void post_process_kernel_kai_v2(
 
     v /= sum;
     T tmp_v = (T)v;
-    store_func.store(tmp_v, bhi * Dh + tid);
+    store_func.template store<T>(tmp_v, bhi * Dh + tid);
     // params.out[bhi * Dh + tid] = (T)(v);
   }
 }
@@ -806,7 +811,7 @@ __global__ void post_process_kernel_kai_v3(
     if (split_group_idx == 0) {
       v /= sum;
       T tmp_v = (T)v;
-      store_func.store(tmp_v, bhi * Dh + tid);
+      store_func.template store<T>(tmp_v, bhi * Dh + tid);
     }
   }
 }
@@ -857,7 +862,8 @@ inline size_t smem_size_in_bytes_kai(
                            THDS_PER_VALUE,                                   \
                            THDS_PER_BLOCK,                                   \
                            stream,                                           \
-                           load_func)                                        \
+                           load_func,                                        \
+                           store_func)                                       \
   size_t smem_sz =                                                           \
       smem_size_in_bytes_kai<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK); \
   constexpr auto kernel_fn =                                                 \
@@ -867,54 +873,64 @@ inline size_t smem_size_in_bytes_kai(
                                         THDS_PER_KEY,                        \
                                         THDS_PER_VALUE,                      \
                                         THDS_PER_BLOCK,                      \
-                                        decltype(load_func)>;                \
+                                        decltype(load_func),                 \
+                                        decltype(store_func)>;               \
   if (smem_sz > 0xc000) {                                                    \
     cudaFuncSetAttribute(                                                    \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);    \
   }                                                                          \
   dim3 grid(params.split_seq, params.num_head, params.batch_size);           \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(params, load_func)
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                      \
+      params, load_func, store_func)
 
-template <typename T, int Dh, int Dh_MAX, typename LoadFunc>
+template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
 void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                         const cudaStream_t &stream,
-                        LoadFunc load_func) {
+                        LoadFunc load_func,
+                        StoreFunc store_func) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   // If try adjusting the hyperparam, THDS_PER_KEY can try [1, 2, 4]
   // for LLM: multiBatch(8)/longSeq(>2048) case, reduce THDS_PER_KEY may work
   // for super longSeq(>3072) case, larger steps_per_block（256） may work
   MMHA_LAUNCH_KERNEL(
-      T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func);
+      T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 128, stream, load_func, store_func);
 }
 
-template <typename T, typename LoadFunc, typename StoreFunc_kai>
+template <typename T, typename LoadFunc, typename StoreFunc>
 void fmha_impl(const phi::GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
                LoadFunc load_func,
-               StoreFunc_kai store_func_kai) {
+               StoreFunc store_func) {
   switch (dim_head) {
     case 16:
-      fmha_launch_kernel<T, 16, 32>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 16, 32>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 32:
-      fmha_launch_kernel<T, 32, 32>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 32, 32>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 64:
-      fmha_launch_kernel<T, 64, 64>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 64, 64>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     // for opt model
     case 80:
-      fmha_launch_kernel<T, 80, 128>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 80, 128>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 96:
-      fmha_launch_kernel<T, 96, 128>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 96, 128>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 128:
-      fmha_launch_kernel<T, 128, 128>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 128, 128>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 192:
-      fmha_launch_kernel<T, 192, 256>(params, dev_ctx.stream(), load_func);
+      fmha_launch_kernel<T, 192, 256>(
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
       PADDLE_THROW(
@@ -928,32 +944,32 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   int smem_sz = params.split_seq * sizeof(float2);
   switch (dim_head) {
     case 16:
-      post_process_kernel_kai_v3<T, 16, 32, 8, StoreFunc_kai>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 16, 32, 8, StoreFunc>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 32:
-      post_process_kernel_kai_v3<T, 32, 32, 8, StoreFunc_kai>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 32, 32, 8, StoreFunc>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 64:
-      post_process_kernel_kai_v3<T, 64, 64, 4, StoreFunc_kai>
-          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 64, 64, 4, StoreFunc>
+          <<<grid, 256, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 80:
-      post_process_kernel_kai_v3<T, 80, 128, 4, StoreFunc_kai>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 80, 128, 4, StoreFunc>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 96:
-      post_process_kernel_kai_v3<T, 96, 128, 4, StoreFunc_kai>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 96, 128, 4, StoreFunc>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 128:
-      post_process_kernel_kai_v3<T, 128, 128, 4, StoreFunc_kai>
-          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 128, 128, 4, StoreFunc>
+          <<<grid, 512, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     case 192:
-      post_process_kernel_kai_v3<T, 192, 256, 4, StoreFunc_kai>
-          <<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func_kai);
+      post_process_kernel_kai_v3<T, 192, 256, 4, StoreFunc>
+          <<<grid, 1024, smem_sz, dev_ctx.stream()>>>(params, store_func);
       break;
     default:
       PADDLE_THROW(
@@ -977,30 +993,30 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);
-    MMHAStore_kai<T, int8_t> store_func_kai(out_tensor->data<int8_t>(),
-                                            quant_round_type,
-                                            quant_fmha_out_scale,
-                                            quant_max_bound,
-                                            quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
+                                    quant_round_type,
+                                    quant_fmha_out_scale,
+                                    quant_max_bound,
+                                    quant_min_bound);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales == nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore_kai<T, int8_t> store_func_kai(out_tensor->data<int8_t>(),
-                                            quant_round_type,
-                                            quant_fmha_out_scale,
-                                            quant_max_bound,
-                                            quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
+                                    quant_round_type,
+                                    quant_fmha_out_scale,
+                                    quant_max_bound,
+                                    quant_min_bound);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);
-    MMHAStore_kai<T> store_func_kai(out_tensor->data<T>());
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T> store_func(out_tensor->data<T>());
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore_kai<T> store_func_kai(out_tensor->data<T>());
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T> store_func(out_tensor->data<T>());
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   }
 }
 
@@ -1022,42 +1038,42 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);
-    MMHAStore_kai<T, int8_t, true> store_func_kai(out_tensor->data<int8_t>(),
-                                                  shift.data<T>(),
-                                                  smooth.data<T>(),
-                                                  num_head * dim_head,
-                                                  quant_round_type,
-                                                  quant_fmha_out_scale,
-                                                  quant_max_bound,
-                                                  quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
+                                          shift.data<T>(),
+                                          smooth.data<T>(),
+                                          num_head * dim_head,
+                                          quant_round_type,
+                                          quant_fmha_out_scale,
+                                          quant_max_bound,
+                                          quant_min_bound);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales == nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore_kai<T, int8_t, true> store_func_kai(out_tensor->data<int8_t>(),
-                                                  shift.data<T>(),
-                                                  smooth.data<T>(),
-                                                  num_head * dim_head,
-                                                  quant_round_type,
-                                                  quant_fmha_out_scale,
-                                                  quant_max_bound,
-                                                  quant_min_bound);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
+                                          shift.data<T>(),
+                                          smooth.data<T>(),
+                                          num_head * dim_head,
+                                          quant_round_type,
+                                          quant_fmha_out_scale,
+                                          quant_max_bound,
+                                          quant_min_bound);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
                                    dequant_qkv_scales->data<float>(),
                                    3 * num_head * dim_head);
-    MMHAStore_kai<T, T, true> store_func_kai(out_tensor->data<T>(),
-                                             shift.data<T>(),
-                                             smooth.data<T>(),
-                                             num_head * dim_head);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
+                                     shift.data<T>(),
+                                     smooth.data<T>(),
+                                     num_head * dim_head);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore_kai<T, T, true> store_func_kai(out_tensor->data<T>(),
-                                             shift.data<T>(),
-                                             smooth.data<T>(),
-                                             num_head * dim_head);
-    fmha_impl(dev_ctx, params, dim_head, load_func, store_func_kai);
+    MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
+                                     shift.data<T>(),
+                                     smooth.data<T>(),
+                                     num_head * dim_head);
+    fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   }
 }
 
