@@ -321,7 +321,11 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {
   auto spmd_info = ReshapeInferSpmd(x, shape);
-  spmd_info.second.emplace_back(spmd_info.first[0]);
+  auto xshape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, spmd_info.first[0]);
+  auto xshape_dims_mapping = xshape_dist_dst.dims_mapping();
+  xshape_dims_mapping.insert(xshape_dims_mapping.begin(), -1);
+  xshape_dist_dst.set_dims_mapping(xshape_dims_mapping);
+  spmd_info.second.emplace_back(xshape_dist_dst);
   return spmd_info;
 }
 
