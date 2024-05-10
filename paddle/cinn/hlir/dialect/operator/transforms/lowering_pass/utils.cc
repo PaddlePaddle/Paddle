@@ -122,20 +122,13 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
         static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
             ? attr.op_pattern_kind
             : group_op_kind;
-    group->set_loop_ranges(attr.loop_ranges);
-    group->set_loop_ranges_expr(attr.loop_ranges_expr);
-    group->set_reduce_axis(attr.reduce_axis);
-    group->set_alignment_schedule_info(attr.alignment_schedule_info);
+
+    group->set_opt_info(attr);
   }
   group->set_op_pattern_kind(group_op_kind);
 
   // Rebuild output_ops and input_ops of the group
-  auto yield_op = fusion_op.GetOperators().back();
-  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-    auto in = yield_op->operand_source(i);
-    group->mut_output_values().push_back(in);
-    group->mut_output_ops().insert(in.defining_op());
-  }
+  group->set_output_values_and_ops();
 
   // Because the group is rebuilt, the order of group.output_values generated
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,

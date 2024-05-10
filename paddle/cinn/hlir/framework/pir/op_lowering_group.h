@@ -22,11 +22,13 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+
 
 namespace cinn {
 
@@ -80,7 +82,6 @@ class OpLoweringGroup {
   }
 
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
-  std::vector<::pir::Operation*>& mut_ops() { return ops_; }
   void SetOps(const std::vector<::pir::Operation*>& new_ops) { ops_ = new_ops; }
 
   const std::vector<std::string>& input_names() const {
@@ -129,6 +130,15 @@ class OpLoweringGroup {
     map_expr_ctx_ = map_expr_ctx;
   }
 
+  void set_output_values_and_ops() {
+    auto yield_op = ops_.back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      auto in = yield_op->operand_source(i);
+      output_values_.push_back(in);
+      output_ops_.insert(in.defining_op());
+    }
+  }
+
   const std::string& group_id() const { return this->group_id_; }
 
   OpPatternKind op_pattern_kind() const { return this->op_pattern_kind_; }
@@ -137,25 +147,20 @@ class OpLoweringGroup {
     this->op_pattern_kind_ = pattern_kind;
   }
 
-  const std::vector<int64_t>& loop_ranges() const { return loop_ranges_; }
-
-  void set_loop_ranges(const std::vector<int64_t>& loop_ranges) {
-    this->loop_ranges_ = loop_ranges;
+  const std::vector<int64_t>& loop_ranges() const {
+    return opt_info_->loop_ranges_;
   }
 
   const std::vector<symbol::DimExpr>& loop_ranges_expr() const {
-    return loop_ranges_expr_;
+    return opt_info_->loop_ranges_expr_;
   }
 
-  void set_loop_ranges_expr(
-      const std::vector<symbol::DimExpr>& loop_ranges_expr) {
-    this->loop_ranges_expr_ = loop_ranges_expr;
+  const std::vector<int64_t>& reduce_axis() const {
+    return opt_info_->reduce_axis_;
   }
 
-  const std::vector<int64_t>& reduce_axis() const { return reduce_axis_; }
-
-  void set_reduce_axis(const std::vector<int64_t>& reduce_axis) {
-    this->reduce_axis_ = reduce_axis;
+  void set_opt_info(const cinn::dialect::GroupInfo attr) {
+    this->opt_info_.emplace(attr);
   }
 
   const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map() const {
@@ -173,25 +178,25 @@ class OpLoweringGroup {
 
  public:
   const alignment_schedule_info_t& alignment_schedule_info() const {
-    return alignment_schedule_info_;
+    return opt_info_->alignment_schedule_info_;
   }
 
   alignment_schedule_info_t& mut_alignment_schedule_info() {
-    return alignment_schedule_info_;
-  }
-
-  void set_alignment_schedule_info(
-      const std::unordered_map<
-          ::pir::Operation*,
-          std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>&
-          alignment_schedule_info) {
-    this->alignment_schedule_info_ = alignment_schedule_info;
+    return opt_info_->alignment_schedule_info_;
   }
 
   std::shared_ptr<OpLoweringGroup> Clone(::pir::Block* target_block,
                                          ::pir::IrMapping* ir_mapping) const;
 
  private:
+  struct OptionalInfo {
+    alignment_schedule_info_t alignment_schedule_info_;
+    std::vector<int64_t> reduce_axis_;
+    std::vector<int64_t> loop_ranges_;
+    std::vector<symbol::DimExpr> loop_ranges_expr_;
+    OptionalInfo(const cinn::dialect::GroupInfo attr) :
+    alignment_schedule_info_(attr.alignment_schedule_info),reduce_axis_(attr.reduce_axis),loop_ranges_(attr.loop_ranges),loop_ranges_expr_(attr.loop_ranges_expr){}
+  };
   friend std::ostream& operator<<(std::ostream&, const OpLoweringGroup&);
 
   // group id, consisted of op's id.
@@ -213,10 +218,7 @@ class OpLoweringGroup {
   std::vector<::pir::Value> output_values_;
   std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
 
-  alignment_schedule_info_t alignment_schedule_info_;
-  std::vector<int64_t> reduce_axis_;
-  std::vector<int64_t> loop_ranges_;
-  std::vector<symbol::DimExpr> loop_ranges_expr_;
+  std::optional<OptionalInfo> opt_info_;
 
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
