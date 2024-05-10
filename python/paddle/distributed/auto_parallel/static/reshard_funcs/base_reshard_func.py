@@ -23,7 +23,6 @@ class ReshardFunction:
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         raise NotImplementedError
 
-
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
     global _g_reshard_func_list
     for reshard_func in _g_reshard_func_list:
@@ -41,13 +40,17 @@ def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
 
-
 def is_shard(dist_attr):
     for v in dist_attr.dims_mapping:
         if v != -1:
             return True
     return False
 
+def is_shard(dist_attr):
+    for v in dist_attr.dims_mapping:
+        if v != -1:
+            return True
+    return False
 
 def is_partial(dist_attr):
     if len(dist_attr.partial_status) > 0:
