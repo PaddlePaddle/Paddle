@@ -197,7 +197,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         job_list = []
 
         for job_info in stage_schedule:
-            job = core.Job(job_info["type"])
+            job = core.Job(f"{job_info['type']}{job_info['chunk']}")
             job.set_micro_batch_id(job_info["micro_batch"])
             job_list.append(job)
 
