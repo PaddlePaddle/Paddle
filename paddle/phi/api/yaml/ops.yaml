@@ -788,6 +788,15 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : depend
+  args: (Tensor x, Tensor dep)
+  output: Tensor (out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: depend
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)

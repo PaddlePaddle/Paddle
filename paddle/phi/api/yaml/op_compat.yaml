@@ -3855,6 +3855,12 @@
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
 
+- op: depend
+  inputs:
+    {x : X, dep : Dep}
+  outputs:
+    out : Out
+
 - op: detection_map
   backward: detection_map_grad
   inputs:
