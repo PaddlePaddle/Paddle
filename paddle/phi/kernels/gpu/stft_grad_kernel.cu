@@ -17,4 +17,6 @@
 #include "paddle/phi/kernels/stft_kernel.h"
 
 PD_REGISTER_KERNEL(
-    stft_grad, GPU, ALL_LAYOUT, phi::StftGradKernel, float, double) {}
+    stft_grad, GPU, ALL_LAYOUT, phi::StftGradKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+}
