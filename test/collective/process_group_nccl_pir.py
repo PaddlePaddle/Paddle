@@ -321,6 +321,66 @@ class TestProcessGroupFp32(unittest.TestCase):
                         np.multiply(x_np, y_np), y_out
                     )
 
+    def test_broadcast(self):
+        pg = self.pg
+        # rank 0
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random(self.shape).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype=self.dtype
+                )
+                y = paddle.static.data(
+                    name="y", shape=self.shape, dtype=self.dtype
+                )
+                broadcast_result = paddle.assign(x)
+                exe = paddle.static.Executor()
+                if pg.rank() == 0:
+                    dist.broadcast(x, 0, sync_op=False)
+                else:
+                    dist.broadcast(y, 0)
+                (x_out, y_out) = exe.run(
+                    main_program,
+                    feed={"x": x_np, "y": y_np},
+                    fetch_list=[x, y],
+                )
+                if pg.rank() == 0:
+                    np.testing.assert_array_equal(broadcast_result, x_out)
+                else:
+                    np.testing.assert_array_equal(broadcast_result, y_out)
+
+    def test_broadcast_with_0d_input(self):
+        pg = self.pg
+        # rank 0
+        x_np = np.random.random([]).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random([]).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name="x", shape=[], dtype=self.dtype)
+                y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
+                broadcast_result = paddle.assign(x)
+                exe = paddle.static.Executor()
+                if pg.rank() == 0:
+                    dist.broadcast(x, 0, sync_op=False)
+                else:
+                    dist.broadcast(y, 0)
+                (x_out, y_out) = exe.run(
+                    main_program,
+                    feed={"x": x_np, "y": y_np},
+                    fetch_list=[x, y],
+                )
+                if pg.rank() == 0:
+                    np.testing.assert_array_equal(broadcast_result, x_out)
+                else:
+                    np.testing.assert_array_equal(broadcast_result, y_out)
+
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
     def setUp(self):
