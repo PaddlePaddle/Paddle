@@ -85,12 +85,18 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
   if (switch_dynamic) {
+    auto first_axis = axis_.front();
+    auto in_shape = shape<T>(x);
+    value = get_slice_vec<T>(in_shape, first_axis, first_axis + 1);
+    for (size_t i = 1; i < axis_.size(); ++i) {
+      value = value * get_slice_vec<T>(in_shape, axis_[i], axis_[i] + 1);
+    }
     // dynamic shape branch
-    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
-    Tensor idx =
-        reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
-    auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
-    value = prod<T>(axis_dims, {0}, false, false);
+    // std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
+    // Tensor idx =
+    //     reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
+    // auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
+    // value = prod<T>(axis_dims, {0}, false, false);
   } else {
     int64_t value_ = 1;
     for (size_t i = 0; i < axis_.size(); i++) {
