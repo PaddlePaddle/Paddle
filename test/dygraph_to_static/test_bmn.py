@@ -29,6 +29,8 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle.base import ParamAttr
 from paddle.base.framework import unique_name
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -642,6 +644,7 @@ class TestTrain(Dy2StTestBase):
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
         self.model_save_prefix = os.path.join(self.model_save_dir, 'bmn')
         self.model_filename = "bmn" + INFER_MODEL_SUFFIX
+        self.model_filename = "bmn" + PIR_INFER_MODEL_SUFFIX
         self.params_filename = "bmn" + INFER_PARAMS_SUFFIX
         self.dy_param_path = os.path.join(self.temp_dir.name, 'bmn_dy_param')
 
@@ -717,11 +720,7 @@ class TestTrain(Dy2StTestBase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        # TODO(@xiongkun): open after save / load supported in pir.
-                        if (
-                            to_static
-                            and not paddle.base.framework.use_pir_api()
-                        ):
+                        if to_static:
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             paddle.save(
@@ -818,6 +817,10 @@ class TestTrain(Dy2StTestBase):
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(self.place)
+            if use_pir_api():
+                model_filename = self.pir_model_filename
+            else:
+                model_filename = self.model_filename
             # load inference model
             [
                 inference_program,
@@ -826,7 +829,7 @@ class TestTrain(Dy2StTestBase):
             ] = paddle.static.io.load_inference_model(
                 self.model_save_dir,
                 executor=exe,
-                model_filename=self.model_filename,
+                model_filename=model_filename,
                 params_filename=self.params_filename,
             )
             pred_res = exe.run(
