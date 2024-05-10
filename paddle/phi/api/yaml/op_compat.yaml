@@ -3841,6 +3841,12 @@
   outputs:
     viterbi_path: ViterbiPath
 
+- op: ctc_align
+  inputs:
+    {input : Input, input_length : InputLength}
+  outputs:
+    {output : Output, output_length : OutputLength}
+
 - op: cudnn_lstm
   backward: cudnn_lstm_grad
   inputs:
