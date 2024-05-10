@@ -11,66 +11,44 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import sys
 import unittest
-from os.path import dirname
 
 import numpy as np
-
-import paddle
-from paddle import nn
-from paddle.static import InputSpec
-
-sys.path.append(dirname(dirname(__file__)))
-
 import utils
 
+import paddle
 
-class LlamaRMSNorm(nn.Layer):
+
+class HorizontalSubGraph(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.hidden_size = 768
-        self.dtype = "bfloat16"
-        self.weight = paddle.randn([128], dtype=self.dtype)
-        self.weight.stop_gradient = False
-        self.bias = paddle.randn([128], dtype=self.dtype)
-        self.bias.stop_gradient = False
-
-        self.data_format = "NHWC"
 
     def forward(self, x):
-        return paddle.nn.functional.group_norm(
-            x,
-            num_groups=32,
-            epsilon=1e-6,
-            weight=self.weight,
-            bias=self.bias,
-            data_format=self.data_format,
-        )
+        tmp1 = paddle.sum(x, axis=-1)
+        tmp2 = paddle.sum(x * x, axis=-1)
+        return tmp1 * tmp2
 
 
-class TestLlamaRMSNorm(unittest.TestCase):
+class TestHorizontalGraph(unittest.TestCase):
     def setUp(self):
-        paddle.seed(2022)
-        self.shape = [80, 128, 256, 128]
-        self.dtype = "bfloat16"
-        self.data_format = "NHWC"
+        paddle.seed(2024)
         self.prepare_data()
 
     def prepare_data(self):
-        self.x = paddle.randn(self.shape, dtype=self.dtype)
-        self.x.stop_gradient = False
+        self.x = paddle.randn([256, 128], dtype="float32")
+        self.x.stop_gradient = True
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = LlamaRMSNorm()
-        input_spec = [
-            InputSpec(shape=[None, None, None, 128], dtype='bfloat16'),
-        ]
-        net = utils.apply_to_static(net, use_cinn, input_spec)
+        net = HorizontalSubGraph()
         net.eval()
+        net = utils.apply_to_static(net, use_cinn)
         out = net(self.x)
-
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

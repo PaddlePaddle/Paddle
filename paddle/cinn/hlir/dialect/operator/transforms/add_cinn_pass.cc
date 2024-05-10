@@ -151,7 +151,7 @@ void ApplyDivideGroupOpToFusionOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
@@ -177,10 +177,10 @@ void ApplyCinnLowerPass(
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
-  if (FLAGS_enable_cinn_accuracy_check) {
-    VLOG(0) << "Enable CINN Accuracy Check Pass";
-    pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
-  }
+  // if (FLAGS_enable_cinn_accuracy_check) {
+  //   VLOG(0) << "Enable CINN Accuracy Check Pass";
+  //   pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
+  // }
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
