@@ -149,9 +149,10 @@ def _is_xpu_float16_supported():
     Only XPU2 and XPU3 support float16 amp.
     """
     place = _current_expected_place()
-    return place.get_device_type() == 'xpu' and core.get_xpu_device_version(
-        place.get_device_id()
-    ) in [core.XPUVersion.XPU2, core.XPUVersion.XPU3]
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU2
+    )
 
 
 def _is_xpu_bfloat16_supported():
@@ -161,9 +162,10 @@ def _is_xpu_bfloat16_supported():
     Although XPU2 supports bfloat16 computing, but XPU2's bfloat16 operators haven't been widely covered.
     """
     place = _current_expected_place()
-    return place.get_device_type() == 'xpu' and core.get_xpu_device_version(
-        place.get_device_id()
-    ) in [core.XPUVersion.XPU3]
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU3
+    )
 
 
 def _is_custom_device_bfloat16_supported():

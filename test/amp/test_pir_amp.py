@@ -143,6 +143,8 @@ class TestPirAMPProgram(unittest.TestCase):
                 place = paddle.CUDAPlace(0)
             elif core.is_compiled_with_xpu():
                 place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             exe = paddle.static.Executor(place)
             exe.run(startup)
             result = exe.run(

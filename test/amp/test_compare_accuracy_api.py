@@ -21,18 +21,20 @@ from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "not support cpu TestEagerCompareAccuracyApi",
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
 )
 class TestEagerCompareAccuracyApi(unittest.TestCase):
     def calc(self, path, dtype):
         paddle.base.core.set_nan_inf_debug_path(path)
-        x = paddle.to_tensor(
-            [2000, 3000, 4, 0], place=core.CUDAPlace(0), dtype=dtype
-        )
-        y = paddle.to_tensor(
-            [100, 500, 2, 10000], place=core.CUDAPlace(0), dtype=dtype
-        )
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        x = paddle.to_tensor([2000, 3000, 4, 0], place=place, dtype=dtype)
+        y = paddle.to_tensor([100, 500, 2, 10000], place=place, dtype=dtype)
         # normal
         z1 = x + y
         # inf
@@ -71,8 +73,8 @@ class TestEagerCompareAccuracyApi(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "not support cpu TestPirCompareAccuracyApi",
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
 )
 class TestPirCompareAccuracyApi(unittest.TestCase):
     def calc(self, path, dtype):
@@ -99,7 +101,12 @@ class TestPirCompareAccuracyApi(unittest.TestCase):
                 z1 = x + y
                 # inf
                 z2 = x * y
-            place = paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             exe = paddle.static.Executor(place)
             exe.run(startup)
             exe.run(

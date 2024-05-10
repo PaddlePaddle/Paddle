@@ -25,8 +25,12 @@ from paddle.static import amp
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestAutoCast(AmpTestBase):
@@ -81,8 +85,12 @@ class SimpleConvNet(nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestStaticDecorate(AmpTestBase):
@@ -119,7 +127,12 @@ class TestStaticDecorate(AmpTestBase):
             op_stats_list[0], expected_fp16_calls=expected_op_calls
         )
 
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
 
         max_iters = 2
@@ -157,8 +170,12 @@ class TestStaticDecorate(AmpTestBase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestGradScaler(AmpTestBase):
@@ -211,7 +228,12 @@ class TestGradScaler(AmpTestBase):
                 scaled = scaler.scale(loss)
                 scaler.minimize(optimizer, scaled)
 
-                place = paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                elif paddle.device.is_compiled_with_xpu():
+                    place = paddle.device.XPUPlace(0)
+                else:
+                    raise ValueError("Only support CUDA or XPU Place.")
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 paddle.amp.debugging.enable_operator_stats_collection()
@@ -232,8 +254,12 @@ class TestGradScaler(AmpTestBase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestFp16Guard(AmpTestBase):
@@ -241,7 +267,12 @@ class TestFp16Guard(AmpTestBase):
         paddle.enable_static()
 
         def run_example_code():
-            place = paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -335,8 +366,12 @@ class SimpleModelIncludeSetValue(nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestDy2STWithSetValue(AmpTestBase):

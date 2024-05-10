@@ -39,7 +39,8 @@ class MyModel(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
 )
 class TestDtypeConvert(unittest.TestCase):
     def setUp(self):
@@ -84,8 +85,12 @@ class TestDtypeConvert(unittest.TestCase):
         )
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability()[0] >= 8.0,
+        not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+        "Require compiled with CUDA or XPU.",
+    )
+    @unittest.skipIf(
+        core.is_compiled_with_cuda()
+        and not paddle.device.cuda.get_device_capability()[0] >= 8.0,
         "run test when maximum gpu's compute capability is 8.0.",
     )
     def test_unsupported_bfloat16(self):
@@ -95,8 +100,12 @@ class TestDtypeConvert(unittest.TestCase):
         )
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability()[0] < 8.0,
+        not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+        "Require compiled with CUDA or XPU.",
+    )
+    @unittest.skipIf(
+        core.is_compiled_with_cuda()
+        and paddle.device.cuda.get_device_capability()[0] < 8.0,
         "run test when gpu's compute capability is at least 8.0.",
     )
     def test_supported_bfloat16(self):
@@ -119,9 +128,6 @@ class TestDtypeConvert(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Require compiled with CUDA."
-)
 class TestSupportedTypeInfo(unittest.TestCase):
     def test_cpu(self):
         res = paddle.amp.is_float16_supported('cpu')
@@ -129,6 +135,9 @@ class TestSupportedTypeInfo(unittest.TestCase):
         res = paddle.amp.is_bfloat16_supported('cpu')
         self.assertEqual(res, core.supports_bfloat16())
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+    )
     def test_gpu_fp16_supported(self):
         res = paddle.amp.is_float16_supported()
         self.assertEqual(res, True)
@@ -150,7 +159,7 @@ class TestSupportedTypeInfo(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability()[0] < 8.0,
+        and paddle.device.cuda.get_device_capability()[0] < 8.0,
         "run test when gpu's compute capability is at least 8.0.",
     )
     def test_gpu_bf16_supported(self):
@@ -166,6 +175,39 @@ class TestSupportedTypeInfo(unittest.TestCase):
         self.assertRaises(
             ValueError, paddle.amp.is_float16_supported, device=111
         )
+
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu(), "Require compiled with XPU."
+    )
+    def test_xpu_fp16_supported(self):
+        res = paddle.amp.is_float16_supported()
+        self.assertEqual(res, True)
+        res = paddle.amp.is_float16_supported('gpu')
+        self.assertEqual(res, True)
+        res = paddle.amp.is_float16_supported('gpu:0')
+        self.assertEqual(res, True)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] >= 8.0,
+        "run test when maximum gpu's compute capability is 8.0.",
+    )
+    def test_xpu_bf16_unsupported(self):
+        res = paddle.amp.is_bfloat16_supported()
+        self.assertEqual(res, False)
+        res = paddle.amp.is_bfloat16_supported('gpu')
+        self.assertEqual(res, False)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        and paddle.device.cuda.get_device_capability()[0] < 8.0,
+        "run test when gpu's compute capability is at least 8.0.",
+    )
+    def test_xpu_bf16_supported(self):
+        res = paddle.amp.is_bfloat16_supported()
+        self.assertEqual(res, True)
+        res = paddle.amp.is_bfloat16_supported('gpu')
+        self.assertEqual(res, True)
 
 
 if __name__ == '__main__':

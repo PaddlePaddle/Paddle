@@ -40,8 +40,12 @@ class SimpleNet(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestMasterWeight(AmpTestBase):
@@ -108,7 +112,12 @@ class TestMasterWeight(AmpTestBase):
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaler.minimize(optimizer, scaled)
-            place = paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             exe = paddle.static.Executor(place)
             exe.run(startup)
             for iter_id in range(max_iters):
@@ -145,7 +154,12 @@ class TestMasterWeight(AmpTestBase):
                 loss = paddle.mean(out)
                 optimizer.minimize(loss)
 
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
         optimizer.amp_init(

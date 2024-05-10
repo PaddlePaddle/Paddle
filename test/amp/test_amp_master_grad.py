@@ -31,13 +31,17 @@ class SimpleNet(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the float16",
 )
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestMasterGrad(unittest.TestCase):
@@ -127,7 +131,12 @@ class TestMasterGrad(unittest.TestCase):
         scaler.minimize(opt, scaled)
 
         fp32_grads = list(opt._optimizer._master_grads.values())
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
         paddle.amp.debugging.enable_operator_stats_collection()
