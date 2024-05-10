@@ -1011,10 +1011,10 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+      auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+      remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+      lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
       if (FLAGS_pir_apply_inplace_pass) {
-        auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
-        remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
-        lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
       if (!config_.glog_info_disabled()) {
