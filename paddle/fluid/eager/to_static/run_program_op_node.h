@@ -467,21 +467,16 @@ inline void PirRunProgramAPI(
   auto param_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
 
-  auto *forward_global_block =
-      PADDLE_GET_CONST(::pir::Block *, attrs.at("forward_global_block"));
-  auto *backward_global_block =
-      PADDLE_GET_CONST(::pir::Block *, attrs.at("backward_global_block"));
-
-  auto *forward_program =
-      forward_global_block->GetParentOp()->GetParentProgram();
+  std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
+      std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
+  std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
+      std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
   if (FLAGS_print_ir) {
     std::ostringstream print_stream;
     print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
     if (!is_test) {
-      auto *backward_program =
-          backward_global_block->GetParentOp()->GetParentProgram();
       print_stream << "BackwardProgram is:\n";
       backward_program->Print(print_stream);
     } else {
@@ -509,12 +504,12 @@ inline void PirRunProgramAPI(
             << program_id;
     // Step 1. share input_vars & parameters into scope
     details::ShareTensorsIntoScopeByValue(
-        forward_global_block, x, input_values, global_inner_scope);
+        forward_program->block(), x, input_values, global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
-        forward_global_block, params, param_values, global_inner_scope);
+        forward_program->block(), params, param_values, global_inner_scope);
     // Step 2. create new interpretercore
     auto passed_kernel_program =
-        paddle::framework::ApplyIrPass(forward_program, place);
+        paddle::framework::ApplyIrPass(forward_program.get(), place);
     if (FLAGS_print_ir) {
       std::ostringstream print_stream;
       print_stream << "LoweredProgram( AfterPass ) is :\n";
@@ -535,22 +530,22 @@ inline void PirRunProgramAPI(
 
     // update interpretercore skip_gc_var
     auto skip_names = details::GetNameFromValue(
-        forward_global_block, middle_values, false, true);
+        forward_program->block(), middle_values, false, true);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
-        forward_global_block, no_need_buffer_values, false, true);
+        forward_program->block(), no_need_buffer_values, false, true);
     for (auto &name : no_need_buffer_names) {
       VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
     skip_names = details::GetNameFromValue(
-        forward_global_block, output_values, false, true);
+        forward_program->block(), output_values, false, true);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     skip_names = details::GetNameFromValue(
-        forward_global_block, input_values, true, false);
+        forward_program->block(), input_values, true, false);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -576,9 +571,9 @@ inline void PirRunProgramAPI(
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeByValue(
-        forward_global_block, x, input_values, global_inner_scope);
+        forward_program->block(), x, input_values, global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
-        forward_global_block, params, param_values, global_inner_scope);
+        forward_program->block(), params, param_values, global_inner_scope);
     // TODO(xiongkun): new ir how to build scope.
     // if (interpreter_core->GetVariableScope()->GetMutableScope() !=
     // global_inner_scope) {
@@ -589,7 +584,7 @@ inline void PirRunProgramAPI(
   }
 
   // interpretercore run
-  if (!forward_global_block->empty()) {
+  if (!forward_program->block()->empty()) {
     paddle::platform::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
@@ -602,7 +597,7 @@ inline void PirRunProgramAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
     details::ShareTensorsFromScopeByValue(
-        forward_global_block, out, output_values, global_inner_scope);
+        forward_program->block(), out, output_values, global_inner_scope);
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -1041,10 +1036,8 @@ inline void PirRunProgramGradAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
-  auto *backward_global_block =
-      PADDLE_GET_CONST(::pir::Block *, attrs.at("backward_global_block"));
-  auto *backward_program =
-      backward_global_block->GetParentOp()->GetParentProgram();
+  std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
+      std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
   auto output_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo_g"));
@@ -1064,8 +1057,10 @@ inline void PirRunProgramGradAPI(
   details::Trans2ContiguousTensorsInplace(out_grad);
 
   // share x, param, middles, output_grads, out into scope.
-  details::ShareTensorsIntoScopeByValue(
-      backward_global_block, out_grad, output_grad_values, global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(backward_program->block(),
+                                        out_grad,
+                                        output_grad_values,
+                                        global_inner_scope);
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -1082,7 +1077,7 @@ inline void PirRunProgramGradAPI(
     VLOG(2) << "No interpretercore cache, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
     auto passed_kernel_program =
-        paddle::framework::ApplyIrPass(backward_program, place);
+        paddle::framework::ApplyIrPass(backward_program.get(), place);
 
     const auto &new_block = passed_kernel_program->block();
     passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
@@ -1124,10 +1119,10 @@ inline void PirRunProgramGradAPI(
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
     auto skip_names = details::GetNameFromValue(
-        backward_global_block, x_grad_values, false, true);
+        backward_program->block(), x_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     skip_names = details::GetNameFromValue(
-        backward_global_block, p_grad_values, false, true);
+        backward_program->block(), p_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     cache.UpdateSkipEagerDeleteVars(program_id,
@@ -1160,7 +1155,7 @@ inline void PirRunProgramGradAPI(
     }
   }
 
-  if (!backward_global_block->empty()) {
+  if (!backward_program->block()->empty()) {
     paddle::platform::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
@@ -1175,9 +1170,11 @@ inline void PirRunProgramGradAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeByValue(
-        backward_global_block, x_grad, x_grad_values, global_inner_scope);
-    details::ShareTensorsFromScopeByValue(
-        backward_global_block, params_grad, p_grad_values, global_inner_scope);
+        backward_program->block(), x_grad, x_grad_values, global_inner_scope);
+    details::ShareTensorsFromScopeByValue(backward_program->block(),
+                                          params_grad,
+                                          p_grad_values,
+                                          global_inner_scope);
     VLOG(4) << "after backward gc all vars";
     global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
@@ -1316,8 +1313,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
-        auto selected_row = std::make_shared<phi::SelectedRows>();
-        x_grad->emplace_back(selected_row);
+        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
       x_grad->back().set_name(x_grad_names[i]);
     }
@@ -1446,6 +1442,10 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: PirGradNodeRunProgram";
 
     *executed_ = true;
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&x_grad,
+                                                        this->OutputMeta()[0]);
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&params_grad,
+                                                        this->OutputMeta()[1]);
     return {x_grad, params_grad};
   }
 

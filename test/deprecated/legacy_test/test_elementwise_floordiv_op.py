@@ -29,7 +29,9 @@ class TestElementwiseModOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_floordiv"
+        self.prim_op_type = "comp"
         self.python_api = paddle.floor_divide
+        self.public_python_api = paddle.floor_divide
         self.dtype = np.int32
         self.axis = -1
         self.init_dtype()
@@ -45,7 +47,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)

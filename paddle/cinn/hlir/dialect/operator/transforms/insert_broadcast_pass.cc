@@ -46,7 +46,10 @@ pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
   for (auto* op : std::vector{x_shape_op, y_shape_op, shape_broadcast_op}) {
     auto infer_symbolic_shape_interface =
         op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+    // TODO(Hongqing-work): delete this after the shape analysis reconstruct is
+    // done.
+    infer_symbolic_shape_interface.InferSymbolicShape(
+        shape_analysis->GetInferSymbolicShapeContext());
   }
   return shape_broadcast_op->result(0);
 }
