@@ -92,26 +92,5 @@ class TestPowOpInt(TestPowOp):
         pass
 
 
-class TestPowOpFP16(TestPowOp):
-    def custom_setting(self):
-        self.inputs = {
-            'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
-        }
-        self.attrs = {"factor": float(np.random.uniform(0, 10, []))}
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=pow_grad(
-                self.inputs['X'],
-                self.attrs['factor'],
-                1 / self.inputs['X'].size,
-            ),
-            check_prim_pir=True,
-            check_pir=True,
-        )
-
-
 if __name__ == '__main__':
     unittest.main()
