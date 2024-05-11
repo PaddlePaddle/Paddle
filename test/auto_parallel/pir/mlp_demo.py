@@ -65,6 +65,40 @@ class PPDemoNet(nn.Layer):
         return out
 
 
+class DPDemoNet(nn.Layer):
+    def __init__(
+        self,
+        mesh,
+    ):
+        super().__init__()
+        self._mesh = mesh
+        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, bias_attr=False)
+        self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, bias_attr=False)
+        self.linear_0.weight = dist.shard_tensor(
+            self.linear_0.weight,
+            self._mesh,
+            [dist.Replicate()],
+            stop_gradient=False,
+        )
+        self.linear_1.weight = dist.shard_tensor(
+            self.linear_1.weight,
+            self._mesh,
+            [dist.Replicate()],
+            stop_gradient=False,
+        )
+        self.relu_0 = nn.ReLU()
+        self.relu_1 = nn.ReLU()
+        self.relu_2 = nn.ReLU()
+
+    def forward(self, x):
+        out = self.relu_0(x)
+        out = self.linear_0(out)
+        out = self.relu_1(out)
+        out = self.linear_1(out)
+        out = self.relu_2(out)
+        return out
+
+
 class TestMLPTensorParallel(unittest.TestCase):
     def test_to_static_program(self):
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
