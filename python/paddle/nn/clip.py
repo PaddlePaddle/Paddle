@@ -789,10 +789,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         clip_input.process_mesh.process_ids
                     ):
                         placements = clip_input.placements
-                        is_replicate = [
-                            placement.is_replicated()
-                            for placement in placements
-                        ].all()
+                        is_replicate = True
+                        for placement in placements:
+                            if not placement.is_replicated():
+                                is_replicate = False
+                                break
                         if is_replicate:
                             clip_input = clip_input._local_value()
                         else:
