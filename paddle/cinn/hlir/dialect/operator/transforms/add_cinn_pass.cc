@@ -28,6 +28,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
@@ -157,6 +158,7 @@ void ApplyDivideGroupOpToFusionOpPass(
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
