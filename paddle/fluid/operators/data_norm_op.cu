@@ -311,21 +311,21 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
 #endif
     }
 
-    T *batch_size_data = ctx.Output<phi::DenseTensor>("BatchSize")
-                             ->mutable_data<T>(ctx.GetPlace());
-    T *batch_sum_data = ctx.Output<phi::DenseTensor>("BatchSum")
-                            ->mutable_data<T>(ctx.GetPlace());
-    T *batch_square_sum_data = ctx.Output<phi::DenseTensor>("BatchSquareSum")
-                                   ->mutable_data<T>(ctx.GetPlace());
-    KernelUpdateParam<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-        C,
-        d_batch_size,
-        d_batch_sum,
-        d_batch_square_sum,
-        batch_size_data,
-        batch_sum_data,
-        batch_square_sum_data,
-        dr);
+    // T *batch_size_data = ctx.Output<phi::DenseTensor>("BatchSize")
+    //                          ->mutable_data<T>(ctx.GetPlace());
+    // T *batch_sum_data = ctx.Output<phi::DenseTensor>("BatchSum")
+    //                         ->mutable_data<T>(ctx.GetPlace());
+    // T *batch_square_sum_data = ctx.Output<phi::DenseTensor>("BatchSquareSum")
+    //                                ->mutable_data<T>(ctx.GetPlace());
+    // KernelUpdateParam<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    //     C,
+    //     d_batch_size,
+    //     d_batch_sum,
+    //     d_batch_square_sum,
+    //     batch_size_data,
+    //     batch_sum_data,
+    //     batch_square_sum_data,
+    //     dr);
   }
 };
 }  // namespace operators
