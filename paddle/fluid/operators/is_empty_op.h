@@ -31,7 +31,7 @@ class IsEmptyOpKernel : public framework::OpKernel<T> {
     // Note: is_empty is always executed on CPU and the output data should
     // always be allocated for CPUPlace. We register CUDA kernel for this op to
     // avoid the unnecessary data transform.
-    output_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
+    output_tensor->mutable_data<bool>(phi::CPUPlace())[0] =
         common::product(input_tensor->dims()) == 0;
   }
 };
