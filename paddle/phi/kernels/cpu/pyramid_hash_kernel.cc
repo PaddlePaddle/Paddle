@@ -242,6 +242,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     pyramid_hash, CPU, ALL_LAYOUT, phi::CPUPyramidHashOPKernel, float, int8_t) {
+  kernel->InputAt(0).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
 }
