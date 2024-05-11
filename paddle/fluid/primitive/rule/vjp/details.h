@@ -228,6 +228,50 @@ void gelu_grad(const Tensor& x,
 }
 
 template <typename T>
+void reduce_as_grad(const Tensor& x,
+                    const Tensor& target,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> axis = common::vectorize<int64_t>(
+      get_reduce_dims_from_out(x.dims(), target.dims()));
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  bool reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+    }
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void reshape_grad(const Tensor& xshape,
                   const Tensor& grad_out,
                   Tensor* grad_x) {
@@ -740,12 +784,10 @@ void silu_grad(const Tensor& x,
       auto x_cast = cast<T>(x, phi::DataType::FLOAT32);
       auto out_cast = cast<T>(out, phi::DataType::FLOAT32);
       auto out_grad_cast = cast<T>(out_grad, phi::DataType::FLOAT32);
-      auto sigmoid = 1.0 / (1.0 + exp<T>(-x_cast));
-      auto res = out_grad_cast * sigmoid * (1.0 + x_cast - out_cast);
+      auto res = out_grad_cast * sigmoid<T>(x_cast) * (1.0 + x_cast - out_cast);
       set_output<T>(cast<T>(res, org_dtype), x_grad);
     } else {
-      auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
-      auto res = out_grad * sigmoid * (1.0 + x - out);
+      auto res = out_grad * sigmoid<T>(x) * (1.0 + x - out);
       set_output<T>(res, x_grad);
     }
   }
@@ -774,6 +816,94 @@ void softmax_grad(const Tensor& out,
       }
     } else {
       set_output<T>(out_grad * 0.0, x_grad);
+    }
+  }
+}
+
+template <typename T>
+void matmul_grad(const Tensor& x,
+                 const Tensor& y,
+                 const Tensor& out_grad,
+                 bool transpose_x,
+                 bool transpose_y,
+                 Tensor* x_grad,
+                 Tensor* y_grad) {
+  auto unsqueeze_out_grad = out_grad;
+  size_t out_grad_rank = out_grad.shape().size();
+  size_t x_rank = x.shape().size();
+  size_t y_rank = y.shape().size();
+  int temp_rank_y = out_grad_rank - 1;
+  int temp_rank_x = out_grad_rank;
+  if (out_grad_rank < y_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_y});
+  }
+  if (out_grad_rank < x_rank) {
+    unsqueeze_out_grad = unsqueeze<T>(out_grad, {temp_rank_x});
+  }
+
+  auto temp_x_unsqueeze = x;
+  if (x_rank == 1) {
+    temp_x_unsqueeze = unsqueeze<T>(x, {0});
+  }
+
+  auto temp_y_unsqueeze = y;
+  if (y_rank == 1) {
+    temp_y_unsqueeze = unsqueeze<T>(y, {1});
+  }
+
+  if (x_grad) {
+    auto x_grad_mm =
+        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
+    auto x_grad_trans = x_grad_mm;
+
+    if (transpose_x) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    }
+
+    if (x_grad_trans.dims() != x.dims()) {
+      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+          x_grad_trans.dims(), temp_x_unsqueeze.dims());
+      auto dx_reduce_res = sum<T>(
+          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+      set_output<T>(x_grad_out, x_grad);
+    } else {
+      auto x_grad_out = x_grad_trans;
+      set_output<T>(x_grad_out, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_grad_mm =
+        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
+    auto y_grad_trans = y_grad_mm;
+
+    if (transpose_y) {
+      std::vector<int> reverse_perm;
+      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
+        reverse_perm.push_back(i);
+      }
+      std::swap(reverse_perm[reverse_perm.size() - 1],
+                reverse_perm[reverse_perm.size() - 2]);
+      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    }
+
+    if (y_grad_trans.dims() != y.dims()) {
+      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+          y_grad_trans.dims(), temp_y_unsqueeze.dims());
+      auto dy_reduce_res = sum<T>(
+          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+      set_output<T>(y_grad_out, y_grad);
+    } else {
+      auto y_grad_out = y_grad_trans;
+      set_output<T>(y_grad_out, y_grad);
     }
   }
 }

@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 8
@@ -31,15 +31,15 @@ inline std::vector<int> get_expand_times(
     auto* expand_tensor = ctx.Input<phi::DenseTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     phi::DenseTensor cpu_expand_tensor;
-    if (platform::is_gpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::XPU) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #endif
@@ -55,15 +55,16 @@ inline std::vector<int> get_expand_times(
     std::vector<int> vec_expand_times;
     for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
       auto tensor = list_expand_times_tensor[i];
-      if (platform::is_gpu_place(tensor->place())) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
-      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+      else if (tensor->place().GetType() ==  // NOLINT
+               phi::AllocationType::XPU) {   // NOLINT
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #endif
@@ -81,13 +82,13 @@ inline std::vector<int> get_expand_times(
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::To32BitIndex;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
+using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
@@ -158,7 +159,7 @@ class ExpandKernel : public framework::OpKernel<T> {
       bcast_dims[i] = expand_times[i];
     }
 
-    framework::DDim out_dims(in_dims);
+    phi::DDim out_dims(in_dims);
     for (size_t i = 0; i < expand_times.size(); ++i) {
       out_dims[i] *= expand_times[i];
     }
@@ -217,8 +218,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* out0 =
           context.Output<phi::DenseTensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(
-          *in0, context.GetPlace(), context.device_context(), out0);
+      phi::Copy(
+          context.device_context(), *in0, context.GetPlace(), false, out0);
     } else {
       PADDLE_ENFORCE_GE(dims,
                         1,

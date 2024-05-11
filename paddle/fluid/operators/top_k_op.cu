@@ -61,7 +61,7 @@ template <typename DeviceContext, typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument("It must use CUDAPlace."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -138,7 +138,7 @@ template <typename DeviceContext, typename T>
 class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(context.GetPlace()),
+    PADDLE_ENFORCE_EQ(context.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument("It must use CUDAPlace."));
     auto* x = context.Input<phi::DenseTensor>("X");

@@ -153,7 +153,8 @@ set(PYBIND_SRCS
     eval_frame_tools.cc
     cpython_internals.c
     eval_frame.c
-    op_callstack_utils.cc)
+    op_callstack_utils.cc
+    python_callable_registry.cc)
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
@@ -403,7 +404,7 @@ if(WITH_PYTHON)
     if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${op_impl_path}/mkldnn.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_impl_path}
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB} ${op_impl_path}
         DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
@@ -478,7 +479,7 @@ if(WITH_PYTHON)
     if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
                 ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
@@ -549,6 +550,10 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
+  endif()
 
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)

@@ -101,7 +101,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         callstack_recorder.Record();
         paddle::dialect::{api_name}({args});
         callstack_recorder.AttachToOps();
-        return nullptr;
+        Py_RETURN_NONE;
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
         return nullptr;
@@ -240,7 +240,18 @@ class PythonCCodeGen(CodeGen):
                 # is wrong, so temporarily skip the automatic generation of these APIs
                 if self._need_skip(op_info, op_name):
                     continue
-                declare_str += self._gen_one_declare(op_name)
+                sparse_op_name_suffix = "_sp" if op_info.is_sparse_op else ''
+                sparse_op_inplace_name_suffix = (
+                    "sp_" if op_info.is_sparse_op else ''
+                )
+                if op_name[-1] == "_":
+                    declare_str += self._gen_one_declare(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    declare_str += self._gen_one_declare(
+                        op_name + sparse_op_name_suffix
+                    )
 
         body = declare_str
         for namespace in reversed(namespaces):
@@ -461,7 +472,18 @@ class PythonCCodeGen(CodeGen):
                 # is wrong, so temporarily skip the automatic generation of these APIs
                 if self._need_skip(op_info, op_name):
                     continue
-                impl_str += self._gen_one_impl(op_info, op_name)
+                sparse_op_name_suffix = "_sp" if op_info.is_sparse_op else ''
+                sparse_op_inplace_name_suffix = (
+                    "sp_" if op_info.is_sparse_op else ''
+                )
+                if op_name[-1] == "_":
+                    impl_str += self._gen_one_impl(
+                        op_info, op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    impl_str += self._gen_one_impl(
+                        op_info, op_name + sparse_op_name_suffix
+                    )
         body = impl_str
         for namespace in reversed(namespaces):
             body = NAMESPACE_TEMPLATE.format(namespace=namespace, body=body)

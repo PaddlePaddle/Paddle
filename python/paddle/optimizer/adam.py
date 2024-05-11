@@ -32,8 +32,6 @@ from .optimizer import Optimizer
 
 __all__ = []
 
-GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
-
 
 class Adam(Optimizer):
     r"""
@@ -570,13 +568,16 @@ class Adam(Optimizer):
                 params = [pair[0] for pair in parameters_and_grads]
                 grads_types = core.eager.get_grads_types(params)
                 for index, tp in enumerate(grads_types):
-                    if tp == GRAD_TYPES[0]:
+                    if tp == core.DataType.FLOAT32:
                         grad_dict['FP32_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                    elif tp == GRAD_TYPES[1] or tp == GRAD_TYPES[2]:
+                    elif (
+                        tp == core.DataType.FLOAT16
+                        or tp == core.DataType.BFLOAT16
+                    ):
                         grad_dict['FP16_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )

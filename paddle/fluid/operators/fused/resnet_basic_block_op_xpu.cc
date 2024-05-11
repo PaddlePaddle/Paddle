@@ -298,7 +298,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
@@ -369,7 +369,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int r = XPU_SUCCESS;
 
@@ -703,7 +703,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::XPU,
                       true,
                       phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
@@ -822,7 +822,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int r = XPU_SUCCESS;
 
@@ -993,7 +993,7 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(resnet_basic_block,
                           XPU,
                           ALL_LAYOUT,

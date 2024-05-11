@@ -17,12 +17,10 @@ from paddle.base.core import VarDesc
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import Variable, in_dygraph_mode
 from paddle.base.layer_helper import LayerHelper
-from paddle.base.layers.layer_function_generator import templatedoc
 
 __all__ = []
 
 
-@templatedoc()
 def sequence_conv(
     input,
     num_filters,
@@ -365,77 +363,6 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         max_index.stop_gradient = True
 
     return pool_out
-
-
-@templatedoc()
-def sequence_concat(input, name=None):
-    """
-
-    Note:
-        Only receives Tensor as input. If your input is Tensor, please use concat Op.(static.nn.** :ref:`api_paddle_concat` ).
-
-    This operator only supports Tensor as input. It concatenates the multiple Tensor from input by the LoD information,
-    and outputs the concatenated Tensor.
-
-    .. code-block:: text
-
-        input is a list of Tensor:
-            input = [x1, x2]
-        where:
-            x1.lod = [[0, 3, 5]]
-            x1.data = [[1], [2], [3], [4], [5]]
-            x1.shape = [5, 1]
-
-            x2.lod = [[0, 2, 4]]
-            x2.data = [[6], [7], [8], [9]]
-            x2.shape = [4, 1]
-        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
-
-        output is Tensor:
-            out.lod = [[0, 3+2, 5+4]]
-            out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
-            out.shape = [9, 1]
-
-    Args:
-        input(list of Tensor): List of Tensor to be concatenated. The length of each Tensor should be same.
-            The data type can be float32, float64 or int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: Output the concatenated Tensor. The data type is same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-            >>> y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
-            >>> out = paddle.static.nn.sequence_concat(input=[x, y])
-    """
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    helper = LayerHelper('sequence_concat', **locals())
-
-    check_type(
-        input, 'input', list, 'paddle.static.nn.sequence_lod.sequence_concat'
-    )
-    for i, input_x in enumerate(input):
-        check_variable_and_dtype(
-            input_x,
-            'input[' + str(i) + ']',
-            ['int64', 'float32', 'float64'],
-            'paddle.static.nn.sequence_lod.sequence_concat',
-        )
-
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]}
-    )
-    return out
 
 
 def sequence_first_step(input):
@@ -1414,72 +1341,3 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     """
 
     return paddle.nn.functional.sequence_mask(x, maxlen, dtype, name)
-
-
-@templatedoc()
-def sequence_reverse(x, name=None):
-    """
-    Note:
-        Only receives Tensor as input. If your input is Tensor, please use reverse Op.(static.nn.** :ref:`api_paddle_flip` ).
-
-    Only supports Tensor as input. It will reverse each sequence for input Tensor.
-    Currently it only supports 1-level Tensor. This operator is very useful when building a
-    reverse :ref:`api_paddle_nn_RNN` network.
-
-    .. code-block:: text
-
-        input(x) is a Tensor:
-            x.lod  = [[0, 2, 5]]
-            x.data = [[1,  2,  3,  4],
-                      [5,  6,  7,  8],
-                      [9, 10, 11, 12],
-                      [13,14, 15, 16],
-                      [17,18, 19, 20]]
-            x.shape = [5, 4]
-
-        output Tensor with same shape and LoD info:
-            out.lod  = [[0, 2, 5]]
-            out.data = [[5,  6,  7,  8],
-                        [1,  2,  3,  4],
-                        [17,18, 19, 20],
-                        [13,14, 15, 16],
-                        [9, 10, 11, 12]]
-            out.shape = [5, 4]
-
-    Args:
-        x(Tensor): Tensor with 1-level LoD info. Currently it only supports 1-level Tensor.
-            The data type should be float32, float64, int8, int32 or int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: Tensor reversed from input. The data type is same with input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            >>> x_reversed = paddle.static.nn.sequence_reverse(x)
-    """
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    helper = LayerHelper("sequence_reverse", **locals())
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float32', 'float64', 'int8', 'int32', 'int64'],
-        'static.nn.sequence_reverse',
-    )
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="sequence_reverse",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs={},
-    )
-    return out

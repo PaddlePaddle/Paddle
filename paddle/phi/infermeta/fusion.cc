@@ -1307,6 +1307,7 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     ln2_variance->set_dims(mean_dim);
   }
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 static bool IsUnaryCompound(const std::vector<std::string>& functor_list) {
@@ -3858,6 +3859,40 @@ void SinePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Pad2dXPUInferMeta(const MetaTensor& x,
+                       const std::vector<int>& paddings,
+                       const std::string& mode,
+                       float pad_value,
+                       const std::string& data_format,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  phi::DDim out_dim;
+  if (data_format == "NCHW") {
+    out_dim = phi::make_ddim(
+        {x_dims[0],
+         x_dims[1],
+         x_dims[2] + paddings[2] + paddings[3],    // top bootom height
+         x_dims[3] + paddings[0] + paddings[1]});  // left right weight
+  } else if (data_format == "NHWC") {
+    out_dim = phi::make_ddim({x_dims[0],
+                              x_dims[1] + paddings[2] + paddings[3],  // height
+                              x_dims[2] + paddings[0] + paddings[1],  // width
+                              x_dims[3]});
+  } else {
+    PADDLE_THROW(phi::errors::External(
+        "XPU is not support data format in pad2d is %s", data_format));
+  }
+
+  if (data_format == "NHWC") {
+    out->set_layout(phi::DataLayout::NHWC);
+  } else if (data_format == "NCHW") {
+    out->set_layout(phi::DataLayout::NCHW);
+  }
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
 void CrossAttentionXPUInferMeta(
     const MetaTensor& input_q,
     const MetaTensor& input_kv,
@@ -3947,6 +3982,53 @@ void CrossAttentionXPUInferMeta(
   qkv_max->set_layout(input_q.layout());
 }
 
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len) {
+  auto mask_dims = mask.dims();
+  auto mask_dims_size = mask_dims.size();
+  PADDLE_ENFORCE_EQ(
+      mask_dims_size,
+      3,
+      phi::errors::InvalidArgument(
+          "mask_dims_size should be 3, but received mask_dims_size is %d",
+          mask_dims_size));
+  length->set_dims({mask_dims[0]});
+  seq_lod->set_dims({mask_dims[0] + 1});
+  pad_seq_len->set_dims({1});
+  length->set_dtype(phi::DataType::INT64);
+  seq_lod->set_dtype(phi::DataType::INT32);
+  pad_seq_len->set_dtype(phi::DataType::INT32);
+}
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto len_dims = length.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Rank of X can't be less than 2, but received x_dims.size() is %d",
+          x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      len_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Rank of Length should be 1, but received en_dims.size() is %d",
+          len_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims[0],
+                    len_dims[0],
+                    phi::errors::InvalidArgument(
+                        "X and Length should have the same 1st dim, but "
+                        "received X.dims[0] is %d, Length.dims[0] is %d",
+                        x_dims[0],
+                        len_dims[0]));
+  out->set_dtype(x.dtype());
+}
+
 void MultiGruInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& weight_x,
@@ -3981,7 +4063,8 @@ void MultiGruInferMeta(
         phi::errors::InvalidArgument(
             "The first dimension of flattened WeightX #%d"
             "should equal to last dimension of flattened input X, but "
-            "received fattened WeightX dimension is:%d, flattened X dimension "
+            "received fattened WeightX dimension is:%d, flattened X "
+            "dimension "
             "is:%d",
             i,
             weight_x[i]->dims()[0],
@@ -4245,15 +4328,15 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       sin_emb_dims_size,
       4,
-      phi::errors::InvalidArgument(
-          "sin_emb_dims_size should be 4, but received sin_emb_dims_size is %d",
-          sin_emb_dims_size));
+      phi::errors::InvalidArgument("sin_emb_dims_size should be 4, but "
+                                   "received sin_emb_dims_size is %d",
+                                   sin_emb_dims_size));
   PADDLE_ENFORCE_EQ(
       cos_emb_dims_size,
       4,
-      phi::errors::InvalidArgument(
-          "cos_emb_dims_size should be 4, but received cos_emb_dims_size is %d",
-          cos_emb_dims_size));
+      phi::errors::InvalidArgument("cos_emb_dims_size should be 4, but "
+                                   "received cos_emb_dims_size is %d",
+                                   cos_emb_dims_size));
   for (int i = 0; i < sin_emb_dims_size; i++) {
     PADDLE_ENFORCE_EQ(
         sin_emb_dims[i],

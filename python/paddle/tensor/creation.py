@@ -905,7 +905,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -2137,6 +2137,8 @@ def empty(shape, dtype=None, name=None):
                     'float32',
                     'float64',
                     'uint16',
+                    'int8',
+                    'int16',
                     'int32',
                     'int64',
                     'complex64',
@@ -2150,9 +2152,7 @@ def empty(shape, dtype=None, name=None):
                 shape = shape.tolist()
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(
-                        shape, _current_expected_place()
-                    )
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -2175,6 +2175,8 @@ def empty(shape, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'complex64',
@@ -2266,9 +2268,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2280,9 +2286,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )

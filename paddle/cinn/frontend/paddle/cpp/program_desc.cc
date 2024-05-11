@@ -13,18 +13,29 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle::cpp {
 
 template <>
 BlockDesc* ProgramDesc::GetBlock<BlockDesc>(int32_t idx) {
-  CHECK_LT(idx, BlocksSize()) << "idx >= blocks.size()";
+  PADDLE_ENFORCE_LT(
+      idx,
+      BlocksSize(),
+      phi::errors::InvalidArgument(
+          "The value of idx and blocks.size() is incorrect."
+          "Expected idx < blocks.size(), but receive idx >= blocks.size()."));
   return &blocks_[idx];
 }
 
 template <>
 const BlockDesc& ProgramDesc::GetConstBlock<BlockDesc>(int32_t idx) const {
-  CHECK_LT(idx, static_cast<int32_t>(BlocksSize())) << "idx >= blocks.size()";
+  PADDLE_ENFORCE_LT(
+      idx,
+      static_cast<int32_t>(BlocksSize()),
+      phi::errors::InvalidArgument(
+          "The value of idx and blocks.size() is incorrect."
+          "Expected idx < blocks.size(), but receive idx >= blocks.size()."));
   return blocks_[idx];
 }
 

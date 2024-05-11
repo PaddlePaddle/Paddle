@@ -118,8 +118,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     //
     // Constraints.
     //
-    src.RequireNativeCall([](const paddle::drr::MatchContext &match_ctx)
-                              -> bool {
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
@@ -357,8 +356,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     //
     // Constraints.
     //
-    src.RequireNativeCall([](const paddle::drr::MatchContext &match_ctx)
-                              -> bool {
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
@@ -594,7 +592,7 @@ class VitAttentionFusePattern : public paddle::drr::DrrPatternBase {
               {&pat.Tensor("reshape_2_out"), &pat.Tensor("reshape_2_xshape")});
 
     // Constrains the activation is none
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto softmax_axis = match_ctx.Attr<int>("axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
       auto matmul_out_1_shape =

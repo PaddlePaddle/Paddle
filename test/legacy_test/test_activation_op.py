@@ -384,7 +384,7 @@ class TestParameter:
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -3681,6 +3681,8 @@ class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
         self.python_api = paddle.reciprocal
+        self.public_python_api = paddle.reciprocal
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
 
@@ -3719,7 +3721,9 @@ class TestReciprocal(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -3727,10 +3731,22 @@ class TestReciprocal_Complex64(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
 
 class TestReciprocal_Complex128(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
@@ -4972,12 +4988,14 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
+        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
         self.set_attrs()
         self.init_shape()
         self.python_api = paddle.nn.functional.hardsigmoid
+        self.public_python_api = paddle.nn.functional.hardsigmoid
 
         x = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
@@ -5004,7 +5022,9 @@ class TestHardSigmoid(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):

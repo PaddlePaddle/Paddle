@@ -38,7 +38,7 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
             rank,
             nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -75,7 +75,6 @@ DECLARE_INPLACE_OP_INFERER(PartialAllGatherOpInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
     partial_allgather,
