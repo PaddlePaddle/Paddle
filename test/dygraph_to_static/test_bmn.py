@@ -731,19 +731,6 @@ class TestTrain(Dy2StTestBase):
             return np.array(loss_data)
 
     @test_legacy_and_pt_and_pir
-    def test_train_pir(self):
-        with enable_to_static_guard(True):
-            static_res = self.train_bmn(self.args, to_static=True)
-        with enable_to_static_guard(False):
-            dygraph_res = self.train_bmn(self.args, to_static=False)
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
-            atol=1e-8,
-        )
-
     def test_train(self):
         with enable_to_static_guard(True):
             static_res = self.train_bmn(self.args, to_static=True)
