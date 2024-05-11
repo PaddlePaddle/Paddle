@@ -832,6 +832,16 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
 }
 
 template <typename T>
+Tensor hardsigmoid_decomp(const Tensor& x, float slope, float offset) {
+  const double MAX_VALUE = 1.0;
+  const double MIN_VALUE = 0.0;
+  return maximum<T>(minimum<T>(x * full<T>(empty_shape, slope, x.dtype()) +
+                                   full<T>(empty_shape, offset, x.dtype()),
+                               full<T>(empty_shape, MAX_VALUE, x.dtype())),
+                    full<T>(empty_shape, MIN_VALUE, x.dtype()));
+}
+
+template <typename T>
 Tensor hardswish_decomp(const Tensor& x) {
   const double OFFSET = 3.0;
   const double THRESHOLD = 6.0;

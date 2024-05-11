@@ -157,8 +157,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     ctx->ShareLoD(out_lod, /*->*/ "Out");
   }
 
-  static bool IsBcastY(const framework::DDim &x_dim,
-                       const framework::DDim &y_dim) {
+  static bool IsBcastY(const phi::DDim &x_dim, const phi::DDim &y_dim) {
     bool bcast_y = x_dim.size() >= y_dim.size();
     if (x_dim.size() == y_dim.size()) {
       for (int i = 0; i < x_dim.size(); ++i) {
