@@ -27,7 +27,7 @@ void ViewShapeKernel(const Context& dev_ctx,
   auto infer_dim = -1;
   auto new_size = 1;
   auto numel = input.numel();
-  std::vector<int64_t> dims_copy = dims
+  std::vector<int64_t> dims_copy = dims;
   for (int dim = 0, ndim = dims_copy.size(); dim != ndim; ++dim) {
     if (dims_copy[dim] == -1) {
       if (infer_dim >= 0) {
