@@ -153,7 +153,8 @@ set(PYBIND_SRCS
     eval_frame_tools.cc
     cpython_internals.c
     eval_frame.c
-    op_callstack_utils.cc)
+    op_callstack_utils.cc
+    python_callable_registry.cc)
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

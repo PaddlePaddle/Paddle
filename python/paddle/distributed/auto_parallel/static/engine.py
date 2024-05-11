@@ -632,9 +632,10 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_program = mix_fw_program
+        self._fwd_main_progs[mode] = mix_fw_program.clone()
+        paddle.base.libpaddle.pir.apply_mix2dist_pass(dist_program)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -699,9 +700,9 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
-            dist_program
-        )
+        dense_program = dist_program
+        dist_program = dist_program.clone()
+        paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
