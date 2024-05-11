@@ -58,8 +58,8 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.shape = [10000]
             self.mean = 0.0
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
+            self.a = -2.0
+            self.b = 2.0
 
         def test_check_output(self):
             self.gaussian_random_test(place=base.XPUPlace(0))
@@ -83,39 +83,39 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             outs = exe.run(program, fetch_list=fetch_list)
             tensor = outs[0]
             np.testing.assert_allclose(np.mean(tensor), self.mean, atol=0.05)
-            np.testing.assert_allclose(np.var(tensor), self.std, atol=0.05)
+            np.testing.assert_allclose(np.var(tensor), 0.773, atol=0.05)
 
     class TestTruncatedGaussianRandomOp_1(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
             self.shape = [4096, 2]
             self.mean = 5.0
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
+            self.a = -2.0
+            self.b = 2.0
 
     class TestTruncatedGaussianRandomOp_2(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
             self.shape = [1024]
             self.mean = -2.0
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
+            self.a = -2.0
+            self.b = 2.0
 
     class TestTruncatedGaussianRandomOp_3(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
             self.shape = [11 * 13 * 17]
             self.mean = -1.0
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
+            self.a = -2.0
+            self.b = 2.0
 
     class TestTruncatedGaussianRandomOp_4(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
             self.shape = [2049]
             self.mean = 5.1234
             self.std = 1.0
-            self.a = -10.0
-            self.b = 10.0
+            self.a = -2.0
+            self.b = 2.0
 
 
 support_types = get_xpu_op_support_types('truncated_gaussian_random')

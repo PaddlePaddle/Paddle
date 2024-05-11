@@ -137,8 +137,8 @@ struct TruncatedNormal {
     auto normal_cdf = [](T x) {
       return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
     };
-    a_normal_cdf = normal_cdf(a);
-    b_normal_cdf = normal_cdf(b);
+    a_normal_cdf = normal_cdf((a - mean) / std);
+    b_normal_cdf = normal_cdf((b - mean) / std);
   }
 
   T operator()(T value) const {
