@@ -177,7 +177,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
         for (auto j = 0; j < nranks; ++j) {
           int idx = i + j * n_expert;
           if (cpu_local_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclSend(
                 send_buf + expert_ptr[idx] * in_feat,
                 cpu_local_count_data[idx] * in_feat,
                 dtype,
@@ -186,7 +186,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
                 stream));
           }
           if (cpu_global_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
                 recv_buf + recv_ptr * in_feat,
                 cpu_global_count_data[idx] * in_feat,
                 dtype,

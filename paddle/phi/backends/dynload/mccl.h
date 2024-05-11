@@ -51,8 +51,8 @@ extern void* mccl_dso_handle;
   __macro(mcclCommUserRank);            \
   __macro(mcclAllReduce);               \
   __macro(mcclBcast);                   \
-  __macro(mcclAllGather);               \
   __macro(mcclGroupStart);              \
+  __macro(mcclAllGather);               \
   __macro(mcclGroupEnd);                \
   __macro(mcclReduce);                  \
   __macro(mcclReduceScatter);           \

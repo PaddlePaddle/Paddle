@@ -59,7 +59,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
     if (comm_ctx) {
       comm_ctx->Recv(&gpu_shape_size_tensor, 1, peer, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
           gpu_data, 1, nccl_dtype, peer, comm->comm(), stream));
     }
   }
@@ -89,7 +89,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
     if (comm_ctx) {
       comm_ctx->Recv(&gpu_shape_tensor, shape_size, peer, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
           gpu_shape_data, shape_size, nccl_dtype, peer, comm->comm(), stream));
     }
   }
@@ -233,7 +233,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         if (comm_ctx) {
           comm_ctx->Recv(out, numel, peer, stream);
         } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
               out->data<T>(), numel, dtype, peer, comm->comm(), stream));
           VLOG(3) << "rank " << comm->rank() << " recv "
                   << common::product(out_dims) << " from " << peer;
@@ -272,7 +272,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                             "be less than comm->nranks (%d).",
                             peer,
                             comm->nranks()));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " recv "
               << common::product(out->dims()) << " from " << peer;

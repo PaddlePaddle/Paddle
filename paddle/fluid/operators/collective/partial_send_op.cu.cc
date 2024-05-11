@@ -145,7 +145,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         comm_ctx->Send(send_buf, send_numel, peer, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclSend(x->data<T>() + offset,
+            platform::dynload::mcclSend(x->data<T>() + offset,
                                         send_numel,
                                         dtype,
                                         peer,

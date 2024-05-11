@@ -256,7 +256,7 @@ option(WITH_TESTING "Compile PaddlePaddle with unit testing" OFF)
 option(WITH_MULTINODE_TESTING "Test multinode apis and ops" OFF)
 option(WITH_MKL "Compile PaddlePaddle with MKL support." ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
-option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
+option(WITH_DISTRIBUTE "Compile with distributed support" ON)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
@@ -689,6 +689,12 @@ include(coveralls) # set code coverage
 include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
+
+# distribute need openssl
+# openssl install tutorial: https://www.howtoforge.com/tutorial/how-to-install-openssl-from-source-on-linux/
+include_directories("/usr/local/ssl/include")
+link_directories("/usr/local/ssl/lib64")
+
 
 if(WITH_NV_JETSON)
   set(WITH_ARM
