@@ -89,8 +89,8 @@ class SToRReshardFunction(ReshardFunction):
         num_of_process = len(src_mesh.process_ids)
         dtype = src_value.dtype
         group = new_process_group(src_mesh.process_ids)
-        allgather_value = paddle._pir_ops.c_allgather(
-            src_value, group.id, num_of_process, False
+        allgather_value = paddle._C_ops.c_allgather(
+            src_value, group.id, num_of_process, True
         )
         allgather_value.set_type(dst_type)
 
@@ -109,10 +109,10 @@ class SToRReshardFunction(ReshardFunction):
         if split_axis != 0 or padding_num != 0:
             allgather_op = allgather_value.get_defining_op()
             paddle.pir.set_insertion_point_after(allgather_op)
-            split_value = paddle._pir_ops.split_with_num(
+            split_value = paddle._C_ops.split_with_num(
                 allgather_op.result(0), num_of_process, 0
             )
-            concat_value = paddle._pir_ops.concat(split_value, split_axis)
+            concat_value = paddle._C_ops.concat(split_value, split_axis)
             return concat_value
         return allgather_value
 
