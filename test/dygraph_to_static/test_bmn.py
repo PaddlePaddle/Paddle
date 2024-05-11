@@ -644,7 +644,7 @@ class TestTrain(Dy2StTestBase):
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
         self.model_save_prefix = os.path.join(self.model_save_dir, 'bmn')
         self.model_filename = "bmn" + INFER_MODEL_SUFFIX
-        self.model_filename = "bmn" + PIR_INFER_MODEL_SUFFIX
+        self.pir_model_filename = "bmn" + PIR_INFER_MODEL_SUFFIX
         self.params_filename = "bmn" + INFER_PARAMS_SUFFIX
         self.dy_param_path = os.path.join(self.temp_dir.name, 'bmn_dy_param')
 
