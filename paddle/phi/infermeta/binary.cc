@@ -395,6 +395,7 @@ void BoxClipInferMeta(const MetaTensor& input,
             im_info_dims[1]));
   }
   output->set_dims(input.dims());
+  output->set_dtype(input.dtype());
   output->share_lod(input);
 }
 
