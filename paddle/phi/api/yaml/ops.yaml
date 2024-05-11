@@ -799,7 +799,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depend
-  args: (Tensor x, Tensor dep)
+  args: (Tensor x, Tensor[] dep)
   output: Tensor (out)
   infer_meta:
     func : UnchangedInferMeta
