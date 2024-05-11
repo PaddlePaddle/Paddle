@@ -60,6 +60,8 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
+  int64_t GetSymbolIndex();
+
  private:
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
@@ -131,6 +133,8 @@ class IR_API ShapeConstraintIRAnalysis final
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
+
+  int64_t GetSymbolIndex();
 
   // TODO(hongqing-work): make it a private component only for infer friend
   // class

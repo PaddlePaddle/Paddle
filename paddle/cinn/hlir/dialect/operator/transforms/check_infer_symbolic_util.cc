@@ -16,8 +16,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 
-#include <cstdlib>
-#include <ctime>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -100,61 +98,78 @@ struct ShapeSignatureGenerator {
 
   void Generate(const DoEachShapeSignatureT& DoEachShapeSignature) {
     auto op_shape_analysis = MakeOpShapeAnalysis(op, GraphDimExprs4Value);
-    VisitInputSymbolBinding(op_shape_analysis, [&](const auto& bindings) {
-      const auto input_shapes =
-          GetInputShapes(*op, op_shape_analysis, bindings);
-      const auto output_shapes =
-          GetOutputShapes(*op, op_shape_analysis, bindings);
-      DoEachShapeSignature(input_shapes, output_shapes);
-    });
+    VisitInputSymbolBinding(
+        op_shape_analysis, [&](const SymbolBindings& bindings) {
+          const auto& substitute_pattern =
+              GetSubstitutePattern(bindings, op_shape_analysis);
+          const auto input_shapes =
+              GetInputShapes(*op, op_shape_analysis, substitute_pattern);
+          const auto output_shapes =
+              GetOutputShapes(*op, op_shape_analysis, substitute_pattern);
+          DoEachShapeSignature(input_shapes, output_shapes);
+        });
   }
 
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> ConvertToDimExprPattern(
-      const SymbolBindings& bindings) {
-    return std::unordered_map<symbol::DimExpr, symbol::DimExpr>(
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetSubstitutePattern(
+      const SymbolBindings& bindings,
+      std::shared_ptr<pir::ShapeConstraintIRAnalysis> op_shape_analysis) {
+    std::random_device rd;
+    std::default_random_engine eng(rd());
+    std::uniform_int_distribution<int> distr(0, 1000);
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitute_pattern(
         bindings.begin(), bindings.end());
+    int64_t symbol_index = op_shape_analysis->GetSymbolIndex();
+    for (int i = 0; i <= symbol_index; i++) {
+      symbol::DimExpr dim_expr("S" + std::to_string(i));
+      if (substitute_pattern.count(dim_expr) <= 0) {
+        substitute_pattern[dim_expr] = symbol::DimExpr(distr(eng));
+      }
+    }
+    return substitute_pattern;
   }
 
-  Shape ConvertSymbolToDim(const symbol::ShapeOrDataDimExprs& shape_or_data,
-                           const SymbolBindings& bindings) {
+  Shape ConvertSymbolToDim(
+      symbol::ShapeOrDataDimExprs shape_or_data,
+      const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+          substitute_pattern) {
     Shape dim_shape;
-    const auto& substitute_pattern = ConvertToDimExprPattern(bindings);
     const auto& const_shape_or_data =
         symbol::SubstituteShapeOrData(shape_or_data, substitute_pattern);
-    for (const auto& symbolic_shape : shape_or_data.shape()) {
+    for (const auto& symbolic_shape : const_shape_or_data.shape()) {
       const auto& const_symbolic_shape =
           symbol::SimplifyDimExpr(symbolic_shape);
-      unsigned int seed = time(NULL);
-      if (symbolic_shape.isa<std::int64_t>()) {
-        dim_shape.push_back(symbolic_shape.Get<std::int64_t>());
-      } else {
-        dim_shape.push_back(rand_r(&seed));
-      }
+      CHECK(const_symbolic_shape.isa<std::int64_t>());
+      dim_shape.push_back(symbolic_shape.Get<std::int64_t>());
     }
     return dim_shape;
   }
 
-  ShapeList GetInputShapes(const pir::Operation& op,
-                           const ShapeAnalysisPtr& op_shape_analysis,
-                           const SymbolBindings& bindings) {
+  ShapeList GetInputShapes(
+      const pir::Operation& op,
+      const ShapeAnalysisPtr& op_shape_analysis,
+      const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+          substitute_pattern) {
     ShapeList list;
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.operand_source(i));
-      const auto& dim_shape = ConvertSymbolToDim(shape_or_data, bindings);
+      const auto& dim_shape =
+          ConvertSymbolToDim(shape_or_data, substitute_pattern);
       list.emplace_back(dim_shape);
     }
     return list;
   }
 
-  ShapeList GetOutputShapes(const pir::Operation& op,
-                            const ShapeAnalysisPtr& op_shape_analysis,
-                            const SymbolBindings& bindings) {
+  ShapeList GetOutputShapes(
+      const pir::Operation& op,
+      const ShapeAnalysisPtr& op_shape_analysis,
+      const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+          substitute_pattern) {
     ShapeList list;
     for (std::size_t i = 0; i < op.num_results(); ++i) {
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
-      const auto& shape = ConvertSymbolToDim(shape_or_data, bindings);
+      const auto& shape = ConvertSymbolToDim(shape_or_data, substitute_pattern);
       list.emplace_back(shape);
     }
     return list;
@@ -182,6 +197,19 @@ struct ShapeSignatureGenerator {
       const DoEachSymbolBindingT& DoEachSymbolBinding) {
     ConstrainedSymbolNamesList constrained_sym_list =
         GetConstrainedSymbolNamesList(op_shape_analysis);
+    for (ConstrainedSymbolNames constraint : constrained_sym_list) {
+      if (std::holds_alternative<CstrEqSymbolNames>(constraint)) {
+        auto eq = std::get<CstrEqSymbolNames>(constraint);
+        for (const auto& a : eq.symbol_names) {
+        }
+      }
+      if (std::holds_alternative<CstrBroadcastableSymbolNames>(constraint)) {
+        auto eq = std::get<CstrBroadcastableSymbolNames>(constraint);
+        for (const auto& a : eq.symbol_names) {
+        }
+      }
+    }
+
     VisitSymbolsBindings(constrained_sym_list, [&](const auto& syms_and_dims) {
       VisitSymbolBindings(syms_and_dims, {}, DoEachSymbolBinding);
     });
@@ -269,7 +297,6 @@ struct ShapeSignatureGenerator {
       const ShapeAnalysisPtr& op_shape_analysis) {
     ConstrainedSymbolNamesList cstr_list;
     auto* cstr_manager = op_shape_analysis->GetConstraintsManager();
-
     cstr_manager->VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {
@@ -408,6 +435,8 @@ void CheckOpDimExprConstraints(pir::Operation* op,
 void CheckProgramDimExprConstraints(
     pir::Program* program, const DimExprs4ValueT& GraphDimExprs4Value) {
   WalkLeafOp(program, [&](pir::Operation* op) {
+    VLOG(8) << "########Check Constraints for : " << op->name()
+            << " ################";
     CheckOpDimExprConstraints(op, GraphDimExprs4Value);
   });
 }

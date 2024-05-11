@@ -250,8 +250,10 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
         SubstituteDimExpr(it->data->lhs, substitution_pattern);
     const DimExpr& substituted_rhs =
         SubstituteDimExpr(it->data->rhs, substitution_pattern);
-    substituted_broadcastables.emplace_back(
-        Broadcastable<DimExpr>(substituted_lhs, substituted_rhs));
+    if (substituted_lhs != substituted_rhs) {
+      substituted_broadcastables.emplace_back(
+          Broadcastable<DimExpr>(substituted_lhs, substituted_rhs));
+    }
   });
   broadcastables_ = substituted_broadcastables;
 }
