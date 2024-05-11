@@ -28,7 +28,7 @@ class CUDAGraphWithInOuts {
  public:
   template <typename Callable>
   CUDAGraphWithInOuts(Callable &&callable,
-                      platform::CUDAPlace place,
+                      phi::GPUPlace place,
                       const std::vector<const phi::DenseTensor *> &in_ptrs,
                       gpuStreamCaptureMode mode,
                       int64_t pool_id) {
