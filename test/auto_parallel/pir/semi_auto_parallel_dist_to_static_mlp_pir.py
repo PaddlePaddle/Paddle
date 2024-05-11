@@ -158,7 +158,7 @@ class TestSimpleNetForSemiAutoParallel:
         )
 
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
-        np.testing.assert_allclose(dy_losses, dy2static_losses, atol=1e-7)
+        np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
     def test_dp_demo_net(self):
         paddle.disable_static()
@@ -230,7 +230,7 @@ class TestSimpleNetForSemiAutoParallel:
 
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_dataloader)
         if paddle.distributed.get_rank() == 1:
-            np.testing.assert_allclose(dy_losses, dy2static_losses, atol=1e-7)
+            np.testing.assert_array_equal(dy_losses, dy2static_losses)
 
     def run_test_case(self):
         self.test_mp_demo_net()
