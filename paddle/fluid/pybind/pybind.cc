@@ -2987,7 +2987,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
   BindFleetWrapper(&m);
   BindIO(&m);
-  BindCompiledProgram(m);
+  BindParallelExecutor(m);
   BindPlace(m);
   BindTensor(m);
 
