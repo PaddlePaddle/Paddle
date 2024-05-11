@@ -394,6 +394,8 @@ def get_real_op_inputs(op):
         return op.operands_source() + get_used_external_value(
             op.as_while_op().body()
         )
+    elif op.name() == "pd_op.pylayer":
+        return get_used_external_value(op)
     else:
         return op.operands_source()
 
@@ -558,6 +560,14 @@ def all_output_grad_none(list_of_list):
     return True
 
 
+def op_has_vjp(op):
+    # NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+    # not have a vjp interface, we still need to generate the backward
+    # block based on its registered backward function. To achieve this,
+    # we add more handling logic for `PyLayer` Op in the `call_vjp` function
+    return core.has_vjp(op) or op.name() == "pd_op.pylayer"
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
@@ -621,6 +631,7 @@ def get_grad_semantic_info(op):
         "builtin.combine",
         "pd_op.if",
         "pd_op.while",
+        "pd_op.pylayer",
         "cf.tuple_push",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
