@@ -162,7 +162,7 @@ void NCCLCommContext::ReduceScatterAdd(phi::DenseTensor* out_tensor,
   NCCL_CHECK(
       phi::dynload::ncclReduceScatterAdd(in_tensor.data(),
                                          out_tensor->data(),
-                                         bias_tensor.data(),
+                                         const_cast<void*>(bias_tensor.data()),
                                          out_tensor->numel(),
                                          ToNCCLDataType(in_tensor.type()),
                                          reduce_type,
