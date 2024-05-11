@@ -86,7 +86,8 @@ struct LiftReduceToReduceTreeOperation {
 
 struct MergeTrivialPatternOperation {
   template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
+  void operator()(PatternGraph<Phrase>* graph,
+                  PatternNodePtr<Phrase> upstream) {
     PADDLE_ENFORCE_GE(upstream->downstream().size(),
                       1,
                       phi::errors::PreconditionNotMet(
@@ -267,7 +268,7 @@ struct SplitRecomputeOperation {
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
         std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())));
 
-    MergeTrivialPatternOperation(graph, upstream);
+    MergeTrivialPatternOperation()(graph, upstream);
   }
 };
 

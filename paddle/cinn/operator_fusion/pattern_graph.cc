@@ -126,11 +126,12 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByReverseTopoOrder() {
 
 template <typename T>
 void PatternGraph<T>::SinkTrivialPattern() {
-  GraphTransformer<
-      NodePattern,
-      T,
-      And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern<T>>>,
-      MergeTrivialPatternOperation>(this);
+  GraphTransformer<NodePattern,
+                   T,
+                   And<StmtPatternGraphMatcher<TrivialPattern<T>>,
+                       DownstreamSmallerThan<2>,
+                       NonSinkNodeMatcher>,
+                   MergeTrivialPatternOperation>(this);
 }
 
 template <typename T>
