@@ -428,6 +428,16 @@
     func : fusion_transpose_flatten_concat
     data_type : x
 
+- op : gemm_epilogue
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
+  output : Tensor(out)
+  infer_meta :
+    func : FCInferMeta
+  kernel :
+    func : gemm_epilogue
+    data_type : input
+  optional : bias
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor
