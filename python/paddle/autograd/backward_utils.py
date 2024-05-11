@@ -94,6 +94,23 @@ ALLOW_NO_GRAD_OPS = [
 ]
 
 
+# TODO(CZ): to be removed when we support dynamic shape by default.
+ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
+    "pd_op.abs",
+    "pd_op.assign",
+    "pd_op.sin",
+    "pd_op.cos",
+    "pd_op.tanh",
+    "pd_op.cast",
+    "pd_op.log",
+    "pd_op.exp",
+    "pd_op.sqrt",
+    "pd_op.rsqrt",
+    "pd_op.sigmoid",
+    "pd_op.silu",
+]
+
+
 class ValueWrapper:
     def __init__(self, value) -> None:
         if isinstance(value, ValueWrapper):
@@ -314,17 +331,23 @@ def _check_vjp_dynamic_shape(op, inputs):
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
 @signature_safe_contextmanager
 def dynamic_shape_prim_vjp_guard(op, inputs):
-    skip_prim = (
-        core._is_bwd_prim_enabled()
-        and core._enable_prim_skip_dynamic_shape()
-        and _check_vjp_dynamic_shape(op, inputs)
-    )
+    origin_prim = core._is_bwd_prim_enabled()
+    if op.name() == "cf.tuple_push":
+        skip_prim = True
+    else:
+        skip_prim = (
+            origin_prim
+            and core._enable_prim_skip_dynamic_shape()
+            and _check_vjp_dynamic_shape(op, inputs)
+            and op.name() not in ALLOW_DYNAMIC_SHAPE_VJP_OPS
+        )
+
     try:
-        if skip_prim:
+        if origin_prim and skip_prim:
             core._set_prim_backward_enabled(False)
         yield
     finally:
-        if skip_prim:
+        if origin_prim:
             core._set_prim_backward_enabled(True)
 
 
