@@ -24,7 +24,6 @@
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/program.h"
 
-COMMON_DECLARE_bool(prim_skip_dynamic);
 COMMON_DECLARE_bool(prim_check_ops);
 COMMON_DECLARE_string(prim_forward_blacklist);
 
@@ -44,7 +43,15 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.batch_norm_"};
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {
-    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten"};
+    "pd_op.squeeze",
+    "pd_op.unsqueeze",
+    "pd_op.batch_norm",
+    "pd_op.batch_norm_",
+    "pd_op.bmm",
+    "pd_op.elu",
+    "pd_op.flatten",
+    "pd_op.instance_norm",
+    "pd_op.one_hot"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
@@ -422,10 +429,6 @@ void DecompProgram::decomp_block(
     }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
-    if (enable_prim && FLAGS_prim_skip_dynamic &&
-        check_decomp_dynamic_shape(op)) {
-      enable_prim = false;
-    }
     if (enable_prim && check_decomp_dynamic_shape(op) &&
         dynamic_shape_blacklist.find(op->name()) !=
             dynamic_shape_blacklist.end()) {
