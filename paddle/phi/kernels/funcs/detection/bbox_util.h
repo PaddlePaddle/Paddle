@@ -167,7 +167,7 @@ void ClipTiledBoxes(const phi::DeviceContext& ctx,
                     phi::DenseTensor* out,
                     bool is_scale = true,
                     bool pixel_offset = true) {
-  T* out_data = out->mutable_data<T>(ctx.GetPlace());
+  T* out_data = ctx.Alloc<T>(out);
   const T* im_info_data = im_info.data<T>();
   const T* input_boxes_data = input_boxes.data<T>();
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
@@ -206,7 +206,7 @@ void FilterBoxes(const phi::DeviceContext& ctx,
   const T* boxes_data = boxes->data<T>();
   keep->Resize({boxes->dims()[0]});
   min_size = std::max(min_size, 1.0f);
-  int* keep_data = keep->mutable_data<int>(ctx.GetPlace());
+  int* keep_data = ctx.Alloc<int>(keep);
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
 
   int keep_len = 0;
@@ -242,7 +242,7 @@ static void BoxCoder(const phi::DeviceContext& ctx,
                      phi::DenseTensor* variances,
                      phi::DenseTensor* proposals,
                      const bool pixel_offset = true) {
-  T* proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
+  T* proposals_data = ctx.Alloc<T>(proposals);
 
   int64_t row = all_anchors->dims()[0];
   int64_t len = all_anchors->dims()[1];

@@ -52,14 +52,17 @@ static void SortDescending(const phi::GPUContext &ctx,
                            phi::DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
   phi::DenseTensor index_in_t;
-  int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
+  index_in_t.Resize({num});
+  int *idx_in = ctx.Alloc<int>(&index_in_t);
   ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
-  int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
+  index_out->Resize({num});
+  int *idx_out = ctx.Alloc<int>(index_out);
 
   const T *keys_in = value.data<T>();
-  T *keys_out = value_out->mutable_data<T>({num}, ctx.GetPlace());
+  value_out->Resize({num});
+  T *keys_out = ctx.Alloc<T>(value_out);
 
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
@@ -335,7 +338,8 @@ static void NMS(const phi::GPUContext &ctx,
       }
     }
   }
-  int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
+  keep_out->Resize({num_to_keep});
+  int *keep = ctx.Alloc<int>(keep_out);
   phi::memory_utils::Copy(place,
                           keep,
                           phi::CPUPlace(),
