@@ -38,7 +38,8 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
-  "fusion/gpu/*.cu")
+  "fusion/gpu/*.cu"
+  "fusion/fp8_gemm/*.cu")
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
