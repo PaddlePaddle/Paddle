@@ -388,6 +388,39 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
   }
 };
 
+class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
+    : public pir::RewritePattern {
+ public:
+  explicit FuseSingleElementShapeOpsIntoGenerateShapeOpPattern(
+      pir::IrContext* context)
+      : pir::RewritePattern(MatchAnyOpTypeTag(),
+                            1 /*benefit*/,
+                            context,
+                            {} /*generated_names*/) {}
+
+  bool Match(pir::Operation* op) const override {
+    if (op->num_operands() == 0) return false;
+    if (op->num_results() != 1) return false;
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    pir::Value output = op->result(0);
+    const auto& out_shape = shape_analysis.GetShapeOrDataForValue(output);
+    if (!out_shape.isa<symbol::TensorShapeOrDataDimExprs>()) return false;
+    if (!out_shape.data().has_value()) return false;
+
+    // Only process the op which output is a single element
+    return out_shape.data()->size() == 1;
+  }
+
+  void Rewrite(pir::Operation* op,
+               pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+    ReplaceShapeOpsToGenerateShape(op->result(0), &rewriter, &shape_analysis);
+  }
+};
+
 class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
  public:
   FuseShapeOpsIntoGenerateShapeOpPass()
@@ -400,6 +433,7 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
         context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
         context);
+    ps.Add<FuseSingleElementShapeOpsIntoGenerateShapeOpPattern>(context);
 
     return ps;
   }
