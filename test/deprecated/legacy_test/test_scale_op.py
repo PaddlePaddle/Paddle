@@ -30,7 +30,7 @@ class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_dtype_type()
         self.public_python_api = paddle.scale
         self.prim_op_type = "prim"
@@ -48,6 +48,13 @@ class TestScaleOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
+class TestScaleOpFP64(TestScaleOp):
+    def init_dtype_type(self):
+        self.dtype = np.float64
+        # NOTE(dev): Scalar.to<float> has diff with double.
+        self.rev_comp_atol = 1e-7
 
 
 class TestScaleOpScaleVariable(OpTest):
