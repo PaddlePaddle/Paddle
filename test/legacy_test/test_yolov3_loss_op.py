@@ -21,7 +21,7 @@ from scipy.special import expit, logit
 import paddle
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
-
+paddle.enable_static()
 
 def l1loss(x, y):
     return abs(x - y)
@@ -443,6 +443,7 @@ class TestYolov3LossDygraph(unittest.TestCase):
 class TestYolov3LossStatic(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
+        paddle.enable_static()
         x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
         gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')
         gt_label = paddle.static.data('gt_label', [2, 10], 'int32')

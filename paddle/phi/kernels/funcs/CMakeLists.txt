@@ -17,8 +17,6 @@ endif()
 
 if(WITH_MUSA)
   list(REMOVE_ITEM func_cu_srcs 
-      "cross_entropy.cu" 
-      "gru_compute.cu"
       "softmax.cu")
 endif()
 
