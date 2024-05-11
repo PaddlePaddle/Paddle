@@ -453,6 +453,7 @@ function(op_library TARGET)
     list(REMOVE_ITEM mu_srcs "lstsq_op.cu")
     list(REMOVE_ITEM mu_srcs "multinomial_op.cu")
     list(REMOVE_ITEM mu_srcs "multiclass_nms3_op.cu")
+    message(STATUS "mu_cc_srcs: ${mu_cc_srcs}, cc_srcs: ${cc_srcs}")
     musa_library(
       ${TARGET}
       SRCS ${cc_srcs} ${mu_cc_srcs} ${mudnn_cu_cc_srcs} ${mudnn_cu_srcs}
@@ -491,8 +492,10 @@ function(op_library TARGET)
 
   list(LENGTH cu_srcs cu_srcs_len)
   list(LENGTH hip_srcs hip_srcs_len)
+  list(LENGTH mu_srcs mu_srcs_len)
   list(LENGTH cu_cc_srcs cu_cc_srcs_len)
   list(LENGTH hip_cc_srcs hip_cc_srcs_len)
+  list(LENGTH mu_cc_srcs mu_cc_srcs_len)
   list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
@@ -603,6 +606,23 @@ function(op_library TARGET)
     endif()
   endforeach()
 
+  # pybind USE_OP_DEVICE_KERNEL for MUSA
+  list(APPEND mu_srcs ${mu_cc_srcs})
+  message("mu_srcs ${mu_srcs}")
+  foreach(mu_src ${mu_srcs})
+    set(op_name "")
+    find_register(${mu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    find_phi_register(${mu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${mu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${mu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
+
+
   # pybind USE_OP_DEVICE_KERNEL for CUDNN/MIOPEN
   list(APPEND cudnn_cu_srcs ${cudnn_cu_cc_srcs})
   list(APPEND cudnn_cu_srcs ${miopen_cu_cc_srcs})
@@ -610,7 +630,6 @@ function(op_library TARGET)
   list(APPEND cudnn_cu_srcs ${mudnn_cu_cc_srcs})
   list(APPEND cudnn_cu_srcs ${mudnn_cu_srcs})  
   list(LENGTH cudnn_cu_srcs cudnn_cu_srcs_len)
-  message("cudnn_cu_srcs ${cudnn_cu_srcs}")
   if(${cudnn_cu_srcs_len} GREATER 0 AND ${ORIGINAL_TARGET} STREQUAL
                                         "activation_op")
     file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
@@ -725,7 +744,7 @@ function(register_operators)
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)
   list(LENGTH register_operators_DEPS register_operators_DEPS_len)
-
+  message(STATUS "OPS in register_operators:${OPS}")
   foreach(src ${OPS})
     list(FIND register_operators_EXCLUDES ${src} _index)
     if(${_index} EQUAL -1)
