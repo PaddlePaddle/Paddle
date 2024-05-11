@@ -8003,6 +8003,58 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
             >>> print(res)
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, False, False, True, False])
+
+            >>> # Set `assume_unique` to True only when `elements` and `test_elements` contain unique values, ortherwise the result may be incorrect.
+            >>> elements = paddle.to_tensor([0., 1., 2.]*20).reshape([20, 3])
+            >>> test_elements = paddle.to_tensor([0., 1.]*20)
+            >>> correct_result = paddle.isin(elements, test_elements, assume_unique=False)
+            >>> print(correct_result)
+            Tensor(shape=[20, 3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False]])
+
+            >>> incorrect_result = paddle.isin(elements, test_elements, assume_unique=True)
+            >>> print(incorrect_result)
+            Tensor(shape=[20, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+            [[True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , False]])
+
     """
     if not isinstance(elements, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(elements)}")
