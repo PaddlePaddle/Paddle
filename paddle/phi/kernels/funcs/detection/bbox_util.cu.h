@@ -1,15 +1,16 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 #include <algorithm>
@@ -23,12 +24,13 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
@@ -51,7 +53,7 @@ static void SortDescending(const phi::GPUContext &ctx,
   int num = static_cast<int>(value.numel());
   phi::DenseTensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
-  platform::ForRange<phi::GPUContext> for_range(ctx, num);
+  ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
@@ -73,7 +75,7 @@ static void SortDescending(const phi::GPUContext &ctx,
                                                     ctx.stream());
   // Allocate temporary storage
   auto place = ctx.GetPlace();
-  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -311,12 +313,12 @@ static void NMS(const phi::GPUContext &ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  memory::Copy(platform::CPUPlace(),
-               mask_host.data(),
-               place,
-               mask_dev,
-               boxes_num * col_blocks * sizeof(uint64_t),
-               ctx.stream());
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          mask_host.data(),
+                          place,
+                          mask_dev,
+                          boxes_num * col_blocks * sizeof(uint64_t),
+                          ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
@@ -334,14 +336,14 @@ static void NMS(const phi::GPUContext &ctx,
     }
   }
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
-  memory::Copy(place,
-               keep,
-               platform::CPUPlace(),
-               keep_vec.data(),
-               sizeof(int) * num_to_keep,
-               ctx.stream());
+  phi::memory_utils::Copy(place,
+                          keep,
+                          phi::CPUPlace(),
+                          keep_vec.data(),
+                          sizeof(int) * num_to_keep,
+                          ctx.stream());
   ctx.Wait();
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
