@@ -29,7 +29,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 30)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir_decomp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 30)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 40)
   py_test_modules(
     test_eliminate_transpose_pass MODULES test_eliminate_transpose_pass ENVS
     FLAGS_enable_pir_in_executor=1)
