@@ -664,6 +664,7 @@ class Cluster:
         self._initialized = False
         self._mesh_group = None
         self._topo = False
+        self._hetero = False
 
     @property
     def initialized(self):
@@ -1342,6 +1343,13 @@ def get_default_cluster(json_config=None, auto_config=None):
             logger.info(
                 f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}'
             )
+            name = None
+            for mesh in cluster.mesh_group.meshes.values():
+                if name is None:
+                    name = mesh.name
+                else:
+                    if name != mesh.name:
+                        cluster._hetero = True
             return cluster
         else:
             # when single machine, use topo directory
@@ -1351,6 +1359,7 @@ def get_default_cluster(json_config=None, auto_config=None):
                 }
             }
             cluster._build_from_topo(topo_dict, local_size)
+            cluster._hetero = False
             logger.info(
                 f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}'
             )

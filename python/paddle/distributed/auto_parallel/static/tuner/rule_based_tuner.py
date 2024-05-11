@@ -1050,7 +1050,7 @@ class RuleBasedTuner:
                      Default: o1.
     """
 
-    def __init__(self, dist_context, mode="train", level="o2"):
+    def __init__(self, dist_context, mode="train", level="o1"):
         self._dist_context = dist_context
         self._cluster = self._dist_context.cluster
         self._mode = mode
@@ -2007,13 +2007,8 @@ class RuleBasedTuner:
 
     def get_max_memory(self, device_id):
         max_memory = sys.maxsize
-        if self.cluster._topo:
-            device = self.cluster.get_device(device_id)
-            max_memory = device.memory * (1024**3)
-        else:
-            max_memory = self.cluster.machines[0].devices[0].memory * (
-                1024**3
-            )
+        device = self.cluster.get_device(device_id)
+        max_memory = device.memory * (1024**3)
         return max_memory
 
     def local_stage_pass(self, start, end, device_mesh):
@@ -2508,7 +2503,15 @@ class RuleBasedTuner:
                                     if (
                                         memory_strategies[s - 1][j][0]
                                         / local_stage_memory
-                                        < device_flops[s - 1] / device_flops[s]
+                                    ) < (
+                                        device_flops[s - 1] / device_flops[s]
+                                    ) and (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) > (
+                                        device_flops[s - 1]
+                                        / device_flops[s]
+                                        / 6.5
                                     ):
                                         best_strategies[s][i] = dist_context
                                         min_cost = cost
@@ -2518,7 +2521,15 @@ class RuleBasedTuner:
                                     if (
                                         memory_strategies[s - 1][j][0]
                                         / local_stage_memory
-                                        > device_flops[s - 1] / device_flops[s]
+                                    ) > (
+                                        device_flops[s - 1] / device_flops[s]
+                                    ) and (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) < (
+                                        device_flops[s - 1]
+                                        * 6.5
+                                        / device_flops[s]
                                     ):
                                         best_strategies[s][i] = dist_context
                                         min_cost = cost
@@ -2645,17 +2656,7 @@ class RuleBasedTuner:
                             f"Cost Model: The max memory is {memory / (1024**3):.2f}GB and cost is {cost:.2f} when {parallelism} parallelism under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages."
                         )
                         # 10% buffer is reserved safely for memory cost
-                        max_memory = sys.maxsize
-                        if self.cluster._topo:
-                            for mesh in self.cluster.mesh_group.meshes.values():
-                                for device in mesh.machines[0].devices.values():
-                                    max_memory = min(
-                                        max_memory, device.memory * (1024**3)
-                                    )
-                        else:
-                            max_memory = self.cluster.machines[0].devices[
-                                0
-                            ].memory * (1024**3)
+                        max_memory = self.get_max_memory(0)
                         if memory > max_memory:
                             cost = sys.maxsize
 
@@ -2730,7 +2731,7 @@ class RuleBasedTuner:
         self.prepare()
         best_dist_context = None
 
-        if self.cluster._topo:
+        if self.cluster._hetero:
             best_dist_context = self.tune_o3()
         elif self.level == "o2":
             best_dist_context = self.tune_o2()
