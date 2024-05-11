@@ -132,26 +132,26 @@ void VerifyDistBlock(pir::Block* block) {
   }
 }
 
-void MixToDistPass(pir::Program* prog) {
+std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
   if (FLAGS_print_ir) {
-    VLOG(0) << "IR before MixToDist Pass = " << *prog << std::endl;
+    std::cout << "IR before MixToDist Pass = " << *prog << std::endl;
   }
 
   pir::IrMapping mapper;
-  // auto new_prog = prog->Clone(mapper);
+  auto new_prog = prog->Clone(mapper);
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessMixBlock(prog->block());
-  VerifyDistBlock(prog->block());
+  ProcessMixBlock(new_prog->block());
+  VerifyDistBlock(new_prog->block());
 
   if (FLAGS_print_ir) {
-    VLOG(0) << "IR after MixToDist Pass = " << *prog << std::endl;
+    std::cout << "IR after MixToDist Pass = " << *new_prog << std::endl;
   }
 
-  // return prog;
+  return new_prog;
 }
 
 }  // namespace dialect
