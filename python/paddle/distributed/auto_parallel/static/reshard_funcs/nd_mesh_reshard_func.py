@@ -24,6 +24,7 @@ from .base_reshard_func import (
 )
 from .p_to_r_reshard_func import PToRReshardFunction
 from .r_to_s_reshard_func import RToSReshardFunction
+from .s_to_r_reshard_func import SToRReshardFunction
 from .same_status_reshard_func import SameStatusReshardFunction
 
 
@@ -106,9 +107,10 @@ class NdMeshReshardFunction(ReshardFunction):
             src_dist_attr, dst_dist_attr
         )
         ori_dst_dist_attr = copy_dist_attr_with_new_member(dst_dist_attr)
-        out_value = None  # intermediate result
+        out_value = src_value  # intermediate result
         src_type = src_value.type()
         tensor_ndim = len(src_value.shape)
+        process_mesh = dst_dist_attr.process_mesh
 
         # Step2. Convert the non-replicated dimensions to replicated.
         # Step2.1. convert partial status to replicated
@@ -119,12 +121,16 @@ class NdMeshReshardFunction(ReshardFunction):
             # convert each partial dim to replicated with corresponding
             # 1-D mesh function
             for partial_dim, partial_type in in_partial_status.items():
+                print("partial_dim: ", partial_dim)
+                print("out_partial_status: ", out_partial_status)
+                print("ori_dst_dist_attr", ori_dst_dist_attr)
                 if (
                     partial_dim in out_partial_status
                     or ori_dst_dist_attr.dims_mapping[partial_dim] > -1
                 ):
                     continue
 
+                print("Step1: partial axis ", partial_dim)
                 # get the partial status after converting
                 real_out_partial_status = copy.deepcopy(
                     real_out_dist_attr.partial_status
@@ -136,9 +142,7 @@ class NdMeshReshardFunction(ReshardFunction):
                 )
 
                 # get the process_mesh on specific axis
-                sub_mesh = get_1D_sub_process_mesh(
-                    dst_dist_attr.process_mesh, partial_dim
-                )
+                sub_mesh = get_1D_sub_process_mesh(process_mesh, partial_dim)
 
                 # calculate corresponding 1-D dist_attr of src_dst_attr
                 in_one_dim_partial_status = {0: partial_type}
@@ -160,14 +164,10 @@ class NdMeshReshardFunction(ReshardFunction):
                 )
 
                 one_dim_func = PToRReshardFunction()
-                if out_value is None:
-                    in_value = src_value
-                else:
-                    in_value = out_value
                 out_value = one_dim_func.reshard(
                     in_one_dim_dist_attr,
                     out_one_dim_dist_attr,
-                    in_value,
+                    out_value,
                     src_type,
                 )
 
@@ -179,36 +179,44 @@ class NdMeshReshardFunction(ReshardFunction):
             if in_mesh_axis == -1:
                 continue
 
-            raise NotImplementedError("SToRReshardFunction is not implemented")
+            print("Step2: in_mesh_axis ", in_mesh_axis)
             # calculate the dist_attr after converting
-            # real_out_dims_mapping = copy.deepcopy(real_out_dist_attr.dims_mapping)
-            # real_out_dims_mapping[i] = -1
-            # real_out_dist_attr = copy_dist_attr_with_new_member(
-            #     real_out_dist_attr, new_dims_mapping=real_out_dims_mapping
-            # )
+            real_out_dims_mapping = copy.deepcopy(
+                real_out_dist_attr.dims_mapping
+            )
+            real_out_dims_mapping[i] = -1
+            real_out_dist_attr = copy_dist_attr_with_new_member(
+                real_out_dist_attr, new_dims_mapping=real_out_dims_mapping
+            )
 
-            # # get the process_mesh on specific axis
-            # sub_mesh = get_sub_process_mesh(dst_dist_attr.process_mesh, in_mesh_axis)
+            # get the process_mesh on specific axis
+            sub_mesh = get_1D_sub_process_mesh(process_mesh, in_mesh_axis)
 
-            # # calculate corresponding 1-D dist_attr of src_dst_attr
-            # src_one_dim_dims_mapping = [-1] * len(src_dist_attr.dims_mapping)
-            # src_one_dim_dims_mapping[i] = 0
-            # src_one_dim_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-            #     sub_mesh, src_one_dim_dims_mapping
-            # )
+            # calculate corresponding 1-D dist_attr of src_dst_attr
+            in_one_dim_dims_mapping = [-1] * tensor_ndim
+            in_one_dim_dims_mapping[i] = 0
+            in_one_dim_dist_attr = (
+                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                    sub_mesh, in_one_dim_dims_mapping, {}
+                )
+            )
 
-            # # calculate corresponding 1-D dist_attr of dst_dst_attr
-            # dst_one_dim_dims_mapping = [-1] * len(src_dist_attr.dims_mapping)
-            # dst_one_dim_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-            #     sub_mesh, dst_one_dim_dims_mapping
-            # )
+            # calculate corresponding 1-D dist_attr of dst_dst_attr
+            out_one_dim_dims_mapping = [-1] * tensor_ndim
+            out_one_dim_dist_attr = (
+                paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                    sub_mesh, out_one_dim_dims_mapping, {}
+                )
+            )
 
-            # one_dim_func = SToRReshardFunction()
-            # intermediate_value = one_dim_func.reshard(
-            #     src_one_dim_dist_attr, dst_one_dim_dist_attr, intermediate_value, src_type
-            # )
+            one_dim_func = SToRReshardFunction()
+            out_value = one_dim_func.reshard(
+                in_one_dim_dist_attr, out_one_dim_dist_attr, out_value, src_type
+            )
 
-            # intermediate_value.update_dist_attr(real_out_dist_attr)
+            out_value.update_dist_attr(real_out_dist_attr)
+            print("==== nd_mesh_reshard_func ====")
+            print(out_value)
 
         # Step3. Convert the replicated status to the status in dst_dist_attr
         # Step3.1 convert replicated to partial
@@ -219,21 +227,26 @@ class NdMeshReshardFunction(ReshardFunction):
                 if partial_dim in in_partial_status:
                     continue
 
+                print("Step3: partial axis ", partial_dim)
                 raise NotImplementedError(
                     "RToPReshardFunction is not implemented"
                 )
 
-        # Step3.2 convert replicated to shard
+        # Step3.2 convert replicated/partial to shard
         for i in range(first_diff_axis, -1, -1):
             out_mesh_axis = ori_dst_dist_attr.dims_mapping[i]
             if out_mesh_axis == -1:
                 continue
-            in_partial_status = out_value.dist_attr.partial_status
+            in_partial_status = out_value.dist_attr().partial_status
             need_p2s = out_mesh_axis in in_partial_status
+            print(
+                "Step4: out_mesh_axis: %d need_p2s: %d"
+                % (out_mesh_axis, need_p2s)
+            )
             dims_mapping = copy.deepcopy(real_out_dist_attr.dims_mapping)
             dims_mapping[i] = out_mesh_axis
             partial_status = None
-            if is_partial(real_out_dist_attr):
+            if out_mesh_axis in real_out_dist_attr.partial_status:
                 partial_status = copy.deepcopy(
                     real_out_dist_attr.partial_status
                 )
@@ -246,15 +259,13 @@ class NdMeshReshardFunction(ReshardFunction):
             )
 
             # get the process_mesh on specific axis
-            sub_mesh = get_1D_sub_process_mesh(
-                dst_dist_attr.process_mesh, out_mesh_axis
-            )
+            sub_mesh = get_1D_sub_process_mesh(process_mesh, out_mesh_axis)
 
             # calculate the corresponding 1-D input dist attr
             in_one_dim_dims_mapping = [-1] * tensor_ndim
             in_one_dim_dist_attr = (
                 paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, in_one_dim_dims_mapping
+                    sub_mesh, in_one_dim_dims_mapping, {}
                 )
             )
 
@@ -263,7 +274,7 @@ class NdMeshReshardFunction(ReshardFunction):
             out_one_dim_dims_mapping[i] = 0
             out_one_dim_dist_attr = (
                 paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                    sub_mesh, out_one_dim_dims_mapping
+                    sub_mesh, out_one_dim_dims_mapping, {}
                 )
             )
 
@@ -277,7 +288,7 @@ class NdMeshReshardFunction(ReshardFunction):
                     in_one_dim_dist_attr,
                     out_one_dim_dist_attr,
                     out_value,
-                    src_type,
+                    dst_type,
                 )
                 out_value.update_dist_attr(real_out_dist_attr)
 
