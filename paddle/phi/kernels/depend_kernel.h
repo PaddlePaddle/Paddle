@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/depend_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/depend_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(depend,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::DependKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void DependKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<const DenseTensor*>& dep,
+                  DenseTensor* out);
+}  // namespace phi
