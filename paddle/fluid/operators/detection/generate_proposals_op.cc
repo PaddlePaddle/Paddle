@@ -156,8 +156,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       phi::DenseTensor &proposals = tensor_pair.first;
       phi::DenseTensor &scores = tensor_pair.second;
 
-      AppendProposals(rpn_rois, 4 * num_proposals, proposals);
-      AppendProposals(rpn_roi_probs, num_proposals, scores);
+      phi::funcs::AppendProposals(rpn_rois, 4 * num_proposals, proposals);
+      phi::funcs::AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
       tmp_num.push_back(proposals.dims()[0]);  // NOLINT

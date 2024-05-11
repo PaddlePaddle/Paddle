@@ -111,7 +111,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   // 4. nms
   phi::DenseTensor keep_nms;
-  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
+  phi::funcs::NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }

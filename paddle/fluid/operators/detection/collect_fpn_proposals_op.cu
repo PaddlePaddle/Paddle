@@ -141,7 +141,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         index_in_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
     phi::funcs::ForRange<phi::GPUContext> for_range_total(dev_ctx,
                                                           total_roi_num);
-    for_range_total(RangeInitFunctor{0, 1, idx_in});
+    for_range_total(phi::funcs::RangeInitFunctor{0, 1, idx_in});
 
     phi::DenseTensor keys_out_t;
     T* keys_out =
@@ -191,7 +191,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         batch_index_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     phi::funcs::ForRange<phi::GPUContext> for_range_post(dev_ctx,
                                                          real_post_num);
-    for_range_post(RangeInitFunctor{0, 1, batch_idx_in});
+    for_range_post(phi::funcs::RangeInitFunctor{0, 1, batch_idx_in});
 
     phi::DenseTensor out_id_t;
     int* out_id_data =

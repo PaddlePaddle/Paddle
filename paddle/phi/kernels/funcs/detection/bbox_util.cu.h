@@ -300,10 +300,10 @@ static void NMS(const phi::GPUContext &ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = ctx.GetPlace();
-  auto mask_ptr =
-      memory::Alloc(ctx.GetPlace(),
-                    boxes_num * col_blocks * sizeof(uint64_t),
-                    phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+  auto mask_ptr = phi::memory_utils::Alloc(
+      ctx.GetPlace(),
+      boxes_num * col_blocks * sizeof(uint64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(
