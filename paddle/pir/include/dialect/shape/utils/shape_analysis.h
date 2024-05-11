@@ -21,12 +21,13 @@
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
+
+void InferSymExprForAllValues(ModuleOp module_op);
 
 class IR_API InferSymbolicShapeContext {
  public:
