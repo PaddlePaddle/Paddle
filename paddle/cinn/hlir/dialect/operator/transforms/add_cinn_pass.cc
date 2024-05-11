@@ -158,7 +158,6 @@ void ApplyDivideGroupOpToFusionOpPass(
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());

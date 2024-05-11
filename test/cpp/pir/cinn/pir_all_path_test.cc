@@ -77,7 +77,6 @@ static void RunAndCheckResult(::pir::Program* program,
   pir::PassManager stage_2_pm(ctx);
   stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   stage_2_pm.EnableIRPrinting();
