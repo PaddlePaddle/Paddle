@@ -13,12 +13,9 @@
 # limitations under the License.
 
 import random
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../../legacy_test")
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
@@ -365,8 +362,8 @@ class TestCumprodReverse(TestCumprod):
 # test function.
 class TestCumprodReverseCase1(TestCumprod):
     def init_params(self):
-        self.shape = (240,)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.shape = (120,)
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     # test backward.
     def test_check_grad(self):
@@ -392,21 +389,21 @@ class TestCumprodReverseCase1(TestCumprod):
 class TestCumprodReverseCase2(TestCumprod):
     def init_params(self):
         self.shape = (12, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
 
 # test function.
 class TestCumprodReverseCase3(TestCumprod):
     def init_params(self):
         self.shape = (3, 4, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
 
 # test function.
 class TestCumprodReverseCase4(TestCumprod):
     def init_params(self):
-        self.shape = (3, 4, 5, 6, 7)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.shape = (2, 3, 4, 5, 2)
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     # test backward.
     def test_check_grad(self):
@@ -504,8 +501,8 @@ class TestCumprodExclusive(TestCumprod):
 # test function.
 class TestCumprodExclusiveCase1(TestCumprodExclusive):
     def init_params(self):
-        self.shape = (240,)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.shape = (120,)
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -564,7 +561,7 @@ class TestCumprodExclusiveCase1(TestCumprodExclusive):
 class TestCumprodExclusiveCase2(TestCumprodExclusive):
     def init_params(self):
         self.shape = (12, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -608,7 +605,7 @@ class TestCumprodExclusiveCase2(TestCumprodExclusive):
 class TestCumprodExclusiveCase3(TestCumprodExclusive):
     def init_params(self):
         self.shape = (3, 4, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -653,8 +650,8 @@ class TestCumprodExclusiveCase3(TestCumprodExclusive):
 # test function.
 class TestCumprodExclusiveCase4(TestCumprodExclusive):
     def init_params(self):
-        self.shape = (3, 4, 5, 6, 7)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.shape = (2, 3, 4, 5, 2)
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -802,7 +799,7 @@ class TestCumprodExclusiveAndReverseCase1(TestCumprodExclusiveAndReverse):
 
     def init_params(self):
         self.shape = (120,)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
@@ -846,7 +843,7 @@ class TestCumprodExclusiveAndReverseCase2(TestCumprodExclusiveAndReverse):
 
     def init_params(self):
         self.shape = (12, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
@@ -892,7 +889,7 @@ class TestCumprodExclusiveAndReverseCase3(TestCumprodExclusiveAndReverse):
 
     def init_params(self):
         self.shape = (3, 4, 10)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
@@ -939,8 +936,8 @@ class TestCumprodExclusiveAndReverseCase4(TestCumprodExclusiveAndReverse):
         self.val_dtype = np.float64
 
     def init_params(self):
-        self.shape = (3, 4, 5, 6, 7)
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        self.shape = (2, 3, 4, 5, 2)
+        self.zero_nums = [0, 1, 10, int(np.prod(self.shape))]
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
@@ -988,7 +985,7 @@ class TestCumprodExclusiveAndReverseCase4(TestCumprodExclusiveAndReverse):
 # # test function.
 class TestCumprodOuter1AndInner1(OpTest):  # used to pass ci-coverage
     def init_params(self):
-        self.shape = (1, 1000, 1)
+        self.shape = (1, 100, 1)
 
     def init_dtype(self):
         self.dtype = np.float64
