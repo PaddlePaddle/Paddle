@@ -27,13 +27,17 @@ def np_sinc(x: np.ndarray):
     return np.where(~np.isnan(tmp), tmp, np.full_like(x, 1.0))
 
 
+def np_sinc_gradient(x: np.ndarray):
+    x = np.pi * np.where(x == 0, 1.0e-20, x)
+    s = np.sin(x)
+    c = np.cos(x)
+    tmp = np.pi * (x * c - s) / x**2
+    return np.where(~np.isnan(tmp), tmp, np.full_like(x, 0.0))
+
+
 class TestSincAPI(unittest.TestCase):
     def setUp(self):
-        self.cpu_support_dtypes = [
-            'float32',
-            'float64',
-        ]
-        self.cuda_support_dtypes = [
+        self.support_dtypes = [
             'float32',
             'float64',
         ]
@@ -45,28 +49,26 @@ class TestSincAPI(unittest.TestCase):
     def test_dtype(self):
         def run_dygraph(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
-                support_dtypes = self.cuda_support_dtypes
-            else:
-                support_dtypes = self.cpu_support_dtypes
-
-            for dtype in support_dtypes:
+            for dtype in self.support_dtypes:
                 for shape in self.shapes:
                     x_data = np.random.rand(*shape).astype(dtype)
                     x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
                     out = paddle.sinc(x)
+                    out.backward()
+                    x_grad = x.grad
                     out_expected = np_sinc(x_data)
+                    np_grad_expected = np_sinc_gradient(x_data)
                     np.testing.assert_allclose(
                         out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
+                    np.testing.assert_allclose(
+                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=1e-6
                     )
 
         def run_static(place):
             paddle.enable_static()
-            if core.is_compiled_with_cuda():
-                support_dtypes = self.cuda_support_dtypes
-            else:
-                support_dtypes = self.cpu_support_dtypes
-            for dtype in support_dtypes:
+            for dtype in self.support_dtypes:
                 for shape in self.shapes:
                     x_data = np.random.rand(*shape).astype(dtype)
                     startup_program = paddle.static.Program()
@@ -78,13 +80,22 @@ class TestSincAPI(unittest.TestCase):
                         x = paddle.static.data(
                             name='x', shape=shape, dtype=dtype
                         )
+                        x.stop_gradient = False
                         res = paddle.sinc(x)
-                        static_result = exe.run(
-                            feed={'x': x_data}, fetch_list=[res]
-                        )[0]
+                        x_grad = paddle.static.gradients(res, x)
+                        [static_result, static_grad_result] = exe.run(
+                            feed={'x': x_data}, fetch_list=[res, x_grad]
+                        )
                         out_expected = np_sinc(x_data)
+                        np_grad_expected = np_sinc_gradient(x_data)
                     np.testing.assert_allclose(
                         static_result, out_expected, rtol=1e-6, atol=1e-6
+                    )
+                    np.testing.assert_allclose(
+                        static_grad_result,
+                        np_grad_expected,
+                        rtol=1e-6,
+                        atol=1e-6,
                     )
 
         for place in self.place:
@@ -94,12 +105,7 @@ class TestSincAPI(unittest.TestCase):
     def test_zero(self):
         def run_dygraph(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
-                support_dtypes = self.cuda_support_dtypes
-            else:
-                support_dtypes = self.cpu_support_dtypes
-
-            for dtype in support_dtypes:
+            for dtype in self.support_dtypes:
                 for shape in self.shapes:
                     x_data = np.random.rand(*shape).astype(dtype)
                     mask = (
@@ -109,10 +115,17 @@ class TestSincAPI(unittest.TestCase):
                     )
                     x_data = x_data * mask
                     x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
                     out = paddle.sinc(x)
+                    out.backward()
+                    x_grad = x.grad
                     out_expected = np_sinc(x_data)
+                    np_grad_expected = np_sinc_gradient(x_data)
                     np.testing.assert_allclose(
                         out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
+                    np.testing.assert_allclose(
+                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=1e-6
                     )
 
         for place in self.place:
@@ -149,11 +162,7 @@ class TestSincAPI(unittest.TestCase):
 
 class TestSincInplaceAPI(unittest.TestCase):
     def setUp(self):
-        self.cpu_support_dtypes = [
-            'float32',
-            'float64',
-        ]
-        self.cuda_support_dtypes = [
+        self.support_dtypes = [
             'float32',
             'float64',
         ]
@@ -165,12 +174,7 @@ class TestSincInplaceAPI(unittest.TestCase):
     def test_inplace(self):
         def run_dygraph(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
-                support_dtypes = self.cuda_support_dtypes
-            else:
-                support_dtypes = self.cpu_support_dtypes
-
-            for dtype in support_dtypes:
+            for dtype in self.support_dtypes:
                 for shape in self.shapes:
                     x_data = np.random.rand(*shape).astype(dtype)
                     x = paddle.to_tensor(x_data)
@@ -212,13 +216,19 @@ class TestSincAPIFP16(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=shape, dtype=self.dtype
                     )
+                    x.stop_gradient = False
                     res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
+                    x_grad = paddle.static.gradients(res, x)
+                    [static_result, static_grad_result] = exe.run(
+                        feed={'x': x_data}, fetch_list=[res, x_grad]
+                    )
                     out_expected = np_sinc(x_data)
+                    np_grad_expected = np_sinc_gradient(x_data)
                 np.testing.assert_allclose(
                     static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+                np.testing.assert_allclose(
+                    static_grad_result, np_grad_expected, rtol=0.1, atol=0.1
                 )
 
         run_static(self.place)
@@ -241,13 +251,19 @@ class TestSincAPIFP16(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=shape, dtype=self.dtype
                     )
+                    x.stop_gradient = False
                     res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
+                    x_grad = paddle.static.gradients(res, x)
+                    [static_result, static_grad_result] = exe.run(
+                        feed={'x': x_data}, fetch_list=[res, x_grad]
+                    )
                     out_expected = np_sinc(x_data)
+                    np_grad_expected = np_sinc_gradient(x_data)
                 np.testing.assert_allclose(
                     static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+                np.testing.assert_allclose(
+                    static_grad_result, np_grad_expected, rtol=0.1, atol=0.1
                 )
 
         run_static(self.place)
@@ -277,14 +293,21 @@ class TestSincAPIBF16(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=shape, dtype=self.dtype
                     )
+                    x.stop_gradient = False
                     res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
+                    x_grad = paddle.static.gradients(res, x)
+                    [static_result, static_grad_result] = exe.run(
+                        feed={'x': x_data}, fetch_list=[res, x_grad]
+                    )
                     out_expected = np_sinc(x_data_np)
+                    np_grad_expected = np_sinc_gradient(x_data_np)
                 result = convert_uint16_to_float(static_result)
+                grad_result = convert_uint16_to_float(static_grad_result)
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-3, atol=1e-2
+                )
+                np.testing.assert_allclose(
+                    grad_result, np_grad_expected, atol=0.2
                 )
 
         run(self.place)
@@ -308,14 +331,21 @@ class TestSincAPIBF16(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=shape, dtype=self.dtype
                     )
+                    x.stop_gradient = False
                     res = paddle.sinc(x)
-                    static_result = exe.run(
-                        feed={'x': x_data}, fetch_list=[res]
-                    )[0]
+                    x_grad = paddle.static.gradients(res, x)
+                    [static_result, static_grad_result] = exe.run(
+                        feed={'x': x_data}, fetch_list=[res, x_grad]
+                    )
                     out_expected = np_sinc(x_data_np)
+                    np_grad_expected = np_sinc_gradient(x_data_np)
                 result = convert_uint16_to_float(static_result)
+                grad_result = convert_uint16_to_float(static_grad_result)
                 np.testing.assert_allclose(
                     result, out_expected, rtol=1e-3, atol=1e-2
+                )
+                np.testing.assert_allclose(
+                    grad_result, np_grad_expected, atol=0.2
                 )
 
         run(self.place)
