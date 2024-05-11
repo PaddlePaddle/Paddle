@@ -107,7 +107,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->ReduceScatter(out, *in, mcclSum, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclReduceScatter(
           send_buff,
           recv_buff,
           recv_numel,

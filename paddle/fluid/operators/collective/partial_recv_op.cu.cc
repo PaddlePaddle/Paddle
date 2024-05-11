@@ -150,7 +150,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         comm_ctx->Recv(&recv_buf, recv_numel, peer, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclRecv(out->data<T>() + offset,
+            platform::dynload::mcclRecv(out->data<T>() + offset,
                                         recv_numel,
                                         dtype,
                                         peer,
