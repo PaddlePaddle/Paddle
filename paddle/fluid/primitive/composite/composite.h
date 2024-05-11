@@ -992,16 +992,16 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto max_reshape = max;
   if (has_dynamic_shape(x.shape())) {
     min_reshape = backend::expand_with_tensor<T>(
-        cast<T>(min, DataType::FLOAT64), shape<T>(x));
+        cast<T>(min, x.dtype()), shape<T>(x));
     max_reshape = backend::expand_with_tensor<T>(
-        cast<T>(max, DataType::FLOAT64), shape<T>(x));
+        cast<T>(max, x.dtype()), shape<T>(x));
   } else {
-    min_reshape = expand<T>(cast<T>(min, DataType::FLOAT64), x.shape());
-    max_reshape = expand<T>(cast<T>(max, DataType::FLOAT64), x.shape());
+    min_reshape = expand<T>(cast<T>(min, x.dtype()), x.shape());
+    max_reshape = expand<T>(cast<T>(max, x.dtype()), x.shape());
   }
-  auto ans = maximum<T>(minimum<T>(cast<T>(x, DataType::FLOAT64), max_reshape),
+  auto ans = maximum<T>(minimum<T>(x, max_reshape),
                         min_reshape);
-  return cast<T>(ans, x.dtype());
+  return ans;
 }
 
 template <typename T>
