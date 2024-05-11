@@ -22,6 +22,8 @@ class Chi2(Gamma):
     Creates a Chi-squared distribution parameterized by shape parameter :attr:df.
     This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5)
 
+    Args:
+        df (float or Tensor): shape parameter of the distribution
     Example::
         .. code-block:: python
 
@@ -31,8 +33,6 @@ class Chi2(Gamma):
             >>> sample.shape
             [1]
 
-    Args:
-        df (float or Tensor): shape parameter of the distribution
     """
 
     def __init__(self, df):
