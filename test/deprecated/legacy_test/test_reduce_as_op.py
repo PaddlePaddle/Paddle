@@ -61,6 +61,8 @@ class TestReduceAsOp(OpTest):
         self.inputs = {'x': self.x, 'target': self.y}
         self.outputs = {'out': self.out}
         self.if_enable_cinn()
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.reduce_as
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -82,11 +84,7 @@ class TestReduceAsOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['x'],
-            'out',
-            check_pir=True,
-        )
+        self.check_grad(['x'], 'out', check_pir=True, check_prim_pir=True)
 
 
 class TestReduceAsOp2(TestReduceAsOp):
