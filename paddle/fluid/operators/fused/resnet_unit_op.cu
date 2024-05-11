@@ -28,7 +28,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::PreconditionNotMet("It must use CUDAPlace."));
     PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
@@ -228,7 +228,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::PreconditionNotMet("It must use CUDAPlace."));
     PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,

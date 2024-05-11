@@ -59,8 +59,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int down_pad = std::max(0, context_start + context_length - 1);
     auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
-    framework::DDim col_shape = {in->dims()[0],
-                                 context_length * sequence_width};
+    phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
     phi::DenseTensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
@@ -121,8 +120,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     // use col_shape in the im2col calculation
-    framework::DDim col_shape = {in->dims()[0],
-                                 sequence_width * context_length};
+    phi::DDim col_shape = {in->dims()[0], sequence_width * context_length};
     phi::DenseTensor col;
 
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
