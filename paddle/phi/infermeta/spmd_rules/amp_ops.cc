@@ -21,29 +21,25 @@
 
 namespace phi {
 namespace distributed {
+// TODO(zhiqiu): support xs on different mesh.
 SpmdInfo CheckFiniteAndUnscaleSpmd(const std::vector<DistMetaTensor>& xs,
                                    const DistMetaTensor& scale) {
   std::vector<TensorDistAttr> xs_attrs;
-  bool splited = false;
+  paddle::flat_hash_map<int64_t, ReduceType> partial_on_dims;
   for (auto& x : xs) {
     auto dist_attr = x.dist_attr();
     dist_attr.clean_partial_status();
     xs_attrs.emplace_back(dist_attr);
-    if (splited) {
-      continue;
-    }
     auto dims_mapping = dist_attr.dims_mapping();
     for (auto& m : dims_mapping) {
-      if (m != -1) {
-        splited = true;
+      if (m != -1 && partial_on_dims.count(m) == 0) {
+        partial_on_dims[m] = ReduceType::kRedMax;
       }
     }
   }
   TensorDistAttr found_infinite_attr =
       CopyTensorDistAttrForOutput(scale.dist_attr());
-  if (splited) {
-    found_infinite_attr.set_partial(true);
-  }
+  found_infinite_attr.set_partial_status(partial_on_dims);
   return {{xs_attrs, scale.dist_attr()}, {xs_attrs, found_infinite_attr}};
 }
 
@@ -56,7 +52,7 @@ SpmdInfo UpdateLossScalingSpmd(const std::vector<DistMetaTensor>& xs,
                                int decr_every_n_nan_or_inf,
                                float incr_ratio,
                                float decr_ratio,
-                               Scalar stop_update = false) {
+                               Scalar stop_update) {
   std::vector<TensorDistAttr> xs_attrs;
   for (auto& x : xs) {
     auto dist_attr = x.dist_attr();
@@ -65,17 +61,15 @@ SpmdInfo UpdateLossScalingSpmd(const std::vector<DistMetaTensor>& xs,
   }
   TensorDistAttr found_infinite_attr =
       CopyTensorDistAttrForOutput(found_infinite.dist_attr());
-  return {
-    {xs_attrs,
-     found_infinite_attr,
-     prev_loss_scaling.dist_attr(),
-     in_good_steps.dist_attr(),
-     in_bad_steps.dist_attr()},
-    {
-      xs_attrs, found_infinite_attr, in_good_steps.dist_attr(),
-          in_bad_steps.dist_attr()
-    }
-  }
+  return {{xs_attrs,
+           found_infinite_attr,
+           prev_loss_scaling.dist_attr(),
+           in_good_steps.dist_attr(),
+           in_bad_steps.dist_attr()},
+          {xs_attrs,
+           found_infinite_attr,
+           in_good_steps.dist_attr(),
+           in_bad_steps.dist_attr()}};
 }
 
 }  // namespace distributed
