@@ -700,13 +700,13 @@ __global__ void post_process_kernel_kai_v2(
   float v = 0;
   if (tid < Dh) {
 #pragma unroll
-    for (int i = 0; i < params.real_split_each_batch_kai; ++i) {
+    for (int i = 0; i < real_split_each_batch_kai; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       float tmp_max = sum_max.y;
       max = tmp_max > max ? tmp_max : max;
     }
 #pragma unroll
-    for (int i = 0; i < params.real_split_each_batch_kai; ++i) {
+    for (int i = 0; i < real_split_each_batch_kai; ++i) {
       float2 sum_max = qk_sum_max_smem[i];
       // split_out:[bsz , num_head, split_seq, dim_head]
       float this_v = params.split_out[(bhsi + i) * Dh + tid];
