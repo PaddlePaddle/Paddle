@@ -63,6 +63,9 @@ class IR_API InferSymbolicShapeContext {
   int64_t GetSymbolIndex();
 
  private:
+  symbol::ShapeOrDataDimExprs SimplifyBroadcastForShapeOrData(
+      const symbol::ShapeOrDataDimExprs& shape_or_data);
+
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 

@@ -39,11 +39,20 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-class TestSumAsOp(OpTest):
+class TestReduceAsOp(OpTest):
     def setUp(self):
         self.init_dtype()
         self.init_shape()
-        self.init_input()
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.x = np.random.random(self.shape_x) + 1j * np.random.random(
+                self.shape_y
+            )
+            self.y = np.random.random(self.shape_x) + 1j * np.random.random(
+                self.shape_y
+            )
+        else:
+            self.x = np.random.random(self.shape_x).astype(self.dtype)
+            self.y = np.random.random(self.shape_y).astype(self.dtype)
         self.init_attrs()
         self.calc_output()
 
@@ -52,6 +61,8 @@ class TestSumAsOp(OpTest):
         self.inputs = {'x': self.x, 'target': self.y}
         self.outputs = {'out': self.out}
         self.if_enable_cinn()
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.reduce_as
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -59,10 +70,6 @@ class TestSumAsOp(OpTest):
     def init_shape(self):
         self.shape_x = [10, 10, 6]
         self.shape_y = [10, 6]
-
-    def init_input(self):
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
-        self.y = np.random.random(self.shape_y).astype(self.dtype)
 
     def init_attrs(self):
         self.attrs = {'dim': [0]}
@@ -77,49 +84,65 @@ class TestSumAsOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['x'],
-            'out',
-            check_pir=True,
-        )
+        self.check_grad(['x'], 'out', check_pir=True, check_prim_pir=True)
 
 
-class TestSumAsOp2(TestSumAsOp):
+class TestReduceAsOp2(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'float32'
 
 
-class TestSumAsOp3(TestSumAsOp):
+class TestReduceAsOp3(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'float16'
 
 
-class TestSumAsOp4(TestSumAsOp):
+class TestReduceAsOp4(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'uint16'
 
 
-class TestSumAsOp5(TestSumAsOp):
+class TestReduceAsOp5(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'int16'
 
 
-class TestSumAsOp6(TestSumAsOp):
+class TestReduceAsOp6(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'int64'
 
 
-class TestSumAsOp7(TestSumAsOp):
+class TestReduceAsOp7(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'bool'
 
 
-class TestSumAsOp8(TestSumAsOp):
+class TestReduceAsOp8(TestReduceAsOp):
     def init_type(self):
         self.dtype = 'int32'
 
 
-class TestSumAsOp9(TestSumAsOp):
+class TestReduceAsOp9(TestReduceAsOp):
+    def init_type(self):
+        self.dtype = 'int8'
+
+
+class TestReduceAsOp10(TestReduceAsOp):
+    def init_type(self):
+        self.dtype = 'uint8'
+
+
+class TestReduceAs_Complex64(TestReduceAsOp):
+    def init_type(self):
+        self.dtype = np.complex64
+
+
+class TestReduceAs_Complex128(TestReduceAsOp):
+    def init_type(self):
+        self.dtype = np.complex128
+
+
+class TestReduceAsOp13(TestReduceAsOp):
     def init_shape(self):
         self.shape_x = [10, 10, 6]
         self.shape_y = [6]
@@ -128,7 +151,7 @@ class TestSumAsOp9(TestSumAsOp):
         self.attrs = {'dim': [0, 1]}
 
 
-class TestSumAsDynamicShape(unittest.TestCase):
+class TestReduceAsDynamicShape(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [300, 20, 100]

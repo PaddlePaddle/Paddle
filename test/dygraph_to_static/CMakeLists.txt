@@ -63,7 +63,7 @@ if(WITH_GPU)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
-set(LEGACY_ONLY_TEST_FILES test_legacy_error test_pylayer test_local_cast)
+set(LEGACY_ONLY_TEST_FILES test_legacy_error test_local_cast)
 foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   if(TEST ${ITEST})
     set_tests_properties(
