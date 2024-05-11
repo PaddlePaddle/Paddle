@@ -46,12 +46,12 @@ def truncated_normal_mean(mean, std, a, b):
     return mean + (normal_pdf(alpha) - normal_pdf(beta)) / z * std
 
 
-def truncated_normal_std(mean, std, a, b):
+def truncated_normal_var(mean, std, a, b):
     '''Reference: https://en.wikipedia.org/wiki/Truncated_normal_distribution'''
     alpha = (a - mean) / std
     beta = (b - mean) / std
     z = normal_cdf(beta) - normal_cdf(alpha)
-    return 1 * np.sqrt(
+    return std**2 * (
         1
         - (beta * normal_pdf(beta) - alpha * normal_pdf(alpha)) / z
         - ((normal_pdf(alpha) - normal_pdf(beta)) / z) ** 2
@@ -118,7 +118,7 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             )
             np.testing.assert_allclose(
                 np.var(tensor),
-                truncated_normal_std(self.mean, self.std, self.a, self.b),
+                truncated_normal_var(self.mean, self.std, self.a, self.b),
                 atol=0.05,
             )
 
