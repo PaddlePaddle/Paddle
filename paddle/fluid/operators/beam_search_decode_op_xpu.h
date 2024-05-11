@@ -49,9 +49,8 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
       phi::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
-    T* dstData =
-        dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
-    phi::memory_utils::Copy(paddle::platform::CPUPlace(),
+    T* dstData = dstTensor->template mutable_data<T>(phi::CPUPlace());
+    phi::memory_utils::Copy(phi::CPUPlace(),
                             dstData,
                             place,
                             srcData,
@@ -60,7 +59,7 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
     T* dstData = dstTensor->template mutable_data<T>(place);
     phi::memory_utils::Copy(place,
                             dstData,
-                            paddle::platform::CPUPlace(),
+                            phi::CPUPlace(),
                             srcData,
                             srcTensor.numel() * sizeof(T));
   }
@@ -108,7 +107,7 @@ struct BeamSearchDecodeXPUFunctor {
     int r = 0;
 
     // First make a copy of XPU data on CPU
-    if (platform::is_xpu_place(step_ids[0].place())) {
+    if (step_ids[0].place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
         phi::DenseTensor out;
@@ -126,7 +125,7 @@ struct BeamSearchDecodeXPUFunctor {
       }
     }
 
-    if (platform::is_xpu_place(step_scores[0].place())) {
+    if (step_scores[0].place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
         phi::DenseTensor out;

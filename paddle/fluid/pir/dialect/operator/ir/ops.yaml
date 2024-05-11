@@ -325,8 +325,7 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : reduce_scatter
-    param: [x, nranks]
+    func : c_reducescatter
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
@@ -1573,6 +1572,7 @@
   kernel :
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
+  traits : pir::SideEffectTrait
 
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)

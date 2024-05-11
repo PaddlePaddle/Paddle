@@ -178,6 +178,14 @@ set(IMG_CLS_RESNET_INSTALL_DIR
 set(IMG_CLS_RESNET_MODEL_DIR
     "${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model")
 
+if(NOT EXISTS
+   ${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model.tgz
+)
+  inference_download_and_uncompress_without_verify(
+    ${IMG_CLS_RESNET_INSTALL_DIR} ${INFERENCE_URL}
+    "image_classification_resnet.inference.model.tgz")
+endif()
+
 if(WITH_ONNXRUNTIME)
   set(MOBILENETV2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/MobileNetV2")
   set(MOBILENETV2_MODEL_DIR "${MOBILENETV2_INSTALL_DIR}/MobileNetV2")
