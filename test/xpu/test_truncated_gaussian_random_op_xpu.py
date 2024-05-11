@@ -21,12 +21,41 @@ from get_test_cover_info import (
     get_xpu_op_support_types,
 )
 from op_test_xpu import XPUOpTest
+from scipy.special import erf
 
 import paddle
 from paddle import base
 from paddle.base.executor import Executor
 
 paddle.enable_static()
+
+
+def normal_cdf(x):
+    return 0.5 * (1 + erf(x / np.sqrt(2)))
+
+
+def normal_pdf(x):
+    return np.exp(-(x**2) / 2) / np.sqrt(2 * np.pi)
+
+
+def truncated_normal_mean(mean, std, a, b):
+    '''Reference: https://en.wikipedia.org/wiki/Truncated_normal_distribution'''
+    alpha = (a - mean) / std
+    beta = (b - mean) / std
+    z = normal_cdf(beta) - normal_cdf(alpha)
+    return mean + (normal_pdf(alpha) - normal_pdf(beta)) / z * std
+
+
+def truncated_normal_std(mean, std, a, b):
+    '''Reference: https://en.wikipedia.org/wiki/Truncated_normal_distribution'''
+    alpha = (a - mean) / std
+    beta = (b - mean) / std
+    z = normal_cdf(beta) - normal_cdf(alpha)
+    return 1 * np.sqrt(
+        1
+        - (beta * normal_pdf(beta) - alpha * normal_pdf(alpha)) / z
+        - ((normal_pdf(alpha) - normal_pdf(beta)) / z) ** 2
+    )
 
 
 class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
@@ -82,8 +111,16 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             exe = Executor(place)
             outs = exe.run(program, fetch_list=fetch_list)
             tensor = outs[0]
-            np.testing.assert_allclose(np.mean(tensor), self.mean, atol=0.05)
-            np.testing.assert_allclose(np.var(tensor), 0.773, atol=0.05)
+            np.testing.assert_allclose(
+                np.mean(tensor),
+                truncated_normal_mean(self.mean, self.std, self.a, self.b),
+                atol=0.05,
+            )
+            np.testing.assert_allclose(
+                np.var(tensor),
+                truncated_normal_std(self.mean, self.std, self.a, self.b),
+                atol=0.05,
+            )
 
     class TestTruncatedGaussianRandomOp_1(TestTruncatedGaussianRandomOp):
         def set_attrs(self):
