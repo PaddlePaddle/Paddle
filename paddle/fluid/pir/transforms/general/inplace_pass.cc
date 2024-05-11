@@ -67,59 +67,11 @@ bool CanBeDeleted(pir::Value value) {
   return !(persist_attr && persist_attr.data());
 }
 
-bool ValueHasBeenInplaced(const pir::Value& value) {
-  if (!value.type()) {
-    return false;
-  }
-  auto get_op_inplace_id_map = [](pir::Operation* op) {
-    auto op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
-    if (!op_info) {
-      return std::unordered_map<uint32_t, uint32_t>();
-    }
-    auto op_interface =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-    if (!op_interface) {
-      return std::unordered_map<uint32_t, uint32_t>();
-    }
-    paddle::dialect::OpYamlInfoParser op_info_parser(
-        op_interface->get_op_info_(op_name));
-    return op_info_parser.GetInplaceIdMap();
-  };
-  // Check upstream defining OP
-  auto defining_op = value.defining_op();
-  if (defining_op) {
-    auto inplace_id_map = get_op_inplace_id_map(defining_op);
-    for (auto [out_slot, in_slot] : inplace_id_map) {
-      if (value == defining_op->result(out_slot)) {
-        return true;
-      }
-    }
-  }
-  // Check downstream user OPs
-  for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-    auto user_op = it->owner();
-    auto inplace_id_map = get_op_inplace_id_map(user_op);
-    for (auto [out_slot, in_slot] : inplace_id_map) {
-      if (value == user_op->operand_source(in_slot)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   pir::Value input,
                   pir::Value output,
                   const std::string& op_name) {
   if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
-    return false;
-  }
-
-  if (ValueHasBeenInplaced(input) || ValueHasBeenInplaced(output)) {
-    VLOG(9) << "     -- input or output has been inplaced, can't do inplace";
     return false;
   }
 
@@ -458,7 +410,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
           (visited_values.count(op.result(out_slot)) > 0) ||
           (!CanBeDeleted(op.result(out_slot))) ||
           (reused_input_values.count(op.operand_source(in_slot)) > 0) ||
-          (reused_output_values.count(op.result(out_slot)) > 0) ||
+          (reused_output_values.count(op.operand_source(in_slot)) > 0) ||
           (std::find(used_external_values.begin(),
                      used_external_values.end(),
                      op.operand_source(in_slot)) !=
