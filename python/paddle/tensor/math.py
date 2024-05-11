@@ -7978,7 +7978,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
     Args:
         elements (Tensor): The input Tensor. Supported data type: 'float32', 'float64', 'int32', 'int64'.
         test_elements (Tensor): Tensor values against which to test for each input element. Supported data type: 'float32', 'float64', 'int32', 'int64'.
-        assume_unique (bool, optional): If True, indicates both `elements` and `test_elements` contain unique elements. Default: False.
+        assume_unique (bool, optional): If True, indicates both `elements` and `test_elements` contain unique elements, which could make the calculation faster. Default: False.
         invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
@@ -8004,7 +8004,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, False, False, True, False])
 
-            >>> # Set `assume_unique` to True only when `elements` and `test_elements` contain unique values, ortherwise the result may be incorrect.
+            >>> # Set `assume_unique` to True only when `elements` and `test_elements` contain unique values, otherwise the result may be incorrect.
             >>> elements = paddle.to_tensor([0., 1., 2.]*20).reshape([20, 3])
             >>> test_elements = paddle.to_tensor([0., 1.]*20)
             >>> correct_result = paddle.isin(elements, test_elements, assume_unique=False)
@@ -8094,6 +8094,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
 
     size_elements = paddle.cast(paddle.numel(elements), 'float32')
     if test_elements.numel() < 10.0 * paddle.pow(size_elements, 0.145):
+        # use brute-force searching if the test_elements size is small
         if len(elements.shape) == 0:
             return paddle.zeros([], dtype='bool')
 
@@ -8109,6 +8110,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
         elements_flat = elements.flatten()
         test_elements_flat = test_elements.flatten()
         if assume_unique:
+            # if elements and test_elements both contain unique elements, use stable argsort method which could be faster
             all_elements = paddle.concat([elements_flat, test_elements_flat])
             sorted_index = paddle.argsort(all_elements, stable=True)
             sorted_elements = all_elements[sorted_index]
@@ -8124,6 +8126,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
 
             cmp = mask[0 : elements.numel()].reshape(elements.shape)
         else:
+            # otherwise use searchsorted method
             sorted_test_elements = paddle.sort(test_elements_flat)
             idx = paddle.searchsorted(sorted_test_elements, elements_flat)
             test_idx = paddle.where(
