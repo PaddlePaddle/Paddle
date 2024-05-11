@@ -33,7 +33,7 @@ class CIdentityOp : public framework::OperatorWithKernel {
         0,
         phi::errors::InvalidArgument(
             "The ring_id (%d) for c_identity must be non-negative.", ring_id));
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);
   }
 

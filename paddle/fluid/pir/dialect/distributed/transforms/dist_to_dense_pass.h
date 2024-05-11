@@ -18,7 +18,7 @@
 namespace paddle {
 namespace dialect {
 
-TEST_API std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog);
+TEST_API void DistToDensePass(pir::Program* prog);
 
 void ProcessDistBlock(pir::Block* block);
 

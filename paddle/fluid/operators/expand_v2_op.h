@@ -32,15 +32,15 @@ inline std::vector<int> get_expand_shape(
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("Shape");
     auto* shape_data = shape_tensor->data<int>();
     phi::DenseTensor cpu_shape_tensor;
-    if (platform::is_gpu_place(shape_tensor->place())) {
+    if (shape_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
-          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+          *shape_tensor, phi::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(shape_tensor->place())) {
+    if (shape_tensor->place().GetType() == phi::AllocationType::XPU) {
       paddle::framework::TensorCopySync(
-          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+          *shape_tensor, phi::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
 #endif
@@ -56,15 +56,16 @@ inline std::vector<int> get_expand_shape(
     std::vector<int> vec_expand_shape;
     for (size_t i = 0; i < list_expand_shapes_tensor.size(); ++i) {
       auto tensor = list_expand_shapes_tensor[i];
-      if (platform::is_gpu_place(tensor->place())) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_shape.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
-      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+      else if (tensor->place().GetType() ==  // NOLINT
+               phi::AllocationType::XPU) {   // NOLINT
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_expand_shape.push_back(*temp.data<int32_t>());
       }
 #endif

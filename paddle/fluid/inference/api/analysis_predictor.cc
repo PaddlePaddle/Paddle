@@ -118,6 +118,7 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -1010,6 +1011,9 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+      auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+      remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+      lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
