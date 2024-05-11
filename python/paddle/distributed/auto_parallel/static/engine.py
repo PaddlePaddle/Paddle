@@ -632,9 +632,10 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_program = mix_fw_program
+        self._fwd_main_progs[mode] = mix_fw_program.clone()
+        paddle.base.libpaddle.pir.apply_mix2dist_pass(dist_program)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -672,12 +673,12 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        dist_program = apply_partition_pass(dist_program)
+        apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        dist_program = apply_reshard_pass(dist_program)
+        apply_reshard_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -699,9 +700,9 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
-            dist_program
-        )
+        dense_program = dist_program
+        dist_program = dist_program.clone()
+        paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program

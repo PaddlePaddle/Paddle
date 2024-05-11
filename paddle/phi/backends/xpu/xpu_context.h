@@ -38,7 +38,8 @@ class XPUContext : public DeviceContext,
  public:
   XPUContext();
 
-  explicit XPUContext(const XPUPlace&);
+  // is_comm_context = 1 for init comm context with gm_size=1 and l3_size=1
+  explicit XPUContext(const XPUPlace&, bool is_comm_context = 0);
 
   virtual ~XPUContext();
 

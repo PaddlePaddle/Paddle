@@ -1594,7 +1594,6 @@ def poisson_nll_loss(
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to label's shape")
 
-    label = paddle.cast(label, input.dtype)
     loss_out = 0
     if log_input:
         loss_out = paddle.exp(input) - label * input
@@ -1975,7 +1974,7 @@ def ctc_loss(
     loss_out = paddle.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.mean(loss_out / label_lengths)
+        loss_out = paddle.mean(loss_out / label_lengths.astype(loss_out.dtype))
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
@@ -2932,21 +2931,27 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
-                    ret = out_sum / (count + (count == 0.0))
+                    ret = out_sum / (count + (count == 0.0).astype(count.dtype))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = _C_ops.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = _C_ops.sum(weight_ignored, [], None, False)
-                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                    ret = out_sum / (
+                        weight_sum
+                        + (weight_sum == 0.0).astype(weight_sum.dtype)
+                    )
                 return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
                     weight_gather_reshape, [], None, False
                 )
-                return out_sum / (total_weight + (total_weight == 0.0))
+                return out_sum / (
+                    total_weight
+                    + (total_weight == 0.0).astype(total_weight.dtype)
+                )
             else:
                 return _C_ops.mean_all(out)
 
