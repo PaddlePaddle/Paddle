@@ -20,159 +20,102 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import framework
 from paddle.nn import BatchNorm, Linear
+from paddle.pir_utils import IrGuard
 
 paddle.enable_static()
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
-        # static graph mode
-        temp_dir = tempfile.TemporaryDirectory()
-        a = paddle.static.data(name="a", shape=[10, 10])
-        conv_in = paddle.static.data(name="conv_in", shape=[None, 10, 10, 10])
-
-        fc_out1 = paddle.static.nn.fc(a, 10)
-        fc_out2 = paddle.static.nn.fc(a, 20)
-
-        conv_out_1 = paddle.static.nn.conv2d(
-            conv_in, num_filters=10, filter_size=5, act="relu"
-        )
-        conv_out_2 = paddle.static.nn.conv2d(
-            conv_in, num_filters=10, filter_size=5, act="relu"
-        )
-
-        conv3d_in = paddle.static.data(
-            name='conv3d_in', shape=[None, 3, 12, 32, 32], dtype='float32'
-        )
-        conv3d_out_1 = paddle.static.nn.conv3d(
-            input=conv3d_in, num_filters=2, filter_size=3, act="relu"
-        )
-        conv3d_out_2 = paddle.static.nn.conv3d(
-            input=conv3d_in, num_filters=2, filter_size=3, act="relu"
-        )
-
-        batchnorm_in = paddle.static.data(
-            name="batchnorm_in", shape=[None, 10], dtype='float32'
-        )
-        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
-        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
-
-        emb_in = paddle.static.data(
-            name='emb_in', shape=[None, 10], dtype='int64'
-        )
-        emb_out_1 = paddle.static.nn.embedding(emb_in, [1000, 100])
-        emb_out_2 = paddle.static.nn.embedding(emb_in, [2000, 200])
-
-        layernorm = paddle.static.data(
-            name="ln", shape=[None, 10], dtype='float32'
-        )
-        layernorm_1 = paddle.static.nn.layer_norm(layernorm)
-        layernorm_2 = paddle.static.nn.layer_norm(layernorm)
-
-        nce_in = paddle.static.data(
-            name="nce_in", shape=[None, 100], dtype='float32'
-        )
-        nce_label = paddle.static.data(
-            name="nce_label", shape=[None, 10], dtype='int64'
-        )
-        nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
-        nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
-
-        prelu_in = paddle.static.data(
-            name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
-        )
-        prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
-        prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
-
-        bilinear_tensor_pro_x = paddle.static.data(
-            "t1", shape=[None, 5], dtype="float32"
-        )
-        bilinear_tensor_pro_y = paddle.static.data(
-            "t2", shape=[None, 4], dtype="float32"
-        )
-
-        bilinear_tensor_pro_out_1 = (
-            paddle.static.nn.common.bilinear_tensor_product(
-                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        with IrGuard():
+            # static graph in pir mode
+            temp_dir = tempfile.TemporaryDirectory()
+            a = paddle.static.data(name="a", shape=[10, 10])
+            conv_in = paddle.static.data(
+                name="conv_in", shape=[None, 10, 10, 10]
             )
-        )
-        bilinear_tensor_pro_out_2 = (
-            paddle.static.nn.common.bilinear_tensor_product(
-                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+
+            fc_out1 = paddle.static.nn.fc(a, 10)
+            fc_out2 = paddle.static.nn.fc(a, 20)
+
+            conv1 = paddle.nn.Conv2D(
+                in_channels=10, out_channels=10, kernel_size=5
             )
-        )
+            conv_out_1 = conv1(conv_in)
+            conv2 = paddle.nn.Conv2D(
+                in_channels=10, out_channels=10, kernel_size=5
+            )
+            conv_out_2 = conv2(conv_in)
 
-        conv2d_trans_in = paddle.static.data(
-            name="conv2d_trans_in", shape=[None, 10, 10, 10]
-        )
+            conv3d_in = paddle.static.data(
+                name='conv3d_in', shape=[None, 3, 12, 32, 32], dtype='float32'
+            )
+            conv3d_1 = paddle.nn.Conv3D(
+                in_channels=3, out_channels=2, kernel_size=3
+            )
+            conv3d_out_1 = conv3d_1(conv3d_in)
+            conv3d_2 = paddle.nn.Conv3D(
+                in_channels=3, out_channels=2, kernel_size=3
+            )
+            conv3d_out_2 = conv3d_2(conv3d_in)
 
-        conv2d_trans_out_1 = paddle.static.nn.conv2d_transpose(
-            conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
-        )
-        conv2d_trans_out_2 = paddle.static.nn.conv2d_transpose(
-            conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
-        )
+            batchnorm_in = paddle.static.data(
+                name="batchnorm_in", shape=[None, 10], dtype='float32'
+            )
+            batchnorm_out_1 = paddle.nn.BatchNorm(10)(batchnorm_in)
+            batchnorm_out_2 = paddle.nn.BatchNorm(10)(batchnorm_in)
 
-        conv3d_trans_in = paddle.static.data(
-            name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
-        )
-        conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
-            input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
-        )
-        conv3d_trans_out_2 = paddle.static.nn.conv3d_transpose(
-            input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
-        )
+            emb_in = paddle.static.data(
+                name='emb_in', shape=[None, 10], dtype='int64'
+            )
+            emb1 = paddle.nn.Embedding(1000, 100)
+            emb_out_1 = emb1(emb_in)
+            emb2 = paddle.nn.Embedding(2000, 200)
+            emb_out_2 = emb2(emb_in)
 
-        groupnorm_in = paddle.static.data(
-            name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
-        )
-        groupnorm_out1 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
-        )
-        groupnorm_out2 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
-        )
-        '''
-        spec_norm = paddle.static.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
-        spe_norm_out_1 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
-        spe_norm_out_2 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
-        '''
+            layernorm = paddle.static.data(
+                name="ln", shape=[None, 10], dtype='float32'
+            )
+            layernorm_1 = paddle.nn.LayerNorm([10])(layernorm)
+            layernorm_2 = paddle.nn.LayerNorm(10)(layernorm)
 
-        para1 = paddle.create_parameter(
-            [100, 100], 'float32', name="weight_test_1"
-        )
-        para2 = paddle.create_parameter(
-            [20, 200], 'float32', name="weight_test_2"
-        )
+            groupnorm_in = paddle.static.data(
+                name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
+            )
+            groupnorm_out1 = paddle.nn.GroupNorm(4, 8)(groupnorm_in)
+            groupnorm_out2 = paddle.nn.GroupNorm(4, 8)(groupnorm_in)
 
-        para_list = base.default_main_program().list_vars()
+            para1 = paddle.create_parameter(
+                [100, 100], 'float32', name="weight_test_1"
+            )
+            para2 = paddle.create_parameter(
+                [20, 200], 'float32', name="weight_test_2"
+            )
 
-        exe = base.Executor(
-            base.CPUPlace()
-            if not base.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
-        )
-        out = exe.run(framework.default_startup_program())
+            exe = base.Executor(
+                base.CPUPlace()
+                if not base.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe.run(paddle.static.default_startup_program())
 
-        paddle.static.save(
-            framework.default_main_program(),
-            os.path.join(temp_dir.name, "test_1"),
-        )
+            paddle.static.save(
+                paddle.static.default_main_program(),
+                os.path.join(temp_dir.name, "test_1"),
+            )
 
-        para_dict = paddle.static.load_program_state(
-            os.path.join(temp_dir.name, "test_1")
-        )
+            para_dict = paddle.static.load_program_state(
+                os.path.join(temp_dir.name, "test_1")
+            )
 
-        new_dict = {}
-        for k, v in para_dict.items():
-            # print( k, v.shape )
-            if k.startswith("fc"):
-                name = k.replace("fc", "linear", 1)
-                new_dict[name] = v
-            else:
-                new_dict[k] = v
+            new_dict = {}
+            for k, v in para_dict.items():
+                if k.startswith("fc"):
+                    name = k.replace("fc", "linear", 1)
+                    new_dict[name] = v
+                else:
+                    new_dict[k] = v
 
         with base.dygraph.guard():
 

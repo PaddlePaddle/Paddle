@@ -63,8 +63,7 @@ class GetTensorFromSelectedRowsKernel {
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());
-    framework::TensorCopy(
-        x->value(), ctx.GetPlace(), ctx.device_context(), out);
+    phi::Copy(ctx.device_context(), x->value(), ctx.GetPlace(), false, out);
   }
 };
 

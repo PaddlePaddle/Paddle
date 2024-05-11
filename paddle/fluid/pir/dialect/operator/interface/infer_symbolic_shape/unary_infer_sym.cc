@@ -238,7 +238,7 @@ bool DiagonalOpInferSymbolicShape(
       res_shape = infer_context->GetNextSymName();
     }
   }
-  out_dims.push_back(res_shape);
+  out_dims.push_back(symbol::SimplifyDimExpr(res_shape));
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};

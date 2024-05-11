@@ -589,7 +589,10 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
     }
-
+    if (data_dim_exprs.empty()) {
+      return symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(shape_dim_exprs));
+    }
     return symbol::ShapeOrDataDimExprs(
         symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
   }();
