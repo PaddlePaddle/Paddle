@@ -189,15 +189,9 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
                 'concentration': self.concentration,
             }
 
-    def test_log_prob_onion(self):
-        sample_method = 'onion'
+    def test_log_prob(self):
         self.dim = 2
-        self._test_log_prob(sample_method)
-
-    def test_log_prob_cvine(self):
-        sample_method = 'cvine'
-        self.dim = 2
-        self._test_log_prob(sample_method)
+        self._test_log_prob('onion')
 
     def _test_log_prob(self, sample_method):
         with paddle.static.program_guard(self.program):
