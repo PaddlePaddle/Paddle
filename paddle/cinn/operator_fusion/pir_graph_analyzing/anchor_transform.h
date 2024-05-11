@@ -128,6 +128,15 @@ struct AnchorState {
     auto new_exprs = new_state.promise;
     promise.insert(promise.end(), new_exprs.begin(), new_exprs.end());
   }
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "[AnchorState]\n";
+    for (const auto& expr_promise : promise) {
+      ss << expr_promise.DebugStr() << "\n";
+    }
+    return ss.str();
+  }
 };
 
 AnchorTransform CreateAnchorTransform(const TransformInfo& info);

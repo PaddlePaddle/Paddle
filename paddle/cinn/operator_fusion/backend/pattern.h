@@ -83,6 +83,14 @@ struct ExprPromise<BackendStage> {
   void update(const AnchorTransformRoute& route) {
     transform_route.insert(transform_route.end(), route.begin(), route.end());
   }
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "[ExprPromise] root_value: " << root_value.impl() << "\n";
+    ss << "[ExprPromise] root_expr: " << GetComputeBody(root_fusion_op) << "\n";
+    ss << DebugStrOfAnchorTransformRoute(transform_route) << "\n";
+    return ss.str();
+  }
 };
 
 }  // namespace cinn::fusion
