@@ -39,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -63,6 +64,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
@@ -88,6 +90,7 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+using pir::TuplePopOp;
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -752,6 +755,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "Currently, we can only get input grad semantics of "
+                   "Operation that "
+                   "has OpYamlInfoInterface"));
+             }
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -771,13 +781,23 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> PyLayerOp {
              auto pylayer_op = self.dyn_cast<PyLayerOp>();
              if (!pylayer_op) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Can't cast non-pylayer_op type Operation to PyLayerOp."));
              }
              return pylayer_op;
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def(
+          "as_tuple_pop_op",
+          [](Operation &self) -> TuplePopOp {
+            auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
+            if (!tuple_pop_op) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
+            }
+            return tuple_pop_op;
+          })
       .def("__repr__",
 
            [](Operation &self) {
@@ -1269,7 +1289,6 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
-
   ir_insertion_point
       .def(
           "next",
@@ -1305,6 +1324,10 @@ void BindInsertionPoint(pybind11::module *m) {
             }
             return *(self.value.second);
           },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](PyInsertionPoint &self) { return self.value.first; },
           return_value_policy::reference);
 }
 
