@@ -342,7 +342,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
   shape_analysis.Init();
-  auto infer_context = shape_analysis.GetInferSymbolicShapeContext();
+  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       InferSymExprForBlock(block, infer_context);

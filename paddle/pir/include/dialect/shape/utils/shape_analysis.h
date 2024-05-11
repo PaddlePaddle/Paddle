@@ -31,6 +31,9 @@ void InferSymExprForAllValues(ModuleOp module_op);
 
 class IR_API InferSymbolicShapeContext {
  public:
+  InferSymbolicShapeContext() = default;
+  InferSymbolicShapeContext(const InferSymbolicShapeContext&) = delete;
+  InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
   void Init();
 
   const std::string GetNextSymName();
@@ -131,7 +134,7 @@ class IR_API ShapeConstraintIRAnalysis final
                                     const std::vector<int>& lhs_dim_idxs);
 
  private:
-  InferSymbolicShapeContext* GetInferSymbolicShapeContext() {
+  InferSymbolicShapeContext* MutInferSymbolicShapeContext() {
     return &context_;
   }
 

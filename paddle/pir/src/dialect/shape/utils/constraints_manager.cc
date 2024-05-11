@@ -263,7 +263,7 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
 
 template <typename DoEachT>
 void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
-  auto equals_parents = equals_.GetMap();
+  auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }
