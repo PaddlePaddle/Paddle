@@ -4396,7 +4396,7 @@ void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
 
   // The output height should be confirmed in Compute,
   // since input lod is not accessible here.
-  PADDLE_ENFORCE_EQ(x.size(),
+  PADDLE_ENFORCE_EQ(ins_dims.size(),
                     2,
                     phi::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
