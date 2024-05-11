@@ -131,6 +131,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     pir::SetParameterOp::name(),
     pir::ParameterOp::name(),
     pir::ShadowOutputOp::name(),
+    paddle::dialect::FlashAttnOp::name(),
     FeedOp::name(),
     DataOp::name(),
     ArrayLengthOp::name(),

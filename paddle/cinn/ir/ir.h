@@ -70,6 +70,8 @@ struct Cast : public ExprNode<Cast> {
 
   static const IrNodeTy _node_type_ = IrNodeTy::Cast;
 
+  void replace(Expr old_op, Expr new_op);
+  
   std::vector<Expr*> expr_fields() override { return {&operand(0)}; }
   std::vector<const Expr*> expr_fields() const override {
     return {&operand(0)};

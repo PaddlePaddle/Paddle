@@ -58,6 +58,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   }
 
   void Visit(const ir::Block *op, Expr *expr) override {
+    auto old_last_op = last_op;
     int old_let_size = let_list.size();
     int old_stmts_size = stmts_list.size();
 
@@ -70,6 +71,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     if (let_list.size() > old_let_size) {
       replaceBlock(const_cast<ir::Block *>(op), old_let_size, old_stmts_size);
     }
+    last_op = old_last_op;
   }
 
   void replaceBlock(ir::Block *op, int old_let_size, int old_stmts_size) {

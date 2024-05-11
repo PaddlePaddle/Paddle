@@ -400,6 +400,12 @@ Expr Store::index() const {
   return res;
 }
 
+void Cast::replace(Expr old_op, Expr new_op) {
+  if (v() == old_op) {
+    operand(0) = new_op;
+  }
+}
+
 void Store::replace(Expr old_op, Expr new_op) {
   if (value == old_op) {
     value = new_op;
@@ -413,6 +419,8 @@ void Store::replace(Expr old_op, Expr new_op) {
     }
   }
 }
+
+
 
 void Select::replace(Expr old_op, Expr new_op) {
   if (condition == old_op) {

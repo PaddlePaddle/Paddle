@@ -92,7 +92,7 @@ void ApplyPdToCinnPass(
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
-  pass_manager->EnableIRPrinting();
+  //pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -126,6 +126,8 @@ void ApplyBuildGroupOpPass(
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
+
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 

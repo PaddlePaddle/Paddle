@@ -85,7 +85,7 @@ Expr Optimize(Expr e,
   IfFusion(&copied);
   VLOG(10) << "After Optimize IfFusion" << copied;
 
-  RearrangeLoadInstruction(&copied);
+  //RearrangeLoadInstruction(&copied);
   VLOG(10) << "After Optimize Rearrangement" << copied;
 
   if (runtime_debug_info) {

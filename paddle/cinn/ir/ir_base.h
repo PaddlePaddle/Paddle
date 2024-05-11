@@ -254,7 +254,7 @@ struct IntImm : public ExprNode<IntImm> {
     CHECK(type().bits() == 8 || type().bits() == 16 || type().bits() == 32 ||
           type().bits() == 64);
   }
-
+  // void replace(Expr old_op, Expr new_op);
   static const IrNodeTy _node_type_ = IrNodeTy::IntImm;
 };
 
@@ -269,7 +269,7 @@ struct UIntImm : public ExprNode<UIntImm> {
     CHECK(type().bits() == 1 /*bool*/ || type().bits() == 8 ||
           type().bits() == 16 || type().bits() == 32 || type().bits() == 64);
   }
-
+  // void replace(Expr old_op, Expr new_op);
   static const IrNodeTy _node_type_ = IrNodeTy::UIntImm;
 };
 
@@ -277,7 +277,7 @@ struct FloatImm : public ExprNode<FloatImm> {
   double value;
 
   FloatImm(Type t, double v) : ExprNode<FloatImm>(t), value(v) { Verify(); }
-
+  // void replace(Expr old_op, Expr new_op);
   void Verify() const override {
     CHECK(type().is_float());
     CHECK(type().is_scalar());
@@ -292,7 +292,7 @@ struct StringImm : public ExprNode<StringImm> {
   explicit StringImm(const std::string& value) : value(value) { Verify(); }
 
   void Verify() const override {}
-
+  // void replace(Expr old_op, Expr new_op);
   static const IrNodeTy _node_type_ = IrNodeTy::StringImm;
 };
 

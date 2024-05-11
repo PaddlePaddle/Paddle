@@ -37,7 +37,7 @@ namespace dialect {
 namespace ir {
 using paddle::dialect::details::GetExprVecFromShape;
 
-bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
+bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter, bool check_dtype=false) {
   const auto& IsDynamicShape = [](const pir::Value& value) -> bool {
     return value.type().dyn_cast<pir::ShapedTypeInterface>().IsDynamicShape();
   };
@@ -62,7 +62,19 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     return GetDims(input) == GetDims(output);
   };
 
-  if (IsSameShape()) {
+  bool can_remove =  IsSameShape();
+  if(check_dtype )
+  {
+    bool samve_dtype = (  paddle::dialect::TransToPhiDataType(
+            input.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype() ) ==  paddle::dialect::TransToPhiDataType(
+            output.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype() ));
+    can_remove = can_remove && samve_dtype;
+  }
+  if ( can_remove ) {
     rewriter->ReplaceAllUsesWith(output, input);
     rewriter->EraseOp(op);
     return true;
@@ -71,16 +83,17 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   return false;
 }
 
-template <typename OPTYPE>
+template <typename OPTYPE, bool check_dtype=false>
 class RemoveUnchangedOpPattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    return RemoveOp(op, &rewriter);
+    return RemoveOp(op, &rewriter, check_dtype);
   }
 };
+
 
 template <typename OPTYPE>
 class MergeRedundantOpPattern : public pir::OpRewritePattern<OPTYPE> {
@@ -117,11 +130,14 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ExpandOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ConcatOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::CastOp, true>>(context);
+  
     // merge redundant ops
     ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<cinn::dialect::BroadcastOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ExpandOp>>(context);
+    ps.Add<MergeRedundantOpPattern<paddle::dialect::CastOp>>(context);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;

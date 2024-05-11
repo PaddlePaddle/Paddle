@@ -781,6 +781,38 @@ class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
   }
 };
 
+class AttnOpPattern : public pir::OpRewritePattern<paddle::dialect::MemoryEfficientAttentionOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MemoryEfficientAttentionOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::MemoryEfficientAttentionOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    
+    auto q = op->operand_source(0);
+    
+    auto k = op->operand_source(1);
+    auto v = op->operand_source(2);
+
+    if ( paddle::dialect::TransToPhiDataType(
+            q.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype() ) ==  phi::DataType::FLOAT32 )
+    {
+      return false;
+    } 
+
+    pir::Value fixed_seed;
+    pir::Value attn_mask;
+    auto fa =  rewriter.Build<paddle::dialect::FlashAttnOp>( q, k, v, fixed_seed, attn_mask, 0.0, false, false, true, "" );
+
+    rewriter.ReplaceAllUsesWith(op.result(0), fa.result(0));
+
+    rewriter.EraseOp(op);    
+
+    return true;
+  }
+};
+
 class ExpandOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ExpandOp> {
  public:
@@ -1130,6 +1162,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SigmoidOpPattern>(context);
   ps.Add<GatherOpPattern>(context);
   ps.Add<FlattenOpPattern>(context);
+  ps.Add<AttnOpPattern>(context);
 
   return ps;
 }

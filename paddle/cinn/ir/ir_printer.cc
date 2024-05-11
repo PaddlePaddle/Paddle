@@ -137,7 +137,12 @@ void IrPrinter::Visit(const StringImm *x) {
 
 void IrPrinter::Visit(const Add *x) { PrintBinaryOp("+", x); }
 void IrPrinter::Visit(const Sub *x) { PrintBinaryOp("-", x); }
-void IrPrinter::Visit(const Mul *x) { PrintBinaryOp("*", x); }
+void IrPrinter::Visit(const Mul *x) { PrintBinaryOp("*", x); 
+// VLOG(-1) << "Mul a type:" << x->a().type(); 
+// VLOG(-1) << "Mul b type:" << x->b().type();
+// VLOG(-1) << "Mul a nodetype:" << x->a().node_type() <<"  " << x->a(); 
+// VLOG(-1) << "Mul b nodetype:" << x->b().node_type() <<"  " << x->b();
+}
 void IrPrinter::Visit(const Div *x) { PrintBinaryOp("/", x); }
 void IrPrinter::Visit(const Mod *x) { PrintBinaryOp("%", x); }
 void IrPrinter::Visit(const EQ *x) { PrintBinaryOp("==", x); }

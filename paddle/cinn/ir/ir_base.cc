@@ -201,6 +201,30 @@ ir::Module Expr::as_module_ref() const {
   return ir::Module(&Reference(module));
 }
 
+// void IntImm::replace(Expr old_op, Expr new_op) {
+//   if (value == old_op) {
+//     value = new_op;
+//   }
+// }
+
+// void UIntImm::replace(Expr old_op, Expr new_op) {
+//   if (value == old_op) {
+//     value = new_op;
+//   }
+// }
+
+// void FloatImm::replace(Expr old_op, Expr new_op) {
+//   if (value == old_op) {
+//     value = new_op;
+//   }
+// }
+
+// void StringImm::replace(Expr old_op, Expr new_op) {
+//   if (value == old_op) {
+//     value = new_op;
+//   }
+// }
+
 LoweredFunc Expr::as_lowered_func_ref() const {
   auto *function = as_lowered_func();
   CHECK(function);
@@ -239,6 +263,9 @@ const Expr &IrNode::operand(int i) {
 void IrNode::set_type(Type type) { type_ = type; }
 
 void IrNode::replace(Expr old_op, Expr new_op) {
+  VLOG(-1) << "========= in replace - old_op: " << old_op << "  new_op: " << new_op;
+  VLOG(-1) << "node type:" << node_type();
+  VLOG(-1) << "type:" << type();
   PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
 }
 
