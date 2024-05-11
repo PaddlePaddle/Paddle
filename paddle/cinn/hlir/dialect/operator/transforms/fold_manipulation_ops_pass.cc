@@ -117,6 +117,50 @@ class MergeRedundantOpPattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
+class MergeCastOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::CastOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::CastOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    const auto& IsFloatType = [&]() -> bool {
+      auto in_type = paddle::dialect::TransToPhiDataType(
+          op->operand_source(0)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype());
+      auto out_type = paddle::dialect::TransToPhiDataType(
+          op->result(0)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype());
+
+      return (in_type == phi::DataType::FLOAT16 ||
+              in_type == phi::DataType::FLOAT32 ||
+              out_type == phi::DataType::FLOAT64) &&
+             (out_type == phi::DataType::FLOAT16 ||
+              out_type == phi::DataType::FLOAT32 ||
+              out_type == phi::DataType::FLOAT64);
+    };
+
+    if (!IsFloatType()) {
+      return false;
+    }
+
+    if (auto pre_op = (op->operand_source(0).defining_op())
+                          ->template dyn_cast<paddle::dialect::CastOp>()) {
+      op->operand(0).set_source(pre_op->operand_source(0));
+      if (pre_op->use_empty()) {
+        rewriter.EraseOp(pre_op);
+      }
+      return true;
+    }
+
+    return false;
+  }
+};
+
 class FoldManipulationOpsPass : public pir::PatternRewritePass {
  public:
   FoldManipulationOpsPass()
@@ -139,7 +183,7 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<cinn::dialect::BroadcastOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ExpandOp>>(context);
-    ps.Add<MergeRedundantOpPattern<paddle::dialect::CastOp>>(context);
+    ps.Add<MergeCastOpPattern>(context);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
