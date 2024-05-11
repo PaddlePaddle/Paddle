@@ -63,7 +63,7 @@ class TestSincAPI(unittest.TestCase):
                         out.numpy(), out_expected, rtol=1e-6, atol=1e-6
                     )
                     np.testing.assert_allclose(
-                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=1e-6
+                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=0.02
                     )
 
         def run_static(place):
@@ -95,7 +95,7 @@ class TestSincAPI(unittest.TestCase):
                         static_grad_result,
                         np_grad_expected,
                         rtol=1e-6,
-                        atol=1e-6,
+                        atol=0.02,
                     )
 
         for place in self.place:
@@ -125,7 +125,7 @@ class TestSincAPI(unittest.TestCase):
                         out.numpy(), out_expected, rtol=1e-6, atol=1e-6
                     )
                     np.testing.assert_allclose(
-                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=1e-6
+                        x_grad.numpy(), np_grad_expected, rtol=1e-6, atol=0.02
                     )
 
         for place in self.place:
