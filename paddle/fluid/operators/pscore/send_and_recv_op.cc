@@ -63,7 +63,7 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, phi::CPUPlace());
   }
 };
 

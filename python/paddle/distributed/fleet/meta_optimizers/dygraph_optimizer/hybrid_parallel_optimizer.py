@@ -331,6 +331,14 @@ class HybridParallelOptimizer:
                                 inner_opt._grad_clip, hcg
                             )
 
+    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+        self._broadcast_overlap = broadcast_overlap
+        if self._broadcast_overlap:
+            self._layers = layers
+            self._inner_opt._set_broadcast_overlap(
+                self._broadcast_overlap, self._layers
+            )
+
     def _insert_sync(self, sync_var, src, mp_group, sync_mode):
         if sync_mode == "broadcast":
             paddle.distributed.broadcast(

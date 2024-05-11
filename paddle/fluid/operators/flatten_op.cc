@@ -77,7 +77,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
   }
 
   static std::vector<int32_t> GetOutputShape(const int axis,
-                                             const framework::DDim &in_dims) {
+                                             const phi::DDim &in_dims) {
     if (in_dims.size() == 0) {
       return {1};
     }
