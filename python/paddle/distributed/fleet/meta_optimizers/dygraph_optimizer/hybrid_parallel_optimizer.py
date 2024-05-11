@@ -339,6 +339,8 @@ class HybridParallelOptimizer:
             self._layers = layers
             self._inner_opt._set_all_gather_overlap_forward(
                 self._all_gather_overlap_forward, self._layers
+            )
+
     def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
