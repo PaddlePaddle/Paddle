@@ -206,8 +206,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // 3. fmha
     AttnDropoutParam attn_param(
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
-    auto fmha_compute =
-        FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+    // auto fmha_compute =
+    //     FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
@@ -320,23 +320,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // unpadding_q/unpadding_k/unpadding_v: [token_num, num_head, dim_head]
     phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
     phi::DenseTensor softmax_lse, seed_offset;
-    if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
-      unpadding_q.Resize({{token_num, num_head, dim_head}});
-      if (gqa_group_size > 0) {
-        unpadding_k.Resize({{token_num, gqa_group_size, dim_head}});
-        unpadding_v.Resize({{token_num, gqa_group_size, dim_head}});
-      } else {
-        unpadding_k.Resize({{token_num, num_head, dim_head}});
-        unpadding_v.Resize({{token_num, num_head, dim_head}});
-      }
-      cu_seqlens_k.Resize(cu_seqlens_q.dims());
-
-      dev_ctx.Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
-      dev_ctx.Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
-      dev_ctx.Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
-      dev_ctx.Alloc<int32_t>(&cu_seqlens_k,
-                             cu_seqlens_k.numel() * sizeof(int32_t));
+    // if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
+    unpadding_q.Resize({{token_num, num_head, dim_head}});
+    if (gqa_group_size > 0) {
+      unpadding_k.Resize({{token_num, gqa_group_size, dim_head}});
+      unpadding_v.Resize({{token_num, gqa_group_size, dim_head}});
+    } else {
+      unpadding_k.Resize({{token_num, num_head, dim_head}});
+      unpadding_v.Resize({{token_num, num_head, dim_head}});
     }
+    cu_seqlens_k.Resize(cu_seqlens_q.dims());
+
+    dev_ctx.Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
+    dev_ctx.Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
+    dev_ctx.Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
+    dev_ctx.Alloc<int32_t>(&cu_seqlens_k,
+                           cu_seqlens_k.numel() * sizeof(int32_t));
+    // }
 
     T *attn_dropout_mask_out_data = nullptr;
     T *attn_dropout_data_data = nullptr;
@@ -351,11 +351,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     auto *fmha_out_data =
         dev_ctx.Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
-    if (FLAGS_fmha_mode != "flash_attention_v2") {
-      if (remove_padding && time_step) {
-        InitValue(dev_ctx, fmha_out_data, fmha_out.numel(), static_cast<T>(0.));
-      }
+    // if (FLAGS_fmha_mode != "flash_attention_v2") {
+    if (remove_padding && time_step) {
+      InitValue(dev_ctx, fmha_out_data, fmha_out.numel(), static_cast<T>(0.));
     }
+    // }
 
     // 4. out_linear
     auto out_linear_weights = ctx.MultiInput<phi::DenseTensor>("OutLinearW");
@@ -585,198 +585,199 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 -127.0f,  // quant_min_bound
                 gqa_group_size);
       } else if (cache_kv_out) {  // generation context stage
-        if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
-          if (rotary_emb_dims != 0) {
-            VLOG(1) << "rotary_tensor " << *rotary_tensor;
-            if (gqa_group_size <= 0) {
-              rotary_qk_variable(dev_ctx,
-                                 qkv_out_data,
-                                 qkv_out_data,
-                                 qkv_bias->data<T>(),
-                                 rotary_tensor->data<float>(),
-                                 padding_offset_data,
-                                 sequence_lengths->data<int>(),
-                                 token_num,
-                                 num_head,
-                                 seq_len,
-                                 rotary_tensor->dims()[3],
-                                 dim_head,
-                                 rotary_tensor->dims()[1]);
-            } else {
-              gqa_rotary_qk_variable(dev_ctx,
-                                     qkv_out_data,
-                                     qkv_out_data,
-                                     qkv_bias->data<T>(),
-                                     rotary_tensor->data<float>(),
-                                     padding_offset_data,
-                                     sequence_lengths->data<int>(),
-                                     token_num,
-                                     num_head,
-                                     seq_len,
-                                     rotary_tensor->dims()[3],
-                                     dim_head,
-                                     gqa_group_size,
-                                     rotary_tensor->dims()[1]);
-            }
-          }
+        // if (FLAGS_fmha_mode == "flash_attention_v2" &&
+        // encoder_remove_padding) {
+        VLOG(1) << "row 592\n";
+        if (rotary_emb_dims != 0) {
+          VLOG(1) << "rotary_tensor " << *rotary_tensor;
           if (gqa_group_size <= 0) {
-            qkv_transpose_split<T>(dev_ctx,
-                                   unpadding_q.data<T>(),
-                                   unpadding_k.data<T>(),
-                                   unpadding_v.data<T>(),
+            rotary_qk_variable(dev_ctx,
+                               qkv_out_data,
+                               qkv_out_data,
+                               qkv_bias->data<T>(),
+                               rotary_tensor->data<float>(),
+                               padding_offset_data,
+                               sequence_lengths->data<int>(),
+                               token_num,
+                               num_head,
+                               seq_len,
+                               rotary_tensor->dims()[3],
+                               dim_head,
+                               rotary_tensor->dims()[1]);
+          } else {
+            gqa_rotary_qk_variable(dev_ctx,
                                    qkv_out_data,
+                                   qkv_out_data,
+                                   qkv_bias->data<T>(),
+                                   rotary_tensor->data<float>(),
                                    padding_offset_data,
                                    sequence_lengths->data<int>(),
                                    token_num,
-                                   bsz,
                                    num_head,
                                    seq_len,
-                                   dim_head);
-          } else {
-            gqa_qkv_transpose_split<T>(dev_ctx,
-                                       unpadding_q.data<T>(),
-                                       unpadding_k.data<T>(),
-                                       unpadding_v.data<T>(),
-                                       qkv_out_data,
-                                       padding_offset_data,
-                                       sequence_lengths->data<int>(),
-                                       token_num,
-                                       bsz,
-                                       num_head,
-                                       seq_len,
-                                       dim_head,
-                                       gqa_group_size);
+                                   rotary_tensor->dims()[3],
+                                   dim_head,
+                                   gqa_group_size,
+                                   rotary_tensor->dims()[1]);
           }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-          VLOG(2) << "TransposeSplit";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-          VLOG(2) << "unpadding_q:" << unpadding_q;
-          VLOG(2) << "unpadding_k:" << unpadding_k;
-          VLOG(2) << "unpadding_v:" << unpadding_v;
-#endif
-#endif
-          phi::Copy(dev_ctx,
-                    cu_seqlens_q,
-                    cu_seqlens_k.place(),
-                    false,
-                    &cu_seqlens_k);
-          VLOG(2) << "cu_seqlens_q:" << cu_seqlens_q;
-          VLOG(2) << "cu_seqlens_k:" << cu_seqlens_k;
-
-          // fmha_out[token_num, num_head, dim_head]
-          phi::FlashAttnUnpaddedKernel<T>(
-              dev_ctx,
-              unpadding_q,
-              unpadding_k,
-              unpadding_v,
-              cu_seqlens_q,
-              cu_seqlens_k,
-              none /*fixed_seed_offset*/,
-              none /*attn_mask*/,
-              seq_len,
-              seq_len,
-              1.0f / sqrt(static_cast<float>(dim_head)),
-              0.0,
-              true /*causal*/,
-              false,
-              true /* is_test*/,
-              "" /*rng_name*/,
-              &fmha_out,
-              &softmax_out,
-              &softmax_lse,
-              &seed_offset);
-          // Note(@RichardWooSJTU): gqa_write_cachekv do not support pre_cache
-          // and cache quantization
-          gqa_write_cachekv<T>(dev_ctx,
-                               cache_kv_out,
-                               unpadding_k,
-                               unpadding_v,
-                               padding_offset_tensor,
-                               *sequence_lengths,
-                               seq_len);
-        } else {
-          if (gqa_group_size > 0) {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "GQA is just supported when FLAGS_fmha_mode is "
-                "flash_attention_v2"));
-          }
-          const phi::DenseTensor *pre_cache_kv_tensor =
-              pre_caches.size() > 0 ? pre_caches[i] : nullptr;
-          phi::DenseTensor *pre_cache_kv_out_tmp =
-              cache_offset > 0 ? &pre_cache_kv_out : nullptr;
-          phi::DenseTensor *src_mask_tmp =
-              cache_offset > 0 ? &src_mask_out : nullptr;
-          const int *sequence_lengths_data =
-              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
-          qkv_bias_add_transpose_split<T>(
-              dev_ctx,
-              q_transpose_out_data,
-              kv_transpose_out_data,
-              qkv_out_data,
-              qkv_bias ? qkv_bias->data<T>() : nullptr,
-              padding_offset_data,
-              token_num,
-              bsz,
-              num_head,
-              seq_len,
-              dim_head,
-              compute_bias);
-
-          // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-          // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
-          if (rotary_emb_dims != 0) {
-            auto *rotary_emb_data = rotary_tensor->data<float>();
-            const int *sequence_lengths_data =
-                encoder_remove_padding ? sequence_lengths->data<int>()
-                                       : nullptr;
-            rotary_qk(dev_ctx,
-                      q_transpose_out_data,
-                      kv_transpose_out_data,
-                      q_transpose_out_data,
-                      kv_transpose_out_data,
-                      rotary_emb_data,
-                      sequence_lengths_data,
-                      rotary_emb_dims,
-                      rotary_tensor->dims()[1],
-                      bsz,
-                      num_head,
-                      seq_len,
-                      dim_head,
-                      use_neox_rotary_style);
-          }
-
-          phi::DenseTensor *tmp_padding_offset_tensor =
-              encoder_remove_padding ? &padding_offset_tensor : nullptr;
-          fmha_compute.Compute(pre_cache_kv_tensor,
-                               src_mask,
-                               tmp_padding_offset_tensor,
-                               sequence_lengths,
-                               &q_transpose_out,
-                               &kv_transpose_out,
-                               pre_cache_kv_out_tmp,
-                               &qk_out,
-                               src_mask_tmp,
-                               &softmax_out,
-                               &attn_dropout_mask_out,
-                               &attn_dropout_out,
-                               &qktv_out,
-                               &fmha_out,
-                               token_num,
-                               mask_broadcast_num_heads);
-          write_cache_kv_helper.Compute(
-              &pre_cache_kv_out,
-              cache_kv_out,       // int8_t
-              &kv_transpose_out,  // T
-              sequence_lengths_data,
-              cache_bsz,
-              bsz,
-              num_head,
-              seq_len,
-              dim_head,
-              cache_offset,
-              (do_cachekv_quant) ? cache_k_scale[i] : -1.0,
-              (do_cachekv_quant) ? cache_v_scale[i] : -1.0);
         }
+        if (gqa_group_size <= 0) {
+          qkv_transpose_split<T>(dev_ctx,
+                                 unpadding_q.data<T>(),
+                                 unpadding_k.data<T>(),
+                                 unpadding_v.data<T>(),
+                                 qkv_out_data,
+                                 padding_offset_data,
+                                 sequence_lengths->data<int>(),
+                                 token_num,
+                                 bsz,
+                                 num_head,
+                                 seq_len,
+                                 dim_head);
+        } else {
+          gqa_qkv_transpose_split<T>(dev_ctx,
+                                     unpadding_q.data<T>(),
+                                     unpadding_k.data<T>(),
+                                     unpadding_v.data<T>(),
+                                     qkv_out_data,
+                                     padding_offset_data,
+                                     sequence_lengths->data<int>(),
+                                     token_num,
+                                     bsz,
+                                     num_head,
+                                     seq_len,
+                                     dim_head,
+                                     gqa_group_size);
+        }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+        VLOG(2) << "TransposeSplit";
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
+        VLOG(2) << "unpadding_q:" << unpadding_q;
+        VLOG(2) << "unpadding_k:" << unpadding_k;
+        VLOG(2) << "unpadding_v:" << unpadding_v;
+#endif
+#endif
+        phi::Copy(
+            dev_ctx, cu_seqlens_q, cu_seqlens_k.place(), false, &cu_seqlens_k);
+        VLOG(2) << "cu_seqlens_q:" << cu_seqlens_q;
+        VLOG(2) << "cu_seqlens_k:" << cu_seqlens_k;
+
+        // fmha_out[token_num, num_head, dim_head]
+        phi::FlashAttnUnpaddedKernel<T>(
+            dev_ctx,
+            unpadding_q,
+            unpadding_k,
+            unpadding_v,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            none /*fixed_seed_offset*/,
+            none /*attn_mask*/,
+            seq_len,
+            seq_len,
+            1.0f / sqrt(static_cast<float>(dim_head)),
+            0.0,
+            true /*causal*/,
+            false,
+            true /* is_test*/,
+            "" /*rng_name*/,
+            &fmha_out,
+            &softmax_out,
+            &softmax_lse,
+            &seed_offset);
+        // Note(@RichardWooSJTU): gqa_write_cachekv do not support pre_cache
+        // and cache quantization
+        gqa_write_cachekv<T>(dev_ctx,
+                             cache_kv_out,
+                             unpadding_k,
+                             unpadding_v,
+                             padding_offset_tensor,
+                             *sequence_lengths,
+                             seq_len);
+        // }
+        // else {
+        //   if (gqa_group_size > 0) {
+        //     PADDLE_THROW(phi::errors::Unimplemented(
+        //         "GQA is just supported when FLAGS_fmha_mode is "
+        //         "flash_attention_v2"));
+        //   }
+        //   const phi::DenseTensor *pre_cache_kv_tensor =
+        //       pre_caches.size() > 0 ? pre_caches[i] : nullptr;
+        //   phi::DenseTensor *pre_cache_kv_out_tmp =
+        //       cache_offset > 0 ? &pre_cache_kv_out : nullptr;
+        //   phi::DenseTensor *src_mask_tmp =
+        //       cache_offset > 0 ? &src_mask_out : nullptr;
+        //   const int *sequence_lengths_data =
+        //       encoder_remove_padding ? sequence_lengths->data<int>() :
+        //       nullptr;
+        //   qkv_bias_add_transpose_split<T>(
+        //       dev_ctx,
+        //       q_transpose_out_data,
+        //       kv_transpose_out_data,
+        //       qkv_out_data,
+        //       qkv_bias ? qkv_bias->data<T>() : nullptr,
+        //       padding_offset_data,
+        //       token_num,
+        //       bsz,
+        //       num_head,
+        //       seq_len,
+        //       dim_head,
+        //       compute_bias);
+
+        //   // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        //   // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        //   if (rotary_emb_dims != 0) {
+        //     auto *rotary_emb_data = rotary_tensor->data<float>();
+        //     const int *sequence_lengths_data =
+        //         encoder_remove_padding ? sequence_lengths->data<int>()
+        //                                : nullptr;
+        //     rotary_qk(dev_ctx,
+        //               q_transpose_out_data,
+        //               kv_transpose_out_data,
+        //               q_transpose_out_data,
+        //               kv_transpose_out_data,
+        //               rotary_emb_data,
+        //               sequence_lengths_data,
+        //               rotary_emb_dims,
+        //               rotary_tensor->dims()[1],
+        //               bsz,
+        //               num_head,
+        //               seq_len,
+        //               dim_head,
+        //               use_neox_rotary_style);
+        //   }
+
+        //   phi::DenseTensor *tmp_padding_offset_tensor =
+        //       encoder_remove_padding ? &padding_offset_tensor : nullptr;
+        //   fmha_compute.Compute(pre_cache_kv_tensor,
+        //                        src_mask,
+        //                        tmp_padding_offset_tensor,
+        //                        sequence_lengths,
+        //                        &q_transpose_out,
+        //                        &kv_transpose_out,
+        //                        pre_cache_kv_out_tmp,
+        //                        &qk_out,
+        //                        src_mask_tmp,
+        //                        &softmax_out,
+        //                        &attn_dropout_mask_out,
+        //                        &attn_dropout_out,
+        //                        &qktv_out,
+        //                        &fmha_out,
+        //                        token_num,
+        //                        mask_broadcast_num_heads);
+        //   write_cache_kv_helper.Compute(
+        //       &pre_cache_kv_out,
+        //       cache_kv_out,       // int8_t
+        //       &kv_transpose_out,  // T
+        //       sequence_lengths_data,
+        //       cache_bsz,
+        //       bsz,
+        //       num_head,
+        //       seq_len,
+        //       dim_head,
+        //       cache_offset,
+        //       (do_cachekv_quant) ? cache_k_scale[i] : -1.0,
+        //       (do_cachekv_quant) ? cache_v_scale[i] : -1.0);
+        // }
 
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
@@ -818,66 +819,65 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         phi::DenseTensor *tmp_padding_offset_tensor =
             encoder_remove_padding ? &padding_offset_tensor : nullptr;
 
-        if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
-          TransposeSplit<T>(dev_ctx,
-                            unpadding_q.data<T>(),
-                            unpadding_k.data<T>(),
-                            unpadding_v.data<T>(),
-                            q_transpose_out.data<T>(),
-                            kv_transpose_out.data<T>(),
-                            padding_offset_data,
-                            sequence_lengths->data<int>(),
-                            token_num,
-                            bsz,
-                            num_head,
-                            seq_len,
-                            dim_head);
-          phi::Copy(dev_ctx,
-                    cu_seqlens_q,
-                    cu_seqlens_k.place(),
-                    false,
-                    &cu_seqlens_k);
+        // if (FLAGS_fmha_mode == "flash_attention_v2" &&
+        // encoder_remove_padding) {
+        TransposeSplit<T>(dev_ctx,
+                          unpadding_q.data<T>(),
+                          unpadding_k.data<T>(),
+                          unpadding_v.data<T>(),
+                          q_transpose_out.data<T>(),
+                          kv_transpose_out.data<T>(),
+                          padding_offset_data,
+                          sequence_lengths->data<int>(),
+                          token_num,
+                          bsz,
+                          num_head,
+                          seq_len,
+                          dim_head);
+        phi::Copy(
+            dev_ctx, cu_seqlens_q, cu_seqlens_k.place(), false, &cu_seqlens_k);
 
-          // fmha_out[token_num, num_head, dim_head]
-          phi::FlashAttnUnpaddedKernel<T>(
-              dev_ctx,
-              unpadding_q,
-              unpadding_k,
-              unpadding_v,
-              cu_seqlens_q,
-              cu_seqlens_k,
-              none /*fixed_seed_offset*/,
-              none /*attn_mask*/,
-              seq_len,
-              seq_len,
-              1.0f / sqrt(static_cast<float>(dim_head)),
-              0.0,
-              true /*causal*/,
-              false,
-              true /* is_test*/,
-              "" /*rng_name*/,
-              &fmha_out,
-              &softmax_out,
-              &softmax_lse,
-              &seed_offset);
-        } else {
-          fmha_compute.Compute(cache_kv,
-                               src_mask,
-                               tmp_padding_offset_tensor,
-                               sequence_lengths,
-                               &q_transpose_out,
-                               &kv_transpose_out,
-                               cache_kv_out,
-                               &qk_out,
-                               nullptr,
-                               &softmax_out,
-                               &attn_dropout_mask_out,
-                               &attn_dropout_out,
-                               &qktv_out,
-                               &fmha_out,
-                               token_num,
-                               mask_broadcast_num_heads);
-        }
+        // fmha_out[token_num, num_head, dim_head]
+        phi::FlashAttnUnpaddedKernel<T>(
+            dev_ctx,
+            unpadding_q,
+            unpadding_k,
+            unpadding_v,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            none /*fixed_seed_offset*/,
+            none /*attn_mask*/,
+            seq_len,
+            seq_len,
+            1.0f / sqrt(static_cast<float>(dim_head)),
+            0.0,
+            true /*causal*/,
+            false,
+            true /* is_test*/,
+            "" /*rng_name*/,
+            &fmha_out,
+            &softmax_out,
+            &softmax_lse,
+            &seed_offset);
+        // }
+        // else {
+        //   fmha_compute.Compute(cache_kv,
+        //                        src_mask,
+        //                        tmp_padding_offset_tensor,
+        //                        sequence_lengths,
+        //                        &q_transpose_out,
+        //                        &kv_transpose_out,
+        //                        cache_kv_out,
+        //                        &qk_out,
+        //                        nullptr,
+        //                        &softmax_out,
+        //                        &attn_dropout_mask_out,
+        //                        &attn_dropout_out,
+        //                        &qktv_out,
+        //                        &fmha_out,
+        //                        token_num,
+        //                        mask_broadcast_num_heads);
+        // }
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(2) << "step3";
