@@ -433,17 +433,18 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     // Reserve a big enough memory.
     auto selected_dims =
         common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
-    int64_t* selected_ids_data =
-        selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
+    selected_ids->Resize(selected_dims);
+    int64_t* selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    selected_scores->Resize(selected_dims);
     float* selected_scores_data =
-        selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
+        context.template Alloc<float>(selected_scores);
+    if (parent_idx != nullptr) {
+      parent_idx->Resize({static_cast<int64_t>(num_seqs * beam_size)});
+    }
     int* parent_idx_data =
-        parent_idx ? parent_idx->mutable_data<int>(
-                         {static_cast<int64_t>(num_seqs * beam_size)},
-                         context.GetPlace())
-                   : nullptr;
+        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
 
-    framework::LoD selected_lod(2);
+    phi::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);

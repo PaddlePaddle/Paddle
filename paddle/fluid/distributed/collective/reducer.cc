@@ -162,7 +162,7 @@ struct ConcatTensorsForAllReduce {
   void operator()(const DeviceContext &context,
                   const std::vector<phi::DenseTensor> &dense_tensors_,
                   Tensor *p_dense_contents) {
-    operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+    phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
     concat_functor_(
         context,
         dense_tensors_,
@@ -191,7 +191,7 @@ struct SplitTensorsForAllReduce {
       shape_refer.emplace_back(&tensor);
     }
 
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 };
