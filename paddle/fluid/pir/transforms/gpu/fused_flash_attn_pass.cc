@@ -614,7 +614,7 @@ class FusedFlashAttnPass : public pir::PatternRewritePass {
     return ps;
   }
 
-  bool Pass::CanApplyOn(Operation *op) const {
+  bool CanApplyOn(pir::Operation *op) const override {
 #ifdef PADDLE_WITH_FLASHATTN
     return op->num_regions() > 0;
 #else
