@@ -4191,6 +4191,13 @@
   outputs :
     out : Out
 
+- op: stft
+  backward: stft_grad
+  inputs:
+    {x : X, window : Window}
+  outputs:
+    out : Out
+
 - op: temporal_shift
   backward: temporal_shift_grad
   inputs :

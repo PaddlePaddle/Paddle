@@ -2962,6 +2962,16 @@
     func : stanh
   backward : stanh_grad
 
+- op : stft
+  args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
+  output: Tensor (out)
+  infer_meta:
+    func: StftInferMeta
+  kernel:
+    func: stft
+    data_type: x
+  backward: stft_grad
+
 - op : svd
   args : (Tensor x, bool full_matrices = false)
   output : Tensor(u), Tensor(s), Tensor(vh)
