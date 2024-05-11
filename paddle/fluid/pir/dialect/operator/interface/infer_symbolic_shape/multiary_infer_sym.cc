@@ -437,11 +437,11 @@ bool NearestInterpOpInferSymbolicShape(
 }
 
 bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto x_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto label_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const std::vector<symbol::DimExpr> &x_dim_expr_vector = [&] {
     std::vector<symbol::DimExpr> dim_expr_vector;
@@ -478,13 +478,12 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
                         label_dim_expr_vector.size()));
 
   for (int i = 0; i < rank; i++) {
-    shape_analysis->AddEqualCstr(x_dim_expr_vector[i],
-                                 label_dim_expr_vector[i]);
+    infer_context->AddEqualCstr(x_dim_expr_vector[i], label_dim_expr_vector[i]);
   }
 
-  if (shape_analysis->HasShapeOrDataForValue(op->operand_source(2))) {
+  if (infer_context->HasShapeOrDataForValue(op->operand_source(2))) {
     const auto pos_weight_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
     const std::vector<symbol::DimExpr> &pos_weight_dim_expr_vector = [&] {
       std::vector<symbol::DimExpr> dims;
       if (pos_weight_shape_or_data.data().has_value()) {
@@ -496,8 +495,8 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
     }();
 
     for (int i = 0; i < rank; i++) {
-      shape_analysis->AddEqualCstr(pos_weight_dim_expr_vector[i],
-                                   label_dim_expr_vector[i]);
+      infer_context->AddEqualCstr(pos_weight_dim_expr_vector[i],
+                                  label_dim_expr_vector[i]);
     }
   }
 
@@ -507,13 +506,13 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
         symbol::TensorShapeOrDataDimExprs(out_dim_expr_vector)};
   }();
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 
 bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, shape_analysis);
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *infer_context) {
+  return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, infer_context);
 }
 
 bool MemoryEfficientAttentionOpInferSymbolicShape(
