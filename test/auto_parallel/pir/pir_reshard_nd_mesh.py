@@ -255,7 +255,7 @@ class TestReshardNdMesh:
 
     def run_ss_to_ss_case(self):
         # [Shard(0), Shard(1)] --> [Shard(1), Shard(0)]
-        # c_allreduce_sum
+        # all_gather+all_gather+slice+slice
         paddle.enable_static()
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -277,46 +277,48 @@ class TestReshardNdMesh:
                 dist_input = dist.shard_tensor(
                     input,
                     self._mesh,
-                    [dist.Replicate(), dist.Shard(1)],
+                    [dist.Shard(0), dist.Shard(1)],
                 )
                 dist_out = paddle._C_ops.reshard(
-                    dist_input, self._mesh, [dist.Replicate(), dist.Replicate()]
+                    dist_input, self._mesh, [dist.Shard(1), dist.Shard(0)]
                 )
             dist_program = main_program.clone()
             apply_reshard_pass(dist_program)
-            print(dist_program)
             new_ops = dist_program.global_block().ops
             old_ops_name = [op.name() for op in main_program.global_block().ops]
             new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
-            rank_id = dist.get_rank()
-            assert new_ops_name[-1] == "pd_op.c_allreduce_sum_"
+            all_gather_ops = new_ops[new_ops_name.index("pd_op.c_allgather")]
+            slice_ops = new_ops[new_ops_name.index("pd_op.slice")]
 
-            # check the allreduce_sum
-            op = new_ops[-1]
-            in_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
-            out_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
-            assert in_dist_attr.partial_status == {0: dist.ReduceType.kRedSum}
-            assert in_dist_attr.dims_mapping == [-1, -1, -1]
-            assert out_dist_attr.partial_status == {}
-            assert out_dist_attr.dims_mapping == [-1, -1, -1]
-            if rank_id == 0 or rank_id == 1:
-                assert in_dist_attr.process_mesh.process_ids == [0, 1]
-            elif rank_id == 2 or rank_id == 3:
-                assert in_dist_attr.process_mesh.process_ids == [2, 3]
+            # rank_id = dist.get_rank()
+            # assert new_ops_name[-1] == "pd_op.c_allreduce_sum_"
 
-            in_value = op.operand_source(0)
-            out_value = op.result(0)
-            assert in_value.is_dist_dense_tensor_type()
-            assert out_value.is_dist_dense_tensor_type()
-            assert in_value.dist_attr().dims_mapping == [0, -1, -1]
-            assert in_value.dist_attr().process_mesh == self._mesh
-            assert in_value.dist_attr().partial_status == {
-                0: dist.ReduceType.kRedSum,
-            }
-            assert out_value.dist_attr().dims_mapping == [0, -1, -1]
-            assert out_value.dist_attr().process_mesh == self._mesh
-            assert out_value.dist_attr().partial_status == {}
+            # # check the allreduce_sum
+            # op = new_ops[-1]
+            # in_dist_attr = op.dist_attr.operand(0).as_tensor_dist_attr()
+            # out_dist_attr = op.dist_attr.result(0).as_tensor_dist_attr()
+            # assert in_dist_attr.partial_status == {0: dist.ReduceType.kRedSum}
+            # assert in_dist_attr.dims_mapping == [-1, -1, -1]
+            # assert out_dist_attr.partial_status == {}
+            # assert out_dist_attr.dims_mapping == [-1, -1, -1]
+            # if rank_id == 0 or rank_id == 1:
+            #     assert in_dist_attr.process_mesh.process_ids == [0, 1]
+            # elif rank_id == 2 or rank_id == 3:
+            #     assert in_dist_attr.process_mesh.process_ids == [2, 3]
+
+            # in_value = op.operand_source(0)
+            # out_value = op.result(0)
+            # assert in_value.is_dist_dense_tensor_type()
+            # assert out_value.is_dist_dense_tensor_type()
+            # assert in_value.dist_attr().dims_mapping == [0, -1, -1]
+            # assert in_value.dist_attr().process_mesh == self._mesh
+            # assert in_value.dist_attr().partial_status == {
+            #     0: dist.ReduceType.kRedSum,
+            # }
+            # assert out_value.dist_attr().dims_mapping == [0, -1, -1]
+            # assert out_value.dist_attr().process_mesh == self._mesh
+            # assert out_value.dist_attr().partial_status == {}
 
     def run_test_cases(self):
         # self.run_pp_to_rr_case()

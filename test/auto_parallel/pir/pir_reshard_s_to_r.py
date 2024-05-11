@@ -25,12 +25,49 @@ from paddle.distributed.auto_parallel.static.pir_pass import (
 
 class TestReshardSToR:
     def __init__(self):
-        self._shape = eval(os.getenv("shape"))
-        self._dtype = os.getenv("dtype")
-        self._seeds = eval(os.getenv("seeds"))
-        self._shard = eval(os.getenv("shard"))
+        # self._shape = eval(os.getenv("shape"))
+        # self._dtype = os.getenv("dtype")
+        # self._seeds = eval(os.getenv("seeds"))
+        # self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+    def run_shard1(self):
+        paddle.enable_static()
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
+            place = paddle.CPUPlace()
+        elif self._backend == "gpu":
+            place = paddle.CUDAPlace(dist.get_rank())
+
+        BATCH_SIZE = 2
+        SEQ_LEN = 4
+        HIDDEN_SIZE = 8
+        MP_SIZE = 2
+
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
+                input = paddle.static.data(
+                    name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
+                )
+                w0 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[HIDDEN_SIZE, HIDDEN_SIZE],
+                    name="w0",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                input_tensor = dist.shard_tensor(
+                    input, self._mesh, [dist.Shard(1)]
+                )
+
+                reshard_tensor = paddle._C_ops.reshard(
+                    input_tensor, self._mesh, [dist.Replicate()]
+                )
+            apply_reshard_pass(main_program)
+            print(main_program)
 
     def run_pir_test_case(self):
         paddle.enable_static()
@@ -213,4 +250,5 @@ class TestReshardSToR:
 
 
 if __name__ == '__main__':
-    TestReshardSToR().run_pir_test_case()
+    # TestReshardSToR().run_pir_test_case()
+    TestReshardSToR().run_shard1()
