@@ -782,10 +782,23 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else clip_var
                 )
                 if clip_input.process_mesh != g.process_mesh:
+                    # TODO(pkuzyc): refine the reshard function between local
+                    # and global mesh to avoid the following "_local_tensor()"
+                    # operation.
                     if set(g.process_mesh.process_ids) < set(
                         clip_input.process_mesh.process_ids
                     ):
-                        clip_input = clip_input._local_value()
+                        placements = clip_input.placements
+                        is_replicate = [
+                            placement.is_replicated()
+                            for placement in placements
+                        ].all()
+                        if is_replicate:
+                            clip_input = clip_input._local_value()
+                        else:
+                            raise NotImplementedError(
+                                "Reshard a sharded tensor from a local mesh to a global mesh is not supported"
+                            )
                     else:
                         clip_input = paddle.distributed.reshard(
                             clip_input, g.process_mesh, clip_input.placements

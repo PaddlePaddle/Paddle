@@ -482,13 +482,6 @@ def local_tensor_list_from_dtensor(
         if local_placements == []:
             local_placements.append(dist.Replicate())
 
-        rank = dist.get_rank()
-        local_idx = 0
-        for i, mesh in enumerate(local_mesh_list):
-            if rank in mesh.process_ids:
-                local_idx = i
-                break
-
     if paddle.framework.in_dynamic_mode():
         return _local_tensors_from_dist.apply(
             dist_tensor,
