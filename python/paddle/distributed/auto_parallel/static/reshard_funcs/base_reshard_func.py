@@ -29,12 +29,6 @@ class ReshardFunction:
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
     global _g_reshard_func_list
     for reshard_func in _g_reshard_func_list:
-        print(
-            "reshard_func:",
-            reshard_func,
-            " suitable:",
-            reshard_func.is_suitable(src_dist_attr, dst_dist_attr),
-        )
         if reshard_func.is_suitable(src_dist_attr, dst_dist_attr):
             return reshard_func
     return None

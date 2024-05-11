@@ -121,16 +121,12 @@ class NdMeshReshardFunction(ReshardFunction):
             # convert each partial dim to replicated with corresponding
             # 1-D mesh function
             for partial_dim, partial_type in in_partial_status.items():
-                print("partial_dim: ", partial_dim)
-                print("out_partial_status: ", out_partial_status)
-                print("ori_dst_dist_attr", ori_dst_dist_attr)
                 if (
                     partial_dim in out_partial_status
                     or ori_dst_dist_attr.dims_mapping[partial_dim] > -1
                 ):
                     continue
 
-                print("Step1: partial axis ", partial_dim)
                 # get the partial status after converting
                 real_out_partial_status = copy.deepcopy(
                     real_out_dist_attr.partial_status
@@ -179,7 +175,6 @@ class NdMeshReshardFunction(ReshardFunction):
             if in_mesh_axis == -1:
                 continue
 
-            print("Step2: in_mesh_axis ", in_mesh_axis)
             # calculate the dist_attr after converting
             real_out_dims_mapping = copy.deepcopy(
                 real_out_dist_attr.dims_mapping
@@ -215,8 +210,6 @@ class NdMeshReshardFunction(ReshardFunction):
             )
 
             out_value.update_dist_attr(real_out_dist_attr)
-            print("==== nd_mesh_reshard_func ====")
-            print(out_value)
 
         # Step3. Convert the replicated status to the status in dst_dist_attr
         # Step3.1 convert replicated to partial
@@ -227,7 +220,6 @@ class NdMeshReshardFunction(ReshardFunction):
                 if partial_dim in in_partial_status:
                     continue
 
-                print("Step3: partial axis ", partial_dim)
                 raise NotImplementedError(
                     "RToPReshardFunction is not implemented"
                 )
@@ -239,10 +231,6 @@ class NdMeshReshardFunction(ReshardFunction):
                 continue
             in_partial_status = out_value.dist_attr().partial_status
             need_p2s = out_mesh_axis in in_partial_status
-            print(
-                "Step4: out_mesh_axis: %d need_p2s: %d"
-                % (out_mesh_axis, need_p2s)
-            )
             dims_mapping = copy.deepcopy(real_out_dist_attr.dims_mapping)
             dims_mapping[i] = out_mesh_axis
             partial_status = None

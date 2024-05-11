@@ -88,16 +88,6 @@ class SToRReshardFunction(ReshardFunction):
         num_of_padding = (
             src_value.shape[split_axis] % src_dist_attr.process_mesh.size
         )
-        print("==== reshard_s_to_r ====")
-        print(
-            "src_value.shape: ",
-            src_value.shape,
-            " src_value.local_shape:",
-            src_value._local_shape,
-        )
-        print("num_of_padding: ", num_of_padding)
-        print("split_axis: ", split_axis)
-        print("process_mesh: ", src_dist_attr.process_mesh)
         is_balanced_split = num_of_padding == 0
 
         if is_balanced_split:
@@ -109,7 +99,6 @@ class SToRReshardFunction(ReshardFunction):
                 dst_type,
                 num_of_padding,
             )
-            print("new_value: ", new_value)
             return new_value
         else:
             # TODO(ywt01) support unbalanced split
