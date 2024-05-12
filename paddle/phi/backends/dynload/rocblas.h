@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include <rocblas.h>
+#include <rocblas/rocblas.h>
 
 #include <mutex>  // NOLINT
 #include <type_traits>
