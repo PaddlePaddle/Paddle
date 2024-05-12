@@ -353,14 +353,23 @@ class FakeQuantChannelWiseAbsMax(Layer):
                 out,
                 _,
             ) = _C_ops.fake_channel_wise_quantize_dequantize_abs_max(
-                input, quant_out, out_scale, *attrs
+                input,
+                self._quant_bits,
+                1,
+                self._quant_axis,
+                quant_out,
+                out_scale,
             )
             return out
 
         check_variable_and_dtype(
             input, 'input', ['float32'], "FakeQuantChannelWiseAbsMax"
         )
-        attrs = {'bit_length': self._quant_bits, 'quant_axis': self._quant_axis}
+        attrs = {
+            'bit_length': self._quant_bits,
+            'round_type': 1,
+            'quant_axis': self._quant_axis,
+        }
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",

@@ -19,6 +19,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+from paddle import _C_ops
+
 
 def round_c_single_element(val):
     dtype = type(val)
@@ -36,6 +38,14 @@ def get_compute_type(dtype):
     if dtype == np.float16:
         return np.float32
     return dtype
+
+
+def fake_channel_wise_quantize_dequantize_abs_max_wrapper(
+    x, bit_length=8, round_type=1, quant_axis=0
+):
+    return _C_ops.fake_channel_wise_quantize_dequantize_abs_max(
+        x, bit_length, round_type, quant_axis
+    )
 
 
 class TestFakeQuantizeAbsMaxOp(OpTest):
@@ -417,15 +427,14 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
         scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
+        self.python_api = fake_channel_wise_quantize_dequantize_abs_max_wrapper
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
         self.attrs['quant_axis'] = quant_axis
         self.check_output(check_dygraph=False)
         gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=gradient, check_dygraph=False
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_channel_wise_fake_quant_dequant_abs_max(self):
         input_shape_quant_axis_options = [
