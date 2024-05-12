@@ -1581,8 +1581,8 @@ def reduce_as(x, target, name=None):
     Computes the sum of tensor elements make the shape of its result equal to the shape of target.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
+        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
 
     Returns:
         Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor target, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
@@ -1615,13 +1615,17 @@ def reduce_as(x, target, name=None):
             'x',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
@@ -1630,13 +1634,17 @@ def reduce_as(x, target, name=None):
             'target',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
