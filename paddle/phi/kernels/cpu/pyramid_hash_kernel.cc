@@ -20,11 +20,8 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/search_compute.h"
-
-extern "C" {
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
-}
+#include "paddle/phi/kernels/funcs/search_compute.h"
 
 namespace phi {
 
