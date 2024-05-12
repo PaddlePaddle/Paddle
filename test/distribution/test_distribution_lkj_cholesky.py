@@ -139,7 +139,10 @@ class TestLKJCholeskyShapeMulti(unittest.TestCase):
 )
 class TestLKJCholeskyLogProb(unittest.TestCase):
     def test_log_prob(self):
-        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(2, [1.0], 'onion')
+        self.dim = 2
+        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
+            self.dim, [1.0], 'onion'
+        )
         self._test_log_prob()
 
     def _test_log_prob(self):
