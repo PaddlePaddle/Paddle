@@ -204,8 +204,7 @@ class LKJCholesky(distribution.Distribution):
         super().__init__(batch_shape, event_shape)
 
     def _onion(self, sample_shape):
-        """
-        Generate a sample using the "onion" method.
+        """Generate a sample using the "onion" method.
 
         Args:
             sample_shape (tuple): The shape of the samples to be generated.
@@ -245,8 +244,7 @@ class LKJCholesky(distribution.Distribution):
         return w
 
     def _cvine(self, sample_shape):
-        """
-        Generate a sample using the "cvine" method.
+        """Generate a sample using the "cvine" method.
 
         Args:
             sample_shape (tuple): The shape of the samples to be generated.
@@ -328,8 +326,7 @@ class LKJCholesky(distribution.Distribution):
         return res.reshape(output_shape)
 
     def log_prob(self, value):
-        r"""
-        Compute the log probability density of the given Cholesky factor under the LKJ distribution.
+        r"""Compute the log probability density of the given Cholesky factor under the LKJ distribution.
 
         Note about computing Jacobian of the transformation from Cholesky factor to
         correlation matrix:
