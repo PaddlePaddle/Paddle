@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
@@ -25,6 +26,7 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -34,26 +36,38 @@ namespace {
 // commutative.
 static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
     kCommutativeOps = {
-        {"pd_op.multiply", {{0, 1}}},
-        {"pd_op.add", {{0, 1}}},
-        {"pd_op.maximum", {{0, 1}}},
-        {"pd_op.minimum", {{0, 1}}},
-        {"pd_op.logical_and", {{0, 1}}},
-        {"pd_op.logical_or", {{0, 1}}},
-        {"pd_op.logical_xor", {{0, 1}}},
-        {"pd_op.equal", {{0, 1}}},
-        {"pd_op.not_equal", {{0, 1}}},
-        {"pd_op.bitwise_or", {{0, 1}}},
-        {"pd_op.bitwise_xor", {{0, 1}}},
-        {"pd_op.bitwise_and", {{0, 1}}},
+        {paddle::dialect::MultiplyOp::name(), {{0, 1}}},
+        {paddle::dialect::AddOp::name(), {{0, 1}}},
+        {paddle::dialect::MaximumOp::name(), {{0, 1}}},
+        {paddle::dialect::MinimumOp::name(), {{0, 1}}},
+        {paddle::dialect::LogicalAndOp::name(), {{0, 1}}},
+        {paddle::dialect::LogicalOrOp::name(), {{0, 1}}},
+        {paddle::dialect::LogicalXorOp::name(), {{0, 1}}},
+        {paddle::dialect::EqualOp::name(), {{0, 1}}},
+        {paddle::dialect::NotEqualOp::name(), {{0, 1}}},
+        {paddle::dialect::BitwiseOrOp::name(), {{0, 1}}},
+        {paddle::dialect::BitwiseXorOp::name(), {{0, 1}}},
+        {paddle::dialect::BitwiseAndOp::name(), {{0, 1}}},
 };
 
 // If an op results used by these ops, we should not replace it.
 static std::unordered_set<std::string> kBlockedUserOps = {
-    "builtin.shadow_output",
-    "cf.yield",
-    "pd_op.while",  // while op will trigger a early gc bug
+    pir::YieldOp::name(),
+    paddle::dialect::WhileOp::name(),  // while op will trigger a early gc bug
 };
+
+bool IsDenseTensorOrVectorOfDenseTensorType(const pir::Value& value) {
+  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+    return true;
+  }
+  if (!value.type().isa<pir::VectorType>()) {
+    return false;
+  }
+  auto type_vec = value.type().dyn_cast<pir::VectorType>().data();
+  return std::all_of(type_vec.begin(), type_vec.end(), [](pir::Type type) {
+    return type.isa<paddle::dialect::DenseTensorType>();
+  });
+}
 
 template <typename T>
 std::vector<T> SortElementsAtIndices(const std::vector<T>& vec,
@@ -243,25 +257,29 @@ struct ExpressionTable {
       return false;
     }
     for (auto& value : op->results()) {
-      if (!value.type().isa<paddle::dialect::DenseTensorType>()) {
-        VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-                << " has result " << value.defining_op()->name()
-                << " which is not DenseTensorType";
+      if (!IsDenseTensorOrVectorOfDenseTensorType(value)) {
+        VLOG(3)
+            << "[CalcOperationCanBeSafeToReplace] " << op->name()
+            << " has result " << value.defining_op()->name() << " ["
+            << value.defining_op()
+            << "] which is not DenseTensorType or Vector of DenseTensorType";
         return false;
       }
       for (auto it = value.use_begin(); it != value.use_end(); ++it) {
         if (kBlockedUserOps.count(it->owner()->name())) {
           VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-                  << " has result " << value.defining_op()->name()
-                  << " which is used by " << it->owner()->name();
+                  << " has result " << value.defining_op()->name() << " ["
+                  << value.defining_op() << "] which is used by "
+                  << it->owner()->name();
           return false;
         }
         auto inplace_info = GetOpInplaceInfo(it->owner());
         for (auto& [out_idx, in_idx] : inplace_info) {
           if (it->owner()->operands()[in_idx].source() == value) {
             VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-                    << " has operand " << value.defining_op()->name()
-                    << " which is inplace to " << it->owner()->name();
+                    << " has operand " << value.defining_op()->name() << " ["
+                    << value.defining_op() << "] which is inplace to "
+                    << it->owner()->name();
             return false;
           }
         }
@@ -271,13 +289,14 @@ struct ExpressionTable {
       if (!IsTerminateValue(value) &&
           !GetOperationCanBeSafeToReplace(value.defining_op())) {
         VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-                << " has operand " << value.defining_op()->name()
-                << " which can not be safe to replace";
+                << " has operand with defining op "
+                << value.defining_op()->name() << " [" << value.defining_op()
+                << "] which can not be safe to replace";
         return false;
       }
     }
-    VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
-            << " can be safe to replace";
+    VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name() << " [" << op
+            << "] can be safe to replace";
     return true;
   }
 
@@ -329,6 +348,40 @@ struct CSEAnalyzer {
   std::vector<std::pair<pir::Operation*, pir::Operation*>> to_erase_ops;
 };
 
+pir::Value CreateAssignOp(const pir::Value& value,
+                          pir::Operation* op,
+                          pir::Block* block) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Builder builder(ctx, block);
+  builder.SetInsertionPointAfter(op);
+  auto assign_op = builder.Build<paddle::dialect::AssignOp>(value);
+  return assign_op.result(0);
+}
+
+void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
+  VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
+          << new_op->name() << " [" << new_op << "]";
+  PADDLE_ENFORCE_EQ(
+      op->num_results(),
+      new_op->num_results(),
+      phi::errors::InvalidArgument("the num of result should be the same."));
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    auto value = op->result(i);
+    auto new_value = new_op->result(i);
+    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+      // NOTE(SigureMo): If the value has a shadow output, we could not replace
+      // it directly. It will cause a value has two shadow outputs. It is
+      // invalid for executor, so we make a copy by inserting a assign op.
+      if (it->owner()->isa<pir::ShadowOutputOp>()) {
+        new_value = CreateAssignOp(new_value, new_op, op->GetParent());
+        break;
+      }
+    }
+    value.ReplaceAllUsesWith(new_value);
+  }
+  op->Erase();
+}
+
 class CommonSubexpressionEliminationPass : public pir::Pass {
  public:
   CommonSubexpressionEliminationPass()
@@ -341,6 +394,8 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     ExpressionTable root_expression_table;
     cse_analyzer.SimplifyBlock(op->GetParentProgram()->block(),
                                &root_expression_table);
+    size_t op_count_before_cse = op->GetParentProgram()->block()->num_ops();
+    std::unordered_map<std::string, size_t> op_stats;
     std::cout << "Found " << cse_analyzer.to_erase_ops.size()
               << " common subexpression" << std::endl;
 
@@ -364,12 +419,19 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
       if (cse_count >= cse_max_count) {
         break;
       }
-      VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
-              << existing_op->name() << " [" << existing_op << "]";
-      op->ReplaceAllUsesWith(existing_op->results());
-      op->Erase();
+      ReplaceOpWith(op, existing_op);
       num_erasers++;
       cse_count++;
+      op_stats[existing_op->name()]++;
+    }
+    size_t op_count_after_cse = op->GetParentProgram()->block()->num_ops();
+    std::cout << "op count before cse: " << op_count_before_cse
+              << ", op count after cse: " << op_count_after_cse << ", erased "
+              << num_erasers << " ("
+              << num_erasers * 100.0 / op_count_before_cse << "%)" << std::endl;
+    std::cout << "Erased op statistics:" << std::endl;
+    for (auto& [op_name, count] : op_stats) {
+      std::cout << "    " << op_name << ": " << count << std::endl;
     }
     AddStatistics(num_erasers);
   }
