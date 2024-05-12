@@ -208,68 +208,40 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   }
 }
 
-// cz18822181002 2024-05-10 11:43:53
-//   if (has_dynamic_shape(x.shape()) || has_dynamic_shape(num_classes.shape()))
-//   {
-
-//   std::vector<int64_t> input_dim;
-//   auto x_shape_t = shape<T>(x);
-
-//   auto input_dim = concat<T>({get_slice<T>(x_shape_t, 0),
-//   get_slice<T>(num_classes, 0)}, 0);
-
-//   auto input_tensor = full_with_tensor<T>(input_dim, 0, x.dtype());
-
-//   auto output_dim = concat<T>({x_shape_t, get_slice<T>(num_classes, 0)}, 0);
-
-//   auto end = full<T>({1}, x.shape()[0], x.dtype());
-//   auto start = full<T>({1}, 0, x.dtype());
-//   auto step = full<T>({1}, 1, x.dtype());
-//   auto arange_tensor =
-//       backend::arange_with_tensor<T>(start, end, step, x.dtype());
-
-//   std::vector<int64_t> reshape_dim{x.shape()[0], 1};
-//   auto x_reshape = reshape<T>(x, reshape_dim);
-//   auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
-
-//   std::vector<Tensor> index_concat;
-//   index_concat.push_back(arange_tensor_reshape);
-//   index_concat.push_back(x_reshape);
-//   auto index_tensor = concat<T>(index_concat, 1);
-
-//   auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
-
-//   auto ans = backend::reshape_with_tensor<T>(
-//       cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
-//               x.dtype()),
-//       output_dim);
-//   return ans;
-//   }
-
 template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto num_classes_tensor =
       backend::full_with_tensor<T>(num_classes, 0, x.dtype());
-  auto x_shape_tensor = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+
   auto x_num = 1;
-  auto x_shape = x_shape_tensor.shape();
-  for (size_t i = 0; i < x_shape.size(); i++) {
-    printf("check:%ld\n", (x_shape[i]));
-    x_num *= x_shape[i];
+  auto x_shape = x.shape();
+  for (size_t i=0; i<x.shape().size(); i++){
+    x_num *= x.shape()[i];
   }
 
-  std::vector<int64_t> input_dim;
-  input_dim.push_back(x_num);
-  input_dim.push_back(num_classes_tensor.shape()[0]);
-  auto input_tensor = full<T>(input_dim, 0, x.dtype());
+  auto x_shape_tensor = shape<T>(x);
+  auto x_num_tensor = get_slice<T>(x_shape_tensor, 0);
+  auto x_num_tensor_unsqueeze = unsqueeze<T>(x_num_tensor, {0});
+  auto num_class_tensor_unsqueeze = unsqueeze<T>(num_classes, {0});
+  auto input_dim_tensor = concat<T>({x_num_tensor_unsqueeze, num_class_tensor_unsqueeze}, 0);
+
+  auto one_tensor = full<T>({1}, 1, x.dtype());
+  auto x_num_tensor_unsqueeze_sec = unsqueeze<T>(x_num_tensor, {1});
+  auto one_tensor_unsqueeze = unsqueeze<T>(one_tensor, {1});
+  auto reshape_dim_tensor = concat<T>({x_num_tensor_unsqueeze_sec, one_tensor_unsqueeze}, 1);
+
+  // std::vector<int64_t> input_dim;
+  // input_dim.push_back(x_num);
+  // input_dim.push_back(num_classes_tensor.shape()[0]);
+  auto input_tensor = backend::full_with_tensor<T>(input_dim_tensor, 0, x.dtype());
 
   std::vector<int64_t> output_dim;
-  for (size_t i = 0; i < x_shape.size(); i++) {
-    output_dim.push_back(x_shape[i]);
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    output_dim.push_back(x.shape()[i]);
   }
   output_dim.push_back(num_classes_tensor.shape()[0]);
 
-  auto end = full<T>({1}, x_num, x.dtype());
+  auto end = x_num_tensor;
   auto start = full<T>({1}, 0, x.dtype());
   auto step = full<T>({1}, 1, x.dtype());
   auto arange_tensor =
@@ -277,7 +249,11 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
 
   std::vector<int64_t> reshape_dim{x_num, 1};
   auto x_reshape = reshape<T>(x, reshape_dim);
-  auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
+  // auto x_reshape = backend::reshape_with_tensor<T>(x, reshape_dim_tensor);
+  // auto x_reshape = unsqueeze<T>(x, {1});
+  auto arange_tensor_reshape = unsqueeze<T>(arange_tensor, {1});
+  // auto x_reshape = reshape<T>(x, reshape_dim);
+  // auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
 
   std::vector<Tensor> index_concat;
   index_concat.push_back(arange_tensor_reshape);
@@ -285,11 +261,11 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto index_tensor = concat<T>(index_concat, 1);
 
   auto update_tensor = full<T>({x_num}, 1, x.dtype());
-
-  auto ans = reshape<T>(
+  // auto update_tensor = backend::full_with_tensor<T>(x_num_tensor_unsqueeze, 1, x.dtype());
+  auto ans = backend::reshape_with_tensor<T>(
       cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
               DataType::FLOAT32),
-      output_dim);
+      x_shape_tensor);
   return ans;
 }
 
