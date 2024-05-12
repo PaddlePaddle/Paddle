@@ -98,7 +98,7 @@ void StftGradKernel(const Context& dev_ctx,
   } else {
     phi::DenseTensor full_dy;
     full_dy.Resize(d_frames_dims);
-    dev_ctx.template Alloc<T>(&full_dy);
+    dev_ctx.template Alloc<C>(&full_dy);
     auto zero_length = static_cast<int>(full_dy.dims().at(axes.back()) -
                                         dy->dims().at(axes.back()));
     auto rank = dy->dims().size();
