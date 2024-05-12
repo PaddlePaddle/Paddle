@@ -402,7 +402,7 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     // TODO(SigureMo): For debug only, remove it before merge
     size_t cse_count = 0;
     const size_t cse_max_count = []() {
-      size_t cse_max_count;
+      size_t cse_max_count = 0;
       const char* cse_max_count_str_ptr = getenv("CSE_MAX_COUNT");
       if (cse_max_count_str_ptr == nullptr) {
         return std::numeric_limits<size_t>::max();
