@@ -320,7 +320,7 @@ template class ClipAndFakeQuantFunctor<CPUContext, float>;
 template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
 template class FindChannelAbsMaxFunctor<CPUContext, float>;
 template class ChannelClipAndFakeQuantFunctor<CPUContext, float>;
-template class ChannelClipFakeQuantDequantFunctor<phi::CPUContext, float>;
+template class ChannelClipFakeQuantDequantFunctor<CPUContext, float>;
 template class FindRangeAbsMaxFunctor<CPUContext, float>;
 
 }  // namespace funcs
