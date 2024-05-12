@@ -3765,7 +3765,7 @@ void PyramidHashInferMeta(const MetaTensor& x,
 
   if (white_list_len > 0) {
     PADDLE_ENFORCE_EQ(
-        white_list.size() == 0,
+        white_list.initialized(),
         true,
         phi::errors::NotFound("Input(WhiteList) of PyramidHashOP is not "
                               "found but white_list_len > 0."));
