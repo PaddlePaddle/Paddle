@@ -991,7 +991,7 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   bool need_cast = is_half_dtype(x.dtype());
   auto x_cast = x;
   if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
+    x_cast = cast<T>(x, DataType::FLOAT64);
   }
   auto min_cast = cast<T>(min, x_cast.dtype());
   auto max_cast = cast<T>(max, x_cast.dtype());
