@@ -118,14 +118,8 @@ def tril_matrix_to_vec(mat: paddle.Tensor, diag: int = 0) -> paddle.Tensor:
 class LKJCholesky(distribution.Distribution):
     """
     The LKJCholesky class represents the LKJ distribution over Cholesky factors of correlation matrices.
-
     This class implements the LKJ distribution over Cholesky factors of correlation matrices, as described in
-    Lewandowski, Kurowicka, and Joe (2009)[1]. It supports two sampling methods: "onion" and "cvine".
-
-    **References**
-
-    [1] `Generating random correlation matrices based on vines and extended onion method`,
-    Daniel Lewandowski, Dorota Kurowicka, Harry Joe
+    Lewandowski, Kurowicka, and Joe (2009). It supports two sampling methods: "onion" and "cvine".
 
     Args:
         dim (int): The dimension of the correlation matrices.
