@@ -993,11 +993,21 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
-  auto x_shape_tensor =
-      backend::full_with_tensor<T>(shape<T>(x_cast), 1, x_cast.dtype());
-  auto max_tensor = cast<T>(max, x_cast.dtype()) * x_shape_tensor;
-  auto min_tensor = cast<T>(min, x_cast.dtype()) * x_shape_tensor;
-  auto ans = maximum<T>(minimum<T>(x_cast, max_tensor), min_tensor);
+  auto min_cast = cast<T>(min, x_cast.dtype());
+  auto max_cast = cast<T>(max, x_cast.dtype());
+  auto min_reshape = min_cast;
+  auto max_reshape = max_cast;
+  if (has_dynamic_shape(x.shape())) {
+    min_reshape = backend::expand_with_tensor<T>(
+        min_cast, shape<T>(x_cast));
+    max_reshape = backend::expand_with_tensor<T>(
+        max_cast, shape<T>(x_cast));
+  } else {
+    min_reshape = expand<T>(min_cast, x_cast.shape());
+    max_reshape = expand<T>(max_cast, x_cast.shape());
+  }
+  
+  auto ans = maximum<T>(minimum<T>(x_cast, max_reshape), min_reshape);
   return cast<T>(ans, x.dtype());
 }
 
