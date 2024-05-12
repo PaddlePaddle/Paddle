@@ -59,7 +59,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             loss_data_fused = exe.run(
                 compiled_prog_fused,
                 feed={"X": x, "Y": y},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
         # close fused_pass
@@ -72,7 +72,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
         with base.scope_guard(scope):
             exe.run(startup_program)
             loss_data = exe.run(
-                compiled_prog, feed={"X": x, "Y": y}, fetch_list=[loss.name]
+                compiled_prog, feed={"X": x, "Y": y}, fetch_list=[loss]
             )
 
         self.assertEqual(loss_data_fused, loss_data)
