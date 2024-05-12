@@ -82,7 +82,7 @@ void StftGradKernel(const Context& dev_ctx,
 
   phi::DenseTensor complex_d_frames_w;
   complex_d_frames_w.Resize(d_frames_dims);
-  dev_ctx.template Alloc<T>(&complex_d_frames_w);
+  dev_ctx.template Alloc<C>(&complex_d_frames_w);
 
   // dy -> d_frames_w
   phi::funcs::FFTNormMode normalization;
