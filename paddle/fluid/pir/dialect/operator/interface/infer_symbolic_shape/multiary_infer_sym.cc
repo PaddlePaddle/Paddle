@@ -511,7 +511,7 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
 }
 
 bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *infer_context) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, infer_context);
 }
 
