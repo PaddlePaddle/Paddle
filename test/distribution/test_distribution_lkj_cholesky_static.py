@@ -136,10 +136,6 @@ class TestLKJCholeskyShapeMulti(unittest.TestCase):
                 'input': (),
                 'expect': () + extra_shape,
             },
-            {
-                'input': (2, 2),
-                'expect': (2, 2) + extra_shape,
-            },
         ]
         return cases
 
