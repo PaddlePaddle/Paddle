@@ -328,28 +328,6 @@ class LKJCholesky(distribution.Distribution):
     def log_prob(self, value):
         r"""Compute the log probability density of the given Cholesky factor under the LKJ distribution.
 
-        Note about computing Jacobian of the transformation from Cholesky factor to
-        correlation matrix:
-
-        Assume C = L@Lt and L = (1 0 0; a \sqrt(1-a^2) 0; b c \sqrt(1-b^2-c^2)), we have
-        Then off-diagonal lower triangular vector of L is transformed to the off-diagonal
-        lower triangular vector of C by the transform:
-            (a, b, c) -> (a, b, ab + c\sqrt(1-a^2))
-        Hence, Jacobian = 1 * 1 * \sqrt(1 - a^2) = \sqrt(1 - a^2) = L22, where L22
-            is the 2th diagonal element of L
-        Generally, for a D dimensional matrix, we have:
-            Jacobian = L22^(D-2) * L33^(D-3) * ... * Ldd^0
-
-        From [1], we know that probability of a correlation matrix is propotional to
-        determinant ** (concentration - 1) = prod(L_ii ^ 2(concentration - 1))
-        On the other hand, Jabobian of the transformation from Cholesky factor to
-        correlation matrix is:
-        prod(L_ii ^ (D - i))
-        So the probability of a Cholesky factor is propotional to
-        prod(L_ii ^ (2 * concentration - 2 + D - i)) =: prod(L_ii ^ order_i)
-        with order_i = 2 * concentration - 2 + D - i,
-        i = 2..D (we omit the element i = 1 because L_11 = 1)
-
         Args:
             value (paddle.Tensor): The Cholesky factor of the correlation matrix for which the log probability density is to be computed.
 
