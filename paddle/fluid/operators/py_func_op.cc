@@ -325,8 +325,8 @@ class PyFuncOp : public framework::OperatorBase {
       if (!in_tensor.IsInitialized()) {
         continue;
       }
-      if (platform::is_gpu_place(in_tensor.place())) {
-        framework::TensorCopySync(in_tensor, platform::CPUPlace(), &inputs[i]);
+      if (in_tensor.place().GetType() == phi::AllocationType::GPU) {
+        framework::TensorCopySync(in_tensor, phi::CPUPlace(), &inputs[i]);
       } else {
         inputs[i].ShareDataWith(in_tensor);
       }

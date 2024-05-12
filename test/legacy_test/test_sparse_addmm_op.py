@@ -44,7 +44,9 @@ class TestAddmm(unittest.TestCase):
             mask = paddle.randint(0, 2, x_shape)
 
         origin_input = paddle.rand(input_shape)
-        origin_x = paddle.rand(x_shape) * mask
+        origin_x = paddle.rand(x_shape) * mask.astype(
+            paddle.get_default_dtype()
+        )
         origin_y = paddle.rand(y_shape)
 
         dense_input = origin_input.detach()
@@ -77,7 +79,9 @@ class TestAddmm(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 sp_x.grad.to_dense().numpy(),
-                (dense_x.grad * mask).numpy(),
+                (
+                    dense_x.grad * mask.astype(paddle.get_default_dtype())
+                ).numpy(),
                 rtol=1e-05,
             )
             np.testing.assert_allclose(

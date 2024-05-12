@@ -36,11 +36,10 @@ void XPUGetSinCosData(const Context& dev_ctx,
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
-      PADDLE_ENFORCE_EQ(
-          (sin_cos_dims[0] == 1 && sin_cos_dims[2] == 1),
-          true,
-          phi::errors::InvalidArgument(
-              "The batch_size and num_heads of sin and cos must be 1."));
+      PADDLE_ENFORCE_EQ((sin_cos_dims[2] == 1),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The num_heads of sin and cos must be 1."));
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
     if (position_ids.get_ptr()) {
@@ -92,11 +91,12 @@ void XPUGetSinCosData(const Context& dev_ctx,
         PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather");
       }
     } else {
+      int sin_cos_batch_size = (dims_size) == 4 ? sin_cos_dims[0] : 1;
       int ret = xpu::broadcast<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(sin_cos->data()),
           sin_cos_data,
-          {1, seq_len, head_dim},
+          {sin_cos_batch_size, seq_len, head_dim},
           {batch_size, seq_len, head_dim});
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
     }

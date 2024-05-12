@@ -30,7 +30,7 @@ struct FillOpVisitor {
 
   template <typename T>
   void apply() const {
-    platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
     std::transform(
         value_.data(), value_.data() + tensor_->numel(), data, [](float dat) {

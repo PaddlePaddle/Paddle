@@ -25,11 +25,24 @@ from paddle.base.core import (
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import core
 
 from . import register
 
 logger = logging.getLogger(__name__)
+
+
+@signature_safe_contextmanager
+def prim_guard():
+    prim_state = core._is_all_prim_enabled()
+    try:
+        if not prim_state:
+            core._set_prim_all_enabled(True)
+        yield
+    finally:
+        if not prim_state:
+            core._set_prim_all_enabled(False)
 
 
 def _build_tensor_tuple(xs):
@@ -817,6 +830,14 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     logger.debug(
         f'Following forward ops can not be decomposed: {undecomposed_fwd_ops}'
     )
+
+
+def decompose_dist_program(pir_program):
+    '''
+    Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
+    '''
+    # Todo(CZ): Decompose backward ops.
+    decompose(pir_program, [])
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

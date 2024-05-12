@@ -504,6 +504,25 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   return true;
 }
 
+bool RoiAlignOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x = op->operand_source(0);
+  const auto &boxes = op->operand_source(1);
+
+  const auto &num_boxes =
+      infer_context->GetShapeOrDataForValue(boxes).shape()[0];
+  symbol::DimExpr channel_num =
+      infer_context->GetShapeOrDataForValue(x).shape()[1];
+
+  int32_t out_h = op->attribute<pir::Int32Attribute>("pooled_height").data();
+  int32_t out_w = op->attribute<pir::Int32Attribute>("pooled_width").data();
+
+  std::vector<symbol::DimExpr> out_dim = {num_boxes, channel_num, out_h, out_w};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
+  return true;
+}
+
 bool MeshgridOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
@@ -570,7 +589,10 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
     }
-
+    if (data_dim_exprs.empty()) {
+      return symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(shape_dim_exprs));
+    }
     return symbol::ShapeOrDataDimExprs(
         symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
   }();

@@ -65,7 +65,7 @@ class SliceOp : public framework::OperatorWithKernel {
                       7,
                       phi::errors::InvalidArgument(
                           "The rank of input should be less than 7."));
-    framework::DDim out_dims(in_dims);
+    phi::DDim out_dims(in_dims);
 
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
@@ -146,7 +146,7 @@ class SliceOp : public framework::OperatorWithKernel {
           phi::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
-      if (platform::is_cuda_pinned_place(in_tensor.place())) {
+      if (in_tensor.place().GetType() == phi::AllocationType::GPUPINNED) {
         return phi::KernelKey(framework::TransToProtoVarType(in_tensor.dtype()),
                               ctx.GetPlace());
       }
