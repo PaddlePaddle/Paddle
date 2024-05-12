@@ -988,7 +988,6 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
 template <typename T>
 Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
-  bool need_cast = is_half_dtype(x.dtype());
   auto x_cast = cast<T>(x, DataType::FLOAT64);
   auto min_cast = cast<T>(min, DataType::FLOAT64);
   auto max_cast = cast<T>(max, DataType::FLOAT64);
