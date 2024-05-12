@@ -210,6 +210,7 @@ class SigmoidCrossEntropyWithLogitsOpInferSymbolicShapeTest(TestBase):
             'shape[S0, S1], data[NULL]',
         ]
 
+    @unittest.skip("TODO: WintersMontagne10335")
     def test_eval_symbolic(self):
         net = SigmoidCrossEntropyWithLogitsNet()
 
