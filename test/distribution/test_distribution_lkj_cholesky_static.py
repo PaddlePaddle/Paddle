@@ -43,7 +43,7 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
                 'float32',
             )
             self.feeds = {
-                'concentration': self.concentration,
+                'concentration': self.conc,
             }
 
     def gen_cases(self):
