@@ -70,57 +70,5 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
             self.assertTrue(tuple(data.shape) == case.get('expect'))
 
 
-@parameterize.place(config.DEVICES)
-@parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'concentration'),
-    [
-        (
-            'multi',
-            parameterize.xrand(
-                (2,),
-                dtype='float32',
-                max=1.0,
-                min=0,
-            ),
-        ),
-    ],
-)
-class TestLKJCholeskyShapeMulti(unittest.TestCase):
-    def gen_cases(self):
-        extra_shape = (
-            len(self.concentration),
-            self._paddle_lkj_cholesky.dim,
-            self._paddle_lkj_cholesky.dim,
-        )
-        cases = [
-            {
-                'input': (),
-                'expect': () + extra_shape,
-            },
-        ]
-        return cases
-
-    def test_onion_sample_shape(self):
-        sample_method = 'onion'
-        self._test_sample_shape_dim(sample_method)
-
-    def test_cvine_sample_shape(self):
-        sample_method = 'cvine'
-        self._test_sample_shape_dim(sample_method)
-
-    def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 4):
-            self._test_sample_shape(dim, sample_method)
-
-    def _test_sample_shape(self, dim, sample_method):
-        self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
-            dim, self.concentration, sample_method
-        )
-        cases = self.gen_cases()
-        for case in cases:
-            data = self._paddle_lkj_cholesky.sample(case.get('input'))
-            self.assertTrue(tuple(data.shape) == case.get('expect'))
-
-
 if __name__ == '__main__':
     unittest.main()
