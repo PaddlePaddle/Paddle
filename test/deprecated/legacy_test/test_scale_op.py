@@ -30,8 +30,10 @@ class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_dtype_type()
+        self.public_python_api = paddle.scale
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}
         self.outputs = {
@@ -45,7 +47,14 @@ class TestScaleOp(OpTest):
         self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
+class TestScaleOpFP64(TestScaleOp):
+    def init_dtype_type(self):
+        self.dtype = np.float64
+        # NOTE(dev): Scalar.to<float> has diff with double.
+        self.rev_comp_atol = 1e-7
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -154,7 +163,7 @@ class TestScaleFp16Op(TestScaleOp):
         self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_pir=True)
+        self.check_grad(["X"], "Out", check_pir=True, check_prim_pir=True)
 
 
 @unittest.skipIf(
@@ -165,6 +174,8 @@ class TestScaleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
+        self.public_python_api = paddle.scale
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.attrs = {'scale': -2.3}
         x = np.random.random((10, 10)).astype(np.float32)
@@ -176,7 +187,13 @@ class TestScaleBF16Op(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.8,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
