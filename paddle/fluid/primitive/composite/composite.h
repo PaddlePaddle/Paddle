@@ -1007,7 +1007,7 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_expand = cast<T>(min_reshape, x_promote.dtype());
   auto max_expand = cast<T>(max_reshape, x_promote.dtype());
 
-  auto ans = maximum<T>(minimum<T>(x, max_expand), min_expand);
+  auto ans = maximum<T>(minimum<T>(x_promote, max_expand), min_expand);
   return cast<T>(ans, x.dtype());
 }
 
