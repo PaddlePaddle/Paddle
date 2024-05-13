@@ -228,7 +228,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
@@ -425,7 +425,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));

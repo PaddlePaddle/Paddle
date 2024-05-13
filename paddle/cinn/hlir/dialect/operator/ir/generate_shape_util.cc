@@ -369,21 +369,17 @@ MakeGetterDimExpr4SymbolName(
     symbol_name2symbol_bindins[GetSymbolNameBySymbolBinding(symbol_binding)]
         .emplace_back(symbol_binding);
   }
-  const auto& GetDimExpr =
-      [&](const GenerateShapeOp::SymbolBinding& symbol_binding) {
-        return std::visit(
-            [&](const auto& impl) {
-              return GetDimExprBySymbolBindingImpl(impl, DimExpr4InputDim);
-            },
-            symbol_binding);
-      };
-  return [map = std::move(symbol_name2symbol_bindins), GetDimExpr](
+  return [map = std::move(symbol_name2symbol_bindins), DimExpr4InputDim](
              const std::string& symbol_name) -> std::optional<DimExpr> {
     const auto& iter = map.find(symbol_name);
     if (iter == map.end()) return std::nullopt;
     std::optional<DimExpr> ret = std::nullopt;
     for (const auto& symbol_binding : iter->second) {
-      const auto& current = GetDimExpr(symbol_binding);
+      const auto& current = std::visit(
+          [&](const auto& impl) {
+            return GetDimExprBySymbolBindingImpl(impl, DimExpr4InputDim);
+          },
+          symbol_binding);
       if (!current.has_value()) return std::nullopt;
       if (ret.has_value()) {
         // Same names, same DimExprs.
