@@ -61,8 +61,6 @@ main() {
     elif [[ $exec_case == "llama_auto_unit_test" ]];then
         cd ${auto_case_path}
         case_list_unit llama
-    elif [[ $exec_case == "llama_auto_unit_test" ]];then
-        cd ${auto_case_path}
         case_list_unit pir_reshard
     else
         echo -e "\033[31m ---- Invalid exec_case $exec_case \033[0m"
