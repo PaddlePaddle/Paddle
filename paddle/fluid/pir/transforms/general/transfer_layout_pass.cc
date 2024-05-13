@@ -208,9 +208,8 @@ struct FlowGraph {
       const auto& relevate_outputs =
           layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
                                  : op.results();
-      std::cout << "[BuildGraph]" << op_node
-                << " isz:" << relevate_inputs.size()
-                << " osz:" << relevate_outputs.size() << std::endl;
+      VLOG(10) << "[BuildGraph]" << op_node << " isz:" << relevate_inputs.size()
+               << " osz:" << relevate_outputs.size();
 
       // add in edge
       for (auto& operand : relevate_inputs) {
@@ -299,17 +298,17 @@ struct FlowGraph {
     std::unordered_set<Node> is_node_layout_visited;
     int i = 0;
     while (!q.empty()) {
-      std::cout << "before : " << q.size() << " " << i << std::endl;
+      VLOG(10) << "before : " << q.size() << " " << i;
       i++;
       Node node = q.front();
-      std::cout << "visiting node: " << node << std::endl;
+      VLOG(10) << "visiting node: " << node;
       q.pop();
       if (is_node_layout_visited.find(node) != is_node_layout_visited.end()) {
         continue;
       }
       is_node_layout_visited.insert(node);
 
-      std::cout << "judging node: " << node << std::endl;
+      VLOG(10) << "judging node: " << node;
 
       auto judge_dense_tensor_type = [](paddle::dialect::DenseTensorType t) {
         if (t.dims().size() == 4) {
@@ -340,9 +339,9 @@ struct FlowGraph {
                 // maybe not DenseTensor, but we can handle other types later
                 if (auto vdt =
                         vt.dyn_cast<paddle::dialect::DenseTensorType>()) {
-                  std::cout << "judging var: " << v.defining_op() << " "
-                            << v.type() << " " << vdt.dims() << " "
-                            << (vdt.dims().size() == 4) << std::endl;
+                  VLOG(10) << "judging var: " << v.defining_op() << " "
+                           << v.type() << " " << vdt.dims() << " "
+                           << (vdt.dims().size() == 4);
                   return judge_dense_tensor_type(vdt);
                 } else if (auto vdt = vt.dyn_cast<pir::VectorType>()) {
                   if (vdt.size() == 0) return false;
@@ -360,17 +359,16 @@ struct FlowGraph {
         continue;
       }
 
-      std::cout << "add node to nhwc set: " << node << std::endl;
+      VLOG(10) << "add node to nhwc set: " << node;
       nhwc_nodes.insert(node);
 
-      std::cout << "processing node successor: " << node << std::endl;
+      VLOG(10) << "processing node successor: " << node;
 
       int j = 0;
       for (const auto& e : adjs[node]) {
         auto& edge = edges[e];
         q.push(edge.dst);
-        std::cout << "add node to queue: " << node << " -> " << edge.dst
-                  << std::endl;
+        VLOG(10) << "add node to queue: " << node << " -> " << edge.dst;
         j++;
       }
     }
@@ -385,7 +383,7 @@ struct FlowGraph {
       }
       is_node_layout_visited.insert(node);
       if (nhwc_nodes.count(node) == 0) {
-        std::cout << "add node to nchw set: " << node << std::endl;
+        VLOG(10) << "add node to nchw set: " << node;
         AddEdge(src_node(), node, INF);
       }
       for (const auto& e : adjs[node]) {
@@ -455,9 +453,8 @@ struct FlowGraph {
   }
 
   float max_flow() {
-    std::cout
-        << "--------------------[max flow start]---------------------------"
-        << std::endl;
+    VLOG(10)
+        << "--------------------[max flow start]---------------------------";
     float total_flow = 0.0f;
     while (ConstructLevelGraph()) {
       for (auto& [node, nexts] : adjs) {
@@ -467,8 +464,7 @@ struct FlowGraph {
         total_flow += f;
       }
     }
-    std::cout << "--------------------[max flow end]---------------------------"
-              << std::endl;
+    VLOG(10) << "--------------------[max flow end]---------------------------";
     return total_flow;
   }
 
@@ -483,21 +479,21 @@ struct FlowGraph {
     while (!q.empty()) {
       auto n = q.front();
       q.pop();
-      std::cout << "bfs access: " << n << std::endl;
+      VLOG(10) << "bfs access: " << n;
       if (src_set.count(n) > 0) continue;
       src_set.insert(n);
-      std::cout << "bfs insert " << n << " " << src_set.size() << std::endl;
+      VLOG(10) << "bfs insert " << n << " " << src_set.size();
       for (auto& ind : adjs[n]) {
-        std::cout << "bfs edge: " << edges[ind] << " c:" << edges[ind].capacity
-                  << " f:" << edges[ind].flow << std::endl;
+        VLOG(10) << "bfs edge: " << edges[ind] << " c:" << edges[ind].capacity
+                 << " f:" << edges[ind].flow;
         if (edges[ind].capacity > edges[ind].flow) {
-          std::cout << "bfs add: " << edges[ind].dst << std::endl;
+          VLOG(10) << "bfs add: " << edges[ind].dst;
           q.push(edges[ind].dst);
         }
       }
     }
 
-    std::cout << "src_set.size()=" << src_set.size() << std::endl;
+    VLOG(10) << "src_set.size()=" << src_set.size();
 
     std::vector<Edge> cut;
     for (const auto& e : edges) {
@@ -509,13 +505,13 @@ struct FlowGraph {
       if (src_cond == dst_cond) {
         continue;
       }
-      std::cout << "cut " << src << "(" << src_cond << ")"
-                << " " << dst << "(" << dst_cond << ")" << std::endl;
+      VLOG(10) << "cut " << src << "(" << src_cond << ")"
+               << " " << dst << "(" << dst_cond << ")";
       cut.push_back(e);
     }
 
-    std::cout << "cut set.size()=" << cut.size() << std::endl;
-    std::cout << "-----------------------------------------------" << std::endl;
+    VLOG(10) << "cut set.size()=" << cut.size();
+    VLOG(10) << "-----------------------------------------------";
 
     return {src_set, cut};
   }
@@ -540,18 +536,16 @@ class TransferLayoutPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     auto* program = module_op.program();
 
-    std::cout
-        << "---------------------[program before pass]---------------------"
-        << std::endl;
-    std::cout << *program << std::endl;
+    VLOG(10)
+        << "---------------------[program before pass]---------------------";
+    VLOG(10) << *program;
 
     // MinCut
-    std::cout << "---------------------MinCut---------------------"
-              << std::endl;
+    VLOG(10) << "---------------------MinCut---------------------";
     FlowGraph graph(*program);
     auto&& [src_set, cut] = graph.min_cut();
     for (auto& e : cut) {
-      std::cout << e << std::endl;
+      VLOG(10) << e;
     }
 
     // collect all edges from variable to operation
@@ -569,28 +563,25 @@ class TransferLayoutPass : public pir::Pass {
       }
     }
 
-    std::cout << "-----------------------[var set]------------------------"
-              << std::endl;
+    VLOG(10) << "-----------------------[var set]------------------------";
 
     // cout var_set
     for (auto& [var, ops] : var_set) {
-      std::cout << var << ":";
+      VLOG(10) << var << ":";
       for (auto op : ops) {
-        std::cout << op << ",";
+        VLOG(10) << op << ",";
       }
-      std::cout << std::endl;
+      VLOG(10);
     }
 
-    std::cout << "-----------------------[op src set]------------------------"
-              << std::endl;
+    VLOG(10) << "-----------------------[op src set]------------------------";
 
     // cout op_set
     for (auto& [k, v] : op_src_set) {
-      std::cout << k << "," << v << std::endl;
+      VLOG(10) << k << "," << v;
     }
 
-    std::cout << "-----------------------[min cut end]------------------------"
-              << std::endl;
+    VLOG(10) << "-----------------------[min cut end]------------------------";
 
     pir::Builder builder(ctx, program->block());
     auto layout_to_perm = [](std::string src, std::string dst) {
@@ -628,17 +619,15 @@ class TransferLayoutPass : public pir::Pass {
       q.push_front(op_node);
     }
 
-    std::cout
-        << "-----------------------[topological sort]------------------------"
-        << std::endl;
+    VLOG(10)
+        << "-----------------------[topological sort]------------------------";
 
     for (auto n : q) {
-      std::cout << n << std::endl;
+      VLOG(10) << n;
     }
 
-    std::cout
-        << "-----------------------[rewrite begin]------------------------"
-        << std::endl;
+    VLOG(10)
+        << "-----------------------[rewrite begin]------------------------";
 
     while (!q.empty()) {
       auto node = q.front();
@@ -650,7 +639,7 @@ class TransferLayoutPass : public pir::Pass {
         if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
           auto* op = const_cast<pir::Operation*>(
               std::get<const pir::Operation*>(node.data));
-          std::cout << "[Rewrite][RewriteByLayout] " << node << std::endl;
+          VLOG(10) << "[Rewrite][RewriteByLayout] " << node;
           auto layout_transformation_iface =
               op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
           if (layout_transformation_iface) {
@@ -664,21 +653,20 @@ class TransferLayoutPass : public pir::Pass {
         }
       }
 
-      std::cout << "[Rewrite] for " << node << std::endl;
+      VLOG(10) << "[Rewrite] for " << node;
       // if node is the src node of a cut edge
       // and it's an operation
       if (op_src_set.find(node) != op_src_set.end()) {
-        std::cout << "[Rewrite][Op] for " << node << std::endl;
+        VLOG(10) << "[Rewrite][Op] for " << node;
 
         // just insert a transpose op
         auto src = node;
         auto dst = op_src_set[src];
         auto dst_value = std::get<pir::Value>(dst.data);
 
-        std::cout << "[Rewrite][Op] for var:"
-                  << (dst_value ? (dst_value.defining_op()) : nullptr)
-                  << " t:" << (dst_value ? (dst_value.type()) : pir::Type())
-                  << std::endl;
+        VLOG(10) << "[Rewrite][Op] for var:"
+                 << (dst_value ? (dst_value.defining_op()) : nullptr)
+                 << " t:" << (dst_value ? (dst_value.type()) : pir::Type());
         // TODO(lyk): special process for reshape, we cannot only just
         // insert a transpose op temporarily ignore reshape if
         // (dst_value.defining_op()->name() == "pd_op.reshape") continue;
@@ -705,7 +693,7 @@ class TransferLayoutPass : public pir::Pass {
       // and it's a value
       // this node must not be in the nhwc set
       if (var_set.find(node) != var_set.end()) {
-        std::cout << "[Rewrite][Var] for " << node << std::endl;
+        VLOG(10) << "[Rewrite][Var] for " << node;
         const auto& ops = var_set[node];
         // operand should be replaced
         std::unordered_set<const pir::Operation*> operation_set;
@@ -714,12 +702,12 @@ class TransferLayoutPass : public pir::Pass {
         }
 
         auto value = std::get<pir::Value>(node.data);
-        std::cout << "[Rewrite][Var] for var:"
-                  << (value ? value.defining_op() : nullptr);
+        VLOG(10) << "[Rewrite][Var] for var:"
+                 << (value ? value.defining_op() : nullptr);
         for (const auto& op : operation_set) {
-          std::cout << " op: " << op << ",";
+          VLOG(10) << " op: " << op << ",";
         }
-        std::cout << std::endl;
+        VLOG(10);
         const auto& perm =
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
@@ -738,10 +726,9 @@ class TransferLayoutPass : public pir::Pass {
       }
     }
 
-    std::cout << "---------------------[program after "
-                 "pass]---------------------"
-              << std::endl;
-    std::cout << *program << std::endl;
+    VLOG(10) << "---------------------[program after "
+                "pass]---------------------";
+    VLOG(10) << *program;
   }
 };
 
