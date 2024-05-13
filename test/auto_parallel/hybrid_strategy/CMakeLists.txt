@@ -119,6 +119,6 @@ if((WITH_GPU) AND (LINUX))
         test_pir_nd_mesh_reshard
         ENVS
         "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-        set_tests_properties(test_pir_nd_mesh_reshard PROPERTIES TIMEOUT "30" LABELS "RUN_TYPE=HYBRID")
+        set_tests_properties(test_pir_nd_mesh_reshard PROPERTIES TIMEOUT "35" LABELS "RUN_TYPE=HYBRID")
     endif()
     

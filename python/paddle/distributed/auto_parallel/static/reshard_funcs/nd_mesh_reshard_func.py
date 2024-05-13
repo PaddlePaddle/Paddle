@@ -301,57 +301,29 @@ class NdMeshReshardFunctionCrossMesh(ReshardFunction):
         return True
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
-        in_dist_attr_shard = copy_dist_attr_with_new_member(
-            src_dist_attr,
-            new_dims_mapping=dst_dist_attr.dims_mapping,
-            new_partial_status=dst_dist_attr.partial_status,
+        same_status_func = SameStatusReshardFunction()
+        tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            dst_dist_attr.process_mesh,
+            src_dist_attr.dims_mapping,
+            src_dist_attr.partial_status,
         )
         tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-            src_value.type(), in_dist_attr_shard
+            src_value.type(), tmp_dist_attr
         )
-        curr_global_rank = paddle.distributed.get_rank()
-        if curr_global_rank in src_dist_attr.process_mesh.process_ids:
-            nd_mesh_func = NdMeshReshardFunction()
-            assert nd_mesh_func.is_suitable(
-                src_dist_attr, in_dist_attr_shard
-            ), f"Invoke the r to s reshard function is not valid from {src_dist_attr} to {in_dist_attr_shard}"
-            tmp_result = nd_mesh_func.reshard(
-                src_dist_attr, in_dist_attr_shard, src_value, tmp_dst_type
-            )
-        else:
+        out_value = same_status_func.reshard(
+            src_dist_attr, tmp_dist_attr, src_value, tmp_dst_type
+        )
+
+        if out_value is None:
             return None
 
-        same_status_func = SameStatusReshardFunction()
-        assert same_status_func.is_suitable(
-            in_dist_attr_shard, dst_dist_attr
-        ), f"Invoke the r to s reshard function is not valid from {in_dist_attr_shard} to {dst_dist_attr}"
-        return same_status_func.reshard(
-            in_dist_attr_shard, dst_dist_attr, tmp_result, dst_type
-        )
-
-        # same_status_func = SameStatusReshardFunction()
-        # tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-        #     dst_dist_attr.process_mesh,
-        #     src_dist_attr.dims_mapping,
-        #     src_dist_attr.partial_status,
-        # )
-        # tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-        #     src_value.type(), tmp_dist_attr
-        # )
-        # out_value = same_status_func.reshard(
-        #     src_dist_attr, tmp_dist_attr, src_value, tmp_dst_type
-        # )
-
-        # if out_value is None:
-        #     return None
-
-        # curr_global_rank = paddle.distributed.get_rank()
-        # if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
-        #     r_to_s_func = RToSReshardFunction()
-        #     assert r_to_s_func.is_suitable(
-        #         tmp_dist_attr, dst_dist_attr
-        #     ), f"Invoke the r to s reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
-        #     return r_to_s_func.reshard(
-        #         tmp_dist_attr, dst_dist_attr, out_value, dst_type
-        #     )
-        # return None
+        curr_global_rank = paddle.distributed.get_rank()
+        if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
+            nd_mesh_func = NdMeshReshardFunction()
+            assert nd_mesh_func.is_suitable(
+                tmp_dist_attr, dst_dist_attr
+            ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+            return nd_mesh_func.reshard(
+                tmp_dist_attr, dst_dist_attr, out_value, dst_type
+            )
+        return None

@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
-sys.path.append("../..")
 import collective.test_communication_api_base as test_base
 
 
@@ -23,7 +21,7 @@ class TestPIRNdMeshReshard(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=4,
-            timeout=30,
+            timeout=15,
             nnode=1,
         )
         self._default_envs = {
@@ -32,33 +30,31 @@ class TestPIRNdMeshReshard(test_base.CommunicationTestDistBase):
             "backend": "gpu",
         }
 
-    def test_simple_net_cross_mesh_reshard(self):
+    def test_simple_net_reshard(self):
         self.run_test_case(
             "pir_reshard_nd_mesh.py",
             user_defined_envs=self._default_envs,
         )
 
 
-# class TestSemiAutoParallelNdCrossMeshReshard(
-#     test_base.CommunicationTestDistBase
-# ):
-#     def setUp(self):
-#         super().setUp(num_of_devices=8, timeout=200, nnode=1)
-#         self._default_envs = {
-#             "dtype": "float32",
-#             "seed": "2023",
-#         }
-#         self._changeable_envs = {"backend": ["gpu"]}
-#
-#     def test_simple_net_hybrid_strategy(self):
-#         envs_list = test_base.gen_product_envs_list(
-#             self._default_envs, self._changeable_envs
-#         )
-#         for envs in envs_list:
-#             self.run_test_case(
-#                 "semi_auto_parallel_nd_cross_mesh_reshard.py",
-#                 user_defined_envs=envs,
-#             )
+class TestPIRNdMeshReshardCrossMesh(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(
+            num_of_devices=8,
+            timeout=20,
+            nnode=1,
+        )
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+            "backend": "gpu",
+        }
+
+    def test_simple_net_reshard_cross_mesh(self):
+        self.run_test_case(
+            "pir_reshard_nd_mesh_cross_mesh.py",
+            user_defined_envs=self._default_envs,
+        )
 
 
 if __name__ == "__main__":
