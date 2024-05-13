@@ -17,9 +17,11 @@ import operator
 from functools import reduce
 
 import paddle
-from paddle.base.data_feeder import convert_dtype
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.distribution.beta import Beta
+from paddle.framework import in_dynamic_mode
 
 __all__ = ["LKJCholesky"]
 
@@ -137,6 +139,20 @@ class LKJCholesky(distribution.Distribution):
     """
 
     def __init__(self, dim=2, concentration=1.0, sample_method="onion"):
+        if not in_dynamic_mode():
+            check_type(
+                dim,
+                "dim",
+                (int, Variable),
+                "LKJCholesky",
+            )
+            check_type(
+                concentration,
+                "concentration",
+                (float, list, tuple, Variable),
+                "LKJCholesky",
+            )
+
         # Get/convert concentration/rate to tensor.
         if self._validate_args(concentration):
             self.concentration = concentration

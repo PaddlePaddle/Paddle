@@ -30,17 +30,27 @@ paddle.seed(2024)
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'concentration'),
-    [('one-dim', 1.0)],
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                max=1.0,
+                min=0,
+            ),
+        ),
+    ],
 )
-class TestLKJCholeskyShapeOneDim(unittest.TestCase):
+class TestLKJCholeskyShape(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(self.program):
             conc = paddle.static.data(
                 'concentration',
-                (),
-                'float32',
+                self.concentration.shape,
+                self.concentration.dtype,
             )
 
             self._paddle_lkj_cholesky_onion = lkj_cholesky.LKJCholesky(

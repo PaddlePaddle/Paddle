@@ -28,11 +28,22 @@ paddle.seed(2024)
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'concentration'),
-    [('one-dim', 1.0)],
+    [
+        (
+            'one-dim',
+            parameterize.xrand(
+                (2,),
+                dtype='float32',
+                max=1.0,
+                min=0,
+            ),
+        ),
+    ],
 )
-class TestLKJCholeskyShapeOneDim(unittest.TestCase):
+class TestLKJCholeskyShape(unittest.TestCase):
     def gen_cases(self):
         extra_shape = (
+            len(self.concentration),
             self._paddle_lkj_cholesky.dim,
             self._paddle_lkj_cholesky.dim,
         )
@@ -40,10 +51,6 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
             {
                 'input': (),
                 'expect': () + extra_shape,
-            },
-            {
-                'input': (2, 2),
-                'expect': (2, 2) + extra_shape,
             },
         ]
         return cases
