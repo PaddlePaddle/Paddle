@@ -46,7 +46,7 @@ TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
 ShapeOrDataDimExprs SubstituteShapeOrData(
     const ShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<DimExpr, DimExpr>& substitution_pattern) {
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
             tensor_shape_or_data, substitution_pattern));
@@ -64,7 +64,7 @@ ShapeOrDataDimExprs SubstituteShapeOrData(
 
 std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const TensorShapeOrDataDimExprs& tensor_shape_data) {
         stream << "shape" << tensor_shape_data.shape();
         if (tensor_shape_data.data()) {

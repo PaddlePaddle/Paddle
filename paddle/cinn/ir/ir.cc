@@ -21,6 +21,7 @@
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
@@ -379,7 +380,8 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
   auto node = make_shared<Store>();
   node->tensor = tensor;
   node->value = value;
-  node->indices = indices;
+  node->indices =
+      utils::GetCompitableStoreLoadIndices(tensor.as_tensor_ref(), indices);
 
   if (tensor->type() != Void()) {
     node->set_type(
@@ -405,6 +407,7 @@ const std::string &Store::name() const {
 }
 
 Type Store::type() const { return value.type(); }
+
 std::vector<Expr *> Store::expr_fields() {
   std::vector<Expr *> exprs({&tensor, &value});
   for (auto &idx : indices) exprs.push_back(&idx);
@@ -584,8 +587,10 @@ Var &Var::operator=(const _Var_ *x) {
   return *this;
 }
 
-Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
+Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   CHECK(tensor->type().valid());
+  const auto indices = utils::GetCompitableStoreLoadIndices(
+      tensor.as_tensor_ref(), origin_indices);
   CHECK(!indices.empty());
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {
@@ -772,6 +777,9 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
   n->set_type(body.type());
   return Expr(n);
 }
+
+Type Reduce::type() const { return body.type().ElementOf(); }
+
 std::vector<Expr *> Reduce::expr_fields() {
   std::vector<Expr *> res;
   if (init.defined()) {
@@ -796,6 +804,12 @@ void Reduce::Verify() const {
   CHECK(body.defined());
   CHECK(!reduce_axis.empty()) << "At least one reduce axis is needed";
   CHECK_EQ(init.type(), body.type());
+}
+
+Type Select::type() const {
+  PADDLE_ENFORCE_EQ(
+      true_value.type(), false_value.type(), "Type of Select must be same");
+  return true_value.type();
 }
 
 void Select::Verify() const {
@@ -858,11 +872,15 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
   }
 }
 
+Type Product::type() const { return operands().front().type(); }
+
 void Product::Verify() const {
   CHECK_GT(operands().size(), 1UL)
       << "Product node should have more than 1 operands";
   MultiOperandVerify(operands());
 }
+
+Type Sum::type() const { return operands().front().type(); }
 
 void Sum::Verify() const {
   CHECK_GT(operands().size(), 1UL)

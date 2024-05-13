@@ -64,7 +64,7 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
     std::swap(axis[0], axis[split_axis]);
     RESHARD_FUNCTOR(dev_ctx, Transpose, dtype, in, axis, &in_reduce_scatter);
   } else {
-    in_reduce_scatter.ShareDataWith(in);
+    in_reduce_scatter.ShareDataNoCheckWith(in);
   }
 
   DenseTensor out_reduce_scatter;

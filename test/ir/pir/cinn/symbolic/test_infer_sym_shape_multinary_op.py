@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 import paddle.nn.functional as F
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ExpandNet(paddle.nn.Layer):
@@ -108,6 +112,7 @@ class MeshgridOpInferSymbolicShapeTest(TestBase):
             input_spec = [x_spec, y_spec]
             net = apply_to_static(net, False, input_spec)
             net.eval()
+            paddle.core._set_prim_forward_blacklist("pd_op.meshgrid")
             check_infer_results(
                 net, input_spec, 'pd_op.meshgrid', self.expected
             )

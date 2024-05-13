@@ -3153,20 +3153,12 @@ void ExpandOp::Build(pir::Builder &builder,
 }
 
 bool ExpandOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(x());
   const auto &expand_shape_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(shape());
+      infer_context->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
@@ -3210,7 +3202,7 @@ bool ExpandOp::InferSymbolicShape(
     }
   }
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       out(),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
@@ -3586,10 +3578,10 @@ phi::DataType IncrementOp::GetKernelTypeForVar(
 }
 
 bool IncrementOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -3791,10 +3783,10 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
 }
 
 bool Increment_Op::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -4002,7 +3994,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4059,7 +4051,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4077,17 +4069,15 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1) {
+    return rhs;
+  } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
@@ -4119,18 +4109,11 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
 }
 
 bool ShapeBroadcastOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
-
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
-                    0,
-                    phi::errors::InvalidArgument("Value x does not exist."));
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
-                    0,
-                    phi::errors::InvalidArgument("Value y does not exist."));
-  const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
-  const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
+  const auto &x_data_shape = infer_context->GetShapeOrDataForValue(x);
+  const auto &y_data_shape = infer_context->GetShapeOrDataForValue(y);
   PADDLE_ENFORCE_EQ(x_data_shape.data().has_value(),
                     true,
                     phi::errors::InvalidArgument(
@@ -4151,7 +4134,7 @@ bool ShapeBroadcastOp::InferSymbolicShape(
 
   symbol::ShapeOrDataDimExprs output_data_shape{
       symbol::TensorShapeOrDataDimExprs(shape, output_data)};
-  shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
+  infer_context->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }
 

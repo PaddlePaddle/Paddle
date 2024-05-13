@@ -42,19 +42,8 @@ api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_RO
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
-    echo_line="${echo_line} and one TPM approval for API change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general APIs.\n"
 
     check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
-    check_approval 1 jzhang533 sunzhongkai588 Ligoml
-fi
-
-api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
-if [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have  one TPM approval for API documents change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general API docs.\n"
-
-    check_approval 1 jzhang533 sunzhongkai588 Ligoml
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`

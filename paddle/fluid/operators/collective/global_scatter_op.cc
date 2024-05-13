@@ -47,7 +47,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
                                      "But received input's dimension = %d.",
                                      ndim_input));
 
-    framework::DDim out_dims = common::make_ddim({-1, -1});
+    phi::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -108,7 +108,7 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOp,
                   ops::GlobalScatterOpMaker,

@@ -42,7 +42,7 @@ using OpName = std::string;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 struct PowFunctor {
@@ -114,9 +114,9 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   return broadcast_shape;
 }
 
-static inline framework::DDim ComputeAndCheckShapeForConcatOp(
+static inline phi::DDim ComputeAndCheckShapeForConcatOp(
     const bool is_runtime,
-    const std::vector<framework::DDim>& inputs_dims,
+    const std::vector<phi::DDim>& inputs_dims,
     const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];
@@ -477,7 +477,7 @@ struct DeviceIndependenceTensorOperations {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(common::make_ddim(out_shape));
-    if (platform::is_gpu_place(context.GetPlace())) {
+    if (context.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
@@ -620,12 +620,12 @@ struct DeviceIndependenceTensorOperations {
                                     int axis) {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
-    std::vector<framework::DDim> inputs_dims({x.dims(), y.dims()});
+    std::vector<phi::DDim> inputs_dims({x.dims(), y.dims()});
     NameInTensorMap inputs({{"X", {&x, &y}}});
     size_t axis_ =
         ComputeAxisForConcatOp(static_cast<int64_t>(axis),
                                static_cast<int64_t>(inputs_dims[0].size()));
-    framework::DDim out_dims =
+    phi::DDim out_dims =
         ComputeAndCheckShapeForConcatOp(true, inputs_dims, axis_);
     if (out_dims[axis_] < 0) {
       out_dims[axis_] = -1;
@@ -709,8 +709,8 @@ struct DeviceIndependenceTensorOperations {
     auto eigen_place_ptr =
         context.template device_context<DeviceContext>().eigen_device();
     auto eigen_place = *eigen_place_ptr;
-    auto out_t = framework::EigenTensor<T, D>::From(*out, out->dims());
-    auto in_t = framework::EigenTensor<T, D>::From(*in, in->dims());
+    auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
+    auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
     Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
     for (size_t i = 0; i < D; i++) {
       offsets_32bit[i] = start[i];
@@ -718,8 +718,8 @@ struct DeviceIndependenceTensorOperations {
     }
     phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
-        framework::To32BitIndex(out_t),
-        framework::To32BitIndex(in_t),
+        phi::To32BitIndex(out_t),
+        phi::To32BitIndex(in_t),
         offsets_32bit,
         extents_32bit);
   }

@@ -24,20 +24,13 @@
 
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/overloaded.h"
 #include "paddle/pir/include/core/dll_decl.h"
 
 namespace symbol {
 
 #define SYMBOL_NOT_IMPLEMENTED \
   PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
-
-template <class... Ts>
-struct Overloaded : Ts... {
-  using Ts::operator()...;
-};
-
-template <class... Ts>
-Overloaded(Ts...) -> Overloaded<Ts...>;
 
 template <typename T>
 struct UnaryDimExpr {
@@ -213,6 +206,8 @@ class IR_API DimExpr : public DimExprBase {
   const DimExprBase& variant() const {
     return static_cast<const DimExprBase&>(*this);
   }
+
+  DEFINE_MATCH_METHOD();
 
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;

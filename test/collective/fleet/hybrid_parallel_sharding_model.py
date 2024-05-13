@@ -367,5 +367,151 @@ class TestDistMPTraining(unittest.TestCase):
         )
 
 
+class TestShardingV2AllGather(unittest.TestCase):
+    def setUp(self):
+        random.seed(2021)
+        np.random.seed(2021)
+        paddle.seed(2021)
+
+        self.strategy = fleet.DistributedStrategy()
+
+        self.strategy.hybrid_configs = {
+            "sharding_degree": 2,
+            "dp_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 1,
+        }
+        self.strategy.hybrid_configs[
+            "sharding_configs"
+        ].split_param = g_shard_split_param
+        fleet.init(is_collective=True, strategy=self.strategy)
+        self.data = [
+            np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            for _ in range(STEPS)
+        ]
+
+    def train_batch(self, batch, model, optimizer):
+        output = model(batch)
+        loss = output.mean()
+        loss.backward()  # do backward
+        optimizer.step()  # update parameters
+        optimizer.clear_grad()
+        return loss
+
+    def build_optimizer(self, model, strategy=None, Optimizer="adam"):
+        clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        if Optimizer == "adam":
+            optimizer = paddle.optimizer.AdamW(
+                parameters=model.parameters(),
+                learning_rate=0.001,
+                weight_decay=0.00001,
+                grad_clip=clip,
+            )
+        else:
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                parameters=model.parameters(),
+                grad_clip=clip,
+            )
+        return optimizer
+
+    def build_model_optimizer(self, Optimizer="adam", amp_level=None):
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_a = self.build_optimizer(
+            model_a,
+            strategy=self.strategy,
+            Optimizer=Optimizer,
+        )
+
+        model_b = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(
+            model_b,
+            strategy=self.strategy,
+            Optimizer=Optimizer,
+        )
+
+        if amp_level is not None and amp_level == "O2":
+            model_a = MixPrecisionLayer(model_a)
+            optimizer_a = MixPrecisionOptimizer(optimizer_a)
+            model_b = MixPrecisionLayer(model_b)
+            optimizer_b = MixPrecisionOptimizer(optimizer_b)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+        model_b = fleet.distributed_model(model_b)
+        optimizer_b = fleet.distributed_optimizer(optimizer_b)
+
+        optimizer_a._set_all_gather_overlap_forward(True, model_a)
+        optimizer_b._set_all_gather_overlap_forward(False, model_b)
+        return model_a, optimizer_a, model_b, optimizer_b
+
+    def sharding_model(self, Optimizer, sharded_accumulators, amp_level=None):
+        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
+            Optimizer=Optimizer,
+            amp_level=amp_level,
+        )
+        opt_cls = (
+            DygraphShardingOptimizerV2
+            if g_shard_split_param
+            else DygraphShardingOptimizer
+        )
+        self.assertTrue(isinstance(optimizer_a._inner_opt, opt_cls))
+
+        for idx in range(STEPS):
+            if (
+                idx == 2
+                and paddle.distributed.get_rank() == 0
+                and not g_shard_split_param
+            ):
+                self.assertTrue(
+                    set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
+                    == sharded_accumulators
+                )
+
+            if paddle.distributed.get_rank() == 0:
+                batch_sharding = paddle.to_tensor(self.data[idx][:2])
+            else:
+                batch_sharding = paddle.to_tensor(self.data[idx][2:])
+
+            batch_single = paddle.to_tensor(self.data[idx])
+            loss_a = self.train_batch(batch_sharding, model_a, optimizer_a)
+            loss_b = self.train_batch(batch_single, model_b, optimizer_b)
+
+            for j in range(len(model_a.parameters())):
+                np.testing.assert_allclose(
+                    model_a.parameters()[j].numpy(),
+                    model_b.parameters()[j].numpy(),
+                    rtol=1e-6,
+                )
+
+    def test_all_gather_overlap_forward(self):
+        if g_shard_split_param:
+            sharded_accumulators = {
+                'linear_12.b_0_velocity_0',
+                'linear_13.b_0_velocity_0',
+                'linear_14.b_0_velocity_0',
+                'embedding_4.w_0_velocity_0',
+            }
+            self.sharding_model(
+                Optimizer="Momentum",
+                sharded_accumulators=sharded_accumulators,
+                amp_level="O2",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

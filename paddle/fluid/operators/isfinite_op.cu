@@ -26,7 +26,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::OverflowKernel<phi::GPUContext,
                         phi::dtype::float16,
                         ops::InfinityFunctor>,
-    ops::OverflowKernel<phi::GPUContext, plat::bfloat16, ops::InfinityFunctor>);
+    ops::OverflowKernel<phi::GPUContext,
+                        phi::dtype::bfloat16,
+                        ops::InfinityFunctor>);
 
 REGISTER_OP_CUDA_KERNEL(
     isnan,
@@ -34,4 +36,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::OverflowKernel<phi::GPUContext, float, ops::NANFunctor>,
     ops::OverflowKernel<phi::GPUContext, double, ops::NANFunctor>,
     ops::OverflowKernel<phi::GPUContext, phi::dtype::float16, ops::NANFunctor>,
-    ops::OverflowKernel<phi::GPUContext, plat::bfloat16, ops::NANFunctor>);
+    ops::
+        OverflowKernel<phi::GPUContext, phi::dtype::bfloat16, ops::NANFunctor>);

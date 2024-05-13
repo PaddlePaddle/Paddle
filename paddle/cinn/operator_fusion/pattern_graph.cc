@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
+#include <functional>
 #include "paddle/cinn/operator_fusion/backend/pattern.h"
 #include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern.h"
@@ -58,7 +59,7 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
   std::list<PatternNodePtr<T>> topo_queue;
   std::map<PatternNodePtr<T>, int> degree;
   for (const auto& node : all_pattern_nodes_) {
-    degree[node] = node->upstream_.size();
+    degree[node] = node->upstream().size();
     if (degree[node] == 0) {
       topo_queue.push_back(node);
     }
@@ -67,7 +68,7 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
     PatternNodePtr<T> node = topo_queue.front();
     topo_queue.pop_front();
     res.push_back(node);
-    for (const auto& downstream_op : node->downstream_) {
+    for (const auto& downstream_op : node->downstream()) {
       degree[downstream_op] = degree[downstream_op] - 1;
       if (degree[downstream_op] == 0) {
         topo_queue.push_back(downstream_op);
@@ -145,7 +146,6 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
     PatternNodePtr<T> node = std::make_shared<PatternNode<T>>(content);
     op_to_node_map[content.op] = node;
     all_pattern_nodes_.emplace(node);
-    node->sink_op_ = content.op;
   }
 
   for (const auto& content : contents) {
@@ -156,7 +156,7 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
       ::pir::Operation* input_op = content.op->operand_source(i).defining_op();
       if (op_to_node_map.find(input_op) != op_to_node_map.end()) {
         PatternNodePtr<T> upstream_node = op_to_node_map[input_op];
-        cur_node->upstream_.push_back(upstream_node);
+        cur_node->AddNodeToUpstream(upstream_node);
       }
     }
 
@@ -169,10 +169,15 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
         ::pir::Operation* output_op = consumer_it->owner();
         if (op_to_node_map.find(output_op) != op_to_node_map.end()) {
           PatternNodePtr<T> downstream_node = op_to_node_map[output_op];
-          cur_node->downstream_.push_back(downstream_node);
+          cur_node->AddNodeToDownstream(downstream_node);
         }
       }
     }
+
+    // unique all upstream / downstream node.
+    // c = a + a ; then add will have 2 same upstream.
+    cur_node->UniqueUpstream();
+    cur_node->UniqueDownstream();
   }
 
   VLOG(4) << "PatternGraph Created, pattern node size: "
@@ -187,12 +192,12 @@ void PatternGraph<T>::RemoveNode(const PatternNodePtr<T>& node) {
     all_pattern_nodes_.erase(node);
   }
 
-  for (PatternNodePtr<T>& upstream : node->upstream_) {
-    RemoveFromVector(&upstream->downstream_, node);
+  for (const PatternNodePtr<T>& upstream : node->upstream()) {
+    upstream->RemoveNodeFromDownstream(node);
   }
 
-  for (PatternNodePtr<T>& downstream : node->downstream_) {
-    RemoveFromVector(&downstream->upstream_, node);
+  for (const PatternNodePtr<T>& downstream : node->downstream()) {
+    downstream->RemoveNodeFromUpstream(node);
   }
 }
 
@@ -215,28 +220,22 @@ std::string PatternGraph<T>::GraphInfo() const {
 
 template <typename T>
 PatternNodePtr<T> PatternGraph<T>::MergeNode(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+    const PatternNodePtr<T>& upstream,
+    const PatternNodePtr<T>& downstream,
+    MergePatternFn<T> merge_pattern_fn) {
   PatternNodePtr<T> merged_node =
-      std::make_shared<PatternNode<T>>(upstream, downstream);
+      std::make_shared<PatternNode<T>>(upstream, downstream, merge_pattern_fn);
 
-  // deal with the reference.
-  ExtendVector(&merged_node->upstream_, upstream->upstream_);
-  ExtendVector(&merged_node->upstream_, downstream->upstream_);
-  RemoveFromVector(&merged_node->upstream_, upstream);
-
-  ExtendVector(&merged_node->downstream_, upstream->downstream_);
-  ExtendVector(&merged_node->downstream_, downstream->downstream_);
-  RemoveFromVector(&merged_node->downstream_, downstream);
-
-  for (const auto& upstream_node : merged_node->upstream_) {
-    upstream_node->downstream_.push_back(merged_node);
-    RemoveFromVector(&upstream_node->downstream_, upstream);
-    RemoveFromVector(&upstream_node->downstream_, downstream);
+  // Update upstream and downstream nodes.
+  for (const auto& upstream_node : merged_node->upstream()) {
+    upstream_node->AddNodeToDownstream(merged_node);
+    upstream_node->RemoveNodeFromDownstream(upstream);
+    upstream_node->RemoveNodeFromDownstream(downstream);
   }
-  for (const auto& downstream_node : merged_node->downstream_) {
-    downstream_node->upstream_.push_back(merged_node);
-    RemoveFromVector(&downstream_node->downstream_, upstream);
-    RemoveFromVector(&downstream_node->downstream_, downstream);
+  for (const auto& downstream_node : merged_node->downstream()) {
+    downstream_node->AddNodeToUpstream(merged_node);
+    downstream_node->RemoveNodeFromDownstream(upstream);
+    downstream_node->RemoveNodeFromDownstream(downstream);
   }
 
   const auto vec_unique = [](const std::vector<PatternNodePtr<T>>& vec) {
@@ -244,8 +243,16 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
     return set.size() == vec.size();
   };
 
-  CHECK(vec_unique(merged_node->upstream_));
-  CHECK(vec_unique(merged_node->downstream_));
+  PADDLE_ENFORCE_EQ(
+      vec_unique(merged_node->upstream()),
+      true,
+      phi::errors::PreconditionNotMet(
+          "The upstream nodes of the merged node are not unique."));
+  PADDLE_ENFORCE_EQ(
+      vec_unique(merged_node->downstream()),
+      true,
+      phi::errors::PreconditionNotMet(
+          "The downstream nodes of the merged node are not unique."));
 
   // deal with the graph storage.
   AppendNode(merged_node);

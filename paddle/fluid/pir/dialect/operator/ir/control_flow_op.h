@@ -57,34 +57,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
-};
-
-class PyLayerOp : public pir::Op<PyLayerOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.pylayer"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
-                    std::vector<pir::Type> &&output_types);
-
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
-                    std::unique_ptr<pir::Block> &&fwd_block);
-
-  pir::Value combined_inputs() { return operand_source(0); }
-  pir::Block &forward_block();
-  pir::Region &forward_region() { return (*this)->region(0); }
-
-  void Print(pir::IrPrinter &printer);  // NOLINT
-  void VerifySig();
-  void VerifyRegion();
-
-  void UpdateOutput();
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 ///
@@ -122,7 +95,7 @@ class WhileOp
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -177,6 +150,7 @@ class AssertOp
     : public pir::Op<AssertOp, OpYamlInfoInterface, pir::SideEffectTrait> {
  public:
   using Op::Op;
+  static const char ERROR_INFO_ATTR_NAME[];
   static const char *name() { return "pd_op.assert"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[1];
@@ -204,7 +178,7 @@ class SelectInputOp
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::Value out() { return result(0); }
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {
@@ -225,6 +199,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp);
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PyLayerOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)
