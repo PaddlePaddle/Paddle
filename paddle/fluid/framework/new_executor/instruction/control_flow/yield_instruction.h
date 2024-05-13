@@ -15,24 +15,17 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
-#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 
 namespace paddle {
 namespace framework {
-class Scope;
-class Value;
-class PirInterpreter;
 class ValueExecutionInfo;
 
-class PyLayerInstruction : public InstructionBase {
+class YieldInstruction : public InstructionBase {
  public:
-  PyLayerInstruction(size_t id,
-                     const platform::Place& place,
-                     ::pir::Operation* op,
-                     ValueExecutionInfo* value_exe_info,
-                     interpreter::ExecutionConfig execution_config);
-
-  ~PyLayerInstruction();
+  YieldInstruction(size_t id,
+                   const platform::Place& place,
+                   ::pir::Operation* op,
+                   ValueExecutionInfo* value_exe_info);
 
   void Run() override;
 
@@ -40,18 +33,14 @@ class PyLayerInstruction : public InstructionBase {
 
   ::pir::Operation* Operation() const override { return op_; }
 
-  PirInterpreter* ForwardInterpreter() const { return fwd_inter_; }
-
  private:
   ::pir::Operation* op_;
 
-  std::string name_{"pylayer_instruction"};
+  std::string name_{"yield_instruction"};
+
+  std::vector<Variable*> input_vars_;
 
   std::vector<Variable*> output_vars_;
-
-  PirInterpreter* fwd_inter_ = nullptr;
-
-  std::vector<std::string> fwd_skip_gc_names_;
 };
 
 }  // namespace framework
