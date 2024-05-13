@@ -20,9 +20,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void DeQuantKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const float quantization_scale,
-                   const float quantization_shift,
-                   DenseTensor* out);
+                   const DenseTensor& input,
+                   float scale,
+                   float shift,
+                   DenseTensor* output);
 
 }  // namespace phi

@@ -24,15 +24,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void DeQuantKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const float quantization_scale,
-                   const float quantization_shift,
-                   DenseTensor* out) {
-  PADDLE_ENFORCE(quantization_scale != 0.0f,
+                   const DenseTensor& input,
+                   float scale,
+                   float shift,
+                   DenseTensor* output) {
+  PADDLE_ENFORCE(scale != 0.0f,
                  phi::errors::InvalidArgument(
                      "Dequantization scale must be different than 0.0f"));
 
-  const auto q_shift = static_cast<int32_t>(quantization_shift);
+  const auto q_shift = static_cast<int32_t>(shift);
   PADDLE_ENFORCE_GE(q_shift,
                     0,
                     phi::errors::InvalidArgument(
@@ -72,10 +72,8 @@ void DeQuantKernel(const Context& dev_ctx,
 
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-  auto scales_mem =
-      dnnl::memory(scales_md,
-                   dev_ctx.GetEngine(),
-                   phi::funcs::to_void_cast<float>(&quantization_scale));
+  auto scales_mem = dnnl::memory(
+      scales_md, dev_ctx.GetEngine(), phi::funcs::to_void_cast<float>(&scale));
 
   auto zero_points_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
