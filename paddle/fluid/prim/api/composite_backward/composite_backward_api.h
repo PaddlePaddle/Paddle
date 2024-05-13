@@ -1045,10 +1045,33 @@ void prod_grad(const Tensor& x,
     } else {
       reduce_all = false;
     }
-    auto x_grad_tmp = Tensor();
-    auto out_tmp = Tensor();
+    auto out_grad_tmp = Tensor();
     std::vector<int> unchange_axis, change_axis, origin_position, transpose_dim,
         transpose_shape, cumprod_shape;
+    if (x_dim_size == 1) {
+      out_grad_tmp = out_grad.expand(IntArray(x_dim));
+    } else {
+      if (!keep_dim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
+          }
+        }
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+        out_grad_tmp = out_grad_.expand(IntArray(x_dim));
+      } else {
+        out_grad_tmp = out_grad.expand(IntArray(x_dim));
+      }
+    }
     auto axis_ = std::vector<int>();
     if (reduce_all) {
       int numel = 1;
@@ -1061,7 +1084,8 @@ void prod_grad(const Tensor& x,
       auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
       auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
       auto x_grad_tmp = left_cumprod * right_cumprod;
-      auto x_grad_res = reshape<T>(x_grad_tmp, x.shape());
+      auto x_grad_tmp2 = reshape<T>(x_grad_tmp, x.shape());
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
       set_output<T>(x_grad_res, x_grad);
     } else {
       int unchange_size = static_cast<int>(x_dim_size - axis_size);
@@ -1102,7 +1126,8 @@ void prod_grad(const Tensor& x,
       auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
       auto x_grad_tmp = left_cumprod * right_cumprod;
       auto x_grad_reshape = reshape<T>(x_grad_tmp, transpose_shape);
-      auto x_grad_res = transpose<T>(x_grad_reshape, origin_position);
+      auto x_grad_tmp2 = transpose<T>(x_grad_reshape, origin_position);
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
       set_output<T>(x_grad_res, x_grad);
     }
   }
