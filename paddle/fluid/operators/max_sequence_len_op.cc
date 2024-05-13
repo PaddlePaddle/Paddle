@@ -41,7 +41,7 @@ class MaxSequenceLenOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
     auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();

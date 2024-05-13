@@ -51,7 +51,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const phi::Place& place) const override {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, phi::errors::InvalidArgument("Input X must be provided."));

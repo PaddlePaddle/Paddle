@@ -31,7 +31,7 @@ namespace operators {
 
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-phi::DDim recv_shape_info(const platform::Place &place,
+phi::DDim recv_shape_info(const phi::Place &place,
                           const gpuStream_t &stream,
                           platform::NCCLComm *comm,
                           phi::distributed::NCCLCommContext *comm_ctx,

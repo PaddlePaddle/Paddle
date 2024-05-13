@@ -223,7 +223,7 @@ class RecurrentOp : public RecurrentBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override;
+               const phi::Place &place) const override;
 
  private:
   StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
@@ -240,7 +240,7 @@ class RecurrentGradOp : public RecurrentBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override;
+               const phi::Place &place) const override;
 
   StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
                               const framework::Scope &scope,

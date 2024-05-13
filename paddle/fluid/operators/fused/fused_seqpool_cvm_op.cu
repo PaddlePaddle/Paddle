@@ -102,18 +102,18 @@ __global__ void FusedCVMKernelNoCVM(const size_t N,
 }
 
 template <typename T>
-void FusedSeqpoolCVM(const framework::ExecutionContext
-                         &ctx,  // const paddle::platform::Place &place,
-                     const std::vector<const T *> &input_data,
-                     const std::vector<T *> &output_data,
-                     const std::vector<T *> &seqpool_output_data,
-                     std::vector<const size_t *> lods,
-                     const int batch_size,
-                     const int slot_num,
-                     const int embedding_size,
-                     const float padding_value,
-                     const bool use_cvm,
-                     const int cvm_offset) {
+void FusedSeqpoolCVM(
+    const framework::ExecutionContext &ctx,  // const paddle::phi::Place &place,
+    const std::vector<const T *> &input_data,
+    const std::vector<T *> &output_data,
+    const std::vector<T *> &seqpool_output_data,
+    std::vector<const size_t *> lods,
+    const int batch_size,
+    const int slot_num,
+    const int embedding_size,
+    const float padding_value,
+    const bool use_cvm,
+    const int cvm_offset) {
   auto stream = ctx.template device_context<phi::GPUContext>().stream();
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   size_t total_ptr_len = input_data.size() + output_data.size() +

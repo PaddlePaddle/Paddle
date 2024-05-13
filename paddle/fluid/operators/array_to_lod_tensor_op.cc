@@ -44,7 +44,7 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor {
-  using argument_type = platform::Place;
+  using argument_type = phi::Place;
   using result_type = void;
   std::vector<phi::DenseTensor> in;
   mutable phi::DenseTensor *out;
@@ -91,7 +91,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
@@ -104,7 +104,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                       phi::errors::PreconditionNotMet(
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
-    platform::Place place = x[0].place();
+    phi::Place place = x[0].place();
     auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
     phi::DDim ins_dims = rank > 1 ? common::slice_ddim(x[0].dims(), 1, rank)

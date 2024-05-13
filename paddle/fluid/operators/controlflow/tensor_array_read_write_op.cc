@@ -36,7 +36,7 @@ class WriteToArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<phi::DenseTensor>();
@@ -146,7 +146,7 @@ class ReadFromArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         x, phi::errors::NotFound("Input(X) of ReadFromArrayOp is not found."));

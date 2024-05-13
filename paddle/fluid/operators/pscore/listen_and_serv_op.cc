@@ -45,7 +45,7 @@ class ListenAndServOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const phi::Place& place) const override {
     VLOG(1) << "just for recorder";
   }
 };

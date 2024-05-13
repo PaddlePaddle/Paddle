@@ -53,7 +53,7 @@ class AssertOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     const framework::Variable *cond_var_ptr =
         scope.FindVar(Input(kCond.data()));
     PADDLE_ENFORCE_NOT_NULL(

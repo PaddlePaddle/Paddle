@@ -310,7 +310,7 @@ class PyFuncOp : public framework::OperatorBase {
 
  protected:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &in_arg_names = Inputs("X");
     auto &out_arg_names = Outputs("Out");
 

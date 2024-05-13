@@ -67,7 +67,7 @@ class FetchOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Fetch");
     OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Fetch");
 
