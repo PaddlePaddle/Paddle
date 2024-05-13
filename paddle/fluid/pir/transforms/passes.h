@@ -45,6 +45,7 @@ USE_PIR_PASS(remove_redundant_transpose_pass);
 USE_PIR_PASS(depthwise_conv_onednn_pass);
 USE_PIR_PASS(squeeze_transpose_onednn_fuse_pass);
 USE_PIR_PASS(batch_norm_act_fuse_pass);
+USE_PIR_PASS(conv_affine_channel_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);
