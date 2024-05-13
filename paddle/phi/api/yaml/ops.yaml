@@ -812,7 +812,7 @@
   args : (Tensor input, float scale=1.0, float shift=0.0)
   output : Tensor(output)
   infer_meta :
-    func : UnchangedExceptDtypeInferMeta
+    func : DeQuantizeInferMeta
     param : [input]
   kernel :
     func : dequantize
@@ -2446,7 +2446,7 @@
   args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
   output : Tensor(output)
   infer_meta :
-    func : UnchangedExceptDtypeInferMeta
+    func : QuantizeInferMeta
     param : [input]
   kernel :
     func : quantize
