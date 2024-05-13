@@ -510,42 +510,17 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
             "max_mem_usage should be set when using memory estimation tool"
         )
 
-    memory_estimation_cmd = [
-        "python",
-        memory_estimation_tool,
-        "--dp_degree",
-        str(cur_cfg['dp_degree']),
-        "--mp_degree",
-        str(cur_cfg['mp_degree']),
-        "--pp_degree",
-        str(cur_cfg['pp_degree']),
-        "--vpp_degree",
-        str(cur_cfg['vpp_degree']),
-        "--sharding_degree",
-        str(cur_cfg['sharding_degree']),
-        "--sharding_stage",
-        str(cur_cfg['sharding_stage']),
-        "--use_recompute",
-        str(cur_cfg['use_recompute']),
-        "--micro_batch_size",
-        str(cur_cfg['micro_batch_size']),
-        "--recompute_granularity",
-        str(cur_cfg['recompute_granularity']),
-        "--hidden_size",
-        str(model_cfg['hidden_size']),
-        "--num_attention_heads",
-        str(model_cfg['num_attention_heads']),
-        "--num_layers",
-        str(model_cfg['num_layers']),
-        "--max_sequence_length",
-        str(model_cfg['max_sequence_length']),
-        "--vocab_size",
-        str(model_cfg['vocab_size']),
-        "--intermediate_size",
-        str(model_cfg['intermediate_size']),
-    ]
+    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {cur_cfg['dp_degree']} --mp_degree {cur_cfg['mp_degree']} \
+                                --pp_degree {cur_cfg['pp_degree']} --vpp_degree {cur_cfg['vpp_degree']} \
+                                --sharding_degree {cur_cfg['sharding_degree']} --sharding_stage {cur_cfg['sharding_stage']} \
+                                --use_recompute {cur_cfg['use_recompute']} --micro_batch_size {cur_cfg['micro_batch_size']} \
+                                --recompute_granularity {cur_cfg['recompute_granularity']} \
+                                --hidden_size {model_cfg['hidden_size']} --num_attention_heads {model_cfg['num_attention_heads']} \
+                                --num_layers {model_cfg['num_layers']} --max_sequence_length {model_cfg['max_sequence_length']} \
+                                --vocab_size {model_cfg['vocab_size']} --intermediate_size {model_cfg['intermediate_size']} "
     result = subprocess.run(
         memory_estimation_cmd,
+        shell=True,
         capture_output=True,
         text=True,
     )
