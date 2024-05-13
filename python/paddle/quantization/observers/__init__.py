@@ -14,6 +14,5 @@
 # limitations under the License.
 
 from .abs_max import AbsmaxObserver
-from .groupwise import GroupWiseWeightObserver
 
-__all__ = ["AbsmaxObserver", "GroupWiseWeightObserver"]
+__all__ = ["AbsmaxObserver"]
