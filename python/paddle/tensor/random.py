@@ -113,16 +113,16 @@ def bernoulli_(x, p=0.5, name=None):
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
-        p (float|Tensor, optional): The success rate parameter of the output Tensor's bernoulli distribution.
-            If ``p`` is float, all elements of the output Tensor shared the same success rate.
-            If ``p`` is a Tensor, it has per-element success rates.
+        p (float|Tensor, optional): The success probability parameter of the output Tensor's bernoulli distribution.
+            If ``p`` is float, all elements of the output Tensor shared the same success probability.
+            If ``p`` is a Tensor, it has per-element success probabilitys.
             Default is 0.5
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor filled with random values sampled from the bernoulli distribution with success rate ``p`` .
+        A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
 
     Examples:
         .. code-block:: python
