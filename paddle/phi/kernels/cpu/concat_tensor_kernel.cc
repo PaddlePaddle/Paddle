@@ -72,7 +72,7 @@ void ConcatTensorKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(concat_tensor,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::ConcatTensorKernel,
                    float,

@@ -26,9 +26,4 @@ void ConcatTensorKernel(const Context& dev_ctx,
                         const std::vector<const DenseTensor*>& x,
                         DenseTensor* concated_out);
 
-extern template void ConcatTensorKernel<int, CPUContext>(
-    const CPUContext& dev_ctx,
-    const std::vector<const DenseTensor*>& x,
-    DenseTensor* concated_out);
-
 }  // namespace phi
