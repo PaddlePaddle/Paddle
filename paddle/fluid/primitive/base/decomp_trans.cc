@@ -390,6 +390,9 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
           << ", ops_list.size(): " << ops_list.size();
   int start_idx = std::max(start_index_, 0);
   int end_idx = (end_index_ == -1) ? ops_list.size() : end_index_;
+  if (start_idx == end_idx) {
+    return std::vector<pir::Operation*>();
+  }
   PADDLE_ENFORCE_LT(start_idx,
                     end_idx,
                     common::errors::PreconditionNotMet(
