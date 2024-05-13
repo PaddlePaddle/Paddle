@@ -138,9 +138,9 @@ def bernoulli_(x, p=0.5, name=None):
              [0., 1., 1., 1.]])
 
     """
+    x.uniform_(0.0, 1.0)
     ones_mask = x > p
     zeros_mask = x < p
-    x.uniform_()
     x.masked_fill_(ones_mask, 1.0)
     out = x.masked_fill_(zeros_mask, 0.0)
     return out
