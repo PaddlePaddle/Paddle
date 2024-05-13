@@ -400,6 +400,7 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    bernoulli_,
     binomial,
     exponential_,
     multinomial,
@@ -748,6 +749,7 @@ tensor_method_func = [
     'put_along_axis',
     'select_scatter',
     'put_along_axis_',
+    'bernoulli_',
     'exponential_',
     'heaviside',
     'index_add',
