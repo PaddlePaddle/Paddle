@@ -38,6 +38,8 @@ def block_multihead_attention(
     qkv_bias=None,
     out_shift=None,
     out_smooth=None,
+    max_enc_len_this_time=None,
+    max_dec_len_this_time=None,
     rope_emb=None,
     mask=None,
     tgt_mask=None,
@@ -301,6 +303,8 @@ def block_multihead_attention(
             qkv_bias,
             out_shift,
             out_smooth,
+            max_enc_len_this_time,
+            max_dec_len_this_time,
             max_seq_len,
             block_size,
             use_neox_style,
@@ -353,6 +357,10 @@ def block_multihead_attention(
         inputs["out_shift"] = out_shift
     if out_smooth is not None:
         inputs["out_smooth"] = out_smooth
+    if max_enc_len_this_time is not None:
+        inputs["max_enc_len_this_time"] = max_enc_len_this_time
+    if max_dec_len_this_time is not None:
+        inputs["max_dec_len_this_time"] = max_dec_len_this_time
 
     outputs = {
         'fmha_out': out,

@@ -232,6 +232,17 @@ void FusedMultiTransformerInferMeta(
   out->set_dims(x.dims());
 }
 
+void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
+                            const MetaTensor& seq_lens_decoder,
+                            const int bsz,
+                            MetaTensor* max_enc_len_this_time,
+                            MetaTensor* max_dec_len_this_time) {
+  max_enc_len_this_time->set_dims({1});
+  max_enc_len_this_time->set_dtype(phi::DataType::INT32);
+  max_dec_len_this_time->set_dims({1});
+  max_dec_len_this_time->set_dtype(phi::DataType::INT32);
+}
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
@@ -256,6 +267,8 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& qkv_bias,
                                       const MetaTensor& out_shift,
                                       const MetaTensor& out_smooth,
+                                      const MetaTensor& max_enc_len_this_time,
+                                      const MetaTensor& max_dec_len_this_time,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
