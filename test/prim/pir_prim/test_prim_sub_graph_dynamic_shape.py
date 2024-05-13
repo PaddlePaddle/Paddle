@@ -79,7 +79,7 @@ def bce_loss_net(x, label):
 
 
 def one_hot_net(x):
-    return paddle.nn.functional.one_hot(x, 12)
+    return paddle.nn.functional.one_hot(x, 10)
 
 
 def swiglu_net1(x, y):
@@ -198,9 +198,7 @@ class TestPrimBase(unittest.TestCase):
 
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
-        print(res_ref)
         res = self.base_net("prim")
-        print(res)
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(
                 ref, actual, rtol=self.tol, atol=self.tol
@@ -277,7 +275,7 @@ class TestPrimOneHot(TestPrimBase):
             .reshape([self.depth])
         )
         self.net = one_hot_net
-        self.necessary_ops = "pd_op.one_hot_v2"
+        self.necessary_ops = "pd_op.one_hot"
         self.enable_cinn = False
         self.tol = 1e-6
 
