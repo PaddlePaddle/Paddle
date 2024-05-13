@@ -69,8 +69,8 @@ class ProcessContext:
         self._proc = subprocess.Popen(
             self._cmd,
             env=envs,
-            stdout=self._stdout,
-            stderr=self._stderr,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             preexec_fn=self._preexec_fn or pre_fn,
             shell=self._shell,
         )

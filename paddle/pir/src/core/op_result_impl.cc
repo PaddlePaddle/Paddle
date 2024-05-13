@@ -33,9 +33,10 @@ OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
     PADDLE_FATAL(
         "Destroyed a op_result that is still in use by %d. The owner op type "
-        "is: %s",
+        "is: %s, %p",
         first_use()->owner()->name(),
-        owner()->name());
+        owner()->name(),
+        owner());
   }
 }
 

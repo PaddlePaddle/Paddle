@@ -172,26 +172,40 @@ std::vector<pir::Type> BuildOutType(
     ::pir::IrMapping* ir_mapping,
     std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>*
         align_info) {
+
+  VLOG(4) << "clone ops:";
+  for(auto* op: group_ops){
+    VLOG(4) << op << "    " << op->name();
+  }
+
   std::vector<::pir::Operation*> vec_new_op_list;
   ::pir::CloneOptions clone_options(false, true, false);
 
   auto& alignment_schedule_info = node.alignment_schedule_info;
   for (auto op : group_ops) {
+    VLOG(4) << "clone start:" << op->name();
     auto new_op = op->Clone(*ir_mapping, clone_options);
+    VLOG(4) << "clone end:" << op->name();
+
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
     for (size_t i = 0; i < op->num_results(); ++i) {
+      VLOG(4) << "Set result: " << op->result(i).impl();
+      auto zzzzz = shape_analysis.GetShapeOrDataForValue(op->result(i));
+      VLOG(4) << "shape or data: " << zzzzz;
       shape_analysis.SetShapeOrDataForValue(
           new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
+          zzzzz);
     }
+    VLOG(4) << "after shape ana";
 
     vec_new_op_list.push_back(new_op);
 
     if (alignment_schedule_info.count(op)) {
       align_info->emplace(new_op, alignment_schedule_info.at(op));
     }
+    VLOG(4) << "after alignment_schedule_info";
   }
 
   return vec_new_op_list;
@@ -203,6 +217,23 @@ std::vector<pir::Type> BuildOutType(
     const GroupClusterNode& node,
     const std::vector<::pir::Value> output_value,
     ::pir::IrMapping* ir_mapping) {
+
+  VLOG(4) << "group_ops";
+  for(auto* op: group_ops){
+    VLOG(4) << op << "    " << op->name();
+  }
+
+  VLOG(4) << "output_value";
+  for(auto value: output_value){
+    VLOG(4) << value.impl() << "    " << value.defining_op()->name();
+  }
+
+  VLOG(4) << "ir_mapping";
+  std::unordered_map<pir::Value, pir::Value> map_zz = ir_mapping->GetMap<::pir::Value>();
+  for (const auto& [k,v] : map_zz){
+    VLOG(4) << "key: " << k.impl() <<  "    " << k.defining_op()->name() << ", value: " << v.impl() << "    " << v.defining_op()->name();
+  }
+
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
@@ -210,8 +241,10 @@ std::vector<pir::Type> BuildOutType(
   std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
       new_align_info;
 
+  VLOG(4) << "before clone";
   auto vec_new_op_list = CloneOps(group_ops, node, ir_mapping, &new_align_info);
 
+  VLOG(4) << "after clone";
   auto group_info = BuildGroupInfo(vec_new_op_list, node, new_align_info);
   // step 2: Replace the old op with GroupOp.
 
@@ -219,6 +252,7 @@ std::vector<pir::Type> BuildOutType(
   auto new_fusion_op =
       rewriter->Build<cinn::dialect::FusionOp>(output_types, group_info);
   pir::Block* fusion_block = new_fusion_op.block();
+  VLOG(4) << "after new_fusion_op";
 
   for (auto op : vec_new_op_list) {
     fusion_block->insert(fusion_block->end(), op);
@@ -238,6 +272,7 @@ std::vector<pir::Type> BuildOutType(
   rewriter->SetInsertionPointToBlockEnd(fusion_block);
   rewriter->Build<::pir::YieldOp>(new_output);
   rewriter->SetInsertionPointAfter(new_fusion_op);
+  VLOG(4) << "end ReplaceWithGroupOp";
 
   return new_fusion_op;
 }
@@ -346,12 +381,13 @@ class CinnGroupClusterPattern
       auto output_values = GenerateOutputValue(node.ops, all_output_values);
       VLOG(4) << "cluster node output size: " << output_values.size();
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
-
+      VLOG(4) << "after SortByOriginalOrderAndUniq";
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
-
+      VLOG(4) << "after ReplaceWithGroupOp";
       auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
           group_op->GetParentProgram());
+      VLOG(4) << "after create shape_analysis";
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
@@ -359,6 +395,7 @@ class CinnGroupClusterPattern
             new_group_op->result(i),
             shape_analysis.GetShapeOrDataForValue(output_values[i]));
       }
+      VLOG(4) << "after update ir mapping";
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
@@ -368,10 +405,11 @@ class CinnGroupClusterPattern
                                       new_group_op->result(i));
         }
       }
+      VLOG(4) << "after ReplaceAllUsesWith";
     }
 
     rewriter.EraseOp(group_op);
-
+    VLOG(4) << "after EraseOp";
     return true;
   }
 };

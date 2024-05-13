@@ -193,9 +193,10 @@ void ParallelCompiler::Task::Lowering() {
     auto& group = context->graph->fusion_groups[group_id];
     VLOG(4) << "Start Lowering Group " << group_id << " at "
             << std::this_thread::get_id() << " :\n"
-            << "Group " << group_id << " {\n"
-            << context->graph->DebugGroupedGraph(group->CollectNodes())
-            << "}\n";
+            << "Group " << group_id << " \n";
+            // << "Group " << group_id << " {\n"
+            // << context->graph->DebugGroupedGraph(group->CollectNodes())
+            // << "}\n";
     auto lowered_funcs = op_lowerer.Lower(group);
     if (lowered_funcs.size() != 1) {
       std::ostringstream err_msg;

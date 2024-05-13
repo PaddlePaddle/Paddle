@@ -303,6 +303,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
   topo_infer_walker(start_ops.begin(), start_ops.end(), [&](Operation* op) {
     auto infer_symbolic_shape_interface =
         op->dyn_cast<pir::InferSymbolicShapeInterface>();
+    VLOG(3) << "InferShapeOrDataForValue in subgraph: " << op->name() << ", "
+            << op->id();
     if (infer_symbolic_shape_interface) {
       infer_symbolic_shape_interface.InferSymbolicShape(&context_);
       for (auto& result_value : op->results()) {
@@ -342,8 +344,9 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
       SetStaticShapeForValue(val);
     } else {
       VLOG(3) << "InferShapeOrDataForValue,  defining_op: "
-              << val.defining_op()->name();
+              << val.defining_op()->name() << ", " << val.defining_op()->id();
       InferShapeOrDataForValue(val);
+      VLOG(3) << "InferShapeOrDataForValue end";
     }
   }
 

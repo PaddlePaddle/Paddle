@@ -311,8 +311,7 @@ bool FullWithTensorOpInferSymbolicShape(
 
 bool FlashAttnOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-
-     std::cerr << "begin\n";
+  std::cerr << "begin\n";
   pir::Value operand_source = op->operand_source(0);
   const symbol::ShapeOrDataDimExprs &q =
       infer_context->GetShapeOrDataForValue(operand_source);
@@ -332,9 +331,11 @@ bool FlashAttnOpInferSymbolicShape(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
- std::cerr << "begin 5\n"; 
- std::cerr << "q " << q.shape().size() << "\t" << k.shape().size() << "\t" << v.shape().size() << std::endl;
- std::cerr << q.shape()[0] << "\t" << k.shape()[0] << "\t" << v.shape()[0] << "\t" << k.shape()[1] << "\t" << v.shape()[1] << std::endl;
+  std::cerr << "begin 5\n";
+  std::cerr << "q " << q.shape().size() << "\t" << k.shape().size() << "\t"
+            << v.shape().size() << std::endl;
+  std::cerr << q.shape()[0] << "\t" << k.shape()[0] << "\t" << v.shape()[0]
+            << "\t" << k.shape()[1] << "\t" << v.shape()[1] << std::endl;
   infer_context->AddEqualCstr(q.shape()[0], k.shape()[0]);
   std::cerr << "equal 1\n";
   infer_context->AddEqualCstr(q.shape()[0], v.shape()[0]);
@@ -609,7 +610,10 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
     }
-
+    if (data_dim_exprs.empty()) {
+      return symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(shape_dim_exprs));
+    }
     return symbol::ShapeOrDataDimExprs(
         symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
   }();
