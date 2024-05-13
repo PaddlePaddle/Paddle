@@ -34,6 +34,7 @@
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -945,7 +946,7 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   return operation;
 }
 
-struct AssignOpTranscriber : public OpTranscriber {
+struct Assign2AssignOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     std::string target_op_name;
@@ -975,6 +976,53 @@ struct AssignOpTranscriber : public OpTranscriber {
     }
 
     return op_info;
+  }
+};
+
+struct Assign2AssignOutOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    const auto& op_info =
+        ctx->GetRegisteredOpInfo(paddle::dialect::AssignOut_Op::name());
+    if (!op_info) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign should have corresponding OpInfo %s.",
+          paddle::dialect::AssignOut_Op::name()));
+    }
+
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    auto x_vars = op_desc.Input("X", true);
+    auto x_defining_info = (*param_map)[x_vars[0]];
+    op_inputs.push_back(x_defining_info.value);
+
+    auto out_vars = op_desc.Output("Out");
+    auto out_defining_info = (*param_map)[out_vars[0]];
+    op_inputs.push_back(out_defining_info.value);
+
+    return op_inputs;
+  }
+};
+
+struct AssignOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    if (param_map->count(op_desc.Output("Out")[0])) {
+      return Assign2AssignOutOpTranscriber()(ctx, param_map, op_desc, block);
+    } else {
+      return Assign2AssignOpTranscriber()(ctx, param_map, op_desc, block);
+    }
   }
 };
 

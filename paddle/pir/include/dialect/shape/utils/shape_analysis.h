@@ -59,6 +59,9 @@ class IR_API InferSymbolicShapeContext {
   void PrintShapeOrDatas() const;
 
  private:
+  symbol::ShapeOrDataDimExprs SimplifyBroadcastForShapeOrData(
+      const symbol::ShapeOrDataDimExprs& shape_or_data);
+
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 
@@ -146,7 +149,7 @@ class IR_API ShapeConstraintIRAnalysis final
 class IR_API ShapeAnalysisManager {
  public:
   static ShapeAnalysisManager& Instance();
-  ShapeConstraintIRAnalysis& Get(pir::Program* program);
+  ShapeConstraintIRAnalysis& Get(const pir::Program* program);
 
   ShapeAnalysisManager(const ShapeAnalysisManager&) = delete;
   ShapeAnalysisManager(ShapeAnalysisManager&&) = delete;

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -193,12 +194,12 @@ class FusedDropoutHelper {
         d_bias,
         ctx);
     if (d_residual) {
-      memory::Copy(ctx.GetPlace(),
-                   d_residual,
-                   ctx.GetPlace(),
-                   d_out,
-                   rows_ * cols_ * sizeof(T),
-                   ctx.stream());
+      phi::memory_utils::Copy(ctx.GetPlace(),
+                              d_residual,
+                              ctx.GetPlace(),
+                              d_out,
+                              rows_ * cols_ * sizeof(T),
+                              ctx.stream());
     }
   }
 

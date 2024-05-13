@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -282,7 +283,7 @@ void BincountInferMeta(const MetaTensor& x,
   if (weights) {
     out->set_dtype(weights.dtype());
   } else {
-    out->set_dtype(x.dtype());
+    out->set_dtype(DataType::INT64);
   }
 
   out->share_lod(x);
@@ -897,6 +898,44 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                          data_format,
                          out,
                          config);
+}
+
+void CorrelationInferMeta(const MetaTensor& input1,
+                          const MetaTensor& input2,
+                          int pad_size,
+                          int kernel_size,
+                          int max_displacement,
+                          int stride1,
+                          int stride2,
+                          int corr_type_multiply,
+                          MetaTensor* out) {
+  auto in_dims = input1.dims();
+  auto in2_dims = input2.dims();
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4,
+      true,
+      phi::errors::InvalidArgument("Input(X) of CorrelationOp must be 4 dims."
+                                   "But received dims is %d.",
+                                   in_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      in2_dims.size() == 4,
+      true,
+      phi::errors::InvalidArgument("Input(Y) of CorrelationOp must be 4 dims."
+                                   "But received dims is %d.",
+                                   in2_dims.size()));
+  std::vector<int64_t> output_shape =
+      CorrelationOutputSize(static_cast<int>(in_dims[0]),
+                            static_cast<int>(in_dims[2]),
+                            static_cast<int>(in_dims[3]),
+                            stride1,
+                            stride2,
+                            kernel_size,
+                            pad_size,
+                            max_displacement);
+  out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(input1.dtype());
 }
 
 void CrossInferMeta(const MetaTensor& x,
