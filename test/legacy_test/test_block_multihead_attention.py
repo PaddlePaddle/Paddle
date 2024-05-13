@@ -392,6 +392,8 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -496,6 +498,8 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             self.tgt_mask,  # tgt_mask
@@ -690,6 +694,8 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             self.rope_emb,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -800,6 +806,8 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             self.rope_emb,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -979,6 +987,8 @@ class TestBlockMultiHeadAttnPreCache(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             self.attention_mask,  # attn_mask
             None,  # tgt_mask
@@ -1083,6 +1093,8 @@ class TestBlockMultiHeadAttnPreCache(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             self.attention_mask,  # attn_mask
             None,  # tgt_mask
@@ -1285,6 +1297,8 @@ class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
                 None,  # qkv_bias
                 None,  # out_shift
                 None,  # out_smooth
+                None,  # max_enc_len_this_time
+                None,  # max_dec_len_this_time
                 None,  # rotary_embs
                 None,  # attn_mask
                 None,  # tgt_mask
@@ -1498,6 +1512,8 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
             qkv_bias,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -1643,6 +1659,8 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
             qkv_bias,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -1858,6 +1876,8 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
             qkv_bias,  # qkv_bias
             shift,  # out_shift
             smooth,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2021,6 +2041,8 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
             qkv_bias,  # qkv_bias
             shift,  # out_shift
             smooth,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2186,6 +2208,8 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2298,6 +2322,8 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2469,6 +2495,8 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2579,6 +2607,8 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2762,6 +2792,8 @@ class TestBlockMultiHeadAttnEncDecCacheKVStaticQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -2871,6 +2903,8 @@ class TestBlockMultiHeadAttnEncDecCacheKVStaticQuant(unittest.TestCase):
             None,  # qkv_bias
             None,  # out_shift
             None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
