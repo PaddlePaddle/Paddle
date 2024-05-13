@@ -51,7 +51,7 @@ class CConcatOp : public framework::OperatorWithKernel {
                                      rank,
                                      nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
     if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
     ctx->SetOutputDim("Out", dim);

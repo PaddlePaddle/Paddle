@@ -3053,6 +3053,12 @@
   outputs :
     out : Out
 
+- op : send_and_recv
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
 - op : send_u_recv(graph_send_recv)
   backward : send_u_recv_grad(graph_send_recv_grad)
   inputs :
@@ -3852,6 +3858,12 @@
   outputs:
     viterbi_path: ViterbiPath
 
+- op: ctc_align
+  inputs:
+    {input : Input, input_length : InputLength}
+  outputs:
+    {output : Output, output_length : OutputLength}
+
 - op: cudnn_lstm
   backward: cudnn_lstm_grad
   inputs:
@@ -3960,6 +3972,12 @@
     {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
+
+- op: fusion_seqpool_cvm_concat
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
 
 - op: fusion_squared_mat_sub
   inputs :
