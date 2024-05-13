@@ -263,7 +263,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                     loss_val = exe.run(
                         dense_train_program,
                         feed=feeder.feed(data),
-                        fetch_list=[cost.name],
+                        fetch_list=[cost],
                     )
                     rets.append(np.mean(loss_val))
 
@@ -284,7 +284,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                     loss_val = exe.run(
                         sparse_train_program,
                         feed=feeder.feed(data),
-                        fetch_list=[cost.name],
+                        fetch_list=[cost],
                     )
                     rets.append(np.mean(loss_val))
 

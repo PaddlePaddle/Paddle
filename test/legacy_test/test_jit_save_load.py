@@ -470,7 +470,9 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
         net = LinearNetWithNestOut(8, 8)
         dy_outs = paddle.utils.flatten(net(x))
-        net = to_static(net, input_spec=[InputSpec([None, 8], name='x')])
+        net = to_static(
+            net, input_spec=[InputSpec([None, 8], name='x')], full_graph=True
+        )
 
         model_path = os.path.join(self.temp_dir.name, "net_with_nest_out/model")
         paddle.jit.save(net, model_path)
@@ -501,7 +503,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
 
         dy_output_dict = model(x)
 
-        st_model = paddle.jit.to_static(model)
+        st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
         paddle.jit.save(st_model, "./test_jit_save_load")
@@ -557,7 +559,7 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
 
         dy_output_dict = model(x)
 
-        st_model = paddle.jit.to_static(model)
+        st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
         paddle.jit.save(st_model, "./test_jit_save_load2")
@@ -1606,13 +1608,15 @@ class TestJitSaveCombineProperty(unittest.TestCase):
                 self.flag = paddle.ones([2], dtype="int32")
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def log_softmax(self, input):
                 return paddle.nn.functional.log_softmax(input, axis=-1)
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def forward(self, x):
                 out = self.fc1(x)
@@ -1621,7 +1625,8 @@ class TestJitSaveCombineProperty(unittest.TestCase):
                 return out
 
             @paddle.jit.to_static(
-                input_spec=[InputSpec([None, 4], dtype='float32')]
+                input_spec=[InputSpec([None, 4], dtype='float32')],
+                full_graph=True,
             )
             def infer(self, input):
                 out = self.fc2(input)
@@ -1873,7 +1878,8 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
         @paddle.jit.to_static(
             input_spec=[
                 InputSpec(shape=[None, 6], dtype='float32', name='x'),
-            ]
+            ],
+            full_graph=True,
         )
         def fun(inputs):
             return paddle.nn.functional.relu(inputs)
@@ -1949,7 +1955,9 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
         origin = layer.anothor_forward(inps)
 
         func = paddle.jit.to_static(
-            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])]
+            layer.anothor_forward,
+            [paddle.static.InputSpec(shape=[-1, 5])],
+            full_graph=True,
         )
         path = os.path.join(
             self.temp_dir.name,
@@ -1980,7 +1988,9 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
             def forward(self, x):
                 return paddle.tanh(x)
 
-            @paddle.jit.to_static(input_spec=[InputSpec(shape=[-1, 5])])
+            @paddle.jit.to_static(
+                input_spec=[InputSpec(shape=[-1, 5])], full_graph=True
+            )
             def anothor_forward(self, x):
                 return self._linear(x)
 

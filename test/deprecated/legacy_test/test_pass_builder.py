@@ -55,12 +55,12 @@ class TestPassBuilder(unittest.TestCase):
             )
 
             for i in range(5):
-                _ = exe.run(train_cp, fetch_list=[loss.name], feed=feed_dict)
+                _ = exe.run(train_cp, fetch_list=[loss], feed=feed_dict)
                 (test_loss,) = exe.run(
-                    test_cp, fetch_list=[loss.name], feed=feed_dict
+                    test_cp, fetch_list=[loss], feed=feed_dict
                 )
                 (train_loss,) = exe.run(
-                    train_cp, fetch_list=[loss.name], feed=feed_dict
+                    train_cp, fetch_list=[loss], feed=feed_dict
                 )
 
                 avg_test_loss_val = np.array(test_loss).mean()
