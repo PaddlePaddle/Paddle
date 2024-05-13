@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace plat = paddle::platform;
-
 #define FINAL_MASK 0xffffffff
 #define DIV_UP(x, y) (((x) + (y)-1) / (y))
 

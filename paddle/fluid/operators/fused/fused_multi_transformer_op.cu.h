@@ -129,7 +129,6 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
 namespace {  // NOLINT
 
-namespace plat = paddle::platform;
 using float16 = phi::dtype::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
