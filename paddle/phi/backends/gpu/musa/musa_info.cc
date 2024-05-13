@@ -35,7 +35,7 @@ int DnnVersion() {
   // TODO(@caizhi): mudnnGetVersion is not supported now.
   // version info will be returned from mudnnGetVersion later.
   const int version_major = 2;
-  const int version_minor = 3;
+  const int version_minor = 5;
   const int version_patch = 0;
   return version_major * 1000 + version_minor * 100 + version_patch;
 }
@@ -242,7 +242,9 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         musaGetDeviceProperties(&g_device_props[id], id));
   });
-
+  //TODO@mtai:we hope not to skip UT that ask compute capacity to be greater than 7/8
+  g_device_props[id].major = 9;
+  g_device_props[id].minor = 9;
   return g_device_props[id];
 }
 
@@ -262,26 +264,14 @@ void GpuMemcpyAsync(void *dst,
                     size_t count,
                     gpuMemcpyKind kind,
                     gpuStream_t stream) {
-  // PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(dst, src, count, kind, stream));
-  std::cout<<"in GpuMemcpyAsync dst:"<<dst<<std::endl;
-  std::cout<<"in GpuMemcpyAsync src:"<<src<<std::endl;  
-  std::cout<<"in GpuMemcpyAsync count:"<<count<<std::endl;  
-  std::cout<<"in GpuMemcpyAsync kind:"<<kind<<std::endl;
-  musaError_t res = musaMemcpyAsync(dst, src, count, kind, stream);
-  std::cout<<"in GpuMemcpyAsync res:"<<res<<std::endl;  
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(dst, src, count, kind, stream));
 }
 
 void GpuMemcpySync(void *dst,
                    const void *src,
                    size_t count,
                    gpuMemcpyKind kind) {
-  // PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(dst, src, count, kind));
-  std::cout<<"in GpuMemcpySync dst:"<<dst<<std::endl;
-  std::cout<<"in GpuMemcpySync src:"<<src<<std::endl;  
-  std::cout<<"in GpuMemcpySync count:"<<count<<std::endl;  
-  std::cout<<"in GpuMemcpySync kind:"<<kind<<std::endl;
-  musaError_t res = musaMemcpy(dst, src, count, kind);
-  std::cout<<"in GpuMemcpySync res:"<<res<<std::endl;
+  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(dst, src, count, kind));
 
 }
 
