@@ -600,9 +600,9 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         def apply_cse(program):
-            import os
-
-            if os.getenv("DISABLE_CSE", "False").lower() in ["true", "1"]:
+            if not paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+                "FLAGS_enable_cse_in_dy2st"
+            ]:
                 return
             pm = paddle.base.libpaddle.pir.PassManager()
             print("=========================")

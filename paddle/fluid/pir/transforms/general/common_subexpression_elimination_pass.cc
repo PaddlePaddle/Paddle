@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -29,6 +30,8 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
+
+COMMON_DECLARE_bool(cse_max_count);
 
 namespace {
 
@@ -399,24 +402,9 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     std::cout << "Found " << cse_analyzer.to_erase_ops.size()
               << " common subexpression" << std::endl;
 
-    // TODO(SigureMo): For debug only, remove it before merge
     size_t cse_count = 0;
-    const size_t cse_max_count = []() {
-      size_t cse_max_count = 0;
-      const char* cse_max_count_str_ptr = getenv("CSE_MAX_COUNT");
-      if (cse_max_count_str_ptr == nullptr) {
-        return std::numeric_limits<size_t>::max();
-      }
-      const std::string cse_max_count_str = cse_max_count_str_ptr;
-      VLOG(3) << "CSE_MAX_COUNT: " << cse_max_count_str;
-      std::numeric_limits<size_t>::max();
-      if (cse_max_count_str != "") {
-        cse_max_count = std::stoi(cse_max_count_str);
-      }
-      return cse_max_count;
-    }();
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
-      if (cse_count >= cse_max_count) {
+      if (FLAGS_cse_max_count != -1 && cse_count >= FLAGS_cse_max_count) {
         break;
       }
       ReplaceOpWith(op, existing_op);
