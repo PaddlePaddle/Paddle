@@ -55,4 +55,23 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
     DenseTensor* out_state,
     DenseTensor* out_accum);
 
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeAbsMaxKernel(const Context& dev_ctx,
+                                         const DenseTensor& x,
+                                         int bit_length,
+                                         int round_type,
+                                         int quant_axis,
+                                         bool is_test,
+                                         DenseTensor* out,
+                                         DenseTensor* out_scale);
+
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context& dev_ctx,
+                                                   const DenseTensor& x,
+                                                   int bit_length,
+                                                   int round_type,
+                                                   int quant_axis,
+                                                   DenseTensor* out,
+                                                   DenseTensor* out_scale);
+
 }  // namespace phi
