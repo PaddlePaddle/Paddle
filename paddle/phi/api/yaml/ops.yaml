@@ -2399,6 +2399,16 @@
     func : quantize
     data_type : input
 
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : prob
+  inplace : (topk_idx -> out)
+
 - op : real
   args : (Tensor x)
   output : Tensor (out)
