@@ -18,6 +18,8 @@ import types
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
+import paddle
+
 from ...profiler import EventGuard
 from ...utils import current_tmp_name_records, log, log_do
 
@@ -171,3 +173,12 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
             ),
         )
     ]
+
+
+def stringify_pyobject(obj: object) -> tuple[str, dict[str, Any]]:
+    if isinstance(obj, paddle.core.VarDesc.VarType):
+        return f"paddle.core.VarDesc.VarType({obj.value})", {"paddle": paddle}
+    elif isinstance(obj, paddle.core.DataType):
+        return f"paddle.core.DataType({obj.value})", {"paddle": paddle}
+    # For builtin values
+    return f"{obj!r}", {}
