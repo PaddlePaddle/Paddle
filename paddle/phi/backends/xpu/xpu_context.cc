@@ -245,7 +245,7 @@ struct XPUContext::Impl {
       xpu::Context* ctx_t = xpu::create_context();
       // DataLoader does not require a pre-allocated GM buffer
       // to avoid xpu_wait calls
-      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "0");
+      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "1");
       context_map_[tname] = ctx_t;
     }
   }
