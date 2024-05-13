@@ -35,3 +35,16 @@ PD_REGISTER_KERNEL(fake_quantize_moving_average_abs_max,
                    phi::FakeQuantOrWithDequantMovingAverageAbsMaxKernel,
                    float,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(fake_channel_wise_quantize_abs_max,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FakeChannelWiseQuantizeAbsMaxKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FakeChannelWiseQuantizeDequantizeAbsMaxKernel,
+                   float) {}
