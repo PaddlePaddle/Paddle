@@ -70,6 +70,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto
                 case_list[${#case_list[*]}]="llama_auto_unit_test"
+                case_list[${#case_list[*]}]="pir_reshard_unit_test"
                 break
             elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]="llama_auto_unit_test"
@@ -168,6 +169,10 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             let case_num++
         elif [[ ${case} == "llama_auto_unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
+            print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
+            let case_num++
+        elif [[ ${case} == "pir_reshard_unit_test" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh pir_reshard_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else
