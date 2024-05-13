@@ -377,13 +377,15 @@ std::vector<std::vector<pir::Value>> call_decomp_rule(pir::Operation* op) {
   return decomp_res;
 }
 
-std::vector<pir::Operation*> DecompProgram::ParseBlockOps(pir::Block* block) {
+std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
   }
-  if (program_->block() != block || (start_index_ == 0 && end_index_ == -1))
+  if (program_->block() != block || (start_index_ == 0 && end_index_ == -1)) {
     return ops_list;
+  }
+
   VLOG(4) << "start_index_:  " << start_index_ << ", end_index_: " << end_index_
           << ", ops_list.size(): " << ops_list.size();
   int start_idx = std::max(start_index_, 0);
@@ -436,7 +438,7 @@ void DecompProgram::decomp_block(
     pir::Block* block,
     const std::unordered_map<pir::Value, int>& orig_vars_dict,
     std::vector<pir::Value>& tar_vars) {  // NOLINT
-  std::vector<pir::Operation*> ops_list = ParseBlockOps(block);
+  std::vector<pir::Operation*> ops_list = parse_block_ops(block);
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
     if (op->name() == "pd_op.if") {

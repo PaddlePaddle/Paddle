@@ -72,7 +72,7 @@ class DecompProgram {
   std::vector<pir::Value> get_dst_vars();
 
  private:
-  std::vector<pir::Operation*> ParseBlockOps(pir::Block* block);
+  std::vector<pir::Operation*> parse_block_ops(pir::Block* block);
 
   pir::Program* program_;
   std::vector<pir::Value> src_vars_;
@@ -81,7 +81,7 @@ class DecompProgram {
   std::set<std::string> whitelist_;
   std::set<std::string> decomposed_prog_ops_set_;
   // Used to slice ops for global block.
-  int start_index_{-1};
+  int start_index_{0};
   int end_index_{-1};
 };
 
