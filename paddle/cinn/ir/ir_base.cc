@@ -159,6 +159,7 @@ double Expr::as_double() const {
 }
 
 Expr &Expr::operator=(const Expr &other) {
+  CHECK(this->type() == other.type());
   *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
   return *this;
 }
