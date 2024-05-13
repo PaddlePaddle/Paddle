@@ -253,6 +253,9 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void ConcatTensorInferMeta(const std::vector<const MetaTensor*>& x,
+                           MetaTensor* concated_out);
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,

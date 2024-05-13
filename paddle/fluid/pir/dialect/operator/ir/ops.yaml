@@ -1930,6 +1930,15 @@
     data_type : logits
   backward: c_softmax_with_cross_entropy_grad
 
+- op: concat_tensor
+  args: (Tensor[] x)
+  output: Tensor(out)
+  infer_meta:
+    func: ConcatTensorInferMeta
+  kernel:
+    func: concat_tensor
+    data_type: x
+
 - op: dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
   output: Tensor(param_out)
