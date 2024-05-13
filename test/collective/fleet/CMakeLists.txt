@@ -831,7 +831,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   if(WITH_DGC)
     if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
       bash_test_modules(
@@ -846,7 +846,7 @@ if(WITH_NCCL OR WITH_RCCL)
     endif()
   endif()
 endif()
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   if(WITH_DGC)
     if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
       bash_test_modules(

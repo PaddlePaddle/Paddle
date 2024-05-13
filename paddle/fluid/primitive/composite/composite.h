@@ -22,9 +22,6 @@ namespace paddle {
 namespace primitive {
 namespace details {
 
-// empty_shape means x.shape=[]
-static std::vector<int64_t> empty_shape;
-
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
@@ -348,66 +345,62 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 
   // cast dtype to float32 if dtype =float16 or bfloat16
   if (need_cast) {
-    x_cast = cast<T>(x_cast, DataType::FLOAT32);
+    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
   }
 
   auto x_dim = common::vectorize<int64_t>(x.dims());
   for (size_t i = begin_norm_axis; i < x_dim.size(); i++) {
     axis.push_back(static_cast<int64_t>(i));
   }
-  auto mean_ = mean_decomp<T>(x_cast, axis, true);
+  auto mean_ = mean_decomp<T>(x_cast, IntArray(axis), true);
   auto difference = x_cast - mean_;
   auto var_tmp1 = difference * difference;
-  auto variance = mean_decomp<T>(var_tmp1, axis, true);
+  auto variance = mean_decomp<T>(var_tmp1, IntArray(axis), true);
   auto var_tmp3 = variance + epsilon;
   auto rsqrt_var = elementwise_pow<T>(
-      var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+      var_tmp3,
+      full<T>(common::vectorize(var_tmp3.dims()), -0.5, var_tmp3.dtype()));
   auto out = difference * rsqrt_var;
 
   auto scale_ptr = scale.get_ptr();
   auto bias_ptr = bias.get_ptr();
 
-  std::vector<int64_t> slice_shape_l;
-  std::vector<int64_t> slice_shape_r;
-  for (int64_t i = 0; i < static_cast<int64_t>(x_dim.size()); i++) {
-    if (i < begin_norm_axis) {
-      slice_shape_l.push_back(x_dim[i]);
-    } else {
-      slice_shape_r.push_back(x_dim[i]);
-    }
+  std::vector<int64_t> slice_shape;
+  for (int64_t i = begin_norm_axis; i < static_cast<int64_t>(x_dim.size());
+       i++) {
+    slice_shape.push_back(x_dim[i]);
   }
   Tensor scale_cast;
   if (scale_ptr) {
-    if (slice_shape_r != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
+    if (slice_shape != scale_ptr->shape()) {
+      scale_cast = reshape<T>(*scale_ptr, slice_shape);
     } else {
       scale_cast = *scale_ptr;
     }
     if (need_cast) {
-      scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
     }
     out = out * scale_cast;
   }
   Tensor bias_cast;
   if (bias_ptr) {
-    if (slice_shape_r != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape_r);
+    if (slice_shape != bias_ptr->shape()) {
+      bias_cast = reshape<T>(*bias_ptr, slice_shape);
     } else {
       bias_cast = *bias_ptr;
     }
     if (need_cast) {
-      bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
+      bias_cast = cast<T>(bias_cast, phi::DataType::FLOAT32);
     }
     out = out + bias_cast;
   }
-  mean_ = reshape<T>(mean_, slice_shape_l);
-  variance = reshape<T>(variance, slice_shape_l);
+  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
+  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
 
-  // same as LayerNormInferMeta
-  // x: float32 --> out: float32, mean: float32, variance: float32
-  // x: float16 --> out: float16, mean: float32, variance: float32
   if (need_cast) {
     out = cast<T>(out, org_dtype);
+    mean_ = cast<T>(mean_, org_dtype);
+    variance = cast<T>(variance, org_dtype);
   }
 
   return std::make_tuple(out, mean_, variance);

@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

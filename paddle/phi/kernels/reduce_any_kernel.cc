@@ -36,7 +36,7 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(
     any, GPU, ALL_LAYOUT, phi::AnyKernel, float, double, int, int64_t, bool) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/reduce_kernel.h"
 
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/gpu/reduce_amin_amax_common.h"
 #include "paddle/phi/kernels/reduce_amin_grad_kernel.h"
 #include "paddle/phi/kernels/reduce_max_grad_kernel.h"
@@ -32,7 +33,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -241,7 +242,7 @@ void ReduceKernel(const Context& dev_ctx,
       x.numel(),
       0,
       phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
 
@@ -256,20 +257,22 @@ void ReduceKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(stream,
                           errors::NotFound("Should initialize NCCL firstly."));
 
-  ncclRedOp_t red_type = ncclSum;
+  mcclRedOp_t red_type = mcclSum;
   switch (static_cast<ReduceType>(reduce_type)) {
     case ReduceType::kRedSum:
-      red_type = ncclSum;
+      red_type = mcclSum;
       break;
     case ReduceType::kRedMax:
-      red_type = ncclMax;
+      red_type = mcclMax;
       break;
     case ReduceType::kRedMin:
-      red_type = ncclMin;
+      red_type = mcclMin;
       break;
     case ReduceType::kRedProd:
-      red_type = ncclProd;
+      red_type = mcclProd;
       break;
+    default:
+      PADDLE_ENFORCE(false, "not supported!");
   }
   comm_ctx->Reduce(out, x, red_type, root, stream);
 #else

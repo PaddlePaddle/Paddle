@@ -127,6 +127,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_avg_pool1d(self):
+        paddle.enable_static()
         for place in self.places:
             self.check_adaptive_avg_dygraph_results(place)
             self.check_adaptive_avg_static_results(place)

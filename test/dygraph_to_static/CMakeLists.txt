@@ -8,9 +8,6 @@ set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)
-list(REMOVE_ITEM TEST_OPS test_grad) # disable test_grad on release/2.6
-list(REMOVE_ITEM TEST_OPS test_sentiment
-)# disable test_sentiment on release/2.6
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
 # will be removed and will cause some random failed in multi-thread.
 if(WITH_PYTHON)
@@ -31,9 +28,6 @@ if(NOT WITH_GPU)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_build_strategy)
-  list(REMOVE_ITEM TEST_OPS test_bert)
-  list(REMOVE_ITEM TEST_OPS test_transformer)
-  list(REMOVE_ITEM TEST_OPS test_mobile_net)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -43,11 +37,15 @@ endforeach()
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
+set_tests_properties(test_bert PROPERTIES TIMEOUT 180)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
+set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
+set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
@@ -55,14 +53,12 @@ endif()
 
 if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static

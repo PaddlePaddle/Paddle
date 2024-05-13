@@ -18,7 +18,9 @@ limitations under the License. */
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 #endif
-
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -31,14 +33,14 @@ template <typename T>
 __global__ void GetPoisson(
     const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-#ifdef __NVCC__
-    curandStatePhilox4_32_10_t state;
-    curand_init(seed, idx, offset, &state);
-    out[idx] = static_cast<T>(curand_poisson(&state, in[idx]));
-#elif __HIPCC__
-    hiprandStatePhilox4_32_10_t state;
-    hiprand_init(seed, idx, offset, &state);
-    out[idx] = static_cast<T>(hiprand_poisson(&state, in[idx]));
+#ifdef __MUSACC__
+    murandStatePhilox4_32_10_t state;
+    murand_init(seed, idx, offset, &state);
+    out[idx] = static_cast<T>(murand_poisson(&state, in[idx]));
+#elif __MUSACC__
+    murandStatePhilox4_32_10_t state;
+    murand_init(seed, idx, offset, &state);
+    out[idx] = static_cast<T>(murand_poisson(&state, in[idx]));
 #endif
   }
 }

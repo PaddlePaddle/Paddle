@@ -674,6 +674,8 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
 #ifdef PADDLE_WITH_HIP
   hipMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
 #else
   cudaMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
 #endif
@@ -687,6 +689,12 @@ void GroupNormNHWCKernel(const Context& dev_ctx,
                                      params_.n * groups * sizeof(float),
                                      hipMemcpyDeviceToHost,
                                      stream);
+#elif defined(PADDLE_WITH_MUSA)           
+  phi::backends::gpu::GpuMemcpyAsync(mean_data,
+                                     params_.redBuffer,
+                                     params_.n * groups * sizeof(float),
+                                     musaMemcpyDeviceToHost,
+                                     stream);                          
 #else
   phi::backends::gpu::GpuMemcpyAsync(mean_data,
                                      params_.redBuffer,
@@ -848,6 +856,9 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
 #ifdef PADDLE_WITH_HIP
     hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
     hipMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
+    musaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
 #else
     cudaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
     cudaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
@@ -882,7 +893,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
                                      data_layout);
 }
 template class GroupNormDirectCUDAFunctor<float, float>;
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 template class GroupNormDirectCUDAFunctor<half, float>;
 #endif
 

@@ -1,0 +1,51 @@
+diff --git a/Eigen/src/Core/util/Macros.h b/Eigen/src/Core/util/Macros.h
+index bdc0de0ea..8ffbd4291 100644
+--- a/Eigen/src/Core/util/Macros.h
++++ b/Eigen/src/Core/util/Macros.h
+@@ -476,6 +476,19 @@
+   #define EIGEN_CUDA_SDK_VER 0
+ #endif
+ 
++#if defined(__MUSACC__) && !defined(EIGEN_NO_MUSA)
++  // Means the compiler is either nvcc or clang with CUDA enabled
++  #define EIGEN_MUSACC __MUSACC__
++#endif
++#if defined(EIGEN_MUSACC)
++#include <musa.h>
++#endif
++
++#if defined(__MUSA_ARCH__) && !defined(EIGEN_NO_MUSA)
++  // Means we are generating code for the device
++  #define EIGEN_MUSA_ARCH __MUSA_ARCH__
++#endif
++
+ #if defined(__HIPCC__) && !defined(EIGEN_NO_HIP)
+   // Means the compiler is HIPCC (analogous to EIGEN_CUDACC, but for HIP)
+   #define EIGEN_HIPCC __HIPCC__
+@@ -512,7 +525,7 @@
+ 
+ // Unify CUDA/HIPCC
+ 
+-#if defined(EIGEN_CUDACC) || defined(EIGEN_HIPCC)
++#if defined(EIGEN_CUDACC) || defined(EIGEN_HIPCC) || defined(EIGEN_MUSACC)
+ //
+ // If either EIGEN_CUDACC or EIGEN_HIPCC is defined, then define EIGEN_GPUCC
+ //
+@@ -535,7 +548,7 @@
+ //
+ #endif
+ 
+-#if defined(EIGEN_CUDA_ARCH) || defined(EIGEN_HIP_DEVICE_COMPILE)
++#if defined(EIGEN_CUDA_ARCH) || defined(EIGEN_HIP_DEVICE_COMPILE) || defined(EIGEN_MUSA_ARCH)
+ //
+ // If either EIGEN_CUDA_ARCH or EIGEN_HIP_DEVICE_COMPILE is defined, then define EIGEN_GPU_COMPILE_PHASE
+ //
+@@ -943,7 +956,7 @@
+ // GPU stuff
+ 
+ // Disable some features when compiling with GPU compilers (NVCC/clang-cuda/SYCL/HIPCC)
+-#if defined(EIGEN_CUDACC) || defined(SYCL_DEVICE_ONLY) || defined(EIGEN_HIPCC)
++#if defined(EIGEN_CUDACC) || defined(SYCL_DEVICE_ONLY) || defined(EIGEN_HIPCC) || defined(EIGEN_MUSACC)
+   // Do not try asserts on device code
+   #ifndef EIGEN_NO_DEBUG
+   #define EIGEN_NO_DEBUG

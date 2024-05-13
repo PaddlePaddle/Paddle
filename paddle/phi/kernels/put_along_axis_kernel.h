@@ -27,7 +27,6 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         const DenseTensor& value,
                         int axis,
                         const std::string& reduce,
-                        bool include_self,
                         DenseTensor* out);
 
 }  // namespace phi

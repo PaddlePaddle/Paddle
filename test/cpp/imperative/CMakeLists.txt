@@ -4,7 +4,7 @@ if(WIN32)
     SRCS nccl_context_test.cc
     DEPS device_context)
 else()
-  if(WITH_GLOO AND (WITH_NCCL OR WITH_RCCL))
+  if(WITH_GLOO AND (WITH_NCCL OR WITH_RCCL OR WITH_MCCL))
     cc_test(
       nccl_context_test
       SRCS nccl_context_test.cc
@@ -85,6 +85,7 @@ cc_test(
   DEPS tracer layer prepared_operator mul_op)
 if(WITH_NCCL
    OR WITH_RCCL
+   OR WITH_MCCL
    OR WITH_XPU_BKCL)
   cc_test(
     test_group

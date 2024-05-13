@@ -116,6 +116,12 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.data<T>(),
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemcpyAsync(x_grad,
+                      x_grad_out.data<T>(),
+                      x_grad_out.numel() * sizeof(T),
+                      musaMemcpyDeviceToDevice,
+                      ctx.stream());                
 #else
       cudaMemcpyAsync(x_grad,
                       x_grad_out.data<T>(),
@@ -199,6 +205,12 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.data<T>(),
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemcpyAsync(x_grad,
+                x_grad_out.data<T>(),
+                x_grad_out.numel() * sizeof(T),
+                musaMemcpyDeviceToDevice,
+                ctx.stream());        
 #else
       cudaMemcpyAsync(x_grad,
                       x_grad_out.data<T>(),
@@ -249,6 +261,9 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(y_grad_data, 0, memset_bytes_y);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
+  musaMemsetAsync(y_grad_data, 0, memset_bytes_y, ctx.stream());
 #else
   cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
   cudaMemsetAsync(y_grad_data, 0, memset_bytes_y, ctx.stream());

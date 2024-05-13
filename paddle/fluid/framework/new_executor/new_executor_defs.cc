@@ -314,7 +314,7 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 void Instruction::UpdataRecordStreamForGcInfo() {
   if (!IsInterpretercoreFastGCEnabled() ||
       KernelType() != OpFuncType::kGpuAsync) {
@@ -328,7 +328,7 @@ void Instruction::UpdataRecordStreamForGcInfo() {
   stream_ = reinterpret_cast<const phi::GPUContext&>(DeviceContext()).stream();
 // TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
 // To support all the operators for communicating in the future.
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto operator_base_ptr = OpBase();
   if ((operator_base_ptr->Type() == "send_v2") &&
       (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {

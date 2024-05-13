@@ -467,7 +467,7 @@ def start_local_trainers(
     cluster, pod, training_script, training_script_args, log_dir=None
 ):
     current_env = copy.copy(os.environ.copy())
-    # paddle broadcast ncclUniqueId use socket, and
+    # paddle broadcast mcclUniqueId use socket, and
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.

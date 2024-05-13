@@ -22,6 +22,10 @@ endif()
 if(WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()
+if(WITH_MUSA)
+  list(APPEND MUSA_SRCS mublas.cc mudnn.cc murand.cc mufft.cc)
+endif()
+
 
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on MacOS, and only do a early test on Linux and Windows.
@@ -37,6 +41,15 @@ if(NOT APPLE)
     endif()
     if(CUPTI_FOUND)
       list(APPEND HIP_SRCS cupti.cc)
+    endif()
+  endif()
+  if(WITH_MUSA)
+    list(APPEND MUSA_SRCS musartc.cc musa_driver.cc)
+    if(WITH_MCCL)
+      list(APPEND MUSA_SRCS mccl.cc)
+    endif()
+    if(CUPTI_FOUND)
+      list(APPEND MUSA_SRCS mupti.cc)
     endif()
   endif()
 endif()
@@ -57,6 +70,15 @@ if(WITH_ROCM)
   hip_library(
     dynload_cuda
     SRCS ${HIP_SRCS}
+    DEPS dynamic_loader phi common)
+  cc_library(
+    dynload_warpctc
+    SRCS warpctc.cc
+    DEPS dynamic_loader warpctc phi common)
+elseif(WITH_MUSA)
+  musa_library(
+    dynload_cuda
+    SRCS ${MUSA_SRCS}
     DEPS dynamic_loader phi common)
   cc_library(
     dynload_warpctc

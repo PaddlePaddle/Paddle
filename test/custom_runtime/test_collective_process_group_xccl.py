@@ -37,7 +37,7 @@ def start_local_trainers(
     )
 
     current_env = copy.copy(os.environ.copy())
-    # paddle broadcast ncclUniqueId use socket, and
+    # paddle broadcast mcclUniqueId use socket, and
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
@@ -150,7 +150,7 @@ class TestProcessGroup(TestMultipleCustomCPU):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone --depth 1 {} -b {} \
+            && git clone --depth 1 {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
@@ -158,7 +158,6 @@ class TestProcessGroup(TestMultipleCustomCPU):
             && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} -DWITH_TESTING=OFF && make -j8'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
-            os.getenv('PLUGIN_TAG'),
             os.getenv('PLUGIN_TAG'),
             sys.executable,
         )

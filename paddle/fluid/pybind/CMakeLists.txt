@@ -67,7 +67,7 @@ if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
                   common)
 endif()
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
@@ -79,7 +79,7 @@ if(WITH_IPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} ipu_info)
 endif()
 
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
@@ -99,6 +99,7 @@ if(WITH_CUSTOM_DEVICE)
   if(NOT
      (WITH_NCCL
       OR WITH_RCCL
+      OR WITH_MCCL
       OR WITH_XPU_BKCL))
     set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
@@ -107,7 +108,7 @@ endif()
 
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
-  if(WITH_NCCL OR WITH_RCCL)
+  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
   endif()
@@ -162,7 +163,7 @@ endif()
 
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
-  if(WITH_NCCL OR WITH_RCCL)
+  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
   endif()
   if(WITH_XPU_BKCL)
@@ -246,7 +247,7 @@ if(WITH_RPC)
   set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
 
@@ -265,7 +266,7 @@ if(WITH_PYTHON)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
-  if(WITH_NCCL OR WITH_RCCL)
+  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif()
 
@@ -286,15 +287,20 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(WIN32)
+  if(NOT WITH_ARM)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
-  if(NOT WIN32)
-    add_executable(kernel_signature_generator kernel_signature_generator.cc)
-    target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERETOR_DEPS})
-  endif()
+  # if(NOT WIN32)
+  #   add_executable(kernel_signature_generator kernel_signature_generator.cc)
+  #   if(WITH_MUSA)
+  #     # libtinfo.so depended by libmusa.so is located in '/usr/lib/x86_64-linux-gnu/'
+  #     target_link_options(kernel_signature_generator PRIVATE
+  #                         -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
+  #   endif()    
+  #   target_link_libraries(kernel_signature_generator
+  #                         ${OP_FUNCTION_GENERETOR_DEPS})
+  # endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_legacy_op_function_generator

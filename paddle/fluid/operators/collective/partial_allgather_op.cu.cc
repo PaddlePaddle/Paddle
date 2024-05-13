@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -32,11 +32,11 @@ template <typename T, typename DeviceContext>
 class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int64_t numel = in->numel();
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
@@ -128,10 +128,10 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         const T* send_buff = in->data<T>() + offset;
         T* recv_buff = out->data<T>();
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclAllGather(send_buff,
+            platform::dynload::mcclAllGather(send_buff,
                                              recv_buff,
                                              send_numel,
-                                             static_cast<ncclDataType_t>(dtype),
+                                             static_cast<mcclDataType_t>(dtype),
                                              comm->comm(),
                                              stream));
       }
@@ -155,9 +155,9 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           ops::PartialAllGatherOpCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-#endif
+// #endif
                           int,
                           int64_t,
                           plat::float16) {

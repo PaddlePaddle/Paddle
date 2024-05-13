@@ -470,6 +470,7 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
 // forward declation
 using cudaStream_t = struct CUstream_st*;
 using hipStream_t = struct ihipStream_t*;
+using musaStream_t = struct MUstream_st*;
 
 namespace paddle_infer {
 class Predictor;
@@ -507,6 +508,8 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
+  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
+                                    musaStream_t stream);                                    
   static bool RunWithRuntimeConfig(paddle_infer::Predictor* pred, void* config);
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,

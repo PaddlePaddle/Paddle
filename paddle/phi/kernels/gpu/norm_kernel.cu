@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/norm_kernel.h"
 
 #include <algorithm>
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

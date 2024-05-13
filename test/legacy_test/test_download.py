@@ -120,6 +120,14 @@ class TestDownload(unittest.TestCase):
                 './test',
             )
 
+    def test_wget_download_error(
+        self,
+    ):
+        with self.assertRaises(RuntimeError):
+            from paddle.utils.download import _download
+
+            _download('www.baidu', './test', method='wget')
+
     def test_download_methods(
         self,
     ):
@@ -128,9 +136,14 @@ class TestDownload(unittest.TestCase):
             "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
         ]
 
+        import sys
+
         from paddle.utils.download import _download
 
-        methods = ['get']
+        if sys.platform == 'linux':
+            methods = ['wget', 'get']
+        else:
+            methods = ['get']
 
         for url in urls:
             for method in methods:

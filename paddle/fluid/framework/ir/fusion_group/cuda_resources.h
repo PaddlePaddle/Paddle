@@ -34,7 +34,7 @@ __device__ inline double Log(double x) { return log(x); }
 __device__ inline double Sqrt(double x) { return sqrt(x); }
 
 )";
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 static constexpr char predefined_cuda_functions_fp16[] = R"(
 __device__ inline __half Exp(const __half x) { return hexp(x); }
 __device__ inline __half Log(const __half x) { return hlog(x); }

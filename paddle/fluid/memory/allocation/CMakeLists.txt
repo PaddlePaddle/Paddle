@@ -19,7 +19,7 @@ set(ALLOCATOR_SRCS
     buddy_allocator.cc
     system_allocator.cc)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   list(
     APPEND
     ALLOCATOR_SRCS
@@ -90,6 +90,13 @@ if(WITH_ROCM)
     SRCS thread_local_allocator_test.cc
     DEPS allocator)
 endif()
+if(WITH_MUSA)
+  musa_test(
+    thread_local_allocator_test
+    SRCS thread_local_allocator_test.cc
+    DEPS allocator)
+endif()
+
 
 if(WITH_GPU)
   nv_test(
@@ -98,6 +105,11 @@ if(WITH_GPU)
     DEPS allocator memcpy)
 elseif(WITH_ROCM)
   hip_test(
+    best_fit_allocator_test
+    SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
+    DEPS allocator memcpy)
+elseif(WITH_MUSA)
+  musa_test(
     best_fit_allocator_test
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)

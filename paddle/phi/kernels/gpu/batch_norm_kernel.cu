@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -570,7 +570,7 @@ void BatchNormKernel(const Context &ctx,
     new_bias = phi::Full<T, Context>(ctx, {C}, static_cast<T>(0));
   }
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -602,7 +602,7 @@ void BatchNormKernel(const Context &ctx,
   }
 
 // ------------------- cudnn descriptors ---------------------
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // miopenTensorDescriptor_t data_desc_;
 // miopenTensorDescriptor_t bn_param_desc_;
@@ -630,7 +630,7 @@ void BatchNormKernel(const Context &ctx,
   }
   epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
 #elif CUDNN_VERSION_MIN(7, 0, 1)
@@ -660,7 +660,7 @@ void BatchNormKernel(const Context &ctx,
     strides = {H * W * D * C, 1, W * D * C, D * C, C};
   }
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
@@ -732,7 +732,7 @@ void BatchNormKernel(const Context &ctx,
             est_var->dims()[0],
             est_var->dims()));
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
     const int block_size = 256;
     const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
     if (compute_format == DataLayout::kNCHW) {
@@ -901,7 +901,7 @@ void BatchNormKernel(const Context &ctx,
       phi::Copy(ctx, x, ctx.GetPlace(), false, y);
     } else {
       double this_factor = 1. - momentum;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
       this_factor = momentum;
       const int num = transformed_x.numel();
       const int block = 256;
@@ -1227,7 +1227,7 @@ void BatchNormKernel(const Context &ctx,
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
     TransToChannelLast<Context, T>(ctx, &transformed_y, y);
   }
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // clean when exit.
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1245,7 +1245,7 @@ void BatchNormKernel(const Context &ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,

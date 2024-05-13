@@ -113,7 +113,7 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         throughput = cnt / np.sum(periods)
         latency = np.average(periods)
         acc1 = np.sum(test_info) / cnt
-        return (throughput, latency, acc1, feed_dict)
+        return (throughput, latency, acc1)
 
 
 class TestPostTrainingForResnet50ONNXFormat(TestPostTrainingForResnet50):

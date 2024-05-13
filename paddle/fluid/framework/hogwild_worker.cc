@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
@@ -1202,20 +1202,20 @@ bool HogwildWorker::CheckBatchNum(int flag) {
     // comm_ctx->AllReduce only support allreduce on the whole tensor,
     // single element is not supported now.
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclAllReduce(&stat_ptr[flag],
+        platform::dynload::mcclAllReduce(&stat_ptr[flag],
                                          &stat_ptr[2],
                                          1,
                                          ncclFloat32,
-                                         ncclProd,
+                                         mcclProd,
                                          comm_ctx->GetNcclComm(),
                                          stream));
 
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(&stat_ptr[flag],
                                                                 &stat_ptr[2],
                                                                 1,
                                                                 ncclFloat32,
-                                                                ncclProd,
+                                                                mcclProd,
                                                                 comm->comm(),
                                                                 stream));
   }
@@ -1246,11 +1246,11 @@ bool HogwildWorker::GetPassEnd(int flag) {
   //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
   //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   auto stream = comm->stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(&stat_ptr[flag],
                                                               &stat_ptr[2],
                                                               1,
                                                               ncclFloat32,
-                                                              ncclProd,
+                                                              mcclProd,
                                                               comm->comm(),
                                                               stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
@@ -1267,7 +1267,7 @@ bool HogwildWorker::GetPassEnd(int flag) {
 void HogwildWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
 #if defined(PADDLE_WITH_HETERPS) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
   platform::SetDeviceId(thread_id_);
 #elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
@@ -1473,7 +1473,7 @@ void HogwildWorker::TrainFiles() {
   platform::Timer timeline;
   timeline.Start();
 #if defined(PADDLE_WITH_HETERPS) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
   platform::SetDeviceId(thread_id_);
 #elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);

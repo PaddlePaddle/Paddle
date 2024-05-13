@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
@@ -41,10 +41,10 @@ class Variable;
 
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 
 void NCCLParallelContext::BcastNCCLId(
-    std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
+    std::vector<mcclUniqueId> &nccl_ids,  // NOLINT
     int root,
     int server_fd) {
   if (strategy_.local_rank_ == root) {
@@ -64,13 +64,13 @@ void NCCLParallelContext::BcastNCCLId(
 void NCCLParallelContext::Init() {
   int server_fd = -1;
 
-  std::vector<ncclUniqueId> nccl_ids;
+  std::vector<mcclUniqueId> nccl_ids;
   nccl_ids.resize(strategy_.nrings_);
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
     for (auto &nccl_id : nccl_ids) {
-      platform::dynload::ncclGetUniqueId(&nccl_id);
+      platform::dynload::mcclGetUniqueId(&nccl_id);
     }
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
@@ -101,12 +101,12 @@ void NCCLParallelContext::Init() {
 
 void NCCLParallelContext::InitWithRingID(int ring_id) {
   int server_fd = -1;
-  std::vector<ncclUniqueId> nccl_ids;
+  std::vector<mcclUniqueId> nccl_ids;
   nccl_ids.resize(1);
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
+    platform::dynload::mcclGetUniqueId(&nccl_ids[0]);
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
     // on rank0.
@@ -152,7 +152,7 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   void *src_ptr = src_tensor->data();
   auto nccl_dtype = platform::ToNCCLDataType(
       framework::TransToProtoVarType(src_tensor->dtype()));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
@@ -188,6 +188,9 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(comm_stream, event, 0));  
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
@@ -218,6 +221,9 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(compute_stream, event, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));

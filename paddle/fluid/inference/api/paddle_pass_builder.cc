@@ -16,7 +16,10 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
-#ifdef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_MUSA
+#include <mudnn.h>
+#endif
+#ifdef PADDLE_WITH_HIP 
 #include <miopen/miopen.h>
 #endif
 #ifdef PADDLE_WITH_TENSORRT

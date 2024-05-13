@@ -55,7 +55,7 @@ PD_REGISTER_KERNEL(sum,
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,

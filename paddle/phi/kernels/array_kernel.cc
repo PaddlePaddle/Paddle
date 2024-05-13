@@ -134,7 +134,7 @@ PD_REGISTER_KERNEL(create_array,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(create_array,
                    GPU,
                    ALL_LAYOUT,
@@ -178,7 +178,7 @@ PD_REGISTER_KERNEL(array_read,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(array_read,
                    GPU,
                    ALL_LAYOUT,
@@ -208,7 +208,7 @@ PD_REGISTER_KERNEL(array_write,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(array_write,
                    GPU,
                    ALL_LAYOUT,
@@ -238,7 +238,7 @@ PD_REGISTER_KERNEL(array_to_tensor,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(array_to_tensor,
                    GPU,
                    ALL_LAYOUT,

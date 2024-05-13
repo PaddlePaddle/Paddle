@@ -846,7 +846,7 @@ void GraphGpuWrapper::init_service() {
     inter_comms_.resize(dev_size);
     if (gloo->Rank() == 0) {
       for (int i = 0; i < dev_size; ++i) {
-        platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+        platform::dynload::mcclGetUniqueId(&inter_ncclids_[i]);
       }
     }
 
@@ -860,13 +860,13 @@ void GraphGpuWrapper::init_service() {
     opts.setRoot(0);
     gloo::broadcast(opts);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupStart());
     for (int i = 0; i < dev_size; ++i) {
       platform::CUDADeviceGuard guard(device_id_mapping[i]);
       platform::dynload::ncclCommInitRank(
           &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupEnd());
 
     rank_id_ = gloo->Rank();
     node_size_ = gloo->Size();

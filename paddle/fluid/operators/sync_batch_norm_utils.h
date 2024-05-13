@@ -19,7 +19,8 @@ limitations under the License. */
 #include <cmath>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -27,7 +28,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #include "paddle/common/layout.h"
@@ -570,9 +571,9 @@ void SyncBatchNormGradFunctor(
     }
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   int global_gid = 0;
-  ncclComm_t comm = nullptr;
+  mcclComm_t comm = nullptr;
 
   if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
@@ -588,11 +589,11 @@ void SyncBatchNormGradFunctor(
     int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::ncclAllReduce(stats,
+        phi::dynload::mcclAllReduce(stats,
                                     stats,
                                     2 * C + 1,
-                                    static_cast<ncclDataType_t>(dtype),
-                                    ncclSum,
+                                    static_cast<mcclDataType_t>(dtype),
+                                    mcclSum,
                                     comm,
                                     stream));
     VLOG(3) << "Sync result using all reduce";

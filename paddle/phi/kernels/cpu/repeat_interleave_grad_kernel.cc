@@ -104,8 +104,7 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    CPU,
@@ -114,5 +113,4 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}

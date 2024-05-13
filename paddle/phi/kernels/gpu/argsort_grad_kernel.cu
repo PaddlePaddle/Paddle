@@ -18,7 +18,8 @@
 #include <thrust/sort.h>
 
 #include "paddle/phi/kernels/argsort_kernel.h"
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__MUSACC__)
+
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

@@ -20,7 +20,7 @@
 namespace phi {
 namespace funcs {
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
 template <typename T>
 __device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
   if (v > max) return max;

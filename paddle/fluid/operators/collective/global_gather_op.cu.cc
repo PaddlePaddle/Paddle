@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -31,8 +31,8 @@ namespace operators {
 template <typename T>
 struct GlobalGatherFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+// #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
     auto global_count = ctx.Input<phi::DenseTensor>("global_count");
@@ -73,7 +73,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
@@ -165,11 +165,11 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       auto send_buf = x->data<T>();
       auto recv_buf = out->data<T>();
       for (auto i = 0; i < n_expert; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupStart());
         for (auto j = 0; j < nranks; ++j) {
           int idx = i + j * n_expert;
           if (cpu_global_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclSend(
                 send_buf + send_ptr * in_feat,
                 cpu_global_count_data[idx] * in_feat,
                 dtype,
@@ -179,7 +179,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
             send_ptr += cpu_global_count_data[idx];
           }
           if (cpu_local_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
                 recv_buf + expert_ptr[idx] * in_feat,
                 cpu_local_count_data[idx] * in_feat,
                 dtype,
@@ -188,13 +188,13 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
                 stream));
           }
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclGroupEnd());
       }
     }
-#else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
+// #else
+    // PADDLE_THROW(
+        // platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+// #endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
@@ -205,8 +205,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
 template <typename T>
 struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#if NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+// #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
     auto global_count = ctx.Input<phi::DenseTensor>("global_count");
@@ -304,14 +304,16 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
 
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
 
-#else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
-#endif
+// #else
+//     PADDLE_THROW(
+//         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+// #endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));

@@ -18,6 +18,7 @@ from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
+    is_compiled_with_musa
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis

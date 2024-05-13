@@ -41,13 +41,14 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 project(paddle CXX C)
-
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
-option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
+option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" OFF)
+option(WITH_MUSA "Compile PaddlePaddle with MUSA" ON)
 option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
@@ -88,6 +89,9 @@ if(WITH_GPU AND WITH_XPU_XFT)
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if(WITH_GPU AND WITH_MUSA)
+  message(FATAL_ERROR "Error when compile CUDA and MUSA at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -252,7 +256,7 @@ option(WITH_TESTING "Compile PaddlePaddle with unit testing" OFF)
 option(WITH_MULTINODE_TESTING "Test multinode apis and ops" OFF)
 option(WITH_MKL "Compile PaddlePaddle with MKL support." ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
-option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
+option(WITH_DISTRIBUTE "Compile with distributed support" ON)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
@@ -285,6 +289,7 @@ option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
+option(WITH_MCCL "Compile PaddlePaddle with MCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
@@ -352,6 +357,7 @@ endif()
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
    AND NOT WITH_GPU
+   AND NOT WITH_MUSA
    AND NOT WITH_ROCM
    AND NOT WITH_XPU
    AND NOT WITH_XPU_KP
@@ -402,6 +408,14 @@ if(NOT WITH_GPU AND WITH_NCCL)
   set(WITH_NCCL
       OFF
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if(NOT WITH_MUSA AND WITH_MCCL)
+  message(
+    WARNING "Disable MCCL when compiling without MUSA. Force WITH_MCCL=OFF.")
+  set(WITH_MCCL
+      OFF
+      CACHE STRING "Disable MCCL when compiling without MUSA" FORCE)
 endif()
 
 if(NOT WITH_GPU AND WITH_CUDNN_DSO)
@@ -461,6 +475,19 @@ else()
   endif()
 endif()
 
+if(WITH_MCCL)
+  add_definitions("-DPADDLE_WITH_MCCL")
+  include(mccl)
+else()
+  if(WITH_MUSA)
+    message(
+      WARNING
+        "If the environment is multi-card, the WITH_MCCL option needs to be turned on, otherwise only a single card can be used."
+    )
+  endif()
+endif()
+
+
 if(WITH_BRPC_RDMA)
   message(STATUS "Use brpc with rdma.")
   if(NOT WITH_DISTRIBUTE)
@@ -486,6 +513,11 @@ if(WITH_ROCM)
   include(cupti)
 endif()
 
+if(WITH_MUSA)
+  include(musa)
+  include(mudnn)
+endif()
+
 if(WITH_XPU_KP)
   include(xpu_kp)
 endif()
@@ -498,6 +530,14 @@ if(NOT WITH_ROCM AND WITH_RCCL)
       CACHE STRING "Disable RCCL when compiling without ROCM" FORCE)
 endif()
 
+if(NOT WITH_MUSA AND WITH_MCCL)
+  message(
+    WARNING "Disable MCCL when compiling without MUSA. Force WITH_MCCL=OFF.")
+  set(WITH_MCCL
+      OFF
+      CACHE STRING "Disable MCCL when compiling without MUSA" FORCE)
+endif()
+
 if(WITH_RCCL)
   add_definitions("-DPADDLE_WITH_RCCL")
   include(rccl)
@@ -506,6 +546,18 @@ else()
     message(
       WARNING
         "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used."
+    )
+  endif()
+endif()
+
+if(WITH_MCCL)
+  add_definitions("-DPADDLE_WITH_MCCL")
+  include(mccl)
+else()
+  if(WITH_MUSA)
+    message(
+      WARNING
+        "If the environment is multi-card, the WITH_MCCL option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
 endif()
@@ -559,6 +611,13 @@ if(WITH_RPC)
     set(WITH_RPC
         OFF
         CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
+  endif()
+  if(WITH_MUSA AND WITH_RPC)
+  message(
+    WARNING "Disable WITH_RPC when compiling with MUSA. Force WITH_RPC=OFF.")
+  set(WITH_RPC
+      OFF
+      CACHE BOOL "Disable WITH_RPC when compiling with MUSA" FORCE)
   endif()
   if(WITH_XPU AND WITH_RPC)
     message(
@@ -630,6 +689,12 @@ include(coveralls) # set code coverage
 include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
+
+# distribute need openssl
+# openssl install tutorial: https://www.howtoforge.com/tutorial/how-to-install-openssl-from-source-on-linux/
+include_directories("/usr/local/ssl/include")
+link_directories("/usr/local/ssl/lib64")
+
 
 if(WITH_NV_JETSON)
   set(WITH_ARM

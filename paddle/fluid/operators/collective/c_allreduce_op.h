@@ -25,14 +25,14 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -309,13 +309,13 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype =
+    mcclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
@@ -395,22 +395,22 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
              << ", dtype:" << dtype << ", comm:" << comm
              << ", stream:" << stream;
 
-    ncclRedOp_t nccl_red_type = ncclSum;
+    mcclRedOp_t nccl_red_type = mcclSum;
     switch (red_type) {
       case kRedSum:
-        nccl_red_type = ncclSum;
+        nccl_red_type = mcclSum;
         break;
 
       case kRedMax:
-        nccl_red_type = ncclMax;
+        nccl_red_type = mcclMax;
         break;
 
       case kRedMin:
-        nccl_red_type = ncclMin;
+        nccl_red_type = mcclMin;
         break;
 
       case kRedProd:
-        nccl_red_type = ncclProd;
+        nccl_red_type = mcclProd;
         break;
 
       default:
@@ -421,7 +421,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(sendbuff,
                                                                   recvbuff,
                                                                   numel,
                                                                   dtype,

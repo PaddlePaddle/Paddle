@@ -41,12 +41,6 @@ int64_t PD_TensorGetDim(const PD_Tensor *tensor,
                         size_t index,
                         PD_Status *status);
 
-int64_t PD_TensorGetNumStrides(const PD_Tensor *tensor, PD_Status *status);
-
-int64_t PD_TensorGetStride(const PD_Tensor *tensor,
-                           size_t index,
-                           PD_Status *status);
-
 void PD_TensorGetLoD(const PD_Tensor *tensor,
                      PD_List *data,
                      PD_List *offset,
@@ -58,21 +52,10 @@ bool PD_TensorIsValid(const PD_Tensor *tensor, PD_Status *status);
 
 void *PD_TensorGetHolder(const PD_Tensor *tensor, PD_Status *status);
 
-size_t PD_TensorGetOffset(const PD_Tensor *tensor, PD_Status *status);
-
 void PD_TensorSetDims(PD_Tensor *tensor,
                       int64_t ndims,
                       const int64_t *dims,
                       PD_Status *status);
-
-void PD_TensorSetOffset(PD_Tensor *tensor,
-                        const int64_t offset,
-                        PD_Status *status);
-
-void PD_TensorSetStrides(PD_Tensor *tensor,
-                         int64_t nstrides,
-                         const int64_t *strides,
-                         PD_Status *status);
 
 void PD_TensorSetDataType(PD_Tensor *tensor,
                           PD_DataType dtype,

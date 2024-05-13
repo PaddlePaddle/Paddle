@@ -21,6 +21,9 @@
 #ifdef PADDLE_WITH_RCCL
 #include <hip/hip_runtime.h>
 #include "paddle/phi/backends/dynload/rccl.h"
+#elif defined(PADDLE_WITH_MCCL)
+#include <musa_runtime.h>
+#include "paddle/phi/backends/dynload/mccl.h"
 #else
 #include <cuda_runtime.h>
 #include "paddle/phi/backends/dynload/nccl.h"
@@ -32,12 +35,24 @@ namespace distributed {
 #define NCCL_CHECK(cmd)                                                \
   do {                                                                 \
     ncclResult_t r = cmd;                                              \
-    if (r != ncclSuccess) {                                            \
+    if (r != mcclSuccess) {                                            \
       PADDLE_THROW(                                                    \
           phi::errors::External("Failed, NCCL error %s:%d '%s'\n",     \
                                 __FILE__,                              \
                                 __LINE__,                              \
                                 phi::dynload::ncclGetErrorString(r))); \
+    }                                                                  \
+  } while (0)
+
+#define MCCL_CHECK(cmd)                                                \
+  do {                                                                 \
+    mcclResult_t r = cmd;                                              \
+    if (r != mcclSuccess) {                                            \
+      PADDLE_THROW(                                                    \
+          phi::errors::External("Failed, MCCL error %s:%d '%s'\n",     \
+                                __FILE__,                              \
+                                __LINE__,                              \
+                                phi::dynload::mcclGetErrorString(r))); \
     }                                                                  \
   } while (0)
 
@@ -50,6 +65,17 @@ namespace distributed {
                                          __FILE__,                          \
                                          __LINE__,                          \
                                          cudaGetErrorString(r)));           \
+    }                                                                       \
+  } while (0)
+#elif defined(PADDLE_WITH_MCCL)
+#define MUSA_CHECK(expr)                                                    \
+  do {                                                                      \
+    musaError_t r = expr;                                                   \
+    if (r != musaSuccess) {                                                 \
+      PADDLE_THROW(phi::errors::External("Failed, musa error %s:%d '%s'\n", \
+                                         __FILE__,                          \
+                                         __LINE__,                          \
+                                         musaGetErrorString(r)));           \
     }                                                                       \
   } while (0)
 #else  // PADDLE_WITH_RCCL
@@ -65,13 +91,13 @@ namespace distributed {
   } while (0)
 #endif
 
-ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+mcclRedOp_t ToNCCLRedType(ReduceOp reduction);
 
-std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
+std::string SerializeNCCLUniqueId(const mcclUniqueId& ncclID);
 
-std::string NCCLDTypeToString(ncclDataType_t dtype);
+std::string NCCLDTypeToString(mcclDataType_t dtype);
 
-std::string NCCLRedTypeToString(ncclRedOp_t op);
+std::string NCCLRedTypeToString(mcclRedOp_t op);
 
 }  // namespace distributed
 }  // namespace phi

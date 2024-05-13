@@ -34,6 +34,14 @@
 #include <nccl.h>
 #endif
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#include <mudnn.h>
+#if defined(PADDLE_WITH_MCCL)
+#include <mccl.h>
+#endif
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #ifdef PADDLE_WITH_RCCL
@@ -60,8 +68,8 @@ class SparseCsrTensor;
 namespace paddle {
 
 namespace platform {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 class Communicator;
 class NCCLCommunicator;
 #endif
@@ -190,13 +198,13 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     FetchList,
     FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ncclUniqueId,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+    mcclUniqueId,
     platform::Communicator,
     platform::NCCLCommunicator,
 #endif
-    operators::CudnnRNNCache,
+    // operators::CudnnRNNCache,
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,

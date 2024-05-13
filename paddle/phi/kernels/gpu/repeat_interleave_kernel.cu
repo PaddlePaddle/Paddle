@@ -25,8 +25,7 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    GPU,
@@ -35,5 +34,4 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
