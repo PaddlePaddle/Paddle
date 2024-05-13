@@ -168,6 +168,15 @@ const auto& handler_reduce_prod_op =
   return pd_op;
 }
 
+::pir::Operation* ConvertGenerateShapeOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,  // NOLINT
+    ::pir::Builder& builder) {     // NOLINT
+  auto* new_op = op->Clone(ir_mapping, {true, true, true});
+  builder.Insert(new_op);
+  return new_op;
+}
+
 bool CanApplyOn(::pir::Operation* op) {
   return op->dialect()->name() == "cinn_op";
 }
@@ -236,3 +245,7 @@ REGISTER_TRANSFORM_RULES(slice_op,
 REGISTER_TRANSFORM_RULES(concat_op,
                          cinn::dialect::ConcatOp::name(),
                          cinn::dialect::details::ConvertConcatOp);
+
+REGISTER_TRANSFORM_RULES(generate_shape_op,
+                         cinn::dialect::GenerateShapeOp::name(),
+                         cinn::dialect::details::ConvertGenerateShapeOp);

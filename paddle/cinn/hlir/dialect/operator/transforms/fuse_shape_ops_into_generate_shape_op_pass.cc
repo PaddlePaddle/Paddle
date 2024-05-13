@@ -408,6 +408,11 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     if (!out_shape.isa<symbol::TensorShapeOrDataDimExprs>()) return false;
     if (!out_shape.data().has_value()) return false;
 
+    auto dtype =
+        output.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+    if (!dtype.isa<pir::Int32Type>() && !dtype.isa<pir::Int64Type>())
+      return false;
+
     // Only process the op which output is a single element
     return out_shape.data()->size() == 1;
   }
