@@ -5057,7 +5057,7 @@ def ormqr(x, tau, y, left=True, transpose=False, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: Data type and dimension are equals with :attr:`y`.
+        Tensor. Data type and dimension are equals with :attr:`y`.
 
     Examples:
         .. code-block:: python
