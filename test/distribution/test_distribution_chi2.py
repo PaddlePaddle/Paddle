@@ -23,8 +23,6 @@ from distribution import config
 import paddle
 from paddle.distribution import chi2
 
-# paddle.enable_static()
-
 np.random.seed(2024)
 paddle.seed(2024)
 
