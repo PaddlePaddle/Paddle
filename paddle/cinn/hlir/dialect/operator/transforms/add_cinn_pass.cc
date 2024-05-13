@@ -45,6 +45,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -52,6 +53,7 @@
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
+COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -84,7 +86,9 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+  if (FLAGS_enable_fuse_parallel_matmul_pass) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
@@ -112,10 +116,6 @@ void ApplyBuildGroupOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  bool has_dynamic_shape = HasDynamicShape(*program);
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
   pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
@@ -130,7 +130,6 @@ void ApplyGroupOpPass(::pir::Program* program,
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   if (HasDynamicShape(*program)) {
-    pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(
@@ -158,6 +157,10 @@ void ApplyDivideGroupOpToFusionOpPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   }
+
+  pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
+
   pass_manager->Run(program);
 }
 
@@ -178,7 +181,6 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(std::move(pass.value()));
   }
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
   if (FLAGS_enable_cinn_accuracy_check) {
     VLOG(0) << "Enable CINN Accuracy Check Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateAccuarcyCheckPass());
@@ -220,14 +222,10 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
-  LOG(INFO) << "====[pir-to-py-code group-ops begin]===" << std::endl
-            << PirToPyCodeConverter().Convert(*program);
-  LOG(INFO) << "====[pir-to-py-code group-ops end]===";
+  PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  LOG(INFO) << "====[pir-to-py-code fusion-ops begin]===" << std::endl
-            << PirToPyCodeConverter().Convert(*program);
-  LOG(INFO) << "====[pir-to-py-code fusion-ops end]===";
+  PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";

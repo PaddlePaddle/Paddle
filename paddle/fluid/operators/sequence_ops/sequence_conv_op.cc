@@ -70,7 +70,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
                      "Input",
                      "PaddingData",
                      "sequence_conv");
-      framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
+      phi::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
       int total_pad = up_pad + down_pad;

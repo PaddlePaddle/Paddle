@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <paddle/fluid/operators/math/concat_and_split.h>
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -52,7 +52,7 @@ struct ArrayToLoDFunctor {
   template <typename Place>
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -77,7 +77,7 @@ struct ArrayToLoDFunctor {
 template <typename DeviceContext>
 template <typename T>
 void ArrayToLoDFunctorImpl<DeviceContext>::apply() {
-  math::ConcatFunctor<DeviceContext, T> func;
+  phi::funcs::ConcatFunctor<DeviceContext, T> func;
   func(*dev_ctx_, prev_functor_->in, 0, prev_functor_->out);
 }
 
@@ -107,9 +107,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     platform::Place place = x[0].place();
     auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
-    framework::DDim ins_dims = rank > 1
-                                   ? common::slice_ddim(x[0].dims(), 1, rank)
-                                   : common::make_ddim({0});
+    phi::DDim ins_dims = rank > 1 ? common::slice_ddim(x[0].dims(), 1, rank)
+                                  : common::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
       auto ins_i_dims = rank > 1 ? common::slice_ddim(x[i].dims(), 1, rank)
                                  : common::make_ddim({0});
@@ -147,7 +146,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     }
     auto ins_dim_vec = common::vectorize(ins_dims);
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
-    framework::DDim out_dims = common::make_ddim(ins_dim_vec);
+    phi::DDim out_dims = common::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
     out->mutable_data(place, data_type);
 
