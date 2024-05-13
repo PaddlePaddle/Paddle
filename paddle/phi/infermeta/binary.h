@@ -689,4 +689,10 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const int32_t group_size,
                                MetaTensor* out);
 
+void AffineChannelInferMeta(const MetaTensor& x,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const std::string& data_layout,
+                            MetaTensor* out);
+
 }  // namespace phi
