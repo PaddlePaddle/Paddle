@@ -95,7 +95,8 @@ std::string PerformanceReporter::Report(
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
   ss << "Top " << top_count << ": [";
-  for (size_t i = 0; i < top_k.size(); ++i) {
+
+  for (int i = 0; i < top_k.size(); ++i) {
     ss << i + 1 << ": "
        << std::chrono::duration_cast<TimeDuration>(top_k[i]).count() << unit
        << "  ";
