@@ -485,11 +485,39 @@ void WhileOp::VerifySig() {
                         num_results(),
                         input_size));
   for (size_t index = 0; index < output_size; ++index) {
-    PADDLE_ENFORCE_EQ(
-        operand_type(index + 1),
-        result_type(index),
-        phi::errors::PreconditionNotMet(
-            "The (%d) result and operand type is not equal.", index));
+    if (operand_type(index + 1).isa<pir::DenseTensorType>()) {
+      // Support the case that the result tensor has -1 shape.
+      pir::DenseTensorType operand_tensor_type =
+          operand_type(index + 1).dyn_cast<pir::DenseTensorType>();
+      pir::DenseTensorType result_tensor_type =
+          result_type(index).dyn_cast<pir::DenseTensorType>();
+
+      const common::DDim &result_tensor_dims = result_tensor_type.dims();
+      common::DDim new_operand_tensor_dims = operand_tensor_type.dims();
+      for (int i = 0; i < new_operand_tensor_dims.size(); i++) {
+        if (result_tensor_dims[i] == -1) {
+          new_operand_tensor_dims[i] = -1;
+        }
+      }
+      pir::DenseTensorType new_operand_tensor_type =
+          pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                    operand_tensor_type.dtype(),
+                                    new_operand_tensor_dims,
+                                    operand_tensor_type.data_layout(),
+                                    operand_tensor_type.lod(),
+                                    operand_tensor_type.offset());
+      PADDLE_ENFORCE_EQ(
+          new_operand_tensor_type,
+          result_tensor_type,
+          phi::errors::PreconditionNotMet(
+              "The (%d) result and operand type is not equal.", index));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          operand_type(index + 1),
+          result_type(index),
+          phi::errors::PreconditionNotMet(
+              "The (%d) result and operand type is not equal.", index));
+    }
   }
 }
 
