@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {

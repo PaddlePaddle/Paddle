@@ -20,9 +20,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
