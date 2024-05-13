@@ -3944,13 +3944,16 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
 
 bool AssignOut_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(operand_source(0));
-  infer_context->SetShapeOrDataForValue(result(0), operand_shape_or_data);
-  // TODO(Hongqing-work): check if inplace would change shape of
-  // operand_source(1)
-  infer_context->SetShapeOrDataForValue(operand_source(1),
-                                        operand_shape_or_data);
+  const auto &inplace_output_shape =
+      infer_context->GetShapeOrDataForValue(operand_source(1));
+  infer_context->SetShapeOrDataForValue(result(0), x_shape);
+  CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
+  for (size_t i = 0; i < x_shape.shape().size(); ++i) {
+    infer_context->AddEqualCstr(x_shape.shape()[i],
+                                inplace_output_shape.shape()[i]);
+  }
   return true;
 }
 
