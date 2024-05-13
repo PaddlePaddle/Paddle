@@ -3942,6 +3942,18 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
   return argument_outputs;
 }
 
+bool AssignOut_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(operand_source(0));
+  infer_context->SetShapeOrDataForValue(result(0), operand_shape_or_data);
+  // TODO(Hongqing-work): check if inplace would change shape of
+  // operand_source(1)
+  infer_context->SetShapeOrDataForValue(operand_source(1),
+                                        operand_shape_or_data);
+  return true;
+}
+
 phi::DataType AssignOut_Op::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DataType &tensor_dtype,
