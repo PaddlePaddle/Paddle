@@ -126,7 +126,6 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation* op) {
 }
 
 bool IsTerminateOp(pir::Operation* op) {
-  // return op->num_operands() == 0;
   return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
          op->isa<pir::ConstantTensorOp>();
 }
@@ -402,7 +401,7 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
     std::cout << "Found " << cse_analyzer.to_erase_ops.size()
               << " common subexpression" << std::endl;
 
-    size_t cse_count = 0;
+    int32_t cse_count = 0;
     for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
       if (FLAGS_cse_max_count != -1 && cse_count >= FLAGS_cse_max_count) {
         break;
