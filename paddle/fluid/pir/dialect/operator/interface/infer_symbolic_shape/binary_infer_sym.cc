@@ -97,11 +97,8 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                                   in_s_or_d.shape().end());
 
   const std::vector<symbol::DimExpr> filter_data_dims =
-      channel_last
-          ? std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
-                                         filter_s_or_d.shape().end() - 1)
-          : std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
-                                         filter_s_or_d.shape().end());
+      std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                   filter_s_or_d.shape().end());
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 

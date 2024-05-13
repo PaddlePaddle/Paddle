@@ -24,9 +24,9 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-std::vector<framework::DDim> RestoreShapes(const std::vector<int>& shape_concat,
-                                           const std::vector<int>& ranks) {
-  std::vector<framework::DDim> res;
+std::vector<phi::DDim> RestoreShapes(const std::vector<int>& shape_concat,
+                                     const std::vector<int>& ranks) {
+  std::vector<phi::DDim> res;
   int offset = 0;
   for (int len : ranks) {
     auto start_it = shape_concat.begin() + offset;
@@ -81,7 +81,7 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
     const auto shape_concat =
         ctx->Attrs().Get<std::vector<int>>("shape_concat");
     const auto ranks = ctx->Attrs().Get<std::vector<int>>("ranks");
-    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
+    std::vector<phi::DDim> shapes = RestoreShapes(shape_concat, ranks);
     ctx->SetReaderDims("Out", shapes);
 
     const auto lod_levels = ctx->Attrs().Get<std::vector<int>>("lod_levels");
