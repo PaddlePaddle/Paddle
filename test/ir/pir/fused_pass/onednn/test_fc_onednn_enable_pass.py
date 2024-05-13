@@ -67,7 +67,7 @@ class TestFcOneDNNEnablePattern(PassTest):
                                     out = paddle.add(paddle.matmul(x, w), y)
                                 out = paddle.assign(out)
                                 self.pass_attr_list = [
-                                    {'fc_fuse_pass': {}},
+                                    {'matmul_add_act_fuse_pass': {}},
                                     {'fc_onednn_enable_pass': {}},
                                 ]
                                 self.feeds = {
