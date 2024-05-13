@@ -31,7 +31,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-COMMON_DECLARE_bool(cse_max_count);
+COMMON_DECLARE_int32(cse_max_count);
 
 namespace {
 
