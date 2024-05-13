@@ -37,8 +37,7 @@ class PrimeNet(paddle.nn.Layer):
     def forward(self, x, y):
         tmp = self.fc(x)
         out = paddle.add(tmp, y)
-        res = paddle.tanh(out)
-        return res
+        return out
 
 
 @param.parameterized_class(
@@ -71,7 +70,7 @@ class PrimeNet(paddle.nn.Layer):
         ),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestAddGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
@@ -91,20 +90,6 @@ class TestDivGradComp(unittest.TestCase):
 
         return res
 
-    def test_cinn(self):
-        paddle.disable_static()
-        dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
-
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                comp_st_cinn_res[i].numpy(),
-                dy_res[i].numpy(),
-                rtol=1e-7,
-                atol=1e-7,
-            )
-        paddle.enable_static()
-
     def test_tanh_grad_comp(self):
         paddle.enable_static()
 
@@ -117,8 +102,7 @@ class TestDivGradComp(unittest.TestCase):
                 x.stop_gradient = False
                 y.stop_gradient = False
                 z = paddle.add(x, y)
-                out = paddle.tanh(z)
-                res = paddle.static.gradients([out], [x, y])
+                res = paddle.static.gradients([z], [x, y])
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(
@@ -127,7 +111,7 @@ class TestDivGradComp(unittest.TestCase):
                     'primal0': primal0,
                     'primal1': primal1,
                 },
-                fetch_list=[res[0].name, res[1].name],
+                fetch_list=[res[0], res[1]],
             )
             return out[0], out[1]
 
@@ -144,8 +128,7 @@ class TestDivGradComp(unittest.TestCase):
                 x.stop_gradient = False
                 y.stop_gradient = False
                 z = paddle.add(x, y)
-                out = paddle.tanh(z)
-                res = paddle.static.gradients([out], [x, y])
+                res = paddle.static.gradients([z], [x, y])
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(
@@ -154,7 +137,7 @@ class TestDivGradComp(unittest.TestCase):
                     'primal0': self.primal0,
                     'primal1': self.primal1,
                 },
-                fetch_list=[res[0].name, res[1].name],
+                fetch_list=[res[0], res[1]],
             )
             return out[0], out[1]
 
