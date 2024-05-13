@@ -168,11 +168,8 @@ UniqueFlattendCUDATensor(const Context& context,
 #ifdef PADDLE_WITH_HIP
     hipMemset(inv_loc_data_ptr, 0, sizeof(IndexT));
 #else
-    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
+    cudaMemsetAsync(inv_loc_data_ptr, 0, sizeof(IndexT), context.stream());
 #endif
-
-#ifdef PADDLE_WITH_HIP
     size_t temp_storage_bytes = 0;
     cub::DeviceScan::InclusiveSum(NULL,
                                   temp_storage_bytes,
@@ -188,12 +185,6 @@ UniqueFlattendCUDATensor(const Context& context,
                                   inv_loc_data_ptr,
                                   num_input,
                                   context.stream());
-#else
-    thrust::inclusive_scan(exec_policy,
-                           inv_loc_data_ptr,
-                           inv_loc_data_ptr + num_input,
-                           inv_loc_data_ptr);
-#endif
     thrust::scatter(exec_policy,
                     inv_loc_data_ptr,
                     inv_loc_data_ptr + num_input,
