@@ -49,7 +49,7 @@ class XHPCBufferManager {
   }
 
   void Free() {
-    PADDLE_ENFORCE_GT(allocations_to_free_.size(),
+    PADDLE_ENFORCE_GT(GetStackLevel(),
                       0,
                       errors::PreconditionNotMet(
                           "No ctx_guard when overload_free is called"));
@@ -57,6 +57,8 @@ class XHPCBufferManager {
     VLOG(3) << "XHPC ctx_guard destropyed, " << allocations_to_free_.size()
             << " are in use now.";
   }
+
+  size_t GetStackLevel() const { return allocations_to_free_.size(); }
 
  private:
   std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
@@ -169,6 +171,13 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
+
+    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+      XPUStream s;
+      xpu_stream_create(&s);
+      context_->set_stream(s);
+    }
+
     if (std::getenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD") == nullptr) {
       // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
       auto overload_alloc_fn = std::bind(&XHPCBufferManager::Alloc,
@@ -193,12 +202,6 @@ struct XPUContext::Impl {
     VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
             << "context " << context_ << " set xpuapi_default_size "
             << gm_default_size;
-
-    if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-      XPUStream s;
-      xpu_stream_create(&s);
-      context_->set_stream(s);
-    }
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
