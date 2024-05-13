@@ -49,10 +49,19 @@ PD_DEFINE_string(cinn_nvcc_cmd_path,
                                "/usr/local/cuda/bin"),
                  "Setting nvcc default path!");
 
+PD_DEFINE_string(cinn_kernel_execution_label,
+                 StringFromEnv("FLAGS_cinn_kernel_execution_label",
+                               "CINN KERNEL EXECUTE"),
+                 "Label used to measure kernel execution time");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
+
+PD_DEFINE_bool(cinn_enable_config_search,
+               BoolFromEnv("FLAGS_cinn_enable_config_search", false),
+               "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),

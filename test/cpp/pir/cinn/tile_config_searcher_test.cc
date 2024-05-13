@@ -17,70 +17,20 @@
 #include <memory>
 #include <sstream>
 
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
+#include "paddle/cinn/ir/group_schedule/search/measurer.h"
+#include "paddle/cinn/utils/string.h"
+#include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/include/pass/pass.h"
-#include "paddle/pir/include/pass/pass_manager.h"
 
 COMMON_DECLARE_bool(print_ir);
-
-bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
-
-template <typename T>
-void FillValue(T* data, T value, size_t size) {
-  for (int i = 0; i < size; ++i) {
-    data[i] = value;
-  }
-}
-
-std::shared_ptr<pir::PassManager> CreatePassManager() {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  auto pass_manager = std::make_shared<pir::PassManager>(ctx);
-  if (FLAGS_print_ir) {
-    pass_manager->EnableIRPrinting();
-  }
-  return pass_manager;
-}
-
-static void BuildAndRun(::pir::Program* program) {
-  cinn::dialect::ir::ApplyCinnPass(program, CreatePassManager);
-
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
-
-  paddle::framework::Scope exe_scope;
-  paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
-
-  auto x_tensor = executor.local_scope()->FindVar("x")->Get<phi::DenseTensor>();
-  LOG(INFO) << "x_tensor.rank: " << x_tensor.dims().size();
-  phi::DDim ddim({128, 128, 768});
-  size_t size = 128 * 128 * 768;
-  x_tensor.ResizeAndAllocate(ddim);
-  float* data = x_tensor.mutable_data<float>(ddim, place);
-  LOG(INFO) << "x_tensor.rank: " << x_tensor.dims().size();
-
-  executor.Run({"x"}, {x_tensor}, true);
-
-  auto out_tensor =
-      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-}
 
 std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -90,7 +40,7 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {-1, 128, 768};
+  const std::vector<int64_t> shape = {-1, 1024};
   auto x = builder
                .Build<paddle::dialect::DataOp>(
                    "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -103,10 +53,54 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   return program;
 }
 
-TEST(GroupOp, TestReduceSum) {
-  // Step 1: Construct pir::Program
+TEST(ConfigSearcher, TestReduceDemo) {
+  constexpr int kThreadsPerWarp = 32;
+  constexpr int kMaxThreadsPerBlock = 1024;
+
+  // Step 1: Construct pir::Program.
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildReduceSumProgram();
 
-  BuildAndRun(program.get());
+  // Step 2: Switch schedule config manager mode.
+  auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
+  schedule_config_manager.SetPolicy("custom");
+
+  // Step 3: Construct iter space and objective function.
+  cinn::ir::search::IterSpace iter_space;
+  iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
+      33,
+      128,
+      "S",
+      /* is_dynamic = */ true,
+      std::vector<double>(128 - 32, 1.0)});
+  iter_space.space.push_back(
+      cinn::ir::search::IterSpace::Dimension{1024,
+                                             1024,
+                                             "R",
+                                             /* is_dynamic = */ false,
+                                             std::vector<double>(1, 1.0)});
+  std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
+      std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
+          program.get(), iter_space);
+
+  // Step 4: Construct config candidate range and constraints.
+  std::vector<std::pair<int, int>> candidate_range{
+      {2, 4}, {32, 64}, {127, 128}};
+  std::vector<cinn::ir::search::ConstraintFunc> constraints;
+  constraints.emplace_back(
+      [](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[1] % kThreadsPerWarp == 0;
+      });
+  constraints.emplace_back(
+      [](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
+      });
+
+  // Step 5: Construct searcher and search.
+  cinn::ir::search::ScheduleConfigSearcher searcher(
+      std::move(obj_func), candidate_range, constraints);
+  auto search_res = searcher.Search();
+  LOG(INFO) << "min score = " << search_res.first;
+  LOG(INFO) << "best candidate: "
+            << cinn::utils::Join<int>(search_res.second, ", ");
 }
