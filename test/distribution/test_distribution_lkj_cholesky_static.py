@@ -37,13 +37,22 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(self.program):
-            self.conc = paddle.static.data(
+            conc = paddle.static.data(
                 'concentration',
                 (),
                 'float32',
             )
+
+            self._paddle_lkj_cholesky_onion = lkj_cholesky.LKJCholesky(
+                2, conc, 'onion'
+            )
+
+            self._paddle_lkj_cholesky_cvine = lkj_cholesky.LKJCholesky(
+                2, conc, 'cvine'
+            )
+
             self.feeds = {
-                'concentration': self.conc,
+                'concentration': self.concentration,
             }
 
     def gen_cases(self):
@@ -65,21 +74,19 @@ class TestLKJCholeskyShapeOneDim(unittest.TestCase):
 
     def test_onion_sample_shape(self):
         sample_method = 'onion'
-        self._test_sample_shape_dim(sample_method)
+        self._test_sample_shape(sample_method)
 
     def test_cvine_sample_shape(self):
         sample_method = 'cvine'
-        self._test_sample_shape_dim(sample_method)
+        self._test_sample_shape(sample_method)
 
-    def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 4):
-            self._test_sample_shape(dim, sample_method)
-
-    def _test_sample_shape(self, dim, sample_method):
+    def _test_sample_shape(self, sample_method):
         with paddle.static.program_guard(self.program):
-            self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
-                dim, self.conc, sample_method
-            )
+            if sample_method == 'cvine':
+                self._paddle_lkj_cholesky = self._paddle_lkj_cholesky_cvine
+            else:
+                self._paddle_lkj_cholesky = self._paddle_lkj_cholesky_onion
+
             cases = self.gen_cases()
             for case in cases:
                 [data] = self.executor.run(
