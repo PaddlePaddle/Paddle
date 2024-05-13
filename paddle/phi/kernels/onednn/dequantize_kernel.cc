@@ -44,9 +44,9 @@ void DeQuantKernel(const Context& dev_ctx,
 
   const bool with_shift = q_shift != 0;
 
-  auto x_tz = common::vectorize<int64_t>(x.dims());
-  auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
-  auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
+  auto x_tz = common::vectorize<int64_t>(input.dims());
+  auto x_type = phi::funcs::ToOneDNNDataType(input.dtype());
+  auto out_type = phi::funcs::ToOneDNNDataType(output->dtype());
 
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
@@ -57,13 +57,17 @@ void DeQuantKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
   }
 
-  phi::funcs::ReorderOneDNNHandler reorder_handler(
-      x_tz, x.dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
+  phi::funcs::ReorderOneDNNHandler reorder_handler(x_tz,
+                                                   input.dtype(),
+                                                   x_type,
+                                                   output->dtype(),
+                                                   out_type,
+                                                   dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), phi::funcs::to_void_cast(x.data<T>()));
-  auto reorder_dst_memory_p =
-      reorder_handler.AcquireDstMemory(out, x.mem_desc(), dev_ctx.GetPlace());
+      input.mem_desc(), phi::funcs::to_void_cast(input.data<T>()));
+  auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+      output, input.mem_desc(), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
@@ -92,7 +96,7 @@ void DeQuantKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  out->set_mem_desc(reorder_dst_memory_p->get_desc());
+  output->set_mem_desc(reorder_dst_memory_p->get_desc());
 }
 
 }  // namespace phi
