@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ['FLAGS_prim_vjp_skip_default_ops'] = '1'
 
 import paddle
 from paddle.decomposition import decomp
