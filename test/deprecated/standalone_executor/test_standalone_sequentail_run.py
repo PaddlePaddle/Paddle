@@ -52,7 +52,7 @@ class TestStandaloneExecutor(unittest.TestCase):
             ret = exe.run(
                 compiled_program,
                 feed={"data": data},
-                fetch_list=[v.name for v in outs],
+                fetch_list=list(outs),
             )
             return ret
 

@@ -99,7 +99,7 @@ class TestYoloBoxPost(unittest.TestCase):
             "im_shape": np.array([[608.0, 608.0]], "float32"),
             "im_scale": np.array([[1.0, 1.0]], "float32"),
         }
-        outs = exe.run(program, feed=feed, fetch_list=[out.name, rois_num.name])
+        outs = exe.run(program, feed=feed, fetch_list=[out, rois_num])
 
 
 if __name__ == '__main__':

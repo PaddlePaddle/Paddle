@@ -1102,6 +1102,21 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
   loss->share_lod(logits);
 }
 
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length) {
+  auto input_dims = input.dims();
+  output->set_dims(input_dims);
+  if (input_length.initialized()) {
+    output_length->set_dims({input_dims[0], 1});
+  }
+  output->set_dtype(input.dtype());
+}
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
