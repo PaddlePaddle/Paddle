@@ -15,7 +15,6 @@
 import hashlib
 import os
 import os.path as osp
-import shlex
 import shutil
 import subprocess
 import sys
@@ -205,8 +204,7 @@ def _wget_download(url: str, fullname: str):
             'https',
         ), 'Only support https and http url'
         # using wget to download url
-        tmp_fullname = shlex.quote(fullname + "_tmp")
-        url = shlex.quote(url)
+        tmp_fullname = fullname + "_tmp"
         # –user-agent
         command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
         subprc = subprocess.Popen(
