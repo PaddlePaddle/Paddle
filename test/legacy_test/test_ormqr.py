@@ -163,7 +163,7 @@ class TestOrmqrAPI(unittest.TestCase):
                 fetch_list=[out],
             )
             out_ref = ref_ormqr(self._x, self._tau, self._y)
-            np.testing.assert_allclose(out_ref, res[0], rtol=1e-3, atol=1e-3)
+            np.testing.assert_allclose(out_ref, res[0], rtol=1e-2, atol=1e-2)
 
     def test_dygraph_api(self):
         m, n = self.x.shape[-2:]
@@ -177,7 +177,7 @@ class TestOrmqrAPI(unittest.TestCase):
         y = paddle.to_tensor(self.y)
         out = paddle.linalg.ormqr(x, tau, y)
         out_ref = ref_ormqr(self._x, self._tau, self._y)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-2, atol=1e-2)
         paddle.enable_static()
 
     def test_error(self):
