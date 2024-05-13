@@ -1,10 +1,10 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.1 (the "License");
+// Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.1
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_impl.cu.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
@@ -53,5 +53,5 @@ void LaunchElementwiseCudaKernel(
       ctx, pt_inputs, &pt_outputs, func, axis);
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

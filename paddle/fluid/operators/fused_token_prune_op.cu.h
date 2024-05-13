@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
