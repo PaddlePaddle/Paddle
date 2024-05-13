@@ -40,7 +40,7 @@ namespace operators {
  * 1D blocks: blockDim.x = cols
  * 2D grids: gridDim.y = rows
  */
-inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
+inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const phi::GPUContext &ctx,
     const uint32_t rows,
     const uint32_t cols,
@@ -60,7 +60,7 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
-  platform::GpuLaunchConfig config;
+  phi::backends::gpu::GpuLaunchConfig config;
   config.block_per_grid.x = blocks_x;
   config.block_per_grid.y = blocks_y;
   config.thread_per_block.x = threads;
