@@ -311,10 +311,7 @@ def _decompress(fname):
 
 def _uncompress_file_zip(filepath):
     with zipfile.ZipFile(filepath, 'r') as files:
-        file_list_tmp = files.namelist()
-        file_list = []
-        for file in file_list_tmp:
-            file_list.append(file.replace("../", ""))
+        file_list = files.namelist()
 
         file_dir = os.path.dirname(filepath)
 
@@ -343,10 +340,7 @@ def _uncompress_file_zip(filepath):
 
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list_tmp = files.getnames()
-        file_list = []
-        for file in file_list_tmp:
-            file_list.append(file.replace("../", ""))
+        file_list = files.getnames()
 
         file_dir = os.path.dirname(filepath)
 
