@@ -113,6 +113,8 @@ class TestTRTOptimizationLevel(unittest.TestCase):
         config.enable_memory_optim()
         # config.disable_glog_info()
         config.set_tensorrt_optimization_level(0)
+        config.enable_new_ir()
+        config.enable_new_executor()
         self.assertEqual(config.tensorrt_optimization_level(), 0)
         predictor = create_predictor(config)
         return predictor

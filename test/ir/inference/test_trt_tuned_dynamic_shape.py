@@ -57,6 +57,8 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
         config.set_model_buffer(model, len(model), params, len(params))
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir('tuned_test')
+        config.enable_new_ir()
+        config.enable_new_executor()
         if tuned:
             config.collect_shape_range_info('shape_range.pbtxt')
         else:

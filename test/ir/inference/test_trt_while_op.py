@@ -133,6 +133,8 @@ class TestWhileOP(unittest.TestCase):
 
         config_trt = Config(model_path + ".pdmodel", model_path + ".pdiparams")
         config_trt.enable_use_gpu(100, 0)
+        config_trt.enable_new_ir()
+        config_trt.enable_new_executor()
         config_trt.enable_tensorrt_engine(
             workspace_size=1 << 30,
             max_batch_size=1,
@@ -141,6 +143,7 @@ class TestWhileOP(unittest.TestCase):
             use_static=False,
             use_calib_mode=False,
         )
+
         config_trt.set_trt_dynamic_shape_info(
             {
                 "x": [32, 3, 224, 224],

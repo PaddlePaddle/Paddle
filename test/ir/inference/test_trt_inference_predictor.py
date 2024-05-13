@@ -87,6 +87,9 @@ class BackendPaddle:
 
         config.set_cpu_math_library_num_threads(self.args.cpu_threads)
         config.switch_ir_optim(True)
+        config.enable_new_ir()
+        config.enable_new_executor()
+
         # debug
         if self.args.enable_debug:
             config.switch_ir_debug()
