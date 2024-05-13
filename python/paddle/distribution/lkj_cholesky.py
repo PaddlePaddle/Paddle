@@ -17,10 +17,9 @@ import operator
 from functools import reduce
 
 import paddle
-from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
 from paddle.distribution.beta import Beta
-from paddle.framework import in_dynamic_mode
 
 __all__ = ["LKJCholesky"]
 
