@@ -20,26 +20,26 @@ import paddle
 from paddle import base, static
 
 DATA_CASES = [
-    {'elements_data': np.array(1.0), 'test_elements_data': np.array(-1.0)},
+    {'x_data': np.array(1.0), 'test_x_data': np.array(-1.0)},
     {
-        'elements_data': np.random.randint(-10, 10, (4, 8)),
-        'test_elements_data': np.random.randint(0, 20, (2, 3)),
+        'x_data': np.random.randint(-10, 10, (4, 8)),
+        'test_x_data': np.random.randint(0, 20, (2, 3)),
     },
     {
-        'elements_data': np.random.randint(-50, 50, (8, 64)),
-        'test_elements_data': np.random.randint(-20, 0, (4, 256)),
+        'x_data': np.random.randint(-50, 50, (8, 64)),
+        'test_x_data': np.random.randint(-20, 0, (4, 256)),
     },
 ]
 
 DATA_CASES_UNIQUE = [
-    {'elements_data': np.array(-1.0), 'test_elements_data': np.array(1.0)},
+    {'x_data': np.array(-1.0), 'test_x_data': np.array(1.0)},
     {
-        'elements_data': np.arange(0, 1000).reshape([2, 5, 100]),
-        'test_elements_data': np.arange(200, 700),
+        'x_data': np.arange(0, 1000).reshape([2, 5, 100]),
+        'test_x_data': np.arange(200, 700),
     },
     {
-        'elements_data': np.arange(-100, 100).reshape([2, 2, 5, 10]),
-        'test_elements_data': np.arange(50, 150).reshape([4, 5, 5]),
+        'x_data': np.arange(-100, 100).reshape([2, 2, 5, 10]),
+        'test_x_data': np.arange(50, 150).reshape([4, 5, 5]),
     },
 ]
 
@@ -47,8 +47,8 @@ DATA_TYPE = ['float32', 'float64', 'int32', 'int64']
 
 
 def run_dygraph(
-    elements_data,
-    test_elements_data,
+    x_data,
+    test_x_data,
     type,
     assume_unique=False,
     invert=False,
@@ -58,16 +58,16 @@ def run_dygraph(
     if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
-    elements_data = elements_data.astype(type)
-    test_elements_data = test_elements_data.astype(type)
-    x_e = paddle.to_tensor(elements_data)
-    x_t = paddle.to_tensor(test_elements_data)
+    x_data = x_data.astype(type)
+    test_x_data = test_x_data.astype(type)
+    x_e = paddle.to_tensor(x_data)
+    x_t = paddle.to_tensor(test_x_data)
     return paddle.isin(x_e, x_t, assume_unique, invert)
 
 
 def run_static(
-    elements_data,
-    test_elements_data,
+    x_data,
+    test_x_data,
     type,
     assume_unique=False,
     invert=False,
@@ -81,17 +81,15 @@ def run_static(
         place = paddle.CUDAPlace(0)
     exe = base.Executor(place)
     with static.program_guard(main_program, startup_program):
-        elements_data = elements_data.astype(type)
-        test_elements_data = test_elements_data.astype(type)
-        x_e = paddle.static.data(
-            name='x_e', shape=elements_data.shape, dtype=type
-        )
+        x_data = x_data.astype(type)
+        test_x_data = test_x_data.astype(type)
+        x_e = paddle.static.data(name='x_e', shape=x_data.shape, dtype=type)
         x_t = paddle.static.data(
-            name='x_t', shape=test_elements_data.shape, dtype=type
+            name='x_t', shape=test_x_data.shape, dtype=type
         )
         res = paddle.isin(x_e, x_t, assume_unique, invert)
         static_result = exe.run(
-            feed={'x_e': elements_data, 'x_t': test_elements_data},
+            feed={'x_e': x_data, 'x_t': test_x_data},
             fetch_list=[res],
         )
         return static_result
@@ -102,19 +100,19 @@ def test(
 ):
     for type in type_cases:
         for case in data_cases:
-            elements_data = case['elements_data']
-            test_elements_data = case['test_elements_data']
+            x_data = case['x_data']
+            test_x_data = case['test_x_data']
             dygraph_result = run_dygraph(
-                elements_data,
-                test_elements_data,
+                x_data,
+                test_x_data,
                 type,
                 assume_unique,
                 invert,
                 use_gpu,
             ).numpy()
             np_result = np.isin(
-                elements_data.astype(type),
-                test_elements_data.astype(type),
+                x_data.astype(type),
+                test_x_data.astype(type),
                 assume_unique=assume_unique,
                 invert=invert,
             )
@@ -122,8 +120,8 @@ def test(
 
             def test_static():
                 (static_result,) = run_static(
-                    elements_data,
-                    test_elements_data,
+                    x_data,
+                    test_x_data,
                     type,
                     assume_unique,
                     invert,

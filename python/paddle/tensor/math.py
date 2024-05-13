@@ -7971,43 +7971,43 @@ def sinc_(x, name=None):
     return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))
 
 
-def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
+def isin(x, test_x, assume_unique=False, invert=False, name=None):
     r"""
-    Tests if each element of `elements` is in `test_elements`.
+    Tests if each element of `x` is in `test_x`.
 
     Args:
-        elements (Tensor): The input Tensor. Supported data type: 'float32', 'float64', 'int32', 'int64'.
-        test_elements (Tensor): Tensor values against which to test for each input element. Supported data type: 'float32', 'float64', 'int32', 'int64'.
-        assume_unique (bool, optional): If True, indicates both `elements` and `test_elements` contain unique elements, which could make the calculation faster. Default: False.
+        x (Tensor): The input Tensor. Supported data type: 'float32', 'float64', 'int32', 'int64'.
+        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'float32', 'float64', 'int32', 'int64'.
+        assume_unique (bool, optional): If True, indicates both `x` and `test_x` contain unique elements, which could make the calculation faster. Default: False.
         invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor), The output Tensor with the same shape as `elements`.
+        out (Tensor), The output Tensor with the same shape as `x`.
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
             >>> paddle.set_device('cpu')
-            >>> elements = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
-            >>> test_elements = paddle.to_tensor([-2.1, 2.5], dtype='float32')
-            >>> res = paddle.isin(elements, test_elements)
+            >>> x = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
+            >>> test_x = paddle.to_tensor([-2.1, 2.5], dtype='float32')
+            >>> res = paddle.isin(x, test_x)
             >>> print(res)
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True, True, False, True])
 
-            >>> elements = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
-            >>> test_elements = paddle.to_tensor([-2.1, 2.5], dtype='float32')
-            >>> res = paddle.isin(elements, test_elements, invert=True)
+            >>> x = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
+            >>> test_x = paddle.to_tensor([-2.1, 2.5], dtype='float32')
+            >>> res = paddle.isin(x, test_x, invert=True)
             >>> print(res)
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, False, False, True, False])
 
-            >>> # Set `assume_unique` to True only when `elements` and `test_elements` contain unique values, otherwise the result may be incorrect.
-            >>> elements = paddle.to_tensor([0., 1., 2.]*20).reshape([20, 3])
-            >>> test_elements = paddle.to_tensor([0., 1.]*20)
-            >>> correct_result = paddle.isin(elements, test_elements, assume_unique=False)
+            >>> # Set `assume_unique` to True only when `x` and `test_x` contain unique values, otherwise the result may be incorrect.
+            >>> x = paddle.to_tensor([0., 1., 2.]*20).reshape([20, 3])
+            >>> test_x = paddle.to_tensor([0., 1.]*20)
+            >>> correct_result = paddle.isin(x, test_x, assume_unique=False)
             >>> print(correct_result)
             Tensor(shape=[20, 3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[True , True , False],
@@ -8031,7 +8031,7 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
              [True , True , False],
              [True , True , False]])
 
-            >>> incorrect_result = paddle.isin(elements, test_elements, assume_unique=True)
+            >>> incorrect_result = paddle.isin(x, test_x, assume_unique=True)
             >>> print(incorrect_result)
             Tensor(shape=[20, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
             [[True , True , True ],
@@ -8056,16 +8056,14 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
              [True , True , False]])
 
     """
-    if not isinstance(elements, (paddle.Tensor, Variable, paddle.pir.Value)):
-        raise TypeError(f"x must be tensor type, but got {type(elements)}")
-    if not isinstance(
-        test_elements, (paddle.Tensor, Variable, paddle.pir.Value)
-    ):
-        raise TypeError(f"x must be tensor type, but got {type(test_elements)}")
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(test_x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(test_x)}")
 
     check_variable_and_dtype(
-        elements,
-        "elements",
+        x,
+        "x",
         [
             'float32',
             'float64',
@@ -8076,8 +8074,8 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
     )
 
     check_variable_and_dtype(
-        test_elements,
-        "test_elements",
+        test_x,
+        "test_x",
         [
             'float32',
             'float64',
@@ -8087,36 +8085,34 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
         "isin",
     )
 
-    elements_zero_dim = False
-    if len(elements.shape) == 0:
-        elements = elements.reshape([1])
-        elements_zero_dim = True
+    x_zero_dim = False
+    if len(x.shape) == 0:
+        x = x.reshape([1])
+        x_zero_dim = True
 
-    size_elements = paddle.cast(paddle.numel(elements), 'float32')
-    if test_elements.numel() < 10.0 * paddle.pow(size_elements, 0.145):
-        # use brute-force searching if the test_elements size is small
-        if len(elements.shape) == 0:
+    size_x = paddle.cast(paddle.numel(x), 'float32')
+    if test_x.numel() < 10.0 * paddle.pow(size_x, 0.145):
+        # use brute-force searching if the test_x size is small
+        if len(x.shape) == 0:
             return paddle.zeros([], dtype='bool')
 
-        x = elements.reshape(
-            tuple(elements.shape) + ((1,) * test_elements.ndim)
-        )
-        cmp = x == test_elements
-        dim = tuple(range(-1, -test_elements.ndim - 1, -1))
+        tmp = x.reshape(tuple(x.shape) + ((1,) * test_x.ndim))
+        cmp = tmp == test_x
+        dim = tuple(range(-1, -test_x.ndim - 1, -1))
         cmp = cmp.any(axis=dim)
         if invert:
             cmp = ~cmp
     else:
-        elements_flat = elements.flatten()
-        test_elements_flat = test_elements.flatten()
+        x_flat = x.flatten()
+        test_x_flat = test_x.flatten()
         if assume_unique:
-            # if elements and test_elements both contain unique elements, use stable argsort method which could be faster
-            all_elements = paddle.concat([elements_flat, test_elements_flat])
+            # if x and test_x both contain unique elements, use stable argsort method which could be faster
+            all_elements = paddle.concat([x_flat, test_x_flat])
             sorted_index = paddle.argsort(all_elements, stable=True)
-            sorted_elements = all_elements[sorted_index]
+            sorted_x = all_elements[sorted_index]
 
             duplicate_mask = paddle.full_like(sorted_index, False, dtype='bool')
-            duplicate_mask[:-1] = sorted_elements[1:] == sorted_elements[:-1]
+            duplicate_mask[:-1] = sorted_x[1:] == sorted_x[:-1]
 
             if invert:
                 duplicate_mask = duplicate_mask.logical_not()
@@ -8124,21 +8120,21 @@ def isin(elements, test_elements, assume_unique=False, invert=False, name=None):
             mask = paddle.empty_like(duplicate_mask)
             mask[sorted_index] = duplicate_mask
 
-            cmp = mask[0 : elements.numel()].reshape(elements.shape)
+            cmp = mask[0 : x.numel()].reshape(x.shape)
         else:
             # otherwise use searchsorted method
-            sorted_test_elements = paddle.sort(test_elements_flat)
-            idx = paddle.searchsorted(sorted_test_elements, elements_flat)
+            sorted_test_x = paddle.sort(test_x_flat)
+            idx = paddle.searchsorted(sorted_test_x, x_flat)
             test_idx = paddle.where(
-                idx < sorted_test_elements.numel(),
+                idx < sorted_test_x.numel(),
                 idx,
                 paddle.zeros_like(idx, 'int64'),
             )
-            cmp = sorted_test_elements[test_idx] == elements_flat
+            cmp = sorted_test_x[test_idx] == x_flat
             cmp = cmp.logical_not() if invert else cmp
-            cmp = cmp.reshape(elements.shape)
+            cmp = cmp.reshape(x.shape)
 
-    if elements_zero_dim:
+    if x_zero_dim:
         return cmp.reshape([])
     else:
         return cmp
