@@ -3721,7 +3721,7 @@ void PyramidHashInferMeta(const MetaTensor& x,
                           MetaTensor* drop_pos,
                           MetaTensor* x_temp_out,
                           MetaConfig config) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
                     phi::errors::InvalidArgument(
@@ -3729,7 +3729,7 @@ void PyramidHashInferMeta(const MetaTensor& x,
                         "It should be 2, but got %d",
                         x_dims.size()));
 
-  auto w_dims = w.dims();
+  const auto& w_dims = w.dims();
   PADDLE_ENFORCE_EQ(w_dims.size(),
                     2,
                     phi::errors::InvalidArgument(
@@ -3769,7 +3769,7 @@ void PyramidHashInferMeta(const MetaTensor& x,
         true,
         phi::errors::NotFound("Input(WhiteList) of PyramidHashOP is not "
                               "found but white_list_len > 0."));
-    auto wl_dims = white_list.dims();
+    const auto& wl_dims = white_list.dims();
     PADDLE_ENFORCE_EQ(
         wl_dims.size(),
         2,
@@ -3796,7 +3796,7 @@ void PyramidHashInferMeta(const MetaTensor& x,
   }
 
   if (black_list_len > 0) {
-    auto bl_dims = black_list.dims();
+    const auto& bl_dims = black_list.dims();
     PADDLE_ENFORCE_EQ(
         bl_dims.size(),
         2,
