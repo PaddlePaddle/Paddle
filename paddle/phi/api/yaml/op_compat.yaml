@@ -679,6 +679,15 @@
   extra :
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : correlation
+  backward : correlation_grad
+  inputs :
+    {input1 : Input1, input2 : Input2}
+  outputs :
+    out : Output
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : cos
   backward : cos_grad, cos_double_grad, cos_triple_grad
   inputs :
@@ -2566,6 +2575,7 @@
     x : X
   outputs :
     out : Out
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2579,6 +2589,7 @@
     x : X
   outputs :
     out : Out
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3039,6 +3050,12 @@
   backward : selu_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op : send_and_recv
+  inputs :
+    x: X
   outputs :
     out : Out
 
@@ -3832,6 +3849,21 @@
   outputs:
     {out: Out}
 
+- op: crf_decoding
+  inputs:
+    emission: Emission
+    transition: Transition
+    label: Label
+    length: Length
+  outputs:
+    viterbi_path: ViterbiPath
+
+- op: ctc_align
+  inputs:
+    {input : Input, input_length : InputLength}
+  outputs:
+    {output : Output, output_length : OutputLength}
+
 - op: cudnn_lstm
   backward: cudnn_lstm_grad
   inputs:
@@ -3845,6 +3877,13 @@
     {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
+
+- op: detection_map
+  backward: detection_map_grad
+  inputs:
+    {detect_res : DetectRes, label : Label, has_state : HasState, pos_count : PosCount, true_pos : TruePos, false_pos : FalsePos}
+  outputs:
+    {accum_pos_count : AccumPosCount, accum_true_pos : AccumTruePos, accum_false_pos : AccumFalsePos, m_ap : MAP}
 
 - op: dgc
   inputs:
@@ -3933,6 +3972,12 @@
     {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
+
+- op: fusion_seqpool_cvm_concat
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
 
 - op: fusion_squared_mat_sub
   inputs :

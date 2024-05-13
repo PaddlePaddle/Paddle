@@ -228,6 +228,50 @@ void gelu_grad(const Tensor& x,
 }
 
 template <typename T>
+void reduce_as_grad(const Tensor& x,
+                    const Tensor& target,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> axis = common::vectorize<int64_t>(
+      get_reduce_dims_from_out(x.dims(), target.dims()));
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  bool reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+    }
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void reshape_grad(const Tensor& xshape,
                   const Tensor& grad_out,
                   Tensor* grad_x) {
@@ -516,6 +560,63 @@ void elementwise_pow_grad(const Tensor& x,
       set_output<T>(dx_res, dx);
     }
   }  // indicate we will compute dx
+}
+
+template <typename T>
+void pow_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const Scalar& y,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto y_value = y.to<float>();
+    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void scale_grad(const Tensor& out_grad, const Scalar& scale, Tensor* x_grad) {
+  if (x_grad) {
+    auto dx_res = primitive::scale<T>(
+        out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void stack_grad(const std::vector<Tensor>& x,
+                const Tensor& out_grad,
+                int axis,
+                std::vector<Tensor*> x_grad) {
+  // use rank of **stacked** tensor as len of axes
+  int out_rank = out_grad.dims().size();  // len(x[0].shape)
+
+  // ensure axis >= 0
+  if (axis < 0) {
+    axis = ((axis % out_rank) + out_rank) % out_rank;
+  }
+
+  // split out_grad to grads for each input tensor
+  int x_num = x.size();
+  std::vector<int> sections(x_num, 1);
+  std::vector<Tensor> x_grad_tmp =
+      split<T>(out_grad, phi::IntArray(sections), axis);
+
+  // compose shape for each input tensor
+  std::vector<int64_t> grad_shape;
+  auto out_dim = out_grad.dims().size();
+  for (int i = 0; i < out_dim; ++i) {
+    if (i != axis) {
+      grad_shape.push_back(out_grad.dims()[i]);
+    }
+  }
+
+  // assign to each input tensor if need grad(stop_gradient=False)
+  for (int i = 0; i < x_num; ++i) {
+    if (x_grad[i]) {
+      set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+    }
+  }
 }
 
 template <typename T>
