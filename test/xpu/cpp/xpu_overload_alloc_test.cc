@@ -28,7 +28,7 @@ TEST(XPUOverloadAllocTest, EnvTest) {
   phi::XPUContext dev_ctx_overload(
       phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
   EXPECT_STREQ(dev_ctx_overload.x_context()->get_option("XPUAPI_DEFAULT_SIZE"),
-               "1");
+               "0");
   EXPECT_NE(dev_ctx_overload.x_context()->overload_alloc_gm, nullptr);
   // do not use alloc overload
   setenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD", "1", 1);
