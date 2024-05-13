@@ -38,29 +38,78 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
   using pir::OpRewritePattern<
       paddle::dialect::MemoryEfficientAttentionOp>::OpRewritePattern;
 
-  bool MatchAndRewrite(paddle::dialect::MemoryEfficientAttentionOp op,
-                       pir::PatternRewriter& rewriter) const override {
-    auto q = op->operand_source(0);
+  bool Match(paddle::dialect::MemoryEfficientAttentionOp op) const override {
+    auto bias = op->operand_source(3);
+    auto cu_seq_q = op->operand_source(4);
+    auto cu_seq_k = op->operand_source(5);
+    auto causal_diagonal = op->operand_source(6);
+    auto seq_k = op->operand_source(7);
 
+    // bias, cur_seq_q, cur_seq_k,  causal_diagonal, seq_k should bu null
+    if (bias || cu_seq_q || cu_seq_k || causal_diagonal || seq_k) {
+      return false;
+    }
+
+    if (paddle::dialect::TransToPhiDataType(
+            op->operand_source(0)
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype()) == phi::DataType::FLOAT32) {
+      return false;
+    }
+
+    bool is_test =
+        op->attribute("is_test").dyn_cast<pir::BoolAttribute>().data();
+    if (!is_test) {
+      return false;
+    }
+
+    bool scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
+
+    if (scale > 0) {
+      auto hidden_size =
+          phi::vectorize(op->operand_source(0)
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims())
+              .back();
+      auto scale_t = 1.0 / std::sqrt(hidden_size);
+      if ((std::abs(scale_t - scale) / scale_t) < 1e-5) {
+        return true;
+      }
+      return false;
+    }
+
+    auto max_seqlen_q =
+        op->attribute("max_seqlen_q").dyn_cast<pir::FloatAttribute>().data();
+    auto max_seqlen_k =
+        op->attribute("max_seqlen_k").dyn_cast<pir::FloatAttribute>().data();
+    if (max_seqlen_q > 0 || max_seqlen_k > 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  void Rewrite(paddle::dialect::MemoryEfficientAttentionOp op,
+               pir::PatternRewriter& rewriter) const override {
+    auto q = op->operand_source(0);
     auto k = op->operand_source(1);
     auto v = op->operand_source(2);
 
-    if (paddle::dialect::TransToPhiDataType(
-            q.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype()) ==
-        phi::DataType::FLOAT32) {
-      return false;
-    }
+    auto dropout_p =
+        op->attribute("dropout_p").dyn_cast<pir::FloatAttribute>().data();
+
+    auto causal = op->attribute("causal").dyn_cast<pir::BoolAttribute>().data();
 
     pir::Value fixed_seed;
     pir::Value attn_mask;
     auto fa = rewriter.Build<paddle::dialect::FlashAttnOp>(
-        q, k, v, fixed_seed, attn_mask, 0.0, false, false, true, "");
+        q, k, v, fixed_seed, attn_mask, dropout_p, causal, false, true, "");
 
     rewriter.ReplaceAllUsesWith(op.result(0), fa.result(0));
 
     rewriter.EraseOp(op);
-
-    return true;
   }
 };
 
@@ -82,3 +131,5 @@ std::unique_ptr<pir::Pass> CreateConvertMEA2FAPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(convert_MEA_to_FA, ConvertMEA2FAPass);
