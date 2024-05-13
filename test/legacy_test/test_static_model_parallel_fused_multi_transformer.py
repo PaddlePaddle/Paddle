@@ -16,6 +16,9 @@ import os
 import re
 import unittest
 
+# now only support flash_attention_v2 and variable
+os.environ["FLAGS_fmha_mode"] = "flash_attention_v2"
+
 from test_dist_base import TestDistBase
 
 import paddle
