@@ -61,18 +61,20 @@ message ShardingConfig {
 
 // for dygraph
 message MpConfig {
-    optional bool sync_param= 1 [ default = true ];
-    optional bool sync_grad= 2 [ default = false ];
-    optional bool sync_moment= 3 [ default = false ];
-    optional string sync_mode= 4 [ default = 'broadcast' ];
+    optional bool sync_param = 1 [ default = true ];
+    optional bool sync_grad = 2 [ default = false ];
+    optional bool sync_moment = 3 [ default = false ];
+    optional string sync_mode = 4 [ default = 'broadcast' ];
     // Support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
-    optional bool mp_async_allreduce= 5 [default = false ];
+    optional bool mp_async_allreduce = 5 [default = false ];
     // Support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when mp_async_allreduce is true.
-    optional bool mp_skip_c_identity= 6 [default = false ];
+    optional bool mp_skip_c_identity = 6 [default = false ];
     // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
-    optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
+    optional bool mp_fused_linear_param_grad_add = 7 [default = false ];
     // Broadcast mp input data
-    optional bool need_broadcast_data=8 [default = true];
+    optional bool need_broadcast_data = 8 [default = true];
+    // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
+    optional bool recompute_allgather = 9 [default = false];
 }
 
 message PpConfig {
