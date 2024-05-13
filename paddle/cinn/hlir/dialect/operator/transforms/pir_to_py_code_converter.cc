@@ -148,6 +148,7 @@ struct PirToPyCodeConverterHelper {
   void VisitEachEQCstr(const DoEachEQCstrT& DoEachEQCstr) {
     const auto& constraints_mgr = GetConstraintsMgr();
     for (const auto& [lhs, rhs] : constraints_mgr.equals().GetMap()) {
+      if (lhs == rhs) continue;
       DoEachEQCstr(lhs, rhs);
     }
   }
@@ -183,6 +184,7 @@ struct PirToPyCodeConverterHelper {
     const auto& broadcastables = constraints_mgr.broadcastables();
     for (const auto& broadcastable : broadcastables) {
       const auto& [lhs, rhs] = *broadcastable;
+      if (lhs == rhs) continue;
       DoEachBroadcastableCstr(lhs, rhs);
     }
   }
