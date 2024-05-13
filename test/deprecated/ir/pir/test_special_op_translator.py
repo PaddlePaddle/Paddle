@@ -534,7 +534,7 @@ class TestDataOp(unittest.TestCase):
         self.assertTrue(l.global_block().ops[0].name() == "pd_op.data")
         data_op = l.global_block().ops[0]
         self.assertIn("dtype", data_op.attrs())
-        self.assertEqual(str(data_op.attrs()["dtype"]), "DataType.INT64")
+        self.assertEqual(str(data_op.attrs()["dtype"]), "paddle.int64")
 
 
 class TestCheckUnregisteredOp(unittest.TestCase):
