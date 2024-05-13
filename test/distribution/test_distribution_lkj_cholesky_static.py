@@ -67,6 +67,7 @@ class TestLKJCholeskyShape(unittest.TestCase):
 
     def gen_cases(self):
         extra_shape = (
+            len(self.concentration),
             self._paddle_lkj_cholesky.dim,
             self._paddle_lkj_cholesky.dim,
         )
