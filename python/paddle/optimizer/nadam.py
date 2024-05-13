@@ -51,7 +51,7 @@ class NAdam(Optimizer):
 
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
-            It can be a float value or a LRScheduler. The default value is 0.001.
+            It can be a float value or a LRScheduler. The default value is 0.002.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
@@ -129,7 +129,7 @@ class NAdam(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
+        learning_rate=0.002,
         beta1=0.9,
         beta2=0.999,
         epsilon=1.0e-8,
