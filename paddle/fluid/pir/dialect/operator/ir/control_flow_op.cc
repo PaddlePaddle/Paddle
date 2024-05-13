@@ -499,7 +499,7 @@ void WhileOp::VerifySig() {
           new_input_dims[i] = -1;
         }
       }
-      pir::DenseTensorType new_operand_tensor_type =
+      pir::DenseTensorType new_input_type =
           pir::DenseTensorType::get(pir::IrContext::Instance(),
                                     input_type.dtype(),
                                     new_input_dims,
@@ -507,7 +507,7 @@ void WhileOp::VerifySig() {
                                     input_type.lod(),
                                     input_type.offset());
       PADDLE_ENFORCE_EQ(
-          new_operand_tensor_type,
+          new_input_type,
           output_type,
           phi::errors::PreconditionNotMet(
               "The (%d) result and operand type is not equal.", index));
