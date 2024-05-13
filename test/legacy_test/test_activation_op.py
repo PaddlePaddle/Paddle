@@ -4988,12 +4988,14 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
+        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
         self.set_attrs()
         self.init_shape()
         self.python_api = paddle.nn.functional.hardsigmoid
+        self.public_python_api = paddle.nn.functional.hardsigmoid
 
         x = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
@@ -5020,7 +5022,9 @@ class TestHardSigmoid(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):

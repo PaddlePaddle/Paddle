@@ -47,7 +47,7 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
@@ -624,12 +624,13 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
-                            platform::is_xpu_place(ctx.GetPlace()) ||
-                            platform::is_custom_place(ctx.GetPlace()),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "float16 can only be used on GPU or XPU place"));
+      PADDLE_ENFORCE_EQ(
+          ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
+          true,
+          phi::errors::InvalidArgument(
+              "float16 can only be used on GPU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }

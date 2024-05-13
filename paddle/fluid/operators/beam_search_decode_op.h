@@ -35,8 +35,8 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
-      if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
       platform::DeviceContextPool& pool =
@@ -49,7 +49,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_id, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -57,8 +57,9 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
-      if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_scores_origin_[0].place().GetType() ==
+          phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
       platform::DeviceContextPool& pool =
@@ -71,8 +72,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(
-              step_score, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_score, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 

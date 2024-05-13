@@ -207,6 +207,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'gemm_epilogue',
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
@@ -215,6 +216,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'pull_box_sparse_',
     'push_box_sparse',
     'push_box_sparse_',
+    'send_and_recv',
+    'send_and_recv_',
 ]
 
 
