@@ -114,6 +114,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'matmul_with_flatten',
     'moving_average_abs_max_scale',
     'moving_average_abs_max_scale_',
+    'quantize',
+    'dequantize',
     'quantize_linear',
     'quantize_linear_',
     'dequantize_linear',
