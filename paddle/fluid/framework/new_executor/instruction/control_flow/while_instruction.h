@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 
@@ -35,6 +37,9 @@ class ValueExecutionInfo;
 ///      'cond', 'output' = body_block('output');
 ///  }
 class WhileInstruction : public InstructionBase {
+ private:
+  using CheckGCEarlyHook = std::function<void(InstructionBase*)>;
+
  public:
   WhileInstruction(size_t id,
                    const platform::Place& place,
@@ -53,6 +58,10 @@ class WhileInstruction : public InstructionBase {
   void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  // CheckGCEarly is designed to recycle unwanted inputs in advance, which can
+  // effectively reduce peak memory in certain scenarios.
+  void CheckGCEarly(const CheckGCEarlyHook& check_gc_early);
 
  private:
   // 'output' = 'input'
@@ -73,12 +82,13 @@ class WhileInstruction : public InstructionBase {
 
   std::unique_ptr<PirInterpreter> body_inter_;
   std::vector<std::string> body_outputs_;
-  std::vector<std::string> body_skip_gc_names_;
   std::set<std::string> external_input_names_;
 
   ::pir::Block* body_block_;
 
   ::pir::Operation* op_;
+
+  CheckGCEarlyHook check_gc_early_;
 };
 
 }  // namespace framework

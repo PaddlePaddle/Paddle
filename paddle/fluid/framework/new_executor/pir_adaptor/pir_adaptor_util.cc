@@ -30,6 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -415,6 +416,12 @@ void BuildValue(pir::Value value,
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     var->GetMutable<phi::SelectedRows>();
   } else if (value.type()
+                 .isa<paddle::dialect::AllocatedSparseCooTensorType>()) {
+    var->GetMutable<phi::SparseCooTensor>();
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
+    var->GetMutable<phi::SparseCsrTensor>();
+  } else if (value.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::StackType>()) {
@@ -438,7 +445,8 @@ void BuildValue(pir::Value value,
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
-        "or SelectedRowsType or VectorType or StackType"));
+        "or SelectedRowsType or VectorType or StackType or SpasrCooTensorType "
+        "or SpasreCsrTensorType"));
   }
 }
 
@@ -855,7 +863,9 @@ void BuildRuntimeContext(pir::Operation* op,
 
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        type.isa<paddle::dialect::AllocatedSelectedRowsType>() ||
+        type.isa<paddle::dialect::AllocatedSparseCooTensorType>() ||
+        type.isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
       runtime_ctx->outputs[legacy_arg_name] = {var};
     } else if (type.isa<pir::VectorType>()) {
       auto var_ref = var->Get<VariableRefArray>();
@@ -867,7 +877,8 @@ void BuildRuntimeContext(pir::Operation* op,
       runtime_ctx->outputs[legacy_arg_name] = vec_tmp;
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType, "
+          "AllocatedSparseCooTensorType, AllocatedSparseCsrTensorType, and "
           "pir::vector type"));
     }
   }
@@ -1006,7 +1017,9 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
     }
 
     if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
-        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+        ptr.type().isa<paddle::dialect::AllocatedSelectedRowsType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSparseCooTensorType>() ||
+        ptr.type().isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
       out_name_map[legacy_arg_name].push_back(value_exec_info.GetVarName(ptr));
       VLOG(6) << "Push back outputs to VariableNameMap : "
               << value_exec_info.GetVarName(ptr);
@@ -1021,7 +1034,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
       }
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType, "
+          "AllocatedSparseCooTensorType, AllocatedSparseCsrTensorType  and "
           "pir::vector type"));
     }
   }

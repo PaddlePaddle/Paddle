@@ -104,6 +104,7 @@ from paddle import (  # noqa: F401
 # high-level api
 from . import (  # noqa: F401
     _pir_ops,
+    _typing as _typing,
     callbacks,
     fft,
     hub,
@@ -427,6 +428,9 @@ from .tensor.math import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    isneginf,
+    isposinf,
+    isreal,
     kron,
     lcm,
     lcm_,
@@ -717,6 +721,9 @@ __all__ = [
     'to_tensor',
     'gather_nd',
     'isinf',
+    'isneginf',
+    'isposinf',
+    'isreal',
     'uniform',
     'floor_divide',
     'floor_divide_',
