@@ -1057,6 +1057,7 @@
   kernel :
     func : fake_channel_wise_quantize_dequantize_abs_max
     data_type : x
+  backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
