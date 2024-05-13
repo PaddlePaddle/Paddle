@@ -84,7 +84,7 @@ class TestLayer(unittest.TestCase):
         st_out = self.train(self.net, to_static=True)
         # FIXME(Aurelius84): stack op is decomposed while leading to split problem.
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
