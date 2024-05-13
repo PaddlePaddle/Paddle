@@ -78,6 +78,7 @@ BINARY_PRIM_VJP_OPS = [
     'multiply_grad',
     'elementwise_pow_grad',
     'maximum_grad',
+    'reduce_as_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [

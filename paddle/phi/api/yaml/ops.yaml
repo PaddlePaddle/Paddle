@@ -652,6 +652,16 @@
   inplace: (x -> out)
   backward : copysign_grad
 
+- op : correlation
+  args : (Tensor input1, Tensor input2, int pad_size, int kernel_size, int max_displacement, int stride1, int stride2, int corr_type_multiply=1)
+  output : Tensor(out)
+  infer_meta :
+    func : CorrelationInferMeta
+  kernel :
+    func : correlation
+    data_type : input1
+  backward : correlation_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor(out)
@@ -674,6 +684,16 @@
   inplace: (x -> out)
   backward : cosh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : crf_decoding
+  args: (Tensor emission, Tensor transition, Tensor label, Tensor length)
+  output: Tensor (viterbi_path)
+  infer_meta:
+    func: CrfDecodingInferMeta
+  kernel:
+    func: crf_decoding
+    data_type: emission
+  optional: label, length
 
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
@@ -805,6 +825,19 @@
   kernel :
     func : determinant
   backward : det_grad
+
+- op : detection_map
+  args: (Tensor detect_res, Tensor label, Tensor has_state, Tensor pos_count, Tensor
+    true_pos, Tensor false_pos, int class_num, int background_label = 0, float overlap_threshold
+    = .5f, bool evaluate_difficult = true, str ap_type = "integral")
+  output: Tensor (accum_pos_count), Tensor (accum_true_pos), Tensor (accum_false_pos),
+    Tensor (m_ap)
+  infer_meta:
+    func: DetectionMapInferMeta
+  kernel:
+    func: detection_map
+    data_type: detect_res
+  optional: has_state, pos_count, true_pos, false_pos
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
@@ -1109,6 +1142,18 @@
   backward : flash_attn_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : flash_attn_qkvpacked
+  args : (Tensor qkv, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset, attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_qkvpacked
+    data_type : qkv
+  backward : flash_attn_qkvpacked_grad
+
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -1121,6 +1166,19 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+
+- op : flash_attn_varlen_qkvpacked
+  args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional :  fixed_seed_offset , attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [qkv]
+  kernel :
+    func : flash_attn_varlen_qkvpacked
+    data_type : qkv
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_varlen_qkvpacked_grad
 
 - op : flash_attn_with_sparse_mask
   args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -2249,6 +2307,26 @@
   backward : pad3d_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_concat
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialConcatInferMeta
+  kernel :
+    func : partial_concat
+    data_type : x
+  backward : partial_concat_grad
+
+- op : partial_sum
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialSumInferMeta
+  kernel :
+    func : partial_sum
+    data_type : x
+  backward : partial_sum_grad
+
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
   output : Tensor
@@ -2353,6 +2431,16 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : random_routing
+  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomRoutingInferMeta
+  kernel :
+    func : random_routing
+    data_type : prob
+  inplace : (topk_idx -> out)
 
 - op : real
   args : (Tensor x)
@@ -2475,6 +2563,7 @@
     data_type : x
   optional : boxes_num
   backward : roi_align_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : roi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0)

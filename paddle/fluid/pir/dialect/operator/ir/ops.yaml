@@ -325,8 +325,7 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : reduce_scatter
-    param: [x, nranks]
+    func : c_reducescatter
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
@@ -525,6 +524,7 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : distributed_fused_lamb
   args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32_fused_grad, Tensor fp16_fused_param, Tensor fp16_fused_grad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fused_param_offsets, Tensor fp32_shard_fused_param_offsets, Tensor fp16_shard_fused_param_offsets, Tensor param_info, Tensor param_order, Tensor learning_rate, Tensor global_scale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, int[] ring_ids= {}, int acc_steps = 1, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, bool use_hierarchical_allreduce = false)
@@ -897,6 +897,16 @@
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
 
+- op : global_gather
+  args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
+  output : Tensor(out)
+  infer_meta:
+    func : GlobalGatherInferMeta
+  kernel :
+    func : global_gather
+    data_type: x
+  backward : global_gather_grad
+
 - op : global_scatter
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false)
   output : Tensor(out)
@@ -905,6 +915,7 @@
   kernel :
     func : global_scatter
     data_type : x
+  backward : global_scatter_grad
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
@@ -1270,16 +1281,6 @@
     func : partial_allgather
   inplace : (x -> out)
 
-- op : partial_concat
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialConcatInferMeta
-  kernel :
-    func : partial_concat
-    data_type : x
-  backward : partial_concat_grad
-
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
@@ -1288,16 +1289,6 @@
   kernel :
     func : partial_recv
     data_type : dtype
-
-- op : partial_sum
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialSumInferMeta
-  kernel :
-    func : partial_sum
-    data_type : x
-  backward : partial_sum_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1427,15 +1418,6 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : random_routing
-  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
-  output : Tensor(out)
-  infer_meta :
-    func : RandomRoutingInferMeta
-  kernel :
-    func : random_routing
-    data_type : dtype
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1581,6 +1563,17 @@
   kernel:
     func: seed
 
+- op : send_and_recv
+  args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : send_and_recv
+    param : [x, message_name, mode, send_var_name, recv_var_name, trainer_id, endpoints, next_endpoints, previous_endpoints]
+  inplace: (x -> out)
+
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output :
@@ -1590,6 +1583,7 @@
   kernel :
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
+  traits : pir::SideEffectTrait
 
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)

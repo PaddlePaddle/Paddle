@@ -30,4 +30,15 @@ inline paddle::Tensor PromoteCast(const std::string& input_name,
   }
 }
 
+inline paddle::Tensor PromoteCastInplace(const std::string& input_name,
+                                         paddle::Tensor& input,  // NOLINT
+                                         const phi::DataType& dst_dtype,
+                                         bool trace_backward = true) {
+  if (input.dtype() != dst_dtype) {
+    return paddle::experimental::cast_(input, dst_dtype);
+  } else {
+    return input;
+  }
+}
+
 }  // namespace egr

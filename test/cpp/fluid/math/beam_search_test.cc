@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/beam_search.h"
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -24,7 +25,7 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* pre_ids,
                        phi::DenseTensor* pre_scores) {
   // lod
-  paddle::framework::LoD lod;
+  phi::LoD lod;
   std::vector<size_t> level0({0, 2, 4});
   std::vector<size_t> level1({0, 1, 2, 3, 4});
   lod.push_back(level0);
@@ -36,7 +37,7 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   ids->Resize(dims);
   scores->Resize(dims);
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   auto* ids_data = ids->mutable_data<int64_t>(place);
   auto* scores_data = scores->mutable_data<float>(place);
   std::vector<int64_t> ids_vec_data({4, 2, 5, 2, 1, 3, 3, 5, 2, 8, 2, 1});
@@ -73,6 +74,9 @@ void TestBeamSearch() {
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
+  context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
@@ -101,7 +105,7 @@ void TestBeamSearch() {
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
-  paddle::operators::math::BeamSearchFunctor<DeviceContext, float> beamsearch;
+  phi::math::BeamSearchFunctor<DeviceContext, float> beamsearch;
   beamsearch(*context,
              &pre_ids,
              &pre_scores,
@@ -184,7 +188,7 @@ void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
-  paddle::operators::math::BeamSearchFunctor<phi::GPUContext, float> beamsearch;
+  phi::math::BeamSearchFunctor<phi::GPUContext, float> beamsearch;
   beamsearch(*context,
              &pre_ids,
              &pre_scores,
