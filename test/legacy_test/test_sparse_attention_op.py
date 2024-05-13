@@ -192,6 +192,14 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
     return offset, columns
 
 
+def api_wrapper(
+    q, k, v, offset, columns, key_padding_mask=None, attn_mask=None
+):
+    return paddle._C_ops.sparse_attention(
+        q, k, v, offset, columns, key_padding_mask, attn_mask
+    )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
@@ -207,6 +215,8 @@ class TestSparseAttentionOp(OpTest):
         paddle.enable_static()
         self.config()
         self.op_type = "sparse_attention"
+        self.python_api = api_wrapper
+        self.python_out_sig = ['Out']
         self.place = paddle.CUDAPlace(0)
         self.q = np.random.random(self.shape).astype(self.dtype)
         self.k = np.random.random(self.shape).astype(self.dtype)
