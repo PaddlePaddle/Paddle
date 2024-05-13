@@ -60,5 +60,9 @@ void BlhaGetMaxLenKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    blha_get_max_len, GPU, ALL_LAYOUT, phi::fusion::BlhaGetMaxLenKernel, int) {}
+PD_REGISTER_KERNEL(blha_get_max_len,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::BlhaGetMaxLenKernel,
+                   int,
+                   int64_t) {}
