@@ -31,7 +31,8 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(merge_parallel_matmul_pass_test SRCS
               merge_parallel_matmul_pass_test.cc)
 
-  paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc)
+  paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
+              schedule_config_search)
 
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
