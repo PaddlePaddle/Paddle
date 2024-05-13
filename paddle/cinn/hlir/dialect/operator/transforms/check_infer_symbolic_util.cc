@@ -22,17 +22,12 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/local_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
-#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
-#include "paddle/pir/include/pass/pass.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
 PD_DECLARE_bool(prim_all);
@@ -42,6 +37,18 @@ namespace dialect {
 namespace ir {
 
 namespace {
+
+std::ostream& operator<<(std::ostream& stream,
+                         const std::vector<std::vector<int64_t>>& shapes) {
+  for (auto shape : shapes) {
+    stream << "[";
+    for (auto dim : shape) {
+      stream << dim << " ";
+    }
+    stream << "] ";
+  }
+  return stream;
+}
 
 DimExprs4ValueT MakeDimExprs4Value(
     pir::Program* program, const PassManagerCreater& CreatePassManager) {
@@ -98,6 +105,7 @@ struct ShapeSignatureGenerator {
 
   void Generate(const DoEachShapeSignatureT& DoEachShapeSignature) {
     auto op_shape_analysis = MakeOpShapeAnalysis(op, GraphDimExprs4Value);
+    if (op_shape_analysis.use_count() == 0) return;
     VisitInputSymbolBinding(
         op_shape_analysis, [&](const SymbolBindings& bindings) {
           const auto& substitute_pattern =
@@ -200,13 +208,9 @@ struct ShapeSignatureGenerator {
     for (ConstrainedSymbolNames constraint : constrained_sym_list) {
       if (std::holds_alternative<CstrEqSymbolNames>(constraint)) {
         auto eq = std::get<CstrEqSymbolNames>(constraint);
-        for (const auto& a : eq.symbol_names) {
-        }
       }
       if (std::holds_alternative<CstrBroadcastableSymbolNames>(constraint)) {
         auto eq = std::get<CstrBroadcastableSymbolNames>(constraint);
-        for (const auto& a : eq.symbol_names) {
-        }
       }
     }
 
@@ -435,7 +439,8 @@ void CheckOpDimExprConstraints(pir::Operation* op,
 void CheckProgramDimExprConstraints(
     pir::Program* program, const DimExprs4ValueT& GraphDimExprs4Value) {
   WalkLeafOp(program, [&](pir::Operation* op) {
-    VLOG(8) << "########Check Constraints for : " << op->name()
+    if (op->isa<pir::ShadowOutputOp>()) return;
+    VLOG(4) << "########Check Constraints for : " << op->name()
             << " ################";
     CheckOpDimExprConstraints(op, GraphDimExprs4Value);
   });

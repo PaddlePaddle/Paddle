@@ -97,6 +97,7 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
   auto interface =
       mut_op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
   if (!interface) {
+    return std::shared_ptr<pir::ShapeConstraintIRAnalysis>();
     PADDLE_THROW(phi::errors::Unimplemented(
         op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   } else {
