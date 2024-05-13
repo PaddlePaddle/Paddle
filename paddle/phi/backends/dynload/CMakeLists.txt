@@ -13,7 +13,8 @@ list(
   cusparse.cc
   nvtx.cc
   cufft.cc
-  cutlass_conv2d.cc)
+  cutlass_conv2d.cc
+  cutlass_gemm_epilogue.cc)
 
 if(NOT WITH_NV_JETSON)
   list(APPEND CUDA_SRCS nvjpeg.cc)

@@ -1101,6 +1101,117 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void CrfDecodingInferMeta(const MetaTensor& emission,
+                          const MetaTensor& transition,
+                          const MetaTensor& label,
+                          const MetaTensor& length,
+                          MetaTensor* viterbi_path,
+                          MetaConfig config) {
+  auto emission_dims = emission.dims();
+  bool has_length = length.initialized();
+
+  if (has_length) {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The Input(Emission) should be a 3-D tensor. But "
+                          "received: input rank %u, input shape [%s]. ",
+                          emission_dims.size(),
+                          emission_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The Input(Emission) should be a 2-D tensor. But "
+                          "received: input rank %u, input shape [%s].",
+                          emission_dims.size(),
+                          emission_dims));
+  }
+
+  auto transition_dims = transition.dims();
+  PADDLE_ENFORCE_EQ(transition_dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(Transition) should be a 2-D tensor. But "
+                        "received: input rank %u, input shape [%s].",
+                        transition_dims.size(),
+                        transition_dims));
+  PADDLE_ENFORCE_EQ(
+      transition_dims[0] - 2,
+      transition_dims[1],
+      phi::errors::InvalidArgument(
+          "An invalid dimension for the Input(Transition), which should "
+          "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
+          "rank %u, "
+          "input shape [%s].",
+          transition_dims.size(),
+          transition_dims));
+  if (config.is_runtime || (emission_dims[emission_dims.size() - 1] > 0 &&
+                            transition_dims[transition_dims.size() - 1] > 0)) {
+    PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
+                      transition_dims[transition_dims.size() - 1],
+                      phi::errors::InvalidArgument(
+                          "The last dimension of the Input(Emission) and the "
+                          "Input(Transition) "
+                          "should be equal to the tag number. But received "
+                          "Input(Emission): rank "
+                          "%u, shape [%s]; received Input(Transition): rank "
+                          "%u, shape [%s].",
+                          emission_dims.size(),
+                          emission_dims,
+                          transition_dims.size(),
+                          transition_dims));
+  }
+  if (label.initialized()) {
+    auto label_dims = label.dims();
+    if (length.initialized()) {
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 3UL && label_dims[2] == 1) ||
+              label_dims.size() == 2UL,
+          true,
+          phi::errors::InvalidArgument(
+              "The Input(Label) should be a 3-D tensor with last dimension "
+              "fixed to 1 or a 2-D tensor in padding mode. But received: "
+              "input "
+              "rank %u, input shape [%s].",
+              label_dims.size(),
+              label_dims));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 2UL && label_dims[1] == 1) ||
+              label_dims.size() == 1UL,
+          true,
+          phi::errors::InvalidArgument(
+              "The Input(Label) should be a 2-D tensor with last "
+              "dimension fixed to 1 or a 1-D tensor. But received: "
+              "input rank %u, input shape [%s].",
+              label_dims.size(),
+              label_dims));
+    }
+    if (config.is_runtime || (emission_dims[0] > 0 && label_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          emission_dims[0],
+          label_dims[0],
+          phi::errors::InvalidArgument(
+              "The first dimension of Input(Emission) and Input(Label) "
+              "should be the same. But received Input(Emission): rank %u, "
+              "shape [%s]; received Input(Label): rank %u, shape [%s].",
+              emission_dims.size(),
+              emission_dims,
+              label_dims.size(),
+              label_dims));
+    }
+  }
+
+  viterbi_path->share_lod(emission);
+  if (has_length) {
+    viterbi_path->set_dims({emission_dims[0], emission_dims[1]});
+  } else {
+    viterbi_path->set_dims({emission_dims[0], 1});
+  }
+  viterbi_path->set_dtype(emission.dtype());
+}
+
 void CudnnLSTMInferMeta(
     const MetaTensor& x,
     const MetaTensor& init_h,
@@ -1429,6 +1540,69 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DetectionMapInferMeta(const MetaTensor& detect_res,
+                           const MetaTensor& label,
+                           const MetaTensor& has_state,
+                           const MetaTensor& pos_count,
+                           const MetaTensor& true_pos,
+                           const MetaTensor& false_pos,
+                           int class_num,
+                           int background_label,
+                           float overlap_threshold,
+                           bool evaluate_difficult,
+                           const std::string& ap_type,
+                           MetaTensor* accum_pos_count,
+                           MetaTensor* accum_true_pos,
+                           MetaTensor* accum_false_pos,
+                           MetaTensor* m_ap,
+                           MetaConfig config) {
+  auto det_dims = detect_res.dims();
+  PADDLE_ENFORCE_EQ(det_dims.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Input(DetectRes) ndim must be 2, the shape is [N, 6],"
+                        "but received the ndim is %d",
+                        det_dims.size()));
+  PADDLE_ENFORCE_EQ(det_dims[1],
+                    6UL,
+                    phi::errors::InvalidArgument(
+                        "The shape is of Input(DetectRes) [N, 6], but received"
+                        " shape is [N, %d]",
+                        det_dims[1]));
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_EQ(label_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The ndim of Input(Label) must be 2, but received %d",
+                        label_dims.size()));
+  if (config.is_runtime || label_dims[1] > 0) {
+    PADDLE_ENFORCE_EQ(
+        (label_dims[1] == 6 || label_dims[1] == 5),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of Input(Label) is [N, 6] or [N, 5], but received "
+            "[N, %d]",
+            label_dims[1]));
+  }
+
+  if (pos_count.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        true_pos.initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "Input(TruePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+    PADDLE_ENFORCE_EQ(
+        false_pos.initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "Input(FalsePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+  }
+
+  m_ap->set_dims(common::make_ddim({1}));
+}
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
@@ -1575,6 +1749,36 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   out->set_dtype(DataType::FLOAT32);
   sequencenum->set_dims(common::make_ddim({1}));
   sequencenum->set_dtype(DataType::FLOAT32);
+}
+
+void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& in_scale,
+    const MetaTensor& in_accum,
+    const MetaTensor& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    MetaTensor* out,
+    MetaTensor* out_scale,
+    MetaTensor* out_state,
+    MetaTensor* out_accum) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  if (out_state) {
+    out_state->set_dims({1});
+  }
+  if (out_accum) {
+    out_accum->set_dims({1});
+  }
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
 }
 
 void FtrlInferMeta(const MetaTensor& param,
@@ -4320,20 +4524,52 @@ void WhereInferMeta(const MetaTensor& condition,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
-      cond_dims,
-      x_dims,
+      cond_dims.size(),
+      x_dims.size(),
       phi::errors::InvalidArgument(
           "The dims of Inputs(Condition) and Inputs(X) should be same. "
-          "But received Condition's shape is [%s], X's shape is [%s]",
-          cond_dims,
-          x_dims));
-  PADDLE_ENFORCE_EQ(x_dims,
-                    y_dims,
+          "But received Condition's rank is [%d], X's rank is [%d]",
+          cond_dims.size(),
+          x_dims.size()));
+  size_t cond_dims_size = static_cast<size_t>(cond_dims.size());
+  for (size_t i = 0; i < cond_dims_size; ++i) {
+    if (cond_dims[i] == -1 || x_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        cond_dims[i],
+        x_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(Condition) and Inputs(X) should be same. "
+            "But received Condition's shape is [%d], X's shape is [%d]",
+            i,
+            cond_dims[i],
+            x_dims[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    y_dims.size(),
                     phi::errors::InvalidArgument(
                         "The dims of Inputs(X) and Inputs(Y) should be same. "
-                        "But received X's shape is [%s], Y's shape is [%s]",
-                        x_dims,
-                        y_dims));
+                        "But received X's shape is [%d], Y's shape is [%d]",
+                        x_dims.size(),
+                        y_dims.size()));
+  size_t x_dims_size = static_cast<size_t>(x_dims.size());
+  for (size_t i = 0; i < x_dims_size; ++i) {
+    if (x_dims[i] == -1 || y_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        x_dims[i],
+        y_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(X) and Inputs(Y) should be same. "
+            "But received X's shape is [%s], Y's shape is [%s]",
+            i,
+            x_dims[i],
+            y_dims[i]));
+  }
+
   out->share_meta(x);
 }
 

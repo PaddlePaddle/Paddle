@@ -107,14 +107,14 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->ReduceScatter(out, *in, ncclSum, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
-          send_buff,
-          recv_buff,
-          recv_numel,
-          static_cast<ncclDataType_t>(dtype),
-          ncclSum,
-          comm->comm(),
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclReduceScatter(send_buff,
+                                          recv_buff,
+                                          recv_numel,
+                                          static_cast<ncclDataType_t>(dtype),
+                                          ncclSum,
+                                          comm->comm(),
+                                          stream));
     }
 #else
     PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -127,7 +127,6 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
                           GPU,
@@ -136,7 +135,7 @@ PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,

@@ -350,10 +350,18 @@ class XPUTestReluOP(XPUOpTestWrapper):
             self.op_type = "relu"
             self.dtype = self.in_type
 
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            tmp_x = np.random.uniform(-1, 1, [11, 17])
             # The same reason with TestAbs
-            x[np.abs(x) < 0.005] = 0.02
-            out = np.maximum(x, 0)
+            tmp_x[np.abs(tmp_x) < 0.005] = 0.02
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                tmp_out = np.maximum(tmp_x, 0)
+                x = convert_float_to_uint16(tmp_x)
+                out = convert_float_to_uint16(tmp_out)
+            else:
+                x = tmp_x.astype(self.dtype)
+                out = np.maximum(x, 0)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}

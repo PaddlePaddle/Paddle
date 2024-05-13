@@ -187,4 +187,4 @@ set_field_default_config(
 # sequence parallel configuration
 #########################################
 SP_OPTIMIZATION = "sp_optimization"
-set_field_default_config(SP_OPTIMIZATION, "enable", False)
+set_field_default_config(SP_OPTIMIZATION, "enable", True)

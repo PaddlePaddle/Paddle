@@ -56,7 +56,7 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
       Tensor out_i = out->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i =
+      phi::DDim dims_i =
           // common::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
           common::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
@@ -91,7 +91,7 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = common::make_ddim({1UL, end_pos - start_pos});
+      phi::DDim dims_i = common::make_ddim({1UL, end_pos - start_pos});
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
@@ -113,21 +113,21 @@ namespace ops = paddle::operators;
 // MIOPEN not support float64
 REGISTER_OP_KERNEL(sequence_softmax,
                    CUDNN,
-                   ::paddle::platform::CUDAPlace,
+                   ::phi::GPUPlace,
                    ops::SequenceSoftmaxCUDNNKernel<float>);
 REGISTER_OP_KERNEL(sequence_softmax_grad,
                    CUDNN,
-                   ::paddle::platform::CUDAPlace,
+                   ::phi::GPUPlace,
                    ops::SequenceSoftmaxGradCUDNNKernel<float>);
 #else
 REGISTER_OP_KERNEL(sequence_softmax,
                    CUDNN,
-                   ::paddle::platform::CUDAPlace,
+                   ::phi::GPUPlace,
                    ops::SequenceSoftmaxCUDNNKernel<float>,
                    ops::SequenceSoftmaxCUDNNKernel<double>);
 REGISTER_OP_KERNEL(sequence_softmax_grad,
                    CUDNN,
-                   ::paddle::platform::CUDAPlace,
+                   ::phi::GPUPlace,
                    ops::SequenceSoftmaxGradCUDNNKernel<float>,
                    ops::SequenceSoftmaxGradCUDNNKernel<double>);
 #endif

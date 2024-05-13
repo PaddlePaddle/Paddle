@@ -63,6 +63,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
     {"pd_op.expand", "broadcast_to"},
+    {"pd_op.where", "select"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -287,51 +288,6 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   return (0 <= max_value_numel && max_value_numel < 32);
 }
 
-bool IsShapeComputeOp(const ::pir::Operation& op) {
-  const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
-      op.GetParent()->parent_program());
-  if (op.num_operands() == 0) {
-    return false;
-  }
-  bool all_input_has_shape_data = true;
-  for (uint32_t i = 0; i < op.num_operands(); ++i) {
-    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i))) {
-      const auto& shape_expr =
-          shape_analysis.GetShapeOrDataForValue(op.operand_source(i));
-      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
-          shape_expr.data()) {  // has shape data
-        continue;
-      }
-    }
-    all_input_has_shape_data = false;
-    break;
-  }
-
-  for (uint32_t i = 0; i < op.num_results(); ++i) {
-    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
-      const auto& shape_expr =
-          shape_analysis.GetShapeOrDataForValue(op.result(i));
-      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
-          shape_expr.data()) {  // has shape data
-        continue;
-      }
-    }
-    all_input_has_shape_data = false;
-    break;
-  }
-
-  return all_input_has_shape_data;
-}
-
-// TODO(zyfncg): This function is a temporary solution, we need to remove it in
-// the future.
-bool IsTempDenySpecialOp(const ::pir::Operation& op) {
-  if (op.name() == "cinn_op.generate_shape") {
-    return false;
-  }
-  return IsShapeComputeOp(op);
-}
-
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
 bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (FLAGS_disable_dyshape_in_train && HaveUnkDim(op)) {
@@ -495,6 +451,7 @@ static utils::Attribute ConvertArrayAttribute(
             "ArrayAttribute"));
       }
     }
+    // TODO(xiazichao): ADD branch logic for 0-size ArrayAttribute.
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {

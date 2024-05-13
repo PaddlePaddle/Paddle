@@ -15,13 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
@@ -248,8 +249,11 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
-    framework::TensorCopy(
-        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
+    phi::memory_utils::Copy(ctx.GetPlace(),
+                            softmax->data(),
+                            ctx.GetPlace(),
+                            softmax_2d.data(),
+                            N * D * sizeof(T));
   }
 };
 
@@ -510,8 +514,11 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
 
-    framework::TensorCopy(
-        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
+    phi::memory_utils::Copy(ctx.GetPlace(),
+                            softmax->data(),
+                            ctx.GetPlace(),
+                            softmax_2d.data(),
+                            N * D * sizeof(T));
   }
 };
 
@@ -577,7 +584,6 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           XPU,
