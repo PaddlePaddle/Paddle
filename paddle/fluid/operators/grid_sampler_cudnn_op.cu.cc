@@ -16,7 +16,7 @@ limitations under the License. */
 // HIP not support cudnnSpatialTfGridGeneratorForward
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace phi {
 class DenseTensor;
@@ -36,7 +36,7 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
@@ -85,7 +85,7 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));

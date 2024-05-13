@@ -20,15 +20,17 @@
 #include "paddle/common/enforce.h"
 
 namespace pir {
+class IrMapping;
 class Block;
 class Operation;
 class Builder;
+class IrMapping;
 }  // namespace pir
 
 namespace cinn::dialect::details {
 
-using TRule =
-    std::function<::pir::Operation*(::pir::Operation*, const ::pir::Builder&)>;
+using TRule = std::function<::pir::Operation*(
+    ::pir::Operation*, ::pir::IrMapping&, ::pir::Builder&)>;
 
 class TransformContext {
  private:
@@ -86,6 +88,8 @@ class TransformRegistrar {
 
 void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
                          ::pir::Block* target_block);
-::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation*, const ::pir::Builder&);
+::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation*,
+                                      ::pir::IrMapping&,  // NOLINT
+                                      ::pir::Builder&);   // NOLINT
 
 }  // namespace cinn::dialect::details

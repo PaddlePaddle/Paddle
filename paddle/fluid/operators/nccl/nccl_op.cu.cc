@@ -56,7 +56,7 @@ template <typename T, typename DeviceContext>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::PreconditionNotMet(
                           "This kernel only runs on GPU device."));
@@ -92,7 +92,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("This kernel only runs on GPU device."));
     auto x = ctx.Input<phi::DenseTensor>("X");  // x0, x1, x2
@@ -133,7 +133,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("This kernel only runs on GPU device."));
     int root = ctx.Attr<int>("root");

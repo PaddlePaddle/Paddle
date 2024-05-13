@@ -1731,7 +1731,10 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
                 "The value of Input(fweights) cannot be negative, but received "
                 f"min of Input(fweights) is {fweights.min()}."
             )
-        if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
+        if not paddle.all(
+            fweights
+            == paddle.round(fweights.astype('float64')).astype(fweights.dtype)
+        ):
             raise ValueError("Input(fweights) must be integer ")
 
     if aweights is not None:
@@ -1773,7 +1776,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         nx_w = nx
 
     if w is not None and aweights is not None and ddof:
-        norm_factor = w_sum - (w * aweights).sum() / w_sum
+        norm_factor = w_sum - (w * aweights.astype(w.dtype)).sum() / w_sum
     else:
         norm_factor = w_sum - ddof
     norm_factor = paddle.clip(norm_factor, min=0)

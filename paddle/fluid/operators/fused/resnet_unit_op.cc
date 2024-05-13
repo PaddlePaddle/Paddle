@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 // Shape of bitmask
-static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
+static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
   int64_t nhw = std::accumulate(out_shape.begin(),
                                 out_shape.end(),
@@ -128,7 +128,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     if (1 == bn_param_shape.size()) {
       bn_param_shape = {1, 1, 1, bn_param_shape[0]};
     }
-    framework::DDim bn_param_dims = common::make_ddim(bn_param_shape);
+    phi::DDim bn_param_dims = common::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
