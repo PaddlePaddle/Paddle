@@ -368,8 +368,8 @@ void BoxClipInferMeta(const MetaTensor& input,
                       const MetaTensor& im_info,
                       MetaTensor* output,
                       MetaConfig config) {
-  auto input_box_dims = input.dims();
-  auto im_info_dims = im_info.dims();
+  const auto& input_box_dims = input.dims();
+  const auto& im_info_dims = im_info.dims();
 
   if (config.is_runtime) {
     auto input_box_size = input_box_dims.size();
