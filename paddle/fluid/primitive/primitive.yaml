@@ -122,3 +122,5 @@
 - randint
 - uniform
 - unique_consecutive
+- sigmoid
+- reduce_as

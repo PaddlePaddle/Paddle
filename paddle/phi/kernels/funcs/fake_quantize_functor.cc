@@ -52,8 +52,65 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
   }
 }
 
+template <typename Context, typename T>
+void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in_accum,
+    const DenseTensor &in_state,
+    const T *cur_scale,
+    const float rate,
+    DenseTensor *out_state,
+    DenseTensor *out_accum,
+    DenseTensor *out_scale) {
+  T accum = in_accum.data<T>()[0];
+  T state = in_state.data<T>()[0];
+  T scale = cur_scale[0];
+
+  state = rate * state + 1;
+  accum = rate * accum + scale;
+  scale = accum / state;
+
+  T *out_state_data = ctx.template Alloc<T>(out_state);
+  T *out_accum_data = ctx.template Alloc<T>(out_accum);
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+
+  out_state_data[0] = state;
+  out_accum_data[0] = accum;
+  out_scale_data[0] = scale;
+}
+
+template <typename Context, typename T>
+void FindRangeAbsMaxFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &cur_scale,
+    const DenseTensor &last_scale,
+    const DenseTensor &iter,
+    const int window_size,
+    DenseTensor *scales_arr,
+    DenseTensor *out_scale) {
+  T *scale_arr_data = ctx.template Alloc<T>(scales_arr);
+  int64_t it = iter.data<int64_t>()[0];
+  int idx = static_cast<int>(it % window_size);
+  T removed = scale_arr_data[idx];
+  T cur = cur_scale.data<T>()[0];
+  scale_arr_data[idx] = cur;
+
+  T max = last_scale.data<T>()[0];
+  if (max < cur) {
+    max = cur;
+  } else if (fabs(removed - max) < 1e-6) {
+    int size = static_cast<int>((it > window_size) ? window_size : it);
+    phi::funcs::FindAbsMaxFunctor<Context, T>()(
+        ctx, scale_arr_data, size, &max);
+  }
+  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+  out_scale_data[0] = max;
+}
+
 template class FindAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantFunctor<CPUContext, float>;
+template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
+template class FindRangeAbsMaxFunctor<CPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -103,27 +103,29 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 bool GroupOp::InferSymbolicShape(
-    ::pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  ::pir::InferSymExprForBlock(*block(), shape_analysis);
+    ::pir::InferSymbolicShapeContext* infer_context) {
+  ::pir::InferSymExprForBlock(*block(), infer_context);
 
   for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
     auto inner_yield_value = block()->back().operand_source(rst_idx);
     const auto& shape =
-        shape_analysis->GetShapeOrDataForValue(inner_yield_value);
-    shape_analysis->SetShapeOrDataForValue(result(rst_idx), shape);
+        infer_context->GetShapeOrDataForValue(inner_yield_value);
+    infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
   }
 
   if (VLOG_IS_ON(4)) {
@@ -181,16 +183,18 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name();
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void YieldStoreOp::Build(pir::Builder& builder,
@@ -204,16 +208,16 @@ void YieldStoreOp::Build(pir::Builder& builder,
 void YieldStoreOp::VerifySig() {}
 
 bool YieldStoreOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  shape_analysis->SetShapeOrDataForValue(
-      result(0), shape_analysis->GetShapeOrDataForValue(operand_source(0)));
+    pir::InferSymbolicShapeContext* infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
   return true;
 }
 
 bool ConcatOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::InferSymbolicShapeContext* infer_context) {
   VLOG(4) << "Infer symbolic shape for cinn_op.concat";
-  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
+  return ConcatOpInferSymbolicShape(this->operation(), infer_context);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
@@ -264,7 +268,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
                     pir::Value input,
                     const std::vector<int>& sections,
                     int axis) {
-  VLOG(4) << "Start build ConcatOp";
+  VLOG(4) << "Start build SplitOp";
 
   argument.inputs.push_back(input);
 
@@ -476,7 +480,7 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
 }
 
 bool GenerateShapeOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::InferSymbolicShapeContext* infer_context) {
   const auto attr_dim_exprs = [&] {
     std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
@@ -505,7 +509,7 @@ bool GenerateShapeOp::InferSymbolicShape(
   }();
   auto DimExprs4InputDim =
       [&](int input_idx) -> const symbol::ShapeOrDataDimExprs& {
-    return shape_analysis->GetShapeOrDataForValue(
+    return infer_context->GetShapeOrDataForValue(
         this->operand_source(input_idx));
   };
   auto DimExprs4SymbolName =
@@ -527,7 +531,7 @@ bool GenerateShapeOp::InferSymbolicShape(
   symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
       symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 
-  shape_analysis->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
+  infer_context->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
 
   return true;
 }

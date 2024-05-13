@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
 namespace framework {
@@ -63,7 +63,7 @@ struct LoDTensorToArrayFunctor {
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -88,7 +88,7 @@ struct LoDTensorToArrayFunctor {
 template <typename DeviceContext>
 template <typename T>
 void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
-  math::SplitFunctor<DeviceContext, T> func;
+  phi::funcs::SplitFunctor<DeviceContext, T> func;
   func(*dev_ctx_,
        prev_functor_->input_,
        prev_functor_->ref_inputs_,

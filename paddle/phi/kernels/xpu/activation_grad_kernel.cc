@@ -700,7 +700,8 @@ PD_REGISTER_KERNEL(relu_grad,
                    ALL_LAYOUT,
                    phi::ReluGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(silu_grad,
                    XPU,
                    ALL_LAYOUT,

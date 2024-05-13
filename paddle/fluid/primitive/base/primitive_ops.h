@@ -105,6 +105,8 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
+      "pd_op.sigmoid",
+      "pd_op.reduce_as",
       /* skip some special ops */
       "pd_op.conv2d",
       "pd_op.pad3d",

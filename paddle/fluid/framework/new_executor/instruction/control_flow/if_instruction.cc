@@ -59,8 +59,7 @@ IfInstruction::IfInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetVarByValue(cond_value);
+  cond_var_ = value_exec_info->GetVarByValue(if_op.cond());
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));
@@ -144,11 +143,6 @@ IfInstruction::IfInstruction(size_t id,
                                           execution_config);
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&true_branch_block)) {
-    true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
-  }
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
   for (auto value : true_outside_inputs) {
@@ -171,11 +165,6 @@ IfInstruction::IfInstruction(size_t id,
                          value_exec_info->NewChild(false_scope),
                          execution_config);
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&false_branch_block)) {
-    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
   for (auto value : false_outside_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
@@ -246,8 +235,6 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
   } else {
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
@@ -256,8 +243,6 @@ void IfInstruction::Run() {
     paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(
-        false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
   }
   // copy output
 }

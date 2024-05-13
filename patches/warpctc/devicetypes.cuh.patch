@@ -1,0 +1,13 @@
+--- a/include/contrib/moderngpu/include/device/devicetypes.cuh
++++ b/include/contrib/moderngpu/include/device/devicetypes.cuh
+@@ -207,10 +207,6 @@ MGPU_HOST_DEVICE int2& operator+=(int2& a, int2 b) {
+ MGPU_HOST_DEVICE int2 operator*(int2 a, int2 b) {
+ 	return make_int2(a.x * b.x, a.y * b.y);
+ }
+-MGPU_HOST_DEVICE int2& operator*=(int2& a, int2 b) {
+-	a = a * b;
+-	return a;
+-}
+
+ template<typename T>
+ MGPU_HOST_DEVICE T max(T a, T b) {

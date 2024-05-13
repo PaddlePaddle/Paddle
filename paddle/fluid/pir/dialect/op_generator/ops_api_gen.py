@@ -70,6 +70,8 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_avg_',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'c_allreduce_min_',
     'c_allreduce_prod_',
     'distributed_fused_lamb_init',
@@ -121,6 +123,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'coalesce_tensor_',
     'send_v2',
     'recv_v2',
+    'c_allgather',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -130,7 +133,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'assign_pos',
     'batch_fc',
     'barrier',
-    'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
     'c_allreduce_min',
@@ -161,11 +163,20 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_token_prune',
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
+    'fused_elementwise_add',
+    'fused_elementwise_div',
+    'fused_elementwise_mul',
+    'fused_elementwise_sub',
+    'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
     'lars_momentum_',
     'max_pool2d_v2',
     'partial_sum',
+    'pull_gpups_sparse',
+    'pull_gpups_sparse_',
+    'push_gpups_sparse',
+    'push_gpups_sparse_',
     'random_routing',
     'rank_attention',
     'rnn_',
@@ -179,8 +190,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
-    'c_reduce_avg',
-    'c_reduce_avg_',
     'c_reduce_max',
     'c_reduce_max_',
     'c_reduce_min',
@@ -191,6 +200,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
+    'pull_sparse_v2',
     'partial_concat',
     'partial_send',
     'partial_recv',
@@ -198,9 +208,17 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'gemm_epilogue',
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
+    'global_gather',
+    'pull_box_sparse',
+    'pull_box_sparse_',
+    'push_box_sparse',
+    'push_box_sparse_',
+    'send_and_recv',
+    'send_and_recv_',
 ]
 
 
@@ -236,8 +254,22 @@ class OpsAPIGen(CodeGen):
             for op_name in op_info.op_phi_name:
                 if self._need_skip(op_info, op_name):
                     continue
-                function_impl_str += self._gen_one_function_impl(op_name)
-                ops_api_str += self._gen_one_ops_api(op_name)
+                sparse_op_inplace_name_suffix = ''
+                sparse_op_name_suffix = ''
+                if op_name[-1] == "_":
+                    function_impl_str += self._gen_one_function_impl(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                    ops_api_str += self._gen_one_ops_api(
+                        op_name + sparse_op_inplace_name_suffix
+                    )
+                else:
+                    function_impl_str += self._gen_one_function_impl(
+                        op_name + sparse_op_name_suffix
+                    )
+                    ops_api_str += self._gen_one_ops_api(
+                        op_name + sparse_op_name_suffix
+                    )
 
         inner_body = NAMESPACE_INNER_TEMPLATE.format(
             function_impl=function_impl_str, ops_api=ops_api_str

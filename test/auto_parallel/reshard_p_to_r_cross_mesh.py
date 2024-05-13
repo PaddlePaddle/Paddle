@@ -82,28 +82,41 @@ class TestReshardPToRCrossMesh:
                 input_tensor = dist.shard_tensor(
                     w0, self._in_mesh, [dist.Partial(dist.ReduceType.kRedSum)]
                 )
-                reshard_tensor = paddle._pir_ops.reshard(
+                reshard_tensor = paddle._C_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
-            dist_program = apply_reshard_pass(main_program)
-        np.testing.assert_equal(dist_program.num_ops(), 6)
-        ops = [op.name() for op in dist_program.global_block().ops]
-        np.testing.assert_equal(
-            ops,
-            [
+
+            apply_reshard_pass(main_program)
+
+        ops = [op.name() for op in main_program.global_block().ops]
+        if paddle.distributed.get_rank() == 0:
+            np.testing.assert_equal(main_program.num_ops(), 4)
+            std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
                 'dist_op.shard_tensor',
                 'pd_op.send_v2',
+            ]
+        else:
+            np.testing.assert_equal(main_program.num_ops(), 5)
+            std_ops = [
+                'builtin.parameter',
+                'pd_op.data',
+                'dist_op.shard_tensor',
                 'pd_op.recv_v2',
                 'pd_op.c_allreduce_sum_',
-            ],
+            ]
+        np.testing.assert_equal(
+            ops,
+            std_ops,
         )
-        for op in dist_program.global_block().ops:
+        for op in main_program.global_block().ops:
             if op.name() == 'pd_op.send_v2':
-                assert op.dist_attr.num_operand_dist_attrs() == 1
-                assert op.dist_attr.num_result_dist_attrs() == 0
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
+                assert op.dist_attr.num_operands() == 1
+                assert op.dist_attr.num_results() == 0
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._in_mesh
                 assert op_operand_dist_attr.process_mesh == self._in_mesh
@@ -114,10 +127,12 @@ class TestReshardPToRCrossMesh:
 
             elif op.name() == 'pd_op.recv_v2':
                 # check op dist_attr
-                assert op.dist_attr.num_operand_dist_attrs() == 0
-                assert op.dist_attr.num_result_dist_attrs() == 1
+                assert op.dist_attr.num_operands() == 0
+                assert op.dist_attr.num_results() == 1
 
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op_result_dist_attr.process_mesh == self._out_mesh
                 assert op_result_dist_attr.dims_mapping == [-1, -1]
@@ -127,11 +142,15 @@ class TestReshardPToRCrossMesh:
             elif op.name() == 'pd_op.c_allreduce_sum_':
                 continue
                 # check op dist_attr
-                assert op.dist_attr.num_operand_dist_attrs() == 1
-                assert op.dist_attr.num_result_dist_attrs() == 1
+                assert op.dist_attr.num_operands() == 1
+                assert op.dist_attr.num_results() == 1
 
-                op_operand_dist_attr = op.dist_attr.operand_dist_attr(0)
-                op_result_dist_attr = op.dist_attr.result_dist_attr(0)
+                op_operand_dist_attr = op.dist_attr.operand(
+                    0
+                ).as_tensor_dist_attr()
+                op_result_dist_attr = op.dist_attr.result(
+                    0
+                ).as_tensor_dist_attr()
 
                 assert op.dist_attr.process_mesh == self._in_mesh
                 assert op_operand_dist_attr.process_mesh == self._in_mesh
