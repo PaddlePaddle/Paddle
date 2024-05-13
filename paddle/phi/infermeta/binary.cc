@@ -3304,9 +3304,9 @@ void StftInferMeta(const MetaTensor& x,
                    bool normalized,
                    bool onesided,
                    MetaTensor* out) {
-  const auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   const int x_rank = x_dims.size();
-  const auto window_dims = window.dims();
+  const auto& window_dims = window.dims();
   const int window_size = static_cast<int>(window_dims[0]);
 
   PADDLE_ENFORCE_EQ(
