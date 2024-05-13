@@ -234,7 +234,7 @@ void FusedMultiTransformerInferMeta(
 
 void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
                             const MetaTensor& seq_lens_decoder,
-                            const int bsz,
+                            const MetaTensor& batch_size,
                             MetaTensor* max_enc_len_this_time,
                             MetaTensor* max_dec_len_this_time) {
   max_enc_len_this_time->set_dims({1});

@@ -33,7 +33,7 @@
     data_type : x
 
 - op : blha_get_max_len
-  args : (Tensor seq_lens_encoder, Tensor seq_lens_decoder, int bsz)
+  args : (Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor batch_size)
   output : Tensor(max_enc_len_this_time), Tensor(max_dec_len_this_time)
   infer_meta :
     func : BlhaGetMaxLenInferMeta
