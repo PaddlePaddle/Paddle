@@ -197,18 +197,6 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   return OpFuncType::kGpuAsync;
 }
 
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-
-  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
-    auto& op = block->back();
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      vec_res.emplace_back(op.operand_source(i));
-    }
-  }
-  return vec_res;
-}
-
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids) {

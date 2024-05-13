@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
 namespace paddle {
 namespace framework {
@@ -28,15 +29,20 @@ YieldInstruction::YieldInstruction(size_t id,
     : InstructionBase(id, place), op_(op) {
   VLOG(6) << "construct yield instruction";
 
+  auto parent_op = op->GetParentOp();
+
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); ++i) {
+    // Skip the first input (cond) when the parent op is a while op.
+    if (parent_op->isa<paddle::dialect::WhileOp>() && i == 0) {
+      continue;
+    }
     auto in = op->operand_source(i);
     inputs.emplace(in, GetValueIds(in, *value_exe_info));
     input_vars_.push_back(value_exe_info->GetVarByValue(in));
   }
   SetInputs(inputs);
 
-  auto parent_op = op->GetParentOp();
   for (size_t i = 0; i < parent_op->num_results(); ++i) {
     output_vars_.push_back(value_exe_info->GetVarByValue(parent_op->result(i)));
   }
