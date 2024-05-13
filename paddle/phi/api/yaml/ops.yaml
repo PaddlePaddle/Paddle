@@ -813,9 +813,10 @@
   output : Tensor(output)
   infer_meta :
     func : DeQuantizeInferMeta
-    param : [input]
+    param : [input, scale, shift]
   kernel :
     func : dequantize
+    param : [input, scale, shift]
     data_type : input
 
 - op : dequantize_abs_max
@@ -2447,9 +2448,10 @@
   output : Tensor(output)
   infer_meta :
     func : QuantizeInferMeta
-    param : [input]
+    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
   kernel :
     func : quantize
+    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
     data_type : input
 
 - op : random_routing
