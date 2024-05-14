@@ -255,6 +255,8 @@ def block_multihead_attention(
             ...     None, # qkv_bias
             ...     None, # out_shift
             ...     None, # out_smooth
+            ...     None, # max_enc_len_this_time
+            ...     None, # max_dec_len_this_time
             ...     None, # rotary_embs
             ...     None, # attn_mask
             ...     None, # tgt_mask
