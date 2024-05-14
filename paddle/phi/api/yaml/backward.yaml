@@ -1984,6 +1984,20 @@
   kernel :
     func : qr_grad
 
+- backward_op : rank_attention_grad
+  forward: rank_attention (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size
+    = 0) -> Tensor (input_help), Tensor (out), Tensor (ins_rank)
+  args: (Tensor x, Tensor rank_offset, Tensor rank_param, Tensor input_help, Tensor out_grad, Tensor ins_rank, int max_rank, int max_size
+    )
+  output: Tensor (rank_param_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    input: [rank_param]
+  kernel:
+    func: rank_attention_grad
+    data_type: out_grad
+  no_need_buffer : [x, rank_offset, rank_param]
+
 - backward_op : real_grad
   forward : real (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)

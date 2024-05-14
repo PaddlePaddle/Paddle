@@ -2453,6 +2453,17 @@
     data_type : prob
   inplace : (topk_idx -> out)
 
+- op : rank_attention
+  args: (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size
+    = 0)
+  output: Tensor (input_help), Tensor (out), Tensor (ins_rank)
+  infer_meta:
+    func: RankAttentionInferMeta
+  kernel:
+    func: rank_attention
+    data_type: x
+  backward: rank_attention_grad
+
 - op : real
   args : (Tensor x)
   output : Tensor (out)
