@@ -3731,6 +3731,12 @@
   outputs :
     {out : Out}
 
+- op : yolo_box_post
+  inputs :
+    {boxes0 : Boxes0, boxes1 : Boxes1, boxes2 : Boxes2, image_shape : ImageShape, image_scale : ImageScale}
+  outputs :
+    {out : Out, nms_rois_num : NmsRoisNum}
+
 - op : yolo_loss (yolov3_loss)
   backward: yolo_loss_grad (yolov3_loss_grad)
   inputs :
