@@ -128,7 +128,8 @@ void LoadFunction(const std::string& file_path,
                   int64_t seek,
                   const std::vector<int64_t>& shape,
                   bool load_as_fp16,
-                  phi::DenseTensor* out);
+                  phi::DenseTensor* out,
+                  phi::Place place = phi::Place());
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
@@ -146,5 +147,6 @@ void LoadFunction(const std::string& file_path,
 void LoadCombineFunction(const std::string& file_path,
                          const std::vector<std::string>& names,
                          std::vector<phi::DenseTensor*>* out,
-                         bool load_as_fp16);
+                         bool load_as_fp16,
+                         phi::Place place = phi::Place());
 }  // namespace pir

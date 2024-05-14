@@ -56,21 +56,18 @@ def _generate_unique_var_name(prefix):
 def _get_pir_persistable_var_names(program):
     persistable_vars = []
     persistable_names = []
-    origin_names = []
     rename_new_old_dict = {}
     for block in program.blocks:
         for var in block.all_parameters():
             if var.persistable:
                 persistable_vars.append(var)
                 origin_name = var.name
-                origin_names.append(origin_name)
                 var.name = _generate_unique_var_name(var.name)
                 rename_new_old_dict[var.name] = origin_name
                 persistable_names.append(var.name)
     return (
         persistable_vars,
         persistable_names,
-        origin_names,
         rename_new_old_dict,
     )
 
@@ -84,7 +81,6 @@ class _PirProgramHolder:
         self._output_vars = []
         self._persistable_vars = []
         self._persistable_names = []
-        self._origin_persistable_names = []
 
         self.support_train = trainable
         # append suffix var name dict
@@ -97,7 +93,6 @@ class _PirProgramHolder:
         (
             self._persistable_vars,
             self._persistable_names,
-            self._origin_persistable_names,
             self._suffix_varname_dict,
         ) = _get_pir_persistable_var_names(self._infer_program)
 
@@ -146,10 +141,6 @@ class _PirProgramHolder:
     def persistable_vars(self):
         return self._persistable_vars
 
-    @property
-    def origin_persistable_names(self):
-        return self._origin_persistable_names
-
 
 # [ PirTranslatedLayer : Run program in dygraph mode ]
 #
@@ -188,8 +179,8 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
     load_var_list = []
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
-    origin_persistable_name = program_holder.origin_persistable_names
-    for name, var in sorted(zip(origin_persistable_name, persistable_var)):
+    persistable_name = program_holder.persistable_names
+    for name, var in sorted(zip(persistable_name, persistable_var)):
         if var.persistable:
             # use default shape and dtype
             new_var = framework.EagerParamBase(
@@ -223,6 +214,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
             list(load_var_dict.keys()),
             load_densetensor_list,
             False,
+            framework._current_expected_place(),
         )
     else:
         raise ValueError(
@@ -361,7 +353,7 @@ def _run_dygraph(instance, input, program_holder):
 
     persistable_tensors = []
 
-    for var_name in program_holder.origin_persistable_names:
+    for var_name in program_holder.persistable_names:
         dy_var_name = instance._persistable_var_name_dict[var_name]
         if dy_var_name in instance._parameters:
             persistable_tensors.append(instance._parameters[dy_var_name])

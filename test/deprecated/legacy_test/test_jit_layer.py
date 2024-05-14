@@ -134,6 +134,24 @@ class TestMKLOutput(unittest.TestCase):
             out = paddle.unsqueeze(out[0], 0)
             np.testing.assert_equal(out.shape, [1, 498, 80])
 
+    @test_with_dygraph_pir
+    def test_mkl_jit_output(self):
+        with _dygraph_place_guard(place=paddle.CPUPlace()):
+            net = SaveLinear()
+            x = paddle.ones([498, 80])
+            orig_out = net.forward(x)
+            model_path = os.path.join(self.temp_dir.name, 'save_linear')
+            paddle.jit.save(net, model_path, combine_params=True)
+
+            layer = paddle.jit.load(model_path)
+
+            out = layer.forward(x)
+            np.testing.assert_equal(
+                np.mean(orig_out.numpy()), np.mean(out.numpy())
+            )
+            out = paddle.unsqueeze(out, 0)
+            np.testing.assert_equal(out.shape, [1, 498, 80])
+
 
 if __name__ == '__main__':
     unittest.main()

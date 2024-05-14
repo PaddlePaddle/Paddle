@@ -483,7 +483,14 @@ def load_vars_pir(
                         "The directory path and params cannot be None at the same time."
                     )
                 file_path = os.path.join(dirname, v.name)
-                core.load_func(file_path, -1, [], False, var.get_tensor())
+                core.load_func(
+                    file_path,
+                    -1,
+                    [],
+                    False,
+                    var.get_tensor(),
+                    executor._default_executor.get_place(),
+                )
             else:
                 load_var_map[v.name] = var
 
@@ -498,7 +505,11 @@ def load_vars_pir(
                 filename = os.path.join(dirname, filename)
 
             core.load_combine_func(
-                filename, load_var_names, load_var_list, False
+                filename,
+                load_var_names,
+                load_var_list,
+                False,
+                executor._default_executor.get_place(),
             )
             for name, var in zip(load_var_names, load_var_list):
                 set_var(name, np.array(var))
