@@ -8246,8 +8246,8 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
 
 
 def can_skip_promote(op, device):
-    # Only GPU elementwise_add kernel supports the pattern "float + half".
-    if device != 'GPU':
+    # Only GPU/XPU elementwise_add kernel supports the pattern "float + half".
+    if device not in ['GPU', 'XPU']:
         return False
     if op.type != "elementwise_add":
         return False
@@ -8268,6 +8268,10 @@ def process_type_promotion(program):
         _current_expected_place(), core.CUDAPlace
     ):
         device = 'GPU'
+    elif core.is_compiled_with_xpu() and isinstance(
+        _current_expected_place(), core.XPUPlace
+    ):
+        device = 'XPU'
     org_program = program
     if program is None:
         program = default_main_program()
