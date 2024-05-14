@@ -368,8 +368,6 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
       paddle::dialect::OpYamlInfoParser op_info_parser(
           op_yaml_interface->get_op_info_(upper_op_name));
-      // std::unordered_map<uint32_t, uint32_t> inplace_out_2_in =
-      //   op_info_parser.GetInplaceIdMap();
       for (auto [out_slot, in_slot] : op_info_parser.GetInplaceIdMap()) {
         auto out_value = op.result(out_slot);
         auto in_value = op.operand_source(in_slot);
