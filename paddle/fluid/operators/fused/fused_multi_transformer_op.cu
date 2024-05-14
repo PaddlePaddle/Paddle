@@ -44,7 +44,18 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     const bool use_neox_rotary_style = ctx.Attr<bool>("use_neox_rotary_style");
     bool remove_padding = false;
     auto *sequence_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
+    phi::DenseTensor sequence_lengths_backup;
     if (sequence_lengths) {
+      remove_padding = true;
+    } else {
+      sequence_lengths_backup.Resize({{1}});
+      auto *sequence_lengths_backup_data =
+          dev_ctx.Alloc<int>(&sequence_lengths_backup,
+                             sequence_lengths_backup.numel() * sizeof(int));
+      InitValue(dev_ctx,
+                sequence_lengths_backup_data,
+                sequence_lengths_backup.numel() * sizeof(int),
+                static_cast<int>(seq_len));
       remove_padding = true;
     }
     auto gqa_group_size = ctx.Attr<int>("gqa_group_size");
@@ -93,7 +104,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              d_token_num,
                              padding_offset_tensor.data<int>(),
                              cu_seqlens_q.data<int>(),
-                             sequence_lengths->data<int>(),
+                             sequence_lengths
+                                 ? sequence_lengths->data<int>()
+                                 : sequence_lengths_backup.data<int>(),
                              bsz,
                              seq_len);
       if (token_num == 0) return;
@@ -587,7 +600,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                qkv_bias->data<T>(),
                                rotary_tensor->data<float>(),
                                padding_offset_data,
-                               sequence_lengths->data<int>(),
+                               sequence_lengths
+                                   ? sequence_lengths->data<int>()
+                                   : sequence_lengths_backup.data<int>(),
                                token_num,
                                num_head,
                                seq_len,
@@ -601,7 +616,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                    qkv_bias->data<T>(),
                                    rotary_tensor->data<float>(),
                                    padding_offset_data,
-                                   sequence_lengths->data<int>(),
+                                   sequence_lengths
+                                       ? sequence_lengths->data<int>()
+                                       : sequence_lengths_backup.data<int>(),
                                    token_num,
                                    num_head,
                                    seq_len,
@@ -618,7 +635,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                  unpadding_v.data<T>(),
                                  qkv_out_data,
                                  padding_offset_data,
-                                 sequence_lengths->data<int>(),
+                                 sequence_lengths
+                                     ? sequence_lengths->data<int>()
+                                     : sequence_lengths_backup.data<int>(),
                                  token_num,
                                  bsz,
                                  num_head,
@@ -631,7 +650,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                      unpadding_v.data<T>(),
                                      qkv_out_data,
                                      padding_offset_data,
-                                     sequence_lengths->data<int>(),
+                                     sequence_lengths
+                                         ? sequence_lengths->data<int>()
+                                         : sequence_lengths_backup.data<int>(),
                                      token_num,
                                      bsz,
                                      num_head,
@@ -790,7 +811,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<float>();
           const int *sequence_lengths_data =
-              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
+              sequence_lengths ? sequence_lengths->data<int>()
+                               : sequence_lengths_backup.data<int>();
+          // encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
           rotary_qk(dev_ctx,
                     q_transpose_out_data,
                     kv_transpose_out_data,
@@ -811,14 +834,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
         // if (FLAGS_fmha_mode == "flash_attention_v2" &&
         // encoder_remove_padding) {
-        if (!encoder_remove_padding) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "encoder_remove_padding must be True, but got False"));
-        }
-        if (!sequence_lengths) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "sequence_lengths must be non-nullptr, but got nullptr"));
-        }
 
         TransposeSplit<T>(dev_ctx,
                           unpadding_q.data<T>(),
@@ -827,7 +842,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           q_transpose_out.data<T>(),
                           kv_transpose_out.data<T>(),
                           padding_offset_data,
-                          sequence_lengths->data<int>(),
+                          sequence_lengths
+                              ? sequence_lengths->data<int>()
+                              : sequence_lengths_backup.data<int>(),
                           token_num,
                           bsz,
                           num_head,
