@@ -4631,6 +4631,32 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+void YoloBoxPostInferMeta(const MetaTensor& boxes0,
+                          const MetaTensor& boxes1,
+                          const MetaTensor& boxes2,
+                          const MetaTensor& image_shape,
+                          const MetaTensor& image_scale,
+                          const std::vector<int>& anchors0,
+                          const std::vector<int>& anchors1,
+                          const std::vector<int>& anchors2,
+                          int class_num,
+                          float conf_thresh,
+                          int downsample_ratio0,
+                          int downsample_ratio1,
+                          int downsample_ratio2,
+                          bool clip_bbox,
+                          float scale_x_y,
+                          float nms_threshold,
+                          MetaTensor* out,
+                          MetaTensor* nms_rois_num,
+                          MetaConfig config) {
+  int batch = image_shape.dims()[0];
+  out->set_dims(common::make_ddim({1, 6}));
+  nms_rois_num->set_dims(common::make_ddim({batch}));
+  out->set_dtype(DataType::FLOAT32);
+  nms_rois_num->set_dtype(DataType::INT32);
+}
+
 void YoloLossInferMeta(const MetaTensor& x,
                        const MetaTensor& gt_box,
                        const MetaTensor& gt_label,
