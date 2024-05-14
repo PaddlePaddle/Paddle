@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
-// #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -216,16 +215,13 @@ struct ExpressionTable {
   }
 
   size_t CalcValueHash(const pir::Value& value) {
-    // hash(value) = hash(defining_op) ^ value_id
+    // hash(value) = hash(defining_op) ^ value_result_idx
     if (!IsTerminateValue(value)) {
       return pir::detail::hash_combine(GetOperationHash(value.defining_op()),
                                        GetOpResultId(value));
     }
     // hash(termiante_value) = terminate_value_id
-    if (!terminate_value_id_map_.count(value)) {
-      terminate_value_id_map_[value] = terminate_value_id_++;
-    }
-    return terminate_value_id_map_[value];
+    return reinterpret_cast<size_t>(value.impl());
   }
 
   size_t GetOpResultId(const pir::Value& value) {
@@ -299,7 +295,6 @@ struct ExpressionTable {
  private:
   std::unordered_map<size_t, pir::Operation*> common_exprs_;
   std::unordered_map<void*, std::pair<size_t, bool>> registered_ops_info_;
-  std::unordered_map<pir::Value, size_t> terminate_value_id_map_;
   size_t terminate_value_id_ = 0;
 };
 
