@@ -211,11 +211,9 @@ PD_REGISTER_KERNEL(mask_as_coo,
                    float,
                    double,
                    uint8_t,
-                   int8_t,
                    int16_t,
                    int,
-                   int64_t,
-                   bool) {
+                   int64_t) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -226,10 +224,8 @@ PD_REGISTER_KERNEL(mask_as_csr,
                    float,
                    double,
                    uint8_t,
-                   int8_t,
                    int16_t,
                    int,
-                   int64_t,
-                   bool) {
+                   int64_t) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

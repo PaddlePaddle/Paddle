@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_REGISTER_KERNEL(mask_as_coo_grad,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::sparse::MaskAsCooGradKernel,
                    float,
@@ -33,7 +33,7 @@ PD_REGISTER_KERNEL(mask_as_coo_grad,
 }
 
 PD_REGISTER_KERNEL(mask_as_csr_grad,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::sparse::MaskAsCsrGradKernel,
                    float,
