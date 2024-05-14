@@ -140,7 +140,7 @@ inline bool NeedTypePromotion(const std::string& op_name,
   // floating-point numbers and between complex and real numbers.
   if (x != y) {
 // TODO(Xi Zhao): we got special case for add now, should remove it in furture.
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
     if (op_name == "add" && x == DataType::FLOAT32 &&
         (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
       return false;
