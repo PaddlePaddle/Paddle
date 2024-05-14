@@ -275,7 +275,7 @@ class TestPrimOneHot(TestPrimBase):
             .reshape([self.depth])
         )
         self.net = one_hot_net
-        self.necessary_ops = "pd_op.one_hot_v2"
+        self.necessary_ops = "pd_op.one_hot"
         self.enable_cinn = False
         self.tol = 1e-6
 
