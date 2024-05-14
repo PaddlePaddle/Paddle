@@ -24,15 +24,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void DeQuantKernel(const Context& dev_ctx,
-                   const DenseTensor& input,
-                   float scale,
-                   float shift,
-                   DenseTensor* output) {
-  PADDLE_ENFORCE(scale != 0.0f,
+                   const DenseTensor& x,
+                   const float quantization_scale,
+                   const float quantization_shift,
+                   DenseTensor* out) {
+  PADDLE_ENFORCE(quantization_scale != 0.0f,
                  phi::errors::InvalidArgument(
                      "Dequantization scale must be different than 0.0f"));
 
-  const auto q_shift = static_cast<int32_t>(shift);
+  const auto q_shift = static_cast<int32_t>(quantization_shift);
   PADDLE_ENFORCE_GE(q_shift,
                     0,
                     phi::errors::InvalidArgument(
@@ -44,9 +44,9 @@ void DeQuantKernel(const Context& dev_ctx,
 
   const bool with_shift = q_shift != 0;
 
-  auto x_tz = common::vectorize<int64_t>(input.dims());
-  auto x_type = phi::funcs::ToOneDNNDataType(input.dtype());
-  auto out_type = phi::funcs::ToOneDNNDataType(output->dtype());
+  auto x_tz = common::vectorize<int64_t>(x.dims());
+  auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
+  auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
 
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
@@ -57,17 +57,13 @@ void DeQuantKernel(const Context& dev_ctx,
     attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
   }
 
-  phi::funcs::ReorderOneDNNHandler reorder_handler(x_tz,
-                                                   input.dtype(),
-                                                   x_type,
-                                                   output->dtype(),
-                                                   out_type,
-                                                   dev_ctx.GetEngine());
+  phi::funcs::ReorderOneDNNHandler reorder_handler(
+      x_tz, x.dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      input.mem_desc(), phi::funcs::to_void_cast(input.data<T>()));
-  auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      output, input.mem_desc(), dev_ctx.GetPlace());
+      x.mem_desc(), phi::funcs::to_void_cast(x.data<T>()));
+  auto reorder_dst_memory_p =
+      reorder_handler.AcquireDstMemory(out, x.mem_desc(), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
@@ -76,8 +72,10 @@ void DeQuantKernel(const Context& dev_ctx,
 
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-  auto scales_mem = dnnl::memory(
-      scales_md, dev_ctx.GetEngine(), phi::funcs::to_void_cast<float>(&scale));
+  auto scales_mem =
+      dnnl::memory(scales_md,
+                   dev_ctx.GetEngine(),
+                   phi::funcs::to_void_cast<float>(&quantization_scale));
 
   auto zero_points_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
@@ -96,7 +94,7 @@ void DeQuantKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  output->set_mem_desc(reorder_dst_memory_p->get_desc());
+  out->set_mem_desc(reorder_dst_memory_p->get_desc());
 }
 
 }  // namespace phi

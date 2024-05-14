@@ -810,6 +810,14 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
+- op : dequantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift}
+
 - op : dequantize_abs_max
   inputs :
     {x : X, scale : Scale}
@@ -2768,6 +2776,14 @@
     x : X
   outputs :
     {q : Q, r : R}
+
+- op : quantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
   inputs :

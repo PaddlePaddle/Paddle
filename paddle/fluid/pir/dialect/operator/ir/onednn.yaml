@@ -2,11 +2,10 @@
   args : (Tensor input, float scale=1.0, float shift=0.0)
   output : Tensor(output)
   infer_meta :
-    func : DeQuantizeInferMeta
-    param : [input, scale, shift]
+    func : UnchangedExceptDtypeInferMeta
+    param : [input]
   kernel :
     func : dequantize
-    param : [input, scale, shift]
     data_type : input
 
 - op : fused_conv2d
@@ -117,11 +116,10 @@
   args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
   output : Tensor(output)
   infer_meta :
-    func : QuantizeInferMeta
-    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
+    func : UnchangedInferMeta
+    param : [input]
   kernel :
     func : quantize
-    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
     data_type : input
 
 - op : requantize

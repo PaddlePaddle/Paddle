@@ -323,17 +323,6 @@
     data_type : x
   backward : depthwise_conv2d_transpose_grad
 
-- op : dequantize
-  args : (Tensor input, float scale=1.0, float shift=0.0)
-  output : Tensor(output)
-  infer_meta :
-    func : DeQuantizeInferMeta
-    param : [input, scale, shift]
-  kernel :
-    func : dequantize
-    param : [input, scale, shift]
-    data_type : input
-
 - op : dequantize_log
   args: (Tensor x, Tensor dict)
   output: Tensor(out)
@@ -952,17 +941,6 @@
   kernel :
     func : prod
   backward : prod_grad
-
-- op : quantize
-  args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
-  output : Tensor(output)
-  infer_meta :
-    func : QuantizeInferMeta
-    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
-  kernel :
-    func : quantize
-    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
-    data_type : input
 
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
