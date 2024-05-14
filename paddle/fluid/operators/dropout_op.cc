@@ -180,32 +180,6 @@ class DropoutCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   }
 };
 
-class DropoutNdOpMaker : public DropoutOpMaker {
- public:
-  void Make() override {
-    DropoutOpMaker::Make();
-    AddAttr<std::vector<int>>("axis",
-                              "(std::vector<int>). List of integers,"
-                              " indicating the dimensions to be dropout_nd.")
-        .SetDefault({});
-  }
-};
-
-template <typename T>
-class DropoutNdGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("dropout_nd_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("Mask", this->Output("Mask"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -222,14 +196,3 @@ REGISTER_OPERATOR(dropout,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
-
-DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd,
-                            DropoutNdInferShapeFunctor,
-                            PD_INFER_META(phi::DropoutNdInferMeta));
-REGISTER_OPERATOR(dropout_nd,
-                  ops::DropoutOp,
-                  ops::DropoutNdOpMaker,
-                  ops::DropoutNdGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DropoutNdGradOpMaker<paddle::imperative::OpBase>,
-                  DropoutNdInferShapeFunctor);
-REGISTER_OPERATOR(dropout_nd_grad, ops::DropoutOpGrad);
