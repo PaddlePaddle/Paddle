@@ -259,11 +259,15 @@ const std::vector<std::string> CpuBasicPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "map_op_to_another_pass",                                           //
-        "is_test_pass",                                                 //
-        "simplify_with_basic_ops_pass",                                 //
-        "delete_quant_dequant_linear_op_pass",                          //
-        "delete_weight_dequant_linear_op_pass",                         //
+    "map_op_to_another_pass",                    //
+        "is_test_pass",                          //
+        "simplify_with_basic_ops_pass",          //
+        "delete_quant_dequant_linear_op_pass",   //
+        "delete_weight_dequant_linear_op_pass",  //
+#if defined _WIN32  // Windows does not support sparse_conv3d_implicit_gemm
+#else
+        "sparse_conv_optim_pass",              //
+#endif
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
@@ -603,6 +607,7 @@ const std::vector<std::string> kPirGpuPasses{
     "conv2d_add_act_fuse_pass",
     "conv2d_add_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
+    "fused_flash_attn_pass",
     "multihead_matmul_fuse_pass",
     "matmul_add_act_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",

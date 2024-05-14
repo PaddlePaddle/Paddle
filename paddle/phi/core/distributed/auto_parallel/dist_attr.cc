@@ -49,6 +49,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
   std::swap(this->annotated_, tmp.annotated_);
   std::swap(this->partial_status_, tmp.partial_status_);
+  std::swap(this->skip_check_mesh_, tmp.skip_check_mesh_);
   return *this;
 }
 
@@ -60,6 +61,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_dynamic_dims(dist_attr.dynamic_dims());
   set_annotated(dist_attr.annotated());
   set_partial_status(dist_attr.partial_status());
+  skip_check_mesh_ = dist_attr.skip_check_mesh();
 }
 
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -289,6 +291,7 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
+  dist_str += "skip_check_mesh: " + std::to_string(skip_check_mesh_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
   dist_str += "partial: " + partial_status_string() + ".}";
@@ -444,6 +447,8 @@ bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
     return partial_status_.count(mesh_axis) > 0;
   }
 }
+
+void TensorDistAttr::set_skip_check_mesh(bool skip) { skip_check_mesh_ = skip; }
 
 }  // namespace distributed
 }  // namespace phi

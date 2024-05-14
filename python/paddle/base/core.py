@@ -298,6 +298,7 @@ try:
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
+        _is_compiled_with_gpu_graph,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
@@ -647,3 +648,26 @@ def check_and_set_prim_all_enabled():
 
 
 check_and_set_prim_all_enabled()
+
+
+SKIPPED_PRIM_VJP_DEFAULT_OPS = ["matmul_grad"]
+
+
+def _clear_prim_vjp_skip_default_ops():
+    for item in SKIPPED_PRIM_VJP_DEFAULT_OPS:
+        _remove_skip_comp_ops(item)
+
+
+# Since some decomposition of special ops like matmul_grad will reduce performance and is difficult to optimize currently by CINN.
+# This api is used for development for in prim and cinn, and will be removed in future.
+def _check_and_set_prim_vjp_skip_default_ops():
+    flag = os.getenv("FLAGS_prim_vjp_skip_default_ops", "1")
+    if flag and flag.lower() in ("1", "true"):
+        _set_prim_backward_blacklist(*SKIPPED_PRIM_VJP_DEFAULT_OPS)
+        return True
+    else:
+        _clear_prim_vjp_skip_default_ops()
+        return False
+
+
+_check_and_set_prim_vjp_skip_default_ops()
