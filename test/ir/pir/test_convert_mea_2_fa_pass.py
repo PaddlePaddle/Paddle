@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 
 import numpy as np
@@ -26,6 +28,48 @@ from paddle.incubate.nn.memory_efficient_attention import (
 paddle.enable_static()
 
 
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
+
+
+is_sm8x = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] >= 0
+)
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
+
+
+def is_flashattn_supported():
+    if (
+        not core.is_compiled_with_cuda()
+        or get_cuda_version() < 11040
+        or not is_sm_supported
+    ):
+        return False
+    return True
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestConvertMEA2FA(PassTest):
     def is_program_valid(self, program=None):
         return True
