@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.incubate.nn.functional import blha_get_max_len
 
 
@@ -41,14 +42,17 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         self.batch_size_tensor = paddle.ones([self.batch_size])
 
     def test_all(self):
-        paddle.disable_static()
-        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
-            self.seq_lens_encoder, self.seq_lens_decoder, self.batch_size_tensor
-        )
-        assert (
-            max_enc_len_this_time.numpy() == self.test_encoder_data_res
-            and max_dec_len_this_time.numpy() == self.test_decoder_data_res
-        )
+        if core.is_compiled_with_cuda():
+            paddle.disable_static()
+            max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+                self.seq_lens_encoder,
+                self.seq_lens_decoder,
+                self.batch_size_tensor,
+            )
+            assert (
+                max_enc_len_this_time.numpy() == self.test_encoder_data_res
+                and max_dec_len_this_time.numpy() == self.test_decoder_data_res
+            )
 
 
 if __name__ == '__main__':
