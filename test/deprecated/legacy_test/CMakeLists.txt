@@ -772,11 +772,9 @@ set(TEST_CINN_OPS
     test_top_k_v2_op
     test_elementwise_mul_op
     test_gather_nd_op
-    test_squeeze2_op
     test_elementwise_pow_op
     test_transpose_op
     test_reshape_op
-    test_unsqueeze2_op
     test_meshgrid_op
     test_scale_op
     test_scatter_op

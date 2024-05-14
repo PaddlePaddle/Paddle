@@ -4286,16 +4286,6 @@ void SqueezeInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaConfig config) {
   const auto& x_dims = x.dims();
-  // Check input tensor dims (<6) Eigen limit.
-  PADDLE_ENFORCE_LE(x_dims.size(),
-                    6,
-                    phi::errors::InvalidArgument(
-                        "The dimensions of Input(X) "
-                        "should be in the range of [1, 6] (Eigen limit)."
-                        "But received X's dimensions = %d, X's shape = [%s].",
-                        x_dims.size(),
-                        x_dims));
-
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = static_cast<int>(x.dims().size() - axes.GetData().size());

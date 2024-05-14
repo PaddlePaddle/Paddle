@@ -943,6 +943,8 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_sum_op
+    test_squeeze2_op
+    test_unsqueeze2_op
     test_elementwise_min_op
     test_take_along_axis_op
     test_strided_slice_op
