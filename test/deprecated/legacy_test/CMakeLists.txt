@@ -723,7 +723,6 @@ set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
-set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
@@ -760,8 +759,6 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
 endif()
 
-set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
-
 set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
@@ -791,7 +788,6 @@ set(TEST_CINN_OPS
     test_flip
     test_triangular_solve_op
     test_scatter_nd_op
-    test_pool2d_op
     test_instance_norm_op
     test_cumsum_op
     test_split_op
@@ -891,6 +887,5 @@ set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
