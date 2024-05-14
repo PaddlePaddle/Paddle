@@ -31,7 +31,7 @@ namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
 
-std::vector<std::vector<pir::Value>> AddGradOp::Decomp(pir::Operation* op) {
+std::vector<std::vector<pir::Value>> AddGradOp::DecompVjp(pir::Operation* op) {
   VLOG(4) << "Decomp call add_grad's decomp interface begin";
 
   AddGradOp op_obj = op->dyn_cast<AddGradOp>();
