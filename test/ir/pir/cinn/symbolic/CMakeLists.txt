@@ -133,9 +133,8 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:64
-      FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1
-      FLAGS_group_schedule_tiling_first=1 ${PYTHON_EXECUTABLE}
+      FLAGS_cinn_bucket_compile=True FLAGS_group_schedule_tiling_first=1
+      FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_sub_graph_for_frontend.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_sub_graph_for_frontend PROPERTIES LABELS

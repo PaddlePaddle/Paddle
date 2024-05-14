@@ -203,6 +203,8 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
+  virtual ::std::future<int32_t> SetDayId(size_t table_id, int day_id);
+
  protected:
   virtual int32_t Initialize();
 

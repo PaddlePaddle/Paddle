@@ -359,6 +359,14 @@ class PSClient {
     return nullptr;
   }
 
+  virtual ::std::future<int32_t> SetDayId(size_t table_id, int day_id) {
+    VLOG(0) << "SetDayId Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
  protected:
   virtual int32_t Initialize() = 0;
   PSParameter _config;

@@ -2538,8 +2538,8 @@ class Executor:
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", False)
+            and program._fleet_opt.get("dump_fields_path", "") == ""
         )
-
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset

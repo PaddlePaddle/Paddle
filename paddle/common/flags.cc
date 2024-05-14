@@ -1424,11 +1424,11 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, executor will use new IR
+ * Note: If True, executor will use PIR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
  * Using PIR by translating legacy program to pir program
@@ -1442,7 +1442,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
                          true,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
@@ -1454,9 +1454,9 @@ PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, New IR API will be used in Python
+ * Note: If True, PIR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable PIR API in Python");
 
 /**
  * Using PIR in executor FLAG
@@ -1464,20 +1464,20 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, executor will use new IR and run in beta version by for trace
+ * Note: If True, executor will use PIR and run in beta version by for trace
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
- * Apply inplace pass to new IR FLAG
+ * Apply inplace pass to PIR FLAG
  * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If True, will apply inplace pass to new IR.
+ * Note: If True, will apply inplace pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
@@ -1590,12 +1590,12 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           "This is useful for debugging.");
 
 /**
- * Apply shape optimization pass to new IR FLAG
+ * Apply shape optimization pass to PIR FLAG
  * Name: pir_apply_shape_optimization_pass
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
