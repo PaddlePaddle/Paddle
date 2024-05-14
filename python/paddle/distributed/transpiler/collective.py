@@ -722,7 +722,7 @@ class SingleProcessMultiThread(GradAllReduce):
 class MultiThread(GradAllReduce):
     ''' '''
 
-    def __init__(self, nrings=1, trans_mode="all_reduce"):
+    def __init__(self, nrings=1, trans_mode="fuse_all_reduce"):
         GradAllReduce.__init__(self, nrings)
         self.mode = "box"
         self.trans_mode = trans_mode
