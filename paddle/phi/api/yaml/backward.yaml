@@ -1992,7 +1992,7 @@
   output: Tensor (rank_param_grad)
   infer_meta:
     func: UnchangedInferMeta
-    input: [rank_param]
+    param: [rank_param]
   kernel:
     func: rank_attention_grad
     data_type: out_grad
