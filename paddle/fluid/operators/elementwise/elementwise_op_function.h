@@ -48,7 +48,7 @@ limitations under the License. */
 
 #endif
 
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
@@ -474,7 +474,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     phi::DenseTensor *intermediate_out) {
   size_t N = static_cast<size_t>(common::product(x_dim));
 
-  platform::ForRange<DeviceContext> for_range(
+  phi::funcs::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
 
   for_range(
@@ -654,7 +654,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
   size_t N = static_cast<size_t>(common::product(x_dim));
-  platform::ForRange<DeviceContext> for_range(
+  phi::funcs::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
