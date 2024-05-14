@@ -15,9 +15,10 @@
 import unittest
 
 import paddle
-from paddle import base, jit, nn
+from paddle import jit, nn
 
-base.core._set_prim_all_enabled(True)
+paddle.core._set_prim_all_enabled(True)
+paddle.set_flags({"FLAGS_prim_vjp_skip_default_ops": False})
 
 x = paddle.randn([4, 1])
 y = paddle.randn([4, 1])
