@@ -260,6 +260,7 @@ set(op_dialect_srcs
     ${op_dialect_srcs}
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/api_builder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_pylayer_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_sparse_tensor.cc

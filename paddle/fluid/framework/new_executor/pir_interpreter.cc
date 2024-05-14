@@ -58,6 +58,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/yield_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
@@ -69,6 +70,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -718,6 +720,8 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(TuplePushInstruction);
       } else if (op.isa<pir::TuplePopOp>()) {
         CREATE_INSTR(TuplePopInstruction);
+      } else if (op.isa<pir::YieldOp>()) {
+        CREATE_INSTR(YieldInstruction);
       } else {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;

@@ -63,11 +63,17 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
+  const symbol::ConstraintsManager& constraints_manager() const {
+    return constraints_manager_;
+  }
+
  private:
+  symbol::ShapeOrDataDimExprs SimplifyBroadcastForShapeOrData(
+      const symbol::ShapeOrDataDimExprs& shape_or_data);
+
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 
- private:
   int64_t next_sym_idx_ = 0;
 
   std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
@@ -132,6 +138,10 @@ class IR_API ShapeConstraintIRAnalysis final
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
+      
+  const symbol::ConstraintsManager& constraints_manager() const {
+    return context_.constraints_manager();
+  }
 
  private:
   InferSymbolicShapeContext* MutInferSymbolicShapeContext() {

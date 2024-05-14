@@ -1102,6 +1102,21 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
   loss->share_lod(logits);
 }
 
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length) {
+  auto input_dims = input.dims();
+  output->set_dims(input_dims);
+  if (input_length.initialized()) {
+    output_length->set_dims({input_dims[0], 1});
+  }
+  output->set_dtype(input.dtype());
+}
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
@@ -3295,6 +3310,64 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
   }
+}
+
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const int x_rank = x_dims.size();
+  const auto& window_dims = window.dims();
+  const int window_size = static_cast<int>(window_dims[0]);
+
+  PADDLE_ENFORCE_EQ(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "Input(X) of StftOp should be a tensor with shape [N, T], "
+          "but got rank %s.",
+          x_rank));
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      phi::errors::InvalidArgument(
+          "Attribute(hop_length) should be greater than 0, but got %s.",
+          hop_length));
+  PADDLE_ENFORCE_EQ(
+      window_size,
+      n_fft,
+      phi::errors::InvalidArgument(
+          "Input(Window) of StftOp should be equal with n_fft %s, "
+          "but got %s.",
+          n_fft,
+          window_size));
+
+  int seq_length = static_cast<int>(x_dims[x_rank - 1]);
+  int n_frames = 1 + (seq_length - n_fft) / hop_length;
+
+  PADDLE_ENFORCE_LE(n_fft,
+                    seq_length,
+                    phi::errors::InvalidArgument(
+                        "Attribute(frame_length) should be less equal than "
+                        "sequence length, but got (%s) > (%s).",
+                        n_fft,
+                        seq_length));
+
+  std::vector<int64_t> output_shape;
+  output_shape.push_back(x_dims[0]);
+  if (onesided) {
+    output_shape.push_back(n_fft / 2 + 1);
+  } else {
+    output_shape.push_back(n_fft);
+  }
+  output_shape.push_back(n_frames);
+
+  out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(phi::dtype::ToComplex(x.dtype()));
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,

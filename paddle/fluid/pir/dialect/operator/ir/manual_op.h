@@ -658,6 +658,7 @@ class AssignOut_Op
     : public pir::Op<AssignOut_Op,
                      paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface,
                      paddle::dialect::VjpInterface,
                      paddle::dialect::GetKernelTypeForVarInterface,
                      paddle::dialect::InplaceTrait,
@@ -688,6 +689,7 @@ class AssignOut_Op
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
   static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,

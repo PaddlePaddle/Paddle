@@ -81,6 +81,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
       .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy)
       .def("revert", &FleetWrapper::Revert)
+      .def("set_date", &FleetWrapper::SetDate)
       .def("check_save_pre_patch_done", &FleetWrapper::CheckSavePrePatchDone);
 }
 

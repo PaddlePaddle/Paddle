@@ -48,7 +48,7 @@ class PToRReshardFunction(ReshardFunction):
             reduce_mean = True
 
         group = new_process_group(src_mesh.process_ids)
-        reduced_value = paddle._pir_ops.c_allreduce_sum_(
+        reduced_value = paddle._C_ops.c_allreduce_sum_(
             src_value, group.id, True, False
         )
 

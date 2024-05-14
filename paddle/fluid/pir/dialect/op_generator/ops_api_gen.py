@@ -70,6 +70,8 @@ OPS_API_TEMPLATE = """
 
 NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_avg_',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'c_allreduce_min_',
     'c_allreduce_prod_',
     'distributed_fused_lamb_init',
@@ -121,6 +123,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'coalesce_tensor_',
     'send_v2',
     'recv_v2',
+    'c_allgather',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -130,7 +133,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'assign_pos',
     'batch_fc',
     'barrier',
-    'c_allgather',
     'c_allreduce_avg',
     'c_allreduce_max',
     'c_allreduce_min',
@@ -165,6 +167,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elementwise_div',
     'fused_elementwise_mul',
     'fused_elementwise_sub',
+    'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
     'lars_momentum_',
@@ -187,8 +190,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
-    'c_reduce_avg',
-    'c_reduce_avg_',
     'c_reduce_max',
     'c_reduce_max_',
     'c_reduce_min',
@@ -207,6 +208,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'gemm_epilogue',
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
@@ -215,6 +217,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'pull_box_sparse_',
     'push_box_sparse',
     'push_box_sparse_',
+    'send_and_recv',
+    'send_and_recv_',
 ]
 
 

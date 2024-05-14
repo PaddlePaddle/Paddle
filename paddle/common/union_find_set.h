@@ -50,6 +50,8 @@ class UnionFindSet {
     parent_[Find(q)] = Find(p);
   }
 
+  const std::unordered_map<T, T>& GetMap() const { return parent_; }
+
   template <typename DoEachClusterT>
   void VisitCluster(const DoEachClusterT& DoEachCluster) const {
     std::unordered_map<T, std::vector<T>> clusters_map;

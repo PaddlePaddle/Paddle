@@ -124,9 +124,7 @@ class TestReduceOnPlateauDecay:
 
         for epoch in range(20):
             for batch_id in range(1):
-                out, actual_lr = exe.run(
-                    main_prog, fetch_list=[loss.name, lr_var.name]
-                )
+                out, actual_lr = exe.run(main_prog, fetch_list=[loss, lr_var])
                 expected_lr = reduce_lr_on_plateau(
                     kwargs['factor'],
                     kwargs['threshold'],
@@ -144,9 +142,7 @@ class TestReduceOnPlateauDecay:
 
         for epoch in range(10):
             for batch_id in range(1):
-                out, actual_lr = exe.run(
-                    test_prog, fetch_list=[loss.name, lr_var.name]
-                )
+                out, actual_lr = exe.run(test_prog, fetch_list=[loss, lr_var])
                 expected_lr = reduce_lr_on_plateau(
                     kwargs['factor'],
                     kwargs['threshold'],
@@ -343,7 +339,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 out = exe.run(
                     main_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             expected_lr = np.array(
                 cosine_annealing_warm_restarts_lr(epoch, v_l)
@@ -356,7 +352,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 out = exe.run(
                     test_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             expected_lr = np.array(
                 cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
@@ -711,7 +707,7 @@ class TestLRScheduler(unittest.TestCase):
                 out = exe.run(
                     main_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -722,7 +718,7 @@ class TestLRScheduler(unittest.TestCase):
                 out = exe.run(
                     test_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -736,7 +732,7 @@ class TestLRScheduler(unittest.TestCase):
                     out = exe.run(
                         compiled_train_prog,
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                        fetch_list=lr_var.name,
+                        fetch_list=[lr_var],
                     )
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
@@ -749,7 +745,7 @@ class TestLRScheduler(unittest.TestCase):
                     out = exe.run(
                         compiled_test_prog,
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                        fetch_list=lr_var.name,
+                        fetch_list=[lr_var],
                     )
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
