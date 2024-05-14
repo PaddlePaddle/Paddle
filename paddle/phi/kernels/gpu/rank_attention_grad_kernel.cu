@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/rank_attention.cu.h"
@@ -30,7 +31,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
                                    const DenseTensor &input_help,
                                    const DenseTensor &out_grad,
                                    const DenseTensor &ins_rank,
-                                   int max_rank,
+                                   int max_rank UNUSED,
                                    int max_size,
                                    DenseTensor *rank_param_grad) {
   auto *dout = &out_grad;
@@ -44,11 +45,12 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   auto para_row = para_dims[0];
   auto para_col = para_dims[1];
   auto rank_offset_dims = rank_offset.dims();
-  auto max_rank = (rank_offset_dims[1] - 1) / 2;
-  int block_matrix_row = max_rank * x_fea_dim;
+  auto rank_offset_max_rank =
+      (rank_offset_dims[1] - 1) / 2;  // Not use param max_rank
+  int block_matrix_row = rank_offset_max_rank * x_fea_dim;
   auto &place = *dev_ctx.eigen_device();
 
-  int max_ins = std::max(ins_num, max_size);
+  int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
   // initialize out grad
   dev_ctx.template Alloc<T>(drank_para);
   auto drank_para_eigen = phi::EigenVector<T>::Flatten(*drank_para);
@@ -56,9 +58,9 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
 
   // copy data
   phi::DenseTensor param_grad;
-  param_grad = ctx.AllocateTmpTensor<T, Context>(
-      {max_ins * block_matrix_row, para_col}, dev_ctx);
-  param_grad.mutable_data<T>(ctx.GetPlace());
+  param_grad.Resize({max_ins * block_matrix_row, para_col});
+  dev_ctx.template Alloc<T>(&param_grad);
+
   // initialize
   auto param_grad_eigen = phi::EigenVector<T>::Flatten(param_grad);
   param_grad_eigen.device(place) = param_grad_eigen.constant(static_cast<T>(0));
@@ -99,7 +101,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
                                   para_col,
                                   ins_rank_data,
                                   ins_num,
-                                  max_rank,
+                                  rank_offset_max_rank,
                                   x_fea_dim);
 }
 }  // namespace phi

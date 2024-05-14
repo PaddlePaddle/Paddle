@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/rank_attention.cu.h"
@@ -23,15 +24,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandAttentionKernel(const Context &dev_ctx,
-                         const DenseTensor &x,
-                         const DenseTensor &rank_offset,
-                         const DenseTensor &rank_param,
-                         int max_rank,
-                         int max_size,
-                         DenseTensor *input_help,
-                         DenseTensor *out,
-                         DenseTensor *ins_rank) {
+void RankAttentionCUDAKernel(const Context &dev_ctx,
+                             const DenseTensor &x,
+                             const DenseTensor &rank_offset,
+                             const DenseTensor &rank_param,
+                             int max_rank,
+                             int max_size,
+                             DenseTensor *input_help,
+                             DenseTensor *out,
+                             DenseTensor *ins_rank) {
   // check dims
   auto x_dims = x.dims();
   auto ins_num = x_dims[0];
@@ -40,6 +41,7 @@ void RandAttentionKernel(const Context &dev_ctx,
   auto para_row = para_dims[0];
   auto para_col = para_dims[1];
   auto rank_offset_dims = rank_offset.dims();
+  auto *param = &rank_param;
   PADDLE_ENFORCE_EQ(
       rank_offset_dims[0],
       ins_num,
@@ -54,12 +56,11 @@ void RandAttentionKernel(const Context &dev_ctx,
       phi::errors::InvalidArgument("Input(RankParam) has wrong rows."));
 
   int block_matrix_row = max_rank * x_fea_dim;
-  int max_ins = std::max(ins_num, max_size);
+  int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
 
   phi::DenseTensor param_help;
-  param_help = ctx.AllocateTmpTensor<T, Context>(
-      {max_ins * block_matrix_row, para_col}, dev_ctx);
-  dev_ctx.template Alloc<T>(param_help);
+  param_help.Resize({max_ins * block_matrix_row, para_col});
+  dev_ctx.template Alloc<T>(&param_help);
 
   input_help->Resize({max_ins, block_matrix_row});
   ins_rank->Resize({max_ins, 1});
@@ -93,7 +94,7 @@ void RandAttentionKernel(const Context &dev_ctx,
                               input_help_data,
                               ins_num,
                               block_matrix_row,
-                              rank_offset->data<int>(),
+                              rank_offset.data<int>(),
                               rank_offset_dims[0],
                               rank_offset_dims[1],
                               ins_rank_data,
@@ -103,7 +104,7 @@ void RandAttentionKernel(const Context &dev_ctx,
                               x.data<T>(),
                               ins_num,
                               x_fea_dim,
-                              rank_offset->data<int>(),
+                              rank_offset.data<int>(),
                               rank_offset_dims[0],
                               rank_offset_dims[1],
                               param->data<T>(),

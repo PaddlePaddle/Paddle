@@ -18,15 +18,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandAttentionKernel(const Context &dev_ctx,
-                         const DenseTensor x UNUSED,
-                         const DenseTensor rank_offset UNUSED,
-                         const DenseTensor rank_param UNUSED,
+void RankAttentionKernel(const Context &dev_ctx,
+                         const DenseTensor &x UNUSED,
+                         const DenseTensor &rank_offset UNUSED,
+                         const DenseTensor &rank_param UNUSED,
                          int max_rank UNUSED,
                          int max_size UNUSED,
                          DenseTensor *input_help UNUSED,
                          DenseTensor *out UNUSED,
-                         DenseTensor *ins_rank UNUSED, ) {
+                         DenseTensor *ins_rank UNUSED) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
