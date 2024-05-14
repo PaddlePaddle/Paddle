@@ -3849,6 +3849,12 @@
   outputs:
     {out: Out}
 
+- op: chunk_eval
+  inputs:
+    {inference : Inference, label : Label, seq_length : SeqLength}
+  outputs:
+    {precision : Precision, recall : Recall, f1_score : F1-Score, num_infer_chunks : NumInferChunks, num_label_chunks : NumLabelChunks, num_correct_chunks : NumCorrectChunks}
+
 - op: crf_decoding
   inputs:
     emission: Emission

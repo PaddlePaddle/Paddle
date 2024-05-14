@@ -1101,6 +1101,64 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void ChunkEvalInferMeta(const MetaTensor& inference,
+                        const MetaTensor& label,
+                        const MetaTensor& seq_length,
+                        int num_chunk_types,
+                        const std::string& chunk_scheme,
+                        const std::vector<int>& excluded_chunk_types,
+                        MetaTensor* precision,
+                        MetaTensor* recall,
+                        MetaTensor* f1_score,
+                        MetaTensor* num_infer_chunks,
+                        MetaTensor* num_label_chunks,
+                        MetaTensor* num_correct_chunks) {
+  const auto& inference_dim = inference.dims();
+  const auto& label_dim = label.dims();
+
+  PADDLE_ENFORCE_EQ(
+      inference_dim,
+      label_dim,
+      phi::errors::InvalidArgument(
+          "Input(Inference)'s shape must be the same as Input(Label)'s "
+          "shape, but received [%s] (Inference) vs [%s] (Label).",
+          inference_dim,
+          label_dim));
+
+  bool use_padding = seq_length.initialized();
+  if (use_padding) {
+    PADDLE_ENFORCE_EQ((inference_dim.size() == 3 && inference_dim[2] == 1) ||
+                          inference_dim.size() == 2,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "when Input(SeqLength) is provided, Input(Inference) "
+                          "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+                          "(batch_size, bucket), but received [%s].",
+                          inference_dim));
+    auto seq_length_dim = seq_length.dims();
+    PADDLE_ENFORCE_LE(seq_length_dim.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "Input(SeqLength)'s rank should not be greater "
+                          "than 2, but received %d.",
+                          seq_length_dim.size()));
+  }
+
+  precision->set_dims({1});
+  recall->set_dims({1});
+  f1_score->set_dims({1});
+  num_infer_chunks->set_dims({1});
+  num_label_chunks->set_dims({1});
+  num_correct_chunks->set_dims({1});
+
+  precision->set_dtype(phi::DataType::FLOAT32);
+  recall->set_dtype(phi::DataType::FLOAT32);
+  f1_score->set_dtype(phi::DataType::FLOAT32);
+  num_infer_chunks->set_dtype(phi::DataType::INT64);
+  num_label_chunks->set_dtype(phi::DataType::INT64);
+  num_correct_chunks->set_dtype(phi::DataType::INT64);
+}
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,

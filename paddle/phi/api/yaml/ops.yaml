@@ -3358,6 +3358,18 @@
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
 
+- op: chunk_eval
+  args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
+    chunk_scheme = "IOB", int[] excluded_chunk_types = {})
+  output: Tensor (precision), Tensor (recall), Tensor (f1_score), Tensor (num_infer_chunks),
+    Tensor (num_label_chunks), Tensor (num_correct_chunks)
+  infer_meta:
+    func: ChunkEvalInferMeta
+  kernel:
+    func: chunk_eval
+    data_type: DataType::FLOAT32
+  optional: seq_length
+
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
     str act_type = "gelu")
