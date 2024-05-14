@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_as_kernel.h"
-#include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
@@ -47,4 +46,6 @@ PD_REGISTER_KERNEL(reduce_as,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {}
+                   int8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -60,7 +60,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     auto lookup_table_version =
         ctx->Attrs().Get<std::string>("lookup_table_version");
 
-    auto outputs_dims = std::vector<framework::DDim>();
+    auto outputs_dims = std::vector<phi::DDim>();
 
     for (auto &ids_dim : ids_dims) {
       if (lookup_table_version == "lookup_table") {
