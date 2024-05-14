@@ -4339,4 +4339,49 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                     const MetaTensor& cvm,
+                                     const std::string& pooltype,
+                                     bool use_cvm,
+                                     int axis,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
+  PADDLE_ENFORCE_GE(
+      x.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Inputs(X) of FusionSeqPoolCVMConcatOp should not be empty."));
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "Output(Out) of FusionSeqPoolCVMConcatOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "concat axis=1 yet, but received %d.",
+                                   axis));
+  PADDLE_ENFORCE_EQ(
+      use_cvm,
+      true,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "use_cvm is true yet, but received %d.",
+                                   use_cvm));
+
+  auto ins_dims = x[0]->dims();
+  const size_t n = x.size();
+  PADDLE_ENFORCE_GT(
+      n, 0UL, phi::errors::InvalidArgument("Input tensors count should > 0."));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  PADDLE_ENFORCE_EQ(ins_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims size of first input should be 2."));
+  out->set_dims(common::make_ddim({-1, ins_dims[axis] * static_cast<int>(n)}));
+  out->set_dtype((*x[0]).dtype());
+}
+
 }  // namespace phi

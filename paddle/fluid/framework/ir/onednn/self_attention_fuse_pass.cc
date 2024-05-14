@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -53,6 +54,11 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   LOG(WARNING) << "No-avx512 or MKL supported!";
   return;
 #endif
+
+  if (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f)) {
+    return;
+  }
+
   // do something;
   GraphPatternDetector gpd;
   const std::string pattern_name = "self_attention_fuse";

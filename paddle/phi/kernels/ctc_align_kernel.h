@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
+#include <string.h>
+#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 namespace phi {
 
-KernelSignature StftOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("stft",
-                         {"X", "Window"},
-                         {"n_fft", "hop_length", "normalized", "onesided"},
-                         {"Out"});
-}
-
+template <typename T, typename Context>
+void CTCAlignKernel(const Context& dev_ctx,
+                    const DenseTensor& input,
+                    const paddle::optional<DenseTensor>& input_length,
+                    int blank,
+                    bool merge_repeated,
+                    int padding_value,
+                    DenseTensor* output,
+                    DenseTensor* output_length);
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(stft, phi::StftOpArgumentMapping);

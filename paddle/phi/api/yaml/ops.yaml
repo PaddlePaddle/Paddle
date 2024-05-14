@@ -728,6 +728,17 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : ctc_align
+  args: (Tensor input, Tensor input_length, int blank = 0, bool merge_repeated = true,
+    int padding_value = 0)
+  output: Tensor (output), Tensor (output_length)
+  infer_meta:
+    func: CtcAlignInferMeta
+  kernel:
+    func: ctc_align
+    data_type: input
+  optional: input_length, output_length
+
 - op : cudnn_lstm
   args: (Tensor x, Tensor init_h, Tensor init_c, Tensor w, Tensor[] weight_list, Tensor sequence_length, float dropout_prob = 0.0, bool is_bidirec = false, int hidden_size = 100, int num_layers = 1, bool is_test = false, int seed = 0)
   output: Tensor (out), Tensor (last_h), Tensor (last_c), Tensor (reserve), Tensor (state_out)
@@ -2962,6 +2973,16 @@
     func : stanh
   backward : stanh_grad
 
+- op : stft
+  args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
+  output: Tensor (out)
+  infer_meta:
+    func: StftInferMeta
+  kernel:
+    func: stft
+    data_type: x
+  backward: stft_grad
+
 - op : svd
   args : (Tensor x, bool full_matrices = false)
   output : Tensor(u), Tensor(s), Tensor(vh)
@@ -3335,6 +3356,15 @@
     func : yolo_box_head
     data_type : x
 
+- op : yolo_box_post
+  args : (Tensor boxes0, Tensor boxes1, Tensor boxes2, Tensor image_shape, Tensor image_scale, int[] anchors0, int[] anchors1, int[] anchors2, int class_num, float conf_thresh, int downsample_ratio0, int downsample_ratio1, int downsample_ratio2, bool clip_bbox, float scale_x_y, float nms_threshold)
+  output : Tensor(out), Tensor(nms_rois_num)
+  infer_meta :
+    func : YoloBoxPostInferMeta
+  kernel :
+    func : yolo_box_post
+    data_type : boxes0
+
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -3346,6 +3376,18 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: chunk_eval
+  args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
+    chunk_scheme = "IOB", int[] excluded_chunk_types = {})
+  output: Tensor (precision), Tensor (recall), Tensor (f1_score), Tensor (num_infer_chunks),
+    Tensor (num_label_chunks), Tensor (num_correct_chunks)
+  infer_meta:
+    func: ChunkEvalInferMeta
+  kernel:
+    func: chunk_eval
+    data_type: DataType::FLOAT32
+  optional: seq_length
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,

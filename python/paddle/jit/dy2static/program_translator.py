@@ -1459,11 +1459,22 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 backward_length = (
                     len(whole_program.global_block().ops) - forward_end_idx
                 )
+                # decompse forward program
                 dst_vars = decomposition.decompose(
-                    whole_program, src_vars, whitelist=self.custom_vjps
+                    whole_program,
+                    src_vars,
+                    whitelist=self.custom_vjps,
+                    end_index=forward_end_idx,
                 )
                 new_start_index = (
                     len(whole_program.global_block().ops) - backward_length
+                )
+                # decompse backward program
+                dst_vars = decomposition.decompose(
+                    whole_program,
+                    dst_vars,
+                    whitelist=self.custom_vjps,
+                    start_index=new_start_index,
                 )
                 return whole_program, new_start_index, dst_vars
             return whole_program, forward_end_idx, src_vars
