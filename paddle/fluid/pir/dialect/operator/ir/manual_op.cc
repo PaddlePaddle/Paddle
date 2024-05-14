@@ -3942,6 +3942,21 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
   return argument_outputs;
 }
 
+bool AssignOut_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(operand_source(0));
+  const auto &inplace_output_shape =
+      infer_context->GetShapeOrDataForValue(operand_source(1));
+  infer_context->SetShapeOrDataForValue(result(0), x_shape);
+  CHECK(x_shape.shape().size() == inplace_output_shape.shape().size());
+  for (size_t i = 0; i < x_shape.shape().size(); ++i) {
+    infer_context->AddEqualCstr(x_shape.shape()[i],
+                                inplace_output_shape.shape()[i]);
+  }
+  return true;
+}
+
 phi::DataType AssignOut_Op::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DataType &tensor_dtype,
