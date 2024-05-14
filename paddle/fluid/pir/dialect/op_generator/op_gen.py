@@ -20,7 +20,10 @@ import sys
 from distutils.util import strtobool
 
 import yaml
-from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
+from decomp_interface_gen_op_list import (
+    decomp_interface_declare_gen_op_list,
+    decomp_vjp_interface_declare_gen_op_list,
+)
 from gen_utils import to_pascal_case
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_all_func_gen import gen_op_all_func
@@ -1348,6 +1351,8 @@ def AutoCodeGen(
         exclusive_interface_str_tmp = exclusive_interface_str
         decomp_interface_str = "paddle::dialect::DecompInterface"
         decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op);"
+        decomp_vjp_interface_str = "paddle::dialect::DecompVjpInterface"
+        decomp_vjp_interface_declare_str = "\n  static std::vector<std::vector<pir::Value>> DecompVjp(pir::Operation* op);"
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
@@ -1392,6 +1397,23 @@ def AutoCodeGen(
                         not in exclusive_interface_str
                     ):
                         exclusive_interface_str += decomp_interface_declare_str
+                elif (
+                    op_name in decomp_vjp_interface_declare_gen_op_list
+                    and kernel_func_name
+                    in decomp_vjp_interface_declare_gen_op_list
+                    and dialect_name != "onednn_op"
+                ):
+                    if decomp_vjp_interface_str not in op_interfaces:
+                        op_interfaces = op_interfaces + [
+                            decomp_vjp_interface_str
+                        ]
+                    if (
+                        decomp_vjp_interface_declare_str
+                        not in exclusive_interface_str
+                    ):
+                        exclusive_interface_str += (
+                            decomp_vjp_interface_declare_str
+                        )
                 else:
                     op_interfaces = op_interfaces_tmp
                     exclusive_interface_str = exclusive_interface_str_tmp
