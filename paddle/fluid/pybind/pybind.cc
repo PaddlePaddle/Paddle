@@ -1032,8 +1032,6 @@ void BindDecompVjp(pybind11::module *m) {
     std::vector<std::vector<pir::Value>> decomp_res =
         decomp_vjp_interface.DecompVjp(vjp_op);
 
-    std::vector<std::vector<pir::Value>> decomp_res =
-        call_decomp_vjp_rule(&vjp_op);
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
