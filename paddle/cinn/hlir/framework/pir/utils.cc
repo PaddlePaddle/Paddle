@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include "glog/logging.h"
 
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
@@ -490,9 +490,14 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
     if (item.first == ::pir::kStopGradientAttrName ||
-        item.first == ::pir::kOutputDimExprs ||
         item.first == ::pir::kSymbolBindings) {
       continue;
+    } else if (item.first == ::pir::kOutputDimExprs) {
+      auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
+      PADDLE_ENFORCE(dim_exprs.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required dim_exprs.has_value()==true."));
+      dst_attrs[::pir::kOutputDimExprs] = dim_exprs.value();
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
           item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==

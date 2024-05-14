@@ -68,6 +68,7 @@ struct PyBindNodeAttrVisitor {
   VISIT_ELEMENTS(double)
   VISIT_ELEMENTS(bool)
   VISIT_ELEMENTS(std::string)
+  VISIT_ELEMENTS(symbol::DimExpr)
 };
 
 }  // namespace

@@ -238,6 +238,19 @@ std::optional<DimExpr> ConvertAttributeToDimExpr(::pir::Attribute attribute) {
   return std::nullopt;
 }
 
+std::optional<std::vector<symbol::DimExpr>> ConvertAttributeToDimExprs(
+    ::pir::Attribute attribute) {
+  if (!attribute.isa<pir::ArrayAttribute>()) return std::nullopt;
+  auto array = attribute.dyn_cast<pir::ArrayAttribute>();
+  std::vector<symbol::DimExpr> dim_exprs;
+  for (int i = 0; i < array.size(); ++i) {
+    const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
+    if (!dim_expr.has_value()) return std::nullopt;
+    dim_exprs.push_back(dim_expr.value());
+  }
+  return dim_exprs;
+}
+
 class SubstituteDimExprHelper final {
  public:
   using DimExpr4SymbolNameT =

@@ -202,7 +202,7 @@ void SetOpDescAttr(const std::string& attr_name,
     VISITOR_EXPAND(std::vector<int64_t>)
     VISITOR_EXPAND(std::vector<double>)
 #undef VISITOR_EXPAND
-
+    void operator()(const std::vector<symbol::DimExpr>& v) {}
    private:
     paddle::cpp::OpDesc* op_desc_;
     const std::string& attr_name_;

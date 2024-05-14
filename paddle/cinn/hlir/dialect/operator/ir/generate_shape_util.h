@@ -29,6 +29,9 @@ namespace cinn::dialect {
 std::optional<symbol::DimExpr> ConvertAttributeToDimExpr(
     ::pir::Attribute attribute);
 
+std::optional<std::vector<symbol::DimExpr>> ConvertAttributeToDimExprs(
+    ::pir::Attribute attribute);
+
 symbol::DimExpr SubstituteDimExpr(
     const symbol::DimExpr& dim_expr,
     const std::function<std::optional<symbol::DimExpr>(

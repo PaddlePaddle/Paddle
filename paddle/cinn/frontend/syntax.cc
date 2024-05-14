@@ -559,6 +559,9 @@ std::string _Instruction_::debug_string() const {
     void operator()(const std::vector<std::string>& x) {
       s_ << "[" + utils::Join(x, ",") + "]";
     }
+    void operator()(const std::vector<symbol::DimExpr>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
   };
 
   std::stringstream ss;
