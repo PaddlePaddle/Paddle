@@ -673,7 +673,7 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -928,7 +928,7 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    4,
+                    4UL,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 4 but got %d.",
                         input_values.size()));
@@ -1370,7 +1370,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta CreateArrayOp";
 
@@ -2138,7 +2138,7 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -2338,7 +2338,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta TensorToArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -3516,7 +3516,7 @@ std::vector<pir::Type> IncrementOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta IncrementOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -3721,7 +3721,7 @@ std::vector<pir::Type> Increment_Op::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta Increment_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
@@ -4409,7 +4409,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   PADDLE_ENFORCE_NOT_NULL(
       p_attributes,
       common::errors::Fatal(
-          "AttrtibueMap pointer in InferMeta function is nullptr."));
+          "AttributeMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayPopOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
