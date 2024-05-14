@@ -157,16 +157,8 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
   new_group->input_names_ = this->input_names_;
   new_group->output_names_ = this->output_names_;
   new_group->int_args_map_ = this->int_args_map_;
-  if(this->backend_optim_info_.has_value())
-  {
-  new_group->backend_optim_info_->alignment_schedule_info_=this->backend_optim_info_->alignment_schedule_info_;
-  new_group->backend_optim_info_->loop_ranges_=this->backend_optim_info_->loop_ranges_;
-  new_group->backend_optim_info_->loop_ranges_expr_=this->backend_optim_info_->loop_ranges_expr_;
-  new_group->backend_optim_info_->reduce_axis_=this->backend_optim_info_->reduce_axis_;
-  }
-  else
-  {
-    new_group->backend_optim_info_.reset();
+  if (this->backend_optim_info_.has_value()) {
+    new_group->backend_optim_info_ = this->backend_optim_info_;
   }
   return new_group;
 }
