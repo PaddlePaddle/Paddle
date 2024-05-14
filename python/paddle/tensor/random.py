@@ -115,7 +115,7 @@ def bernoulli_(x, p=0.5, name=None):
         x(Tensor): The input tensor to be filled with random values.
         p (float|Tensor, optional): The success probability parameter of the output Tensor's bernoulli distribution.
             If ``p`` is float, all elements of the output Tensor shared the same success probability.
-            If ``p`` is a Tensor, it has per-element success probabilitys.
+            If ``p`` is a Tensor, it has per-element success probabilities.
             Default is 0.5
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
