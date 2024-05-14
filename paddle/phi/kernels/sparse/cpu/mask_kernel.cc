@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/mask_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/api/ext/dispatch.h"
@@ -152,6 +153,26 @@ void MaskHelperCooKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename T, typename Context>
+void MaskAsCooKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCooTensor& mask,
+                     SparseCooTensor* out) {
+  MaskCooKernel<T, Context>(dev_ctx, x, mask, out);
+}
+
+template <typename T, typename Context>
+void MaskAsCsrKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCsrTensor& mask,
+                     SparseCsrTensor* out) {
+  // transform csr format to coo format, and then use coo kernel
+  const SparseCooTensor mask_coo = CsrToCoo<T, Context>(dev_ctx, mask);
+  SparseCooTensor out_coo;
+  MaskAsCooKernel<T, Context>(dev_ctx, x, mask_coo, &out_coo);
+  CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);
+}
+
 }  // namespace sparse
 }  // namespace phi
 
@@ -181,4 +202,34 @@ PD_REGISTER_KERNEL(mask_helper_coo,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(mask_as_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MaskAsCooKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(mask_as_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MaskAsCsrKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

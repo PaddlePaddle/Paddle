@@ -22,28 +22,18 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void MaskCooKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCooTensor& mask,
-                   SparseCooTensor* out);
+void MaskAsCooGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const SparseCooTensor& mask,
+                         const SparseCooTensor& out_grad,
+                         DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void MaskHelperCooKernel(const Context& dev_ctx,
-                         const SparseCooTensor& x,
-                         const DenseTensor& mask_indices,
-                         DenseTensor* out);
-
-template <typename T, typename Context>
-void MaskAsCooKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const SparseCooTensor& mask,
-                     SparseCooTensor* out);
-
-template <typename T, typename Context>
-void MaskAsCsrKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const SparseCsrTensor& mask,
-                     SparseCsrTensor* out);
+void MaskAsCsrGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const SparseCsrTensor& mask,
+                         const SparseCsrTensor& out_grad,
+                         DenseTensor* x_grad);
 
 }  // namespace sparse
 }  // namespace phi
