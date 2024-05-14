@@ -104,9 +104,7 @@ class TestInplaceAddto(unittest.TestCase):
                 np.float32
             )
             for i in range(10):
-                res = exe.run(
-                    compiled, feed={'img': img}, fetch_list=[loss.name, w.name]
-                )
+                res = exe.run(compiled, feed={'img': img}, fetch_list=[loss, w])
             return res
 
         res1, w1 = run_program(True)

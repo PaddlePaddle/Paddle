@@ -282,10 +282,8 @@ class TestGeneratePass(unittest.TestCase):
             "y": np.random.random([10, 10, 10]).astype("float32"),
             "z": np.random.random([10, 10, 10]).astype("float32"),
         }
-        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(
-            after_program, feed=feed, fetch_list=[out.name]
-        )
+        before_out = executor.run(program, feed=feed, fetch_list=[out])
+        after_out = executor.run(after_program, feed=feed, fetch_list=[out])
         np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_multi_add_to_sum(self):
@@ -318,10 +316,10 @@ class TestGeneratePass(unittest.TestCase):
             "z": np.random.random([32, 48]).astype("float32"),
         }
         before_out1, before_out2 = executor.run(
-            program, feed=feed, fetch_list=[out1.name, out2.name]
+            program, feed=feed, fetch_list=[out1, out2]
         )
         after_out1, after_out2 = executor.run(
-            after_program, feed=feed, fetch_list=[out1.name, out2.name]
+            after_program, feed=feed, fetch_list=[out1, out2]
         )
         np.testing.assert_allclose(before_out1, after_out1, rtol=1e-05)
         np.testing.assert_allclose(before_out2, after_out2, rtol=1e-05)
@@ -361,10 +359,8 @@ class TestGeneratePass(unittest.TestCase):
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {"x": np.random.random([10, 16, 16]).astype("float32")}
-        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(
-            after_program, feed=feed, fetch_list=[out.name]
-        )
+        before_out = executor.run(program, feed=feed, fetch_list=[out])
+        after_out = executor.run(after_program, feed=feed, fetch_list=[out])
         np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_generate_simplify_inference(self):
@@ -397,8 +393,6 @@ class TestGeneratePass(unittest.TestCase):
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
         feed = {"x": np.random.random([3, 64, 120]).astype("float32")}
-        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(
-            after_program, feed=feed, fetch_list=[out.name]
-        )
+        before_out = executor.run(program, feed=feed, fetch_list=[out])
+        after_out = executor.run(after_program, feed=feed, fetch_list=[out])
         np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
