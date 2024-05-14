@@ -26,10 +26,10 @@
 #include "paddle/fluid/operators/diag_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -666,7 +666,7 @@ struct DeviceIndependenceTensorOperations {
                             const phi::DenseTensor& input) {
     phi::DenseTensor out;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
+    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
     DiagAndFillFunctor<T, ValueType> diag_and_copy_functor(
         m,
         n,
@@ -685,9 +685,9 @@ struct DeviceIndependenceTensorOperations {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     return phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
   }
-  platform::ForRange<DeviceContext> GetForRange(int numel) {
+  phi::funcs::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    return platform::ForRange<DeviceContext>(dev_ctx, numel);
+    return phi::funcs::ForRange<DeviceContext>(dev_ctx, numel);
   }
   template <size_t D>
   void EigenSliceWrapper(const phi::DenseTensor* in,

@@ -618,6 +618,7 @@ class DygraphShardingOptimizerV2:
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
+
         self._comm_buffer_list.sort(key=lambda x: x._dst)
 
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
@@ -646,6 +647,16 @@ class DygraphShardingOptimizerV2:
         # Register reduce overlap hook if comm_overlap is used without pp_overlap
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
+
+        self._all_gather_overlap_forward = False
+        self._forward_pre_hook_remove_helper = []
+
+    def _set_all_gather_overlap_forward(
+        self, all_gather_overlap_forward, layers
+    ):
+        self._all_gather_overlap_forward = all_gather_overlap_forward
+        if self._all_gather_overlap_forward:
+            self._layers = layers
 
     def register_reduce_overlap_hook(self, use_comm):
         # Register backward hooks for each parameter in the buffer
@@ -739,6 +750,13 @@ class DygraphShardingOptimizerV2:
 
                 comm_buffer.scale_grads()
 
+    def _forward_pre_hook_function(self, tasks):
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         sync parameter across sharding group
@@ -746,8 +764,27 @@ class DygraphShardingOptimizerV2:
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            if self._all_gather_overlap_forward:
+                param2task = {}
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params(sync=False, param2task=param2task)
+
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
+                        )
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     def _update_trainable(self):
         """
@@ -809,6 +846,13 @@ class DygraphShardingOptimizerV2:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
         # hack for pp comm overlap
+
+        if self._all_gather_overlap_forward:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
+
         self._collect_comm_buffers()
         self._assign_slice_grad()
 

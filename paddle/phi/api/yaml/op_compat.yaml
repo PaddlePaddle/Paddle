@@ -3731,6 +3731,12 @@
   outputs :
     {out : Out}
 
+- op : yolo_box_post
+  inputs :
+    {boxes0 : Boxes0, boxes1 : Boxes1, boxes2 : Boxes2, image_shape : ImageShape, image_scale : ImageScale}
+  outputs :
+    {out : Out, nms_rois_num : NmsRoisNum}
+
 - op : yolo_loss (yolov3_loss)
   backward: yolo_loss_grad (yolov3_loss_grad)
   inputs :
@@ -3849,6 +3855,12 @@
   outputs:
     {out: Out}
 
+- op: chunk_eval
+  inputs:
+    {inference : Inference, label : Label, seq_length : SeqLength}
+  outputs:
+    {precision : Precision, recall : Recall, f1_score : F1-Score, num_infer_chunks : NumInferChunks, num_label_chunks : NumLabelChunks, num_correct_chunks : NumCorrectChunks}
+
 - op: crf_decoding
   inputs:
     emission: Emission
@@ -3857,6 +3869,12 @@
     length: Length
   outputs:
     viterbi_path: ViterbiPath
+
+- op: ctc_align
+  inputs:
+    {input : Input, input_length : InputLength}
+  outputs:
+    {output : Output, output_length : OutputLength}
 
 - op: cudnn_lstm
   backward: cudnn_lstm_grad
@@ -3966,6 +3984,12 @@
     {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
+
+- op: fusion_seqpool_cvm_concat
+  inputs:
+    {x : X, cvm : CVM}
+  outputs:
+    out : Out
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -4189,6 +4213,13 @@
   inputs :
     x : X
   outputs :
+    out : Out
+
+- op: stft
+  backward: stft_grad
+  inputs:
+    {x : X, window : Window}
+  outputs:
     out : Out
 
 - op: temporal_shift

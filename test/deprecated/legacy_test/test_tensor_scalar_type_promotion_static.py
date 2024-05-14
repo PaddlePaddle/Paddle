@@ -54,7 +54,7 @@ class TestTensorScalarTypePromotionStatic(unittest.TestCase):
         else:
             raise ValueError("Unsupported operation.")
 
-        rlt = exe.run(fetch_list=[c_rlt.name, c.name])
+        rlt = exe.run(fetch_list=[c_rlt, c])
 
         self.assertEqual(rlt[0].dtype, rlt[1].dtype)
         np.testing.assert_array_equal(rlt[0], rlt[1])
