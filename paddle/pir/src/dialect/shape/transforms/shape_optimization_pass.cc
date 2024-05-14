@@ -263,6 +263,11 @@ class ShapeOptimizationPass : public pir::Pass {
     PrintProgram(module_op, "ShapeOptimizationPass Program");
     VLOG(vlog_level) << "===================== ShapeOptimizationPass Run End. "
                         "=====================";
+
+    ShapeConstraintIRAnalysis& shape_analysis =
+        ShapeAnalysisManager::Instance().Get(module_op.program());
+    shape_analysis.GetInferSymbolicShapeContext()->AddEqualCstr(
+        symbol::DimExpr("S0"), symbol::DimExpr("S1"));
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
