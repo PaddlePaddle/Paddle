@@ -26,10 +26,10 @@
 #include "paddle/fluid/operators/diag_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -114,9 +114,9 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   return broadcast_shape;
 }
 
-static inline framework::DDim ComputeAndCheckShapeForConcatOp(
+static inline phi::DDim ComputeAndCheckShapeForConcatOp(
     const bool is_runtime,
-    const std::vector<framework::DDim>& inputs_dims,
+    const std::vector<phi::DDim>& inputs_dims,
     const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];
@@ -477,7 +477,7 @@ struct DeviceIndependenceTensorOperations {
     phi::DenseTensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(common::make_ddim(out_shape));
-    if (platform::is_gpu_place(context.GetPlace())) {
+    if (context.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
@@ -620,12 +620,12 @@ struct DeviceIndependenceTensorOperations {
                                     int axis) {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
-    std::vector<framework::DDim> inputs_dims({x.dims(), y.dims()});
+    std::vector<phi::DDim> inputs_dims({x.dims(), y.dims()});
     NameInTensorMap inputs({{"X", {&x, &y}}});
     size_t axis_ =
         ComputeAxisForConcatOp(static_cast<int64_t>(axis),
                                static_cast<int64_t>(inputs_dims[0].size()));
-    framework::DDim out_dims =
+    phi::DDim out_dims =
         ComputeAndCheckShapeForConcatOp(true, inputs_dims, axis_);
     if (out_dims[axis_] < 0) {
       out_dims[axis_] = -1;
@@ -666,7 +666,7 @@ struct DeviceIndependenceTensorOperations {
                             const phi::DenseTensor& input) {
     phi::DenseTensor out;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
+    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
     DiagAndFillFunctor<T, ValueType> diag_and_copy_functor(
         m,
         n,
@@ -685,9 +685,9 @@ struct DeviceIndependenceTensorOperations {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     return phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
   }
-  platform::ForRange<DeviceContext> GetForRange(int numel) {
+  phi::funcs::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    return platform::ForRange<DeviceContext>(dev_ctx, numel);
+    return phi::funcs::ForRange<DeviceContext>(dev_ctx, numel);
   }
   template <size_t D>
   void EigenSliceWrapper(const phi::DenseTensor* in,

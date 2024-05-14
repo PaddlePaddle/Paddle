@@ -125,7 +125,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         true,
         phi::errors::PreconditionNotMet("DNNL LRN must use float data."));
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::CPU,
         true,
         phi::errors::PreconditionNotMet("Operator DNNL LRN must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
@@ -171,7 +171,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       true,
                       phi::errors::PreconditionNotMet(
                           "DNNL LRN GradOpKernel must use float data."));
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::PreconditionNotMet(
                           "Operator DNNL LRNGrad must use CPUPlace"));

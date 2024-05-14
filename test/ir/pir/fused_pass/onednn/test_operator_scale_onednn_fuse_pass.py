@@ -177,7 +177,7 @@ class TestFcScaleFusePass(PassTest):
                             out = paddle.scale(fc, 0.5)
                             out = paddle.assign(out)
                             self.pass_attr_list = [
-                                {'fc_fuse_pass': {}},
+                                {'matmul_add_act_fuse_pass': {}},
                                 {"fc_onednn_enable_pass": {}},
                                 {"operator_scale_onednn_fuse_pass": {}},
                             ]

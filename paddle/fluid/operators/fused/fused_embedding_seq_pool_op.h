@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
@@ -117,7 +117,7 @@ struct EmbeddingVSumFunctor {
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
       auto emb_seqpool = phi::jit::KernelFuncs<phi::jit::EmbSeqPoolTuple<T>,
-                                               platform::CPUPlace>::Cache()
+                                               phi::CPUPlace>::Cache()
                              .At(attr);
       emb_seqpool(
           table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
@@ -126,8 +126,8 @@ struct EmbeddingVSumFunctor {
 };
 #endif
 
-inline int FusedEmbeddingSeqPoolLastDim(const framework::DDim &table_dims,
-                                        const framework::DDim &ids_dims) {
+inline int FusedEmbeddingSeqPoolLastDim(const phi::DDim &table_dims,
+                                        const phi::DDim &ids_dims) {
   int64_t last_dim = table_dims[1];
   for (int i = 1; i != ids_dims.size(); ++i) {
     last_dim *= ids_dims[i];
@@ -268,7 +268,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       const T *d_output_data = d_output->data<T>();
 
       auto vbroadcast = phi::jit::KernelFuncs<phi::jit::VBroadcastTuple<T>,
-                                              platform::CPUPlace>::Cache()
+                                              phi::CPUPlace>::Cache()
                             .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);

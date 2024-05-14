@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -142,7 +142,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
                                         x->data<T>(),
                                         label->data<T>(),
                                         static_cast<size_t>(class_num));
-      platform::ForRange<DeviceContext> for_range(
+      phi::funcs::ForRange<DeviceContext> for_range(
           ctx.template device_context<DeviceContext>(),
           static_cast<size_t>(dx->numel()));
       for_range(functor);
@@ -153,7 +153,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
                                label->data<int64_t>(),
                                static_cast<size_t>(class_num),
                                static_cast<size_t>(ignore_index));
-      platform::ForRange<DeviceContext> for_range(
+      phi::funcs::ForRange<DeviceContext> for_range(
           ctx.template device_context<DeviceContext>(),
           static_cast<size_t>(dy->numel()));
       for_range(functor);
@@ -259,7 +259,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
 
     auto ignore_index = ctx.Attr<int>("ignore_index");
 
-    platform::ForRange<DeviceContext> for_range(
+    phi::funcs::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(), batch_size);
     for_range(HardLabelCrossEntropyForwardFunctor<T>(
         p_x, p_y, p_match_x, p_label, ignore_index, feature_size));
@@ -285,7 +285,7 @@ class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
     int64_t feature_size = dx->dims()[rank - 1];
     int64_t batch_size = common::product(dx->dims()) / feature_size;
 
-    platform::ForRange<DeviceContext> for_range(
+    phi::funcs::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),
         batch_size * feature_size);
     for_range(HardLabelCrossEntropyBackwardFunctor<T>(

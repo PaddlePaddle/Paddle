@@ -3559,6 +3559,7 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x[0]);
 }
 
+// Current constraint is appropriate for GemmEpilogueOp but relaxed for FcOp
 void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& w,
                  const MetaTensor& bias,
@@ -3589,16 +3590,6 @@ void FCInferMeta(const MetaTensor& input,
     auto bias_dims = bias.dims();
     auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
 
-    PADDLE_ENFORCE_LE(
-        bias_dims.size(),
-        2,
-        phi::errors::InvalidArgument(
-            "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
-            "received the number of Bias's dimensions is %d, "
-            "Bias's shape is %s.",
-            bias_dims.size(),
-            bias_dims));
-
     PADDLE_ENFORCE_EQ(
         bias_dims[bias_dims.size() - 1],
         w_dims1,
@@ -3611,17 +3602,6 @@ void FCInferMeta(const MetaTensor& input,
             bias_dims,
             w_dims1,
             w_dims));
-
-    if (bias_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          bias_dims[0],
-          1,
-          phi::errors::InvalidArgument(
-              "The first dimension of input Bias is expected to be 1, "
-              "but received %d, Bias's shape is %s.",
-              bias_dims[0],
-              bias_dims));
-    }
   }
 
   auto in_dims = input.dims();
@@ -3637,14 +3617,14 @@ void FCInferMeta(const MetaTensor& input,
           in_dims.size(),
           in_dims));
 
-  if (!activation_type.empty()) {
-    PADDLE_ENFORCE_EQ(activation_type,
-                      "relu",
-                      phi::errors::InvalidArgument(
-                          "The attribute activation_type of fc is expected "
-                          "to be \"relu\", but received %s.",
-                          activation_type.c_str()));
-  }
+  std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};
+  PADDLE_ENFORCE_EQ(
+      support_acts.count(activation_type),
+      1,
+      phi::errors::InvalidArgument(
+          "The attribute activation_type of fc is expected "
+          "to be one of [\"\", \"relu\", \"gelu\"], but received %s.",
+          activation_type.c_str()));
 
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
@@ -4357,6 +4337,51 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
                                    cos_emb_dims[3]));
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
+}
+
+void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                     const MetaTensor& cvm,
+                                     const std::string& pooltype,
+                                     bool use_cvm,
+                                     int axis,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
+  PADDLE_ENFORCE_GE(
+      x.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Inputs(X) of FusionSeqPoolCVMConcatOp should not be empty."));
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "Output(Out) of FusionSeqPoolCVMConcatOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "concat axis=1 yet, but received %d.",
+                                   axis));
+  PADDLE_ENFORCE_EQ(
+      use_cvm,
+      true,
+      phi::errors::InvalidArgument("FusionSeqPoolCVMConcatOp only supports "
+                                   "use_cvm is true yet, but received %d.",
+                                   use_cvm));
+
+  auto ins_dims = x[0]->dims();
+  const size_t n = x.size();
+  PADDLE_ENFORCE_GT(
+      n, 0UL, phi::errors::InvalidArgument("Input tensors count should > 0."));
+
+  // The output height should be confirmed in Compute,
+  // since input lod is not accessible here.
+  PADDLE_ENFORCE_EQ(ins_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims size of first input should be 2."));
+  out->set_dims(common::make_ddim({-1, ins_dims[axis] * static_cast<int>(n)}));
+  out->set_dtype((*x[0]).dtype());
 }
 
 }  // namespace phi
