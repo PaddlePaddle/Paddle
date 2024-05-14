@@ -485,36 +485,38 @@ void WhileOp::VerifySig() {
                         num_results(),
                         input_size));
   for (size_t index = 0; index < output_size; ++index) {
-    if (operand_type(index + 1).isa<pir::DenseTensorType>()) {
-      // Support the case that the result tensor has -1 shape.
-      pir::DenseTensorType input_type =
-          operand_type(index + 1).dyn_cast<pir::DenseTensorType>();
-      pir::DenseTensorType output_type =
-          result_type(index).dyn_cast<pir::DenseTensorType>();
+    auto input_type = operand_type(index + 1);
+    auto output_type = result_type(index);
+    if (input_type.isa<pir::DenseTensorType>()) {
+      // Support the case that the output tensor has -1 shape.
+      pir::DenseTensorType input_tensor_type =
+          input_type.dyn_cast<pir::DenseTensorType>();
+      pir::DenseTensorType output_tensor_type =
+          output_type.dyn_cast<pir::DenseTensorType>();
 
-      const common::DDim &output_dims = output_type.dims();
-      common::DDim new_input_dims = input_type.dims();
+      const common::DDim &output_dims = output_tensor_type.dims();
+      common::DDim new_input_dims = input_tensor_type.dims();
       for (int i = 0; i < new_input_dims.size(); i++) {
         if (output_dims[i] == -1) {
           new_input_dims[i] = -1;
         }
       }
-      pir::DenseTensorType new_input_type =
+      pir::DenseTensorType new_input_tensor_type =
           pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                    input_type.dtype(),
+                                    input_tensor_type.dtype(),
                                     new_input_dims,
-                                    input_type.data_layout(),
-                                    input_type.lod(),
-                                    input_type.offset());
+                                    input_tensor_type.data_layout(),
+                                    input_tensor_type.lod(),
+                                    input_tensor_type.offset());
       PADDLE_ENFORCE_EQ(
-          new_input_type,
-          output_type,
+          new_input_tensor_type,
+          output_tensor_type,
           phi::errors::PreconditionNotMet(
               "The (%d) result and operand type is not equal.", index));
     } else {
       PADDLE_ENFORCE_EQ(
-          operand_type(index + 1),
-          result_type(index),
+          input_type,
+          output_type,
           phi::errors::PreconditionNotMet(
               "The (%d) result and operand type is not equal.", index));
     }
