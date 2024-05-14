@@ -39,7 +39,7 @@ class TestPir(unittest.TestCase):
                 y = paddle.ones([2, 2], dtype="float32")
 
                 z = x + y
-            out = exe.run(main_program, {}, fetch_list=[z.name])
+            out = exe.run(main_program, {}, fetch_list=[z])
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
@@ -65,7 +65,7 @@ class TestCombineOp(unittest.TestCase):
                 y = paddle.ones([2, 2], dtype="float32")
 
                 z = paddle.linalg.multi_dot([x, y])
-            out = exe.run(main_program, {}, fetch_list=[z.name])
+            out = exe.run(main_program, {}, fetch_list=[z])
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
@@ -96,7 +96,7 @@ class TestFeedOp(unittest.TestCase):
             out = exe.run(
                 main_program,
                 feed={"x": np_a, "y": np_b},
-                fetch_list=[z.name],
+                fetch_list=[z],
             )
 
         gold_res = np_a + np_b
@@ -124,7 +124,7 @@ class TestSelectedRows(unittest.TestCase):
 
             out = exe.run(
                 main_program,
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
 
@@ -155,7 +155,7 @@ class TestAddGradOp(unittest.TestCase):
             out = exe.run(
                 main_program,
                 feed={"x": np_a, "y": np_b},
-                fetch_list=[z.name],
+                fetch_list=[z],
             )
 
         gold_res = np_a * np_b
@@ -254,7 +254,7 @@ class TestSplitOp(unittest.TestCase):
             out = exe.run(
                 main_program,
                 feed={"x": np_a},
-                fetch_list=[out0.name],
+                fetch_list=[out0],
             )
 
             np.testing.assert_array_equal(out[0], np_a[0:2])
@@ -280,7 +280,7 @@ class TestPirPrint(unittest.TestCase):
                 z = x + y
                 z = paddle.static.Print(z)
 
-            out = exe.run(main_program, {}, fetch_list=[z.name])
+            out = exe.run(main_program, {}, fetch_list=[z])
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
