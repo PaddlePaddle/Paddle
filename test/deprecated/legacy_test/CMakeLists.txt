@@ -708,7 +708,6 @@ set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
-set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
