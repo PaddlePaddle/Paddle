@@ -76,6 +76,8 @@ _already_patch_repr = False
 
 
 def monkey_patch_tensor():
+    # TODO(cleanup-legacy-ir): This method is for dy2st in legacy ir only
+    # and should be removed after legacy ir is removed.
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
@@ -922,6 +924,8 @@ def monkey_patch_tensor():
         new_tensor.copy_(self, True)
         return new_tensor
 
+    # TODO(cleanup-legacy-ir): This method is for dy2st in legacy ir only
+    # and should be removed after legacy ir is removed.
     @property
     def block(self):
         return framework.default_main_program().global_block()
