@@ -33,16 +33,8 @@ def program_scope_guard():
 
 def apply_cse(program):
     pm = paddle.base.libpaddle.pir.PassManager()
-    print("=========================")
-    print("Program before CSE:")
-    print(program)
-    print("=========================")
     paddle.base.libpaddle.pir.common_subexpression_elimination_pass(pm, program)
     pm.run(program)
-    print("=========================")
-    print("Program after CSE:")
-    print(program)
-    print("=========================")
 
 
 def walk_block(block, fn):
@@ -366,8 +358,6 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
 
             paddle.static.Print(x1)
             paddle.static.Print(x1)
-
-            print(main_program)
 
             self.assert_op_count_equal(main_program, {"pd_op.print": 2})
             apply_cse(main_program)

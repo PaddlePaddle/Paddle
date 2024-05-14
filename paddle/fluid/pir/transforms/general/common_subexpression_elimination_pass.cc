@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
-#include <cstdint>
+// #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -138,7 +138,7 @@ struct ExpressionTable {
   void RegisiterOp(pir::Operation* op) {
     auto op_hash = CalcOperationHash(op);
     auto op_can_be_safe_to_replace = CalcOperationCanBeSafeToReplace(op);
-    VLOG(3) << "[RegisiterOp] op " << op->name() << " [" << op << "]"
+    VLOG(7) << "[RegisiterOp] op " << op->name() << " [" << op << "]"
             << "\n  hash: " << op_hash
             << "\n  can_be_safe_to_replace: " << std::boolalpha
             << op_can_be_safe_to_replace;
@@ -150,7 +150,7 @@ struct ExpressionTable {
     PADDLE_ENFORCE_EQ(
         registered_ops_info_.count(reinterpret_cast<void*>(op)),
         1,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The operation %s is not registered in the table.", op->name()));
     return registered_ops_info_[reinterpret_cast<void*>(op)].first;
   }
@@ -159,7 +159,7 @@ struct ExpressionTable {
     PADDLE_ENFORCE_EQ(
         registered_ops_info_.count(reinterpret_cast<void*>(op)),
         1,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The operation %s is not registered in the table.", op->name()));
     return registered_ops_info_[reinterpret_cast<void*>(op)].second;
   }
@@ -167,12 +167,12 @@ struct ExpressionTable {
   void Insert(pir::Operation* op) { common_exprs_[GetOperationHash(op)] = op; }
 
   std::optional<pir::Operation*> Lookup(pir::Operation* op) {
-    VLOG(3) << "[Lookup] op [" << op << "] " << op->name() << " start";
+    VLOG(7) << "[Lookup] op [" << op << "] " << op->name() << " start";
     size_t hash = GetOperationHash(op);
     if (!common_exprs_.count(hash)) {
       return std::nullopt;
     }
-    VLOG(3) << "[Lookup] op [" << op << "] " << op->name()
+    VLOG(7) << "[Lookup] op [" << op << "] " << op->name()
             << " found common subexpression: " << common_exprs_[hash]->name();
     return common_exprs_[hash];
   }
@@ -181,13 +181,13 @@ struct ExpressionTable {
     PADDLE_ENFORCE_EQ(
         registered_ops_info_.count(reinterpret_cast<void*>(op)),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The operation %s is already registered in the table, don't call "
             "CalcOperationHash twice.",
             op->name()));
     // hash(op) = hash(operands) ^ hash(name) ^ hash(attributes)
     size_t hash = 0;
-    VLOG(3) << "[CalcOperationHash] op [" << op << "] " << op->name()
+    VLOG(7) << "[CalcOperationHash] op [" << op << "] " << op->name()
             << " start";
 
     std::vector<size_t> values_hash;
@@ -202,21 +202,15 @@ struct ExpressionTable {
     for (auto& value_hash : values_hash) {
       hash = pir::detail::hash_combine(hash, value_hash);
     }
-    VLOG(3) << "[CalcOperationHash] "
-            << "value hash: " << hash;
     hash =
         pir::detail::hash_combine(hash, std::hash<std::string>{}(op->name()));
-    VLOG(3) << "[CalcOperationHash] "
-            << "value + name hash: " << hash;
     for (auto& attr_name : op->info().GetAttributesName()) {
       hash =
           pir::detail::hash_combine(hash, std::hash<std::string>{}(attr_name));
       auto attr = op->attribute(attr_name);
       hash = pir::detail::hash_combine(hash, attr.hash());
     }
-    VLOG(3) << "[CalcOperationHash] "
-            << "value + name + attr hash: " << hash;
-    VLOG(3) << "[CalcOperationHash] op [" << op << "] " << op->name()
+    VLOG(7) << "[CalcOperationHash] op [" << op << "] " << op->name()
             << " hash: " << hash;
     return hash;
   }
@@ -249,18 +243,18 @@ struct ExpressionTable {
     PADDLE_ENFORCE_EQ(
         registered_ops_info_.count(reinterpret_cast<void*>(op)),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The operation %s is already registered in the table, don't call "
             "CalcOperationCanBeSafeToReplace twice.",
             op->name()));
     if (op->HasTrait<pir::SideEffectTrait>()) {
-      VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+      VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
               << " has side effect";
       return false;
     }
     for (auto& value : op->results()) {
       if (!IsDenseTensorOrVectorOfDenseTensorType(value)) {
-        VLOG(3)
+        VLOG(7)
             << "[CalcOperationCanBeSafeToReplace] " << op->name()
             << " has result " << value.defining_op()->name() << " ["
             << value.defining_op()
@@ -269,7 +263,7 @@ struct ExpressionTable {
       }
       for (auto it = value.use_begin(); it != value.use_end(); ++it) {
         if (kBlockedUserOps.count(it->owner()->name())) {
-          VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+          VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
                   << " has result " << value.defining_op()->name() << " ["
                   << value.defining_op() << "] which is used by "
                   << it->owner()->name();
@@ -278,7 +272,7 @@ struct ExpressionTable {
         auto inplace_info = GetOpInplaceInfo(it->owner());
         for (auto& [out_idx, in_idx] : inplace_info) {
           if (it->owner()->operands()[in_idx].source() == value) {
-            VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+            VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
                     << " has operand " << value.defining_op()->name() << " ["
                     << value.defining_op() << "] which is inplace to "
                     << it->owner()->name();
@@ -290,14 +284,14 @@ struct ExpressionTable {
     for (auto& value : op->operands_source()) {
       if (!IsTerminateValue(value) &&
           !GetOperationCanBeSafeToReplace(value.defining_op())) {
-        VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+        VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
                 << " has operand with defining op "
                 << value.defining_op()->name() << " [" << value.defining_op()
                 << "] which can not be safe to replace";
         return false;
       }
     }
-    VLOG(3) << "[CalcOperationCanBeSafeToReplace] " << op->name() << " [" << op
+    VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name() << " [" << op
             << "] can be safe to replace";
     return true;
   }
@@ -314,7 +308,7 @@ struct CSEAnalyzer {
   CSEAnalyzer() = default;
   void SimplifyOperation(pir::Operation* op,
                          ExpressionTable* expression_table) {
-    VLOG(3) << "[SimplifyOperation] op [" << op << "]";
+    VLOG(7) << "[SimplifyOperation] op [" << op << "]";
     if (IsTerminateOp(op)) {
       return;
     }
@@ -325,8 +319,8 @@ struct CSEAnalyzer {
       if (!maybe_same_expression.has_value()) {
         expression_table->Insert(op);
       } else {
-        VLOG(3) << "Found common subexpression: " << op->name();
-        to_erase_ops.push_back(
+        VLOG(7) << "Found common subexpression: " << op->name();
+        to_erase_ops_.push_back(
             std::make_pair(op, maybe_same_expression.value()));
       }
     }
@@ -347,7 +341,13 @@ struct CSEAnalyzer {
     }
   }
 
-  std::vector<std::pair<pir::Operation*, pir::Operation*>> to_erase_ops;
+  const std::vector<std::pair<pir::Operation*, pir::Operation*>>& to_erase_ops()
+      const {
+    return to_erase_ops_;
+  };
+
+ private:
+  std::vector<std::pair<pir::Operation*, pir::Operation*>> to_erase_ops_;
 };
 
 pir::Value CreateAssignOp(const pir::Value& value,
@@ -361,12 +361,12 @@ pir::Value CreateAssignOp(const pir::Value& value,
 }
 
 void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
-  VLOG(3) << "Replacing op " << op->name() << " [" << op << "] with new op "
+  VLOG(7) << "Replacing op " << op->name() << " [" << op << "] with new op "
           << new_op->name() << " [" << new_op << "]";
   PADDLE_ENFORCE_EQ(
       op->num_results(),
       new_op->num_results(),
-      phi::errors::InvalidArgument("the num of result should be the same."));
+      common::errors::InvalidArgument("the num of result should be the same."));
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     auto value = op->result(i);
     auto new_value = new_op->result(i);
@@ -398,11 +398,11 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
                                &root_expression_table);
     size_t op_count_before_cse = op->GetParentProgram()->block()->num_ops();
     std::unordered_map<std::string, size_t> op_stats;
-    std::cout << "Found " << cse_analyzer.to_erase_ops.size()
-              << " common subexpression" << std::endl;
+    VLOG(7) << "Found " << cse_analyzer.to_erase_ops().size()
+            << " common subexpression";
 
     int32_t cse_count = 0;
-    for (auto [op, existing_op] : cse_analyzer.to_erase_ops) {
+    for (auto [op, existing_op] : cse_analyzer.to_erase_ops()) {
       if (FLAGS_cse_max_count != -1 && cse_count >= FLAGS_cse_max_count) {
         break;
       }
@@ -412,13 +412,13 @@ class CommonSubexpressionEliminationPass : public pir::Pass {
       op_stats[existing_op->name()]++;
     }
     size_t op_count_after_cse = op->GetParentProgram()->block()->num_ops();
-    std::cout << "op count before cse: " << op_count_before_cse
-              << ", op count after cse: " << op_count_after_cse << ", erased "
-              << num_erasers << " ("
-              << num_erasers * 100.0 / op_count_before_cse << "%)" << std::endl;
-    std::cout << "Erased op statistics:" << std::endl;
+    VLOG(7) << "op count before cse: " << op_count_before_cse
+            << ", op count after cse: " << op_count_after_cse << ", erased "
+            << num_erasers << " (" << num_erasers * 100.0 / op_count_before_cse
+            << "%)";
+    VLOG(7) << "Erased op statistics:";
     for (auto& [op_name, count] : op_stats) {
-      std::cout << "    " << op_name << ": " << count << std::endl;
+      VLOG(7) << "    " << op_name << ": " << count;
     }
     AddStatistics(num_erasers);
   }

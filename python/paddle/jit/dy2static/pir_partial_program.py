@@ -605,18 +605,10 @@ class PartialProgramLayer:
             ]:
                 return
             pm = paddle.base.libpaddle.pir.PassManager()
-            print("=========================")
-            print("Program before CSE:")
-            print(program)
-            print("=========================")
             paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
                 pm, program
             )
             pm.run(program)
-            print("=========================")
-            print("Program after CSE:")
-            print(program)
-            print("=========================")
 
         if is_infer_mode:
 
