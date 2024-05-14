@@ -295,7 +295,6 @@ struct ExpressionTable {
  private:
   std::unordered_map<size_t, pir::Operation*> common_exprs_;
   std::unordered_map<void*, std::pair<size_t, bool>> registered_ops_info_;
-  size_t terminate_value_id_ = 0;
 };
 
 struct CSEAnalyzer {
