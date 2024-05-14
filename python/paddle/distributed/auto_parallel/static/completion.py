@@ -1130,6 +1130,8 @@ class Completer:
             dist_tensor.dist_attr.process_mesh = global_mesh
 
     def _complete_chunk_id(self, serial_main_program):
+        print(serial_main_program)
+
         def set_chunk_id(block, op, chunk_id, var_to_chunk_id):
             dist_op = self._dist_context.get_dist_op_for_program(op)
             dist_op.dist_attr.chunk_id = chunk_id
@@ -1282,7 +1284,15 @@ class Completer:
             _logger.info("Using Auto VPP")
 
         # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
-        seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
+        # [0 1 2 3 0 1 2 3]
+        seg_pp_stages = []
+        seg_pp_stage = list(range(pp_degree))
+        for _ in range(vpp_degree):
+            seg_pp_stages.extend(seg_pp_stage)
+            if schedule_mode == "ZBVPP":
+                seg_pp_stage = seg_pp_stage[::-1]
+        # seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
+        # [0 0 0 0 1 1 1 1]
         seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
         part_size = len(seg_op_deps) // num_chunks
         segment_struct_names = []

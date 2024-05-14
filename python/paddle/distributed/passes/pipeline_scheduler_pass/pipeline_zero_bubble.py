@@ -156,10 +156,10 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self.program_max_mem_usages = []
         self.base_memory = []
         self.program_runtime = {
-            "forward": 1000,
-            "backward_b": 1000,
-            "backward_w": 1000,
-            "communication": 1,
+            "forward": 50,
+            "backward_b": 55,
+            "backward_w": 45,
+            "communication": 5,
         }
 
     def _create_job_list(self):
@@ -200,6 +200,10 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             job = core.Job(f"{job_info['type']}{job_info['chunk']}")
             job.set_micro_batch_id(job_info["micro_batch"])
             job_list.append(job)
+
+        opt_job = core.Job(OPT)
+        opt_job.set_micro_batch_id(0)
+        job_list.append(opt_job)
 
         return job_list
 

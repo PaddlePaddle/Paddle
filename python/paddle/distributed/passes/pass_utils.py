@@ -1000,7 +1000,7 @@ def _program_for_zero_bubble_vpp(
                 type_to_ops[type] = []
             elif type in ["forward", "backward_b"]:
                 chunk_ids = (
-                    chunk_ids if type != "backward" else reversed(chunk_ids)
+                    chunk_ids if type != "backward_b" else reversed(chunk_ids)
                 )
                 for chunk_id in chunk_ids:
                     type_to_ops[type + str(chunk_id)] = []
@@ -1012,7 +1012,7 @@ def _program_for_zero_bubble_vpp(
             if is_forward_op(op):
                 type = oprole_type[0]
             elif is_backward_op(op):
-                type = _get_backward_op_type(block, op)
+                type = _get_backward_op_type(block, op)[0]
             elif is_optimize_op(op):
                 type = oprole_type[3]
             else:
