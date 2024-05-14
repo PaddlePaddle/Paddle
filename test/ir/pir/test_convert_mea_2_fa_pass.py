@@ -26,7 +26,7 @@ from paddle.incubate.nn.memory_efficient_attention import (
 paddle.enable_static()
 
 
-class TestRemoveRedundantTransposePattern(PassTest):
+class TestConvertMEA2FA(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -45,7 +45,7 @@ class TestRemoveRedundantTransposePattern(PassTest):
                     name='v', shape=[2, 8, 32, 128], dtype="float16"
                 )
 
-                out = memory_efficient_attention(q, k, v, training=False)
+                out, _ = memory_efficient_attention(q, k, v, training=False)
                 self.pass_attr_list = [{'convert_MEA_to_FA': {}}]
                 self.feeds = {
                     "q": np.random.random((2, 8, 32, 128)).astype("float16"),

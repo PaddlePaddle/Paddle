@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
@@ -45,11 +46,11 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
     auto causal_diagonal = op->operand_source(6);
     auto seq_k = op->operand_source(7);
 
-    // bias, cur_seq_q, cur_seq_k,  causal_diagonal, seq_k should bu null
+    // bias, cur_seq_q, cur_seq_k,  causal_diagonal, seq_k should be null
     if (bias || cu_seq_q || cu_seq_k || causal_diagonal || seq_k) {
       return false;
     }
-
+    // flash attention does not support float32
     if (paddle::dialect::TransToPhiDataType(
             op->operand_source(0)
                 .type()
@@ -64,7 +65,7 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
       return false;
     }
 
-    bool scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
+    float scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
 
     if (scale > 0) {
       auto hidden_size =
@@ -98,7 +99,7 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
     auto v = op->operand_source(2);
 
     auto dropout_p =
-        op->attribute("dropout_p").dyn_cast<pir::FloatAttribute>().data();
+        op->attribute("dropout_p").dyn_cast<pir::DoubleAttribute>().data();
 
     auto causal = op->attribute("causal").dyn_cast<pir::BoolAttribute>().data();
 
@@ -107,8 +108,7 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
     auto fa = rewriter.Build<paddle::dialect::FlashAttnOp>(
         q, k, v, fixed_seed, attn_mask, dropout_p, causal, false, true, "");
 
-    rewriter.ReplaceAllUsesWith(op.result(0), fa.result(0));
-
+    rewriter.ReplaceAllUsesWith(op->result(0), fa.result(0));
     rewriter.EraseOp(op);
   }
 };
@@ -132,4 +132,4 @@ std::unique_ptr<pir::Pass> CreateConvertMEA2FAPass() {
 }  // namespace dialect
 }  // namespace cinn
 
-REGISTER_IR_PASS(convert_MEA_to_FA, ConvertMEA2FAPass);
+REGISTER_IR_PASS(convert_MEA_to_FA, ::cinn::dialect::ir::ConvertMEA2FAPass);
