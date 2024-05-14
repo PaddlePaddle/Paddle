@@ -32,8 +32,9 @@ class CastLayer(nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        x = paddle.cast(x, dtype="float16")
-        return paddle.cast(x, dtype="float32")
+        x = paddle.cast(x, dtype="float32")
+        x = paddle.cos(x)
+        return paddle.cast(x, dtype="float16")
 
 
 class TestCast(unittest.TestCase):
@@ -42,8 +43,8 @@ class TestCast(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [1024, 32, 1024, 17]
-        self.x = paddle.randn(self.shape, dtype="float32")
+        self.shape = [128, 32, 128, 17]
+        self.x = paddle.randn(self.shape, dtype="float16")
         self.x.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
@@ -53,7 +54,7 @@ class TestCast(unittest.TestCase):
     def eval(self, use_cinn):
         net = CastLayer()
         input_spec = [
-            InputSpec(shape=[None, 32, None, None], dtype='float32'),
+            InputSpec(shape=[None, 32, None, None], dtype='float16'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()

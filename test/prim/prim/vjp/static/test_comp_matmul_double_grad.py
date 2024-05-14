@@ -238,9 +238,9 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
                         'primal2': primal2,
                     },
                     fetch_list=[
-                        res_double[0].name,
-                        res_double[1].name,
-                        res_double[2].name,
+                        res_double[0],
+                        res_double[1],
+                        res_double[2],
                     ],
                 )
 
@@ -271,9 +271,9 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
                         'primal2': primal2,
                     },
                     fetch_list=[
-                        res_double[0].name,
-                        res_double[1].name,
-                        res_double[2].name,
+                        res_double[0],
+                        res_double[1],
+                        res_double[2],
                     ],
                 )
 
