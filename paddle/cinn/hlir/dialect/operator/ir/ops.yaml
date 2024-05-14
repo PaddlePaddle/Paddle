@@ -29,6 +29,15 @@
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : one_hot
+  args : (Tensor x, Scalar(int) num_classes)
+  output : Tensor(out)
+  infer_meta :
+    func : OneHotInferMeta
+  kernel :
+    func : one_hot
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : pool2d
   args : (Tensor x, int[] kernel_size, int[] stride_size, int[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)

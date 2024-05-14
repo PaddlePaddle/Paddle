@@ -1046,6 +1046,53 @@ bool Transpose_OpInferSymbolicShape(
   return TransposeOpInferSymbolicShape(op, infer_context);
 }
 
+bool OneHotOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  VLOG(3) << "onehot p1 type is: " << op->operand_source(1).type();
+  VLOG(3) << "onehot p0 type is: " << op->operand_source(0).type();
+  // int depth_t =
+  //     op->attributes().at("num_classes").dyn_cast<pir::Int32Attribute>().data();
+  // auto axis_gen_op = op->operand_source(1).defining_op();
+  pir::Value num_classes_ = op->operand_source(1);
+  (void)num_classes_;
+  VLOG(4) << "Builder construction outputs";
+  int64_t num_classes;
+  if (num_classes_.isa<pir::OpResult>() &&
+      num_classes_.defining_op()->isa<paddle::dialect::FullOp>()) {
+    num_classes = num_classes_.defining_op()
+                      ->dyn_cast<paddle::dialect::FullOp>()
+                      .attribute("value")
+                      .dyn_cast<paddle::dialect::ScalarAttribute>()
+                      .data()
+                      .to<int64_t>();
+  }
+  VLOG(3) << "OneHotOpInferSymbolicShape: num_classes = " << num_classes;
+  // int64_t depth_t = -1;
+  // if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+
+  //   VLOG(3) << "OneHotOpInferSymbolicShape: FullIntArrayOp";
+  //   std::vector<int64_t> axis = details::GetVectorAttr(
+  //       axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+  //   depth_t = axis[0];
+  // }
+  // VLOG(3) << "OneHotOpInferSymbolicShape: depth_t = " << depth_t;
+  auto get_in_dims_sym = [&](const auto &x_shape) {
+    if (x_shape.data().has_value()) {
+      return x_shape.data().value();
+    } else {
+      return x_shape.shape();
+    }
+  };
+  auto in_dims_sym = get_in_dims_sym(x_shape);
+  in_dims_sym.push_back(symbol::DimExpr(num_classes));
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        ShapeOrData{TensorExprs(in_dims_sym)});
+
+  return true;
+}
+
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   PADDLE_ENFORCE_EQ(
@@ -1094,8 +1141,8 @@ bool SqueezeOpInferSymbolicShape(
   // Mark dimensions need to be squeezed.
   if (num_squeeze_dims == 0) {
     for (size_t i = 0; i < in_dims_sym.size(); ++i) {
-      // TODO(lanxianghit): if symbol here, maybe we need the result of dim expr
-      // simplification
+      // TODO(lanxianghit): if symbol here, maybe we need the result of dim
+      // expr simplification
       if (in_dims_sym[i] == 1) {
         should_squeeze[i] = true;
       }
@@ -1400,3 +1447,7 @@ bool Unsqueeze_OpInferSymbolicShape(
 }
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::OneHotOpInferSymbolicShape;
+}

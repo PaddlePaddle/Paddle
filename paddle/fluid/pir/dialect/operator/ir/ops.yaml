@@ -1251,6 +1251,7 @@
     func : OneHotInferMeta
   kernel :
     func : one_hot
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : ones
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

@@ -60,5 +60,10 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unique)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(UniqueConsecutive)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(OneHot)
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::OneHotOpInferSymbolicShape;
+}

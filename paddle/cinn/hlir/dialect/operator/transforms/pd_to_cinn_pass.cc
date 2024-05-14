@@ -361,6 +361,39 @@ class IsCloseOpPattern
   }
 };
 
+class OneHotOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::OneHotOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::OneHotOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::OneHotOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied;
+  }
+
+  void Rewrite(paddle::dialect::OneHotOp op,
+               pir::PatternRewriter &rewriter) const override {
+    int num_classes;
+    pir::Value num_classes_ = op->operand_source(1);
+    (void)num_classes_;
+    if (num_classes_.isa<pir::OpResult>() &&
+        num_classes_.defining_op()->isa<paddle::dialect::FullOp>()) {
+      VLOG(3) << "enter if";
+      num_classes = num_classes_.defining_op()
+                        ->dyn_cast<paddle::dialect::FullOp>()
+                        .attribute("value")
+                        .dyn_cast<paddle::dialect::ScalarAttribute>()
+                        .data()
+                        .to<int>();
+    } else {
+      VLOG(3) << "enter else";
+    }
+    auto cinn_onehot = rewriter.Build<cinn::dialect::OneHotOp>(
+        op->operand_source(0), num_classes);
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_onehot.result(0));
+    rewriter.EraseOp(op);
+  }
+};
 class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
@@ -1132,6 +1165,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
   ps.Add<FullWithTensorOpPattern>(context);
+  ps.Add<OneHotOpPattern>(context);
   ps.Add<RefreshCombineOpPattern>(context);
   ps.Add<SqueezeOpPattern>(context);
   ps.Add<UnsqueezeOpPattern>(context);

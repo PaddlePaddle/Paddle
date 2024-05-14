@@ -99,6 +99,53 @@ ir::Tensor OneHot(const ir::Tensor& indices,
   return res;
 }
 
+ir::Tensor OneHot(const ir::Tensor& x,
+                  const int num_classes,
+                  const std::string& output_name) {
+  int ndim = static_cast<int>(x->shape.size());
+  PADDLE_ENFORCE_GT(
+      num_classes,
+      0,
+      ::common::errors::InvalidArgument(
+          "one_hot only accepts `depth > 0` , but got depth = %d.",
+          num_classes));
+  int true_axis = ndim;
+  std::vector<Expr> new_shape;
+  int indices_index = 0;
+
+  for (int i = 0; i < ndim + 1; ++i) {
+    if (i == true_axis) {
+      new_shape.push_back(Expr(num_classes));
+    } else {
+      new_shape.push_back(x->shape[indices_index++]);
+    }
+  }
+
+  Expr on_value_cast = ir::Cast::Make(cinn::common::F32(), 1.f);
+  Expr off_value_cast = ir::Cast::Make(cinn::common::F32(), 0.f);
+
+  ir::Tensor res = lang::Compute(
+      new_shape,
+      [=](const std::vector<Expr>& iter) {
+        std::vector<Expr> indices_indices;
+
+        for (size_t i = 0; i < iter.size(); i++) {
+          if (static_cast<int>(i) == true_axis) {
+            continue;
+          }
+          indices_indices.push_back(iter[i]);
+        }
+
+        Expr idx = iter[true_axis];
+        Expr elem = ir::Cast::Make(idx.type(), x(indices_indices));
+        return ir::Select::Make(
+            ir::EQ::Make(elem, idx), on_value_cast, off_value_cast);
+      },
+      cinn::common::UniqName(output_name));
+
+  return res;
+}
+
 std::vector<framework::shape_t> InferShapeForOneHot(
     const std::vector<framework::shape_t>& inputs_shape,
     const framework::AttrMapType& attrs) {
@@ -217,6 +264,98 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
 
   return strategy;
 }
+
+std::shared_ptr<framework::OpStrategy> StrategyForOneHotSymbolic(
+    const framework::NodeAttr& attrs,
+    const std::vector<ir::Tensor>& inputs,
+    const std::vector<Type>& out_type,
+    const std::vector<std::vector<ir::Dim>>& output_shapes,
+    const Target& target) {
+  int num_classes;
+  // VLOG(3) << "inputs[1] shape size is " << inputs[1]->shape.size();
+
+  // VLOG(3) << "inputs[1] shape is " << inputs[1]->shape;
+  // Expr num_classes_expr = inputs[1](static_cast<int64_t>(0));
+  // // num_classes = inputs[1](Expr(0)).as_int64();
+
+  // VLOG(3) << "inputs[1] expr is " << num_classes_expr;
+  // num_classes = num_classes_expr.as_int32();
+  // VLOG(3) << "OneHotOpInferSymbolicShape: with expr num_classes = " <<
+  // num_classes;
+
+  // num_classes = inputs[1](Expr(0)).as_int64();
+  // VLOG(3) << "OneHotOpInferSymbolicShape: with expr num_classes = " <<
+  // num_classes;
+
+  // if (num_classes_.isa<pir::OpResult>() &&
+  // num_classes_.defining_op()->isa<paddle::dialect::FullOp>()) {
+  //   num_classes = num_classes_.defining_op()
+  //                                 ->dyn_cast<paddle::dialect::FullOp>()
+  //                                 .attribute("value")
+  //                                 .dyn_cast<paddle::dialect::ScalarAttribute>()
+  //                                 .data()
+  //                                 .to<int64_t>();
+  // }
+  // VLOG(3) << "OneHotOpInferSymbolicShape: num_classes = " << num_classes;
+  auto iter = attrs.attr_store.find("num_classes");
+  if (iter != attrs.attr_store.end() &&
+      absl::holds_alternative<int>(iter->second)) {
+    num_classes = absl::get<int>(iter->second);
+  } else {
+    PADDLE_THROW(
+        ::common::errors::NotFound("num_classes is not found in attrs."));
+  }
+
+  PADDLE_ENFORCE_GT(
+      num_classes,
+      0,
+      ::common::errors::InvalidArgument(
+          "one_hot only accepts `depth > 0` , but got depth = %d.",
+          num_classes));
+
+  framework::CINNCompute one_hot_compute([=](lang::Args args,
+                                             lang::RetValue* ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of one_hot compute is empty! Please check."));
+    cinn::common::CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_EQ(!pack_args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "at least one input tensor for transpose compute."));
+    Expr x_expr = pack_args[0];
+    PADDLE_ENFORCE_EQ(x_expr.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The input x arg's type should be Tensor."));
+
+    ir::Tensor x = x_expr.as_tensor_ref();
+
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2U,
+                      ::common::errors::InvalidArgument(
+                          "The size of inputs must be equal to 2."));
+    std::string tensor_name = pack_args[1].operator std::string();
+
+    ir::Tensor out = OneHot(x, num_classes, tensor_name);
+
+    std::vector<cinn::common::CINNValue> res;
+    auto stages = CreateStages({x});
+    stages->InsertLazily(out);
+    res.push_back(cinn::common::CINNValue(out));
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = cinn::common::CINNValuePack{res};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      one_hot_compute, lang::PackedFunc(), "strategy.one_hot.x86", 1);
+
+  return strategy;
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -231,6 +370,8 @@ CINN_REGISTER_HELPER(one_hot_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForOneHot)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForOneHotSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForOneHot))
       .set_attr("inferdtype",
