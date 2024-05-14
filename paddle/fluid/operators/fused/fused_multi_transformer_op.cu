@@ -834,48 +834,51 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
         // if (FLAGS_fmha_mode == "flash_attention_v2" &&
         // encoder_remove_padding) {
+        if (encoder_remove_padding) {
+          TransposeSplit<T>(dev_ctx,
+                            unpadding_q.data<T>(),
+                            unpadding_k.data<T>(),
+                            unpadding_v.data<T>(),
+                            q_transpose_out.data<T>(),
+                            kv_transpose_out.data<T>(),
+                            padding_offset_data,
+                            sequence_lengths
+                                ? sequence_lengths->data<int>()
+                                : sequence_lengths_backup.data<int>(),
+                            token_num,
+                            bsz,
+                            num_head,
+                            seq_len,
+                            dim_head);
+          phi::Copy(dev_ctx,
+                    cu_seqlens_q,
+                    cu_seqlens_k.place(),
+                    false,
+                    &cu_seqlens_k);
 
-        TransposeSplit<T>(dev_ctx,
-                          unpadding_q.data<T>(),
-                          unpadding_k.data<T>(),
-                          unpadding_v.data<T>(),
-                          q_transpose_out.data<T>(),
-                          kv_transpose_out.data<T>(),
-                          padding_offset_data,
-                          sequence_lengths
-                              ? sequence_lengths->data<int>()
-                              : sequence_lengths_backup.data<int>(),
-                          token_num,
-                          bsz,
-                          num_head,
-                          seq_len,
-                          dim_head);
-        phi::Copy(
-            dev_ctx, cu_seqlens_q, cu_seqlens_k.place(), false, &cu_seqlens_k);
-
-        // fmha_out[token_num, num_head, dim_head]
-        phi::FlashAttnUnpaddedKernel<T>(
-            dev_ctx,
-            unpadding_q,
-            unpadding_k,
-            unpadding_v,
-            cu_seqlens_q,
-            cu_seqlens_k,
-            none /*fixed_seed_offset*/,
-            none /*attn_mask*/,
-            seq_len,
-            seq_len,
-            1.0f / sqrt(static_cast<float>(dim_head)),
-            0.0,
-            true /*causal*/,
-            false,
-            true /* is_test*/,
-            "" /*rng_name*/,
-            &fmha_out,
-            &softmax_out,
-            &softmax_lse,
-            &seed_offset);
-        // }
+          // fmha_out[token_num, num_head, dim_head]
+          phi::FlashAttnUnpaddedKernel<T>(
+              dev_ctx,
+              unpadding_q,
+              unpadding_k,
+              unpadding_v,
+              cu_seqlens_q,
+              cu_seqlens_k,
+              none /*fixed_seed_offset*/,
+              none /*attn_mask*/,
+              seq_len,
+              seq_len,
+              1.0f / sqrt(static_cast<float>(dim_head)),
+              0.0,
+              true /*causal*/,
+              false,
+              true /* is_test*/,
+              "" /*rng_name*/,
+              &fmha_out,
+              &softmax_out,
+              &softmax_lse,
+              &seed_offset);
+        }
         // else {
         //   fmha_compute.Compute(cache_kv,
         //                        src_mask,
