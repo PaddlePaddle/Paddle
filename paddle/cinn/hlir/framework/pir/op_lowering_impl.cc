@@ -95,8 +95,12 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
-  group_info->data_space = group->loop_ranges();
-  group_info->reduce_axis = group->reduce_axis();
+  auto backend_optim_info=group->backend_optim_info();
+  if(backend_optim_info.has_value())
+  {
+  group_info->data_space = backend_optim_info->loop_ranges_;
+  group_info->reduce_axis = backend_optim_info->reduce_axis_;
+  }
   for (auto op : group->ops()) {
     if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
       group_info->reduce_var_names.insert(ValueName(op->result(0)));
@@ -457,10 +461,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       std::make_shared<ir::IRSchedule>(mod_expr);
 
   auto have_dy_shape = false;
-  for (auto d : group->loop_ranges()) {
+  auto backend_optim_info=group->backend_optim_info();
+  if(backend_optim_info.has_value())
+  {
+  for (auto d : backend_optim_info->loop_ranges_) {
     if (d < 0) {
       have_dy_shape = true;
     }
+  }
   }
   if (have_dy_shape) {
     ir_sch = std::make_shared<ir::IRSchedule>(
@@ -548,12 +556,17 @@ void OpLowererImpl::BuildBroadcastInfo(const OpLoweringGroupPtr& group,
       }
 
       cinn::ir::BroadcastInfo info;
+        auto backend_optim_info=group->backend_optim_info();
+        
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
           info.broadcast_axes.push_back(i);
           info.output_shape.push_back(-1);
-          info.output_dim_expr.push_back(group->loop_ranges_expr()[i]);
+          if(backend_optim_info.has_value())
+          {
+          info.output_dim_expr.push_back(backend_optim_info->loop_ranges_expr_[i]);
+          }
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
         if (in_dim.size() != output_shape.size()) {
@@ -1039,10 +1052,14 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
   bool have_dy_shape = false;
-  for (auto d : group->loop_ranges()) {
+  auto backend_optim_info=group->backend_optim_info();
+  if(backend_optim_info.has_value())
+  {
+  for (auto d : backend_optim_info->loop_ranges_) {
     if (d < 0) {
       have_dy_shape = true;
     }
+  }
   }
 
   std::shared_ptr<GroupInfo> group_info = GetGroupInfo(group, tensor_map);

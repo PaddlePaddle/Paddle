@@ -123,7 +123,7 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
             ? attr.op_pattern_kind
             : group_op_kind;
 
-    group->set_opt_info(attr);
+    group->set_backend_optim_info(attr);
   }
   group->set_op_pattern_kind(group_op_kind);
 
