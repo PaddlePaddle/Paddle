@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/onednn_placement_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_affine_channel_onednn_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -98,7 +98,6 @@ class FusedConv2dAffineChannelPattern
       paddle::dialect::AffineChannelOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
 
-    // The prev op should be conv2d op.
     paddle::onednn::dialect::FusedConv2dOp conv2d_op =
         pir::GetDefiningOpForInput(op, 0)
             ->dyn_cast<paddle::onednn::dialect::FusedConv2dOp>();
@@ -127,7 +126,6 @@ class FusedConv2dAffineChannelPattern
         conv2d_op.residual_param(),
         conv2d_attributes);
 
-    // reshape new bias
     auto new_conv2d_out_shape = pir::GetShapeFromValue(new_conv2d_op.output());
     std::vector<int64_t> new_bias_new_shape(new_conv2d_out_shape.size(), 1);
     new_bias_new_shape[1] = new_conv2d_out_shape[1];
