@@ -3048,6 +3048,7 @@ void ProcessBlock(
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
+        kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
     } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
