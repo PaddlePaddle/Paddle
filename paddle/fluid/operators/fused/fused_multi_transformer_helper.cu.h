@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 
-PD_DECLARE_int64(custom_allreduce_one_shot_threshold);
-PD_DECLARE_int64(custom_allreduce_two_shot_threshold);
-
 PD_DECLARE_bool(use_gemm_dequant);
 
 PD_DECLARE_bool(print_matrix);
@@ -61,15 +58,6 @@ static void PrintFrontNPerLine(const phi::DenseTensor &a,
   }
 }
 
-static CustomNCCLComm *GetCustomNCCLComm(const phi::GPUContext &ctx,
-                                         int ring_id) {
-  static auto comm =
-      CreateCustomNCCLComm(ctx,
-                           FLAGS_custom_allreduce_one_shot_threshold,
-                           FLAGS_custom_allreduce_two_shot_threshold,
-                           ring_id);
-  return comm.get();
-}
 template <typename T>
 struct AddTriFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
@@ -823,95 +811,6 @@ class WriteCacheKVHelper {
   int quant_round_type_;
   float quant_max_bound_;
   float quant_min_bound_;
-};
-
-template <typename T>
-class AttnOutHelper {
- public:
-  AttnOutHelper(const phi::GPUContext &dev_ctx,
-                phi::DenseTensor &workspace,          // NOLINT
-                phi::DenseTensor &tmp_quant_space,    // NOLINT
-                phi::DenseTensor &tmp_dequant_space,  // NOLINT
-                int token_num,                        // m
-                int hidden_size,                      // k
-                int dim_embed,                        // n
-                int ring_id,
-                CustomNCCLComm *nccl_comm,
-                int quant_round_type,
-                float quant_max_bound,
-                float quant_min_bound,
-                bool is_decoder)
-      : dev_ctx_(dev_ctx),
-        token_num_(token_num),
-        hidden_size_(hidden_size),
-        dim_embed_(dim_embed),
-        ring_id_(ring_id),
-        nccl_comm_(nccl_comm),
-        quant_round_type_(quant_round_type),
-        quant_min_bound_(quant_min_bound),
-        quant_max_bound_(quant_max_bound),
-        workspace_(workspace),
-        tmp_quant_space_(tmp_quant_space),
-        tmp_dequant_space_(tmp_dequant_space),
-        is_decoder_(is_decoder) {
-    int8_gemm_helper_ = std::make_unique<Int8GEMMHelper<T>>(
-        dev_ctx_,
-        token_num,
-        hidden_size,
-        dim_embed,
-        workspace,
-        tmp_quant_space,
-        tmp_dequant_space,
-        quant_round_type,
-        quant_max_bound,
-        quant_min_bound,
-        is_decoder && FLAGS_use_gemm_dequant /*use_gemm_dequant*/);
-    gemm_helper_ = std::make_unique<LtGEMMHelper<T>>(
-        dev_ctx_, token_num, hidden_size, dim_embed, false);
-  }
-
-  void Compute(const phi::DenseTensor &input,
-               const phi::DenseTensor &weight,
-               const phi::DenseTensor &dequant_out_scales,
-               const float in_scale,
-               phi::DenseTensor *output) {
-    if (nccl_comm_) {
-      nccl_comm_->SwapInput(output);
-    }
-    if (in_scale > 0) {
-      int8_gemm_helper_->Compute(&input,   // T
-                                 &weight,  // int8, Need be transposed
-                                 &dequant_out_scales,
-                                 in_scale,
-                                 output,        // T
-                                 !is_decoder_,  // quant in mmha in decoder
-                                 true);  // need to dequant cause allreduce
-    } else {
-      gemm_helper_->Compute(&input, &weight, output);
-    }
-    if (nccl_comm_) {
-      *output = nccl_comm_->AllReduce();
-    } else {
-      AllReduce<T>(*output, ring_id_, output->numel(), dev_ctx_);
-    }
-  }
-
- private:
-  const phi::GPUContext &dev_ctx_;
-  int token_num_;    // m
-  int hidden_size_;  // k
-  int dim_embed_;    // n
-  int ring_id_;
-  int quant_round_type_;
-  float quant_max_bound_;
-  float quant_min_bound_;
-  bool is_decoder_;
-  CustomNCCLComm *nccl_comm_;
-  phi::DenseTensor &workspace_;          // char
-  phi::DenseTensor &tmp_quant_space_;    // int8_t
-  phi::DenseTensor &tmp_dequant_space_;  // int32_t
-  std::unique_ptr<Int8GEMMHelper<T>> int8_gemm_helper_;
-  std::unique_ptr<LtGEMMHelper<T>> gemm_helper_;
 };
 
 }  // namespace
