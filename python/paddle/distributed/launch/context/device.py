@@ -101,12 +101,18 @@ class Device:
             )
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
-        elif 'CUDA_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.GPU
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        elif 'XPULINK_VISIBLE_DEVICES' in os.environ:
+            dev._dtype = DeviceType.XPU
+            visible_devices = os.getenv("XPULINK_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
+        elif 'CUDA_VISIBLE_DEVICES' in os.environ:
+            if core.is_compiled_with_xpu():
+                dev._dtype = DeviceType.XPU
+            else:
+                dev._dtype = DeviceType.GPU
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
 
         if visible_devices is not None and visible_devices != 'all':
             dev._labels = visible_devices.split(',')

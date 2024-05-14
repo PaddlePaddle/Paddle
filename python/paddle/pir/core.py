@@ -45,6 +45,8 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
+datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
+
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
@@ -70,6 +72,21 @@ np_type_to_paddle_type = {
     np.int8: DataType.INT8,
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+    DataType.BOOL: 'bool',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'uint16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.UINT8: 'uint8',
+    DataType.COMPLEX64: 'complex64',
+    DataType.COMPLEX128: 'complex128',
 }
 
 

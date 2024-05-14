@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cctype>
 #include <numeric>
+#include <regex>
 #include <string>
 #include <tuple>
 #include <typeinfo>
@@ -33,6 +34,7 @@
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -140,6 +142,10 @@ inline bool IsInplace(const OpDesc& op_desc) {
 inline std::string OpNameCompatibleMapping(std::string op_name) {
   auto& op_normalizer = OpNameNormalizer::instance();
   return op_normalizer[op_name];
+}
+inline bool isSparseString(const std::string& str) {
+  std::regex pattern("^sparse_[a-zA-Z0-9_]+$");
+  return std::regex_match(str, pattern);
 }
 
 inline pir::Operation* InsertCombineOperationForTarget(
@@ -284,19 +290,97 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
-  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-  if (!op_info) {
-    IR_THROW("Op %d should have corresponding OpInfo %d",
-             op_desc.Type(),
-             target_op_name);
-  }
-
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               target_op_name);
+    }
+    return op_info;
+  }
+  if (paddle::dialect::HaveOpToMultiKernelsMap(
+          OpNameCompatibleMapping(op_desc.Type())) &&
+      isSparseString(op_desc.Type())) {
+    std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
+    std::vector<std::string> input_types;
+    for (const auto& pair : inputs) {
+      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice") {
+        if (pair.first != "x") {
+          continue;
+        }
+      }
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(pair.second[0]);
+      PADDLE_ENFORCE_NE(
+          var_desc,
+          nullptr,
+          phi::errors::InvalidArgument("[Op:%s] Input %s should not be null",
+                                       op_desc.Type(),
+                                       pair.second[0]));
+      if (var_desc->GetType() ==
+          paddle::framework::proto::VarType::SPARSE_COO) {
+        input_types.emplace_back("sparse_coo");
+      } else if (var_desc->GetType() ==
+                 paddle::framework::proto::VarType::SPARSE_CSR) {
+        input_types.emplace_back("sparse_csr");
+      } else if (var_desc->GetType() ==
+                 paddle::framework::proto::VarType::LOD_TENSOR) {
+        input_types.emplace_back("dense");
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Op %d only support dense tensor ,sparse_coo and sparse_csr, but "
+            "not %d",
+            op_desc.Type(),
+            var_desc->GetType()));
+      }
+    }
+    target_op_name = OpNameCompatibleMapping(op_desc.Type());
+    auto sig_infos = paddle::dialect::SparseOpToPdOpsMapping(target_op_name);
+
+    target_op_name = "";
+    for (const auto& sig : sig_infos) {
+      if (input_types.size() != sig.inputs.size()) {
+        continue;
+      }
+      size_t i = 0;
+      for (i = 0; i < input_types.size(); ++i) {
+        if (input_types[i] == "") {
+          continue;
+        }
+        if (input_types[i] != sig.inputs[i]) {
+          break;
+        }
+      }
+      if (i == input_types.size()) {
+        target_op_name = sig.name;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_EQ(!target_op_name.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Op %d should have corresponding OpInfo %d",
+                          op_desc.Type(),
+                          target_op_name));
+
+    target_op_name = GetPrefix(ctx, op_desc) + target_op_name + "_sp";
+    if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+      target_op_name += "_";
+    }
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op %d should have corresponding OpInfo %d",
+          op_desc.Type(),
+          target_op_name));
+    }
+
     return op_info;
   }
 
   // for selected rows kernel choose
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   auto* op_info_concept =
       op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
 
@@ -765,7 +849,6 @@ pir::AttributeMap OpTranscriber::TranslateOpAttribute(
       attribute_map[info.name] = new_attr;
       continue;
     }
-
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
     VLOG(10) << "[op: " << op_desc.Type()
@@ -863,7 +946,7 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   return operation;
 }
 
-struct AssignOpTranscriber : public OpTranscriber {
+struct Assign2AssignOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     std::string target_op_name;
@@ -893,6 +976,53 @@ struct AssignOpTranscriber : public OpTranscriber {
     }
 
     return op_info;
+  }
+};
+
+struct Assign2AssignOutOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    const auto& op_info =
+        ctx->GetRegisteredOpInfo(paddle::dialect::AssignOut_Op::name());
+    if (!op_info) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign should have corresponding OpInfo %s.",
+          paddle::dialect::AssignOut_Op::name()));
+    }
+
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    auto x_vars = op_desc.Input("X", true);
+    auto x_defining_info = (*param_map)[x_vars[0]];
+    op_inputs.push_back(x_defining_info.value);
+
+    auto out_vars = op_desc.Output("Out");
+    auto out_defining_info = (*param_map)[out_vars[0]];
+    op_inputs.push_back(out_defining_info.value);
+
+    return op_inputs;
+  }
+};
+
+struct AssignOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    if (param_map->count(op_desc.Output("Out")[0])) {
+      return Assign2AssignOutOpTranscriber()(ctx, param_map, op_desc, block);
+    } else {
+      return Assign2AssignOpTranscriber()(ctx, param_map, op_desc, block);
+    }
   }
 };
 

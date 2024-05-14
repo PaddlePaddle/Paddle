@@ -118,6 +118,7 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -651,6 +652,13 @@ void AnalysisPredictor::InitDeviceContexts() {
               config_.xpu_config_.fc_autotune_level,
               config_.xpu_config_.fc_autotune_file_writeback,
               place_);
+          if (config_.xpu_config_.transformer_softmax_optimize_level > 0) {
+            xpu_context->SetContextOption(
+                "XPU_SOFTMAX_OPT",
+                std::to_string(
+                    config_.xpu_config_.transformer_softmax_optimize_level)
+                    .c_str());
+          }
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -924,7 +932,11 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
+            if (pass->name() == "matmul_add_act_fuse_pass") {
+              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+            }
+            pass_pm.AddPass(std::move(pass));
           }
         }
 
@@ -1003,6 +1015,9 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+      auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+      remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+      lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }

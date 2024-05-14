@@ -2253,6 +2253,70 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute select_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of select compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "at least three input tensor for select compute."));
+    Expr condition = pack_args[0];
+    Expr true_value = pack_args[1];
+    Expr false_value = pack_args[2];
+    PADDLE_ENFORCE_NE(condition.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The condation arg's type should be Tensor."));
+    PADDLE_ENFORCE_NE(true_value.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The true_value arg's type should be Tensor."));
+    PADDLE_ENFORCE_NE(false_value.as_tensor(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "The false_value arg's type should be Tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      4U,
+                      ::common::errors::InvalidArgument(
+                          "The size of inputs must be equal to 4."));
+    PADDLE_ENFORCE_EQ(pack_args[3].is_string(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The name arg's type should be string."));
+    std::string tensor_name = pack_args[3].operator std::string();
+
+    auto out = pe::Select(condition.as_tensor_ref(),
+                          true_value.as_tensor_ref(),
+                          false_value.as_tensor_ref(),
+                          tensor_name);
+    auto stages = CreateStages({condition.as_tensor_ref(),
+                                true_value.as_tensor_ref(),
+                                false_value.as_tensor_ref(),
+                                out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  PADDLE_ENFORCE_NE(out_type.size(),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "Out_type of select op is empty! Please check."));
+  strategy->AddImpl(
+      select_compute, lang::PackedFunc(), "strategy.select.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForSelect(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -2674,6 +2738,8 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSelect)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForSelectSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForSelect))
       .set_attr("inferdtype",

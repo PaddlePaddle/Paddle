@@ -302,8 +302,8 @@ class DiagonalOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[3, Min(2, 2)], data[NULL]',
-                'shape[2, Min(3, 2)], data[NULL]',
+                'shape[3, 2], data[NULL]',
+                'shape[2, 2], data[NULL]',
                 'shape[S2, Min(S0, S1)], data[NULL]',
                 'shape[S0, Min(S2, S1)], data[NULL]',
                 'shape[S0, S3], data[NULL]',

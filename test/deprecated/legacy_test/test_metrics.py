@@ -221,7 +221,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             state_ret = exe.run(
                 compiled_main_prog,
                 feed={'pred': pred, 'label': label},
-                fetch_list=[s.name for s in to_list(state)],
+                fetch_list=to_list(state),
                 return_numpy=True,
             )
             acc.update(*state_ret)

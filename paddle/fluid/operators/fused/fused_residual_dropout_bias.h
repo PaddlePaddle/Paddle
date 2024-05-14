@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -253,12 +254,12 @@ void LaunchResidualDropoutBias(const uint32_t rows,
     // NOTE(minghaoBD): OutType should be T if dropout_prob == 1.0
     if (residual == dst) return;
     if (residual) {
-      memory::Copy(ctx.GetPlace(),
-                   dst,
-                   ctx.GetPlace(),
-                   residual,
-                   rows * cols * sizeof(T),
-                   ctx.stream());
+      phi::memory_utils::Copy(ctx.GetPlace(),
+                              dst,
+                              ctx.GetPlace(),
+                              residual,
+                              rows * cols * sizeof(T),
+                              ctx.stream());
     } else {
       SetZero<T>(ctx, dst, rows * cols);
     }
@@ -475,16 +476,16 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
         if (dx == nullptr || dx == dout) {                                    \
           return;                                                             \
         }                                                                     \
-        memory::Copy(ctx.GetPlace(),                                          \
-                     dx,                                                      \
-                     ctx.GetPlace(),                                          \
-                     dout,                                                    \
-                     rows *cols * sizeof(T),                                  \
-                     ctx.stream());                                           \
+        phi::memory_utils::Copy(ctx.GetPlace(),                               \
+                                dx,                                           \
+                                ctx.GetPlace(),                               \
+                                dout,                                         \
+                                rows *cols * sizeof(T),                       \
+                                ctx.stream());                                \
       } else {                                                                \
         const uint64_t n = rows * cols;                                       \
-        platform::GpuLaunchConfig config =                                    \
-            platform::GetGpuLaunchConfig1D(ctx, n / real_vec_size);           \
+        phi::backends::gpu::GpuLaunchConfig config =                          \
+            phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n / real_vec_size); \
         if (n % VecSize == 0) {                                               \
           FusedResidualDropoutGrad<T, MaskType, VecSize>                      \
               <<<config.block_per_grid,                                       \

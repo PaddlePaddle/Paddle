@@ -20,27 +20,38 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestDistributedLookupTableOpTranslator(
-    test_op_translator.TestOpTranslator
+class TestGlobalScatterOpTranslator(
+    test_op_translator.TestOpWithBackwardTranslator
 ):
     def append_op(self):
-        self.op_type = "global_scatter"
-        x = paddle.ones(shape=(4, 8), dtype='float32')
-        local_count = paddle.to_tensor([0, 1], dtype='int64')
-        global_count = paddle.to_tensor([0, 1], dtype='int64')
-        out = paddle.ones(shape=(2, 8), dtype='float32')
+        self.forward_op_type = "global_scatter"
+        self.backward_op_type = "global_gather"
+        x = paddle.ones(
+            shape=(
+                1,
+                1,
+            ),
+            dtype='int64',
+        )
+        local_count = paddle.ones(shape=(1,), dtype='int64')
+        global_count = paddle.ones(shape=(1,), dtype='int64')
+        x.stop_gradient = False
+        local_count.stop_gradient = False
+        global_count.stop_gradient = False
+        out = paddle.ones(shape=(1,), dtype='int64')
         attrs = {'ring_id': 0, 'use_calc_stream': False}
-        helper = LayerHelper(self.op_type)
+        helper = LayerHelper(self.forward_op_type)
         helper.append_op(
-            type=self.op_type,
+            type=self.forward_op_type,
             inputs={
                 "X": x,
-                "local_count": local_count,
-                "global_count": global_count,
+                'local_count': local_count,
+                'global_count': global_count,
             },
             outputs={"Out": out},
             attrs=attrs,
         )
+        return out
 
     def test_translator(self):
         self.check()

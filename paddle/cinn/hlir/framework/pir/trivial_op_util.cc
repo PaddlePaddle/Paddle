@@ -29,6 +29,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -126,10 +127,12 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
   VLOG(4) << "Replace From : " << cinn::utils::Join(replaced, " ");
   VLOG(4) << "Replace To   : " << cinn::utils::Join(candidates, " ");
 
-  CHECK_EQ(replaced.size(), candidates.size())
-      << "In ReplaceExpr, the size of Vars to be replaced must be equal to "
-         "the "
-         "size of cadidate Exprs! Please check.";
+  PADDLE_ENFORCE_EQ(
+      replaced.size(),
+      candidates.size(),
+      ::common::errors::InvalidArgument(
+          "In ReplaceExpr, the size of Vars to be replaced must be equal to "
+          "the size of cadidate Exprs! Please check."));
   auto copyed_source = ir::ir_utils::IRCopy(source);
   if (replaced.empty()) return copyed_source;
   std::map<Var, Expr, ir::CompVar> replacing_map;
@@ -389,10 +392,10 @@ void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst) {
 
 ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
                                      const std::vector<ir::Expr>& indices) {
-  const auto& f = [=](const ir::Expr& e) -> ir::Expr {
+  const auto& MakeStoreNode = [=](const ir::Expr& e) -> ir::Expr {
     return ir::Store::Make(tensor, e, indices);
   };
-  return ExprTransformer(f);
+  return ExprTransformer(MakeStoreNode);
 }
 
 std::vector<ir::Var> CreateInnerBlockVars(
