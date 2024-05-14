@@ -45,12 +45,12 @@ class NAdam(Optimizer):
             &\hspace{5mm}\widehat{v_t} \leftarrow   v_t/\big(1-\beta_2^t \big)                   \\
             &\hspace{5mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t}/
                 \big(\sqrt{\widehat{v_t}} + \epsilon \big)                                       \\
-            &\hspace{0mm} \text{ 其中 } \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)}, \: \theta_0 \text{ (params)}, \: f(\theta) \text{ (objective)} \\
+            &\hspace{0mm} \text{ with: } \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)}, \: \theta_0 \text{ (params)}, \: f(\theta) \text{ (objective)} \\
             &\hspace{0mm} \: \lambda \text{ (weight decay)}, \:\psi \text{ (momentum decay)} \\
        \end{aligned}
 
     Args:
-        learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.002.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -58,16 +58,17 @@ class NAdam(Optimizer):
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        beta1 (float|Tensor): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
-        beta2 (float|Tensor): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
-        epsilon (float): A small float value for numerical stability.
+        epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        momentum_decay (float): momentum momentum_decay. The default value is 0.004.
+        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor.
+            Default None, meaning there is no regularization.
+        momentum_decay (float, optional): momentum momentum_decay. The default value is 0.004.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
@@ -76,8 +77,8 @@ class NAdam(Optimizer):
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
-    **Notes**:
-        **Currently, NAdam doesn't support sparse parameter optimization.**
+    Notes:
+        Currently, NAdam doesn't support sparse parameter optimization.
 
     Examples:
         .. code-block:: python
