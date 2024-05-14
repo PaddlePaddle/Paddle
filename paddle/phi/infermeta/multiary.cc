@@ -1101,6 +1101,64 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void ChunkEvalInferMeta(const MetaTensor& inference,
+                        const MetaTensor& label,
+                        const MetaTensor& seq_length,
+                        int num_chunk_types,
+                        const std::string& chunk_scheme,
+                        const std::vector<int>& excluded_chunk_types,
+                        MetaTensor* precision,
+                        MetaTensor* recall,
+                        MetaTensor* f1_score,
+                        MetaTensor* num_infer_chunks,
+                        MetaTensor* num_label_chunks,
+                        MetaTensor* num_correct_chunks) {
+  const auto& inference_dim = inference.dims();
+  const auto& label_dim = label.dims();
+
+  PADDLE_ENFORCE_EQ(
+      inference_dim,
+      label_dim,
+      phi::errors::InvalidArgument(
+          "Input(Inference)'s shape must be the same as Input(Label)'s "
+          "shape, but received [%s] (Inference) vs [%s] (Label).",
+          inference_dim,
+          label_dim));
+
+  bool use_padding = seq_length.initialized();
+  if (use_padding) {
+    PADDLE_ENFORCE_EQ((inference_dim.size() == 3 && inference_dim[2] == 1) ||
+                          inference_dim.size() == 2,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "when Input(SeqLength) is provided, Input(Inference) "
+                          "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+                          "(batch_size, bucket), but received [%s].",
+                          inference_dim));
+    auto seq_length_dim = seq_length.dims();
+    PADDLE_ENFORCE_LE(seq_length_dim.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "Input(SeqLength)'s rank should not be greater "
+                          "than 2, but received %d.",
+                          seq_length_dim.size()));
+  }
+
+  precision->set_dims({1});
+  recall->set_dims({1});
+  f1_score->set_dims({1});
+  num_infer_chunks->set_dims({1});
+  num_label_chunks->set_dims({1});
+  num_correct_chunks->set_dims({1});
+
+  precision->set_dtype(phi::DataType::FLOAT32);
+  recall->set_dtype(phi::DataType::FLOAT32);
+  f1_score->set_dtype(phi::DataType::FLOAT32);
+  num_infer_chunks->set_dtype(phi::DataType::INT64);
+  num_label_chunks->set_dtype(phi::DataType::INT64);
+  num_correct_chunks->set_dtype(phi::DataType::INT64);
+}
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,
@@ -4524,21 +4582,79 @@ void WhereInferMeta(const MetaTensor& condition,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
-      cond_dims,
-      x_dims,
+      cond_dims.size(),
+      x_dims.size(),
       phi::errors::InvalidArgument(
           "The dims of Inputs(Condition) and Inputs(X) should be same. "
-          "But received Condition's shape is [%s], X's shape is [%s]",
-          cond_dims,
-          x_dims));
-  PADDLE_ENFORCE_EQ(x_dims,
-                    y_dims,
+          "But received Condition's rank is [%d], X's rank is [%d]",
+          cond_dims.size(),
+          x_dims.size()));
+  size_t cond_dims_size = static_cast<size_t>(cond_dims.size());
+  for (size_t i = 0; i < cond_dims_size; ++i) {
+    if (cond_dims[i] == -1 || x_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        cond_dims[i],
+        x_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(Condition) and Inputs(X) should be same. "
+            "But received Condition's shape is [%d], X's shape is [%d]",
+            i,
+            cond_dims[i],
+            x_dims[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    y_dims.size(),
                     phi::errors::InvalidArgument(
                         "The dims of Inputs(X) and Inputs(Y) should be same. "
-                        "But received X's shape is [%s], Y's shape is [%s]",
-                        x_dims,
-                        y_dims));
+                        "But received X's shape is [%d], Y's shape is [%d]",
+                        x_dims.size(),
+                        y_dims.size()));
+  size_t x_dims_size = static_cast<size_t>(x_dims.size());
+  for (size_t i = 0; i < x_dims_size; ++i) {
+    if (x_dims[i] == -1 || y_dims[i] == -1) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        x_dims[i],
+        y_dims[i],
+        phi::errors::InvalidArgument(
+            "The [%d] th of Inputs(X) and Inputs(Y) should be same. "
+            "But received X's shape is [%s], Y's shape is [%s]",
+            i,
+            x_dims[i],
+            y_dims[i]));
+  }
+
   out->share_meta(x);
+}
+
+void YoloBoxPostInferMeta(const MetaTensor& boxes0,
+                          const MetaTensor& boxes1,
+                          const MetaTensor& boxes2,
+                          const MetaTensor& image_shape,
+                          const MetaTensor& image_scale,
+                          const std::vector<int>& anchors0,
+                          const std::vector<int>& anchors1,
+                          const std::vector<int>& anchors2,
+                          int class_num,
+                          float conf_thresh,
+                          int downsample_ratio0,
+                          int downsample_ratio1,
+                          int downsample_ratio2,
+                          bool clip_bbox,
+                          float scale_x_y,
+                          float nms_threshold,
+                          MetaTensor* out,
+                          MetaTensor* nms_rois_num,
+                          MetaConfig config) {
+  int batch = image_shape.dims()[0];
+  out->set_dims(common::make_ddim({1, 6}));
+  nms_rois_num->set_dims(common::make_ddim({batch}));
+  out->set_dtype(DataType::FLOAT32);
+  nms_rois_num->set_dtype(DataType::INT32);
 }
 
 void YoloLossInferMeta(const MetaTensor& x,

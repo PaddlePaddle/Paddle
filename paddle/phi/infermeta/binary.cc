@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -899,6 +900,44 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                          config);
 }
 
+void CorrelationInferMeta(const MetaTensor& input1,
+                          const MetaTensor& input2,
+                          int pad_size,
+                          int kernel_size,
+                          int max_displacement,
+                          int stride1,
+                          int stride2,
+                          int corr_type_multiply,
+                          MetaTensor* out) {
+  auto in_dims = input1.dims();
+  auto in2_dims = input2.dims();
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4,
+      true,
+      phi::errors::InvalidArgument("Input(X) of CorrelationOp must be 4 dims."
+                                   "But received dims is %d.",
+                                   in_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      in2_dims.size() == 4,
+      true,
+      phi::errors::InvalidArgument("Input(Y) of CorrelationOp must be 4 dims."
+                                   "But received dims is %d.",
+                                   in2_dims.size()));
+  std::vector<int64_t> output_shape =
+      CorrelationOutputSize(static_cast<int>(in_dims[0]),
+                            static_cast<int>(in_dims[2]),
+                            static_cast<int>(in_dims[3]),
+                            stride1,
+                            stride2,
+                            kernel_size,
+                            pad_size,
+                            max_displacement);
+  out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(input1.dtype());
+}
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -1061,6 +1100,21 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
   loss->set_dims(logits_dims);
   softmax->share_lod(logits);
   loss->share_lod(logits);
+}
+
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length) {
+  auto input_dims = input.dims();
+  output->set_dims(input_dims);
+  if (input_length.initialized()) {
+    output_length->set_dims({input_dims[0], 1});
+  }
+  output->set_dtype(input.dtype());
 }
 
 void DepthwiseConvInferMeta(const MetaTensor& input,
@@ -3256,6 +3310,64 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
   }
+}
+
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const int x_rank = x_dims.size();
+  const auto& window_dims = window.dims();
+  const int window_size = static_cast<int>(window_dims[0]);
+
+  PADDLE_ENFORCE_EQ(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "Input(X) of StftOp should be a tensor with shape [N, T], "
+          "but got rank %s.",
+          x_rank));
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      phi::errors::InvalidArgument(
+          "Attribute(hop_length) should be greater than 0, but got %s.",
+          hop_length));
+  PADDLE_ENFORCE_EQ(
+      window_size,
+      n_fft,
+      phi::errors::InvalidArgument(
+          "Input(Window) of StftOp should be equal with n_fft %s, "
+          "but got %s.",
+          n_fft,
+          window_size));
+
+  int seq_length = static_cast<int>(x_dims[x_rank - 1]);
+  int n_frames = 1 + (seq_length - n_fft) / hop_length;
+
+  PADDLE_ENFORCE_LE(n_fft,
+                    seq_length,
+                    phi::errors::InvalidArgument(
+                        "Attribute(frame_length) should be less equal than "
+                        "sequence length, but got (%s) > (%s).",
+                        n_fft,
+                        seq_length));
+
+  std::vector<int64_t> output_shape;
+  output_shape.push_back(x_dims[0]);
+  if (onesided) {
+    output_shape.push_back(n_fft / 2 + 1);
+  } else {
+    output_shape.push_back(n_fft);
+  }
+  output_shape.push_back(n_frames);
+
+  out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(phi::dtype::ToComplex(x.dtype()));
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,

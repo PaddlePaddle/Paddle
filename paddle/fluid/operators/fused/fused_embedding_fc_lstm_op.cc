@@ -134,7 +134,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
           b_dims[1],
           ctx->Attrs().Get<bool>("use_peepholes")));
 
-  framework::DDim out_dims({x_dims[0], frame_size});
+  phi::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("Ids", "Hidden");

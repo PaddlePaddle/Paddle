@@ -177,6 +177,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                          dev_ctx.GetComputeCapability() < 80 &&
                          std::is_same<T, float>::value;
   bool cutlass = true;
+  // NOTE(HaipengMing): 256(in channel)x256(out channel) cutlass kernel could
+  // cause CUDA Error(700).
+  if (kernel_dims[kernel_dims.size() - 1] == 256 &&
+      kernel_dims[kernel_dims.size() - 2] == 256)
+    cutlass = false;
   if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
   if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;

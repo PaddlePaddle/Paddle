@@ -237,7 +237,7 @@ def nccl():
             '2804'
 
     """
-    return nccl_version    
+    return nccl_version
 
 def cuda():
     """Get cuda version of paddle package.
@@ -456,9 +456,9 @@ def get_paddle_extra_install_requirements():
             cuda_major_version = version.split('.')[0]
         except Exception as e:
             raise ValueError("CUDA not found")
-        
+
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
-        
+
         return paddle_cuda_requires
     else:
         return []
@@ -625,6 +625,8 @@ packages=['paddle',
           'paddle.geometric.sampling',
           'paddle.pir',
           'paddle.decomposition',
+          'paddle._typing',
+
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -651,7 +653,7 @@ if sys.version_info >= (3,8):
     if platform.system() == 'Linux' and platform.machine() == 'x86_64':
         paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
-    
+
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
@@ -1073,6 +1075,14 @@ if '${WITH_CPP_DIST}' == 'ON':
     paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
 
+# type hints
+package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+package_data['paddle.framework'] = package_data.get(
+    'paddle.framework', []
+) + ['*.pyi']
+package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+    '*.pyi'
+]
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
@@ -1119,6 +1129,7 @@ with redirect_stdout():
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',
+            'Typing :: Typed',
         ],
     )
 
