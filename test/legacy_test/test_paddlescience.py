@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
+
+os.environ["FLAGS_prim_vjp_skip_default_ops"] = "False"
+
 import unittest
 
 import paddle
 from paddle import jit, nn
 
 paddle.core._set_prim_all_enabled(True)
-os.environ["FLAGS_prim_vjp_skip_default_ops"] = "False"
 
 x = paddle.randn([4, 1])
 y = paddle.randn([4, 1])
