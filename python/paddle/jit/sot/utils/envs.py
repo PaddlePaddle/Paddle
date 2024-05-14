@@ -33,6 +33,9 @@ ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True
 )
 ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
+ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
+    "SOT_ALLOW_DYNAMIC_SHAPE", False
+)
 
 
 @contextmanager
