@@ -850,6 +850,18 @@
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
 
+- op : dgc
+  args: (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor
+    nranks, float m = 0.9, bool use_nesterov = true, float[] sparsity,
+    float rampup_begin_step = 0.0, float rampup_step, float regular_coeff = 0.0, int
+    regular_type = 0)
+  output: Tensor (u_out), Tensor (v_out), Tensor (encode_grad), Tensor (grad_out),
+    Tensor (k), Tensor (gather_buff)
+  infer_meta:
+    func: DgcInferMeta
+  kernel:
+    func: dgc
+
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
   output : Tensor

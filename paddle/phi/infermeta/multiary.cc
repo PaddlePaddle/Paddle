@@ -1661,6 +1661,26 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
   m_ap->set_dims(common::make_ddim({1}));
 }
 
+void DgcInferMeta(const MetaTensor& u,
+                  const MetaTensor& v,
+                  const MetaTensor& grad,
+                  const MetaTensor& param,
+                  const MetaTensor& current_step_tensor,
+                  const MetaTensor& nranks_tensor,
+                  float m,
+                  bool use_nesterov,
+                  const std::vector<float>& sparsity,
+                  float rampup_begin_step,
+                  float rampup_step,
+                  float regular_coeff,
+                  int regular_type,
+                  MetaTensor* u_out,
+                  MetaTensor* v_out,
+                  MetaTensor* encode_grad_out,
+                  MetaTensor* grad_out,
+                  MetaTensor* k_out,
+                  MetaTensor* gather_buff) {}
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
