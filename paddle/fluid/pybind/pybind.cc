@@ -380,6 +380,14 @@ bool IsCompiledWithHETERPS() {
 #endif
 }
 
+bool IsCompiledWithGPUGRAPH() {
+#ifndef PADDLE_WITH_GPU_GRAPH
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_DNNL
   return false;
@@ -978,10 +986,13 @@ void BindDecomp(pybind11::module *m) {
          [](pir::Program *program,
             std::vector<pir::Value> &src_vars,
             std::set<std::string> &blacklist,
-            std::set<std::string> &whitelist) {
+            std::set<std::string> &whitelist,
+            int start_index,
+            int end_index) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
-           DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
+           DecompProgram decomp_object(
+               program, src_vars, blacklist, whitelist, start_index, end_index);
            decomp_object.decomp_program();
            std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
@@ -2339,6 +2350,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);

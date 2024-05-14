@@ -3731,6 +3731,12 @@
   outputs :
     {out : Out}
 
+- op : yolo_box_post
+  inputs :
+    {boxes0 : Boxes0, boxes1 : Boxes1, boxes2 : Boxes2, image_shape : ImageShape, image_scale : ImageScale}
+  outputs :
+    {out : Out, nms_rois_num : NmsRoisNum}
+
 - op : yolo_loss (yolov3_loss)
   backward: yolo_loss_grad (yolov3_loss_grad)
   inputs :
@@ -3848,6 +3854,12 @@
     {x: X}
   outputs:
     {out: Out}
+
+- op: chunk_eval
+  inputs:
+    {inference : Inference, label : Label, seq_length : SeqLength}
+  outputs:
+    {precision : Precision, recall : Recall, f1_score : F1-Score, num_infer_chunks : NumInferChunks, num_label_chunks : NumLabelChunks, num_correct_chunks : NumCorrectChunks}
 
 - op: crf_decoding
   inputs:
@@ -4201,6 +4213,13 @@
   inputs :
     x : X
   outputs :
+    out : Out
+
+- op: stft
+  backward: stft_grad
+  inputs:
+    {x : X, window : Window}
+  outputs:
     out : Out
 
 - op: temporal_shift

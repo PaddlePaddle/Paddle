@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+#include <vector>
 
-namespace phi {
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
-KernelSignature StftOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("stft",
-                         {"X", "Window"},
-                         {"n_fft", "hop_length", "normalized", "onesided"},
-                         {"Out"});
-}
+namespace paddle {
+namespace framework {
+namespace ir {
 
-}  // namespace phi
+class SparseConvOptimPass : public FusePassBase {
+ public:
+  SparseConvOptimPass();
+  virtual ~SparseConvOptimPass() {}
 
-PD_REGISTER_ARG_MAPPING_FN(stft, phi::StftOpArgumentMapping);
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
