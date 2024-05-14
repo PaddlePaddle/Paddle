@@ -21,7 +21,9 @@ from paddle.base import core
 from paddle.incubate.nn.functional import blha_get_max_len
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda())
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Only support GPU in CUDA mode."
+)
 class TestBlhaGetMaxLenOp(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
