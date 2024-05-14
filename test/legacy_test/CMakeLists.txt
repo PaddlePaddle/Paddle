@@ -811,7 +811,9 @@ if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_pow_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_paddlescience PROPERTIES TIMEOUT 120 ENVIRONMENT
+                                "FLAGS_prim_vjp_skip_default_ops=False")
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
