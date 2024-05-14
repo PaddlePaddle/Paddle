@@ -1068,7 +1068,6 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                   const std::string &,
                   Scope *,
                   std::vector<Scope *> &,
-                  const ExecutionStrategy &,
                   const BuildStrategy &,
                   ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.

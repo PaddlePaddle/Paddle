@@ -57,14 +57,12 @@ class ParallelExecutor {
                                      const std::string &loss_var_name,
                                      Scope *scope,
                                      const std::vector<Scope *> &local_scopes,
-                                     const ExecutionStrategy &exec_strategy,
                                      const BuildStrategy &build_strategy,
                                      ir::Graph *graph);
 
   // NOTE(Aurelius84): Construct a PE running on single device for @to_static
   explicit ParallelExecutor(const platform::Place &place,
                             Scope *scope,
-                            const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
 
@@ -110,11 +108,9 @@ class ParallelExecutor {
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
   bool EnableParallelGraphExecution(const ir::Graph &graph,
-                                    const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
-  void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
-                                     const BuildStrategy &build_strategy,
+  void InitExecutorPrivateMemberInfo(const BuildStrategy &build_strategy,
                                      size_t device_count,
                                      const ir::Graph &graph);
 

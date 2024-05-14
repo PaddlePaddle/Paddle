@@ -230,11 +230,11 @@ static PEAndGraphPair CreateExecutorInfo(
     int64_t end_op_index,
     framework::Scope *scope,
     const details::BuildStrategy &build_strategy) {
-  auto execution_strategy = details::GetExecutionStrategy(place);
+  // auto execution_strategy = details::GetExecutionStrategy(place);
   auto graph = std::make_shared<framework::ir::Graph>(
       program_desc, start_op_index, end_op_index);
   auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
-      place, scope, execution_strategy, build_strategy, graph.get());
+      place, scope, build_strategy, graph.get());
   parallel_executor->PrepareVariables(scope);
   return std::make_pair(parallel_executor, graph);
 }

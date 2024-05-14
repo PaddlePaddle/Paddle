@@ -671,7 +671,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    Scope *scope,
                                    const std::vector<Scope *> &local_scopes,
-                                   const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
@@ -683,8 +682,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
-  InitExecutorPrivateMemberInfo(
-      exec_strategy, build_strategy, places.size(), *graph);
+  InitExecutorPrivateMemberInfo(build_strategy, places.size(), *graph);
 
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -723,34 +721,32 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
   // Step 4. Create SSAGraph executor
-  std::vector<ir::Graph *> final_graphs =
-      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
+  // std::vector<ir::Graph *> final_graphs =
+  //     CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  if (!member_->build_strategy_.async_mode_) {
-    member_->executor_ =
-        std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
-            exec_strategy,
-            member_->local_scopes_,
-            member_->local_exec_scopes_,
-            std::move(var_infos),
-            member_->places_,
-            std::move(member_->executor_));
-  }
+  // VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
+  // if (!member_->build_strategy_.async_mode_) {
+  //   member_->executor_ =
+  //       std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
+  //           exec_strategy,
+  //           member_->local_scopes_,
+  //           member_->local_exec_scopes_,
+  //           std::move(var_infos),
+  //           member_->places_,
+  //           std::move(member_->executor_));
+  // }
 
-  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
-  SetReaderOpDeviceInfoOfGraphs(final_graphs);
+  // ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
+  // SetReaderOpDeviceInfoOfGraphs(final_graphs);
 }
 
 ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    Scope *scope,
-                                   const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)) {
   // Initialize necessary info of member_ with strategy.
-  InitExecutorPrivateMemberInfo(exec_strategy,
-                                build_strategy,
+  InitExecutorPrivateMemberInfo(build_strategy,
                                 /*device_count=*/1,
                                 *graph);
 
@@ -771,11 +767,11 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
   std::unordered_map<Scope *, Scope *> scope_map =
       CreateLocalExecScopes(member_->local_scopes_, /*create_new=*/false);
 
-  std::vector<ir::Graph *> final_graphs =
-      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
+  // std::vector<ir::Graph *> final_graphs =
+  //     CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  // Set scope_map of op from each graph
-  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
+  // // Set scope_map of op from each graph
+  // ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
 }
 
 void ParallelExecutor::PrepareVariables(Scope *scope) {
@@ -1226,9 +1222,7 @@ ParallelExecutor::~ParallelExecutor() {
 }
 
 bool ParallelExecutor::EnableParallelGraphExecution(
-    const ir::Graph &graph,
-    const ExecutionStrategy &exec_strategy,
-    const BuildStrategy &build_strategy) const {
+    const ir::Graph &graph, const BuildStrategy &build_strategy) const {
   return false;
 
   bool enable_parallel_graph = true;
@@ -1250,8 +1244,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   }
 
   if (!member_->use_all_reduce_ || !member_->IsUseCUDA(member_->use_device_)) {
-    if (build_strategy.enable_sequential_execution_ ||
-        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
+    if (build_strategy.enable_sequential_execution_) {
       enable_parallel_graph = false;
     }
   }
@@ -1266,11 +1259,9 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 }
 
 void ParallelExecutor::InitExecutorPrivateMemberInfo(
-    const ExecutionStrategy &exec_strategy,
     const BuildStrategy &build_strategy,
     size_t device_count,
     const ir::Graph &graph) {
-  member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
@@ -1282,55 +1273,56 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
-  if (member_->IsUseCUDA(member_->use_device_)) {
-    PADDLE_ENFORCE_EQ(
-        device_count,
-        1,
-        platform::errors::Unavailable("Windows can support Single GPU only."));
-  }
-#endif
+  // #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
+  // defined(_WIN32)
+  //   if (member_->IsUseCUDA(member_->use_device_)) {
+  //     PADDLE_ENFORCE_EQ(
+  //         device_count,
+  //         1,
+  //         platform::errors::Unavailable("Windows can support Single GPU
+  //         only."));
+  //   }
+  // #endif
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
-  if (member_->IsUseCUDA(member_->use_device_)) {
-    PADDLE_ENFORCE_EQ(
-        device_count,
-        1,
-        platform::errors::PermissionDenied(
-            "Your machine has multiple cards, "
-            "but the WITH_NCCL option is not turned on during compilation, "
-            "and you cannot use multi-card training or prediction. "
-            "Please recompile and turn on the WITH_NCCL option."));
-  }
-#endif
+  // #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+//     (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+  //   if (member_->IsUseCUDA(member_->use_device_)) {
+  //     PADDLE_ENFORCE_EQ(
+  //         device_count,
+  //         1,
+  //         platform::errors::PermissionDenied(
+  //             "Your machine has multiple cards, "
+  //             "but the WITH_NCCL option is not turned on during compilation,
+  //             " "and you cannot use multi-card training or prediction. "
+  //             "Please recompile and turn on the WITH_NCCL option."));
+  //   }
+  // #endif
 
-  std::string device_name;
-  if (member_->use_device_ == p::kCPU) {
-    device_name = "CPU";
-  } else if (member_->use_device_ == p::kCUDA) {
-    device_name = "CUDA";
-  } else if (member_->use_device_ == p::kXPU) {
-    device_name = "XPU";
-  } else {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
-                                      "please use CPU/CUDA/XPU backend."));
-  }
+  //   std::string device_name;
+  //   if (member_->use_device_ == p::kCPU) {
+  //     device_name = "CPU";
+  //   } else if (member_->use_device_ == p::kCUDA) {
+  //     device_name = "CUDA";
+  //   } else if (member_->use_device_ == p::kXPU) {
+  //     device_name = "XPU";
+  //   } else {
+  //     PADDLE_THROW(
+  //         platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
+  //                                       "please use CPU/CUDA/XPU backend."));
+  //   }
 
-  VLOG(1) << string::Sprintf(
-      "The Program will be executed on %s using ParallelExecutor, %lu "
-      "cards are used, so %lu programs are executed in parallel.",
-      device_name,
-      device_count,
-      device_count);
+  //   VLOG(1) << string::Sprintf(
+  //       "The Program will be executed on %s using ParallelExecutor, %lu "
+  //       "cards are used, so %lu programs are executed in parallel.",
+  //       device_name,
+  //       device_count,
+  //       device_count);
 
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
   member_->build_strategy_.enable_parallel_graph_ =
-      EnableParallelGraphExecution(
-          graph, exec_strategy, member_->build_strategy_);
+      EnableParallelGraphExecution(graph, member_->build_strategy_);
   if (member_->build_strategy_.enable_parallel_graph_) {
     LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
                  "Execution which can get better performance,"
