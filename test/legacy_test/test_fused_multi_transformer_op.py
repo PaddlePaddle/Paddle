@@ -1051,15 +1051,15 @@ class TestFusedMultiTransformerOp(OpTest):
         }
         if self.has_pre_cache:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out[0].name],
+                fetch_list=[final_out[0]],
             )
         else:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out.name],
+                fetch_list=[final_out],
             )
         paddle.disable_static()
         return out
@@ -1957,6 +1957,40 @@ class TestFusedMultiTransformerOpVariableGQADecoder3(
             and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
         ):
             self.x_type = np.float16
+
+
+class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_attn_mask = False
+        self.x_type = np.float32
+        self.weight_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(0.0)
+        )
+        self.bias_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(0.0005)
+        )
+        self.ln_w_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(1.0)
+        )
+        self.ln_b_attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(0.0)
+        )
+
+    def test_fused_multi_transformer_op(self):
+        self.has_pre_cache = False
+        self.remove_padding = True
+        self.generate_input_data()
+        final_out_ref = self.GetBaselineOut()
+        final_out = self.GetFusedMultiTransformerOutStatic()[0]
+
+        for i in range(self.batch_size):
+            np.testing.assert_allclose(
+                final_out_ref[i, : self.seq_lens[i]],
+                final_out[i, : self.seq_lens[i]],
+                rtol=self.rtol,
+                atol=self.atol,
+            )
 
 
 # Starts the name of this test with 'Z' to make this test
