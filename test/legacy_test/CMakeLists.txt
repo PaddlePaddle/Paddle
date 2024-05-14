@@ -811,6 +811,7 @@ if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_pow_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
@@ -945,6 +946,7 @@ set(TEST_CINN_OPS
     test_sum_op
     test_elementwise_min_op
     test_take_along_axis_op
+    test_transpose_op
     test_strided_slice_op
     test_pad_op)
 

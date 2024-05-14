@@ -527,8 +527,7 @@ def pow(x, y, name=None):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar , Tensor(in dygraph mode), Value(in pir mode) but received: %s '
-                % (y.dtype)
+                f"y must be scalar, Tensor(in dygraph mode), Value(in pir mode) but received: {type(y)}"
             )
     else:
         # in static graph mode
@@ -548,7 +547,7 @@ def pow(x, y, name=None):
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (type(y))
+                f"y must be scalar or tensor type, but received: {type(y)}"
             )
 
 

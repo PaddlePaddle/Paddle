@@ -724,7 +724,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
@@ -774,7 +773,6 @@ set(TEST_CINN_OPS
     test_gather_nd_op
     test_squeeze2_op
     test_elementwise_pow_op
-    test_transpose_op
     test_reshape_op
     test_unsqueeze2_op
     test_meshgrid_op

@@ -483,7 +483,11 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        elif in_pir_mode() and paddle.utils._contain_var(shape):
+            shape = paddle.utils.get_int_tensor_list(shape)
+
         place = _current_expected_place()
         return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
