@@ -155,7 +155,6 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_logical.py",
         "test_inplace_assign.py",
         # TODO: Remove these files from the allow list after it's support PIR mode
-        "test_bmn.py",
         "test_tensor_hook.py",
         "test_to_tensor.py",
         "test_warning.py",
@@ -163,10 +162,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_gradname_parse.py",
         "test_for_enumerate.py",
         "test_save_load.py",
-        "test_cinn.py",
         "test_declarative.py",
-        "test_fallback.py",
-        "test_no_gradient.py",
     ],
     TestCaseWithPirApiDecoratorDiagnostic: [],
 }
