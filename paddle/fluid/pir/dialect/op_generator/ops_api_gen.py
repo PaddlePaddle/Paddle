@@ -215,6 +215,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'pull_box_sparse_',
     'push_box_sparse',
     'push_box_sparse_',
+    'c_reducescatter_add',
 ]
 
 

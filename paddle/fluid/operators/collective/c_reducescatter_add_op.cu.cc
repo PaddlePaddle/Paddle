@@ -100,9 +100,9 @@ class CReduceScatterAddOpCUDAKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out_dims, place);
 
     int64_t recv_numel = in->numel() / nranks;
-    const T* send_buff = in->data<T>();
-    const T* add_buff = bias->data<T>();
-    T* recv_buff = out->data<T>();
+    const void* send_buff = in->data();
+    const void* add_buff = bias->data();
+    const void* recv_buff = out->data();
     int dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
@@ -111,9 +111,9 @@ class CReduceScatterAddOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::ncclReduceScatterAdd(send_buff,
-                                             recv_buff,
-                                             add_buff,
-                                             recv_numel,
+                                             const_cast<void*>(recv_buff),
+                                             const_cast<void*>(add_buff),
+                                             static_cast<size_t>(recv_numel),
                                              static_cast<ncclDataType_t>(dtype),
                                              ncclSum,
                                              comm->comm(),
