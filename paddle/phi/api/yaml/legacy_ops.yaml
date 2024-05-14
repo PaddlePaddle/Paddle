@@ -958,8 +958,10 @@
   output : Tensor(output)
   infer_meta :
     func : QuantizeInferMeta
+    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
   kernel :
     func : quantize
+    param : [input, is_negative_input, scale, shift, output_format, bfloat16]
     data_type : input
 
 - op : randint
