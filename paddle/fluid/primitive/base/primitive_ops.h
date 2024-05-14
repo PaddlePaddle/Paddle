@@ -46,7 +46,6 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.assign_value",
       "pd_op.concat",
       "pd_op.elementwise_pow",
-      "pd_op.rsqrt",
       "pd_op.floor",
       "pd_op.gather",
       "pd_op.gather_nd",
@@ -91,6 +90,10 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.full_with_tensor",
       "pd_op.if",
       "pd_op.while",
+      /* Considering better performance, such ops are set as primitive ops
+         temporarily*/
+      "pd_op.rsqrt",
+      "pd_op.sqrt",
       /* basic ops by PIR*/
       "builtin.combine",
       "builtin.slice",
@@ -102,6 +105,8 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
+      "pd_op.sigmoid",
+      "pd_op.reduce_as",
       /* skip some special ops */
       "pd_op.conv2d",
       "pd_op.pad3d",

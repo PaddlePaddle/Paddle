@@ -20,77 +20,11 @@ fi
 
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
-API_FILES=("CMakeLists.txt"
-           "paddle/fluid/framework/operator.h"
-           "paddle/fluid/framework/tensor.h"
-           "paddle/fluid/framework/details/op_registry.h"
-           "paddle/fluid/framework/grad_op_desc_maker.h"
-           "paddle/fluid/framework/lod_tensor.h"
-           "paddle/fluid/framework/selected_rows.h"
-           "paddle/fluid/framework/op_desc.h"
-           "paddle/fluid/framework/block_desc.h"
-           "paddle/fluid/framework/var_desc.h"
-           "paddle/fluid/framework/scope.h"
-           "paddle/fluid/framework/ir/node.h"
-           "paddle/fluid/framework/ir/graph.h"
-           "paddle/fluid/framework/framework.proto"
-           "python/paddle/distributed/__init"
-           "python/paddle/distributed/fleet/__init__.py"
-           "python/paddle/distributed/fleet/launch.py"
-           "python/requirements.txt"
-           "python/paddle/base/__init__.py"
-           "python/paddle/base/compiler.py"
-           "python/paddle/base/parallel_executor.py"
-           "python/paddle/base/framework.py"
-           "python/paddle/base/backward.py"
-           "paddle/fluid/operators/distributed/send_recv.proto.in"
-           "paddle/fluid/framework/unused_var_check.cc"
-           "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
-           "python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py"
-           "tools/print_signatures.py"
+# If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
+API_FILES=("tools/print_signatures.py"
            "tools/sampcd_processor.py"
            "tools/check_pr_approval.py"
-           "paddle/scripts/paddle_build.bat"
-           "tools/windows/run_unittests.sh"
-           "tools/parallel_UT_rule.py"
-           "python/paddle/base/dygraph/layers.py"
-           "paddle/fluid/eager/grad_node_info.h"
-           "paddle/fluid/eager/grad_node_info.cc"
-           "paddle/fluid/eager/grad_tensor_holder.h"
-           "paddle/fluid/eager/grad_tensor_holder.cc"
-           "paddle/fluid/eager/tensor_wrapper.h"
-           "paddle/fluid/eager/autograd_meta.cc"
-           "paddle/fluid/eager/autograd_meta.h"
-           "paddle/fluid/eager/backward.cc"
-           "paddle/fluid/eager/backward.h"
-           "paddle/phi/api/include/tensor.h"
-           "paddle/phi/core/tensor_base.h"
-           "paddle/phi/core/dense_tensor.h"
-           "paddle/phi/core/meta_tensor.h"
-           "paddle/phi/core/tensor_meta.h"
-           "paddle/phi/core/attribute.h"
-           "paddle/phi/core/device_context.h"
-           "paddle/phi/core/kernel_utils.h"
-           "paddle/phi/core/kernel_registry.h"
-           "paddle/phi/core/kernel_factory.h"
-           "paddle/phi/core/kernel_context.h"
-           "paddle/phi/core/infermeta_utils.h"
-           "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
-           "paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h"
-           "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
-           "paddle/fluid/prim/api/api.yaml"
-           "python/paddle/incubate/autograd/composite_rules.py"
-           "python/paddle/incubate/autograd/primitives.py"
-           "python/paddle/autograd/ir_backward.py"
-           "python/paddle/autograd/backward_utils.py"
-           "paddle/scripts/paddle_build.sh"
-           "paddle/phi/infermeta/spmd_rules"
+	   "tools/checkout_api_compatible.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -136,48 +70,7 @@ for API_FILE in ${API_FILES[*]}; do
   API_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-      # You can use http://caius.github.io/github_id/ to find Github user id.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,raindrops2sea 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059, zhwesky2010 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, dingjiaweiww 23093488, juncaipeng 52520497, zhangting2020 26615455, Shixiaowei02 39303645, Heeenrrry 28379894,XieYunshen 32428676, Dong Daxiang 35550832, phlrain 43953930, qili93 16605440.
-      if [ "${API_FILE}" == "CMakeLists.txt" ];then
-          echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
-          check_approval 1 wanghuancoder luotao1 Aurelius84 XiaoguangHu01 qili93
-      elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
-          echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/base/init.py, which manages the environment variables.\n"
-          check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
-      elif [ "${API_FILE}" == "python/requirements.txt" ];then
-          echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
-          check_approval 3 phlrain dingjiaweiww kolinwei
-      elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
-          echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
-          check_approval 1 gongweibao seiriosPlus
-      elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) or chenwhql) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
-          check_approval 1 zhiqiu chenwhql
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, Aurelisu84, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. Inputs size of all cases in the op test must be greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
-          check_approval 1 hong19860320 luotao1 Aurelisu84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1 or Aurelius84) approval for the python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
-          check_approval 1 juncaipeng zhangting2020 luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py" ];then
-           echo_line="You must have one RD (DannyIsFunny (Recommend), luotao1, Aurelius84, phlrain) approval for the python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py, which manages the white list of compile&runtime lod-level check. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Compile_vs_Runtime-Check-Specification. \n"
-          check_approval 1 DannyIsFunny luotao1 Aurelius84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py" ];then
-          echo_line="You must have one RD (cryoco (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
-          check_approval 1 cryoco luotao1 Aurelius84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
-          echo_line="You must have one RD (luotao1, Aurelisu84, lanxianghit, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
-          check_approval 1 luotao1 Aurelisu84 lanxianghit phlrain
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1, Aurelius84) approval for the python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
-          check_approval 1 juncaipeng zhangting2020 luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
-          echo_line="You must have one RD (luotao1, Aurelius84, lanxianghit or phlrain) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-batch_size=1-in-sequence-OP-test]. \n"
-          check_approval 1 luotao1 Aurelius84 lanxianghit phlrain
-      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py" ];then
-          echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
-          check_approval 1 Shixiaowei02 luotao1 Aurelius84 phlrain
-      elif [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
+      if [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
           echo_line="test_sampcd_processor.py will be executed for changed sampcd_processor.py.\n"
           run_tools_test test_sampcd_processor.py
       elif [ "${API_FILE}" == "tools/print_signatures.py" ];then
@@ -189,48 +82,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/checkout_api_compatible.py" ];then
           echo_line="test_checkout_api_compatible.py will be executed for changed checkout_api_compatible.py.\n"
           run_tools_test test_checkout_api_compatible.py
-      elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
-          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
-          check_approval 1 fuyinno4 raindrops2sea
-      elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
-          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
-          check_approval 1 fuyinno4 raindrops2sea
-      elif [ "${API_FILE}" == "python/paddle/distributed/fleet/launch.py" ]; then
-          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
-          check_approval 1 fuyinno4 raindrops2sea
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
-          echo_line="You must have one RD (zhwesky2010 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
-          check_approval 1 zhwesky2010 wanghuancoder luotao1 Aurelius84
-      elif [ "${API_FILE}" == "tools/parallel_UT_rule.py" ]; then
-          echo_line="You must have one RD (zhwesky2010 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
-          check_approval 1 zhwesky2010 wanghuancoder luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/base/parallel_executor.py" ]; then
-          echo_line="You must have one RD (Xreki, luotao1, zhhsplendid or Aurelius84) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
-          check_approval 1 Xreki luotao1 zhhsplendid Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/base/dygraph/layers.py" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/tensor_wrapper.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.h"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.h"]; then
-          echo_line="You must have one RD (JiabinYang,chenwhql,phlrain) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
-          check_approval JiabinYang chenwhql phlrain
-      elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
-            echo_line="You must have one RD (chenwhql, phlrain, zyfncg, YuanRisheng) approval for changing ${API_FILE} , which manages the underlying code for PaddlePaddle PHI Library.\n"
-            check_approval chenwhql phlrain zyfncg YuanRisheng
-      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/api.yaml" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h" ]; then
-            echo_line="You must have one RD (cxxly(chenxiaoxu), xiaoguoguo626807(wangruting), Charles-hit(wanghao), cyber-pioneer(chenzhuo), JiabinYang) approval for changing ${API_FILE} , which manages the code for PaddlePaddle Composite Bacward Prim API.\n"
-            check_approval 1 cxxly xiaoguoguo626807 Charles-hit cyber-pioneer JiabinYang
-      elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
-            echo_line="You must have one RD (cyber-pioneer(chenzhuo), xiaoguoguo626807(wangruting), Charles-hit(wanghao), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
-            check_approval 1 cyber-pioneer xiaoguoguo626807 Charles-hit JiabinYang
-      elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
-            echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
-            check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then
-	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
-            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen
-      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then
-	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
-            check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
-      else
-          echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
-          check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
       fi
   fi
 done
@@ -284,19 +135,19 @@ HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:spa
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen, qili93 or ZzSean or Aurelius84) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
     check_approval 1 kolinwei wanghuancoder luotao1 QingshuChen qili93 ZzSean Aurelius84
-  fi
+fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
 if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
     check_approval 1 Superjomn Shixiaowei02 luotao1 Aurelius84
-  fi
+fi
 
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"
     check_approval 1 chenwhql zyfncg
-  fi
+fi
 
 HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -444,7 +295,7 @@ if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 SigureMo Aurelius84 2742195759
 fi
 
-HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
+HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
 if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
     if [ $? -ne 0 ]; then
@@ -525,7 +376,7 @@ for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
     fi
 done
 if [ "${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-  echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), fuyinno4, QingshuChen (Recommend for kunlun) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
+    echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), fuyinno4, QingshuChen (Recommend for kunlun) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
     check_approval 1 phlrain fuyinno4 QingshuChen lanxianghit
 fi
 
@@ -538,7 +389,7 @@ for CHANGE_FILE in ${ALL_CHANGE_YAML_FILES}; do
     fi
 done
 if [ "${BAN_COMP_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-  echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
+    echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
     check_approval 1 Charles-hit cyber-pioneer cxxly
 fi
 
@@ -657,14 +508,14 @@ wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate --no-prox
 wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate --no-proxy
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
-  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
-  check_approval 1 chalsliu kolinwei
+    echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+    check_approval 1 chalsliu kolinwei
 fi
 
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has benchmark issue to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
     echo_line="${HASUTFIXED} You must have one RD (hysunflower or xiegegege or Xreki) approval.\n"
-  check_approval 1 hysunflower xiegegege Xreki
+    check_approval 1 hysunflower xiegegege Xreki
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used

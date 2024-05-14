@@ -39,20 +39,19 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_NE(
       x_var,
       nullptr,
-      platform::errors::InvalidArgument("Cannot get input Variable X"));
+      phi::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
       x_var->IsType<phi::DenseTensor>(),
       true,
-      platform::errors::InvalidArgument("XPU only support phi::DenseTensor, "
-                                        "Input(X) is not phi::DenseTensor"));
+      phi::errors::InvalidArgument("XPU only support phi::DenseTensor, "
+                                   "Input(X) is not phi::DenseTensor"));
 
   auto x = x_var->Get<phi::DenseTensor>();
   auto* y = ctx.Input<phi::DenseTensor>("Y");
   auto* z = ctx.Output<phi::DenseTensor>("Out");
   int axis = ctx.Attr<int>("axis");
 
-  auto& dev_ctx =
-      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
   phi::XPUElementwise<T, XPUType>(dev_ctx, x, *y, axis, z, func);
 }
 
@@ -75,8 +74,7 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
   auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
   int axis = ctx.Attr<int>("axis");
 
-  auto& dev_ctx =
-      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
   phi::XPUElementwiseGrad<T, XPUType>(
       dev_ctx, *x, *y, *dz, axis, dx, dy, func, use_x_y_data);
 }

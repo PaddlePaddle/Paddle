@@ -21,7 +21,6 @@ limitations under the License. */
 #include <iterator>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -76,7 +76,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
       x_var,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unable to get input Variable X, Variable name is %s.\n",
           ctx.InputName("X")));
   auto *y = ctx.Input<phi::DenseTensor>("Y");
@@ -89,13 +89,13 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   } else if (x_var->IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
                           "scalar. But received the size of Y = %d.",
                           y->dims().size()));
     PADDLE_ENFORCE_NOT_NULL(
         x_for_selectedrows,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The parameter x_for_selectedrows is excepted to "
             "be valid, once input variable X`s class type is "
             "SelectedRows.\n"));
@@ -110,7 +110,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
     z = ctx.Output<phi::SelectedRows>("Out")->mutable_value();
     ins->emplace_back(x_for_selectedrows);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "X's type[%s] is not supported by elementwise_op. X's type should be "
         "phi::DenseTensor or SelectedRows.",
         framework::ToTypeName(x_var->Type())));
@@ -125,8 +125,8 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   return axis;
 }
 
-inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
-                                   const framework::DDim &y_dims,
+inline void GetBroadcastDimsArrays(const phi::DDim &x_dims,
+                                   const phi::DDim &y_dims,
                                    int *x_dims_array,
                                    int *y_dims_array,
                                    int *out_dims_array,
@@ -141,8 +141,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                      axis);
 }
 
-inline framework::DDim trim_trailing_singular_dims(
-    const framework::DDim &dims) {
+inline phi::DDim trim_trailing_singular_dims(const phi::DDim &dims) {
   return phi::funcs::TrimTrailingSingularDims(dims);
 }
 
@@ -467,7 +466,7 @@ template <typename DeviceContext,
           bool KeepIntermediateOut>
 void FusedElemwiseAndActComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
+    const phi::DDim &x_dim,
     const phi::DenseTensor &x,
     const phi::DenseTensor &y,
     CompoundFunctor compound_functor,
@@ -497,8 +496,8 @@ template <typename DeviceContext,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim_untrimed,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor &x,
     const phi::DenseTensor &y,
     CompoundFunctor compound_functor,
@@ -515,7 +514,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
   if (post == 1) {
     int h = pre;
     int w = n;
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
                                         CompoundFunctor,
@@ -550,7 +549,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
               : intermediate_out->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast2CUDA<T,
                                         CompoundFunctor,
@@ -640,8 +639,8 @@ template <typename DeviceContext,
           bool UseIntermediateOut>
 void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim UNUSED,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim UNUSED,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
@@ -1243,8 +1242,8 @@ template <typename DeviceContext,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActGradComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
-    const framework::DDim &x_dim,
-    const framework::DDim &y_dim_untrimed,
+    const phi::DDim &x_dim,
+    const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
@@ -1272,7 +1271,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     int h = pre;
     int w = n;
 
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T,
                                             DX_OP,
@@ -1323,7 +1322,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
               : dintermediate->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T,
                                             DX_OP,
@@ -1398,12 +1397,12 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
                                       DX_OP dx_op,
                                       DY_OP dy_op,
                                       DIntermediate_OP dintermediate_op) {
-  const framework::DDim &x_dim = x->dims();
-  const framework::DDim &y_dim = y->dims();
+  const phi::DDim &x_dim = x->dims();
+  const phi::DDim &y_dim = y->dims();
   if (UseIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        platform::errors::InvalidArgument("Intermediate out is null pointer."));
+        phi::errors::InvalidArgument("Intermediate out is null pointer."));
   }
   if (x_dim == y_dim) {
     FusedElemwiseAndActGradComputeNoBroadcast<DeviceContext,
@@ -1507,13 +1506,13 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The save_intermediate_out is opened, intermediate "
             "out is null pointer."));
   }
 
-  const framework::DDim &x_dim = x.dims();
-  const framework::DDim &y_dim = y.dims();
+  const phi::DDim &x_dim = x.dims();
+  const phi::DDim &y_dim = y.dims();
   if (x.dims() == y.dims()) {
     FusedElemwiseAndActComputeNoBroadcast<DeviceContext,
                                           T,
@@ -1588,8 +1587,8 @@ static inline void GetDoubleGradSafeTensor(
 }
 
 // for broadcast backwards
-static inline std::vector<int> GetReduceDim(const framework::DDim &in,
-                                            const framework::DDim &out,
+static inline std::vector<int> GetReduceDim(const phi::DDim &in,
+                                            const phi::DDim &out,
                                             int axis) {
   return phi::funcs::GetReduceDim(in, out, axis);
 }

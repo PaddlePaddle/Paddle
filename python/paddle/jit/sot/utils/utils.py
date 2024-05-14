@@ -149,6 +149,10 @@ def no_eval_frame(func):
     return no_eval_frame_func
 
 
+def is_comprehensive_name(name):
+    return name in ["<listcomp>", "<dictcomp>", "<setcomp>", "<genexpr>"]
+
+
 def is_paddle_api(func):
     if isinstance(func, paddle.nn.Layer):  # ignore all the classes
         return False
@@ -382,6 +386,14 @@ def hashable(obj):
         hash(obj)
         return True
     except TypeError as e:
+        return False
+
+
+def printable(obj):
+    try:
+        str(obj)
+        return True
+    except Exception as e:
         return False
 
 

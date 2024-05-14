@@ -1,4 +1,4 @@
-# This file is designed for fusion C++ farward operators, which manages the
+# This file is designed for fusion C++ forward operators, which manages the
 # generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
 # "support_dygraph_mode" is an extra configuration item in this file,
 # if one operator have "support_dygraph_mode : true", it supports dygraph mode,
@@ -82,6 +82,15 @@
     func : conv2d_xpu
     data_type : x
   optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
+
+- op : cross_attention_xpu
+  args : (Tensor input_q, Tensor input_kv, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor mask, int head_num, int head_dim, float alpha, DataType out_dtype)
+  output : Tensor(qkv), Tensor(qkv_max)
+  infer_meta :
+    func : CrossAttentionXPUInferMeta
+  kernel :
+    func : cross_attention_xpu
+    data_type : input_q
 
 - op : dequantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
@@ -186,6 +195,7 @@
     func : fused_conv2d_add_act
     data_type : input
   optional : bias, residual_data, outputs
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : fused_dconv_drelu_dbn
   args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
@@ -220,6 +230,58 @@
     func : fused_dropout_add
     data_type : x
   backward : fused_dropout_add_grad
+  support_dygraph_mode : true
+
+- op : fused_elementwise_add
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_add
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_div
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_div
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_mul
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_mul
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_elementwise_sub
+  args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
+    = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, int[] fused_unsqueeze2_axes
+    = {}, float scale_x = 1.0f, float scale_y = 1.0f, float scale_out = 1.0f)
+  output: Tensor (out)
+  infer_meta:
+    func: ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_sub
+    data_type : x
   support_dygraph_mode : true
 
 - op : fused_embedding_eltwise_layernorm
@@ -347,6 +409,16 @@
   optional : fc_bias
   intermediate : fc_out
 
+- op : fusion_seqpool_cvm_concat
+  args: (Tensor[] x, Tensor cvm, str pooltype = "SUM", bool use_cvm = true, int axis = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: FusionSeqpoolCvmConcatInferMeta
+  kernel:
+    func: fusion_seqpool_cvm_concat
+    data_type: x
+  support_dygraph_mode : true
+
 - op : fusion_squared_mat_sub
   args : (Tensor x, Tensor y, float scalar = 1.0f)
   output : Tensor(squared_x), Tensor(squared_y), Tensor(squared_xy), Tensor(out)
@@ -366,6 +438,16 @@
     func : fusion_transpose_flatten_concat
     data_type : x
 
+- op : gemm_epilogue
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
+  output : Tensor(out)
+  infer_meta :
+    func : FCInferMeta
+  kernel :
+    func : gemm_epilogue
+    data_type : input
+  optional : bias
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -376,7 +458,7 @@
     data_type : dtype
 
 - op : group_norm_silu_xpu
-  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  args : (Tensor x, Tensor scale, Tensor bias, int groups = -1, float epsilon = 1e-5)
   output : Tensor(out)
   infer_meta :
     func : GroupNormalizeSiluXPUInferMeta
@@ -392,6 +474,15 @@
   kernel :
     func : layer_norm_act_xpu
     data_type : x
+
+- op : mask_adaptive_xpu
+  args : (Tensor mask)
+  output : Tensor (length), Tensor (seq_lod), Tensor (pad_seq_len)
+  infer_meta :
+    func : MaskAdaptiveXPUInferMeta
+  kernel :
+    func : mask_adaptive_xpu
+    data_type : mask
 
 # This op is implemented using CUDNN Frontend API, which serves as a supplement to
 # legacy max pooling implementation. It shows better performance with NHWC layout and
@@ -428,15 +519,24 @@
     data_type : input
   optional : bias_qk
 
+- op : pad2d_xpu
+  args : (Tensor x, int[] paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad2dXPUInferMeta
+  kernel :
+    func : pad2d_xpu
+    data_type : x
+
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
-  output : Tensor(qkv), Tensor(qkv_max)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, Tensor qk_max, Tensor qkv_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
+  output : Tensor(qkv)
   infer_meta :
     func : QKVAttentionXPUInferMeta
   kernel :
     func : qkv_attention_xpu
     data_type : q
-  optional : q_max, k_max, v_max
+  optional : q_max, k_max, v_max, qk_max, qkv_max
 
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
@@ -465,6 +565,15 @@
     func : self_dp_attention
     data_type : x
 
+- op : sequence_unpad_xpu
+  args : (Tensor x, Tensor length)
+  output : Tensor(out)
+  infer_meta :
+    func : SequenceUnpadXPUInferMeta
+  kernel :
+    func : sequence_unpad_xpu
+    data_type : x
+
 - op : sine_pos_xpu
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -481,6 +590,15 @@
     func : SkipLayerNormInferMeta
   kernel :
     func : skip_layernorm
+    data_type : x
+
+- op : spatial_transformer_resblock_xpu
+  args : (Tensor x, Tensor[] x_max, Tensor[] conv_bias, Tensor[] conv_filter, Tensor[] conv_filter_max, Tensor[] gn_bias, Tensor[] gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups, bool conv_fix, bool has_silu_fc_input, bool include_silu)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : SpatialTransformerResblockXPUInferMeta
+  kernel :
+    func : spatial_transformer_resblock_xpu
     data_type : x
 
 - op : squeeze_excitation_block

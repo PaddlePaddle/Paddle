@@ -30,7 +30,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input X(%s)'s type should be SelectedRows, "
                           "but the received is %s",
                           ctx->Inputs("X").front(),
@@ -38,7 +38,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->GetOutputsVarType("Out").front(),
         framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output Out(%s)'s type should be phi::DenseTensor, "
             "but the received is %s",
             ctx->Outputs("Out").front(),
@@ -63,8 +63,7 @@ class GetTensorFromSelectedRowsKernel {
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());
-    framework::TensorCopy(
-        x->value(), ctx.GetPlace(), ctx.device_context(), out);
+    phi::Copy(ctx.device_context(), x->value(), ctx.GetPlace(), false, out);
   }
 };
 

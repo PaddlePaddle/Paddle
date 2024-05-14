@@ -37,7 +37,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         dim_x.size(),
         4,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Input(X) dimension must be 4, but got dimension = %d .",
             dim_x.size()));
 
@@ -58,7 +58,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
       if (has_offset) {
         PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)),
                           0,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Slicing with affine offset, coefficients grid "
                               "should have n_out*(n_in+1) channels, but got %d",
                               coeffs_chans));
@@ -67,7 +67,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             (coeffs_chans % input_chans),
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Slicing without affine offset, coefficients grid "
                 "should have n_out*n_in channels, but got %d .",
                 coeffs_chans));
@@ -179,10 +179,10 @@ template <typename T, typename DeviceContext>
 class BilateralSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
-                      true,
-                      platform::errors::Unimplemented(
-                          "BilateralSlice only supports GPU now."));
+    PADDLE_ENFORCE_EQ(
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+        true,
+        phi::errors::Unimplemented("BilateralSlice only supports GPU now."));
   }
 };
 

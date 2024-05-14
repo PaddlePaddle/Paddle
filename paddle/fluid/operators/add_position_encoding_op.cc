@@ -37,7 +37,7 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -57,7 +57,7 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -72,7 +72,7 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_GE(
               alpha,
               0.0f,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Attribute 'alpha' must be greater than or equal to 0.0."));
         });
     AddAttr<float>("beta", "The scale of Position Embedding.")
@@ -81,7 +81,7 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_GE(
               beta,
               0.0f,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Attribute 'beta' must be greater than or equal to 0.0."));
         });
     AddComment(R"DOC(

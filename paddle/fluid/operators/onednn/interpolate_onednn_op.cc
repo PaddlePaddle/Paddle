@@ -48,7 +48,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& in_dims = x->dims();
 
-    const framework::DDim in_dhw_dims =
+    const phi::DDim in_dhw_dims =
         common::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
@@ -115,9 +115,8 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
         std::all_of(
             out_dims.begin(), out_dims.end(), [](int i) { return i > 0; }),
         0,
-        platform::errors::InvalidArgument(
-            "out_d, out_h, out_w of Op(interpolate) "
-            "should be greater than 0."));
+        phi::errors::InvalidArgument("out_d, out_h, out_w of Op(interpolate) "
+                                     "should be greater than 0."));
 
     const std::vector<int64_t> nc_dims = {in_dims[0], in_dims[1]};
     out_dims.insert(out_dims.begin(), nc_dims.begin(), nc_dims.end());
@@ -138,7 +137,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
                                      : dnnl::algorithm::resampling_linear;
 
     const auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = common::make_ddim(out_dims_vec);
+    phi::DDim dim_out = common::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(

@@ -61,8 +61,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
     auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
-    auto ln_compute =
-        AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
+    auto ln_compute = phi::fusion::AttnLayerNorm<T, T, int8_t>(
+        dev_ctx, epsilon, bsz_seq, dim_embed);
     phi::DenseTensor ln_mean, ln_var;
     ln_mean.Resize({{bsz_seq}});
     auto *ln_mean_data =
@@ -93,10 +93,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
     // 3. fmha
-    AttnDropoutParam attn_param(
+    phi::fusion::AttnDropoutParam attn_param(
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
-    auto fmha_compute =
-        FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+    auto fmha_compute = phi::fusion::FMHARef<T>(
+        dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
@@ -105,20 +105,20 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto out_seq_len = seq_len;
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
-                        platform::CPUPlace(),
-                        platform::errors::PreconditionNotMet(
+                        phi::CPUPlace(),
+                        phi::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The value of time_step must > 0, but now is %d",
                             time_step_value));
       PADDLE_ENFORCE_EQ(
           seq_len,
           1,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
@@ -662,10 +662,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer_int8,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerINT8OpKernel,
                           float,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

@@ -38,6 +38,7 @@ from ...utils import (
     InnerError,
     SotUndefinedVar,
     get_static_function,
+    is_comprehensive_name,
     log,
     log_do,
 )
@@ -516,6 +517,12 @@ class OpcodeExecutorBase:
         for current_simulator in OpcodeExecutorBase.call_stack:
             code = current_simulator._code
             current_line = current_simulator._current_line
+            file = inspect.getfile(code)
+            if file.startswith("<") and file.endswith(">"):
+                message_lines.append(
+                    f"{indent}  File \"{file}\", line {current_line}"
+                )
+                continue
             lines, start = inspect.getsourcelines(code)
             real_name = code.co_name
             message_lines.append(
@@ -1708,6 +1715,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
             self.stack.push(iterator)
+            if is_comprehensive_name(self._code.co_name):
+                # NOTE(SigureMo): The loop body of comprehensive will access the
+                # value out of the loop, so we simply fallback it now.
+                raise FallbackError(
+                    "Comprehensive for loop break graph is not supported."
+                )
             self._break_graph_when_for_loop(iterator, instr)
             return Stop(state="BreakGraph")
 

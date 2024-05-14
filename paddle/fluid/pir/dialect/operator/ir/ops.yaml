@@ -1,7 +1,7 @@
 # The operators included in this file are:
 # 1) Operators defined only in PIR, dynamic graphs do not exist;
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
-# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
+# After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
@@ -22,10 +22,9 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : add
+    data_type: x
   inplace : (x -> out)
   backward : add_grad
-  data_transform :
-    support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 # this add_n is only for ops_api_gen.py and onednn
@@ -106,6 +105,7 @@
     param : [x]
   inplace : (output -> out)
   backward : assign_out__grad
+  traits : pir::SideEffectTrait
 
 - op : assign_pos
   args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
@@ -325,8 +325,7 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : reduce_scatter
-    param: [x, nranks]
+    func : c_reducescatter
 
 - op : c_scatter
   args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
@@ -478,6 +477,23 @@
   optional : in_accum, in_state, out_scale, out_accum, out_state
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
+- op : dequantize_log
+  args: (Tensor x, Tensor dict)
+  output: Tensor(out)
+  infer_meta:
+    func: DequantizeLogInferMeta
+  kernel:
+    func: dequantize_log
+    data_type: x
+
+- op : dgc
+  args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float[] sparsity, float m=0.9, bool use_nesterov=true, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
+  output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
+  kernel :
+    func : dgc
+    param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
+  optional: param
+
 - op : dgc_momentum
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
@@ -508,6 +524,17 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : distributed_fused_lamb
+  args : (Tensor[] param, Tensor[] grad, Tensor fp32_fused_param, Tensor fp32_fused_grad, Tensor fp16_fused_param, Tensor fp16_fused_grad, Tensor moment1, Tensor moment2, Tensor beta1pow, Tensor beta2pow, Tensor fused_param_offsets, Tensor fp32_shard_fused_param_offsets, Tensor fp16_shard_fused_param_offsets, Tensor param_info, Tensor param_order, Tensor learning_rate, Tensor global_scale, float beta1, float beta2, float epsilon, float max_global_grad_norm, float weight_decay, bool clip_after_allreduce, int[] ring_ids= {}, int acc_steps = 1, bool use_master_param_norm = true, bool use_master_acc_grad = true, bool is_grad_scaled_by_nranks = true, int64_t nranks = 1, bool use_hierarchical_allreduce = false)
+  output : Tensor(fp32_fused_param_out), Tensor(fp16_fused_param_out), Tensor(fp32_acc_fused_grad), Tensor(fp16_acc_fused_grad), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1pow_out), Tensor(beta2pow_out), Tensor[](param_out){param.size()}, Tensor(found_inf), Tensor(acc_step), Tensor(stop_update), Tensor(step)
+  kernel :
+    func : distributed_fused_lamb
+    data_type : DataType::FLOAT32
+    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
+  optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, fp32_fused_param_out, fp16_fused_param_out, fp32_acc_fused_grad, fp16_acc_fused_grad, acc_step, stop_update
+  inplace : (fp32_fused_param -> fp32_fused_param_out), (fp16_fused_param -> fp16_fused_param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1pow -> beta1pow_out), (beta2pow -> beta2pow_out), (param -> param_out)
 
 - op : distributed_fused_lamb_init
   args : (Tensor[] param, Tensor[] grad, float beta1, float beta2, int[] apply_weight_decay, int alignment, int rank, int nranks)
@@ -679,6 +706,7 @@
   args : (str name, int col)
   output : Tensor(out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits: pir::ImmutableLayoutTrait
 
 - op : fetch
   args : (Tensor x, str name, int col)
@@ -689,7 +717,7 @@
   kernel :
     func : fetch
     param : [x]
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : floor_divide
@@ -766,7 +794,7 @@
     skip_transform : x
 
 - op : full_with_tensor
-  args : (Tensor shape, Tensor value, DataType dtype=DataType::FLOAT32)
+  args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
   output: Tensor(out)
   infer_meta :
     func : FullWithTensorInferMeta
@@ -869,6 +897,16 @@
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
 
+- op : global_gather
+  args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
+  output : Tensor(out)
+  infer_meta:
+    func : GlobalGatherInferMeta
+  kernel :
+    func : global_gather
+    data_type: x
+  backward : global_gather_grad
+
 - op : global_scatter
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false)
   output : Tensor(out)
@@ -877,6 +915,7 @@
   kernel :
     func : global_scatter
     data_type : x
+  backward : global_scatter_grad
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
@@ -1242,16 +1281,6 @@
     func : partial_allgather
   inplace : (x -> out)
 
-- op : partial_concat
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialConcatInferMeta
-  kernel :
-    func : partial_concat
-    data_type : x
-  backward : partial_concat_grad
-
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
@@ -1260,16 +1289,6 @@
   kernel :
     func : partial_recv
     data_type : dtype
-
-- op : partial_sum
-  args : (Tensor[] x, int start_index = 0, int length = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : PartialSumInferMeta
-  kernel :
-    func : partial_sum
-    data_type : x
-  backward : partial_sum_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1323,6 +1342,36 @@
     func : prune_gate_by_capacity
     data_type : gate_idx
 
+- op : pull_box_sparse
+  args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
+  output : Tensor[](out){ids.size()}
+  infer_meta :
+    func : PullBoxSparseInferMeta
+  kernel :
+    func : pull_box_sparse
+    data_type : ids
+
+- op : pull_gpups_sparse
+  args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
+  output : Tensor[](out){ids.size()}
+  infer_meta :
+    func : PullGpupsSparseInferMeta
+  kernel :
+    func : pull_gpups_sparse
+    data_type : PullGpupsSparseKernelKey
+  optional : w
+  backward: push_gpups_sparse
+
+- op : pull_sparse_v2
+  args : (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
+  output : Tensor[](out){w.size()}
+  infer_meta :
+    func : PullSparseV2InferMeta
+  kernel :
+    func : pull_sparse_v2
+    data_type : DataType::FLOAT32
+  backward : pull_sparse_v2_grad
+
 - op : push_dense
   args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
   output :
@@ -1334,7 +1383,7 @@
     data_type : DataType::FLOAT32
 
 - op : push_sparse_v2
-  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
+  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
   infer_meta :
     func : UnchangedMultiInferMeta
@@ -1369,15 +1418,6 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : random_routing
-  args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
-  output : Tensor(out)
-  infer_meta :
-    func : RandomRoutingInferMeta
-  kernel :
-    func : random_routing
-    data_type : dtype
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1523,6 +1563,17 @@
   kernel:
     func: seed
 
+- op : send_and_recv
+  args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : send_and_recv
+    param : [x, message_name, mode, send_var_name, recv_var_name, trainer_id, endpoints, next_endpoints, previous_endpoints]
+  inplace: (x -> out)
+
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output :
@@ -1532,6 +1583,7 @@
   kernel :
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
+  traits : pir::SideEffectTrait
 
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)

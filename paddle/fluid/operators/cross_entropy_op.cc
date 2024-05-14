@@ -42,7 +42,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           common::slice_ddim(x_dims, 0, rank - 1),
           common::slice_ddim(label_dims, 0, rank - 1),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension. But received: the shape of Input(X) "
               "is "
@@ -55,7 +55,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           rank,
           label_dims.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "If Attr(soft_label) == true, Input(X) and Input(Label) "
               "shall have the same dimensions. But received: the dimensions of "
               "Input(X) is [%d],"
@@ -72,7 +72,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             x_dims[rank - 1],
             label_dims[rank - 1],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "If Attr(soft_label) == true, the last dimension of "
                 "Input(X) and Input(Label) should be equal. But received: the"
                 "last dimension of Input(X) is [%d], the shape of Input(X) is "
@@ -91,7 +91,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             label_dims[rank - 1],
             1UL,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "the last dimension of Input(Label) should be 1."
                 "But received: the last dimension of Input(Label) is [%d],"
                 "the last dimension is [%d]",
@@ -101,7 +101,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             rank,
             label_dims.size() + 1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The rank of Input(X) should be equal to "
                 "Input(Label) plus 1."
                 "But received: The dimension of Input(X) is [%d], "
@@ -160,7 +160,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         dy_dims.size(),
         label_dims.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Y@Grad) and Input(Y) should have the same rank."
             "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
             dy_dims.size(),
@@ -175,7 +175,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           common::slice_ddim(x_dims, 0, rank - 1),
           common::slice_ddim(dy_dims, 0, rank - 1),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The Input(X) and Input(Y@Grad) should have the same "
               "shape except the last dimension. but received: "
               "the shape of Input(X) is [%s], "
@@ -198,7 +198,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
                           ctx.device_context().GetPlace());
   }
 
-  virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
+  virtual phi::DDim GetXDim(framework::InferShapeContext* ctx) const {
     return ctx->GetInputDim("X");
   }
 
@@ -345,9 +345,9 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
   }
 
  protected:
-  framework::DDim GetXDim(framework::InferShapeContext* ctx) const override {
+  phi::DDim GetXDim(framework::InferShapeContext* ctx) const override {
     auto x_shape = ctx->GetInputDim("XShape");
-    return framework::DDim(x_shape.Get(), x_shape.size() - 1);
+    return phi::DDim(x_shape.Get(), x_shape.size() - 1);
   }
 
   const char* VarNameWithXLoD() const override { return "XShape"; }

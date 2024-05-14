@@ -35,9 +35,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
           dynamic_cast<framework::DecoratedReader*>(out->Get().get());
       PADDLE_ENFORCE_NOT_NULL(
           decorated_reader,
-          platform::errors::NotFound("The inited reader should be a "
-                                     "DecoratedReader when running "
-                                     "create_double_buffer_reader op."));
+          phi::errors::NotFound("The inited reader should be a "
+                                "DecoratedReader when running "
+                                "create_double_buffer_reader op."));
       if (decorated_reader->UnderlyingReader() == underlying_reader.Get()) {
         return;
       }
@@ -48,14 +48,14 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
     if (place_str == "AUTO") {
       place = dev_place;
     } else if (place_str == "PLACE(CPU)") {
-      place = platform::CPUPlace();
+      place = phi::CPUPlace();
     } else {
       place_str = place_str.substr(0, place_str.length() - 1);
       std::istringstream sin(place_str);
       sin.seekg(std::string("PLACE(GPU:").size(), std::ios::beg);  // NOLINT
       size_t num = 0;
       sin >> num;
-      place = platform::CUDAPlace(static_cast<int>(num));
+      place = phi::GPUPlace(static_cast<int>(num));
     }
 
     VLOG(10) << "Create new double buffer reader on " << place;

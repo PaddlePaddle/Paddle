@@ -63,6 +63,7 @@ UNARY_PRIM_VJP_OPS = [
     'exp_grad',
     'floor_grad',
     'log_grad',
+    'rsqrt_grad',
     'sin_grad',
     'cos_grad',
     'tanh_grad',
@@ -70,12 +71,14 @@ UNARY_PRIM_VJP_OPS = [
 
 # prim op with two inputs and one output, with no attribute
 BINARY_PRIM_VJP_OPS = [
+    'matmul_grad',
     'add_grad',
     'divide_grad',
     'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
     'maximum_grad',
+    'reduce_as_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
@@ -94,6 +97,7 @@ OTHER_PRIM_VJP_OPS = [
     'pad_grad',
     'prod_grad',
     'max_grad',
+    'scale_grad',
     'scatter_grad',
     'scatter_nd_add_grad',
     'slice_grad',
@@ -114,14 +118,13 @@ CUSTOM_VJP = [
     'layer_norm_grad',
     'leaky_relu_grad',
     'minimum_grad',
+    'pow_grad',
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
-    'exp_grad',
-    'log_grad',
-    'abs_double_grad',
     'softmax_grad',
     'sqrt_grad',
+    'stack_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
@@ -245,6 +248,8 @@ def filter_compat_info(items):
 
 def extend_compat_info(apis, compats):
     for api in apis:
+        if api['name'].endswith('sp') or api['name'].endswith('sp_'):
+            continue
         attrs = api["attrs"]
         for attr in attrs:
             if op_gen_tests.is_scalar(
@@ -364,6 +369,8 @@ def gen(
     rev_pd_op_path: pathlib.Path,
     fused_op_path: pathlib.Path,
     fused_rev_path: pathlib.Path,
+    sparse_op_path: pathlib.Path,
+    sparse_rev_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
 ):
@@ -380,6 +387,8 @@ def gen(
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         fused_op_path (pathlib.Path): The YAML file path of the fused API.
         fused_rev_path (pathlib.Path): The YAML file path of the fused backward API.
+        sparse_op_path (pathlib.Path): The YAML file path of the sparse API.
+        sparse_rev_op_path (pathlib.Path): The YAML file path of the sparse backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
 
@@ -396,6 +405,8 @@ def gen(
         ir_update_fwds,
         fused_fwds,
         fused_revs,
+        sparse_fwds,
+        sparse_revs,
     ) = (
         load(prim_path),
         load(fwd_path),
@@ -406,14 +417,35 @@ def gen(
         load(update_fwd_pd_op_path),
         load(fused_op_path),
         load(fused_rev_path),
+        load(sparse_op_path),
+        load(sparse_rev_op_path),
     )
     filter_compat_info(compats)
+    for sparse_op in sparse_fwds:
+        if sparse_op['name'].endswith("_"):
+            sparse_op['name'] += 'sp_'
+            if sparse_op['backward'] is not None:
+                sparse_op['backward'] += '_sp'
+        else:
+            sparse_op['name'] += '_sp'
+            if sparse_op['backward'] is not None:
+                sparse_op['backward'] += '_sp'
+    fwd_apis = fwds + ir_fwds + ir_update_fwds + fused_fwds + sparse_fwds
 
-    fwd_apis = fwds + ir_fwds + ir_update_fwds + fused_fwds
-
+    for sparse_op in sparse_revs:
+        sparse_op['name'] += '_sp'
+        if sparse_op['forward']['name'].endswith("_"):
+            sparse_op['forward']['name'] += 'sp_'
+            if sparse_op.get('invoke') is not None:
+                sparse_op['invoke']['func'] += 'sp_'
+        else:
+            sparse_op['forward']['name'] += '_sp'
+            if sparse_op.get('invoke') is not None:
+                sparse_op['invoke']['func'] += '_sp'
     apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
     apis = apis + [
-        {**api, **{'is_fwd': False}} for api in revs + ir_revs + fused_revs
+        {**api, **{'is_fwd': False}}
+        for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
         {**api, **{'is_prim': True}}
@@ -421,6 +453,7 @@ def gen(
         else {**api, **{'is_prim': False}}
         for api in apis
     ]
+
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
@@ -481,6 +514,16 @@ if __name__ == "__main__":
         help='The parsed fused backward ops yaml file.',
     )
     parser.add_argument(
+        '--sparse_op_path',
+        type=str,
+        help='The parsed sparse forward ops yaml file.',
+    )
+    parser.add_argument(
+        '--sparse_rev_op_path',
+        type=str,
+        help='The parsed sparse backward ops yaml file.',
+    )
+    parser.add_argument(
         '--templates_dir',
         type=str,
         help='JinJa2 templates base directory.',
@@ -502,6 +545,8 @@ if __name__ == "__main__":
         pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.fused_op_path),
         pathlib.Path(args.fused_rev_op_path),
+        pathlib.Path(args.sparse_op_path),
+        pathlib.Path(args.sparse_rev_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
     )

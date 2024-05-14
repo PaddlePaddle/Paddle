@@ -37,13 +37,13 @@ inline std::vector<int> get_new_shape(
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(),
                       common::make_ddim({1}),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of dimension tensor should be [1],"
                           "but received d%.",
                           tensor->dims()));
-    if (platform::is_gpu_place(tensor->place())) {
+    if (tensor->place().GetType() == phi::AllocationType::GPU) {
       phi::DenseTensor temp;
-      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -59,16 +59,16 @@ inline std::vector<T> get_new_data_from_tensor(
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   phi::DenseTensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
     paddle::framework::TensorCopySync(
-        *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+        *new_data_tensor, phi::CPUPlace(), &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
   return vec_new_data;
 }
 
-inline void ExtractNCDWH(const framework::DDim& dims,
+inline void ExtractNCDWH(const phi::DDim& dims,
                          const DataLayout& data_layout,
                          int* N,
                          int* C,
@@ -890,10 +890,10 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_w};
   } else {
@@ -969,15 +969,15 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
@@ -1090,21 +1090,21 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_d,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_d in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {
@@ -1192,7 +1192,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
     out_w = new_size[0];
   }
 
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_w};
   } else {
@@ -1270,7 +1270,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
     out_w = new_size[1];
   }
 
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -1385,7 +1385,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
     out_w = new_size[2];
   }
 
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {

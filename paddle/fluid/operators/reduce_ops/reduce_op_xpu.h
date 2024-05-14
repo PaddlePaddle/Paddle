@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -34,10 +34,9 @@ void XPUReduce(const framework::ExecutionContext& context,
                                  T*,
                                  const std::vector<int>&,
                                  const std::vector<int>&)> func) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_xpu_place(context.GetPlace()),
-      true,
-      platform::errors::Unavailable("This kernel only runs on XPU."));
+  PADDLE_ENFORCE_EQ(context.GetPlace().GetType() == phi::AllocationType::XPU,
+                    true,
+                    phi::errors::Unavailable("This kernel only runs on XPU."));
   bool reduce_all = context.Attr<bool>("reduce_all");
   auto dims = context.Attr<std::vector<int>>("dim");
   auto* x = context.Input<phi::DenseTensor>("X");
@@ -48,7 +47,7 @@ void XPUReduce(const framework::ExecutionContext& context,
   int out_dtype = context.Attr<int>("out_dtype");
   PADDLE_ENFORCE_EQ(out_dtype == -1,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "XPU only support out_dtype == -1 in reduce op."));
 
   const auto* x_data = x->data<T>();
@@ -88,16 +87,16 @@ void XPUReduce(const framework::ExecutionContext& context,
         dev_ctx.x_context(), x_data, y_data, x->numel() * sizeof(T));
     PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS,
                       true,
-                      platform::errors::External("XPU copy in reduce op return "
-                                                 "wrong value[%d %s].",
-                                                 r,
-                                                 XPUAPIErrorMsg[r]));
+                      phi::errors::External("XPU copy in reduce op return "
+                                            "wrong value[%d %s].",
+                                            r,
+                                            XPUAPIErrorMsg[r]));
   } else {
     int r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
     PADDLE_ENFORCE_EQ(
         r == xpu::Error_t::SUCCESS,
         true,
-        platform::errors::External(
+        phi::errors::External(
             "XPU reduce op return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
   }
 }

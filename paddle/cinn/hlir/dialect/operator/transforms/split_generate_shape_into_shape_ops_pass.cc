@@ -116,15 +116,46 @@ struct CachedDimExprToValueConverter {
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
-    return rewriter
-        ->Build<paddle::dialect::SliceOp>(
-            tensor_dim.value,
-            std::vector<int64_t>{0LL},
-            std::vector<int64_t>{tensor_dim.axis},
-            std::vector<int64_t>{tensor_dim.axis + 1},
-            std::vector<int64_t>{},
-            std::vector<int64_t>{})
-        .out();
+    auto CastToInt64IfNeed = [&](pir::Value value) {
+      if (value.type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype()
+              .isa<pir::Int64Type>()) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::CastOp>(value, phi::DataType::INT64)
+          .out();
+    };
+    auto FlattenValueIfNeed = [&](pir::Value value) {
+      const auto& dims =
+          value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      if (dims.size() <= 1) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::FlattenOp>(value, 0, dims.size() - 1)
+          .out();
+    };
+    if (tensor_dim.value.type()
+            .dyn_cast<paddle::dialect::DenseTensorType>()
+            .dims()
+            .size() == 0) {
+      return CastToInt64IfNeed(
+          rewriter
+              ->Build<paddle::dialect::ReshapeOp>(tensor_dim.value,
+                                                  std::vector<int64_t>{1})
+              .out());
+    }
+    return CastToInt64IfNeed(rewriter
+                                 ->Build<paddle::dialect::SliceOp>(
+                                     FlattenValueIfNeed(tensor_dim.value),
+                                     std::vector<int64_t>{0LL},
+                                     std::vector<int64_t>{tensor_dim.axis},
+                                     std::vector<int64_t>{tensor_dim.axis + 1},
+                                     std::vector<int64_t>{},
+                                     std::vector<int64_t>{})
+                                 .out());
   }
 
   pir::Value ConvertToValueImpl(
@@ -143,7 +174,12 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value acc = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Negative<symbol::DimExpr>>()) {
@@ -162,12 +198,19 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Mul<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value prod = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Reciprocal<symbol::DimExpr>>()) {
-        const auto& [operand] =
-            *operands->at(i).dyn_cast<symbol::Negative<symbol::DimExpr>>();
+        const auto& operand =
+            operands->at(i)
+                .dyn_cast<symbol::Reciprocal<symbol::DimExpr>>()
+                ->data;
         pir::Value operand_value = ConvertToValue(operand);
         prod = rewriter->Build<paddle::dialect::DivideOp>(prod, operand_value)
                    .out();
@@ -182,22 +225,34 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Max<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value max = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      max = rewriter->Build<paddle::dialect::MaxOp>(max, operand_value).out();
+      max =
+          rewriter->Build<paddle::dialect::MaximumOp>(max, operand_value).out();
     }
     return max;
   }
 
   pir::Value ConvertToValueImpl(const symbol::Min<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value min = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      min = rewriter->Build<paddle::dialect::MinOp>(min, operand_value).out();
+      min =
+          rewriter->Build<paddle::dialect::MinimumOp>(min, operand_value).out();
     }
     return min;
   }
@@ -205,7 +260,12 @@ struct CachedDimExprToValueConverter {
   pir::Value ConvertToValueImpl(
       const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value broadcasted = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));

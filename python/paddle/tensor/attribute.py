@@ -20,7 +20,7 @@ import paddle
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import in_dynamic_or_pir_mode, in_pir_mode
+from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
@@ -250,7 +250,7 @@ def is_integer(x):
     dtype = x.dtype
 
     is_int_dtype = False
-    if not in_pir_mode():
+    if not use_pir_api():
         is_int_dtype = (
             dtype == core.VarDesc.VarType.UINT8
             or dtype == core.VarDesc.VarType.INT8
@@ -260,7 +260,7 @@ def is_integer(x):
         )
     else:
         is_int_dtype = (
-            dtype == core.DataType.INT8
+            dtype == core.DataType.UINT8
             or dtype == core.DataType.INT8
             or dtype == core.DataType.INT16
             or dtype == core.DataType.INT32

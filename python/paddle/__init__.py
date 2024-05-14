@@ -34,12 +34,13 @@ from .batch import batch
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_math_tensor, monkey_patch_variable
-from .pir import monkey_patch_program, monkey_patch_value
+from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
+monkey_patch_dtype()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -104,6 +105,7 @@ from paddle import (  # noqa: F401
 # high-level api
 from . import (  # noqa: F401
     _pir_ops,
+    _typing as _typing,
     callbacks,
     fft,
     hub,
@@ -278,6 +280,7 @@ from .tensor.manipulation import (
     expand,
     expand_as,
     flatten,
+    flatten_,
     flip,
     flip as reverse,
     gather,
@@ -426,6 +429,9 @@ from .tensor.math import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    isneginf,
+    isposinf,
+    isreal,
     kron,
     lcm,
     lcm_,
@@ -474,6 +480,7 @@ from .tensor.math import (  # noqa: F401
     prod,
     rad2deg,
     reciprocal,
+    reduce_as,
     remainder,
     remainder_,
     renorm,
@@ -715,6 +722,9 @@ __all__ = [
     'to_tensor',
     'gather_nd',
     'isinf',
+    'isneginf',
+    'isposinf',
+    'isreal',
     'uniform',
     'floor_divide',
     'floor_divide_',
@@ -846,6 +856,7 @@ __all__ = [
     'ones',
     'not_equal',
     'sum',
+    'reduce_as',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -881,6 +892,7 @@ __all__ = [
     'set_printoptions',
     'std',
     'flatten',
+    'flatten_',
     'asin',
     'multiply',
     'multiply_',

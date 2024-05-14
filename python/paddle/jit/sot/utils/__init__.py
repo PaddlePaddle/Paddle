@@ -64,6 +64,7 @@ from .utils import (  # noqa: F401
     is_break_graph_api,
     is_builtin_fn,
     is_clean_code,
+    is_comprehensive_name,
     is_paddle_api,
     is_strict_mode,
     list_contain_by_id,
@@ -75,5 +76,6 @@ from .utils import (  # noqa: F401
     map_if_extend,
     meta_str,
     no_eval_frame,
+    printable,
     tmp_name_guard,
 )

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -26,10 +26,9 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(place),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
     // input x
@@ -64,7 +63,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     std::vector<const XPUType *> x_list = {
         reinterpret_cast<const XPUType *>(input_x->data<T>())};
@@ -188,10 +187,9 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(place),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
     const phi::DenseTensor *y_grad =
@@ -225,7 +223,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     bool fuse_add = ctx.Attr<bool>("fuse_add");
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     std::vector<const XPUType *> x_list = {
         reinterpret_cast<const XPUType *>(x->data<T>())};
@@ -360,16 +358,16 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(resnet_unit,
                           XPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitXPUKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float) {}
 PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
                           XPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitGradXPUKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float) {}

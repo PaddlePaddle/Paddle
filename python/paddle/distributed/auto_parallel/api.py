@@ -28,12 +28,16 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_pir_mode,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.placement_type import (
+    to_placements,
+)
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -249,9 +253,7 @@ def shard_tensor(
             dist_tensor.stop_gradient = tensor.stop_gradient
             return dist_tensor
     elif paddle.framework.in_pir_mode():
-        sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
-        dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
-        dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
+        dist_tensor = paddle._C_ops.shard_tensor(tensor, mesh, placements)
         dist_tensor.stop_gradient = tensor.stop_gradient
         dist_tensor.persistable = tensor.persistable
         return dist_tensor
@@ -388,6 +390,8 @@ def reshard(dist_tensor, mesh, placements):
             dist_attr._set_partial_dims(partial_dims)
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
+    elif in_pir_mode():
+        return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
@@ -440,7 +444,7 @@ def reshard(dist_tensor, mesh, placements):
 
 def shard_layer(
     layer: nn.Layer,
-    process_mesh: dist.ProcessMesh,
+    process_mesh: ProcessMesh,
     shard_fn: Callable = None,
     input_fn: Callable = None,
     output_fn: Callable = None,
@@ -520,13 +524,13 @@ def shard_layer(
         raise ValueError("The argument `process_mesh` cannot be empty.")
 
     # Check the legality of process_mesh
-    if not isinstance(process_mesh, dist.ProcessMesh):
+    if not isinstance(process_mesh, ProcessMesh):
         raise ValueError(
             "The argument `process_mesh` is not `dist.ProcessMesh` type."
         )
 
     def replicate_layer_params_and_buffers(
-        layer: nn.Layer, mesh: dist.ProcessMesh
+        layer: nn.Layer, mesh: ProcessMesh
     ) -> None:
         for key, param in layer._parameters.items():
             if param is not None and not param.is_dist():
@@ -1924,16 +1928,21 @@ class DistModel:
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
         # The below are template interfaces
-        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
-        inner_strategy.mp_optimization = copy.deepcopy(
-            strategy._mp_optimization
-        )
-        inner_strategy.dp_optimization = copy.deepcopy(
-            strategy._dp_optimization
-        )
-        inner_strategy.sp_optimization = copy.deepcopy(
-            strategy._sp_optimization
-        )
+        if hasattr(strategy, "_recompute"):
+            inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+
+        if hasattr(strategy, "_mp_optimization"):
+            inner_strategy.mp_optimization = copy.deepcopy(
+                strategy._mp_optimization
+            )
+        if hasattr(strategy, "_dp_optimization"):
+            inner_strategy.dp_optimization = copy.deepcopy(
+                strategy._dp_optimization
+            )
+        if hasattr(strategy, "_sp_optimization"):
+            inner_strategy.sp_optimization = copy.deepcopy(
+                strategy._sp_optimization
+            )
 
         return inner_strategy
 
@@ -2038,7 +2047,7 @@ class DistModel:
                     )
                 else:
                     raise ValueError(f"dim {dim} is not supported.")
-            mesh = dist.ProcessMesh(
+            mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
                 )
@@ -2338,9 +2347,7 @@ class ShardDataloader:
     def __init__(
         self,
         dataloader: paddle.io.DataLoader,
-        meshes: Union[
-            dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-        ],
+        meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
         input_keys: Union[List[str], Tuple[str]] = None,
         shard_dims: Union[list, tuple, str, int] = None,
         is_dataset_splitted: bool = False,
@@ -2589,9 +2596,7 @@ class ShardDataloader:
 
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
-    meshes: Union[
-        dist.ProcessMesh, List[dist.ProcessMesh], Tuple[dist.ProcessMesh]
-    ],
+    meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
     input_keys: Union[List[str], Tuple[str]] = None,
     shard_dims: Union[list, tuple, str, int] = None,
     is_dataset_splitted: bool = False,

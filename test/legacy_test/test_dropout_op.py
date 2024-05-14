@@ -29,7 +29,7 @@ from paddle.incubate.autograd import primapi
 from paddle.pir_utils import test_with_pir_api
 
 
-def dropout_wapper(
+def dropout_wrapper(
     X,
     Seed=None,
     dropout_prob=0.5,
@@ -71,7 +71,7 @@ class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -99,7 +99,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random(()).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -119,7 +119,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
@@ -147,7 +147,7 @@ class TestDropoutOpInput1d(OpTest):
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -164,7 +164,7 @@ class TestDropoutOp2(TestDropoutOp):
 class TestDropoutOp2_ZeroDim(TestDropoutOp2):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random(()).astype("float32")}
@@ -181,7 +181,7 @@ class TestDropoutOp2_ZeroDim(TestDropoutOp2):
 class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -203,7 +203,7 @@ class TestDropoutOp3(TestDropoutOp):
 class TestDropoutOp4(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -223,7 +223,7 @@ class TestDropoutOp4(OpTest):
 class TestDropoutOp5(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -242,7 +242,7 @@ class TestDropoutOp5(OpTest):
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -264,7 +264,7 @@ class TestDropoutOp6(TestDropoutOp):
 class TestDropoutOp7(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -291,7 +291,7 @@ class TestDropoutOp7(TestDropoutOp):
 class TestDropoutOp8(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -314,7 +314,7 @@ class TestDropoutOp8(OpTest):
 class TestDropoutOp9(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -335,7 +335,7 @@ class TestDropoutOp9(OpTest):
 class TestDropoutOpWithSeed(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {
@@ -380,7 +380,7 @@ class TestDropoutOpWithSeed(OpTest):
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.init_test_case()
@@ -431,7 +431,7 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
 class TestBF16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.dtype = np.uint16
@@ -1537,7 +1537,9 @@ class PrimNet(paddle.nn.Layer):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 @param.parameterized_class(
@@ -1753,9 +1755,11 @@ class TestCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     y = paddle.assign(input_)
@@ -2103,9 +2107,11 @@ class TestPirCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(

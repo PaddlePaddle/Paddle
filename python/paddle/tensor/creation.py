@@ -905,7 +905,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -2125,7 +2125,39 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'uint16',
+                    'int8',
+                    'int16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
+            paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(shape)
+            elif isinstance(shape, paddle.pir.Value):
+                pass
+            else:
+                raise TypeError("Shape only supports Value, or list, or tuple.")
+
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -2143,6 +2175,8 @@ def empty(shape, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'complex64',
@@ -2234,9 +2268,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2248,9 +2286,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2706,6 +2748,15 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2714,15 +2765,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a  int")
 
@@ -2785,6 +2827,15 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2793,15 +2844,6 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a int")
 

@@ -1,3 +1,4 @@
+include(../cpp/inference/test.cmake)
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -217,7 +218,6 @@ endfunction()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_light_nas)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
@@ -244,7 +244,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests
@@ -493,30 +493,15 @@ if(NOT WIN32)
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         150)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        120)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
-                                                                       120)
-  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_aware_config PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
 endif()
 
-set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
-set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
-set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
   set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
@@ -538,8 +523,5 @@ endif()
 if(APPLE)
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         300)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        300)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()

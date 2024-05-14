@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
@@ -181,7 +181,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(dev_ctx, N);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
   // first sum pool
   FusedSeqpoolKernelNormal<<<config.block_per_grid.x,
                              config.thread_per_block.x,
@@ -208,8 +209,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
     // not need show click input
     N = static_cast<size_t>(batch_size * slot_num *
                             (embedding_size - cvm_offset));
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(dev_ctx, N);
+    phi::backends::gpu::GpuLaunchConfig config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
     FusedCVMKernelNoCVM<<<config.block_per_grid.x,
                           config.thread_per_block.x,
                           0,
@@ -390,7 +391,7 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, N);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
   if (use_cvm) {
     // join grad
     FusedSeqpoolCVMGradKernelWithCVM<<<config.block_per_grid.x,
@@ -463,7 +464,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_EQ(batch_size,
                           cur_batch_size,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The batch size of all input should be same, "
                               "please cheack, last batchsize is %d, current "
                               "batchsize is %d",
@@ -550,7 +551,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_EQ(batch_size,
                           cur_batch_size,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The batch size of all input should be same, "
                               "please cheack, last batchsize is %d, current "
                               "batchsize is %d",

@@ -28,9 +28,9 @@ class AllToAllBaseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
   }
@@ -65,7 +65,6 @@ Scatter tensors from all participators to all participators.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(alltoall,
                              ops::AllToAllBaseOp,
@@ -79,4 +78,4 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

@@ -36,7 +36,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(x_dims.size()),
         expand_times.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of elements (%d) of 'expand_times' for "
             "Op(expand) must be equal to the number of dimensions "
             "(%d) of the input.",
@@ -45,7 +45,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(
         x_dims.size(),
         MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
             "must not be greater than %d, but the value received is %d.",
             MAX_RANK_SUPPORTED,
@@ -59,7 +59,7 @@ class ExpandOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GT(
             expand_times[i],
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The %uth element of 'expand_times' for Op(expand) must be "
                 "greater than 0, but the value given is %d.",
                 i,
@@ -164,7 +164,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[0],
           out_dims[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dimension size (%d) of Input(Out@GRAD) should be "
               "equal to the corresponding dimension size (%d) of Input(X)",
               out_dims[0],
@@ -180,7 +180,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_EQ(
               x_dims[i] * expand_times[i],
               out_dims[i],
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
                   "equal to the multiplication of the corresponding dimension "
                   "sizes of Input(X) (%d) and expand_times (%d).",
@@ -285,19 +285,18 @@ REGISTER_OP_CPU_KERNEL(expand_grad,
                        ops::ExpandGradKernel<phi::CPUContext, int>,
                        ops::ExpandGradKernel<phi::CPUContext, int64_t>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand,
-    ops::ExpandKernel<phi::GPUContext, float>,
-    ops::ExpandKernel<phi::GPUContext, double>,
-    ops::ExpandKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::ExpandKernel<phi::GPUContext, int>,
-    ops::ExpandKernel<phi::GPUContext, int64_t>,
-    ops::ExpandKernel<phi::GPUContext, bool>);
+REGISTER_OP_CUDA_KERNEL(expand,
+                        ops::ExpandKernel<phi::GPUContext, float>,
+                        ops::ExpandKernel<phi::GPUContext, double>,
+                        ops::ExpandKernel<phi::GPUContext, phi::dtype::float16>,
+                        ops::ExpandKernel<phi::GPUContext, int>,
+                        ops::ExpandKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandKernel<phi::GPUContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
     ops::ExpandGradKernel<phi::GPUContext, float>,
     ops::ExpandGradKernel<phi::GPUContext, double>,
-    ops::ExpandGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandGradKernel<phi::GPUContext, phi::dtype::float16>,
     ops::ExpandGradKernel<phi::GPUContext, int>,
     ops::ExpandGradKernel<phi::GPUContext, int64_t>);
 #endif

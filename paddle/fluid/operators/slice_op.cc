@@ -40,7 +40,7 @@ class SliceOp : public framework::OperatorWithKernel {
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       PADDLE_ENFORCE_EQ(axes.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The size of axes must be 1 when the Input of "
                             "SliceOp is LoDTensorArray, "
                             "but received %d.",
@@ -63,9 +63,9 @@ class SliceOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(),
                       7,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of input should be less than 7."));
-    framework::DDim out_dims(in_dims);
+    phi::DDim out_dims(in_dims);
 
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
@@ -83,31 +83,31 @@ class SliceOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInputs("StartsTensorList")) {
       starts_size = ctx->Inputs("StartsTensorList").size();
-      PADDLE_ENFORCE_GT(starts_size,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "StartsTensorList size can't be zero"));
+      PADDLE_ENFORCE_GT(
+          starts_size,
+          0,
+          phi::errors::InvalidArgument("StartsTensorList size can't be zero"));
     }
     if (ctx->HasInputs("EndsTensorList")) {
       ends_size = ctx->Inputs("EndsTensorList").size();
-      PADDLE_ENFORCE_GT(ends_size,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "EndsTensorList size can't be zero"));
+      PADDLE_ENFORCE_GT(
+          ends_size,
+          0,
+          phi::errors::InvalidArgument("EndsTensorList size can't be zero"));
     }
 
     if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
           starts_size,
           axes.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The size of starts must be equal to the size of axes."));
     }
     if (!ctx->HasInput("EndsTensor")) {
       PADDLE_ENFORCE_EQ(
           ends_size,
           axes.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The size of ends must be equal to the size of axes."));
     }
     for (auto &axis : axes) {
@@ -143,10 +143,10 @@ class SliceOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
-      if (platform::is_cuda_pinned_place(in_tensor.place())) {
+      if (in_tensor.place().GetType() == phi::AllocationType::GPUPINNED) {
         return phi::KernelKey(framework::TransToProtoVarType(in_tensor.dtype()),
                               ctx.GetPlace());
       }
@@ -304,14 +304,13 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"),
-        true,
-        platform::errors::InvalidArgument("Input should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"),
                       true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should not be null"));
+                      phi::errors::InvalidArgument("Input should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
+        phi::errors::InvalidArgument("Input(Out@GRAD) should not be null"));
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       // If the var type of input is LOD_TENSOR_ARRAY,

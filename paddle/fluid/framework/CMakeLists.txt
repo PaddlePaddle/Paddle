@@ -155,7 +155,7 @@ endif()
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_dependencies(var_type_traits onednn)
 endif()
 
@@ -275,7 +275,7 @@ cc_library(
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_dependencies(shape_inference onednn)
 endif()
 
@@ -671,7 +671,6 @@ if(WITH_DISTRIBUTE)
            glog
            index_sampler
            index_wrapper
-           sampler
            index_dataset_proto
            lod_rank_table
            framework_io
@@ -954,7 +953,7 @@ cc_library(
   DEPS common)
 target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_dependencies(type_info onednn)
 endif()
 

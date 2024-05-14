@@ -25,35 +25,34 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("X").size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Inputs(X) of FusedSeqpoolCVMOp should not be empty."));
     PADDLE_ENFORCE_GE(
         ctx->Outputs("Out").size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Outputs(Out) of FusedSeqpoolCVMOp should not be empty."));
 
     auto cvm_dims = ctx->GetInputDim("CVM");
     PADDLE_ENFORCE_EQ(
         cvm_dims.size(),
         2UL,
-        platform::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
-    PADDLE_ENFORCE_EQ(
-        cvm_dims[1],
-        2UL,
-        platform::errors::InvalidArgument("The 2nd dimension of "
-                                          "Input(CVM) should be 2."));
+        phi::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+    PADDLE_ENFORCE_EQ(cvm_dims[1],
+                      2UL,
+                      phi::errors::InvalidArgument("The 2nd dimension of "
+                                                   "Input(CVM) should be 2."));
 
     auto ins_dims = ctx->GetInputsDim("X");
     const int cvm_offset = ctx->Attrs().Get<int>("cvm_offset");
     const size_t num_inputs = ins_dims.size();
-    std::vector<framework::DDim> outs_dims;
+    std::vector<phi::DDim> outs_dims;
     outs_dims.resize(num_inputs);
     bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
 
     PADDLE_ENFORCE_GT(num_inputs,
                       0UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input tensors count should be greater than 0, "
                           "but received value is %d.",
                           num_inputs));
@@ -62,7 +61,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     // since input lod is not accessible here.
     PADDLE_ENFORCE_EQ(ins_dims[0].size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dims size of first input should be equal to 2, "
                           "but received value is %d.",
                           ins_dims[0].size()));
@@ -88,7 +87,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
         } else {
           PADDLE_ENFORCE_EQ(batch_size,
                             cur_batch_size,
-                            platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "The batch size of all input should be same, "
                                 "please check, last batch_size is %d, current "
                                 "batch_size is %d",
@@ -111,7 +110,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_GT(
               dims[rank - 1],
               2,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Shape error in %lu id, the last dimension(embedding) of the "
                   "'X' tensor must be larger than 2.",
                   i));
@@ -145,7 +144,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(flag,
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "All Inputs of fused_seqpool_cvm OP are Empty!"));
     return phi::KernelKey(input_data_type, ctx.GetPlace());
     // return phi::KernelKey(framework::proto::VarType::FP32,
@@ -201,13 +200,13 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         cvm_dims.size(),
         2,
-        platform::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
+        phi::errors::InvalidArgument("Input(CVM)'s rank should be 2."));
 
     for (size_t i = 0; i < og_dims.size(); i++) {
       PADDLE_ENFORCE_EQ(
           og_dims[i].size(),
           x_dims[i].size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of output grad must equal to Input(X). But "
               "received: input rank %u, input shape [%s].",
               og_dims[i].size(),
@@ -217,7 +216,7 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             o_dim,
             x_dims[i][og_dims[i].size() - 1],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The dimension mismatch between Input(OUT@GRAD) and "
                 "Input(X). Received Input(OUT@GRAD): input rank %u, "
                 "input shape [%s]; received Input(X): input rank %u, "
@@ -230,7 +229,7 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             og_dims[i][og_dims[i].size() - 1],
             x_dims[i][og_dims[i].size() - 1] - cvm_offset,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The dimension mismatch between Input(OUT@GRAD) and "
                 "Input(X). Received Input(OUT@GRAD): input rank %u, "
                 "input shape [%s]; received Input(X): input rank %u, "

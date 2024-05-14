@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -466,12 +467,11 @@ struct FusedLayernormResidualDropoutBiasFunctor {
   }
 };
 
-template struct FusedLayernormResidualDropoutBiasFunctor<
-    paddle::platform::float16,
-    uint8_t,
-    8,
-    float,
-    false>;
+template struct FusedLayernormResidualDropoutBiasFunctor<phi::dtype::float16,
+                                                         uint8_t,
+                                                         8,
+                                                         float,
+                                                         false>;
 
 /*
  * @brief layernorm(residual + dropout(x));
@@ -848,12 +848,12 @@ void LaunchLayernormResidualDropoutBias(
   // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = ctx.GetPlace();
-    memory::Copy(cuda_place,
-                 dst,
-                 cuda_place,
-                 residual,
-                 rows * cols * sizeof(T),
-                 ctx.stream());
+    phi::memory_utils::Copy(cuda_place,
+                            dst,
+                            cuda_place,
+                            residual,
+                            rows * cols * sizeof(T),
+                            ctx.stream());
     if (mask_data != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
           mask_data, 0, rows * cols * sizeof(MaskType), ctx.stream()));
@@ -872,7 +872,7 @@ void LaunchLayernormResidualDropoutBias(
               epsilon,
               cols));
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Product from begin_norm_axis to end must be larger than 1"));
         break;
     }
@@ -1037,7 +1037,7 @@ void LaunchLayernormResidualDropoutBias(
       switch (cols) {
         LAUNCH_FUSED_FAST_LN_KERNEL;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Only when column is equal to 768/1024/4096 is supported for "
               "now"));
           break;

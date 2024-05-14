@@ -1083,6 +1083,14 @@ PyObject* ToPyObject(const phi::DataType& dtype) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
+  PyObject* result = PyList_New((Py_ssize_t)dtypes.size());
+  for (size_t i = 0; i < dtypes.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(dtypes[i]));
+  }
+  return result;
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1389,8 +1397,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1422,8 +1439,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1495,8 +1521,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1528,8 +1563,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -2478,6 +2522,7 @@ PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
 
 PyObjectHolder::~PyObjectHolder() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
+  // NOTE(deepllz): ptr_ is owned by this object, so release it in destructor.
   Py_XDECREF(ptr_);
 }
 
@@ -2512,7 +2557,10 @@ std::shared_ptr<egr::PyObjectHolderBase> PackHook::operator()(
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
-  auto args = PyTuple_New(1);
+  PyObject* args = PyTuple_New(1);
+  PADDLE_ENFORCE_NOT_NULL(args,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
   PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
   PADDLE_ENFORCE_NOT_NULL(ret,
@@ -2527,7 +2575,10 @@ void* PackHook::operator()(void* py_tensor) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
-  auto args = PyTuple_New(1);
+  PyObject* args = PyTuple_New(1);
+  PADDLE_ENFORCE_NOT_NULL(args,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
   Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
@@ -2551,13 +2602,20 @@ paddle::Tensor UnPackHook::operator()(
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
-  auto args = PyTuple_New(1);
-  Py_INCREF(reinterpret_cast<PyObject*>(packed_value->get()));
-  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value->get()));
+  PyObject* args = PyTuple_New(1);
+  PADDLE_ENFORCE_NOT_NULL(args,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
+  PyObject* py_packed_value = reinterpret_cast<PyObject*>(packed_value->get());
+  Py_INCREF(py_packed_value);
+  PyTuple_SET_ITEM(args, 0, py_packed_value);
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
   PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
+  // NOTE(deepllz): tupledealloc will cause the reference count of the objects
+  // in it to be decremented by one, so no need to call
+  // Py_XDECREF(py_packed_value)
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
@@ -2576,7 +2634,10 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   ::pybind11::gil_scoped_acquire gil;
-  auto args = PyTuple_New(1);
+  PyObject* args = PyTuple_New(1);
+  PADDLE_ENFORCE_NOT_NULL(args,
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);

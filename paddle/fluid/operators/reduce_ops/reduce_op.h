@@ -47,7 +47,7 @@ namespace operators {
             keep_dim);                                           \
   }
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
@@ -87,7 +87,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ReduceBaseOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -511,7 +511,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input dim dimensions of ReduceBaseOp "
                           "should be greater than 0. But received the dim "
                           "dimensions of Reduce = %d.",
@@ -521,7 +521,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LT(
           dims[i],
           x_rank,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The reduce dim index %d should be in the "
               "range [-dimension(X), dimension(X)] "
               "which dimension = %d. But received dim index = %d.",
@@ -531,7 +531,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(
           dims[i],
           -x_rank,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The reduce dim index %d should be in the "
               "range [-dimension(X), dimension(X)] "
               "which dimension = %d. But received dim index = %d.",
@@ -624,12 +624,13 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
-                            platform::is_xpu_place(ctx.GetPlace()) ||
-                            platform::is_custom_place(ctx.GetPlace()),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU or XPU place"));
+      PADDLE_ENFORCE_EQ(
+          ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
+          true,
+          phi::errors::InvalidArgument(
+              "float16 can only be used on GPU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -670,7 +671,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_LT(
             dims[i],
             x_rank,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The reduce dim index %d should be in the "
                 "range [-dimension(X), dimension(X)], "
                 "which dimension = %d. But received dim index = %d.",
@@ -776,8 +777,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 #ifdef PADDLE_WITH_XPU_KP
-    auto& dev_ctx =
-        context.template device_context<paddle::platform::XPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::XPUContext>();
 #else
     auto& dev_ctx = context.cuda_device_context();
 #endif

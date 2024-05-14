@@ -26,24 +26,24 @@ void FusionSeqPoolConcatOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_GE(ctx->Inputs("X").size(),
                     1UL,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Inputs(X) of FusionSeqPoolConcatOp should be greater "
                         "than 1, but received value is %d.",
                         ctx->Inputs("X").size()));
   OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FusionSeqPoolConcat");
   int axis = ctx->Attrs().Get<int>("axis");
-  PADDLE_ENFORCE_EQ(axis,
-                    1,
-                    platform::errors::InvalidArgument(
-                        "FusionSeqPoolConcatOp only supports concat "
-                        "axis=1 yet, but received axis value is %d",
-                        axis));
+  PADDLE_ENFORCE_EQ(
+      axis,
+      1,
+      phi::errors::InvalidArgument("FusionSeqPoolConcatOp only supports concat "
+                                   "axis=1 yet, but received axis value is %d",
+                                   axis));
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
   PADDLE_ENFORCE_GT(n,
                     0UL,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Input tensors count should be greater than 0, "
                         "but received value is %d.",
                         n));
@@ -55,7 +55,7 @@ void FusionSeqPoolConcatOp::InferShape(
   // since input lod is not accessible here.
   PADDLE_ENFORCE_EQ(ins_dims[0].size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims size of first input should be equal to 2, "
                         "but received value is %d.",
                         ins_dims[0].size()));
@@ -116,7 +116,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
     PADDLE_ENFORCE_EQ(y_dims[1] % w,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The output of dims[1] should be dividable of w, but "
                           "dims[1] is %d, w is %d.",
                           y_dims[1],
@@ -127,9 +127,9 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     } else if (pooltype == "SQRT") {
       attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                         platform::CPUPlace>::Cache()
-                       .At(attr);
+    auto seqpool =
+        phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache()
+            .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
@@ -140,7 +140,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           static_cast<int>(ins[i]->numel() / x_dims[0]),
           w,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Width of all inputs should be equal, but the width of the %d-th "
               "input %d is not equal to the previous %d",
               i,
@@ -149,7 +149,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           x_lod.size(),
           bs + 1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Batchsize of all inputs should be equal, but the value of the "
               "%d-th %d is not equal to the previous %d.",
               i,

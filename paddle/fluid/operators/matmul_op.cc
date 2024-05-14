@@ -36,7 +36,7 @@ inline static std::string DumpMatrixShape(
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
  */
-static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+static phi::DDim RowMatrixFromVector(const phi::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
@@ -47,7 +47,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
  * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
  * original y_dim is returned.
  */
-static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
+static phi::DDim ColumnMatrixFromVector(const phi::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
@@ -961,7 +961,7 @@ REGISTER_OP_CUDA_KERNEL(
     matmul,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -971,13 +971,13 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulKernel<phi::GPUContext, int8_t>,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
 #else
 REGISTER_OP_CUDA_KERNEL(
     matmul,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::MatMulKernel<phi::GPUContext, phi::dtype::float16>);
 #endif
 #endif
 
@@ -985,7 +985,7 @@ REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<phi::GPUContext, float>,
     ops::MatMulGradKernel<phi::GPUContext, double>,
-    ops::MatMulGradKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::MatMulGradKernel<phi::GPUContext, phi::dtype::float16>);
 REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, double>);

@@ -2467,26 +2467,34 @@ void SliceArrayOp::VerifySig() {
         3u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 3.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
-    IR_ENFORCE((*this)->operand_source(2).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(2)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(2).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(2).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(2)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(2).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -2667,19 +2675,24 @@ void SliceArrayDenseOp::VerifySig() {
         2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -2825,12 +2838,14 @@ void AssignArrayOp::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -2946,12 +2961,15 @@ void AssignArray_Op::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, but got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        (*this)
+            ->operand_source(0)
+            .type()
+            .isa<paddle::dialect::DenseTensorArrayType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th input, but got %s.",
+            (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   VLOG(4) << "Verifying outputs:";
@@ -3135,20 +3153,12 @@ void ExpandOp::Build(pir::Builder &builder,
 }
 
 bool ExpandOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(x());
   const auto &expand_shape_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(shape());
+      infer_context->GetShapeOrDataForValue(shape());
 
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &expand_shape = [&] {
     std::vector<symbol::DimExpr> dims;
@@ -3192,7 +3202,7 @@ bool ExpandOp::InferSymbolicShape(
     }
   }
 
-  shape_analysis->SetShapeOrDataForValue(
+  infer_context->SetShapeOrDataForValue(
       out(),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
@@ -3457,12 +3467,14 @@ void IncrementOp::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -3566,10 +3578,10 @@ phi::DataType IncrementOp::GetKernelTypeForVar(
 }
 
 bool IncrementOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -3660,12 +3672,14 @@ void Increment_Op::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -3769,10 +3783,10 @@ phi::DataType Increment_Op::GetKernelTypeForVar(
 }
 
 bool Increment_Op::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x());
-  shape_analysis->SetShapeOrDataForValue(out(), operand_shape_or_data);
+      infer_context->GetShapeOrDataForValue(x());
+  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
   return true;
 }
 
@@ -3837,18 +3851,22 @@ void AssignOut_Op::VerifySig() {
         2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)
-                   ->operand_source(1)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1th input, got %s.",
-               (*this)->operand_source(1).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(1)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 1th input, got %s.",
+                          (*this)->operand_source(1).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -3933,6 +3951,29 @@ phi::DataType AssignOut_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+OpInfoTuple ShapeBroadcastOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("ElementwiseInferMeta",
+                                     {"x", "y"},
+                                     "shape_broadcast",
+                                     {"x", "y"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "shape_broadcast");
+}
+
 void ShapeBroadcastOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value x_,
@@ -3953,7 +3994,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::ElementwiseInferMeta);
+  auto fn = PD_INFER_META(phi::ShapeBroadcastInferMeta);
   fn(infer_meta);
 }
 
@@ -4010,7 +4051,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ElementwiseInferMeta(meta_x, meta_y, &meta_out);
+  phi::ShapeBroadcastInferMeta(meta_x, meta_y, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -4028,17 +4069,15 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1) {
+    return rhs;
+  } else if (rhs == 1) {
     return lhs;
   } else {
-    return symbol::Broadcast<symbol::DimExpr>{
-        symbol::List<symbol::DimExpr>{lhs, rhs}};
+    return symbol::SimplifyDimExpr(symbol::Broadcast<symbol::DimExpr>{
+        symbol::List<symbol::DimExpr>{lhs, rhs}});
   }
   PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
@@ -4070,22 +4109,19 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
 }
 
 bool ShapeBroadcastOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+    pir::InferSymbolicShapeContext *infer_context) {
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
-
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
-                    0,
-                    phi::errors::InvalidArgument("Value x does not exist."));
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
-                    0,
-                    phi::errors::InvalidArgument("Value y does not exist."));
-  const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
-  const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
-  IR_ENFORCE(x_data_shape.data().has_value(),
-             "Value x comes from ShapeOp, it must have data");
-  IR_ENFORCE(y_data_shape.data().has_value(),
-             "Value y comes from ShapeOp, it must have data");
+  const auto &x_data_shape = infer_context->GetShapeOrDataForValue(x);
+  const auto &y_data_shape = infer_context->GetShapeOrDataForValue(y);
+  PADDLE_ENFORCE_EQ(x_data_shape.data().has_value(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Value x comes from ShapeOp, it must have data"));
+  PADDLE_ENFORCE_EQ(y_data_shape.data().has_value(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Value y comes from ShapeOp, it must have data"));
   const auto &x_data = x_data_shape.data().value();
   const auto &y_data = y_data_shape.data().value();
 
@@ -4098,7 +4134,7 @@ bool ShapeBroadcastOp::InferSymbolicShape(
 
   symbol::ShapeOrDataDimExprs output_data_shape{
       symbol::TensorShapeOrDataDimExprs(shape, output_data)};
-  shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
+  infer_context->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }
 
@@ -4142,12 +4178,14 @@ void MemcpyD2hMultiIoOp::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -4281,12 +4319,14 @@ void ArrayPopOp::VerifySig() {
         1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
