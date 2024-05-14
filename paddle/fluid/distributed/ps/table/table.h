@@ -163,6 +163,8 @@ class Table {
   virtual void Revert() {}
   virtual void CheckSavePrePatchDone() {}
 
+  virtual void SetDayId(int day_id) {}
+
  protected:
   virtual int32_t Initialize() = 0;
   virtual int32_t InitializeAccessor();

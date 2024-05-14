@@ -44,6 +44,8 @@ int32_t SSDSparseTable::Initialize() {
 
 int32_t SSDSparseTable::InitializeShard() { return 0; }
 
+void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
+
 int32_t SSDSparseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
@@ -246,7 +248,11 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                               sizeof(uint64_t));
                 ret = &feature_value;
               }
+
+              _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
               _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
               int pull_data_idx = cur_ctx->batch_index[idx];
               pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
             }
@@ -258,7 +264,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       } else {
         ret = itr.value_ptr();
         // int pull_data_idx = keys[i].second;
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
@@ -307,7 +316,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
               shard_id, reinterpret_cast<char*>(&cur_key), sizeof(uint64_t));
           ret = &feature_value;
         }
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         int pull_data_idx = cur_ctx->batch_index[idx];
         pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }
@@ -2509,17 +2521,19 @@ int32_t SSDSparseTable::Load(const std::string& path,
   }
 
   int load_param = atoi(param.c_str());
-  size_t expect_shard_num = _sparse_table_shard_num;
-  if (file_list.size() != expect_shard_num) {
-    LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
-                 << " not equal to expect_shard_num:" << expect_shard_num;
-    return -1;
-  }
   if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
+  _value_accessor->SetDayId(_day_id);
+  VLOG(1) << " Load Set Dayid:" << _day_id;
   if (load_param > 3) {
+    size_t expect_shard_num = _sparse_table_shard_num;
+    if (file_list.size() != expect_shard_num) {
+      LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
+                   << " not equal to expect_shard_num:" << expect_shard_num;
+      return -1;
+    }
     size_t file_start_idx = _shard_idx * _avg_local_shard_num;
     return LoadWithString(file_start_idx,
                           file_start_idx + _real_local_shard_num,
@@ -2833,7 +2847,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                     abort();
                   }
                   last_k = k;
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   rocksdb::Status status = sst_writer.Put(
                       rocksdb::Slice(reinterpret_cast<char*>(&k),
                                      sizeof(uint64_t)),
@@ -2849,7 +2865,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                   }
                 } else {
                   auto& feature_value = shard[k];
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   feature_value.resize(dim);
                   memcpy(const_cast<float*>(feature_value.data()),
                          convert_value,

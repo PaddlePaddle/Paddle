@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 namespace {
@@ -62,7 +62,15 @@ List<std::optional<Index>> GetMaskedOutIndexes(
     const std::vector<Index>& erased_in_msg_out_tensor_indexes) {
   List<std::optional<Index>> ret{};
   const auto& erased = erased_in_msg_out_tensor_indexes;
-  CHECK_EQ(in_msg_out_indexes->size(), out_msg_out_indexes->size());
+  PADDLE_ENFORCE_EQ(
+      in_msg_out_indexes->size(),
+      out_msg_out_indexes->size(),
+      phi::errors::InvalidArgument(
+          "The size of in_msg_out_indexes and out_msg_out_indexes "
+          "should be equal, but got in_msg_out_indexes size = %d, "
+          "out_msg_out_indexes size = %d.",
+          in_msg_out_indexes->size(),
+          out_msg_out_indexes->size()));
   for (std::size_t i = 0; i < in_msg_out_indexes->size(); ++i) {
     const auto& in_msg_index = in_msg_out_indexes->at(i);
     if (std::find(erased.begin(), erased.end(), in_msg_index) == erased.end()) {

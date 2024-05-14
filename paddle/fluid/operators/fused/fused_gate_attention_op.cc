@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 class FusedGateAttentionOp : public framework::OperatorWithKernel {
  public:

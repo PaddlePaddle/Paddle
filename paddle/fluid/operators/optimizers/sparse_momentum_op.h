@@ -20,10 +20,10 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -370,7 +370,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Axis")) {
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
-      framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
+      framework::TensorCopy(*axis_tensor, phi::CPUPlace(), &cpu_axis);
       const auto& axis_type =
           framework::TransToProtoVarType(axis_tensor->dtype());
       if (axis_type == framework::proto::VarType::INT32) {
@@ -436,7 +436,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
 
     auto grad = ctx.Input<phi::DenseTensor>("Grad");
 
-    platform::ForRange<DeviceContext> for_range(
+    phi::funcs::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()),
         param->numel());
 
@@ -460,12 +460,12 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     auto grad_index_ptr =
         grad_index.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       auto sort_value_ptr =
           sort_value.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 
-      platform::ForRange<DeviceContext> for_range_index(
+      phi::funcs::ForRange<DeviceContext> for_range_index(
           static_cast<const DeviceContext&>(ctx.device_context()), num_index);
       RangeFunctor<IndexT> range_functor(sort_value_ptr);
       for_range_index(range_functor);
@@ -494,7 +494,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
               sizeof(IndexT) * 8,
               ctx.cuda_device_context().stream())));
 #endif
-    } else if (platform::is_cpu_place(ctx.GetPlace())) {
+    } else if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       std::vector<std::pair<IndexT, IndexT>> vec_tosort;
       auto index_ptr = index->data<IndexT>();
       for (IndexT i = 0; i < num_index; i++) {

@@ -71,7 +71,6 @@ select = [
 
     # Pylint
     "PLE",
-    "PLC0414",
     "PLC3002",
     "PLR0206",
     "PLR0402",
@@ -119,6 +118,8 @@ combine-as-imports = true
 known-first-party = ["paddle"]
 
 [tool.ruff.lint.per-file-ignores]
+# Ignore for re-export in __init__ files
+"__init__.py" = ["PLC0414"]
 # Ignore compare with True in sot unittest
 "test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests

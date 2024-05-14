@@ -182,6 +182,14 @@ function(copy_part_of_third_party TARGET DST)
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
 
+  if(WITH_FLASHATTN)
+    set(dst_dir "${DST}/third_party/install/flashattn")
+    copy(
+      ${TARGET}
+      SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
+  endif()
+
   if(NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${DST}/third_party/install/protobuf")
     copy(

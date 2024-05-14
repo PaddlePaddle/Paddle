@@ -6,7 +6,6 @@ endif()
 register_operators(
   EXCLUDES
   fused_bn_activation_op
-  yolo_box_post_op
   fusion_group_op
   fusion_lstm_op
   fused_bn_add_activation_op
@@ -38,7 +37,6 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   # HIP not support cudnnTransformTensor
   # HIP not support cudnnConvolutionBiasActivationForward
-  op_library(yolo_box_post_op)
   op_library(fused_gate_attention_op)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
