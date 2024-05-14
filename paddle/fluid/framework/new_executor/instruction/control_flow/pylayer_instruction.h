@@ -51,8 +51,6 @@ class PyLayerInstruction : public InstructionBase {
 
   PirInterpreter* fwd_inter_ = nullptr;
 
-  std::vector<std::string> fwd_outputs_;
-
   std::vector<std::string> fwd_skip_gc_names_;
 };
 

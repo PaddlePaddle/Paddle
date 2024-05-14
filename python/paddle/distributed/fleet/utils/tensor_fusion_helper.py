@@ -548,15 +548,26 @@ class FusedCommBuffer:
         grad_view.assign_slice_grad(slice_param)
 
     @imperative_base.no_grad
-    def sync_params(self):
+    def sync_params(self, sync=True, param2task={}):
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
         shard_size = full_buffer._numel() // group.nranks
+
         begin = shard_size * group.rank
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
-        group.process_group.all_gather(slice_buffer, full_buffer).wait()
+
+        if sync:
+            # default sync_op is False, so we need to wait here.
+            # this will call distributed_py.cc in paddle. In distributed_py.cc, there defines two all gather function, their parameters are different.
+            group.process_group.all_gather(slice_buffer, full_buffer).wait()
+        else:
+            # default sync_op is False, so we don't need to to set sync_op = false here.
+            task = group.process_group.all_gather(slice_buffer, full_buffer)
+            for param in self.params:
+                assert param.name not in param2task
+                param2task[param.name] = task
 
     @property
     def params(self):

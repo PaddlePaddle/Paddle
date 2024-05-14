@@ -946,7 +946,7 @@ set -ex
 function check_run_sot_ci() {
     set +x
     # use "git commit -m 'message, test=sot'" to force ci to run
-    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s" | grep -w "test=sot" || true)
+    COMMIT_RUN_CI=$(git log -10 --pretty=format:"%s" | grep -w "test=sot" || true)
     # check pr title
     TITLE_RUN_CI=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
     if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]]; then
