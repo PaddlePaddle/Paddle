@@ -345,7 +345,8 @@ bool ReplaceShapeOpsToGenerateShape(
     pir::Value shape_operand,
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>()) {
+  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>() ||
+      shape_operand.defining_op()->num_operands() == 0) {
     return false;
   }
   auto ShapeOrDataDimExprs4Value =
@@ -399,22 +400,18 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
                             {} /*generated_names*/) {}
 
   bool Match(pir::Operation* op) const override {
-    if (op->num_operands() == 0) return false;
-    if (op->num_results() != 1) return false;
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    if (!IsSingleElementShapeOp(op, &shape_analysis)) return false;
+
+    // all user op's output should has no data of shape expr
     pir::Value output = op->result(0);
-    const auto& out_shape = shape_analysis.GetShapeOrDataForValue(output);
-    if (!out_shape.isa<symbol::TensorShapeOrDataDimExprs>()) return false;
-    if (!out_shape.data().has_value()) return false;
+    if (output.use_empty()) return false;
+    for (auto iter = output.use_begin(); iter != output.use_end(); ++iter) {
+      if (IsSingleElementShapeOp(iter->owner(), &shape_analysis)) return false;
+    }
 
-    auto dtype =
-        output.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
-    if (!dtype.isa<pir::Int32Type>() && !dtype.isa<pir::Int64Type>())
-      return false;
-
-    // Only process the op which output is a single element
-    return out_shape.data()->size() == 1;
+    return true;
   }
 
   void Rewrite(pir::Operation* op,
@@ -423,6 +420,33 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
     ReplaceShapeOpsToGenerateShape(op->result(0), &rewriter, &shape_analysis);
+
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
+  }
+
+ private:
+  bool IsSingleElementShapeOp(
+      pir::Operation* op,
+      pir::ShapeConstraintIRAnalysis* shape_analysis) const {
+    if (op->num_operands() == 0) return false;
+    if (op->num_results() != 1) return false;
+    if (op->isa<cinn::dialect::GenerateShapeOp>()) return false;
+
+    pir::Value output = op->result(0);
+    const auto& out_shape = shape_analysis->GetShapeOrDataForValue(output);
+    if (!out_shape.isa<symbol::TensorShapeOrDataDimExprs>()) return false;
+    if (!out_shape.data().has_value()) return false;
+
+    auto dtype =
+        output.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+    if (!dtype.isa<pir::Int32Type>() && !dtype.isa<pir::Int64Type>()) {
+      return false;
+    }
+
+    // Only process the op which output is a single element
+    return out_shape.data()->size() == 1;
   }
 };
 
