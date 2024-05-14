@@ -1021,16 +1021,15 @@ void BindDecomp(pybind11::module *m) {
 void BindDecompVjp(pybind11::module *m) {
   m->def("call_decomp_vjp", [](pir::Operation &vjp_op) {
     py::list res;
-
     paddle::dialect::DecompVjpInterface decomp_vjp_interface =
-        op->dyn_cast<paddle::dialect::DecompVjpInterface>();
+        vjp_op.dyn_cast<paddle::dialect::DecompVjpInterface>();
     PADDLE_ENFORCE(
         decomp_vjp_interface,
         phi::errors::InvalidArgument(
             "[Prim] The decomp_vjp function is not registered in %s vjp_op ",
-            op->name()));
+            vjp_op.name()));
     std::vector<std::vector<pir::Value>> decomp_res =
-        decomp_vjp_interface.DecompVjp(vjp_op);
+        decomp_vjp_interface.DecompVjp(&vjp_op);
 
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
