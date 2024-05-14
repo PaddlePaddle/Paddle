@@ -145,32 +145,10 @@ struct FusionOp2Expr {
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern);
 
-static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildFors;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      FindFather;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      IsFor;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsNotInit;
-  const auto& all_father_fors =
-      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
-       FindFather(expr) * IsFor)(expr);
-  std::vector<ir::Var> vars;
-  for (const auto& for_expr : all_father_fors) {
-    vars.push_back(for_expr.As<ir::For>()->loop_var);
-  }
-  VLOG(4) << "GetAllForIters : " << expr
-          << "\n var is : " << utils::Join(vars, ",");
-  return vars;
-}
-
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
                        const std::vector<int> padding_vec) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::GetAllForIters;
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
       ChildFors;
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
