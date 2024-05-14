@@ -27,6 +27,11 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
                             const std::vector<int64_t>& axis,
                             bool keep_dim);
 
+SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
+                                const std::vector<int64_t>& axis,
+                                bool keep_dim,
+                                int reduce_type);
+
 // This infer spmd function only use in dynamic mode for it uses
 // IntArray as parameter. The IntArray may contain vector of tensor
 // which is not support in static mode. So we separate these two and

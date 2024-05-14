@@ -131,6 +131,11 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     std::unordered_set<std::string> global_buffer_name;
     for (const auto& [buffer_name, indice_and_extent] :
          buffer_to_indice_and_extent_) {
+      // For buffers disobey SSA principle, we don't substitute them.
+      if (global_store_buffer_names_.find(buffer_name) !=
+          global_store_buffer_names_.end()) {
+        continue;
+      }
       if (IsGlobalTensorNeedEliminate(indice_and_extent)) {
         global_buffer_name.insert(buffer_name);
       }
@@ -185,10 +190,20 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     }
   }
 
+  void Visit(const ir::Store* op, ir::Expr* expr) override {
+    auto* node = expr->As<ir::Store>();
+    CHECK(node);
+    const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
+    if (store_buffer->memory_type == ir::MemoryType::Heap) {
+      global_store_buffer_names_.insert(store_buffer->name);
+    }
+  }
+
   std::vector<ForVarExtent> for_var_extents_;
   std::unordered_map<ir::Var, ir::Expr> var_to_sb_expr_;
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
       buffer_to_indice_and_extent_;
+  std::unordered_set<std::string> global_store_buffer_names_;
 };
 
 struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {

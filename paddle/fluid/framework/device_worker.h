@@ -216,6 +216,8 @@ class DeviceWorker {
     dev_ctx_ = dev_ctx;
   }
 
+  virtual platform::DeviceContext* GetDeviceContext() { return dev_ctx_; }
+
   virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
 
   virtual Scope* GetThreadScope() { return thread_scope_; }

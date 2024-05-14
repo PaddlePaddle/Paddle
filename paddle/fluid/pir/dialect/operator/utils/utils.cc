@@ -58,6 +58,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
+    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
@@ -104,7 +105,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
