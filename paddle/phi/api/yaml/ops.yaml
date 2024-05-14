@@ -3149,6 +3149,7 @@
   output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
   infer_meta :
     func : UnbindInferMeta
+    spmd_rule : UnbindInferSpmdDynamic
   kernel :
     func : unbind
   backward : unbind_grad
