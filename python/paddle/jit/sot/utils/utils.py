@@ -105,8 +105,7 @@ def current_tmp_name_records():
     return _tmp_name_records
 
 
-@Singleton
-class ResumeFnNameFactory:
+class ResumeFnNameFactory(metaclass=Singleton):
     def __init__(self) -> None:
         self.gen = NameGenerator('resume_')
 
@@ -314,8 +313,7 @@ def get_unbound_method(obj, name):
     return getattr(obj.__class__, name)
 
 
-@Singleton
-class GraphLogger:
+class GraphLogger(metaclass=Singleton):
     graph_num: int
     op_num: int
     graphs: list[Program]
@@ -374,8 +372,7 @@ class GraphLogger:
         print(self)
 
 
-@Singleton
-class SotUndefinedVar:
+class SotUndefinedVar(metaclass=Singleton):
     pass
 
 
@@ -459,8 +456,7 @@ class StepInfo:
         return len(self.dyn_time_costs) < self.REQUIRED_DYN_INFOS
 
 
-@Singleton
-class StepInfoManager:
+class StepInfoManager(metaclass=Singleton):
     def __init__(self):
         self.step_record = {}
         self.current_code = None
