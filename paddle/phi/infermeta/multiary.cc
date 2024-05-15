@@ -4314,6 +4314,46 @@ void SendUVInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(out_dims_array));
 }
 
+void SparseAttentionInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& offset,
+                              const MetaTensor& columns,
+                              const MetaTensor& key_padding_mask,
+                              const MetaTensor& attn_mask,
+                              MetaTensor* out,
+                              MetaTensor* sparse_dot_sdd,
+                              MetaTensor* softmax) {
+  const auto& dims_q = q.dims();
+  const auto& dims_k = k.dims();
+  const auto& dims_v = v.dims();
+  const auto& dims_columns = columns.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dims_q.size(),
+      static_cast<size_t>(4),
+      phi::errors::InvalidArgument("Dimension in query' shapes should be 4."));
+  PADDLE_ENFORCE_EQ(
+      dims_k.size(),
+      static_cast<size_t>(4),
+      phi::errors::InvalidArgument("Dimension in key' shapes should be 4."));
+  PADDLE_ENFORCE_EQ(
+      dims_v.size(),
+      static_cast<size_t>(4),
+      phi::errors::InvalidArgument("Dimension in value' shapes should be 4."));
+
+  auto batch_size = dims_q[0];
+  auto num_heads = dims_q[1];
+  auto M = dims_q[2];
+  auto N = dims_q[3];
+  auto sparse_nnz = dims_columns[2];
+  out->set_dims({batch_size, num_heads, M, N});
+  sparse_dot_sdd->set_dims({batch_size, num_heads, sparse_nnz});
+  softmax->set_dims({batch_size, num_heads, sparse_nnz});
+  out->share_lod(q);
+  out->set_dtype(q.dtype());
+}
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,
