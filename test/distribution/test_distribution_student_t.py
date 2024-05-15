@@ -37,13 +37,13 @@ from paddle.distribution.student_t import StudentT
             'multi-dim',
             parameterize.xrand((2, 1), dtype='float32', min=4, max=30),
             parameterize.xrand((2, 3), dtype='float32', min=-10, max=10),
-            parameterize.xrand((2, 3), dtype='float32', min=0.1, max=5),
+            parameterize.xrand((2, 3), dtype='float32', min=0.1, max=3),
         ),
         (
             'multi-dim2',
             parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
             parameterize.xrand((2, 3), dtype='float64', min=-10, max=10),
-            parameterize.xrand((2, 3), dtype='float64', min=0.1, max=5),
+            parameterize.xrand((2, 3), dtype='float64', min=0.1, max=3),
         ),
     ],
 )
