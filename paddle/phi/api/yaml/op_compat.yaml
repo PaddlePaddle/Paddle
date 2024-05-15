@@ -4179,7 +4179,7 @@
       data_type : int64_t
       tensors_name : StepsTensorList
 
-- op: share_data
+- op: share_data_ (share_data)
   inputs :
     x : X
   outputs :
@@ -4197,6 +4197,13 @@
     {x: X, y: Y, scale: Scale, bias : Bias}
   outputs :
     out : Out
+
+- op: sparse_attention
+  backward: sparse_attention_grad
+  inputs:
+    {q : Q, k : K, v : V, offset : Offset, columns : Columns, key_padding_mask : KeyPaddingMask, attn_mask : AttnMask}
+  outputs:
+    {out : Out, sparse_dot_sdd : SparseDotSdd, softmax : Softmax}
 
 - op: sparse_momentum
   inputs :
