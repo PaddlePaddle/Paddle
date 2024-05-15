@@ -109,7 +109,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'print',
     'number_count',
     'assign_value',
-    'share_data',
+    'share_data_',
     'onednn_to_paddle_layout',
     'lrn',
     'multi_gru',
