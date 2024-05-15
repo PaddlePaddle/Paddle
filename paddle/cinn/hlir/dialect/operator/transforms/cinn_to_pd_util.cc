@@ -151,7 +151,7 @@ const auto& handler_reduce_prod_op =
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
   auto attrs = op->attributes();
   for (auto item : attrs) {
-    VLOG(0) << item.first;
+    VLOG(6) << item.first;
   }
   std::vector<pir::Value> vec_inputs;
   for (uint32_t i = 0; i < op->num_operands(); ++i) {
@@ -162,6 +162,32 @@ const auto& handler_reduce_prod_op =
   int axis = attrs.at("axis").dyn_cast<::pir::Int32Attribute>().data();
 
   auto pd_op = builder.Build<paddle::dialect::ConcatOp>(op_input, axis);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertScaleOp(::pir::Operation* op,
+                                 ::pir::IrMapping& ir_mapping,  // NOLINT
+                                 ::pir::Builder& builder) {     // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  auto pd_op = builder.Build<paddle::dialect::ScaleOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertBroadcastOp(::pir::Operation* op,
+                                     ::pir::IrMapping& ir_mapping,  // NOLINT
+                                     ::pir::Builder& builder) {     // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  auto pd_op = builder.Build<paddle::dialect::ExpandOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -236,3 +262,11 @@ REGISTER_TRANSFORM_RULES(slice_op,
 REGISTER_TRANSFORM_RULES(concat_op,
                          cinn::dialect::ConcatOp::name(),
                          cinn::dialect::details::ConvertConcatOp);
+
+REGISTER_TRANSFORM_RULES(scale_op,
+                         cinn::dialect::ScaleOp::name(),
+                         cinn::dialect::details::ConvertScaleOp);
+
+REGISTER_TRANSFORM_RULES(broadcast_op,
+                         cinn::dialect::BroadcastOp::name(),
+                         cinn::dialect::details::ConvertBroadcastOp);
