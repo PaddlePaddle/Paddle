@@ -835,7 +835,6 @@ set(STATIC_BUILD_TESTS
     test_paddle_save_load_binary
     test_reduce_op
     test_segment_ops
-    test_shuffle_batch_op
     test_sparse_conv_op
     test_sparse_norm_op
     test_tensor_array_to_tensor
