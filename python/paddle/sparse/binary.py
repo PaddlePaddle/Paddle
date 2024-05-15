@@ -452,3 +452,8 @@ def is_same_shape(x, y):
 
     """
     return x.is_same_shape(y)
+
+
+@dygraph_only
+def mask_as(x, mask, name=None):
+    return _C_ops.sparse_mask_as(x, mask)
