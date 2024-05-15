@@ -320,13 +320,13 @@ class TestBert(Dy2StTestBase):
                     np.testing.assert_allclose(
                         st_res,
                         dy_res,
-                        rtol=1e-04,
+                        rtol=1e-05,
                         err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
                     )
                     np.testing.assert_allclose(
                         st_res,
                         dy_jit_res,
-                        rtol=1e-04,
+                        rtol=1e-05,
                         err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
                     )
             else:

@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +34,7 @@ void XPUReduce(const framework::ExecutionContext& context,
                                  T*,
                                  const std::vector<int>&,
                                  const std::vector<int>&)> func) {
-  PADDLE_ENFORCE_EQ(platform::is_xpu_place(context.GetPlace()),
+  PADDLE_ENFORCE_EQ(context.GetPlace().GetType() == phi::AllocationType::XPU,
                     true,
                     phi::errors::Unavailable("This kernel only runs on XPU."));
   bool reduce_all = context.Attr<bool>("reduce_all");

@@ -105,7 +105,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

@@ -29,7 +29,7 @@ USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(matmul_transpose_fuse_pass);
-USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(matmul_add_act_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);

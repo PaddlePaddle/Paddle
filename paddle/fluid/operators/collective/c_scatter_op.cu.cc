@@ -104,8 +104,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    phi::DDim x_dims = x->dims();
+    phi::DDim out_dims(x_dims);
     phi::DenseTensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
 
