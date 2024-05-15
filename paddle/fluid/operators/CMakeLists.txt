@@ -63,6 +63,12 @@ if(WITH_IPU)
     add_subdirectory(ipu)
 endif()
 
+if(WITH_GCU)
+    include_directories(/usr/include)
+    include_directories(/usr/include/dtu)
+    add_subdirectory(gcu)
+endif()
+
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)

@@ -108,6 +108,11 @@ if(WITH_IPU)
   add_definitions(-DPADDLE_WITH_IPU)
 endif()
 
+if(WITH_GCU)
+  message(STATUS "Compile with GCU!")
+  add_definitions(-DPADDLE_WITH_GCU)
+endif()
+
 if(WITH_GPU)
   add_definitions(-DPADDLE_WITH_CUDA)
   add_definitions(-DEIGEN_USE_GPU)

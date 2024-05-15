@@ -19,6 +19,10 @@ from paddle.device import get_available_custom_device
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
+_backend_to_visible_devices_str = {
+    'gcu': 'TOPS_VISIBLE_DEVICES',
+}
+
 
 class DeviceType:
     CPU = 'cpu'
@@ -97,9 +101,15 @@ class Device:
         visible_devices = None
         if 'PADDLE_XCCL_BACKEND' in os.environ:
             dev._dtype = DeviceType.CUSTOM_DEVICE
-            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                os.getenv('PADDLE_XCCL_BACKEND').upper()
-            )
+            custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
+            if custom_device_type in _backend_to_visible_devices_str:
+                visible_devices_str = _backend_to_visible_devices_str[
+                    custom_device_type
+                ]
+            else:
+                visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                    custom_device_type.upper()
+                )
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif 'CUDA_VISIBLE_DEVICES' in os.environ:
@@ -133,9 +143,14 @@ class Device:
             custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
             dev._dtype = DeviceType.CUSTOM_DEVICE
             num = get_custom_devices_count(custom_device_type)
-            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                custom_device_type.upper()
-            )
+            if custom_device_type in _backend_to_visible_devices_str:
+                visible_devices_str = _backend_to_visible_devices_str[
+                    custom_device_type
+                ]
+            else:
+                visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                    custom_device_type.upper()
+                )
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif core.is_compiled_with_cuda():

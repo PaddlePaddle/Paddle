@@ -822,6 +822,13 @@ class _ExecutorCache:
                 prim2orig()
 
             inner_program = program
+        if isinstance(
+            place, core.CustomPlace
+        ) and core.is_compiled_with_custom_device('gcu'):
+            fetch_var_names = list(map(_to_name_str, fetch_list))
+            inner_program = compiler.GcuCompiledProgram(
+                inner_program
+            ).compile_in_run(feed, fetch_var_names)
 
         program = _add_feed_fetch_ops(
             program=inner_program,
@@ -951,6 +958,8 @@ class Executor:
         self._fleet_executor_with_standalone = False
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+        self.program_to_run = set()
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1591,6 +1600,8 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+            if core.is_compiled_with_custom_device('gcu'):
+                self.program_to_run.add(program)
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -2789,3 +2800,16 @@ class Executor:
             print_period,
             fetch_handler,
         )
+
+    def synchronize(self):
+        is_gcu_exe = (
+            isinstance(self.place, core.CustomPlace)
+            and self.place.get_device_type() == 'gcu'
+        )
+        if not is_gcu_exe:
+            return
+        idx = 0
+        for compiled_program in self.program_to_run:
+            logging.info('synchronize for program {}'.format(idx))
+            core.gcu_exe_sync(compiled_program.desc)
+            idx = idx + 1

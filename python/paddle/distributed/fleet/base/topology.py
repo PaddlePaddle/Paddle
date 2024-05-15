@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 from functools import reduce
 from itertools import product
 
@@ -445,10 +446,59 @@ class _CommunicateGroup:
     def set_comm_group(
         self, group_name, group_rank, group_size, ring_id, group_ranks
     ):
+        pg = None
+        if (
+            paddle.framework.core.is_compiled_with_custom_device('gcu')
+            and not paddle.fluid.framework.in_dygraph_mode()
+            and group_name == 'global'
+            and group_name not in self.groups
+        ):
+            pg = self.create_global_process_group()
         group = paddle.distributed.collective.Group(
-            group_rank, ring_id, group_ranks
+            group_rank, ring_id, group_ranks, pg
         )
         self.groups[group_name] = group
+
+    def create_global_process_group(self):
+        parallel_env = paddle.distributed.ParallelEnv()
+        device_type = parallel_env.device_type
+        if device_type == "":
+            return None
+        master_endpoint = os.getenv("PADDLE_MASTER", None)
+        if master_endpoint is None:
+            return None
+        nranks = parallel_env.nranks
+        rank = parallel_env.local_rank
+        master_addr = master_endpoint.split(":")[0]
+        master_port = int(master_endpoint.split(":")[1])
+        is_master = rank == 0
+        logger.info(
+            'Init TCPStore, rank:{}, device:{}, world size:{}, '
+            'master addr:{}, master port:{}, is_master:{}'.format(
+                rank,
+                parallel_env.device_id,
+                nranks,
+                master_addr,
+                master_port,
+                is_master,
+            )
+        )
+        store = paddle.framework.core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            nranks,
+        )
+        logger.info('Create ProcessGroupCustom')
+        pg_group = paddle.framework.core.ProcessGroupCustom.create(
+            store,
+            device_type,
+            rank,
+            nranks,
+        )
+        logger.info(f'Barrier on device:{parallel_env.device_id}')
+        pg_group.barrier(parallel_env.device_id).wait()
+        return pg_group
 
     def get_group(self, group_name):
         assert group_name in self.groups
