@@ -38,6 +38,7 @@ from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -159,34 +160,49 @@ class VariableLoader:
 
 
 class SymbolicInt:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __eq__(self, other) -> bool:
         return isinstance(other, (int, SymbolicInt))
 
+    def __repr__(self) -> str:
+        return "-1"
+
+    def __str__(self) -> str:
+        return "-1"
+
 
 class DynamicShape:
-    def __init__(self, shape: list[int]):
-        self.shape = shape
+    def __init__(self, shape: list[int | SymbolicInt]):
+        self.shape: list[int | SymbolicInt] = shape
 
     @classmethod
     def generate(
-        cls, shape1: list[int] | DynamicShape, shape2: list[int] | DynamicShape
+        cls,
+        shape1: list[int | SymbolicInt] | DynamicShape,
+        shape2: list[int | SymbolicInt] | DynamicShape,
     ):
         assert len(shape1) == len(
             shape2
         ), "shape1 and shape2 must have the same length."
         new_shape = []
         for i, j in zip(shape1, shape2):
-            if i == j:
-                new_shape.append(i)
+            if isinstance(i, int) and i == j:
+                # NOTE(zrr1999): `j` maybe a SymbolicInt, so we need to append it instead of `i`.
+                new_shape.append(j)
             else:
-                new_shape.append(-1)
+                new_shape.append(SymbolicInt())
         return cls(new_shape)
 
-    def get_shape(self):
-        return self.shape
-
     def get_dynamic_axes(self):
-        return [i for i, s in enumerate(self.shape) if s == -1]
+        return [
+            i for i, s in enumerate(self.shape) if isinstance(s, SymbolicInt)
+        ]
 
     def __len__(self):
         return len(self.shape)
@@ -202,10 +218,7 @@ class DynamicShape:
         if len(self.shape) != len(other_shape):
             return False
         for i, j in zip(self.shape, other_shape):
-            assert isinstance(i, int) and isinstance(
-                j, int
-            ), "shape must be a tuple of int."
-            if i != -1 and j != -1 and i != j:
+            if i != j:
                 return False
         return True
 
@@ -370,14 +383,14 @@ class FunctionGraph:
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
         with tmp_name_guard():
-            guards = []
+            guards: list[StringifyExpression] = []
             with EventGuard("guard_fn: find vars and make stringify guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
                 ):
                     guards.extend(variable.make_stringify_guard())
 
-            guards = OrderedSet(guards)
+            guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
                 assert isinstance(
@@ -656,7 +669,8 @@ class FunctionGraph:
         """
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
-        self.analyze_dynamic_inputs()
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            self.analyze_dynamic_inputs()
 
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)
