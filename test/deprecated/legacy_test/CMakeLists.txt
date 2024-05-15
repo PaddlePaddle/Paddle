@@ -750,6 +750,7 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
