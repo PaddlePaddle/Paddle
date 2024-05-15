@@ -57,7 +57,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
 
   {
-    platform::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
+    phi::funcs::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
