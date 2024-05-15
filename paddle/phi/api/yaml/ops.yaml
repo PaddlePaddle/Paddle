@@ -863,6 +863,7 @@
   kernel:
     func: dgc_momentum
     data_type: param
+  optional : master_param, master_param_out
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
