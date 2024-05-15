@@ -56,6 +56,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.prog = base.Program()
         self.startup_prog = base.Program()
         self.set_initializer()
+        paddle.enable_static()
 
         with base.program_guard(self.prog, self.startup_prog):
             x = paddle.static.data(

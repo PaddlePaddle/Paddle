@@ -95,6 +95,7 @@ class TestLookupTableApi(unittest.TestCase):
 
 class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")
 
