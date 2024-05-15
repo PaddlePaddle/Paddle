@@ -859,7 +859,7 @@
   output: Tensor (param_out), Tensor (velocity_out), Tensor (master_param_out), Tensor
     (grad_out)
   infer_meta:
-    func: DgcMomentumInferMeta
+    func: DGCMomentumInferMeta
   kernel:
     func: dgc_momentum
     data_type: param
