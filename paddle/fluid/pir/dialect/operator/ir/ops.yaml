@@ -1627,7 +1627,7 @@
     func: shadow_feed_tensors
     param: [x]
 
-- op : share_data
+- op : share_data_
   args : (Tensor x)
   output : Tensor(out)
   infer_meta:
@@ -1636,6 +1636,7 @@
   kernel:
     func: share_data
     param: [x]
+  inplace : (x -> out)
 
 - op : shuffle_batch
   args : (Tensor x, Tensor seed, int startup_seed=0)
