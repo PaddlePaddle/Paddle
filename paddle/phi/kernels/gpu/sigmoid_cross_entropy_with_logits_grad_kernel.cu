@@ -74,7 +74,7 @@ struct SigmoidBwdPosWeightFunctor {
       counts = 0;
     } else {
       T term1 = (x > 0) ? static_cast<T>(1) : static_cast<T>(0);
-      T e_x = std::exp(-std::abs(x));
+      T e_x = exp(-abs(x));
       T down = 1 + e_x;
       T abs_grad = (x >= 0) ? static_cast<T>(1) : static_cast<T>(-1);
       T up = -e_x * abs_grad * pos_weight;
