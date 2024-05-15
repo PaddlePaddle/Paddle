@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/pull_box_sparse_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(
     pull_box_sparse, KPS, ALL_LAYOUT, ops::PullBoxSparseKernel, float) {}
