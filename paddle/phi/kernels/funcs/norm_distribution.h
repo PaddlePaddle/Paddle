@@ -25,7 +25,7 @@ inline void NormalDistribution(T* data,
                                const float& mean,
                                const float& std,
                                std::shared_ptr<std::mt19937_64> engine) {
-  std::normal_distribution<T> dist(static_cast<T>(mean), static_cast<T>(std));
+  std::normal_distribution<T> dist(mean, std);
   for (int64_t i = 0; i < size; ++i) {
     data[i] = dist(*engine);
   }
