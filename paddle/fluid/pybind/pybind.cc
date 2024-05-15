@@ -2165,6 +2165,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
            &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
