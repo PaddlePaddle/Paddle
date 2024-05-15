@@ -20,10 +20,13 @@ namespace frontend {
 namespace decomposer {
 
 void sum(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_GT(instr->inputs.size(), 0UL)
-      << "At least 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_GT(instr->inputs.size(),
+                    0UL,
+                    phi::errors::InvalidArgument("At least 1 input tensor."));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("Output size should be 1 tensor."));
   auto inputs = instr->inputs;
   auto output = instr->outputs[0];
   auto* builder = context.builder();
