@@ -166,11 +166,16 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
     visitor.template apply<int>();
   } else if (type == DataType::INT64) {
     visitor.template apply<int64_t>();
+  } else if (type == DataType::FLOAT16) {
+    visitor.template apply<phi::dtype::float16>();
+  } else if (type == DataType::BFLOAT16) {
+    visitor.template apply<phi::dtype::bfloat16>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
         "The received values data type %s can not meet input requirements. "
         "Because the given values data type of searchsorted operators must be "
-        "float32, float64, int32 or int64. Please input appropriate "
+        "bfloat16, float16, float32, float64, int32 or int64. Please input "
+        "appropriate "
         "sorted_sequence again! ",
         type));
   }
