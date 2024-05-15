@@ -40,10 +40,10 @@ void ViewShapeKernel(const Context& dev_ctx,
       PADDLE_THROW(phi::errors::OutOfRange("Tensor idx is out of range"));
     }
   }
-  if (new_size == 0) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "cannot reshape tensor of 0 elements into shape "));
-  }
+  PADDLE_ENFORCE_NE(
+      new_size,
+      0,
+      phi::errors::Unavailable("cannot reshape tensor of 0 elements into shape "));
   if (infer_dim >= 0 && new_size > 0 && numel % new_size == 0) {
     dims_copy[infer_dim] = numel / new_size;
   }
