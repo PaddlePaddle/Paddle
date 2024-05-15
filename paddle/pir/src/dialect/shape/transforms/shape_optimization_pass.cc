@@ -21,6 +21,7 @@
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -226,18 +227,6 @@ void CheckInferSymWithInferMeta(
   }
 }
 
-void InferSymExprForAllValues(ModuleOp module_op) {
-  ShapeConstraintIRAnalysis& shape_analysis =
-      ShapeAnalysisManager::Instance().Get(module_op.program());
-  shape_analysis.Init();
-  auto infer_context = shape_analysis.GetInferSymbolicShapeContext();
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, infer_context);
-    }
-  }
-}
-
 class ShapeOptimizationPass : public pir::Pass {
  public:
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
@@ -253,7 +242,7 @@ class ShapeOptimizationPass : public pir::Pass {
             "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 
-    InferSymExprForAllValues(module_op);
+    ::pir::InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
       pm.EnableIRPrinting();
@@ -346,6 +335,18 @@ void InferSymExprForBlock(const Block& block,
     }
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
+  }
+}
+
+void InferSymExprForAllValues(ModuleOp module_op) {
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(module_op.program());
+  shape_analysis.Init();
+  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      InferSymExprForBlock(block, infer_context);
+    }
   }
 }
 
