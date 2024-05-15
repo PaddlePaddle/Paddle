@@ -431,7 +431,7 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
         pat.Op(paddle::dialect::CAllreduceSum_Op::name(),
                {{"ring_id", pat.Attr("ring_id")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
-    const auto &assign_ = pat.Op(paddle::dialect::Assign_Op::name());
+    const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
     const auto &full = pat.Op(paddle::dialect::FullOp::name());
     const auto &split_with_num = pat.Op(paddle::dialect::SplitWithNumOp::name(),
                                         {{"num", pat.Attr("num")}});
@@ -442,7 +442,7 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
         matmul(pat.Tensor("out_grad"), pat.Tensor("weight"));
     pat.Tensor("input_grad") =
         c_allreduce_sum_(pat.Tensor("input_grad_partial"));
-    pat.Tensor("input_grad_tmp") = assign_(pat.Tensor("input_grad"));
+    pat.Tensor("input_grad_tmp") = assign(pat.Tensor("input_grad"));
     pat.Tensor("split_num") = full();
     pat.Tensor("input_grad_group") =
         split_with_num(pat.Tensor("input_grad_tmp"), pat.Tensor("split_num"));
