@@ -555,7 +555,7 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(out_c.numpy(), np_out))
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
-        
+
     def call_view3(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)
