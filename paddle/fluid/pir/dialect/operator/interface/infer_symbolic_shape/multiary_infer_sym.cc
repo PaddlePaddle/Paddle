@@ -400,6 +400,45 @@ bool FlashAttnOpInferSymbolicShape(
   return true;
 }
 
+bool QkvMhaOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &q =
+      infer_context->GetShapeOrDataForValue(operand_source);
+
+
+  const symbol::ShapeOrDataDimExprs &k =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+
+  const symbol::ShapeOrDataDimExprs &v =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+
+  PADDLE_ENFORCE_EQ(q.shape().size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+
+  infer_context->AddEqualCstr(q.shape()[0], k.shape()[0]);
+ 
+  infer_context->AddEqualCstr(q.shape()[0], v.shape()[0]);
+
+  infer_context->AddEqualCstr(k.shape()[1], v.shape()[1]);
+
+  std::vector<symbol::DimExpr> out_shape = q.shape();
+
+  out_shape.back() = v.shape().back();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+
+  return true;
+}
+
 bool GroupNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape =
