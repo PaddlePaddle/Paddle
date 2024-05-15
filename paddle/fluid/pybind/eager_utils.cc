@@ -1083,6 +1083,14 @@ PyObject* ToPyObject(const phi::DataType& dtype) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
+  PyObject* result = PyList_New((Py_ssize_t)dtypes.size());
+  for (size_t i = 0; i < dtypes.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(dtypes[i]));
+  }
+  return result;
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1389,8 +1397,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1422,8 +1439,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1495,8 +1521,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1528,8 +1563,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {

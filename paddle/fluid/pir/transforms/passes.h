@@ -29,7 +29,7 @@ USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(matmul_transpose_fuse_pass);
-USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(matmul_add_act_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
@@ -64,6 +64,7 @@ USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
 USE_PIR_PASS(elementwise_act_onednn_fuse_pass);
 USE_PIR_PASS(operator_unsqueeze_onednn_fuse_pass);
 USE_PIR_PASS(operator_scale_onednn_fuse_pass);
+USE_PIR_PASS(onednn_placement_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU

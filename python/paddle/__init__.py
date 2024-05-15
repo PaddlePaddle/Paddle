@@ -104,6 +104,7 @@ from paddle import (  # noqa: F401
 # high-level api
 from . import (  # noqa: F401
     _pir_ops,
+    _typing as _typing,
     callbacks,
     fft,
     hub,

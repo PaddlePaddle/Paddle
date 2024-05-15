@@ -122,8 +122,8 @@ class BlockDimExprsAsserter {
           return symbol::ShapeOrDataDimExprs(ret);
         };
     auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {
-      auto patterns = symbol::Overloaded{NewSymbolReplacedTensor,
-                                         NewSymbolReplacedTensorList};
+      auto patterns = ::common::Overloaded{NewSymbolReplacedTensor,
+                                           NewSymbolReplacedTensorList};
       return std::visit(patterns, value_dim_exprs.variant());
     };
     VisitEachInputAndDimExprs([&](auto value, const auto& value_dim_exprs) {
@@ -144,7 +144,10 @@ class BlockDimExprsAsserter {
       PADDLE_THROW(phi::errors::Unimplemented(
           op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
     } else {
-      bool infer_result = interface.InferSymbolicShape(shape_analysis.get());
+      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
+      // is done.
+      bool infer_result = interface.InferSymbolicShape(
+          shape_analysis->GetInferSymbolicShapeContext());
       PADDLE_ENFORCE_EQ(infer_result,
                         true,
                         ::common::errors::PreconditionNotMet(

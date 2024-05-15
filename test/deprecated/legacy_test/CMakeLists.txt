@@ -888,7 +888,7 @@ py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
-set_pit_tests_properties()
+set_pir_tests_properties()
 
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)

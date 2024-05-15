@@ -20,7 +20,7 @@ class ReshardFunction:
     def is_suitable(self, dist_tensor, dist_attr):
         raise NotImplementedError
 
-    def reshard(self, program, op, src_tensor, dst_dist_attr):
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         raise NotImplementedError
 
 

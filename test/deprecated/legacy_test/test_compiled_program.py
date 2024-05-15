@@ -49,7 +49,7 @@ class TestCompiledProgram(unittest.TestCase):
             (loss_data,) = exe.run(
                 base.default_main_program(),
                 feed={"image": self.img, "label": self.label},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
             self.loss = float(loss_data)
 
@@ -71,7 +71,7 @@ class TestCompiledProgram(unittest.TestCase):
             (loss_data,) = exe.run(
                 compiled_prog,
                 feed={"image": self.img, "label": self.label},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
             np.testing.assert_array_equal(float(loss_data), self.loss)
 
