@@ -410,7 +410,7 @@ void* GetCUDNNDsoHandle() {
 #else
 #ifdef WITH_PIP_CUDA_LIBRARIES
   return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+      FLAGS_cudnn_dir, "libcudnn.so.9", false, {cuda_lib_path});
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
