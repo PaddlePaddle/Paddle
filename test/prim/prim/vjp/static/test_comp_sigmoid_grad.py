@@ -66,7 +66,7 @@ class TestExpGradComp(unittest.TestCase):
                         'cotangent': cotangent,
                     },
                     fetch_list=[
-                        x_grad[0].name,
+                        x_grad[0],
                     ],
                 )
 
@@ -95,7 +95,7 @@ class TestExpGradComp(unittest.TestCase):
                         'cotangent': cotangent,
                     },
                     fetch_list=[
-                        x_grad[0].name,
+                        x_grad[0],
                     ],
                 )
 

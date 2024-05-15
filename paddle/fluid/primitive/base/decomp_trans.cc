@@ -224,13 +224,13 @@ void DecompProgram::check_decomp_outputs(
     } else {
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(orig_outs[i]),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its origin %d-index output is invalid",
               op_name,
               i));
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(decomp_outs[i]),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its decomp %d-index output is invalid",
               op_name,
               i));
@@ -238,7 +238,7 @@ void DecompProgram::check_decomp_outputs(
       auto decomp_dtype = GetValueDtype(decomp_outs[i]);
 
       PADDLE_ENFORCE(orig_dtype == decomp_dtype,
-                     paddle::platform::errors::PreconditionNotMet(
+                     common::errors::PreconditionNotMet(
                          "[Prim] For op %s, its origin %d-index output dtype "
                          "%s is not equal to "
                          "decomp output dtype %s ",
@@ -252,7 +252,7 @@ void DecompProgram::check_decomp_outputs(
 
       PADDLE_ENFORCE(
           orig_dim.size() == decomp_dim.size(),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its origin %d-index output rank of shape"
               "[%s] is not equal to "
               "decomp output rank of shape[%s] ",
@@ -274,7 +274,7 @@ void DecompProgram::check_decomp_outputs(
         if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
           PADDLE_ENFORCE(
               orig_dim[j] == decomp_dim[j],
-              paddle::platform::errors::PreconditionNotMet(
+              common::errors::PreconditionNotMet(
                   "[Prim] For op %s, its origin %d-index output shape "
                   "[%s] is not equal to "
                   "decomp output shape [%s] ",
@@ -296,7 +296,7 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
-      paddle::platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "[Prim] For op %s, its origin output num %d is not equal to "
           "decomp output num %d ",
           op_name,
@@ -308,7 +308,7 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
       PADDLE_ENFORCE_EQ(
           decomp_outs[i].size(),
           1,
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, each element of decomp output num must "
               "be 1, but num of index %d is %d ",
               op_name,
@@ -329,7 +329,7 @@ void DecompProgram::construct_dst_vars(
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
-      paddle::platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "[Prim] For op %s, its origin output num %d is not equal to "
           "decomp output num %d ",
           op_name,
@@ -377,6 +377,35 @@ std::vector<std::vector<pir::Value>> call_decomp_rule(pir::Operation* op) {
   return decomp_res;
 }
 
+std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
+  std::vector<pir::Operation*> ops_list;
+  for (auto& op : *block) {
+    ops_list.push_back(&op);
+  }
+  if (program_->block() != block || (start_index_ == 0 && end_index_ == -1)) {
+    return ops_list;
+  }
+
+  VLOG(4) << "start_index_:  " << start_index_ << ", end_index_: " << end_index_
+          << ", ops_list.size(): " << ops_list.size();
+  int start_idx = std::max(start_index_, 0);
+  int end_idx = (end_index_ == -1) ? ops_list.size() : end_index_;
+  if (start_idx == end_idx) {
+    return std::vector<pir::Operation*>();
+  }
+  PADDLE_ENFORCE_LT(start_idx,
+                    end_idx,
+                    common::errors::PreconditionNotMet(
+                        "Required start_idx < end_idx in DecompProgram."));
+  PADDLE_ENFORCE_LE(
+      end_idx,
+      ops_list.size(),
+      common::errors::PreconditionNotMet(
+          "Requred end_idx <= block.ops().size() in DecompProgram."));
+  return std::vector<pir::Operation*>(ops_list.begin() + start_idx,
+                                      ops_list.begin() + end_idx);
+}
+
 void DecompProgram::decomp_program() {
   std::unordered_map<pir::Value, int> orig_vars_dict;
   for (size_t i = 0; i < src_vars_.size(); i++) {
@@ -412,10 +441,7 @@ void DecompProgram::decomp_block(
     pir::Block* block,
     const std::unordered_map<pir::Value, int>& orig_vars_dict,
     std::vector<pir::Value>& tar_vars) {  // NOLINT
-  std::vector<pir::Operation*> ops_list;
-  for (auto& op : *block) {
-    ops_list.push_back(&op);
-  }
+  std::vector<pir::Operation*> ops_list = parse_block_ops(block);
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
     if (op->name() == "pd_op.if") {

@@ -182,7 +182,7 @@ class TestTransposeGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=[x_cotangent[0].name],
+                fetch_list=[x_cotangent[0]],
             )[0]
 
         def desired(primal, axis, cotangent):
@@ -207,7 +207,7 @@ class TestTransposeGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=[x_cotangent[0].name],
+                fetch_list=[x_cotangent[0]],
             )[0]
 
         if (self.dtype == np.float16) and isinstance(

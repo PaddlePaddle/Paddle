@@ -256,7 +256,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
  protected:
   void RunNativeImpl(const framework::Scope &scope,
-                     const platform::Place &dev_place) const {
+                     const phi::Place &dev_place) const {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
@@ -266,7 +266,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place);
       return;
@@ -432,7 +432,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunCalibration(const framework::Scope &scope,
-                      const platform::Place &dev_place) const {
+                      const phi::Place &dev_place) const {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
@@ -497,7 +497,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunTrt(const framework::Scope &scope,
-              const platform::Place &dev_place,
+              const phi::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -881,7 +881,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,
-                            const platform::Place &dev_place) const {
+                            const phi::Place &dev_place) const {
     if (!trt_engine_) {
       TensorRTEngine::ConstructionParams params;
       params.max_batch_size = max_batch_size_;

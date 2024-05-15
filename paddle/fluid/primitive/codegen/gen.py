@@ -97,6 +97,7 @@ OTHER_PRIM_VJP_OPS = [
     'pad_grad',
     'prod_grad',
     'max_grad',
+    'scale_grad',
     'scatter_grad',
     'scatter_nd_add_grad',
     'slice_grad',
@@ -117,11 +118,13 @@ CUSTOM_VJP = [
     'layer_norm_grad',
     'leaky_relu_grad',
     'minimum_grad',
+    'pow_grad',
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
     'sqrt_grad',
+    'stack_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
