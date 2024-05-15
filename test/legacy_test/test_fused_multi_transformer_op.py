@@ -1963,7 +1963,7 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
         self.has_attn_mask = False
-        self.x_type = np.float32
+        self.x_type = np.float16
         self.weight_attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(0.0)
         )

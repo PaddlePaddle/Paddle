@@ -1106,7 +1106,6 @@ PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerOpKernel,
-                          float,
                           plat::float16,
                           plat::bfloat16) {}
 #else
@@ -1114,6 +1113,5 @@ PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerOpKernel,
-                          float,
                           plat::float16) {}
 #endif

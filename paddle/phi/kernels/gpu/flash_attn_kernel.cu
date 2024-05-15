@@ -567,7 +567,6 @@ PD_REGISTER_KERNEL(flash_attn_unpadded,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedKernel,
-                   float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(

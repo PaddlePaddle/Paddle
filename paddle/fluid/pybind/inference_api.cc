@@ -390,7 +390,7 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(phi::dtype::float16);
       break;
     case PaddleDType::BFLOAT16:
-      size = sizeof(paddle_infer::bfloat16);
+      size = sizeof(phi::dtype::bfloat16);
       break;
     case PaddleDType::INT8:
       size = sizeof(int8_t);
@@ -433,8 +433,8 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::BFLOAT16:
-      tensor.copy_to_cpu<paddle::platform::bfloat16>(
-          static_cast<paddle::platform::bfloat16 *>(array.mutable_data()));
+      tensor.copy_to_cpu<phi::dtype::bfloat16>(
+          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
@@ -477,8 +477,8 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::BFLOAT16:
-      tensor.CopyToCpu<paddle::platform::bfloat16>(
-          static_cast<paddle::platform::bfloat16 *>(array.mutable_data()));
+      tensor.CopyToCpu<phi::dtype::bfloat16>(
+          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
