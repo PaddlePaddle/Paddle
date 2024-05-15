@@ -13,16 +13,39 @@
 # limitations under the License.
 
 import os
+import re
 import unittest
+
+# now only support flash_attention_v2 and variable
+os.environ["FLAGS_fmha_mode"] = "flash_attention_v2"
 
 from test_dist_base import TestDistBase
 
 import paddle
+from paddle.device import (
+    is_compiled_with_cuda,
+)
 
 paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
 
 
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
+
+
+@unittest.skipIf(
+    not is_compiled_with_cuda or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestStaticModelParallel(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
