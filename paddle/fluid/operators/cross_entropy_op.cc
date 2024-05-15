@@ -198,7 +198,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
                           ctx.device_context().GetPlace());
   }
 
-  virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
+  virtual phi::DDim GetXDim(framework::InferShapeContext* ctx) const {
     return ctx->GetInputDim("X");
   }
 
@@ -345,9 +345,9 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
   }
 
  protected:
-  framework::DDim GetXDim(framework::InferShapeContext* ctx) const override {
+  phi::DDim GetXDim(framework::InferShapeContext* ctx) const override {
     auto x_shape = ctx->GetInputDim("XShape");
-    return framework::DDim(x_shape.Get(), x_shape.size() - 1);
+    return phi::DDim(x_shape.Get(), x_shape.size() - 1);
   }
 
   const char* VarNameWithXLoD() const override { return "XShape"; }

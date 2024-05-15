@@ -44,13 +44,13 @@ class BufferedReader : public framework::DecoratedReader {
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place,
+                 const phi::Place& place,
                  size_t buffer_size,
                  bool pin_memory = false);
 
   ~BufferedReader() override;
 
-  platform::Place GetPlace() const { return place_; }
+  phi::Place GetPlace() const { return place_; }
 
  private:
   void ReadTillBufferFullAsync();
@@ -64,7 +64,7 @@ class BufferedReader : public framework::DecoratedReader {
 
  private:
   ThreadPool thread_pool_;
-  platform::Place place_;
+  phi::Place place_;
   const size_t buffer_size_;
   bool pin_memory_;
 

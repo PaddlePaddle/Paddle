@@ -140,7 +140,9 @@ class TestDygraphModel(unittest.TestCase):
 
         net = Net(self.in_dim, self.out_dim, use_custom_op)
         if dy2stat:
-            net = paddle.jit.to_static(net, input_spec=[self.x_spec])
+            net = paddle.jit.to_static(
+                net, input_spec=[self.x_spec], full_graph=True
+            )
         mse_loss = paddle.nn.MSELoss()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
