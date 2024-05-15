@@ -17,6 +17,7 @@
 #include <math.h>
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
