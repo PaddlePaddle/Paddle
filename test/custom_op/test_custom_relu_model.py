@@ -21,6 +21,7 @@ from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import nn
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -221,27 +222,33 @@ class TestStaticModel(unittest.TestCase):
         paddle.disable_static()
         self.temp_dir.cleanup()
 
+    @test_with_pir_api
     def test_train_eval(self):
-        for device in self.devices:
-            # for train
-            original_relu_train_out = self.train_model(
-                device, use_custom_op=False
-            )
-            custom_relu_train_out = self.train_model(device, use_custom_op=True)
+        if paddle.framework.in_pir_mode():
+            for device in self.devices:
+                # for train
+                original_relu_train_out = self.train_model(
+                    device, use_custom_op=False
+                )
+                custom_relu_train_out = self.train_model(
+                    device, use_custom_op=True
+                )
 
-            np.testing.assert_array_equal(
-                original_relu_train_out, custom_relu_train_out
-            )
+                np.testing.assert_array_equal(
+                    original_relu_train_out, custom_relu_train_out
+                )
 
-            # for eval
-            original_relu_eval_out = self.eval_model(
-                device, use_custom_op=False
-            )
-            custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
+                # for eval
+                original_relu_eval_out = self.eval_model(
+                    device, use_custom_op=False
+                )
+                custom_relu_eval_out = self.eval_model(
+                    device, use_custom_op=True
+                )
 
-            np.testing.assert_array_equal(
-                original_relu_eval_out, custom_relu_eval_out
-            )
+                np.testing.assert_array_equal(
+                    original_relu_eval_out, custom_relu_eval_out
+                )
 
     def train_model(self, device, use_custom_op=False):
         # reset random seed
