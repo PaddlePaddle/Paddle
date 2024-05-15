@@ -23,7 +23,7 @@ import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -48,15 +48,13 @@ T = TypeVar("T")
 ConstTypes = (int, float, str, bool, type(None))
 
 
-class Singleton(Generic[T]):
-    def __init__(self, cls: type[T]):
-        self._cls = cls
-        self._instance = {}
+class Singleton(type):
+    _instances: dict[Any, Any] = {}
 
-    def __call__(self) -> T:
-        if self._cls not in self._instance:
-            self._instance[self._cls] = self._cls()
-        return self._instance[self._cls]
+    def __call__(cls, *args: Any, **kwargs: Any):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 
 class NameGenerator:
