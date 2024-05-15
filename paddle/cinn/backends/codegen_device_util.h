@@ -43,7 +43,7 @@ namespace backends {
  * - replace the original kernel function with a Call node and add it to the
  * first module, add a device kernel function to the second module.
  */
-std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
+std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module);
 
 namespace detail {
 

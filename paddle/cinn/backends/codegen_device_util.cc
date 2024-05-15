@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cas.h"
@@ -22,7 +22,7 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace backends {
 
-std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module) {
+std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module) {
   if (FLAGS_cinn_bucket_compile) {
     detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name);
     Expr expr(module);
