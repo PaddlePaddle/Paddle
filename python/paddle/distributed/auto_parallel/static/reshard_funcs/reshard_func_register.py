@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from .base_reshard_func import register_reshard_func
+from .nd_mesh_reshard_func import (
+    NdMeshReshardFunction,
+    NdMeshReshardFunctionCrossMesh,
+)
 from .p_to_r_reshard_func import (
     PToRReshardFunction,
     PToRReshardFunctionCrossMesh,
@@ -20,6 +24,10 @@ from .p_to_r_reshard_func import (
 from .r_to_s_reshard_func import (
     RToSReshardFunction,
     RToSReshardFunctionCrossMesh,
+)
+from .s_to_r_reshard_func import (
+    SToRReshardFunction,
+    SToRReshardFunctionCrossMesh,
 )
 from .same_status_reshard_func import SameStatusReshardFunction
 
@@ -30,6 +38,10 @@ def register_reshard_funcs():
     register_reshard_func(RToSReshardFunction())
     register_reshard_func(RToSReshardFunctionCrossMesh())
     register_reshard_func(SameStatusReshardFunction())
+    register_reshard_func(SToRReshardFunction())
+    register_reshard_func(SToRReshardFunctionCrossMesh())
+    register_reshard_func(NdMeshReshardFunction())
+    register_reshard_func(NdMeshReshardFunctionCrossMesh())
 
 
 register_reshard_funcs()

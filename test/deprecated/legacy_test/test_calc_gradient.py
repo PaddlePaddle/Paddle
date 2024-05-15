@@ -59,7 +59,7 @@ class TestDoubleGrad(unittest.TestCase):
         place = base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup)
-        out = exe.run(main, fetch_list=[grad1.name, grad2.name])
+        out = exe.run(main, fetch_list=[grad1, grad2])
         self.assertEqual(6, out[0][0])
         self.assertEqual(6, out[1][0])
 

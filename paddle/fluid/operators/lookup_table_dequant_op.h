@@ -28,7 +28,7 @@ namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 template <typename T>
 void dequant(const unsigned char *in,

@@ -256,7 +256,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
  protected:
   void RunNativeImpl(const framework::Scope &scope,
-                     const platform::Place &dev_place) const {
+                     const phi::Place &dev_place) const {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *program = block->Program();
@@ -266,7 +266,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place);
       return;
@@ -312,21 +312,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
           paddle::platform::DeviceContextPool &pool =
               paddle::platform::DeviceContextPool::Instance();
 
-          if (platform::is_cpu_place(t.place())) {
+          if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;
             if (t.dtype() == phi::DataType::INT64) {
-              auto *cpu_ctx = pool.Get(platform::CPUPlace());
+              auto *cpu_ctx = pool.Get(phi::CPUPlace());
               int32_tensor = phi::funcs::TransDataType(
                   reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
                   t,
                   DataType::INT32);
             }
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     int32_host.data(),
-                                    platform::CPUPlace(),
+                                    phi::CPUPlace(),
                                     int32_tensor.data<int>(),
                                     int32_tensor.numel() * sizeof(int));
-          } else if (platform::is_gpu_place(t.place())) {
+          } else if (t.place().GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA)
             auto *dev_ctx = pool.Get(t.place());
             auto &int32_tensor = t;
@@ -336,7 +336,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                   t,
                   DataType::INT32);
             }
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     int32_host.data(),
                                     int32_tensor.place(),
                                     int32_tensor.data<int>(),
@@ -432,7 +432,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunCalibration(const framework::Scope &scope,
-                      const platform::Place &dev_place) const {
+                      const phi::Place &dev_place) const {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
@@ -497,7 +497,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunTrt(const framework::Scope &scope,
-              const platform::Place &dev_place,
+              const phi::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -548,7 +548,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               t.numel()));
 
       // check the input_tensor
-      if (!platform::is_gpu_place(t.place())) {
+      if (!(t.place().GetType() == phi::AllocationType::GPU)) {
         phi::DenseTensor out;
         phi::Copy(dev_ctx, t, dev_place, false, &out);
         t.ShareDataWith(out);
@@ -620,7 +620,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     t.place(),
                                     t.data<int32_t>(),
@@ -637,7 +637,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     int32_tensor->place(),
                                     int32_tensor->data<int32_t>(),
@@ -657,7 +657,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     t.place(),
                                     t.data<int32_t>(),
@@ -674,7 +674,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
                 phi::DataType::INT32);
-            phi::memory_utils::Copy(platform::CPUPlace(),
+            phi::memory_utils::Copy(phi::CPUPlace(),
                                     shape_v.data(),
                                     int32_tensor->place(),
                                     int32_tensor->data<int32_t>(),
@@ -881,7 +881,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,
-                            const platform::Place &dev_place) const {
+                            const phi::Place &dev_place) const {
     if (!trt_engine_) {
       TensorRTEngine::ConstructionParams params;
       params.max_batch_size = max_batch_size_;
