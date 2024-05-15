@@ -26,7 +26,7 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/phi/kernels/funcss/cudnn_rnn_cache.h"
+#include "paddle/phi/kernels/funcs/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)
