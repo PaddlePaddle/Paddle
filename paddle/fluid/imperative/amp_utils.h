@@ -144,11 +144,11 @@ inline phi::DataType GetAmpDestDtype(
       egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
 
-  bool use_promote = true;
-  if (amp_level == paddle::imperative::AmpLevel::O2) {
-    use_promote =
-        egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
-  }
+  bool use_promote = false;
+  // if (amp_level == paddle::imperative::AmpLevel::O2) {
+  //   use_promote =
+  //       egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
+  // }
 
   if (use_promote) {
     if (paddle::imperative::AmpOperators::Instance()
