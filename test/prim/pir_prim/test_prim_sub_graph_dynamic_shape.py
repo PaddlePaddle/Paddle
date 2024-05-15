@@ -69,8 +69,10 @@ def stack_net(x):
     y = x + 1
     return paddle.stack([x, y], axis=0)
 
+
 def clip_net(x):
     return paddle.clip(x, 0, 1)
+
 
 def index_sample_net(x, index):
     return paddle.index_sample(x, index)
@@ -254,6 +256,7 @@ class TestPrimStack(TestPrimBase):
         self.enable_cinn = False
         self.tol = 1e-6
 
+
 class TestPrimClip(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
@@ -265,6 +268,7 @@ class TestPrimClip(TestPrimBase):
         self.necessary_ops = "pd_op.clip"
         self.enable_cinn = False
         self.tol = 1e-6
+
 
 class TestPrimTwo(unittest.TestCase):
     def setUp(self):
