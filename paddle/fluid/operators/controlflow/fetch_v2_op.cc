@@ -221,7 +221,6 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     fetch_v2,
     ops::FetchV2Op,
