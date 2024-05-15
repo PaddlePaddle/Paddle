@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/distributed/transforms/fuse_c_reduce_scatter_add_pass.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/fuse_c_reducescatter_add_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
