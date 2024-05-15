@@ -1001,6 +1001,7 @@ set(STATIC_BUILD_TESTS
     test_sync_batch_norm_op
     test_unique
     test_update_loss_scaling_op
+    test_segment_ops
     test_while_op)
 
 if(NOT WITH_GPU)
@@ -1055,5 +1056,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
+
+set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 
 set_pir_tests_properties()

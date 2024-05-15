@@ -676,7 +676,6 @@ set_tests_properties(test_imperative_transformer_sorted_gradient
 set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
 if(WIN32)
@@ -834,7 +833,6 @@ set(STATIC_BUILD_TESTS
     test_nce
     test_paddle_save_load_binary
     test_reduce_op
-    test_segment_ops
     test_shuffle_batch_op
     test_sparse_conv_op
     test_sparse_norm_op
