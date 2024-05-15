@@ -41,7 +41,7 @@ from .imperative.qat import (  # noqa: F401
 )
 from .ptq import PTQ
 from .qat import QAT
-
+from .fp8ptq import FP8PTQ
 __all__ = [
     "QuantConfig",
     "BaseQuanter",
@@ -49,4 +49,5 @@ __all__ = [
     "quanter",
     "QAT",
     "PTQ",
+    "FP8PTQ"
 ]
