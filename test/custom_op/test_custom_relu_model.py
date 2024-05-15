@@ -224,31 +224,26 @@ class TestStaticModel(unittest.TestCase):
 
     @test_with_pir_api
     def test_train_eval(self):
-        if paddle.framework.in_pir_mode():
-            for device in self.devices:
-                # for train
-                original_relu_train_out = self.train_model(
-                    device, use_custom_op=False
-                )
-                custom_relu_train_out = self.train_model(
-                    device, use_custom_op=True
-                )
+        for device in self.devices:
+            # for train
+            original_relu_train_out = self.train_model(
+                device, use_custom_op=False
+            )
+            custom_relu_train_out = self.train_model(device, use_custom_op=True)
 
-                np.testing.assert_array_equal(
-                    original_relu_train_out, custom_relu_train_out
-                )
+            np.testing.assert_array_equal(
+                original_relu_train_out, custom_relu_train_out
+            )
 
-                # for eval
-                original_relu_eval_out = self.eval_model(
-                    device, use_custom_op=False
-                )
-                custom_relu_eval_out = self.eval_model(
-                    device, use_custom_op=True
-                )
+            # for eval
+            original_relu_eval_out = self.eval_model(
+                device, use_custom_op=False
+            )
+            custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
 
-                np.testing.assert_array_equal(
-                    original_relu_eval_out, custom_relu_eval_out
-                )
+            np.testing.assert_array_equal(
+                original_relu_eval_out, custom_relu_eval_out
+            )
 
     def train_model(self, device, use_custom_op=False):
         # reset random seed
