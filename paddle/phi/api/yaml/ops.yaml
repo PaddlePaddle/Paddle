@@ -862,6 +862,7 @@
     func: DgcMomentumInferMeta
   kernel:
     func: dgc_momentum
+    data_type: param
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
