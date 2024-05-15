@@ -100,7 +100,7 @@ class TestQuantizeOp1(TestQuantizeOp):
         self.scale = 127.0
 
     def set_is_negative(self):
-        self.is_nagative = True
+        self.is_negative = True
 
 
 class TestQuantizeOp2(TestQuantizeOp):
@@ -108,7 +108,7 @@ class TestQuantizeOp2(TestQuantizeOp):
         self.scale = 255.0
 
     def set_is_negative(self):
-        self.is_nagative = False
+        self.is_negative = False
 
 
 # 2-dim input
@@ -118,7 +118,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
         self.output_format = 'NCHW'
 
     def set_is_negative(self):
-        self.is_nagative = False
+        self.is_negative = False
 
     def set_scale(self):
         self.scale = 255.0
@@ -134,7 +134,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
 # N - negative input
 class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
     def set_is_negative(self):
-        self.is_nagative = True
+        self.is_negative = True
 
     def set_scale(self):
         self.scale = 127.0
