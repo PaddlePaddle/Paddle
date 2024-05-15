@@ -523,6 +523,284 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
+class TestBlockMultiHeadAttnEncDecSkipGetMaxLen(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.name = "TestBlockMultiHeadAttnEncDecSkipGetMaxLen"
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 2
+        self.num_head = 8
+        self.seq_len = 64
+        self.max_dec_len = 64
+        self.dim_head = 64
+        self.hid_dim = self.num_head * self.dim_head
+        self.blocksize = 64
+        self.block_num_per_seq = (
+            self.seq_len + self.max_dec_len + self.blocksize - 1
+        ) // self.blocksize
+        self.max_block_num = self.block_num_per_seq * self.batch_size
+        self.free_list = list(range(self.max_block_num - 1, -1, -1))
+        self.seq_lens_encoder = paddle.to_tensor(
+            [
+                self.seq_len,
+            ]
+            * self.batch_size,
+            "int32",
+        )
+        self.seq_lens_decoder = paddle.to_tensor(
+            [
+                0,
+            ]
+            * self.batch_size,
+            "int32",
+        )
+        self.seq_lens_this_time = self.seq_lens_encoder
+        self.max_enc_len_this_time = paddle.to_tensor(
+            [self.seq_len], "int32"
+        ).cpu()
+        self.max_dec_len_this_time = paddle.to_tensor([0], "int32").cpu()
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.cache_shape = (
+            self.max_block_num,
+            self.num_head,
+            self.blocksize,
+            self.dim_head,
+        )
+        self.dtype = 'float16'
+        self.attention_mask = create_attn_mask(
+            self.dtype,
+            self.batch_size,
+            [
+                self.seq_len,
+            ]
+            * self.batch_size,
+        )
+
+        self.tgt_mask = paddle.randn(
+            [self.batch_size, self.num_head, 1, self.seq_len + 1],
+            dtype=self.dtype,
+        )
+
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+        self.cache_k = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
+        self.cache_v = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
+        self.block_tables = paddle.zeros(
+            shape=(self.batch_size, self.block_num_per_seq), dtype="int32"
+        )
+        for i in range(self.batch_size):
+            need_block_num = (
+                self.seq_len + self.max_dec_len + self.blocksize - 1
+            ) // self.blocksize
+            for j in range(need_block_num):
+                self.block_tables[i, j] = self.free_list.pop()
+        (
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+        ) = get_padding_offset(
+            self.batch_size, self.seq_len, self.seq_lens_this_time
+        )
+        self.token_num = self.padding_offset.shape[0]
+
+    def test_all(self):
+        paddle.disable_static()
+        # encoder
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        key = np.random.random(self.shape)
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        value = np.random.random(self.shape)
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        qkv = paddle.stack(
+            [
+                q.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                k.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                v.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+            ],
+            axis=1,
+        ).reshape([self.token_num, -1])
+        out_ = naive_attention_impl(
+            q, k, v, None, None, None, None, self.attention_mask, self.scale
+        )
+        out_ = remove_padding(
+            self.seq_lens_this_time, self.cu_seqlens_q, out_, self.token_num
+        )
+        out = block_multihead_attention(
+            qkv,
+            self.cache_k,
+            self.cache_v,
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.seq_lens_this_time,
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+            self.block_tables,
+            None,  # pre_key_cache
+            None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
+            self.max_enc_len_this_time,  # max_enc_len_this_time
+            self.max_dec_len_this_time,  # max_dec_len_this_time
+            None,  # rotary_embs
+            None,  # attn_mask
+            None,  # tgt_mask
+            self.seq_len,
+            self.blocksize,
+            False,  # use_neox_rotary_style,
+        )[0]
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
+        )
+
+        # decoder
+        naive_cache_k, naive_cache_v = block_cache_to_naive_cache(
+            self.cache_k,
+            self.cache_v,
+            self.batch_size,
+            self.block_tables,
+            self.seq_len,
+        )
+
+        self.seq_lens_decoder[:] = self.seq_lens_encoder
+        self.seq_lens_encoder[:] = 0
+        self.seq_lens_this_time[:] = 1
+        self.max_enc_len_this_time = paddle.to_tensor([0], "int32").cpu()
+        self.max_dec_len_this_time = paddle.to_tensor(
+            [self.seq_len], "int32"
+        ).cpu()
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            1,
+            self.dim_head,
+        )
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        key = np.random.random(self.shape)
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        value = np.random.random(self.shape)
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        qkv = paddle.stack(
+            [
+                q.transpose([0, 2, 1, 3]).reshape(
+                    [self.batch_size, self.hid_dim]
+                ),
+                k.transpose([0, 2, 1, 3]).reshape(
+                    [self.batch_size, self.hid_dim]
+                ),
+                v.transpose([0, 2, 1, 3]).reshape(
+                    [self.batch_size, self.hid_dim]
+                ),
+            ],
+            axis=1,
+        ).reshape([self.batch_size, -1])
+        (
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+        ) = get_padding_offset(self.batch_size, 1, self.seq_lens_this_time)
+
+        out_ = (
+            naive_attention_impl(
+                q,
+                k,
+                v,
+                naive_cache_k,
+                naive_cache_v,
+                None,
+                None,
+                self.tgt_mask,
+                self.scale,
+            )
+            .transpose([0, 2, 1, 3])
+            .reshape([self.batch_size, -1])
+        )
+        out = block_multihead_attention(
+            qkv,
+            self.cache_k,
+            self.cache_v,
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.seq_lens_this_time,
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+            self.block_tables,
+            None,  # pre_key_cache
+            None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
+            self.max_enc_len_this_time,  # max_enc_len_this_time
+            self.max_dec_len_this_time,  # max_dec_len_this_time
+            None,  # rotary_embs
+            None,  # attn_mask
+            self.tgt_mask,  # tgt_mask
+            1,  # seq_len,
+            self.blocksize,
+            False,  # use_neox_rotary_style
+        )[0]
+        # NOTE: The diff of decoder is a little big
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_.numpy(),
+            rtol=5e-02,
+            atol=5e-02,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

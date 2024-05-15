@@ -26,14 +26,17 @@ from paddle.incubate.nn.functional import blha_get_max_len
 )
 class TestBlhaGetMaxLenOp(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
-        self.name = "TestBlhaGetMaxLenOp"
+        self.name = "TestBlhaGetMaxLenOpDynamic"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 10
         self.test_encoder_data = np.random.randint(1, 100, size=self.batch_size)
-        self.test_encoder_data_res = np.max(self.test_encoder_data)
+        self.test_encoder_data_res = paddle.to_tensor(
+            np.max(self.test_encoder_data), "int32"
+        )
         self.test_decoder_data = np.random.randint(1, 100, size=self.batch_size)
-        self.test_decoder_data_res = np.max(self.test_decoder_data)
+        self.test_decoder_data_res = paddle.to_tensor(
+            np.max(self.test_decoder_data), "int32"
+        )
         self.seq_lens_encoder = paddle.to_tensor(
             self.test_encoder_data,
             "int32",
@@ -44,7 +47,7 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         )
         self.batch_size_tensor = paddle.ones([self.batch_size])
 
-    def test_all(self):
+    def test_dynamic_api(self):
         paddle.disable_static()
         max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
             self.seq_lens_encoder,
@@ -52,8 +55,20 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
             self.batch_size_tensor,
         )
         assert (
-            max_enc_len_this_time.numpy() == self.test_encoder_data_res
-            and max_dec_len_this_time.numpy() == self.test_decoder_data_res
+            max_enc_len_this_time == self.test_encoder_data_res
+            and max_dec_len_this_time == self.test_decoder_data_res
+        )
+
+    def test_static_api(self):
+        paddle.enable_static()
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.batch_size_tensor,
+        )
+        assert (
+            max_enc_len_this_time == self.test_encoder_data_res
+            and max_dec_len_this_time == self.test_decoder_data_res
         )
 
 

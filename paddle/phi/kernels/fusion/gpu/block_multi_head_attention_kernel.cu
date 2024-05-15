@@ -311,6 +311,10 @@ void DispatchWithDtype(
     max_dec_len_this_time_data =
         GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
   } else {
+    PADDLE_ENFORCE_EQ(max_dec_len_this_time.get().place().GetType(),
+                      phi::AllocationType::CPU,
+                      "max_dec_len_this_time must be on CPU, but Got %s.",
+                      max_dec_len_this_time.get().place());
     max_dec_len_this_time_data = *max_dec_len_this_time.get().data<int>();
   }
 
@@ -323,6 +327,10 @@ void DispatchWithDtype(
     max_enc_len_this_time_data =
         GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
   } else {
+    PADDLE_ENFORCE_EQ(max_enc_len_this_time.get().place().GetType(),
+                      phi::AllocationType::CPU,
+                      "max_enc_len_this_time must be on CPU, but Got %s.",
+                      max_enc_len_this_time.get().place());
     max_enc_len_this_time_data = *max_enc_len_this_time.get().data<int>();
   }
 
@@ -864,12 +872,18 @@ PD_REGISTER_KERNEL(block_multihead_attention,
                    phi::fusion::BlockMultiheadAttentionKernel,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int32_t) {}
+                   int32_t) {
+  kernel->InputAt(24).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(25).SetBackend(phi::Backend::CPU);
+}
 #else
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
                    phi::dtype::float16,
-                   int32_t) {}
+                   int32_t) {
+  kernel->InputAt(24).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(25).SetBackend(phi::Backend::CPU);
+}
 #endif
