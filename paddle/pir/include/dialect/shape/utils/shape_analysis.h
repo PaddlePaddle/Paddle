@@ -138,7 +138,7 @@ class IR_API ShapeConstraintIRAnalysis final
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
-      
+
   const symbol::ConstraintsManager& constraints_manager() const {
     return context_.constraints_manager();
   }
