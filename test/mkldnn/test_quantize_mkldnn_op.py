@@ -57,7 +57,10 @@ class TestQuantizeOp(OpTest):
         }
 
     def prepare_output(self):
-        input_data_type = 'int8' if self.is_negative else 'uint8'
+        if self.is_negative and self.shift == 0.0:
+            input_data_type = 'int8'
+        else:
+            input_data_type = 'uint8'
         output = np.rint(self.input * self.scale + self.shift).astype(
             input_data_type
         )
