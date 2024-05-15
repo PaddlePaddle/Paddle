@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
-from scipy.special import expit, logit
-
-import paddle
-from paddle import base
-
-sys.path.append("/paddle/build/test/legacy_test/")
 import unittest
 
 import numpy as np
 from op_test import OpTest
+from scipy.special import expit, logit
+
+import paddle
+from paddle import base
 
 
 def loss_wrapper(
@@ -177,7 +174,7 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005, check_pir=True)
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
