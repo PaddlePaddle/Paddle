@@ -483,8 +483,9 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_concat_op test_elementwise_add_op
-                     test_elementwise_sub_op test_gather_op test_mean_op)
+set(TEST_OPS_WITH_GC
+    test_concat_op test_elementwise_add_op test_lookup_table_op
+    test_elementwise_sub_op test_gather_op test_mean_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -976,6 +977,8 @@ set(STATIC_BUILD_TESTS
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
     test_decayed_adagrad_op
     test_eig_op
     test_fake_dequantize_op

@@ -15,26 +15,36 @@
 import unittest
 
 import numpy as np
-import test_lookup_table_bf16_op
-from op_test import convert_uint16_to_float
+from op_test import (
+    convert_uint16_to_float,
+)
 
 import paddle
-from paddle import base
-from paddle.pir_utils import test_with_pir_api
+from paddle import base, enable_static
+
+
+def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
+    w_shape = weights.shape
+    out_shape = (
+        list(ids.shape[:-1])
+        if op_version == "lookup_table"
+        else list(ids.shape)
+    )
+    out_shape.append(w_shape[-1])
+    out = weights[flat_ids].reshape(out_shape)
+    return out
 
 
 class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
-    Test embedding layer from input api and results for bfloat16
+    Test embedding layer api and results for bfloat16
     """
 
     def set_initializer(self):
         self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
-        self.op_type = "lookup_table_v2"
-        self.python_api = paddle.nn.functional.embedding
-        self.ids_shape = [4]
+        self.ids_shape = [4, 1]
         self.w_shape = [10, 64]
         self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(
             "int64"
@@ -47,10 +57,9 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.startup_prog = base.Program()
         self.set_initializer()
 
-        paddle.enable_static()
         with base.program_guard(self.prog, self.startup_prog):
             x = paddle.static.data(
-                name='x', shape=[-1] + self.ids_shape, dtype='int64'
+                name='x', shape=self.ids_shape, dtype='int64'
             )
             self.emb = paddle.static.nn.embedding(
                 input=x,
@@ -67,20 +76,16 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
             self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
         )
 
-    @test_with_pir_api
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])
         np.testing.assert_array_equal(self.w_fp32, result)
 
-    @test_with_pir_api
     def test_lookup_results(self):
-        lookup_result = convert_uint16_to_float(self.result[1])
-        lookup_ref = test_lookup_table_bf16_op._lookup(
-            self.w_fp32, self.ids, self.flat_ids, self.op_type
-        )
+        lookup_result = convert_uint16_to_float(self.result[1].squeeze(-2))
+        lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
         np.testing.assert_array_equal(lookup_result, lookup_ref)
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
+    enable_static()
     unittest.main()
