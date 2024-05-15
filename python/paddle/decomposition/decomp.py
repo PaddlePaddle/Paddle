@@ -192,6 +192,8 @@ def decompose(
     src_vars,
     blacklist=frozenset(),
     whitelist=frozenset(),
+    start_index=0,
+    end_index=-1,
 ):
     """
     Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
@@ -210,12 +212,18 @@ def decompose(
         src_vars (list[Value]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
+        start_index (int): The start index of decomposed operator in global block, default 0;
+        end_index (int): The end index of decomposed operator in global block, default -1 means all ops will be composed.
 
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
     blacklist = core.prim_config["forward_blacklist"] | blacklist
-    return core.sinking_decomp(program, src_vars, blacklist, whitelist)
+    assert isinstance(start_index, int)
+    assert isinstance(end_index, int)
+    return core.sinking_decomp(
+        program, src_vars, blacklist, whitelist, start_index, end_index
+    )
 
 
 def _check_combine_inputs(input1, input2):

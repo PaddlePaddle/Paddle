@@ -1296,6 +1296,30 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
+    def set_date(self, table_id, day_id):
+        """
+        set_date for gpups table
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
+
+                >>> fleet.set_date(0, "20250101")
+
+        """
+        self._runtime_handle._set_date(table_id, day_id)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 

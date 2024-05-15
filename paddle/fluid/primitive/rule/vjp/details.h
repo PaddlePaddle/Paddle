@@ -563,6 +563,63 @@ void elementwise_pow_grad(const Tensor& x,
 }
 
 template <typename T>
+void pow_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const Scalar& y,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto y_value = y.to<float>();
+    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void scale_grad(const Tensor& out_grad, const Scalar& scale, Tensor* x_grad) {
+  if (x_grad) {
+    auto dx_res = primitive::scale<T>(
+        out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void stack_grad(const std::vector<Tensor>& x,
+                const Tensor& out_grad,
+                int axis,
+                std::vector<Tensor*> x_grad) {
+  // use rank of **stacked** tensor as len of axes
+  int out_rank = out_grad.dims().size();  // len(x[0].shape)
+
+  // ensure axis >= 0
+  if (axis < 0) {
+    axis = ((axis % out_rank) + out_rank) % out_rank;
+  }
+
+  // split out_grad to grads for each input tensor
+  int x_num = x.size();
+  std::vector<int> sections(x_num, 1);
+  std::vector<Tensor> x_grad_tmp =
+      split<T>(out_grad, phi::IntArray(sections), axis);
+
+  // compose shape for each input tensor
+  std::vector<int64_t> grad_shape;
+  auto out_dim = out_grad.dims().size();
+  for (int i = 0; i < out_dim; ++i) {
+    if (i != axis) {
+      grad_shape.push_back(out_grad.dims()[i]);
+    }
+  }
+
+  // assign to each input tensor if need grad(stop_gradient=False)
+  for (int i = 0; i < x_num; ++i) {
+    if (x_grad[i]) {
+      set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+    }
+  }
+}
+
+template <typename T>
 void layer_norm_grad(const Tensor& x,
                      const paddle::optional<Tensor>& scale,
                      const paddle::optional<Tensor>& bias,

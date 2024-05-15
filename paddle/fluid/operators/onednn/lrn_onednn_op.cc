@@ -27,7 +27,7 @@ class LRNOneDNNHandler
  public:
   LRNOneDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine onednn_engine,
-                   platform::Place cpu_place,
+                   phi::Place cpu_place,
                    const phi::DenseTensor* input)
 
       : phi::funcs::
@@ -59,7 +59,7 @@ class LRNOneDNNHandler
 
   LRNOneDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine onednn_engine,
-                   platform::Place cpu_place,
+                   phi::Place cpu_place,
                    const phi::DenseTensor* in_x,
                    const phi::DenseTensor* out_grad,
                    phi::DenseTensor* in_x_grad)
