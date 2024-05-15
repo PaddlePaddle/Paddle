@@ -721,20 +721,20 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
   // Step 4. Create SSAGraph executor
-  // std::vector<ir::Graph *> final_graphs =
-  //     CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
+  /* std::vector<ir::Graph *> final_graphs =
+      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  // VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  // if (!member_->build_strategy_.async_mode_) {
-  //   member_->executor_ =
-  //       std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
-  //           exec_strategy,
-  //           member_->local_scopes_,
-  //           member_->local_exec_scopes_,
-  //           std::move(var_infos),
-  //           member_->places_,
-  //           std::move(member_->executor_));
-  // }
+  VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
+  if (!member_->build_strategy_.async_mode_) {
+    member_->executor_ =
+        std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
+            exec_strategy,
+            member_->local_scopes_,
+            member_->local_exec_scopes_,
+            std::move(var_infos),
+            member_->places_,
+            std::move(member_->executor_));
+  } */
 
   // ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
   // SetReaderOpDeviceInfoOfGraphs(final_graphs);
@@ -1273,50 +1273,50 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-  // #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
-  // defined(_WIN32)
-  //   if (member_->IsUseCUDA(member_->use_device_)) {
-  //     PADDLE_ENFORCE_EQ(
-  //         device_count,
-  //         1,
-  //         platform::errors::Unavailable("Windows can support Single GPU
-  //         only."));
-  //   }
-  // #endif
+  /* #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
+  defined(_WIN32)
+    if (member_->IsUseCUDA(member_->use_device_)) {
+      PADDLE_ENFORCE_EQ(
+          device_count,
+          1,
+          platform::errors::Unavailable("Windows can support Single GPU
+          only."));
+    }
+  #endif
 
-  // #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-//     (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
-  //   if (member_->IsUseCUDA(member_->use_device_)) {
-  //     PADDLE_ENFORCE_EQ(
-  //         device_count,
-  //         1,
-  //         platform::errors::PermissionDenied(
-  //             "Your machine has multiple cards, "
-  //             "but the WITH_NCCL option is not turned on during compilation,
-  //             " "and you cannot use multi-card training or prediction. "
-  //             "Please recompile and turn on the WITH_NCCL option."));
-  //   }
-  // #endif
+  #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+    if (member_->IsUseCUDA(member_->use_device_)) {
+      PADDLE_ENFORCE_EQ(
+          device_count,
+          1,
+          platform::errors::PermissionDenied(
+              "Your machine has multiple cards, "
+              "but the WITH_NCCL option is not turned on during compilation,
+              " "and you cannot use multi-card training or prediction. "
+              "Please recompile and turn on the WITH_NCCL option."));
+    }
+  #endif
 
-  //   std::string device_name;
-  //   if (member_->use_device_ == p::kCPU) {
-  //     device_name = "CPU";
-  //   } else if (member_->use_device_ == p::kCUDA) {
-  //     device_name = "CUDA";
-  //   } else if (member_->use_device_ == p::kXPU) {
-  //     device_name = "XPU";
-  //   } else {
-  //     PADDLE_THROW(
-  //         platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
-  //                                       "please use CPU/CUDA/XPU backend."));
-  //   }
+    std::string device_name;
+    if (member_->use_device_ == p::kCPU) {
+      device_name = "CPU";
+    } else if (member_->use_device_ == p::kCUDA) {
+      device_name = "CUDA";
+    } else if (member_->use_device_ == p::kXPU) {
+      device_name = "XPU";
+    } else {
+      PADDLE_THROW(
+          platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
+                                        "please use CPU/CUDA/XPU backend."));
+    }
 
-  //   VLOG(1) << string::Sprintf(
-  //       "The Program will be executed on %s using ParallelExecutor, %lu "
-  //       "cards are used, so %lu programs are executed in parallel.",
-  //       device_name,
-  //       device_count,
-  //       device_count);
+    VLOG(1) << string::Sprintf(
+        "The Program will be executed on %s using ParallelExecutor, %lu "
+        "cards are used, so %lu programs are executed in parallel.",
+        device_name,
+        device_count,
+        device_count); */
 
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
