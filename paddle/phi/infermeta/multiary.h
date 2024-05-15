@@ -798,6 +798,17 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void SparseAttentionInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& offset,
+                              const MetaTensor& columns,
+                              const MetaTensor& key_padding_mask,
+                              const MetaTensor& attn_mask,
+                              MetaTensor* out,
+                              MetaTensor* sparse_dot_sdd,
+                              MetaTensor* softmax);
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,

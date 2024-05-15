@@ -2888,6 +2888,19 @@
     data_type : x
   backward : solve_grad
 
+- op : sparse_attention
+  args: (Tensor q, Tensor k, Tensor v, Tensor offset, Tensor columns, Tensor key_padding_mask,
+    Tensor attn_mask)
+  output: Tensor (out), Tensor (sparse_dot_sdd), Tensor (softmax)
+  infer_meta:
+    func: SparseAttentionInferMeta
+  kernel:
+    func: sparse_attention
+    data_type: q
+  optional: key_padding_mask, attn_mask
+  intermediate: sparse_dot_sdd, softmax
+  backward: sparse_attention_grad
+
 - op : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
   output : Tensor
@@ -3149,6 +3162,7 @@
   output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
   infer_meta :
     func : UnbindInferMeta
+    spmd_rule : UnbindInferSpmdDynamic
   kernel :
     func : unbind
   backward : unbind_grad

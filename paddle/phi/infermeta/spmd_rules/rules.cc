@@ -446,6 +446,11 @@ PD_REGISTER_SPMD_RULE(swiglu,
 
 // reduction rule
 PD_REGISTER_SPMD_RULE(
+    reduce_base,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
     all,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));

@@ -1156,7 +1156,7 @@ void BindValue(py::module *m) {
              auto share_data_op =
                  ApiBuilder::Instance()
                      .GetBuilder()
-                     ->Build<paddle::dialect::ShareDataOp>(self);
+                     ->Build<paddle::dialect::ShareData_Op>(self);
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
