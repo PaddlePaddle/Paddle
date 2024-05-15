@@ -26,6 +26,7 @@ from .envs import (  # noqa: F401
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
+    with_allow_dynamic_shape_guard,
     with_control_flow_guard,
     with_export_guard,
 )

@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 import unittest
 
 from test_case_base import (
@@ -23,6 +22,7 @@ from test_case_base import (
 )
 
 import paddle
+from paddle.jit.sot.utils import with_allow_dynamic_shape_guard
 
 
 def foo(x):
@@ -36,8 +36,9 @@ def bar(x, n):
 
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
     def test_dynamic_int_input_cache_hit(self):
-        os.environ["SOT_ALLOW_DYNAMIC_SHAPE"] = "True"
-        with test_instruction_translator_cache_context() as ctx:
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
             self.assert_results(bar, paddle.randn([2, 3]), 1)
             self.assertEqual(ctx.translate_count, 1)
             self.assert_results(bar, paddle.randn([2, 3]), 2)
