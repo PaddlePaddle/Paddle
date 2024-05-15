@@ -433,7 +433,6 @@ void CopyBranchOutput(const std::vector<std::string>& var_names,
     } else if (inner_var->IsType<phi::TensorArray>()) {
       const auto& inner_array = inner_var->Get<phi::TensorArray>();
       auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
       *output_array = inner_array;
     } else {
       PADDLE_THROW(

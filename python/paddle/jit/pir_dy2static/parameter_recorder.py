@@ -46,6 +46,7 @@ class ParametersRecorder:
                 shape=tensor.shape,
                 type=tensor.type,
                 initializer=non_used_initializer,
+                trainable=(not tensor.stop_gradient),
             )
 
             if tensor.placements is not None:  # import for shard tensor api

@@ -37,7 +37,9 @@ class Net(paddle.nn.Layer):
         self.fc2 = paddle.nn.Linear(4, 4)
         self._bias = 0.4
 
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    @paddle.jit.to_static(
+        input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
+    )
     def forward(self, x):
         out = self.fc1(x)
         out = self.fc2(out)
@@ -45,7 +47,9 @@ class Net(paddle.nn.Layer):
         out = paddle.mean(out)
         return out
 
-    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    @paddle.jit.to_static(
+        input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
+    )
     def infer(self, input):
         out = self.fc2(input)
         out = out + self._bias
@@ -85,7 +89,8 @@ class SaveLinear(paddle.nn.Layer):
         self.linear = paddle.nn.Linear(80, 80)
 
     @paddle.jit.to_static(
-        input_spec=[InputSpec(shape=[None, 80], dtype='float32')]
+        input_spec=[InputSpec(shape=[None, 80], dtype='float32')],
+        full_graph=True,
     )
     def forward(self, x):
         out = self.linear(x)

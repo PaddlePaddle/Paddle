@@ -93,7 +93,8 @@ class TestReshardRToS:
                 paddle._C_ops.reshard(
                     input_tensor, self._mesh, [dist.Shard(self._shard)]
                 )
-            dist_program = apply_reshard_pass(main_program)
+            dist_program = main_program.clone()
+            apply_reshard_pass(dist_program)
             np.testing.assert_equal(dist_program.num_ops(), 6)
             old_ops = [op.name() for op in main_program.global_block().ops]
             new_ops = [op.name() for op in dist_program.global_block().ops]

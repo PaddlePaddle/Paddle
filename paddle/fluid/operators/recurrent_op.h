@@ -163,8 +163,7 @@ class RecurrentBase : public framework::OperatorBase {
   }
 
   // (seq_len, shape) -> return [seq_len] + list(shape)
-  static framework::DDim PrependDims(size_t seq_len,
-                                     const framework::DDim &src);
+  static phi::DDim PrependDims(size_t seq_len, const phi::DDim &src);
 
  private:
   template <typename Callback>

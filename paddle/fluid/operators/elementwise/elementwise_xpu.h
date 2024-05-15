@@ -51,8 +51,7 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
   auto* z = ctx.Output<phi::DenseTensor>("Out");
   int axis = ctx.Attr<int>("axis");
 
-  auto& dev_ctx =
-      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
   phi::XPUElementwise<T, XPUType>(dev_ctx, x, *y, axis, z, func);
 }
 
@@ -75,8 +74,7 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
   auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
   int axis = ctx.Attr<int>("axis");
 
-  auto& dev_ctx =
-      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
   phi::XPUElementwiseGrad<T, XPUType>(
       dev_ctx, *x, *y, *dz, axis, dx, dy, func, use_x_y_data);
 }

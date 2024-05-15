@@ -779,8 +779,11 @@ def logaddexp(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
-
-    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
+    log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
+    maximum = paddle.maximum(x, y)
+    if maximum.dtype == paddle.int32 or maximum.dtype == paddle.int64:
+        maximum = maximum.astype(log_1p.dtype)
+    return log_1p + maximum
 
 
 def subtract(x, y, name=None):
@@ -1103,11 +1106,6 @@ def multiply(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
-        if x.dtype != y.dtype:
-            raise TypeError(
-                f'Input tensors must be same type, but received type of x: {x.dtype}, type of y: {y.dtype} '
-            )
-
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
@@ -1583,8 +1581,8 @@ def reduce_as(x, target, name=None):
     Computes the sum of tensor elements make the shape of its result equal to the shape of target.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
+        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
 
     Returns:
         Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor target, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
@@ -1617,13 +1615,17 @@ def reduce_as(x, target, name=None):
             'x',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
@@ -1632,13 +1634,17 @@ def reduce_as(x, target, name=None):
             'target',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )

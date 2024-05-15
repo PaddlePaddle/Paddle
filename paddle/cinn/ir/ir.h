@@ -476,7 +476,7 @@ struct Reduce : public ExprNode<Reduce> {
                    Expr body,
                    const std::vector<Var>& reduce_axis);
 
-  Type type() const override { return body.type().ElementOf(); }
+  Type type() const override;
 
   std::vector<Expr*> expr_fields() override;
   std::vector<const Expr*> expr_fields() const override;
@@ -509,10 +509,7 @@ struct Select : public ExprNode<Select> {
     return Expr(node);
   }
 
-  Type type() const override {
-    CHECK_EQ(true_value.type(), false_value.type());
-    return true_value.type();
-  }
+  Type type() const override;
 
   void Verify() const override;
 
@@ -573,6 +570,7 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   const std::string& name() const;
 
   Type type() const override;
+
   Expr index() const;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Store;
@@ -932,7 +930,7 @@ struct Product : public ExprNode<Product> {
 
   using ExprNode<Product>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
 
   void Verify() const override;
 
@@ -944,7 +942,7 @@ struct Sum : public ExprNode<Sum> {
 
   using ExprNode<Sum>::operand;
 
-  Type type() const override { return operands().front().type(); }
+  Type type() const override;
 
   void Verify() const override;
 

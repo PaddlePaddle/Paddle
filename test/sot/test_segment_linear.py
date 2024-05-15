@@ -62,7 +62,7 @@ class TestSegmentLinear(TestCaseBase):
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()
         net = paddle.jit.to_static(
-            net
+            net, full_graph=False
         )  # dont make effect. we need fetch sot PR in paddle.
         loss = net(x)
         loss = loss.sum()

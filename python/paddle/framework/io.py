@@ -889,7 +889,7 @@ def save(obj, path, protocol=4, **configs):
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
 
-        if isinstance(obj, Program):
+        if isinstance(obj, paddle.static.Program):
             if in_pir_mode():
                 paddle.core.serialize_pir_program(
                     obj, path, 1, True, False, True
@@ -1200,6 +1200,12 @@ def load(path, **configs):
                         return tensor
                 except:
                     try:
+                        if in_pir_mode():
+                            program = paddle.static.Program()
+                            paddle.core.deserialize_pir_program(
+                                path, program, 1
+                            )
+                            return program
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()
                             program = Program.parse_from_string(

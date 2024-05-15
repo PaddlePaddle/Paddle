@@ -78,6 +78,7 @@ BINARY_PRIM_VJP_OPS = [
     'multiply_grad',
     'elementwise_pow_grad',
     'maximum_grad',
+    'reduce_as_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
@@ -119,9 +120,6 @@ CUSTOM_VJP = [
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
-    'exp_grad',
-    'log_grad',
-    'abs_double_grad',
     'softmax_grad',
     'sqrt_grad',
 ]  # custom vjp list of composite op

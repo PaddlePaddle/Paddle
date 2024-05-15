@@ -53,15 +53,11 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     if (has_dynamic_shape) {
       auto& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-      if (shape_analysis.HasShapeOrDataForValue(input) &&
-          shape_analysis.HasShapeOrDataForValue(output)) {
-        auto input_sym_shape =
-            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(input));
-        auto output_sym_shape =
-            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(output));
-        return input_sym_shape == output_sym_shape;
-      }
-      return false;
+      auto input_sym_shape =
+          GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(input));
+      auto output_sym_shape =
+          GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(output));
+      return input_sym_shape == output_sym_shape;
     }
     return GetDims(input) == GetDims(output);
   };
