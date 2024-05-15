@@ -42,7 +42,7 @@ class FusedCReducescatterAddPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &c_reducescatter_add =
-        res.Op(paddle::dialect::CReducescatterAdd::name(),
+        res.Op(paddle::dialect::CReducescatterAddOp::name(),
                {{"ring_id", pat.Attr("ring_id")},
                 {"nranks", pat.Attr("num")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
@@ -53,7 +53,7 @@ class FusedCReducescatterAddPattern : public paddle::drr::DrrPatternBase {
 
 class FuseCReducescatterAddPass : public pir::PatternRewritePass {
  public:
-  FuseReducescatterAddPass()
+  FuseCReducescatterAddPass()
       : pir::PatternRewritePass("fuse_c_reducescatter_add_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
