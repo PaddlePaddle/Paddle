@@ -65,7 +65,11 @@ def _get_pir_persistable_var_names(program):
                 var.name = _generate_unique_var_name(var.name)
                 rename_new_old_dict[var.name] = origin_name
                 persistable_names.append(var.name)
-    return persistable_vars, persistable_names, rename_new_old_dict
+    return (
+        persistable_vars,
+        persistable_names,
+        rename_new_old_dict,
+    )
 
 
 class _PirProgramHolder:
@@ -91,6 +95,7 @@ class _PirProgramHolder:
             self._persistable_names,
             self._suffix_varname_dict,
         ) = _get_pir_persistable_var_names(self._infer_program)
+
         block = self._infer_program.global_block()
         for op in block.ops:
             if op.name() == 'pd_op.data':
@@ -174,9 +179,8 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
     load_var_list = []
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
-    persistable_var_name = program_holder.persistable_names
-
-    for name, var in sorted(zip(persistable_var_name, persistable_var)):
+    persistable_name = program_holder.persistable_names
+    for name, var in sorted(zip(persistable_name, persistable_var)):
         if var.persistable:
             # use default shape and dtype
             new_var = framework.EagerParamBase(
@@ -210,6 +214,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
             list(load_var_dict.keys()),
             load_densetensor_list,
             False,
+            framework._current_expected_place(),
         )
     else:
         raise ValueError(
@@ -312,10 +317,10 @@ def _construct_params_and_buffers(
                 )
             )
 
-        if not append_suffix:
-            var_dict = _remove_varname_suffix(var_dict, programs['forward'])
+    if not append_suffix:
+        var_dict = _remove_varname_suffix(var_dict, programs['forward'])
 
-        return var_dict
+    return var_dict
 
 
 def _run_dygraph(instance, input, program_holder):
