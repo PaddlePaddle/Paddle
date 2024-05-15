@@ -47,6 +47,27 @@
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+namespace {
+
+void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
+  if (!value || !value.type()) {
+    return;
+  }
+  auto tensor_type = value.type().dyn_cast<pir::DenseTensorType>();
+  if (!tensor_type) {
+    return;
+  }
+  auto new_tensor_type = pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                                   tensor_type.dtype(),
+                                                   tensor_type.dims(),
+                                                   new_layout,
+                                                   tensor_type.lod(),
+                                                   tensor_type.offset());
+  value.set_type(new_tensor_type);
+}
+
+}  // namespace
+
 struct Node;
 
 struct SrcNode {
@@ -215,14 +236,27 @@ struct FlowGraph {
       for (auto& operand : relevate_inputs) {
         Node operand_node(operand);
         // the capacity should be set as the out_degree of operand node
-        AddEdge(
-            operand_node, op_node, 1.0f / (operand.use_count()), 0.0f, true);
+        float weight = 1.0f;
+        if (operand && operand.type()) {
+          weight = 1.0f / (operand.use_count());
+          if (auto t = operand.type().dyn_cast<pir::VectorType>()) {
+            weight = INF;
+          }
+        }
+        AddEdge(operand_node, op_node, weight, 0.0f, true);
       }
 
       for (const auto& op_result : relevate_outputs) {
         // we have ssa, so the output must not be processed
         Node op_result_node(op_result);
-        AddEdge(op_node, op_result_node, 1.0f, 0.0f, true);
+
+        float weight = 1.0f;
+        if (op_result && op_result.type()) {
+          if (auto t = op_result.type().dyn_cast<pir::VectorType>()) {
+            weight = INF;
+          }
+        }
+        AddEdge(op_node, op_result_node, weight, 0.0f, true);
       }
     }
 
@@ -538,7 +572,7 @@ class TransferLayoutPass : public pir::Pass {
 
     VLOG(10)
         << "---------------------[program before pass]---------------------";
-    VLOG(10) << *program;
+    std::cout << *program << std::endl;
 
     // MinCut
     VLOG(10) << "---------------------MinCut---------------------";
@@ -685,6 +719,7 @@ class TransferLayoutPass : public pir::Pass {
         auto replace_uses_without_self = [&](pir::OpOperand arg) {
           return arg.owner() != transpose_op.operation();
         };
+        SetNewLayoutForValue(transpose_op.out(), common::DataLayout::NHWC);
         dst_value.ReplaceUsesWithIf(transpose_op.out(),
                                     replace_uses_without_self);
       }
@@ -722,13 +757,14 @@ class TransferLayoutPass : public pir::Pass {
           return (operation_set.find(arg.owner()) != operation_set.end()) &&
                  (arg.owner() != transpose_op.operation());
         };
+        SetNewLayoutForValue(transpose_op.out(), common::DataLayout::NHWC);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
 
     VLOG(10) << "---------------------[program after "
                 "pass]---------------------";
-    VLOG(10) << *program;
+    std::cout << *program << std::endl;
   }
 };
 

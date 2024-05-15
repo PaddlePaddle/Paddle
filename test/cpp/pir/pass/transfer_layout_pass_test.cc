@@ -80,6 +80,4 @@ TEST(transfer_layout_pass, pass_test) {
   pir::PassManager transfer_layout_manager(::pir::IrContext::Instance(), 3);
   transfer_layout_manager.AddPass(pir::CreateTransferLayoutPass());
   transfer_layout_manager.Run(program.get());
-
-  // insert transpose between
 }

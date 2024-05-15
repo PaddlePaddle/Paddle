@@ -585,10 +585,11 @@ void ConvInferMeta(const MetaTensor& input,
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
-
+  int filter_channels =
+      channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1];
   PADDLE_ENFORCE_EQ(
       input_channels,
-      filter_dims[1] * groups,
+      filter_channels * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
           "* groups for Op(Conv). But received: the input's channels is %d, "
@@ -597,7 +598,7 @@ void ConvInferMeta(const MetaTensor& input,
           "The error may come from wrong data_format setting.",
           input_channels,
           in_dims,
-          filter_dims[1],
+          filter_channels,
           filter_dims,
           groups,
           data_format));
@@ -628,8 +629,13 @@ void ConvInferMeta(const MetaTensor& input,
     in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim filter_data_dims;
+  if (channel_last) {
+    filter_data_dims =
+        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+  } else {
+    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
+  }
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
@@ -659,6 +665,7 @@ void ConvInferMeta(const MetaTensor& input,
 
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(input.dtype());
+  out->set_layout(input.layout());
 }
 
 void Conv3DInferMeta(const MetaTensor& input,

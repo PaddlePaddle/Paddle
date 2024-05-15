@@ -13,17 +13,81 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
-#include <exception>
-#include <utility>
 
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/ir_context.h"
+
+namespace {
+
+void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
+  if (!value || !value.type()) {
+    return;
+  }
+  auto tensor_type = value.type().dyn_cast<pir::DenseTensorType>();
+  if (!tensor_type) {
+    return;
+  }
+  auto new_tensor_type = pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                                   tensor_type.dtype(),
+                                                   tensor_type.dims(),
+                                                   new_layout,
+                                                   tensor_type.lod(),
+                                                   tensor_type.offset());
+  value.set_type(new_tensor_type);
+}
+
+}  // namespace
 
 namespace paddle {
 namespace dialect {
+
+template <>
+common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "op (%s) should have attribute `data_format`, but got %s",
+        op,
+        data_format_attr));
+  }
+
+  auto concrete_op = op->dyn_cast<Conv2dOp>();
+  if (auto in = concrete_op.input()) {
+    if (auto in_type = in.type()) {
+      if (in_type.isa<DenseTensorType>()) {
+        if (auto tensor_type = in_type.dyn_cast<DenseTensorType>()) {
+          if (tensor_type.dtype().isa<pir::Float16Type>()) {
+            return common::DataLayout::NHWC;
+          }
+        }
+      }
+    }
+  }
+  return common::StringToDataLayout(data_format_attr.AsString());
+}
+
+template <>
+void RewriteByLayoutImpl<Conv2dOp>(pir::Operation* op,
+                                   common::DataLayout new_layout) {
+  op->set_attribute(
+      "data_format",
+      pir::StrAttribute::get(pir::IrContext::Instance(),
+                             common::DataLayoutToString(new_layout)));
+
+  std::vector<pir::Type> new_outputs = Conv2dOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+
+  for (auto value : RelevantOutputsImpl<Conv2dOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
+}
 
 template <>
 common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
@@ -80,6 +144,10 @@ void RewriteByLayoutImpl<GroupNormOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+
+  for (auto value : RelevantOutputsImpl<GroupNormOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -92,88 +160,6 @@ template <>
 std::vector<pir::Value> RelevantOutputsImpl<GroupNormOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<GroupNormOp>();
   return {concrete_op.y()};
-}
-
-template <>
-void RewriteByLayoutImpl<ReshapeOp>(pir::Operation* op,
-                                    common::DataLayout new_layout) {
-  auto concrete_op = op->dyn_cast<ReshapeOp>();
-  auto shape_value = concrete_op.shape();
-  if (!shape_value) return;
-  auto shape_op = shape_value.defining_op<FullIntArrayOp>();
-  if (!shape_op) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Reshape op's input `shape` is from %s instead of FullIntArrayOp",
-        shape_op->name()));
-  }
-  // TODO(lyk): we must assert this full int array op has one user which is
-  // reshape
-  auto values =
-      shape_op->attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
-  std::vector<int64_t> cur_values;
-  for (auto v : values) {
-    cur_values.push_back(v.dyn_cast<pir::Int64Attribute>().data());
-  }
-  PADDLE_ENFORCE_GE(
-      cur_values.size(),
-      4,
-      phi::errors::InvalidArgument(
-          "Reshape op's input `shape` should have a size > 4, but we got %d ",
-          cur_values.size()));
-
-  // there should be only a non-1 value
-  int non_one_cnt = 0;
-  int non_one_idx = -1;
-  for (size_t i = 0; i < cur_values.size(); ++i) {
-    auto v = cur_values[i];
-    if (v != 1) {
-      non_one_cnt++;
-      non_one_idx = i;
-    }
-  }
-  if (non_one_cnt > 1) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Reshape op's input `shape` is from %s, which has more than one non-1 "
-        "value: %d",
-        non_one_cnt));
-  }
-
-  // in this case we still have no way to get the real layout
-  // so assume the old one is NCHW, the new one is NHWC.
-  PADDLE_ENFORCE_EQ(non_one_idx,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Reshape op's input `shape` should set `x` to NCHW, so "
-                        "idx would be 1,  but we got %d ",
-                        non_one_idx));
-
-  // makes 1xCx1x1 to 1x1x1xC
-  std::swap(cur_values[1], cur_values[3]);
-
-  std::vector<pir::Attribute> cur_values_attr;
-  for (auto v : cur_values) {
-    cur_values_attr.push_back(pir::Int64Attribute::get(op->ir_context(), v));
-  }
-
-  auto new_attr = pir::ArrayAttribute::get(op->ir_context(), cur_values_attr);
-  shape_op->set_attribute("value", new_attr);
-
-  // infer new meta for full int array op
-  auto new_outputs = paddle::dialect::FullIntArrayOp::InferMeta(
-      shape_op->operands_source(),
-      const_cast<pir::AttributeMap*>(&shape_op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    shape_op->result(i).set_type(new_outputs[i]);
-  }
-
-  // infer new meta for reshape op
-  auto new_reshape_outputs = paddle::dialect::ReshapeOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_reshape_outputs.size(); ++i) {
-    op->result(i).set_type(new_reshape_outputs[i]);
-  }
-
-  return;
 }
 
 template <>
@@ -216,6 +202,9 @@ void RewriteByLayoutImpl<SiluOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+  for (auto value : RelevantOutputsImpl<SiluOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -226,6 +215,9 @@ void RewriteByLayoutImpl<AddOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+  for (auto value : RelevantOutputsImpl<AddOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -235,6 +227,9 @@ void RewriteByLayoutImpl<CastOp>(pir::Operation* op,
       op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
+  }
+  for (auto value : RelevantOutputsImpl<CastOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
   }
 }
 
@@ -284,6 +279,9 @@ void RewriteByLayoutImpl<ConcatOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+  for (auto value : RelevantOutputsImpl<ConcatOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -322,6 +320,9 @@ void RewriteByLayoutImpl<Pool2dOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+  for (auto value : RelevantOutputsImpl<Pool2dOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -331,6 +332,9 @@ void RewriteByLayoutImpl<MultiplyOp>(pir::Operation* op,
       op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
+  }
+  for (auto value : RelevantOutputsImpl<MultiplyOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
   }
 }
 
@@ -342,6 +346,9 @@ void RewriteByLayoutImpl<AssignOp>(pir::Operation* op,
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
   }
+  for (auto value : RelevantOutputsImpl<AssignOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
 }
 
 template <>
@@ -351,6 +358,9 @@ void RewriteByLayoutImpl<SwishOp>(pir::Operation* op,
       op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
   for (size_t i = 0; i < new_outputs.size(); ++i) {
     op->result(i).set_type(new_outputs[i]);
+  }
+  for (auto value : RelevantOutputsImpl<SwishOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
   }
 }
 
