@@ -18,8 +18,8 @@ import paddle
 
 program_txt = '''
 {
-    (%2) = "builtin.parameter" () {parameter_name:"linear_2.w_0.dist",persistable:[true],stop_gradient:[false]} : () -> builtin.tensor<8192x28672xbf16>
-    (%38) = "pd_op.data" () {dtype:(pd_op.DataType)bfloat16,name:"linear_2.tmp_0",persistable:[false],place:(pd_op.Place)Place(gpu:0),shape:(pd_op.IntArray)[4096,1,28672],stop_gradient:[false]} : () -> builtin.tensor<4096x1x28672xbf16>
+    (%2) = "builtin.parameter" () {parameter_name:"linear_0.w_0",persistable:[true],stop_gradient:[false]} : () -> builtin.tensor<8192x28672xbf16>
+    (%38) = "pd_op.data" () {dtype:(pd_op.DataType)bfloat16,name:"linear_0.tmp_0",persistable:[false],place:(pd_op.Place)Place(gpu:0),shape:(pd_op.IntArray)[4096,1,28672],stop_gradient:[false]} : () -> builtin.tensor<4096x1x28672xbf16>
     (%48) = "pd_op.data" () {dtype:(pd_op.DataType)bfloat16,name:"input",persistable:[false],place:(pd_op.Place)Place(gpu:0),shape:(pd_op.IntArray)[4096,1,28672],stop_gradient:[false]} : () -> builtin.tensor<4096x1x28672xbf16>
     (%50) = "pd_op.matmul" (%48, %2) {event_to_record:"event_7796",events_to_wait:[],force_record_event:false,persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:true} : (builtin.tensor<4096x1x28672xbf16>, builtin.tensor<8192x28672xbf16>) -> builtin.tensor<4096x1x8192xbf16>
     (%57) = "pd_op.c_allreduce_sum_" (%50) {event_to_record:"event_7800",events_to_wait:[],force_record_event:false,persistable:[false],ring_id:(Int32)36,stop_gradient:[false],use_calc_stream:true,use_model_parallel:true} : (builtin.tensor<4096x1x8192xbf16>) -> builtin.tensor<4096x1x8192xbf16>
