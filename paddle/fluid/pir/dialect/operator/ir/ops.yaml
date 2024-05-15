@@ -1627,7 +1627,7 @@
     func: shadow_feed_tensors
     param: [x]
 
-- op : share_data
+- op : share_data_
   args : (Tensor x)
   output : Tensor(out)
   infer_meta:
@@ -1636,6 +1636,7 @@
   kernel:
     func: share_data
     param: [x]
+  inplace : (x -> out)
 
 - op : shuffle_batch
   args : (Tensor x, Tensor seed, int startup_seed=0)
@@ -1646,6 +1647,15 @@
      func: shuffle_batch
      data_type: x
   backward : shuffle_batch_grad
+
+- op : shuffle_channel
+  args : (Tensor x, int group = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShuffleChannelInferMeta
+  kernel :
+    func : shuffle_channel
+  backward : shuffle_channel_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
