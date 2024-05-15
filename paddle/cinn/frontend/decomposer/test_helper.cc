@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::frontend {
 
 void RunDecomposer(Program* prog,
