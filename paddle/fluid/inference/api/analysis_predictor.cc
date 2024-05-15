@@ -811,6 +811,7 @@ bool AnalysisPredictor::PrepareProgram(
       filename = config_.prog_file();
       std::string extension = filename.substr(filename.find_last_of(".") + 1);
       LOG(INFO) << "extension:" << extension;
+      LOG(INFO) << "filename:" << filename;
       if (extension == "json") {
         LOG(INFO) << "跑了ReadModule";
         uint64_t pir_version = 1;
@@ -2044,8 +2045,6 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.reset(nullptr);
   }
 #endif
-  LOG(INFO) << "ir optimization completed前面 config.prog_file"
-            << config_.prog_file();
   LOG(INFO) << "======= ir optimization completed =======";
 }
 
