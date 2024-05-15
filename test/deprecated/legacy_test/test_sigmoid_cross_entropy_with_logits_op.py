@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import sys
 
-import numpy as np
-from op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
 from paddle import base
+
+sys.path.append("/paddle/build/test/legacy_test/")
+import unittest
+
+import numpy as np
+from op_test import OpTest
 
 
 def loss_wrapper(
