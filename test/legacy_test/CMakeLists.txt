@@ -978,6 +978,7 @@ set(STATIC_BUILD_TESTS
     test_bucketize_api
     test_c_embedding_op
     test_lookup_table_bf16_op
+    test_lookup_table_v2_op
     test_decayed_adagrad_op
     test_eig_op
     test_fake_dequantize_op
