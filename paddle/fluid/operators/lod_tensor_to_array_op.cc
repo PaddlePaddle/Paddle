@@ -45,7 +45,7 @@ struct LoDTensorToArrayFunctorImpl {
 };
 
 struct LoDTensorToArrayFunctor {
-  using argument_type = platform::Place;
+  using argument_type = phi::Place;
   using result_type = void;
   std::vector<const phi::DenseTensor *> ref_inputs_;
   mutable std::vector<phi::DenseTensor *> outputs_;
@@ -106,7 +106,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
                   .Get<phi::DenseTensor>();

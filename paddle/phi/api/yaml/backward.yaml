@@ -2879,6 +2879,19 @@
     param : [x, x]
   composite: silu_double_grad(x, out, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
+- backward_op: sparse_attention_grad
+  forward: sparse_attention(Tensor q, Tensor k, Tensor v, Tensor offset, Tensor columns, Tensor key_padding_mask,
+    Tensor attn_mask) -> Tensor (out), Tensor (sparse_dot_sdd), Tensor (softmax)
+  args: (Tensor q, Tensor k, Tensor v, Tensor offset, Tensor columns, Tensor sparse_dot_sdd,
+    Tensor softmax, Tensor out_grad)
+  output: Tensor (q_grad), Tensor (k_grad), Tensor (v_grad)
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [q, k, v]
+  kernel:
+    func: sparse_attention_grad
+    data_type: out_grad
+
 - backward_op: stft_grad
   forward: stft (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided) -> Tensor (out)
   args: (Tensor x, Tensor window, Tensor out_grad, int n_fft, int hop_length, bool normalized, bool onesided)
