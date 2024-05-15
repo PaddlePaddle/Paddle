@@ -2558,7 +2558,7 @@ void ModeInferMeta(const MetaTensor& x,
 
   indices->set_dims(dims);
   indices->share_lod(x);
-  indices->set_dtype(x.dtype());
+  indices->set_dtype(DataType::INT64);
 }
 
 void MultinomialInferMeta(const MetaTensor& x,

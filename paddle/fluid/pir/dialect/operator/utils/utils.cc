@@ -58,6 +58,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
+    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
@@ -66,7 +67,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSplitOp::name(),
     PushDenseOp::name(),
     SeedOp::name(),
-    ShareDataOp::name(),
+    ShareData_Op::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
     RankAttentionOp::name(),
@@ -77,12 +78,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
     MatchMatrixTensorGradOp::name(),
-    PartialConcatOp::name(),
-    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    PartialSumOp::name(),
-    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
@@ -95,7 +92,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::QuantizeOp::name(),
-    paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
     paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
@@ -109,7 +105,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

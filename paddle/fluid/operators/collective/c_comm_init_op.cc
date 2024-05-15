@@ -60,8 +60,8 @@ class CCommInitOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    if (platform::is_custom_place(place)) {
+               const phi::Place& place) const override {
+    if (place.GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
@@ -103,11 +103,11 @@ class CCommInitOp : public framework::OperatorBase {
           "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
-      PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(place) || platform::is_xpu_place(place),
-          true,
-          phi::errors::PreconditionNotMet(
-              "CCommInitOp can run on gpu or xpu place only."));
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU ||
+                            place.GetType() == phi::AllocationType::XPU,
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

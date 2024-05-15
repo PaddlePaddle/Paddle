@@ -174,9 +174,6 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         }
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
-        if (place == root_tensor->place()) {
-          continue;
-        }
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
@@ -298,7 +295,11 @@ void MultiTrainer::MergeWorkerVars(void) {
       continue;
     }
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+#ifdef PADDLE_WITH_HETERPS
+    for (int j = 0; j < thread_num_; j++) {
+#else
     for (int j = 1; j < thread_num_; j++) {
+#endif
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
@@ -370,6 +371,45 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
     workers_[i]->SetPlace(places_[i]);
     workers_[i]->SetReaderPlace(places_[i]);
     workers_[i]->BindingDataFeedMemory();
+  }
+  // reset stat_var to 0 cause the stat_var will keep increasing
+  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+    Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    if (!root_var) {
+      continue;
+    }
+    if (root_var->IsType<phi::SelectedRows>()) {
+      continue;
+    }
+    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    for (int j = 0; j < thread_num_; ++j) {
+      Scope* cur_thread_scope = workers_[j]->GetThreadScope();
+      Variable* thread_var =
+          cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      if (thread_var == nullptr) {
+        continue;
+      }
+      phi::DenseTensor* thread_tensor =
+          thread_var->GetMutable<phi::DenseTensor>();
+      auto dev_ctx_ = workers_[j]->GetDeviceContext();
+#define MergeCallback2(cpp_type, proto_type)                                   \
+  do {                                                                         \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
+        VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
+                << "] " << need_merge_var_names_[i]                            \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
+        exit(-1);                                                              \
+      }                                                                        \
+      phi::DenseTensor tmp_tensor;                                             \
+      TensorCopy(*thread_tensor, platform::CPUPlace(), &tmp_tensor);           \
+      phi::funcs::set_constant(*dev_ctx_, thread_tensor, 0.0);                 \
+    }                                                                          \
+  } while (0)
+      _ForEachDataType_(MergeCallback2);
+    }
   }
 }
 #endif
