@@ -142,8 +142,8 @@ def bernoulli_(x, p=0.5, name=None):
     ones_mask = x > p
     zeros_mask = x < p
     x.masked_fill_(ones_mask, 1.0)
-    out = x.masked_fill_(zeros_mask, 0.0)
-    return out
+    x.masked_fill_(zeros_mask, 0.0)
+    return x
 
 
 def binomial(count, prob, name=None):

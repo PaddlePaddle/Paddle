@@ -1938,6 +1938,9 @@ class TestDygraphInplaceBernoulli(unittest.TestCase):
     def inplace_api_processing(self, var):
         return paddle.bernoulli_(var, p=self.p)
 
+    def inplace_class_method_processing(self, var):
+        return var.bernoulli_(self.p)
+
     def non_inplace_api_processing(self, var):
         return paddle.bernoulli(paddle.zeros(self.shape) + self.p)
 
@@ -1945,6 +1948,20 @@ class TestDygraphInplaceBernoulli(unittest.TestCase):
         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
         non_inplace_var = self.non_inplace_api_processing(var)
         inplace_var = self.inplace_api_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().mean(),
+            inplace_var.numpy().mean(),
+            atol=0.01,
+        )
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().var(), inplace_var.numpy().var(), atol=0.01
+        )
+
+    def test_inplace_class_method(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        non_inplace_var = self.non_inplace_api_processing(var)
+        inplace_var = self.inplace_class_method_processing(var)
         self.assertTrue(id(var) == id(inplace_var))
         np.testing.assert_allclose(
             non_inplace_var.numpy().mean(),
