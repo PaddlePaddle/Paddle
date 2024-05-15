@@ -61,7 +61,7 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
     PADDLE_ENFORCE_EQ(param->type(),
                       parameter.type(),
                       phi::errors::InvalidArgument(
-                          "Duplicate parameter with diffrient type."));
+                          "Duplicate parameter %s with diffrient type.", name));
   } else {
     std::unique_ptr<pir::Parameter> param_new(
         new pir::Parameter(nullptr, 0, parameter.type()));
@@ -69,6 +69,18 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
     ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                     name);
   }
+}
+
+void updata_parameter(const pir::Value& parameter, const std::string& name) {
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  PADDLE_ENFORCE_NOT_NULL(param,
+                          phi::errors::InvalidArgument(
+                              "Parameter %s not exist, can not updata.", name));
+  std::unique_ptr<pir::Parameter> param_new(
+      new pir::Parameter(nullptr, 0, parameter.type()));
+  ApiBuilder::Instance().SetParameter(name, std::move(param_new));
+  ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
+                                                                  name);
 }
 
 void shadow_output(const pir::Value& persist_value, const std::string& name) {
