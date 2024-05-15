@@ -32,6 +32,7 @@ class FusedCReducescatterAddPattern : public paddle::drr::DrrPatternBase {
     const auto &c_reduce_scatter =
         pat.Op(paddle::dialect::CReducescatterOp::name(),
                {{"ring_id", pat.Attr("ring_id")},
+                {"nranks", pat.Attr("num")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
@@ -47,7 +48,42 @@ class FusedCReducescatterAddPattern : public paddle::drr::DrrPatternBase {
                 {"nranks", pat.Attr("num")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
 
-    c_reducescatter_add({&res.Tensor("x")}, {&res.Tensor("bias")});
+    c_reducescatter_add(res.Tensor("x"), res.Tensor("bias"));
+  }
+};
+
+class FusedCReducescatterAssignAddPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "FusedCReducescatterAddPattern"; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+
+    const auto &c_reduce_scatter =
+        pat.Op(paddle::dialect::CReducescatterOp::name(),
+               {{"ring_id", pat.Attr("ring_id")},
+                {"nranks", pat.Attr("num")},
+                {"use_calc_stream", pat.Attr("use_calc_stream")}});
+
+    const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+
+    pat.Tensor("out") = c_reduce_scatter(pat.Tensor("x"));
+
+    pat.Tensor("out_tmp") = assign(pat.Tensor("out"));
+
+    pat.Tensor("add_out") = add(pat.Tensor("out_tmp"), pat.Tensor("bias"));
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &c_reducescatter_add =
+        res.Op(paddle::dialect::CReducescatterAddOp::name(),
+               {{"ring_id", pat.Attr("ring_id")},
+                {"nranks", pat.Attr("num")},
+                {"use_calc_stream", pat.Attr("use_calc_stream")}});
+
+    c_reducescatter_add(res.Tensor("x"), res.Tensor("bias"));
   }
 };
 
@@ -59,7 +95,7 @@ class FuseCReducescatterAddPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<FusedCReducescatterAddPattern>(context));
-
+    ps.Add(paddle::drr::Create<FusedCReducescatterAssignAddPattern>(context));
     return ps;
   }
 };
