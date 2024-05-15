@@ -576,6 +576,58 @@ class TensorVariable(VariableBase):
         return None
 
 
+class SymbolicIntVariable(ConstantVariable):
+    """
+    TODO
+    """
+
+    var_name_generator = NameGenerator("symint_")
+
+    def __init__(
+        self,
+        value: int,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(value, graph, tracker)
+        self.value = value
+        self.tensor = paddle.to_tensor(value)
+        self.meta = MetaInfo.from_tensor(self.tensor)
+        self.var_name = TensorVariable.var_name_generator.next()
+        self.symbolic: bool = False
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return int
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_const(paddle.to_tensor(self.value))
+
+    @check_guard
+    def make_stringify_guard(self) -> list[StringifyExpression]:
+        if self.symbolic:
+            return []
+        else:
+            return super().make_stringify_guard()
+
+    @classmethod
+    def from_constant(cls, const: ConstantVariable):
+        return cls(
+            const.value,
+            const.graph,
+            const.tracker,
+        )
+
+
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
