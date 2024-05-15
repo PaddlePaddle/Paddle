@@ -19,7 +19,7 @@ __all__ = ["Chi2"]
 
 class Chi2(Gamma):
     r"""
-    Creates a Chi-squared distribution parameterized by shape parameter :attr:df.
+    Creates a Chi-squared distribution parameterized by shape parameter.
     This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5)
 
     Args:
