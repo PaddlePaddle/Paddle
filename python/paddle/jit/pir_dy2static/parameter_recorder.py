@@ -45,6 +45,7 @@ class ParametersRecorder:
                 dtype=dtype,
                 shape=tensor.shape,
                 type=tensor.type,
+                name=tensor.name,
                 initializer=non_used_initializer,
                 trainable=(not tensor.stop_gradient),
             )
