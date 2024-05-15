@@ -274,7 +274,8 @@ class Engine:
     def _prepare_data_spec_from_dataloader(self, dataloader):
         inputs_spec = []
         labels_spec = []
-        data = next(iter(dataloader))
+
+        data = dataloader._get_input_spec()
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:

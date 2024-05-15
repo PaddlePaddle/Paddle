@@ -2820,6 +2820,23 @@ class ShardDataloader:
         else:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
 
+    # Get data from DataLoader iterator directly may affect data generation randomness
+    # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
+    # between dynamic and to_static mode.
+    def _get_input_spec(self):
+        batch_data = self._dataloader.batch_sampler.dataset.__getitem__(0)
+        collate_fn = self._dataloader.collate_fn
+        batch_data = collate_fn(batch_data)
+        if isinstance(batch_data, dict):
+            batch_data = [batch_data]
+        if isinstance(batch_data, (list, tuple)):
+            for i in range(len(batch_data)):
+                batch_data[i] = paddle.to_tensor(batch_data[i])
+        elif isinstance(batch_data, dict):
+            for key, value in batch_data.items():
+                batch_data[key] = paddle.to_tensor(value)
+        return self._get_batch(batch_data)
+
     def __next__(self):
         batch_data = next(self.iter)
         return self._get_batch(batch_data)
