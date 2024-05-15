@@ -76,6 +76,11 @@ std::vector<T> SortElementsAtIndices(const std::vector<T>& vec,
                                      const std::vector<size_t>& indices) {
   std::vector<T> selected_elements;
   for (auto& idx : indices) {
+    PADDLE_ENFORCE_LT(
+        idx,
+        vec.size(),
+        common::errors::OutOfRange(
+            "The index %d is out of vector size %d.", idx, vec.size()));
     selected_elements.push_back(vec[idx]);
   }
   std::sort(selected_elements.begin(), selected_elements.end());
@@ -104,9 +109,13 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation* op) {
   }
 
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  auto yaml_info_interface =
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+  if (!yaml_info_interface) {
+    return inplace_info;
+  }
   paddle::dialect::OpYamlInfoParser yaml_parser(
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(op_name),
+      yaml_info_interface->get_op_info_(op_name),
       paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {

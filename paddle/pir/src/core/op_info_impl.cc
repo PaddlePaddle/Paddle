@@ -139,7 +139,7 @@ void OpInfoImpl::Destroy() {
   ::operator delete(base_ptr);
 }
 
-const std::vector<std::string> OpInfoImpl::GetAttributesName() const {
+std::vector<std::string> OpInfoImpl::GetAttributesName() const {
   std::vector<std::string> attributes_name;
   for (size_t i = 0; i < num_attributes_; ++i) {
     attributes_name.push_back(p_attributes_[i]);

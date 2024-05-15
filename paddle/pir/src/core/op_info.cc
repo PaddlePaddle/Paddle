@@ -52,7 +52,7 @@ void *OpInfo::GetInterfaceImpl(TypeId interface_id) const {
   return impl_ ? impl_->GetInterfaceImpl(interface_id) : nullptr;
 }
 
-const std::vector<std::string> OpInfo::GetAttributesName() const {
+std::vector<std::string> OpInfo::GetAttributesName() const {
   return impl_ ? impl_->GetAttributesName() : std::vector<std::string>();
 }
 }  // namespace pir

@@ -84,7 +84,7 @@ class IR_API OpInfo {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 
-  const std::vector<std::string> GetAttributesName() const;
+  std::vector<std::string> GetAttributesName() const;
 
   friend class OpInfoImpl;
 
