@@ -1008,11 +1008,6 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
 template <typename T>
 Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
-  auto x_promote = x;
-  if (is_half_dtype(x.dtype())) {
-    x_promote = cast<T>(x, DataType::FLOAT32);
-  }
-
   auto min_reshape = min;
   auto max_reshape = max;
 
@@ -1024,11 +1019,11 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
     max_reshape = expand<T>(max, x.shape());
   }
 
-  auto min_expand = cast<T>(min_reshape, x_promote.dtype());
-  auto max_expand = cast<T>(max_reshape, x_promote.dtype());
+  auto min_expand = cast<T>(min_reshape, x.dtype());
+  auto max_expand = cast<T>(max_reshape, x.dtype());
 
-  auto ans = maximum<T>(minimum<T>(x_promote, max_expand), min_expand);
-  return cast<T>(ans, x.dtype());
+  auto ans = maximum<T>(minimum<T>(x, max_expand), min_expand);
+  return ans;
 }
 
 template <typename T>
