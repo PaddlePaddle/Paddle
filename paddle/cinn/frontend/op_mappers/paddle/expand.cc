@@ -14,19 +14,28 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void ExpandOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of expand op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of expand op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("expand_times"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("expand_times"),
+      true,
+      phi::errors::InvalidArgument("expand op should have attr expand_times."));
   auto expand_times =
       utils::GetAttrOrDefault<std::vector<int>>(op_desc, "expand_times");
 
@@ -37,9 +46,11 @@ void ExpandOpMapper(const paddle::cpp::OpDesc& op_desc,
   VLOG(4) << "expand: attr expand_times: "
           << cinn::utils::Join(expand_times, ", ");
 
-  CHECK_EQ(expand_times.size(), x_shape.size())
-      << "The size of `expand_times' should == the rank[" << x_shape.size()
-      << "] of x's shape, but got " << expand_times.size();
+  PADDLE_ENFORCE_EQ(expand_times.size(),
+                    x_shape.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of `expand_times' should equal to the "
+                        "x's shape."));
 
   std::vector<int> out_shape(x_shape.size());
   for (size_t i = 0; i < x_shape.size(); ++i) {
