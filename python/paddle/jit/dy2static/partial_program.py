@@ -190,9 +190,8 @@ class PartialProgramLayer:
 
         amp_dtype, custom_white_list, custom_black_list = None, None, None
         tracer = framework._dygraph_tracer()
-        if tracer:
-            custom_white_list, custom_black_list = tracer._get_amp_op_list()
-            amp_dtype = tracer._amp_dtype
+        custom_white_list, custom_black_list = tracer._get_amp_op_list()
+        amp_dtype = tracer._amp_dtype
         if amp_dtype is not None and amp_dtype in ['float16', 'bfloat16']:
             # For AMP training
             self._amp_list = (
