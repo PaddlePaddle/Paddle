@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 struct CudnnRNNCache {
   CudnnRNNCache() {
@@ -324,5 +324,5 @@ struct CudnnRNNCache {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
