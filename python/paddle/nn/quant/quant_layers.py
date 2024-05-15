@@ -116,7 +116,8 @@ class FakeQuantAbsMax(Layer):
             ) = _C_ops.fake_quantize_dequantize_abs_max(
                 input, self._quant_bits, 1
             )
-            return out
+            _C_ops.assign_out_(out, quant_out)
+            return quant_out
 
         check_variable_and_dtype(input, 'input', ['float32'], "FakeQuantAbsMax")
         attrs = {'bit_length': self._quant_bits}
@@ -244,8 +245,8 @@ class FakeQuantMovingAverageAbsMax(Layer):
                 not self.training,
                 1,
             )
-
-            return out
+            _C_ops.assign_out_(out, quant_out)
+            return quant_out
 
         check_variable_and_dtype(
             input, 'input', ['float32'], "FakeQuantMovingAverageAbsMax"

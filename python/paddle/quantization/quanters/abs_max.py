@@ -173,8 +173,8 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             not self.training,
             1,
         )
-
-        return out
+        _C_ops.assign_out_(out, quant_out)
+        return quant_out
 
     def static_forward(self, input):
         check_variable_and_dtype(
