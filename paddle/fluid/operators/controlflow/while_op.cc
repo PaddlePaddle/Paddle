@@ -63,7 +63,7 @@ class WhileOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(
         scope.FindVar(Input(kCondition)),
         phi::errors::NotFound("Input(Condition) of WhileOp is not found."));
@@ -325,7 +325,7 @@ class WhileGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     PADDLE_ENFORCE_EQ(
         Attr<bool>("is_test"),
         false,
