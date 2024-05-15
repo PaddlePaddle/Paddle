@@ -36,6 +36,7 @@ PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
     'fused_dropout_add_pass',
+    'fuse_c_reducescatter_add_pass',
 ]
 
 PIR_PYTHON_PASS = [
