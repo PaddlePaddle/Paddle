@@ -100,6 +100,7 @@ ALLOW_NO_GRAD_OPS = [
 # TODO(CZ): to be removed when we support dynamic shape by default.
 ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.abs",
+    "pd_op.add",
     "pd_op.assign",
     "pd_op.sin",
     "pd_op.cos",
