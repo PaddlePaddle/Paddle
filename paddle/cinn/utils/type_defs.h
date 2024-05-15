@@ -16,6 +16,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/types/variant.h>
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #include <string>
 #include <vector>
@@ -35,7 +36,9 @@ using Attribute = absl::variant<bool,
                                 int64_t,
                                 double,
                                 std::vector<int64_t>,
-                                std::vector<double>>;
+                                std::vector<double>,
+                                // the followings are only for generate shape op
+                                std::vector<symbol::DimExpr>>;
 using AttributeMap = absl::flat_hash_map<std::string, Attribute>;
 
 // shape type defs

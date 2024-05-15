@@ -148,7 +148,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -293,7 +293,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));

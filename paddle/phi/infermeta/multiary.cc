@@ -1101,6 +1101,64 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void ChunkEvalInferMeta(const MetaTensor& inference,
+                        const MetaTensor& label,
+                        const MetaTensor& seq_length,
+                        int num_chunk_types,
+                        const std::string& chunk_scheme,
+                        const std::vector<int>& excluded_chunk_types,
+                        MetaTensor* precision,
+                        MetaTensor* recall,
+                        MetaTensor* f1_score,
+                        MetaTensor* num_infer_chunks,
+                        MetaTensor* num_label_chunks,
+                        MetaTensor* num_correct_chunks) {
+  const auto& inference_dim = inference.dims();
+  const auto& label_dim = label.dims();
+
+  PADDLE_ENFORCE_EQ(
+      inference_dim,
+      label_dim,
+      phi::errors::InvalidArgument(
+          "Input(Inference)'s shape must be the same as Input(Label)'s "
+          "shape, but received [%s] (Inference) vs [%s] (Label).",
+          inference_dim,
+          label_dim));
+
+  bool use_padding = seq_length.initialized();
+  if (use_padding) {
+    PADDLE_ENFORCE_EQ((inference_dim.size() == 3 && inference_dim[2] == 1) ||
+                          inference_dim.size() == 2,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "when Input(SeqLength) is provided, Input(Inference) "
+                          "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+                          "(batch_size, bucket), but received [%s].",
+                          inference_dim));
+    auto seq_length_dim = seq_length.dims();
+    PADDLE_ENFORCE_LE(seq_length_dim.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "Input(SeqLength)'s rank should not be greater "
+                          "than 2, but received %d.",
+                          seq_length_dim.size()));
+  }
+
+  precision->set_dims({1});
+  recall->set_dims({1});
+  f1_score->set_dims({1});
+  num_infer_chunks->set_dims({1});
+  num_label_chunks->set_dims({1});
+  num_correct_chunks->set_dims({1});
+
+  precision->set_dtype(phi::DataType::FLOAT32);
+  recall->set_dtype(phi::DataType::FLOAT32);
+  f1_score->set_dtype(phi::DataType::FLOAT32);
+  num_infer_chunks->set_dtype(phi::DataType::INT64);
+  num_label_chunks->set_dtype(phi::DataType::INT64);
+  num_correct_chunks->set_dtype(phi::DataType::INT64);
+}
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,
@@ -4571,6 +4629,32 @@ void WhereInferMeta(const MetaTensor& condition,
   }
 
   out->share_meta(x);
+}
+
+void YoloBoxPostInferMeta(const MetaTensor& boxes0,
+                          const MetaTensor& boxes1,
+                          const MetaTensor& boxes2,
+                          const MetaTensor& image_shape,
+                          const MetaTensor& image_scale,
+                          const std::vector<int>& anchors0,
+                          const std::vector<int>& anchors1,
+                          const std::vector<int>& anchors2,
+                          int class_num,
+                          float conf_thresh,
+                          int downsample_ratio0,
+                          int downsample_ratio1,
+                          int downsample_ratio2,
+                          bool clip_bbox,
+                          float scale_x_y,
+                          float nms_threshold,
+                          MetaTensor* out,
+                          MetaTensor* nms_rois_num,
+                          MetaConfig config) {
+  int batch = image_shape.dims()[0];
+  out->set_dims(common::make_ddim({1, 6}));
+  nms_rois_num->set_dims(common::make_ddim({batch}));
+  out->set_dtype(DataType::FLOAT32);
+  nms_rois_num->set_dtype(DataType::INT32);
 }
 
 void YoloLossInferMeta(const MetaTensor& x,

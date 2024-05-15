@@ -2879,6 +2879,17 @@
     param : [x, x]
   composite: silu_double_grad(x, out, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
+- backward_op: stft_grad
+  forward: stft (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided) -> Tensor (out)
+  args: (Tensor x, Tensor window, Tensor out_grad, int n_fft, int hop_length, bool normalized, bool onesided)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: stft_grad
+    data_type: x
+
 - backward_op: unpool3d_grad
   forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW") -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, int[] output_size, str data_format)

@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
@@ -893,6 +894,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<double>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<bool>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<std::string>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<symbol::DimExpr>)
 #undef EXPAND_MEMSET_TYPE_UNSUPPORT
   };
 

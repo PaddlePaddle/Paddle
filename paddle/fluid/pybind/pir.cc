@@ -666,6 +666,12 @@ void BindOperation(py::module *m) {
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
       .def("has_attr", &Operation::HasAttribute)
+      .def("set_bool_attr",
+           [](Operation &self, std::string &attr_name, bool flag) {
+             self.set_attribute(
+                 attr_name,
+                 pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;

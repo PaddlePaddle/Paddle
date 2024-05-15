@@ -82,7 +82,7 @@ class TestReshardPToRCrossMesh:
                 input_tensor = dist.shard_tensor(
                     w0, self._in_mesh, [dist.Partial(dist.ReduceType.kRedSum)]
                 )
-                reshard_tensor = paddle._pir_ops.reshard(
+                reshard_tensor = paddle._C_ops.reshard(
                     input_tensor, self._out_mesh, [dist.Replicate()]
                 )
 
