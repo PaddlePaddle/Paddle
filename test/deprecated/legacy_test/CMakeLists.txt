@@ -825,6 +825,7 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fuse_bn_act_pass
     test_layer_norm_op
+    test_lookup_table_v2_op
     test_matmul_op
     test_matmul_v2_op
     test_momentum_op
