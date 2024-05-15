@@ -19,6 +19,7 @@ from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
+ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
@@ -155,6 +156,7 @@ class CompiledProgram:
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
+        self._exec_strategy = None
 
     def _with_inference_optimize(self, config):
         """Add inference optimize
@@ -204,6 +206,9 @@ class CompiledProgram:
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+
+        if self._exec_strategy is None:
+            self._exec_strategy = ExecutionStrategy()
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
@@ -278,6 +283,7 @@ class CompiledProgram:
             '',
             self._scope,
             self._local_scopes,
+            self._exec_strategy,
             self._build_strategy,
             self._graph,
         )

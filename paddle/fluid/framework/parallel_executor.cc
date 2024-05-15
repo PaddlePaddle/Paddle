@@ -671,6 +671,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::string &loss_var_name,
                                    Scope *scope,
                                    const std::vector<Scope *> &local_scopes,
+                                   const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
@@ -742,6 +743,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
 ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    Scope *scope,
+                                   const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)) {
@@ -767,11 +769,11 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
   std::unordered_map<Scope *, Scope *> scope_map =
       CreateLocalExecScopes(member_->local_scopes_, /*create_new=*/false);
 
-  // std::vector<ir::Graph *> final_graphs =
-  //     CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
+  std::vector<ir::Graph *> final_graphs =
+      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  // // Set scope_map of op from each graph
-  // ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
+  // Set scope_map of op from each graph
+  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
 }
 
 void ParallelExecutor::PrepareVariables(Scope *scope) {
