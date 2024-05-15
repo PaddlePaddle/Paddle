@@ -40,6 +40,7 @@ from ...utils import (
     ENV_SHOW_TRACKERS,
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     NameGenerator,
+    Singleton,
     SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
@@ -159,14 +160,8 @@ class VariableLoader:
             self._pycode_gen.gen_load(self._store_var_info[var.id])
 
 
+@Singleton
 class SymbolicInt:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __eq__(self, other) -> bool:
         return isinstance(other, (int, SymbolicInt))
 
