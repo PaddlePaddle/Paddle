@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/ir_mapping.h"
 namespace cinn::dialect::details {
 
 pir::Attribute ArrayAttributeToIntArrayAttribute(
@@ -36,37 +37,147 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
   return attr_data;
 }
 
-const auto& handler_reduce_max_op =
-    [&](::pir::Operation* op,
-        const ::pir::Builder& builder) -> ::pir::Operation* {
+const auto& handler_reduce_sum_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                    // NOLINT
+       ::pir::Builder& builder) -> ::pir::Operation* {  // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto cinn_op = op->dyn_cast<cinn::dialect::ReduceMaxOp>();
-  auto attr = cinn_op.attributes();
+  auto attrs = op->attributes();
+
+  pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
+  attrs.insert({"axis", attr_axis});
+  attrs.insert({"dtype", attrs["dtype"]});
+  attrs.insert({"keepdim", attrs["keep_dim"]});
+  attrs.erase("dim");
+  attrs.erase("keep_dim");
+
+  auto pd_op = builder.Build<paddle::dialect::SumOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+};
+
+const auto& handler_reduce_max_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                    // NOLINT
+       ::pir::Builder& builder) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
 
   // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
   // Normalization
   pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attr.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attr.insert({"axis", attr_axis});
-  attr.insert({"keepdim", attr["keep_dim"]});
-  attr.erase("dim");
-  attr.erase("keep_dim");
+      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
+  attrs.insert({"axis", attr_axis});
+  attrs.insert({"keepdim", attrs["keep_dim"]});
+  attrs.erase("dim");
+  attrs.erase("keep_dim");
 
-  auto pd_op =
-      const_cast<::pir::Builder*>(&builder)->Build<paddle::dialect::MaxOp>(
-          cinn_op.operand_source(0), attr);
+  auto pd_op = builder.Build<paddle::dialect::MaxOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
   return pd_op;
 };
+
+const auto& handler_reduce_min_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                    // NOLINT
+       ::pir::Builder& builder) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+
+  pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
+  attrs.insert({"axis", attr_axis});
+  attrs.insert({"keepdim", attrs["keep_dim"]});
+  attrs.erase("dim");
+  attrs.erase("keep_dim");
+
+  auto pd_op = builder.Build<paddle::dialect::MinOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+};
+
+const auto& handler_reduce_prod_op =
+    [](::pir::Operation* op,
+       ::pir::IrMapping& ir_mapping,                    // NOLINT
+       ::pir::Builder& builder) -> ::pir::Operation* {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+
+  pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
+      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
+  attrs.insert({"dims", attr_axis});
+  attrs.erase("dim");
+
+  auto pd_op = builder.Build<paddle::dialect::ProdOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+};
+
+::pir::Operation* ConvertSliceOp(::pir::Operation* op,
+                                 ::pir::IrMapping& ir_mapping,  // NOLINT
+                                 ::pir::Builder& builder) {     // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  pir::Attribute starts = ArrayAttributeToIntArrayAttribute(
+      attrs.at("starts").dyn_cast<::pir::ArrayAttribute>());
+  pir::Attribute ends = ArrayAttributeToIntArrayAttribute(
+      attrs.at("ends").dyn_cast<::pir::ArrayAttribute>());
+  attrs["starts"] = starts;
+  attrs["ends"] = ends;
+  auto pd_op = builder.Build<paddle::dialect::SliceOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertConcatOp(::pir::Operation* op,
+                                  ::pir::IrMapping& ir_mapping,  // NOLINT
+                                  ::pir::Builder& builder) {     // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  for (auto item : attrs) {
+    VLOG(0) << item.first;
+  }
+  std::vector<pir::Value> vec_inputs;
+  for (uint32_t i = 0; i < op->num_operands(); ++i) {
+    vec_inputs.push_back(ir_mapping.Lookup(op->operand_source(i)));
+  }
+  auto op_input = builder.Build<pir::CombineOp>(vec_inputs).result(0);
+
+  int axis = attrs.at("axis").dyn_cast<::pir::Int32Attribute>().data();
+
+  auto pd_op = builder.Build<paddle::dialect::ConcatOp>(op_input, axis);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
 
 bool CanApplyOn(::pir::Operation* op) {
   return op->dialect()->name() == "cinn_op";
 }
 
 ::pir::Operation* RewriteCinnOpToPdOp(::pir::Operation* op,
-                                      const ::pir::Builder& builder) {
+                                      ::pir::IrMapping& ir_mapping,  // NOLINT
+                                      ::pir::Builder& builder) {     // NOLINT
   VLOG(8) << "Rewrite CinnOp to PdOp for op: " << op->name();
   auto& op_transformers = TransformContext::Instance();
-  return op_transformers[op->name()](op, builder);
+  return op_transformers[op->name()](op, ir_mapping, builder);
 }
 
 void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
@@ -91,20 +202,37 @@ void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
     }
     ::pir::Operation* new_op;
     if (CanApplyOn(&op)) {
-      new_op = RewriteCinnOpToPdOp(&op, builder);
+      new_op = RewriteCinnOpToPdOp(&op, ir_mapping, builder);
       new_op->MoveTo(target_block, target_block->end());
     } else {
       new_op = op.Clone(ir_mapping, clone_options);
       new_op->MoveTo(target_block, target_block->end());
-    }
-    for (uint32_t i = 0; i < op.num_results(); ++i) {
-      ir_mapping.Add(op.result(i), new_op->result(i));
     }
   }
 }
 
 }  // namespace cinn::dialect::details
 
+REGISTER_TRANSFORM_RULES(reduce_sum_op,
+                         cinn::dialect::ReduceSumOp::name(),
+                         cinn::dialect::details::handler_reduce_sum_op);
+
 REGISTER_TRANSFORM_RULES(reduce_max_op,
                          cinn::dialect::ReduceMaxOp::name(),
                          cinn::dialect::details::handler_reduce_max_op);
+
+REGISTER_TRANSFORM_RULES(reduce_min_op,
+                         cinn::dialect::ReduceMinOp::name(),
+                         cinn::dialect::details::handler_reduce_min_op);
+
+REGISTER_TRANSFORM_RULES(reduce_prod_op,
+                         cinn::dialect::ReduceProdOp::name(),
+                         cinn::dialect::details::handler_reduce_prod_op);
+
+REGISTER_TRANSFORM_RULES(slice_op,
+                         cinn::dialect::SliceOp::name(),
+                         cinn::dialect::details::ConvertSliceOp);
+
+REGISTER_TRANSFORM_RULES(concat_op,
+                         cinn::dialect::ConcatOp::name(),
+                         cinn::dialect::details::ConvertConcatOp);

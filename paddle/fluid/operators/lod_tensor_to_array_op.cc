@@ -63,7 +63,7 @@ struct LoDTensorToArrayFunctor {
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

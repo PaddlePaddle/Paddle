@@ -145,6 +145,16 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void CorrelationInferMeta(const MetaTensor& input1,
+                          const MetaTensor& input2,
+                          int pad_size,
+                          int kernel_size,
+                          int max_displacement,
+                          int stride1,
+                          int stride2,
+                          int corr_type_multiply,
+                          MetaTensor* out);
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -170,6 +180,14 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
                                        MetaTensor* softmax,
                                        MetaTensor* loss,
                                        MetaConfig config = MetaConfig());
+
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length);
 
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
@@ -578,6 +596,14 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
+
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out);
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,

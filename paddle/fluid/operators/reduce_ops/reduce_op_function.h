@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,

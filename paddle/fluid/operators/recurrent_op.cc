@@ -201,8 +201,7 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 }
 
 // (seq_len, shape) -> return [seq_len] + list(shape)
-framework::DDim RecurrentBase::PrependDims(size_t seq_len,
-                                           const framework::DDim &src) {
+phi::DDim RecurrentBase::PrependDims(size_t seq_len, const phi::DDim &src) {
   auto dims = common::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
   return common::make_ddim(dims);

@@ -20,9 +20,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -40,7 +40,7 @@ namespace operators {
  * 1D blocks: blockDim.x = cols
  * 2D grids: gridDim.y = rows
  */
-inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
+inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const phi::GPUContext &ctx,
     const uint32_t rows,
     const uint32_t cols,
@@ -60,7 +60,7 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
-  platform::GpuLaunchConfig config;
+  phi::backends::gpu::GpuLaunchConfig config;
   config.block_per_grid.x = blocks_x;
   config.block_per_grid.y = blocks_y;
   config.thread_per_block.x = threads;
