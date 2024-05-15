@@ -430,9 +430,6 @@ class TestResnet(Dy2StTestBase):
         dy_pre = self.resnet_helper.predict_dygraph(image)
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
-        print("dy_pre = ", dy_pre)
-        print("st_pre = ", st_pre)
-        print("dy_jit_pre = ", dy_jit_pre)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
