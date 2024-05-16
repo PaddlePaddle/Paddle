@@ -921,7 +921,8 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
 
       // Apply some optimization passes required by the inference
-      ::pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+      ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
+                                 config_.pm_opt_level_);
       if (!config_.custom_passes_.empty()) {
         for (const auto &custom_pass : config_.custom_passes_) {
           pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));

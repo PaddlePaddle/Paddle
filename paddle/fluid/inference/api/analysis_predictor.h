@@ -292,7 +292,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the inference program
   ///
   framework::ProgramDesc &program() { return *inference_program_; }
-  auto pir_program() { return pir_program_; }
 
   ///
   /// \brief Get the serialized program

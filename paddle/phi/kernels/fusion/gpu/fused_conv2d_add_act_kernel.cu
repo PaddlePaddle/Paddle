@@ -371,12 +371,6 @@ void FusedConv2dAddActKernel(const Context& ctx,
                              DenseTensor* output,
                              std::vector<DenseTensor*> outputs) {
   auto handle = ctx.cudnn_handle();
-
-  phi::dynload::cudnnSetCallback(
-      CUDNN_SEV_INFO_EN | CUDNN_SEV_ERROR_EN | CUDNN_SEV_WARNING_EN,
-      nullptr,
-      nullptr);
-
   ctx.template Alloc<T>(output);
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
@@ -653,8 +647,6 @@ void FusedConv2dAddActKernel(const Context& ctx,
           transformed_input.dims()));
     }
   }
-
-  phi::dynload::cudnnSetCallback(CUDNN_SEV_FATAL, nullptr, nullptr);
 }
 }  // namespace fusion
 }  // namespace phi

@@ -365,15 +365,6 @@ struct FlowGraph {
                   return !layout_transform_iface.CanBeModified(fop);
                 }
                 return true;
-                // if (op->name() == "pd_op.reshape" ||
-                //     op->name() == "pd_op.shape" ||
-                //     op->name() == "pd_op.transpose" ||
-                //     op->name() == "pd_op.unsqueeze" ||
-                //     op->name() == "pd_op.squeeze" ||
-                //     op->name() == "pd_op.flatten") {
-                //   return true;
-                // }
-                // return false;
               },
               [&](const pir::Value& v) {
                 if (!v) return true;
@@ -564,7 +555,7 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 3) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 2) {}
 
   void Run(pir::Operation* op) override {
     PADDLE_ENFORCE(

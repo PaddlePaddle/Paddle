@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -283,7 +282,7 @@ void BincountInferMeta(const MetaTensor& x,
   if (weights) {
     out->set_dtype(weights.dtype());
   } else {
-    out->set_dtype(DataType::INT64);
+    out->set_dtype(x.dtype());
   }
 
   out->share_lod(x);
@@ -585,11 +584,10 @@ void ConvInferMeta(const MetaTensor& input,
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
-  int filter_channels =
-      channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1];
+
   PADDLE_ENFORCE_EQ(
       input_channels,
-      filter_channels * groups,
+      filter_dims[1] * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
           "* groups for Op(Conv). But received: the input's channels is %d, "
@@ -598,7 +596,7 @@ void ConvInferMeta(const MetaTensor& input,
           "The error may come from wrong data_format setting.",
           input_channels,
           in_dims,
-          filter_channels,
+          filter_dims[1],
           filter_dims,
           groups,
           data_format));
@@ -629,13 +627,8 @@ void ConvInferMeta(const MetaTensor& input,
     in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  DDim filter_data_dims;
-  if (channel_last) {
-    filter_data_dims =
-        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-  } else {
-    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
-  }
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
@@ -665,7 +658,6 @@ void ConvInferMeta(const MetaTensor& input,
 
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(input.dtype());
-  out->set_layout(input.layout());
 }
 
 void Conv3DInferMeta(const MetaTensor& input,
@@ -905,44 +897,6 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                          data_format,
                          out,
                          config);
-}
-
-void CorrelationInferMeta(const MetaTensor& input1,
-                          const MetaTensor& input2,
-                          int pad_size,
-                          int kernel_size,
-                          int max_displacement,
-                          int stride1,
-                          int stride2,
-                          int corr_type_multiply,
-                          MetaTensor* out) {
-  auto in_dims = input1.dims();
-  auto in2_dims = input2.dims();
-
-  PADDLE_ENFORCE_EQ(
-      in_dims.size() == 4,
-      true,
-      phi::errors::InvalidArgument("Input(X) of CorrelationOp must be 4 dims."
-                                   "But received dims is %d.",
-                                   in_dims.size()));
-
-  PADDLE_ENFORCE_EQ(
-      in2_dims.size() == 4,
-      true,
-      phi::errors::InvalidArgument("Input(Y) of CorrelationOp must be 4 dims."
-                                   "But received dims is %d.",
-                                   in2_dims.size()));
-  std::vector<int64_t> output_shape =
-      CorrelationOutputSize(static_cast<int>(in_dims[0]),
-                            static_cast<int>(in_dims[2]),
-                            static_cast<int>(in_dims[3]),
-                            stride1,
-                            stride2,
-                            kernel_size,
-                            pad_size,
-                            max_displacement);
-  out->set_dims(common::make_ddim(output_shape));
-  out->set_dtype(input1.dtype());
 }
 
 void CrossInferMeta(const MetaTensor& x,

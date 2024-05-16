@@ -359,10 +359,6 @@ std::string InstructionBase::DebugStringEx(
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
         }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
-        }
       }
     }
     ++it;
@@ -389,10 +385,6 @@ std::string InstructionBase::DebugStringEx(
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
-        }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }

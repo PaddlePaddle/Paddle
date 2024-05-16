@@ -205,7 +205,6 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
 void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintOperationWithNoRegion(op);
-  os << " " << op;
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -453,11 +452,6 @@ std::ostream& operator<<(std::ostream& os, Attribute attr) {
 
 std::ostream& operator<<(std::ostream& os, const Program& prog) {
   prog.Print(os);
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, Operation* op) {
-  op->Print(os);
   return os;
 }
 
