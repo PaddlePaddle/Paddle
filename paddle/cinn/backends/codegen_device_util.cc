@@ -91,8 +91,8 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
 
-  Expr shared_mem_bytes;
-  cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+  std::optional<Expr> shared_mem_bytes;
+  cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
@@ -109,9 +109,9 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
           << "block_dim: (" << func_node->cuda_axis_info.block_dim(0) << ", "
           << func_node->cuda_axis_info.block_dim(1) << ", "
           << func_node->cuda_axis_info.block_dim(2) << "), "
-          << "shared_mem: " << shared_mem_bytes;
-  const char *call_kernel;
-  cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+          << "shared_mem: " << shared_mem_bytes.value();
+  std::optional<const char *> call_kernel;
+  cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
@@ -120,7 +120,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       });
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
-                     call_kernel,
+                     call_kernel.value(),
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,
@@ -130,7 +130,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                       func_node->cuda_axis_info.block_dim(0),  // block_x
                       func_node->cuda_axis_info.block_dim(1),  // block_y
                       func_node->cuda_axis_info.block_dim(2),  // block_z
-                      shared_mem_bytes,                        // shared_mem
+                      shared_mem_bytes.value(),                // shared_mem
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,

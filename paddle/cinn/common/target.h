@@ -100,6 +100,8 @@ const Target& DefaultHostTarget();
 
 const Target& DefaultNVGPUTarget();
 
+const Target& DefaultDeviceTarget();
+
 const Target& DefaultTarget();
 
 int GetMaxThreads();
