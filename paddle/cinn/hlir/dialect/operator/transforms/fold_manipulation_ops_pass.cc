@@ -161,6 +161,24 @@ class MergeCastOpPattern
   }
 };
 
+// class RemoveAssignOutOpPattern
+//     : public pir::OpRewritePattern<paddle::dialect::AssignOut_Op> {
+//  public:
+//   using pir::OpRewritePattern<paddle::dialect::AssignOut_Op>::OpRewritePattern;
+
+//   bool MatchAndRewrite(paddle::dialect::AssignOut_Op op,
+//                        pir::PatternRewriter& rewriter) const override {
+//     if( !(op->operand_source(1).defining_op()) )
+//     {
+//       rewriter.ReplaceAllUsesWith( op->result(0), op->operand_source(0));
+//       rewriter.EraseOp(op);
+//       return true;
+//     }
+    
+//     return false;
+//   }
+// };
+
 class FoldManipulationOpsPass : public pir::PatternRewritePass {
  public:
   FoldManipulationOpsPass()
@@ -177,6 +195,7 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ConcatOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::CastOp, true>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOut_Op>>(context);
 
     // merge redundant ops
     ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
