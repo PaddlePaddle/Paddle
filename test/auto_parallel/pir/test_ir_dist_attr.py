@@ -30,7 +30,8 @@ class TestBuildFakeProgram(unittest.TestCase):
     def test_build_api(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            start_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program, start_program):
                 mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
@@ -56,7 +57,8 @@ class TestBuildFakeProgram(unittest.TestCase):
     def test_build_replicated_program(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            start_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program, start_program):
                 mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
@@ -123,7 +125,8 @@ class TestBuildFakeProgram(unittest.TestCase):
     def test_build_col_parallel_program(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            start_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program, start_program):
                 mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
@@ -172,7 +175,8 @@ class TestBuildFakeProgram(unittest.TestCase):
     def test_build_row_parallel_program(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            start_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program, start_program):
                 mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input',
@@ -224,7 +228,8 @@ class TestBuildFakeProgram(unittest.TestCase):
     def test_build_with_shard_tensor(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            start_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program, start_program):
                 mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input',
