@@ -404,7 +404,7 @@ ExprTransformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
 ExprTransformer UnsqueezeForTransformer(
     const ExprSetFinderUtils::ExprSetFinder& followed_finder,
     const ir::Var& to_append_var) {
-  const auto& f = [&](const ir::Expr& e) -> ir::Expr {
+  const auto& suqueeze_for_func = [&](const ir::Expr& e) -> ir::Expr {
     auto copied_e = ir::ir_utils::IRCopy(e);
     ir::Expr followed_expr = followed_finder.GetSingle(copied_e);
     // (ExprSetFinderUtils::ChildFors *
@@ -419,14 +419,15 @@ ExprTransformer UnsqueezeForTransformer(
       schedule_block->body =
           WrapForTransformer(to_append_var)(schedule_block->body);
     } else {
-      VLOG(6) << "UnsqueezeForTransformer: only support insert after a (For / "
-                 "ScheduleBlockRealizer): "
-              << followed_expr;
+      PADDLE_THROW(
+          "UnsqueezeForTransformer: only support insert after a (For / "
+          "ScheduleBlockRealizer): %s",
+          followed_expr);
     }
     VLOG(6) << "UnsqueezeForTransformer: After changed: " << copied_e;
     return copied_e;
   };
-  return ExprTransformer(f);
+  return ExprTransformer(suqueeze_for_func);
 }
 
 ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,

@@ -166,7 +166,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
   // get the all vars.
   int counter = 0;
-  auto gen_next_name = [&counter]() {
+  auto GenNextName = [&counter]() {
     counter += 1;
     return "expand_var_" + std::to_string(counter);
   };

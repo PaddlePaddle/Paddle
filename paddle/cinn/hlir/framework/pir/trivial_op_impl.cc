@@ -593,9 +593,10 @@ std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies,
     const std::vector<::pir::Value>& outputs) {
-  CHECK(FLAGS_group_schedule_tiling_first)
-      << "TrivialFusion must be used with tiling first, set "
-         "FLAGS_group_schedule_tiling_first=1";
+  PADDLE_ENFORCE(FLAGS_group_schedule_tiling_first,
+                 ::common::errors::PreconditionNotMet(
+                     "TrivialFusion must be used with tiling first, set "
+                     "FLAGS_group_schedule_tiling_first=1"));
   const auto& ops = trivial_fusion_detail::FilterVector(
       original_ops, [](const ::pir::Operation* op) {
         if (op->name() == "cinn_op.generate_shape") {
