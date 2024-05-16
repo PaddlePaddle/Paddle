@@ -67,7 +67,7 @@ struct CudnnRNNCache {
   int seed_;
 
   void init(miopenHandle_t handle,
-            const platform::Place &place,
+            const phi::Place &place,
             size_t seq_len,
             int batch_size,
             int input_size,

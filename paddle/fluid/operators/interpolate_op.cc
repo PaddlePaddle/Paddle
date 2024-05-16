@@ -50,7 +50,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
             "size = %d .",
             inputs_name.size()));
     int out_w = ctx->Attrs().Get<int>("out_w");
-    framework::DDim dim_out;
+    phi::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_w};
     } else {
@@ -103,7 +103,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_w};
   } else {
@@ -140,7 +140,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
             inputs_name.size()));
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    framework::DDim dim_out;
+    phi::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_h, out_w};
     } else {
@@ -199,7 +199,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_h, out_w};
   } else {
@@ -236,7 +236,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     int out_d = ctx->Attrs().Get<int>("out_d");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    framework::DDim dim_out;
+    phi::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
     } else {
@@ -300,7 +300,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
   } else {

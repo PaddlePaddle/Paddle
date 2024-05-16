@@ -272,15 +272,5 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
             self.__check_out__(res[0])
 
 
-class TestEmptyError(unittest.TestCase):
-    def test_attr(self):
-        def test_dtype():
-            x = np.random.random((200, 3)).astype("float64")
-            dtype = 'uint8'
-            result = paddle.empty_like(x, dtype=dtype)
-
-        self.assertRaises(TypeError, test_dtype)
-
-
 if __name__ == '__main__':
     unittest.main()

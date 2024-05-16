@@ -103,16 +103,18 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name() << " [id:" << op->id() << "]";
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 bool GroupOp::InferSymbolicShape(
@@ -181,16 +183,18 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = " << name() << " [id:" << op->id() << "]";
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << " {";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto& sub_op : GetOperators()) {
-    os << "\n  ";
     printer.PrintOperation(sub_op);
+    os << "\n";
   }
-  os << " \n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void YieldStoreOp::Build(pir::Builder& builder,
@@ -264,7 +268,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
                     pir::Value input,
                     const std::vector<int>& sections,
                     int axis) {
-  VLOG(4) << "Start build ConcatOp";
+  VLOG(4) << "Start build SplitOp";
 
   argument.inputs.push_back(input);
 

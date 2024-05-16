@@ -36,21 +36,12 @@ namespace {
 
 pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
                               pir::Value x,
-                              pir::Value y,
-                              pir::ShapeConstraintIRAnalysis* shape_analysis) {
+                              pir::Value y) {
   pir::Operation* x_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(x);
   pir::Operation* y_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(y);
   pir::Operation* shape_broadcast_op =
       rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape_op->result(0),
                                                          y_shape_op->result(0));
-  for (auto* op : std::vector{x_shape_op, y_shape_op, shape_broadcast_op}) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    // TODO(Hongqing-work): delete this after the shape analysis reconstruct is
-    // done.
-    infer_symbolic_shape_interface.InferSymbolicShape(
-        shape_analysis->GetInferSymbolicShapeContext());
-  }
   return shape_broadcast_op->result(0);
 }
 
@@ -67,19 +58,16 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     return false;
   }
 
-  pir::Value output_dim_tensor =
-      GetOutputDimTensor(rewriter, x, y, &shape_analysis);
+  pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
   if (x_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_x, out_shape);
   }
   if (y_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_y, out_shape);
   }
   return true;
 }
