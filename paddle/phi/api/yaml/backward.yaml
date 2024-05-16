@@ -949,6 +949,18 @@
     func : flash_attn_with_sparse_mask_grad
     data_type: q
 
+- backward_op : flatten2_grad
+  forward: flatten2 (Tensor x, int axis = 1) -> Tensor (out), Tensor (x_shape)
+  args: (Tensor x, Tensor x_shape, Tensor out_grad, int axis = 1)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: Flatten2GradInferMeta
+  kernel:
+    func: flatten2_grad
+    data_type: out_grad
+  inplace: (out_grad -> x_grad)
+  no_need_buffer: x
+
 - backward_op : flatten_grad
   forward : flatten(Tensor x, int start_axis = 1, int stop_axis = 1) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)

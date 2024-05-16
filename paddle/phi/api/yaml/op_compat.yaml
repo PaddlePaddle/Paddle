@@ -3957,6 +3957,13 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op: flatten2
+  backward: flatten2_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, x_shape : XShape}
+
 - op: ftrl
   inputs:
     {param: Param, squared_accumulator: SquaredAccumulator, linear_accumulator: LinearAccumulator, grad: Grad, learning_rate: LearningRate}

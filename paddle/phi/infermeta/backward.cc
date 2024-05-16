@@ -250,6 +250,18 @@ void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   }
 }
 
+void Flatten2GradInferMeta(const MetaTensor& x,
+                           const MetaTensor& x_shape,
+                           const MetaTensor& out_grad,
+                           int axis,
+                           MetaTensor* x_grad) {
+  auto xshape_dims = x_shape.dims();
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x_shape);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
