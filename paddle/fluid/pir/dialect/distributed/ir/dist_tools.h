@@ -29,6 +29,10 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
 
 phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type);
 pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr);
+
+pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
+                                        ProcessMeshAttribute mesh);
+
 pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr);
 
 ///

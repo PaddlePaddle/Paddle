@@ -112,6 +112,22 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
   }
 }
 
+pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
+                                        ProcessMeshAttribute mesh) {
+  auto ctx = pir::IrContext::Instance();
+  if (auto tensor_type = prim_type.dyn_cast<pir::DenseTensorType>()) {
+    auto& ddim = tensor_type.dims();
+    return TensorDistAttribute::get(
+        ctx, mesh, std::vector<int64_t>(ddim.size(), -1));
+  } else if (auto vec_type = prim_type.dyn_cast<pir::VectorType>()) {
+    std::vector<pir::Attribute> array;
+    for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+      array.emplace_back(CreateReplicatedDistAttr(vec_type[idx], mesh));
+    }
+    return pir::ArrayAttribute::get(ctx, array);
+  }
+  return nullptr;
+}
 pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr) {
   if (!prim_type) return nullptr;
   auto ctx = pir::IrContext::Instance();
