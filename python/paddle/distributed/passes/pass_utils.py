@@ -877,7 +877,9 @@ def _program_for_vpp(
             )
 
             cur_block._remove_op(add_idx + 1)
+
         for idx in reversed(removed_nop_idx):
+            # Because the move "elementwise_add" to the head of "comm_op", here using "idx+1" to remove the "elementwise_add".
             cur_block._remove_op(idx + 1)
         cur_block._sync_with_cpp()
 

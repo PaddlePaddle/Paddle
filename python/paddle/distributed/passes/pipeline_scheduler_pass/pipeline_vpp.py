@@ -116,10 +116,10 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             micro_batch_id = self._record_bwd_micro_step(virtual_pp_rank)
             if micro_batch_id == accumulate_steps - 1:
                 bwd_job = core.Job(
-                    BACKWARD + str(bwd_virtual_pp_rank) + "_has_dp_comm"
+                    BACKWARD + str(virtual_pp_rank) + "_has_dp_comm"
                 )
             else:
-                bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
+                bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
             bwd_job.set_micro_batch_id(micro_batch_id)
             job_list.append(bwd_job)
 

@@ -486,6 +486,7 @@ def parse_program(
     avg,
     dist_context,
     gradient_sync_after_accumulate,
+    pipeline_mode=None,
 ):
     # 1 remove optimizer_op from main_program
     optimize_ops_block = _remove_and_get_optimizer_op(
@@ -500,11 +501,11 @@ def parse_program(
         main_program, startup_program, params_grads, dist_context
     )
 
-    # if gradient_sync_after_accumulate:
-    #     # 3 move reduce op to optimizer_ops_block
-    #     optimize_ops_block = _move_reduce_to_optimizer_ops_block(
-    #         main_program, optimize_ops_block, params_grads
-    #     )
+    if gradient_sync_after_accumulate and pipeline_mode == "VPP":
+        # 3 move reduce op to optimizer_ops_block
+        optimize_ops_block = _move_reduce_to_optimizer_ops_block(
+            main_program, optimize_ops_block, params_grads
+        )
 
     _remove_cast_for_master_grad(main_program, dist_context)
 
@@ -548,6 +549,7 @@ class GradientMergePass(PassBase):
         k_steps = self.get_attr("k_steps", -1)
         avg = self.get_attr("avg", False)
         dist_context = self.get_attr("dist_context")
+        pipeline_mode = self.get_attr("pipeline_mode", None)
         params_grads = self.get_attr("params_grads")
         gradient_sync_after_accumulate = self.get_attr(
             "gradient_sync_after_accumulate", False
@@ -562,6 +564,7 @@ class GradientMergePass(PassBase):
                 avg,
                 dist_context,
                 gradient_sync_after_accumulate,
+                pipeline_mode,
             )
 
         main_program._sync_with_cpp()

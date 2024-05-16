@@ -482,6 +482,7 @@ class Parallelizer:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["grad_to_global_grad"] = grad_to_global_grad
+            config["pipeline_mode"] = self._strategy.pipeline.schedule_mode
             if gradient_sync_after_accumulate:
                 config["params_grads"] = global_params_grads
                 config[
@@ -495,7 +496,6 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
-        print(f"+++ grad_to_global_name: {grad_to_global_grad}")
 
         if self._strategy.pipeline.enable and not use_new_executor():
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
