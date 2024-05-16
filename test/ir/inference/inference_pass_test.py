@@ -146,6 +146,8 @@ class InferencePassTest(unittest.TestCase):
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
+        config.enable_new_ir()
+        config.enable_new_executor()
         if use_gpu:
             config.enable_use_gpu(100, 0)
             if use_trt:

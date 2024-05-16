@@ -230,9 +230,12 @@ class AutoScanTest(unittest.TestCase):
         ir_optim: Optional[bool] = None,
     ):
         config = paddle_infer.Config()
-        config.switch_ir_debug(True)
+        config.switch_ir_debug()
         config.set_optim_cache_dir(self.cache_dir)
         config.disable_glog_info()
+        config.enable_new_ir()
+        config.enable_new_executor()
+
         if ir_optim is not None:
             config.switch_ir_optim(ir_optim)
         if use_gpu:
