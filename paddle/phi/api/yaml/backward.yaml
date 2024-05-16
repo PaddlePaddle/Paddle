@@ -1993,6 +1993,7 @@
   kernel :
     func : rank_attention_grad
     data_type : out_grad
+  no_need_buffer : x, rank_offset, rank_param
 
 - backward_op : real_grad
   forward : real (Tensor x) -> Tensor(out)

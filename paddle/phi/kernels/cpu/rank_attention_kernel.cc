@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/rank_attention_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/rank_attention_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     rank_attention, CPU, ALL_LAYOUT, phi::RankAttentionKernel, float, double) {}

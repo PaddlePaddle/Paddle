@@ -19,12 +19,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void RankAttentionKernel(const Context &dev_ctx,
-                         const DenseTensor &x,
-                         const DenseTensor &rank_offset,
-                         const DenseTensor &rank_param,
-                         int max_rank,
-                         int max_size,
-                         DenseTensor *input_help,
-                         DenseTensor *out,
-                         DenseTensor *ins_rank);
+                         const DenseTensor &x UNUSED,
+                         const DenseTensor &rank_offset UNUSED,
+                         const DenseTensor &rank_param UNUSED,
+                         int max_rank UNUSED,
+                         int max_size UNUSED,
+                         DenseTensor *input_help UNUSED,
+                         DenseTensor *out UNUSED,
+                         DenseTensor *ins_rank UNUSED) {
+  PADDLE_ENFORCE_EQ(
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      true,
+      phi::errors::Unimplemented("Rank Attention only supports GPU now."));
+}
 }  // namespace phi
