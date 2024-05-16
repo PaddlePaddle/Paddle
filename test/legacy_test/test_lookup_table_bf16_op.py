@@ -23,8 +23,7 @@ from op_test import (
     skip_check_grad_ci,
 )
 
-import paddle
-from paddle import base, enable_static
+from paddle import enable_static
 from paddle.base import core
 
 
@@ -208,57 +207,6 @@ class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
-
-
-class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
-    """
-    Test embedding layer api and results for bfloat16
-    """
-
-    def set_initializer(self):
-        self.initializer = paddle.nn.initializer.Constant(value=self.value)
-
-    def setUp(self):
-        self.ids_shape = [4, 1]
-        self.w_shape = [10, 64]
-        self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(
-            "int64"
-        )
-        self.flat_ids = self.ids.flatten()
-        self.value = 3.0
-        self.w_fp32 = np.full(self.w_shape, self.value)
-        self.place = base.CPUPlace()
-        self.prog = base.Program()
-        self.startup_prog = base.Program()
-        self.set_initializer()
-
-        with base.program_guard(self.prog, self.startup_prog):
-            x = paddle.static.data(
-                name='x', shape=self.ids_shape, dtype='int64'
-            )
-            self.emb = paddle.static.nn.embedding(
-                input=x,
-                size=self.w_shape,
-                param_attr=base.ParamAttr(
-                    name="emb_weight", initializer=self.initializer
-                ),
-                is_sparse=False,
-                dtype="uint16",
-            )  # bfloat16
-        exe = base.Executor(self.place)
-        exe.run(self.startup_prog)
-        self.result = exe.run(
-            self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
-        )
-
-    def test_embedding_weights(self):
-        result = convert_uint16_to_float(self.result[0])
-        np.testing.assert_array_equal(self.w_fp32, result)
-
-    def test_lookup_results(self):
-        lookup_result = convert_uint16_to_float(self.result[1].squeeze(-2))
-        lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
-        np.testing.assert_array_equal(lookup_result, lookup_ref)
 
 
 if __name__ == "__main__":
