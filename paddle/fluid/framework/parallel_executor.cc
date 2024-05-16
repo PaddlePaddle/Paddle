@@ -1275,51 +1275,49 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-  #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
-  defined(_WIN32)
-    if (member_->IsUseCUDA(member_->use_device_)) {
-      PADDLE_ENFORCE_EQ(
-          device_count,
-          1,
-          platform::errors::Unavailable("Windows can support Single GPU
-          only."));
-    }
-  #endif
 
-  #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
-    if (member_->IsUseCUDA(member_->use_device_)) {
-      PADDLE_ENFORCE_EQ(
-          device_count,
-          1,
-          platform::errors::PermissionDenied(
-              "Your machine has multiple cards, "
-              "but the WITH_NCCL option is not turned on during compilation,
-              " "and you cannot use multi-card training or prediction. "
-              "Please recompile and turn on the WITH_NCCL option."));
-    }
-  #endif
-
-    std::string device_name;
-    if (member_->use_device_ == p::kCPU) {
-      device_name = "CPU";
-    } else if (member_->use_device_ == p::kCUDA) {
-      device_name = "CUDA";
-    } else if (member_->use_device_ == p::kXPU) {
-      device_name = "XPU";
-    } else {
-      PADDLE_THROW(
-          platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
-                                        "please use CPU/CUDA/XPU backend."));
-    }
-
-    VLOG(1) << string::Sprintf(
-        "The Program will be executed on %s using ParallelExecutor, %lu "
-        "cards are used, so %lu programs are executed in parallel.",
-        device_name,
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
+  if (member_->IsUseCUDA(member_->use_device_)) {
+    PADDLE_ENFORCE_EQ(
         device_count,
-        device_count);
+        1,
+        platform::errors::Unavailable("Windows can support Single GPU only."));
+  }
+#endif
 
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+  if (member_->IsUseCUDA(member_->use_device_)) {
+    PADDLE_ENFORCE_EQ(
+        device_count,
+        1,
+        platform::errors::PermissionDenied(
+            "Your machine has multiple cards, "
+            "but the WITH_NCCL option is not turned on during compilation, "
+            "and you cannot use multi-card training or prediction. "
+            "Please recompile and turn on the WITH_NCCL option."));
+  }
+#endif
+
+  std::string device_name;
+  if (member_->use_device_ == p::kCPU) {
+    device_name = "CPU";
+  } else if (member_->use_device_ == p::kCUDA) {
+    device_name = "CUDA";
+  } else if (member_->use_device_ == p::kXPU) {
+    device_name = "XPU";
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
+                                      "please use CPU/CUDA/XPU backend."));
+  }
+
+  VLOG(1) << string::Sprintf(
+      "The Program will be executed on %s using ParallelExecutor, %lu "
+      "cards are used, so %lu programs are executed in parallel.",
+      device_name,
+      device_count,
+      device_count);
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
