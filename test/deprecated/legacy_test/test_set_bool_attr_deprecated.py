@@ -21,6 +21,7 @@ from paddle import base
 
 class TestAttrSet(unittest.TestCase):
     def test_set_bool_attr(self):
+        paddle.enable_static()
         x = paddle.static.data(
             name='x', shape=[-1, 3, 7, 3, 7], dtype='float32'
         )
@@ -44,4 +45,5 @@ class TestAttrSet(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
