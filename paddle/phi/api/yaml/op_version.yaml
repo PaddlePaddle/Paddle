@@ -166,6 +166,17 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : cumprod
+  version :
+    - checkpoint : Upgrade cumprod add 2 new attributes [exlucsive] and [reverse].
+      action :
+        - add_attr : exlucsive
+          comment : In order to perform exclusive cumprod.
+          default : "false"
+        - add_attr : reverse
+          comment : In order to perform cumprod in the opposite direction
+          default : "false"
+
 - op : cumsum
   version :
     - checkpoint : Upgrade cumsum add a new attribute [flatten].
