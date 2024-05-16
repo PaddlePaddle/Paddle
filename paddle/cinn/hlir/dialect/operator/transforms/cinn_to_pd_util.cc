@@ -156,8 +156,7 @@ const auto& handler_reduce_prod_op =
                                    ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
   auto attrs = op->attributes();
-  attrs.at("shape").dyn_cast<::pir::ArrayAttribute>();
-  pir::Attribute shape = ArrayAttributeToIntArrayAttribute(
+  ::pir::Attribute shape = ArrayAttributeToIntArrayAttribute(
       attrs.at("shape").dyn_cast<::pir::ArrayAttribute>());
   attrs["shape"] = shape;
   auto pd_op = builder.Build<paddle::dialect::ReshapeOp>(
@@ -182,22 +181,6 @@ const auto& handler_reduce_prod_op =
   int axis = attrs.at("axis").dyn_cast<::pir::Int32Attribute>().data();
 
   auto pd_op = builder.Build<paddle::dialect::ConcatOp>(op_input, axis);
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    ir_mapping.Add(op->result(i), pd_op->result(i));
-  }
-  return pd_op;
-}
-
-::pir::Operation* ConvertReshapeOp(::pir::Operation* op,
-                                   ::pir::IrMapping& ir_mapping,  // NOLINT
-                                   ::pir::Builder& builder) {     // NOLINT
-  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
-  ::pir::Attribute shape = ArrayAttributeToIntArrayAttribute(
-      attrs.at("shape").dyn_cast<::pir::ArrayAttribute>());
-  attrs["shape"] = shape;
-  auto pd_op = builder.Build<paddle::dialect::ReshapeOp>(
-      ir_mapping.Lookup(op->operand_source(0)), attrs);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -309,13 +292,13 @@ const auto& handler_reduce_prod_op =
   for (size_t i = 0; i < attr_shape.size(); ++i) {
     shape.push_back(attr_shape.at(i).dyn_cast<::pir::Int64Attribute>().data());
   }
-  phi::DataType dtype =
+  ::phi::DataType dtype =
       attrs.at("dtype").dyn_cast<paddle::dialect::DataTypeAttribute>().data();
 
   float min = attrs.at("min").dyn_cast<pir::FloatAttribute>().data();
   float max = attrs.at("max").dyn_cast<pir::FloatAttribute>().data();
   float seed = attrs.at("diag_num").dyn_cast<pir::FloatAttribute>().data();
-  phi::Place place =
+  ::phi::Place place =
       attrs.at("place").dyn_cast<paddle::dialect::PlaceAttribute>().data();
 
   auto pd_op = builder.Build<paddle::dialect::UniformOp>(
@@ -414,10 +397,6 @@ REGISTER_TRANSFORM_RULES(reshape_op,
 REGISTER_TRANSFORM_RULES(concat_op,
                          cinn::dialect::ConcatOp::name(),
                          cinn::dialect::details::ConvertConcatOp);
-
-REGISTER_TRANSFORM_RULES(reshape_op,
-                         cinn::dialect::ReshapeOp::name(),
-                         cinn::dialect::details::ConvertReshapeOp);
 
 REGISTER_TRANSFORM_RULES(scale_op,
                          cinn::dialect::ScaleOp::name(),
