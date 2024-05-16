@@ -4409,7 +4409,7 @@ def adaptive_log_softmax_with_loss(
             scatter_output = paddle.scatter_nd(
                 row_indices.unsqueeze(1), local_logprob.squeeze(1), output.shape
             )
-            output = output * (scatter_output == 0) + scatter_output
+            output = output * (scatter_output == 0).astype('float32') + scatter_output
 
         used_rows += row_indices.numel()
 
