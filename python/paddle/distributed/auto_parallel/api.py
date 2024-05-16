@@ -2824,11 +2824,21 @@ class ShardDataloader:
     # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
     # between dynamic and to_static mode.
     def _get_input_spec(self):
-        batch_data = self._dataloader.batch_sampler.dataset.__getitem__(0)
+        dataset = self._dataloader.batch_sampler.dataset
+        if isinstance(dataset, paddle.io.IterableDataset):
+            batch_data = next(iter(dataset))
+        elif isinstance(dataset, paddle.io.Dataset):
+            batch_data = dataset[0]
+        else:
+            raise TypeError(
+                f"Data should be a Dataset or IterableDataset, but received {type(dataset).__name__}."
+            )
+
         collate_fn = self._dataloader.collate_fn
-        batch_data = collate_fn(batch_data)
-        if isinstance(batch_data, dict):
-            batch_data = [batch_data]
+        if collate_fn is not None:
+            if isinstance(batch_data, dict):
+                batch_data = [batch_data]
+            batch_data = collate_fn(batch_data)
         if isinstance(batch_data, (list, tuple)):
             for i in range(len(batch_data)):
                 batch_data[i] = paddle.to_tensor(batch_data[i])
