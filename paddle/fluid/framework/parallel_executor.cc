@@ -88,7 +88,7 @@ class ParallelExecutorPrivate {
         use_all_reduce_(false),
         nranks_(0),
         mem_opt_var_infos_(),
-        GarbageCollectorMap() {
+        gcs_() {
     if (!FLAGS_pe_profile_fname.empty()) {
       std::call_once(gProfileOnce, [] {
 #ifdef WITH_GPERFTOOLS
@@ -687,7 +687,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)),
       async_graphs_(nullptr),
-      var_infos_(nullptr) {
+      var_infos_() {
   PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(
@@ -762,7 +762,7 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)),
       async_graphs_(nullptr),
-      var_infos_(nullptr) {
+      var_infos_() {
   // Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy,
                                 build_strategy,
