@@ -67,12 +67,21 @@ void ExpandOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void ExpandV2OpMapper(const paddle::cpp::OpDesc& op_desc,
                       const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of expand_v2 op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of expand_v2 op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("shape"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("shape"),
+      true,
+      phi::errors::InvalidArgument("expand_v2 op should have attr shape."));
   auto shape = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "shape");
 
   auto x = ctx.GetVar(x_name);
