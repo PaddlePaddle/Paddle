@@ -157,6 +157,10 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
                           platform::errors::InvalidArgument(
                               "The Scope to hold variables is nullptr."));
 
+  LOG(INFO) << "Total blocks available: " << desc.Size();
+  PADDLE_ENFORCE_LT(block_id,
+                    desc.Size(),
+                    platform::errors::OutOfRange("Block ID is out of range."));
   auto &global_block = desc.Block(block_id);
 
   const auto *anc = scope;
