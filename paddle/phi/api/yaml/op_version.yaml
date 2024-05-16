@@ -166,6 +166,17 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : cumprod
+  version :
+    - checkpoint : Upgrade cumprod add 2 new attributes [exlucsive] and [reverse].
+      action :
+        - add_attr : exlucsive
+          comment : In order to perform exclusive cumprod.
+          default : "false"
+        - add_attr : reverse
+          comment : In order to perform cumprod in the opposite direction
+          default : "false"
+
 - op : cumsum
   version :
     - checkpoint : Upgrade cumsum add a new attribute [flatten].
@@ -489,6 +500,17 @@
           comment : The attribute 'dim1' is not recommend according to the specification 2.0.
         - delete_attr : dim2
           comment : The attribute 'dim2' is not recommend according to the specification 2.0.
+
+- op : truncated_gaussian_random
+  version :
+    - checkpoint : Upgrade truncated_gaussian_random add 2 new attribute [a, b]
+      action :
+        - add_attr : a
+          comment : The minimum cutoff value.
+          default: -2.0
+        - add_attr : b
+          comment : The maximum cutoff value.
+          default: 2.0
 
 - op : unique_consecutive
   version :

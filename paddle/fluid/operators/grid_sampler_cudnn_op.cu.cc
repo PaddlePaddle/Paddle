@@ -36,7 +36,7 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
@@ -85,7 +85,7 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
@@ -152,15 +152,14 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(grid_sampler,
                    CUDNN,
-                   plat::CUDAPlace,
+                   phi::GPUPlace,
                    paddle::operators::CUDNNGridSampleOpKernel<float>,
                    paddle::operators::CUDNNGridSampleOpKernel<double>);
 REGISTER_OP_KERNEL(grid_sampler_grad,
                    CUDNN,
-                   plat::CUDAPlace,
+                   phi::GPUPlace,
                    paddle::operators::CUDNNGridSampleGradOpKernel<float>,
                    paddle::operators::CUDNNGridSampleGradOpKernel<double>);
 

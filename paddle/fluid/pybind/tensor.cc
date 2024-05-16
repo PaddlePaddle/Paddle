@@ -1099,6 +1099,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return self;
            })
+      .def("_unsafe_set_skip_check_mesh",
+           &DistTensor::unsafe_set_skip_check_mesh)
       .def("_clear", &DistTensor::clear);
 #endif
 

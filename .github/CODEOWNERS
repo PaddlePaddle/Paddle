@@ -67,10 +67,10 @@ python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
 python/paddle/distributed/__init__.py @sneaxiy @raindrops2sea
 python/paddle/incubate/autograd/composite_rules.py @cyber-pioneer @xiaoguoguo626807 @Charles-hit @JiabinYang
 python/paddle/incubate/autograd/primitives.py @cyber-pioneer @xiaoguoguo626807 @Charles-hit @JiabinYang
-python/paddle/jit @SigureMo @2742195759 @Aurelius84 @gouzil
+python/paddle/_typing @SigureMo @zrr1999 @gouzil
 python/requirements.txt @phlrain @jzhang533 @kolinwei
-test/dygraph_to_static @SigureMo @2742195759 @Aurelius84 @gouzil
-test/sot @SigureMo @2742195759 @Aurelius84 @gouzil
+test/dygraph_to_static @SigureMo @Aurelius84 @gouzil
+test/sot @SigureMo @Aurelius84 @gouzil
 tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder @Aurelius84
-tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder  @Aurelius84
+tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder @Aurelius84
 .pre-commit-config.yaml @SigureMo @gouzil

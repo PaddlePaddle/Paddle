@@ -268,7 +268,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
                     pir::Value input,
                     const std::vector<int>& sections,
                     int axis) {
-  VLOG(4) << "Start build ConcatOp";
+  VLOG(4) << "Start build SplitOp";
 
   argument.inputs.push_back(input);
 

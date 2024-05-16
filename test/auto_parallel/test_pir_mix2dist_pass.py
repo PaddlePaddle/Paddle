@@ -16,6 +16,9 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    apply_mix2dist_pass,
+)
 
 paddle.enable_static()
 
@@ -41,7 +44,7 @@ class TestBuildFakeProgram(unittest.TestCase):
                     initializer=paddle.nn.initializer.Uniform(),
                 )
 
-        paddle.base.libpaddle.pir.apply_mix2dist_pass(main_program)
+        apply_mix2dist_pass(main_program)
 
 
 if __name__ == "__main__":

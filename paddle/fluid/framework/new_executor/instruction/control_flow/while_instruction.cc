@@ -36,6 +36,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -128,10 +129,10 @@ WhileInstruction::WhileInstruction(
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, execution_config));
 
-  auto body_block_outputs = GetYiedOpInputs(body_block_);
-  for (auto value : body_block_outputs) {
-    body_outputs_.push_back(body_inter_->GetNameByValue(value));
-    skip_gc_vars.insert(body_inter_->GetNameByValue(value));
+  if (body_block_->back().isa<pir::YieldOp>()) {
+    const auto& op = body_block_->back();
+    inner_cond_ = body_inter_->GetNameByValue(op.operand_source(0));
+    skip_gc_vars.insert(inner_cond_);
   }
   for (auto value : body_outside_inputs) {
     auto name = body_inter_->GetNameByValue(value);
@@ -141,12 +142,6 @@ WhileInstruction::WhileInstruction(
   body_inter_->SetSkipGcVars(skip_gc_vars);
 
   if (VLOG_IS_ON(6)) {
-    std::stringstream body_outputs;
-    for (const auto& var_name : body_outputs_) {
-      body_outputs << " " << var_name;
-    }
-    VLOG(6) << "body_outputs include: " << body_outputs.str();
-
     std::stringstream body_skip_gc_names;
     for (const auto& var_name : skip_gc_vars) {
       body_skip_gc_names << " " << var_name;
@@ -193,44 +188,10 @@ void WhileInstruction::ShareOutputsToBlockArgs() {
   }
 }
 
-void WhileInstruction::ShareDatasToOutputs() {
+void WhileInstruction::ShareConditionData() {
+  auto inner_cond_var = body_inter_->local_scope()->GetVar(inner_cond_);
   cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
-      body_inter_->local_scope()
-          ->GetVar(body_outputs_[0])
-          ->Get<phi::DenseTensor>());
-  for (size_t i = 0; i < outputs_.size(); ++i) {
-    auto& out_var_name = body_outputs_[i + 1];
-    auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
-    VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
-    if (out_var->IsType<phi::DenseTensor>()) {
-      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          out_var->Get<phi::DenseTensor>());
-      VLOG(6) << "share data from " << out_var_name << "[" << out_var << "]"
-              << " -> " << i << " output[" << outputs_[i] << "]";
-    } else if (out_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = out_var->Get<phi::TensorArray>();
-      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", out_var->Type()));
-    }
-
-    VLOG(6) << "done";
-  }
-
-  for (size_t i = 0; i < outputs_.size(); ++i) {
-    auto& out_var_name = body_outputs_[i + 1];
-    auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
-    if (out_var->IsType<phi::DenseTensor>()) {
-      // NOTE(zhangbo): Delete the input of the yield operator, except for the
-      // external vars of the block.
-      if (external_input_names_.count(out_var_name) == 0) {
-        VLOG(6) << "clear internel input " << out_var_name;
-        out_var->GetMutable<phi::DenseTensor>()->clear();
-      }
-    }
-  }
+      inner_cond_var->Get<phi::DenseTensor>());
 }
 
 void WhileInstruction::SetOutputHooks(
@@ -266,8 +227,8 @@ void WhileInstruction::Run() {
     ShareOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
-    VLOG(6) << "while instruction get value form body block";
-    ShareDatasToOutputs();
+    VLOG(6) << "while instruction get condition value form body block";
+    ShareConditionData();
   }
   VLOG(6) << "while instruction run done";
 }

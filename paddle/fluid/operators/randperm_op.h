@@ -48,14 +48,14 @@ class RandpermKernel : public framework::OpKernel<T> {
     phi::DenseTensor* out_tensor =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
 
-    if (platform::is_cpu_place(ctx.GetPlace())) {
-      T* out_data = out_tensor->mutable_data<T>(platform::CPUPlace());
+    if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+      T* out_data = out_tensor->mutable_data<T>(phi::CPUPlace());
       random_permute<T>(out_data, n, seed);
 
     } else {
       phi::DenseTensor tmp_tensor;
       tmp_tensor.Resize(common::make_ddim({n}));
-      T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
+      T* tmp_data = tmp_tensor.mutable_data<T>(phi::CPUPlace());
       random_permute<T>(tmp_data, n, seed);
       framework::TensorCopy(tmp_tensor, ctx.GetPlace(), out_tensor);
     }
