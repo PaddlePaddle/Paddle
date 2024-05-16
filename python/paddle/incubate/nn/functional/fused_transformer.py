@@ -1037,7 +1037,7 @@ def fused_multi_transformer(
         ...     out = ffn_layer_norm(out)
 
     Args:
-        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32,
+        x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16,
             the shape is `[batch\_size, sequence\_length, d\_model]`.
         ln_scales (list(Tensor)|tuple(Tensor)): The weight tensors of attention layer_norm,
             the shape is `[d\_model]`.
@@ -1123,34 +1123,34 @@ def fused_multi_transformer(
             >>> import paddle.incubate.nn.functional as F
 
             >>> # input: [batch_size, seq_len, embed_dim]
-            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float16")
 
             >>> # ln_scale: [embed_dim], ln_bias: [embed_dim]
-            >>> ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            >>> ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> ln_scale = paddle.rand(shape=(128,), dtype="float16")
+            >>> ln_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
-            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float16")
+            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float16")
 
             >>> # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
-            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            >>> linear_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float16")
+            >>> linear_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
-            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float16")
+            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
-            >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
-            >>> ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
+            >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float16")
+            >>> ffn1_bias = paddle.rand(shape=(4*128,), dtype="float16")
 
             >>> # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
-            >>> ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
-            >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float16")
+            >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # self attention mask: [batch_size, 1, seq_len, seq_len]
-            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
+            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float16")
 
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_multi_transformer(
@@ -1227,12 +1227,12 @@ def fused_multi_transformer(
         dtype = x.dtype
         # check dtypes
         check_variable_and_dtype(
-            x, 'x', ['uint16', 'float16', 'float32'], 'fused_multi_transformer'
+            x, 'x', ['uint16', 'float16'], 'fused_multi_transformer'
         )
         check_dtype(
             dtype,
             'dtype',
-            ['uint16', 'float16', 'float32'],
+            ['uint16', 'float16'],
             'fused_multi_transformer',
         )
 
