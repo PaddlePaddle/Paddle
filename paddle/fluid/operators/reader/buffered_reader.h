@@ -22,8 +22,8 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU

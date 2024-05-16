@@ -459,6 +459,14 @@
     func : bmm
   backward : bmm_grad
 
+- op : box_clip
+  args: (Tensor input, Tensor im_info)
+  output: Tensor (output)
+  infer_meta:
+    func: BoxClipInferMeta
+  kernel:
+    func: box_clip
+
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
   output : Tensor(output_box)
@@ -2204,6 +2212,18 @@
     func : mv
   backward : mv_grad
 
+- op : nadam_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor momentum_decay_pow, Tensor beta2_pow, Tensor mu_product, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, float momentum_decay = 0.004f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(momentum_decay_pow_out), Tensor(beta2_pow_out), Tensor(mu_product_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(master_param_out)
+  infer_meta :
+    func : NAdamInferMeta
+  kernel :
+    func : nadam
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (momentum_decay_pow -> momentum_decay_pow_out), (beta2_pow -> beta2_pow_out), (mu_product -> mu_product_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
+
 - op : nanmedian
   args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
   output : Tensor(out), Tensor(medians)
@@ -2443,6 +2463,18 @@
     func : qr
   backward : qr_grad
 
+- op : radam_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(rho_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(master_param_out)
+  infer_meta :
+    func : RAdamInferMeta
+  kernel :
+    func : radam
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (rho -> rho_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
+
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
   output : Tensor(out)
@@ -2452,6 +2484,7 @@
     func : random_routing
     data_type : prob
   inplace : (topk_idx -> out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)
