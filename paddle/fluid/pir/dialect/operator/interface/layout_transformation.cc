@@ -175,6 +175,11 @@ std::vector<pir::Value> RelevantOutputsImpl<ReshapeOp>(pir::Operation* op) {
 }
 
 template <>
+bool CanBeModifiedImpl<ReshapeOp>(pir::Operation* op) {
+  return false;
+}
+
+template <>
 void RewriteByLayoutImpl<SqueezeOp>(pir::Operation* op,
                                     common::DataLayout new_layout) {
   PADDLE_THROW(common::errors::Unimplemented(
@@ -192,6 +197,11 @@ template <>
 std::vector<pir::Value> RelevantOutputsImpl<SqueezeOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<SqueezeOp>();
   return {concrete_op.out()};
+}
+
+template <>
+bool CanBeModifiedImpl<SqueezeOp>(pir::Operation* op) {
+  return false;
 }
 
 template <>

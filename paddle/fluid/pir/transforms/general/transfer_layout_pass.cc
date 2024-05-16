@@ -356,15 +356,24 @@ struct FlowGraph {
               [&](const pir::Operation* op) {
                 // TODO(lyk): These conditions may be too loose,
                 // we should make a white list here.
-                if (op->name() == "pd_op.reshape" ||
-                    op->name() == "pd_op.shape" ||
-                    op->name() == "pd_op.transpose" ||
-                    op->name() == "pd_op.unsqueeze" ||
-                    op->name() == "pd_op.squeeze" ||
-                    op->name() == "pd_op.flatten") {
-                  return true;
+
+                pir::Operation* fop = const_cast<pir::Operation*>(op);
+
+                auto layout_transform_iface = fop->dyn_cast<
+                    paddle::dialect::LayoutTransformationInterface>();
+                if (layout_transform_iface) {
+                  return !layout_transform_iface.CanBeModified(fop);
                 }
-                return false;
+                return true;
+                // if (op->name() == "pd_op.reshape" ||
+                //     op->name() == "pd_op.shape" ||
+                //     op->name() == "pd_op.transpose" ||
+                //     op->name() == "pd_op.unsqueeze" ||
+                //     op->name() == "pd_op.squeeze" ||
+                //     op->name() == "pd_op.flatten") {
+                //   return true;
+                // }
+                // return false;
               },
               [&](const pir::Value& v) {
                 if (!v) return true;
@@ -701,14 +710,14 @@ class TransferLayoutPass : public pir::Pass {
         VLOG(10) << "[Rewrite][Op] for var:"
                  << (dst_value ? (dst_value.defining_op()) : nullptr)
                  << " t:" << (dst_value ? (dst_value.type()) : pir::Type());
-        // TODO(lyk): special process for reshape, we cannot only just
-        // insert a transpose op temporarily ignore reshape if
-        // (dst_value.defining_op()->name() == "pd_op.reshape") continue;
 
         // enforce dst value.defining_op = src
         const auto& perm =
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
+        const auto& new_layout =
+            ((src_set.count(node) > 0) ? common::DataLayout::NHWC
+                                       : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(dst_value.defining_op());
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
@@ -719,7 +728,7 @@ class TransferLayoutPass : public pir::Pass {
         auto replace_uses_without_self = [&](pir::OpOperand arg) {
           return arg.owner() != transpose_op.operation();
         };
-        SetNewLayoutForValue(transpose_op.out(), common::DataLayout::NHWC);
+        SetNewLayoutForValue(transpose_op.out(), new_layout);
         dst_value.ReplaceUsesWithIf(transpose_op.out(),
                                     replace_uses_without_self);
       }
@@ -746,6 +755,9 @@ class TransferLayoutPass : public pir::Pass {
         const auto& perm =
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
+        const auto& new_layout =
+            ((src_set.count(node) > 0) ? common::DataLayout::NHWC
+                                       : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(value.defining_op());
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(value, perm);
@@ -757,7 +769,7 @@ class TransferLayoutPass : public pir::Pass {
           return (operation_set.find(arg.owner()) != operation_set.end()) &&
                  (arg.owner() != transpose_op.operation());
         };
-        SetNewLayoutForValue(transpose_op.out(), common::DataLayout::NHWC);
+        SetNewLayoutForValue(transpose_op.out(), new_layout);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }

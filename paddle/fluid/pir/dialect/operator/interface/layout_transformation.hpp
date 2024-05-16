@@ -46,6 +46,11 @@
   extern template std::vector<pir::Value> RelevantOutputsImpl<op>(      \
       pir::Operation * op);
 
+#define OVERLOAD_CAN_BE_MODIFIED(op)               \
+  template <>                                      \
+  bool CanBeModifiedImpl<op>(pir::Operation * op); \
+  extern template bool CanBeModifiedImpl<op>(pir::Operation * op);
+
 namespace paddle {
 namespace dialect {
 
@@ -92,6 +97,11 @@ std::vector<pir::Value> RelevantOutputsImpl(pir::Operation* op) {
   return relevant_outputs;
 }
 
+template <typename ConcreteOp>
+bool CanBeModifiedImpl(pir::Operation* op) {
+  return true;
+}
+
 class FusedConv2dAddActOp;
 OVERLOAD_PREFER_LAYOUT(FusedConv2dAddActOp);
 OVERLOAD_REWRITE_BY_LAYOUT(FusedConv2dAddActOp);
@@ -108,11 +118,13 @@ OVERLOAD_RELEVANT_OUTPUTS(GroupNormOp);
 class ReshapeOp;
 OVERLOAD_RELEVANT_INPUTS(ReshapeOp);
 OVERLOAD_RELEVANT_OUTPUTS(ReshapeOp);
+OVERLOAD_CAN_BE_MODIFIED(ReshapeOp);
 
 class SqueezeOp;
 OVERLOAD_REWRITE_BY_LAYOUT(SqueezeOp);
 OVERLOAD_RELEVANT_INPUTS(SqueezeOp);
 OVERLOAD_RELEVANT_OUTPUTS(SqueezeOp);
+OVERLOAD_CAN_BE_MODIFIED(SqueezeOp);
 
 class SiluOp;
 OVERLOAD_REWRITE_BY_LAYOUT(SiluOp);
