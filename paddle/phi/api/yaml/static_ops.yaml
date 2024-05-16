@@ -699,14 +699,14 @@
     data_type : dtype
 
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype=DataType::FLOAT32)
+  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, float a = -2.0f, float b = 2.0f, DataType dtype=DataType::FLOAT32)
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
   kernel :
     func : truncated_gaussian_random
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
     data_type : dtype
 
 - op : uniform
