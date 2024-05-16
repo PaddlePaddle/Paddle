@@ -92,16 +92,12 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     ir::Graph *graph)
     // TODO(Yancey1989): Copying graphs is not safely since it deleted the
     // attrs.
-    : ParallelSSAGraphExecutor(strategy,
-                               local_scopes,
-                               local_exec_scopes,
-                               places,
-                               SeparateMultiDevicesGraph(graph, places.size())),
-      local_scopes_(),
-      places_(),
-      graphs_(),
-      executors_(),
-      feed_status_() {}
+    : ParallelSSAGraphExecutor(
+          strategy,
+          local_scopes,
+          local_exec_scopes,
+          places,
+          SeparateMultiDevicesGraph(graph, places.size())) {}
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy,
