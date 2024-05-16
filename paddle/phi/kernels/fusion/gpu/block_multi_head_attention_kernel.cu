@@ -311,10 +311,12 @@ void DispatchWithDtype(
     max_dec_len_this_time_data =
         GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
   } else {
-    PADDLE_ENFORCE_EQ(max_dec_len_this_time.get().place().GetType(),
-                      phi::AllocationType::CPU,
-                      "max_dec_len_this_time must be on CPU, but Got %s.",
-                      max_dec_len_this_time.get().place());
+    PADDLE_ENFORCE_EQ(
+        max_dec_len_this_time.get().place().GetType(),
+        phi::AllocationType::CPU,
+        errors::InvalidArgument(
+            "The place of input max_dec_len_this_time must be CPU, but got %s.",
+            max_dec_len_this_time.get().place()));
     max_dec_len_this_time_data = *max_dec_len_this_time.get().data<int>();
   }
 
@@ -327,10 +329,12 @@ void DispatchWithDtype(
     max_enc_len_this_time_data =
         GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
   } else {
-    PADDLE_ENFORCE_EQ(max_enc_len_this_time.get().place().GetType(),
-                      phi::AllocationType::CPU,
-                      "max_enc_len_this_time must be on CPU, but Got %s.",
-                      max_enc_len_this_time.get().place());
+    PADDLE_ENFORCE_EQ(
+        max_enc_len_this_time.get().place().GetType(),
+        phi::AllocationType::CPU,
+        errors::InvalidArgument(
+            "The place of input max_enc_len_this_time must be CPU, but got %s.",
+            max_enc_len_this_time.get().place()));
     max_enc_len_this_time_data = *max_enc_len_this_time.get().data<int>();
   }
 

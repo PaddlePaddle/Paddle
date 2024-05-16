@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def blha_get_max_len(seq_lens_encoder, seq_lens_decoder, batch_size):
@@ -41,7 +41,7 @@ def blha_get_max_len(seq_lens_encoder, seq_lens_decoder, batch_size):
             >>> batch_size = paddle.ones(shape=[bsz])
             >>> max_enc_len_this_time, max_dec_len_this_time = paddle.incubate.nn.functional.blha_get_max_len(seq_lens_encoder, seq_lens_decoder, batch_size)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.blha_get_max_len(
             seq_lens_encoder, seq_lens_decoder, batch_size
         )
