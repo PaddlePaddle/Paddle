@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+ret_  // Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "pybind11/stl.h"
 
-COMMON_DECLARE_bool(reader_queue_speed_test_mode);
+    COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -147,6 +147,10 @@ class MultiDeviceFeedReader {
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())),
+        readers_(nullptr),
+        futures_(),
+        exceptions_(),
+        ret_(),
         drop_last_(drop_last),
         pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;

@@ -139,6 +139,11 @@ static void PrepareAttrMapForOps() {
 /* --- Helper Objects --- */
 class ForwardGenerationInfo {
  public:
+  ForwardGenerationInfo()
+      : fwd_inputs_name_pos_map_(),
+        fwd_outputs_name_pos_map_(),
+        in_vars_(),
+        out_vars_() {}
   const std::string& GetOpType() const { return op_type_; }
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
 

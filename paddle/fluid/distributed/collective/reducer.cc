@@ -492,6 +492,12 @@ EagerReducer::EagerReducer(
       is_sparse_gradient_(is_sparse_gradient),
       process_group_(process_group),
       group_size_limits_(group_size_limits),
+      groups_(),
+      variable_locators_(),
+      vars_marked_ready_(),
+      local_used_vars_(),
+      unused_vars_(),
+      gradnode_index_map_(),
       find_unused_vars_each_step_(find_unused_parameters) {
   VLOG(3) << "Start construct the Reducer ...";
 
@@ -679,9 +685,9 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   for (const auto &it : gradnode_index_map_) {
     if (visited.count(it.first) == 0) {
       unused_vars_.push_back(it.second);
-      VLOG(3) << "[Rank " << process_group_->GetRank() << "]: "
-              << "Tensor " << tensors_[it.second].name() << " at index "
-              << it.second << " is marked as unused.";
+      VLOG(3) << "[Rank " << process_group_->GetRank() << "]: " << "Tensor "
+              << tensors_[it.second].name() << " at index " << it.second
+              << " is marked as unused.";
     }
   }
 }
@@ -1024,8 +1030,8 @@ void EagerReducer::ProcessUnusedDenseVars() {
     const bool global_unused = (local_used_vars_[var_index] == 0);
 
     // global used but local unused, set grad
-    VLOG(3) << "[Rank " << process_group_->GetRank() << "]: "
-            << "Var [" << var_index << "] [" << tensors_[var_index].name()
+    VLOG(3) << "[Rank " << process_group_->GetRank() << "]: " << "Var ["
+            << var_index << "] [" << tensors_[var_index].name()
             << "] global_unused: " << global_unused
             << "  has grad: " << HasGrad(var_index);
 
