@@ -236,11 +236,10 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
   substitution_pattern[origin] = substituted;
 
   EqualConstraints substituted_equals;
-  auto substituted_equals_map = substituted_equals.GetMap();
   EqualConstraintsVisitor([&](auto it) {
     DimExpr key = SubstituteDimExpr(it->first, substitution_pattern);
     DimExpr value = SubstituteDimExpr(it->second, substitution_pattern);
-    (*substituted_equals_map)[key] = value;
+    substituted_equals.Union(key, value);
   });
   equals_ = substituted_equals;
 
@@ -264,7 +263,7 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
 
 template <typename DoEachT>
 void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
-  auto equals_parents = equals_.GetMap();
+  auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }

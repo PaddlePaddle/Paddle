@@ -6491,7 +6491,7 @@ for name, func in __METHODS.items():
 
 
 def _index_fill_impl(x, index, axis, value, inplace):
-    if not isinstance(index, Variable):
+    if not isinstance(index, (Variable, paddle.pir.Value)):
         raise ValueError("index must be Tensor")
 
     if not isinstance(value, Variable):

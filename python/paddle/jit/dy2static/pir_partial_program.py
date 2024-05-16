@@ -717,6 +717,17 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+        def apply_cse(program):
+            if not paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+                "FLAGS_enable_cse_in_dy2st"
+            ]:
+                return
+            pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
+                pm, program
+            )
+            pm.run(program)
+
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
@@ -726,6 +737,7 @@ class PartialProgramLayer:
                     pm, forward_program
                 )
                 pm.run(forward_program)
+                apply_cse(forward_program)
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
@@ -752,6 +764,8 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
+                apply_cse(forward_program)
+                apply_cse(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     # print("forward program", forward_program)
                     # print("backward program", backward_program)

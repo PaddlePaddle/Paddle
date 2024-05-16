@@ -98,7 +98,7 @@ class CastOp : public framework::OperatorWithKernel {
                           "The tensor of Input(X) is not initialized."));
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
-    if (platform::is_cuda_pinned_place(tensor_place)) {
+    if (tensor_place.GetType() == phi::AllocationType::GPUPINNED) {
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             ctx.device_context().GetPlace());
     }

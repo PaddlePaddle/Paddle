@@ -25,7 +25,7 @@ extern "C" {
 namespace paddle {
 namespace operators {
 
-inline void HashOutputSize(const framework::DDim& in_dims,
+inline void HashOutputSize(const phi::DDim& in_dims,
                            std::vector<int64_t>& out_dims,  // NOLINT
                            int num_hash) {
   out_dims.reserve(in_dims.size() + 1);

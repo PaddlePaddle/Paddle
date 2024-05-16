@@ -593,26 +593,6 @@
   composite : pad_grad(x, out_grad, paddings, pad_value, x_grad)
   backward : pad_double_grad
 
-- backward_op : partial_concat_grad
-  forward : partial_concat (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
-  output : Tensor[](x_grad){x.size()}
-  infer_meta :
-    func : PartialConcatGradInferMeta
-    param : [x]
-  kernel :
-    func : partial_concat_grad
-
-- backward_op : partial_sum_grad
-  forward : partial_sum (Tensor[] x, int start_index = 0, int length = -1) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, int start_index, int length)
-  output : Tensor[](x_grad){x.size()}
-  infer_meta :
-    func : PartialSumGradInferMeta
-    param : [x]
-  kernel :
-    func : partial_sum_grad
-
 - backward_op : pool2d_double_grad
   forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -784,6 +764,16 @@
   kernel:
     func: set_value_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+
+- backward_op : shuffle_channel_grad
+  forward : shuffle_channel (Tensor x, int group = 1) -> Tensor(out)
+  args : (Tensor out_grad, int group = 1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : shuffle_channel_grad
 
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
