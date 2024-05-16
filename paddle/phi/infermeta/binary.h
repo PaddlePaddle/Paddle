@@ -75,6 +75,11 @@ void BinomialInferMeta(const MetaTensor& count,
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config = MetaConfig());
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
