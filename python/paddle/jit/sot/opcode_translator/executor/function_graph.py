@@ -160,8 +160,7 @@ class VariableLoader:
             self._pycode_gen.gen_load(self._store_var_info[var.id])
 
 
-@Singleton
-class SymbolicInt:
+class SymbolicInt(metaclass=Singleton):
     def __eq__(self, other) -> bool:
         return isinstance(other, (int, SymbolicInt))
 
