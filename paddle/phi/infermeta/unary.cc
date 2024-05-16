@@ -1289,6 +1289,55 @@ void ExpandInferMeta(const MetaTensor& x,
 #undef EXPAND_MAX_RANK_SUPPORTED
 }
 
+void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                            int bit_length,
+                                            int round_type,
+                                            int quant_axis,
+                                            bool is_test,
+                                            MetaTensor* out,
+                                            MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1,
+      true,
+      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                   "the received is %d",
+                                   quant_axis));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({x.dims()[quant_axis]});
+  out->share_lod(x);
+}
+
+void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                                      int bit_length,
+                                                      int round_type,
+                                                      int quant_axis,
+                                                      MetaTensor* out,
+                                                      MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1,
+      true,
+      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                   "the received is %d",
+                                   quant_axis));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({x.dims()[quant_axis]});
+  out->share_lod(x);
+}
+
 void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  int bit_length,
                                  int round_type,
