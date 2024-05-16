@@ -2484,6 +2484,7 @@
     func : random_routing
     data_type : prob
   inplace : (topk_idx -> out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)
