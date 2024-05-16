@@ -91,7 +91,16 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
 
-  Expr shared_mem_bytes = CalculateSharedMemory(func);
+  Expr shared_mem_bytes;
+  cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      },
+      [&](common::NVGPUArch) {
+#ifdef CINN_WITH_CUDA
+        shared_mem_bytes = CalculateSharedMemory(func);
+#endif
+      });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
           << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "
@@ -101,9 +110,17 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
           << func_node->cuda_axis_info.block_dim(1) << ", "
           << func_node->cuda_axis_info.block_dim(2) << "), "
           << "shared_mem: " << shared_mem_bytes;
+  const char *call_kernel;
+  cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      },
+      [&](common::NVGPUArch) {
+        call_kernel = runtime::intrinsic::call_cuda_kernel;
+      });
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
-                     runtime::intrinsic::call_cuda_kernel,
+                     call_kernel,
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,

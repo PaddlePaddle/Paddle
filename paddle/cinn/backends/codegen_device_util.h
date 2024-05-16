@@ -19,12 +19,14 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
+#ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace backends {
@@ -51,8 +53,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
       : host_module_builder(module_name + "_host",
                             cinn::common::DefaultHostTarget()),
-        device_module_builder(module_name + "_gpu_device",
-                              cinn::common::DefaultNVGPUTarget()) {}
+        device_module_builder(
+            module_name + "_gpu_device",
+            cinn::runtime::CurrentTarget::GetCurrentTarget()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -109,9 +112,18 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
     // however, this make CodeGenCUDA_Dev before spliting the host and device
     // module Maybe we could reorder the process.
-    CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
-    codegen_dev.Compile(ir::LoweredFunc(func));
-    Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+    Expr shared_mem_bytes;
+    cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+#ifdef CINN_WITH_CUDA
+          CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
+        });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
             << "grid_dim: (" << func->cuda_axis_info.grid_dim(0) << ", "
@@ -121,9 +133,19 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
             << func->cuda_axis_info.block_dim(1) << ", "
             << func->cuda_axis_info.block_dim(2) << "), "
             << "shared_mem: " << shared_mem_bytes;
+
+    const char* call_kernel;
+    cinn::runtime::CurrentTarget::GetCurrentTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          call_kernel = runtime::intrinsic::call_cuda_kernel;
+        });
+
     auto call_extern_api =
         ir::Call::Make(Void(),
-                       runtime::intrinsic::call_cuda_kernel,
+                       call_kernel,
                        {kernel_ptr,
                         kernel_args,
                         kernel_args_num,
