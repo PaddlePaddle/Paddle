@@ -232,10 +232,6 @@ class TestSwigluSpmd(unittest.TestCase):
         self.assertEqual(len(infered_output_dist_attrs), 1)
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
 
-    def test_input_x_shard_last_dim(self):
-        with self.assertRaises(NotImplementedError):
-            self.rule.infer_forward(self.x_dist_tensor_spec, DistTensorSpec())
-
     def test_input_x_unshard_last_dim(self):
         x_shape = [64, 32]
         process_mesh = dist.ProcessMesh(mesh=[0, 1, 2, 3])

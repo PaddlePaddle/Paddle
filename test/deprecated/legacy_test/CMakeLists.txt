@@ -708,7 +708,6 @@ set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
-set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
@@ -724,7 +723,6 @@ set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
@@ -750,6 +748,7 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
@@ -772,11 +771,8 @@ set(TEST_CINN_OPS
     test_top_k_v2_op
     test_elementwise_mul_op
     test_gather_nd_op
-    test_squeeze2_op
     test_elementwise_pow_op
-    test_transpose_op
     test_reshape_op
-    test_unsqueeze2_op
     test_meshgrid_op
     test_scale_op
     test_scatter_op
