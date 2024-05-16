@@ -61,7 +61,7 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
     PADDLE_ENFORCE_EQ(param->type(),
                       parameter.type(),
                       phi::errors::InvalidArgument(
-                          "Duplicate parameter %s with diffrient type.", name));
+                          "Duplicate parameter %s with different type.", name));
   } else {
     std::unique_ptr<pir::Parameter> param_new(
         new pir::Parameter(nullptr, 0, parameter.type()));
