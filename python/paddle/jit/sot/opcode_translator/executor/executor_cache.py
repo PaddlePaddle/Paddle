@@ -22,6 +22,7 @@ from typing import List, Tuple
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     FallbackError,
     InnerError,
@@ -31,7 +32,6 @@ from ...utils import (
     log_do,
 )
 from ..custom_code import CustomCode
-from .function_graph import DynamicShape, SymbolicInt
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
 
@@ -56,11 +56,12 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     cache: dict[types.CodeType, GuardedFunctions]
     translate_count: int
+    symbolic_inputs: dict[str, dict[int, int]]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
-        self.dynamic_inputs = {}
+        self.symbolic_inputs = {}
 
     def clear(self):
         """
@@ -130,6 +131,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
         guarded_fns.append((new_custom_code, guard_fn))
         return new_custom_code
 
+    def before_translate_hook(self, frame: types.FrameType):
+        if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            return
+
     def translate(
         self, frame: types.FrameType, **kwargs
     ) -> tuple[CustomCode, Guard]:
@@ -142,10 +147,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
         Returns:
             tuple[CustomCode, Guard]: The cache getter function and a guarded function for the translated code object.
         """
+        self.before_translate_hook(frame)
         self.translate_count += 1
-        custom_new_code, guard_fn = start_translate(
-            frame, dynamic_inputs=self.dynamic_inputs, **kwargs
-        )
+        custom_new_code, guard_fn = start_translate(frame, **kwargs)
         return custom_new_code, guard_fn
 
     def analyse_guard_global_object(self, guard_fn):
@@ -183,7 +187,6 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
 def start_translate(
     frame: types.FrameType,
-    dynamic_inputs: dict[str, DynamicShape | SymbolicInt | int],
     **kwargs,
 ) -> GuardedFunction:
     """
@@ -195,7 +198,7 @@ def start_translate(
     Returns:
         GuardedFunction | None: The translated code object and its guard function, or None if translation fails.
     """
-    simulator = OpcodeExecutor(frame, dynamic_inputs, **kwargs)
+    simulator = OpcodeExecutor(frame, **kwargs)
     try:
         simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()

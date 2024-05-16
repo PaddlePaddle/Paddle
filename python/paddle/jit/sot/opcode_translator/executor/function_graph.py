@@ -38,7 +38,6 @@ from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
-    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     NameGenerator,
     Singleton,
     SotUndefinedVar,
@@ -105,7 +104,7 @@ def convert_to_symbol(inputs: Any):
     def func(x):
         if isinstance(x, TensorVariable):
             return x.get_symbol()
-        if isinstance(x, SymbolicIntVariable) and x.symbolic:
+        if isinstance(x, SymbolicIntVariable):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -245,7 +244,6 @@ class FunctionGraph:
         self,
         frame,
         # *,
-        dynamic_inputs: dict[str, DynamicShape | SymbolicInt | int],
         **kwargs,
     ):
         self.sir_ctx = SymbolicTraceContext()
@@ -253,9 +251,6 @@ class FunctionGraph:
         self.input_variables = []  # Store variables required within a function
         self.pycode_gen = PyCodeGen(frame, disable_eval_frame=True)
         self.side_effects = SideEffects()
-        self.dynamic_inputs: dict[
-            str, DynamicShape | SymbolicInt | int
-        ] = dynamic_inputs
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
         self._print_variables = []
         self._inplace_tensors = OrderedSet()
@@ -348,31 +343,6 @@ class FunctionGraph:
             collect,
             inputs,
         )
-
-    def analyze_dynamic_inputs(
-        self,
-    ):
-        from paddle.jit.sot.opcode_translator.executor.tracker import (
-            LocalTracker,
-        )
-
-        dynamic_inputs: dict[
-            str, DynamicShape | SymbolicInt | int
-        ] = self.dynamic_inputs
-        for variable in find_traceable_vars(self.input_variables):
-            if not isinstance(variable.tracker, LocalTracker):
-                continue
-            name = variable.tracker.name
-            if (
-                isinstance(variable, SymbolicIntVariable)
-                and not variable.symbolic
-            ):
-                dynamic_input = self.dynamic_inputs.get(name, None)
-                if dynamic_input is None:
-                    dynamic_inputs[name] = variable.get_py_value()
-                elif dynamic_input != variable.get_py_value():
-                    dynamic_inputs[name] = SymbolicInt()
-                    variable.symbolic = True
 
     @property
     @event_register("guard_fn")
@@ -664,8 +634,6 @@ class FunctionGraph:
         """
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            self.analyze_dynamic_inputs()
 
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)

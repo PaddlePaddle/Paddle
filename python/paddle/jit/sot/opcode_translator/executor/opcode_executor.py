@@ -1600,8 +1600,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
     """
 
-    def __init__(self, frame: types.FrameType, dynamic_inputs, **kwargs):
-        graph = FunctionGraph(frame, dynamic_inputs, **kwargs)
+    def __init__(self, frame: types.FrameType, **kwargs):
+        graph = FunctionGraph(frame, **kwargs)
         self._frame = frame
         self._name = "Executor"
         self.call_stack[:] = []

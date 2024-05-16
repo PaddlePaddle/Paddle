@@ -174,6 +174,29 @@ class ConstantVariable(VariableBase):
             DummyTracker([self]),
         )
 
+    @check_guard
+    def make_stringify_guard(self) -> list[StringifyExpression]:
+        if (
+            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and isinstance(self.value, int)
+            and self.tracker.need_guard()
+            and isinstance(
+                self.tracker, LocalTracker
+            )  # TODO(zrr1999): now only support local tracker
+        ):
+            from ..executor_cache import OpcodeExecutorCache
+
+            frame_value_tracer = self.tracker.trace_value_from_frame()
+            symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+            symbolic_inputs.setdefault(frame_value_tracer.debug_expr, {})
+            symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+            if self.value in symbolic_input:
+                symbolic_input[self.value] += 1
+            else:
+                symbolic_input[self.value] = 1
+
+        return super().make_stringify_guard()
+
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) in ConstTypes:
@@ -596,7 +619,6 @@ class SymbolicIntVariable(ConstantVariable):
         self.tensor = paddle.to_tensor(value)
         self.meta = MetaInfo.from_tensor(self.tensor)
         self.var_name = self.var_name_generator.next()
-        self.symbolic: bool = False
 
     def get_py_value(self, allow_tensor=False):
         return self.value
@@ -616,35 +638,52 @@ class SymbolicIntVariable(ConstantVariable):
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
+        from ..executor_cache import OpcodeExecutorCache
+
         frame_value_tracer = self.tracker.trace_value_from_frame()
+        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
 
-        if self.symbolic:
-            return [
-                StringifyExpression(
-                    "isinstance({}, int)",
-                    [frame_value_tracer],
-                    union_free_vars(frame_value_tracer.free_vars),
-                )
-            ]
+        assert frame_value_tracer.debug_expr in symbolic_inputs
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+
+        # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
+        symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+        if self.value in symbolic_input:
+            symbolic_input[self.value] += 1
         else:
-            return super().make_stringify_guard()
+            symbolic_input[self.value] = 1
 
-    @classmethod
-    def from_constant(cls, const: ConstantVariable):
-        return cls(
-            const.value,
-            const.graph,
-            const.tracker,
-        )
+        return [
+            StringifyExpression(
+                "isinstance({}, int)",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            )
+        ]
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if (
-            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-            and isinstance(value, int)
-            and isinstance(tracker, LocalTracker)
-        ):
-            return SymbolicIntVariable(value, graph, tracker)
+        if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            return
+        if not isinstance(value, int):
+            return
+        if not tracker.need_guard():
+            return
+        if not isinstance(tracker, LocalTracker):
+            # TODO(zrr1999): now only support local tracker
+            return
+
+        from ..executor_cache import OpcodeExecutorCache
+
+        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+        for tracker_expr, symbolic_input in symbolic_inputs.items():
+            if tracker.match_expr(tracker_expr):
+                if value in symbolic_input:
+                    symbolic_input[value] += 1
+                else:
+                    symbolic_input[value] = 1
+                # TODO(zrr1999): determine frequency
+                return SymbolicIntVariable(value, graph, tracker)
         return None
 
 
