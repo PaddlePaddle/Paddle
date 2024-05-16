@@ -338,7 +338,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_stack_op$|\
 ^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$|\
-^test_var_base$|\
+^test_eager_tensor$|\
 ^test_einsum_v2$|\
 ^test_tensor_scalar_type_promotion_static$|\
 ^test_matrix_power_op$|\

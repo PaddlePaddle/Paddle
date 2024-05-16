@@ -67,7 +67,7 @@ bool CanBeDeleted(pir::Value value) {
   return !(persist_attr && persist_attr.data());
 }
 
-bool HasNotUser(const pir::Value& value,
+bool IsLastUser(const pir::Value& value,
                 const std::unordered_map<pir::Value, size_t>& use_count_map,
                 const std::unordered_map<pir::Value, pir::Value>& inplace_map) {
   auto current_value = value;
@@ -439,7 +439,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
                          upper_op_name)) ||
           (visited_values.count(op.result(out_slot)) > 0) ||
           (!CanBeDeleted(op.result(out_slot))) ||
-          HasNotUser(op.operand_source(in_slot), use_count_map, inplace_map) ||
+          IsLastUser(op.operand_source(in_slot), use_count_map, inplace_map) ||
           (std::find(used_external_values.begin(),
                      used_external_values.end(),
                      op.operand_source(in_slot)) !=
@@ -465,7 +465,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << " visited: " << (visited_values.count(op.result(out_slot)) > 0);
         VLOG_IF(8, in_slot < op.num_operands())
             << " -- operand " << in_slot << " has not user: "
-            << HasNotUser(
+            << IsLastUser(
                    op.operand_source(in_slot), use_count_map, inplace_map);
         break;
       }
