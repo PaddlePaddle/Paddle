@@ -175,7 +175,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   for (int i = 0; i < vars_in_expr.size() + padding_vec.size(); i++) {
     if (std::find(padding_vec.begin(), padding_vec.end(), i) !=
         padding_vec.end()) {
-      vars.emplace_back(Expr(0), Expr(1), gen_next_name());
+      vars.emplace_back(Expr(0), Expr(1), GenNextName());
     } else {
       vars.push_back(vars_in_expr[pointer++]);
     }
