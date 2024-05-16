@@ -1275,7 +1275,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
-  /* #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
+  #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) &&
   defined(_WIN32)
     if (member_->IsUseCUDA(member_->use_device_)) {
       PADDLE_ENFORCE_EQ(
@@ -1318,7 +1318,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         "cards are used, so %lu programs are executed in parallel.",
         device_name,
         device_count,
-        device_count); */
+        device_count);
 
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
