@@ -159,10 +159,10 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         accum = self._accum if self.training else None
 
         (
-            out,
-            _,
-            _,
-            _,
+            out1,
+            out2,
+            out3,
+            out4,
         ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
             input,
             self._scale,
@@ -173,7 +173,10 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             not self.training,
             1,
         )
-        _C_ops.assign_out_(out, quant_out)
+        _C_ops.assign_out_(out1, quant_out)
+        _C_ops.assign_out_(out2, self._scale)
+        _C_ops.assign_out_(out3, state)
+        _C_ops.assign_out_(out4, accum)
         return quant_out
 
     def static_forward(self, input):
