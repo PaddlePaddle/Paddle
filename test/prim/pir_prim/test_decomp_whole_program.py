@@ -27,8 +27,8 @@ paddle.enable_static()
 class TestPrimMode(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [8, 16, 32, 64]
-        self.shape_y = [8, 16, 32, 64]
+        self.shape_x = [32, 32]
+        self.shape_y = [32, 32]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
 
@@ -43,7 +43,7 @@ class TestPrimMode(unittest.TestCase):
             y.stop_gradient = False
             x1 = paddle.sin(x)
             y1 = paddle.cos(y)
-            tmp1 = paddle.add(x1, y1)
+            tmp1 = paddle.matmul(x1, y1)
             tmp2 = paddle.mean(tmp1)
             sum_out = paddle.sin(tmp2)
             gradients = grad(sum_out, (x, y))

@@ -147,8 +147,20 @@ std::vector<std::vector<pir::Value>> MatmulGradOp::DecompVjp(
   VLOG(6) << "Decomp call matmul_grad's composite rule prepare";
 
   std::vector<std::vector<bool>> stop_gradients(op->results().size());
-  stop_gradients[0].push_back(false);
-  stop_gradients[1].push_back(false);
+  if (op->HasAttribute(kAttrStopGradients)) {
+    auto stop_gradients_attr = op->attribute(kAttrStopGradients)
+                                   .dyn_cast<pir::ArrayAttribute>()
+                                   .AsVector();
+    stop_gradients[0].push_back(
+        stop_gradients_attr[0].dyn_cast<pir::BoolAttribute>().data());
+    stop_gradients[1].push_back(
+        stop_gradients_attr[1].dyn_cast<pir::BoolAttribute>().data());
+    VLOG(0) << " stop_gradients is set ";
+  } else {
+    stop_gradients[0].push_back(false);
+    stop_gradients[1].push_back(false);
+    VLOG(0) << " stop_gradients is not set ";
+  }
 
   std::vector<std::vector<paddle::Tensor>> tensor_res;
   for (auto arg : stop_gradients) {
