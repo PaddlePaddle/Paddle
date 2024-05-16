@@ -17,7 +17,11 @@ gather_srcs(
 
 if(WITH_CUDA)
   add_subdirectory(nvrtc)
-  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc codegen_cuda_util.cc)
+  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc)
+endif()
+
+if(WITH_CUDA)
+  list(APPEND srcs codegen_device_util.cc)
 endif()
 
 if(WITH_OPENMP)
