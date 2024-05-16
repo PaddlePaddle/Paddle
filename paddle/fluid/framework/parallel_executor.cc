@@ -683,7 +683,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
-  InitExecutorPrivateMemberInfo(build_strategy, places.size(), *graph);
+  InitExecutorPrivateMemberInfo(
+      exec_strategy, build_strategy, places.size(), *graph);
 
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -716,13 +717,13 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
-  std::vector<details::VariableInfo> var_infos;
-  CreateVariableInfos(&var_infos, graph);
-  std::unordered_map<Scope *, Scope *> scope_map =
-      CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
+  // std::vector<details::VariableInfo> var_infos;
+  // CreateVariableInfos(&var_infos, graph);
+  // std::unordered_map<Scope *, Scope *> scope_map =
+  //     CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
   // Step 4. Create SSAGraph executor
-  std::vector<ir::Graph *> final_graphs =
+  /* std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -738,7 +739,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
-  SetReaderOpDeviceInfoOfGraphs(final_graphs);
+  SetReaderOpDeviceInfoOfGraphs(final_graphs); */
 }
 
 ParallelExecutor::ParallelExecutor(const platform::Place &place,
@@ -748,7 +749,8 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)) {
   // Initialize necessary info of member_ with strategy.
-  InitExecutorPrivateMemberInfo(build_strategy,
+  InitExecutorPrivateMemberInfo(exec_strategy,
+                                build_strategy,
                                 /*device_count=*/1,
                                 *graph);
 
@@ -1261,9 +1263,11 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 }
 
 void ParallelExecutor::InitExecutorPrivateMemberInfo(
+    const ExecutionStrategy &exec_strategy,
     const BuildStrategy &build_strategy,
     size_t device_count,
     const ir::Graph &graph) {
+  member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;

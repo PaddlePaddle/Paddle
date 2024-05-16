@@ -112,7 +112,8 @@ class ParallelExecutor {
   bool EnableParallelGraphExecution(const ir::Graph &graph,
                                     const BuildStrategy &build_strategy) const;
 
-  void InitExecutorPrivateMemberInfo(const BuildStrategy &build_strategy,
+  void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
+                                     const BuildStrategy &build_strategy,
                                      size_t device_count,
                                      const ir::Graph &graph);
 
