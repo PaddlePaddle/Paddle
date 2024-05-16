@@ -108,6 +108,7 @@
     func : DistributedFusedLambInitInferMeta
   kernel :
     func : distributed_fused_lamb_init
+    data_type: DataType::FLOAT32
   optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
   inplace: (param -> param_out), (grad -> grad_out)
 
