@@ -114,7 +114,7 @@ int Stage::GetDimRange(int level) {
   PADDLE_ENFORCE_EQ(
       0,
       min_iv,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The min range of level %d level in %s is not 0", level, id()));
   return max_iv + 1;
 }
@@ -124,9 +124,7 @@ std::tuple<Iterator, Iterator> Stage::SplitOuter(const Iterator &level,
   int offset = isl_set_find_dim_by_name(
       transformed_domain().get(), isl_dim_set, level.id.c_str());
   PADDLE_ENFORCE_GE(
-      offset,
-      0,
-      platform::errors::InvalidArgument("iterator %d not legal.", level));
+      offset, 0, phi::errors::InvalidArgument("iterator %d not legal.", level));
   AssertAxisIsNotLocked(offset);
   auto _minv_maxv_ = isl_set_get_axis_range(transformed_domain().get(), offset);
   auto &minv = std::get<0>(_minv_maxv_);
@@ -149,9 +147,7 @@ std::tuple<Iterator, Iterator> Stage::Split(const Iterator &level, int factor) {
   int offset = isl_set_find_dim_by_name(
       transformed_domain().get(), isl_dim_set, level.id.c_str());
   PADDLE_ENFORCE_GE(
-      offset,
-      0,
-      platform::errors::InvalidArgument("iterator %d not legal.", level));
+      offset, 0, phi::errors::InvalidArgument("iterator %d not legal.", level));
   AssertAxisIsNotLocked(offset);
 
   auto dim_names = isl_get_dim_names(transform_, isl_dim_out);
@@ -223,7 +219,7 @@ void Stage::Reorder(const std::vector<Iterator> &order) {
   PADDLE_ENFORCE_EQ(
       range_iters.size(),
       in_name.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of range_iters does not match the size of in_names."));
   Map transform(domain().ctx(), id(), domain_iters, range_iters, {}, id());
   transform_ = transform_.apply_range(transform.to_isl());
@@ -573,10 +569,10 @@ void Stage::ComputeAt(Stage *other, int level) {
     LOG(ERROR) << "No Access Relation between [" << other->id() << "] and ["
                << this->id() << "]! Please check.";
   }
-  PADDLE_ENFORCE_EQ(indices.size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "indices.size > 1 is not supported yet."));
+  PADDLE_ENFORCE_EQ(
+      indices.size(),
+      1,
+      phi::errors::InvalidArgument("indices.size > 1 is not supported yet."));
   std::vector<std::string> target_dims = isl_get_dim_names(other->domain());
   std::set<std::string> target_dims_set;
   for (auto &i : target_dims) {
@@ -761,7 +757,7 @@ void Stage::ComputeAt2(Stage *other, int level) {
   PADDLE_ENFORCE_GE(
       level,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "level param of ComputeAt2 must be >= 0. Please check!"));
   this->ChangeDomain(other, level);
   this->CopyTransform(other, level);
@@ -851,11 +847,11 @@ Iterator Stage::Fuse(int level0, int level1) {
   PADDLE_ENFORCE_LT(
       level0,
       dims.size(),
-      platform::errors::InvalidArgument("level0 is larger than dims.size."));
+      phi::errors::InvalidArgument("level0 is larger than dims.size."));
   PADDLE_ENFORCE_LT(
       level1,
       dims.size(),
-      platform::errors::InvalidArgument("level1 is larger than dims.size"));
+      phi::errors::InvalidArgument("level1 is larger than dims.size"));
 
   Iterator iter0(dims[level0]);
   Iterator iter1(dims[level1]);
@@ -870,7 +866,7 @@ Iterator Stage::Fuse(const std::vector<int> &levels) {
     PADDLE_ENFORCE_LT(
         i,
         dims.size(),
-        platform::errors::InvalidArgument("i is larger than dims.size"));
+        phi::errors::InvalidArgument("i is larger than dims.size"));
   }
   Iterator fused_axis(dims[levels[0]]);
   for (size_t i = 1; i < levels.size(); i++) {
@@ -890,7 +886,7 @@ Iterator Stage::FuseDirect(const std::vector<int> &levels) {
     PADDLE_ENFORCE_LT(
         i,
         dims.size(),
-        platform::errors::InvalidArgument("i is larger than dims.size"));
+        phi::errors::InvalidArgument("i is larger than dims.size"));
   }
   std::vector<Iterator> iterators;
   for (size_t i = 0; i < levels.size(); i++) {
@@ -903,7 +899,7 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
   PADDLE_ENFORCE_GT(
       levels.size(),
       1,
-      platform::errors::InvalidArgument("the levels.size is less than 1"));
+      phi::errors::InvalidArgument("the levels.size is less than 1"));
   std::vector<int> offsets;
   std::string new_iter_name;
   for (auto &level : levels) {
@@ -912,7 +908,7 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
     if (!offsets.empty())
       PADDLE_ENFORCE_EQ(offsets.back() + 1,
                         offset,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "level [%d] and level [%d] is not adjancent",
                             offsets.back(),
                             offset));
@@ -1006,7 +1002,7 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
   PADDLE_ENFORCE_EQ(
       offset1,
       offset0 + 1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "level [%d] and level [%d] is not adjancent", level0.id, level1.id));
   AssertAxisIsNotLocked(offset0);
   AssertAxisIsNotLocked(offset1);
@@ -1118,7 +1114,7 @@ void Stage::ShowISL() const {
 bool ComputeAtRelation::IsCompatible(Stage *self) {
   PADDLE_ENFORCE_GE(level,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "level is not legal.It should be larger than 0."));
   CHECK(!self->domain().is_null());
   CHECK(!stage->domain().is_null());
@@ -1126,12 +1122,12 @@ bool ComputeAtRelation::IsCompatible(Stage *self) {
   PADDLE_ENFORCE_LE(
       level,
       isl_set_dim(self->transformed_domain().get(), isl_dim_set),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "level is not legal.It should be less than self domain dim"));
   PADDLE_ENFORCE_LE(
       level,
       isl_set_dim(stage->transformed_domain().get(), isl_dim_set),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "level is not legal.It should be less than stage domain dim"));
 
   int level_without_reduce_axis = level;
@@ -1173,15 +1169,15 @@ void Stage::Vectorize(int level, int factor) {
   AssertAxisIsNotLocked(level);
   PADDLE_ENFORCE_GE(level,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "level is not legal.It should be larger than 0."));
   PADDLE_ENFORCE_LT(
       level,
       n_out_dims(),
-      platform::errors::InvalidArgument("level is larger than out dims"));
+      phi::errors::InvalidArgument("level is larger than out dims"));
   PADDLE_ENFORCE_GT(factor,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "factor is not legal.It should be larger than 0."));
   if (factor == 1) {
     VLOG(3) << "Vectorize-factor 1 has no sense, skip it";
@@ -1223,7 +1219,7 @@ void Stage::Parallel(const Iterator &axis) { return Parallel(axis.id); }
 
 void Stage::Parallel(int level) {
   PADDLE_ENFORCE_GE(
-      level, 0, platform::errors::InvalidArgument("level is less than 0"));
+      level, 0, phi::errors::InvalidArgument("level is less than 0"));
   AssertAxisIsNotLocked(level);
   auto transformed_domain = this->transformed_domain();
   VLOG(3) << "transformed_domain" << transformed_domain;
@@ -1240,7 +1236,7 @@ void Stage::Parallel(int level) {
 
 void Stage::Unroll(int level) {
   PADDLE_ENFORCE_GE(
-      level, 0, platform::errors::InvalidArgument("level is less than 0"));
+      level, 0, phi::errors::InvalidArgument("level is less than 0"));
   AssertAxisIsNotLocked(level);
   auto transformed_domain = this->transformed_domain();
   if (isl_is_removed_axis(transformed_domain.get(), level)) {
@@ -1257,7 +1253,7 @@ void Stage::Unroll(int level) {
 std::string Stage::ith_dim_name(int level) {
   auto dims = isl_get_dim_names(transformed_domain());
   PADDLE_ENFORCE_LT(
-      level, dims.size(), platform::errors::OutOfRange("level out of range"));
+      level, dims.size(), phi::errors::OutOfRange("level out of range"));
 
   return dims[level];
 }
@@ -1315,9 +1311,8 @@ std::vector<std::string> Stage::origin_reduce_axis_names() {
 }
 
 void Stage::Bind(int level, const std::string &axis) {
-  PADDLE_ENFORCE_LT(level,
-                    n_out_dims(),
-                    platform::errors::OutOfRange("axis level out of range"));
+  PADDLE_ENFORCE_LT(
+      level, n_out_dims(), phi::errors::OutOfRange("axis level out of range"));
   LockAxis(level);
 
   if (axis == "threadIdx.x" || axis == "threadIdx.y" || axis == "threadIdx.z") {
@@ -1337,8 +1332,7 @@ void Stage::Bind(int level, const std::string &axis) {
 
 Iterator Stage::axis(int i) const {
   auto names = axis_names();
-  PADDLE_ENFORCE_LT(
-      i, names.size(), platform::errors::OutOfRange("i out of range"));
+  PADDLE_ENFORCE_LT(i, names.size(), phi::errors::OutOfRange("i out of range"));
   return Iterator(names[i]);
 }
 Iterator Stage::axis(const std::string &i) const {
@@ -1368,13 +1362,13 @@ void Stage::SyncThreads(StageMap stages) {
   PADDLE_ENFORCE_EQ(
       sync_threads->type(),
       Void(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "sync threads hold the wrong type.desire to be Void()"));
   stages[sync_threads]->CtrlDepend(this_tensor);
-  PADDLE_ENFORCE_LE(this->compute_ats().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "The compute_ats.size is larger than 1"));
+  PADDLE_ENFORCE_LE(
+      this->compute_ats().size(),
+      1,
+      phi::errors::InvalidArgument("The compute_ats.size is larger than 1"));
   stages[sync_threads]->CtrlDepend(this_tensor);
   for (auto &compute_at : this->compute_ats()) {
     isl::set sync_domain(
@@ -1429,7 +1423,7 @@ void Stage::SyncThreads(int level,
   PADDLE_ENFORCE_EQ(
       sync_threads->type(),
       Void(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "sync threads hold the wrong type. desire to be Void()"));
 
   this->CtrlDepend(sync_threads);
@@ -1687,12 +1681,12 @@ void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
   int num_levels = isl_map_dim(transform_.get(), isl_dim_out);
   PADDLE_ENFORCE_GE(level,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "level is not legal.It should be larger than 0."));
   PADDLE_ENFORCE_LT(
       level,
       num_levels,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "level is larger than num_levels.It should be less than num_levels"));
   auto transformed_domain = this->transformed_domain();
   int removed_axes_counts =
@@ -1884,23 +1878,20 @@ void Stage::CopyLoopInfo(Stage *other) {
 }
 
 void Stage::LockAxis(uint32_t level) {
-  PADDLE_ENFORCE_LT(level,
-                    n_out_dims(),
-                    platform::errors::OutOfRange("axis level out of range"));
+  PADDLE_ENFORCE_LT(
+      level, n_out_dims(), phi::errors::OutOfRange("axis level out of range"));
   locked_axis_.insert(level);
 }
 
 void Stage::UnlockAxis(uint32_t level) {
-  PADDLE_ENFORCE_LT(level,
-                    n_out_dims(),
-                    platform::errors::OutOfRange("axis level out of range"));
+  PADDLE_ENFORCE_LT(
+      level, n_out_dims(), phi::errors::OutOfRange("axis level out of range"));
   locked_axis_.erase(level);
 }
 
 bool Stage::is_axis_locked(uint32_t level) const {
-  PADDLE_ENFORCE_LT(level,
-                    n_out_dims(),
-                    platform::errors::OutOfRange("axis level out of range"));
+  PADDLE_ENFORCE_LT(
+      level, n_out_dims(), phi::errors::OutOfRange("axis level out of range"));
   return locked_axis_.count(level);
 }
 
@@ -1917,7 +1908,7 @@ int Stage::GetTransformedLevel(int level) {
     PADDLE_ENFORCE_EQ(
         compute_at().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The compute_at size is incroccect. Expected size is 1"));
     auto &compute_at = compute_ats().front();
     return compute_at.level + level + 1;

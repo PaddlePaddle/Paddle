@@ -32,7 +32,7 @@ namespace poly {
 std::string TimeSchedule::__str__() const {
   PADDLE_ENFORCE_LE(time_dims_.size(),
                     kMaxDims,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The time_dims should not exceed the kMaxDims."));
   // generate range: [dup, t0, t1...]
   std::vector<std::string> range_dims, cond_dims;
@@ -77,10 +77,10 @@ std::vector<std::string> TimeSchedule::final_axis_names() const {
 
 TimeSchedule::TimeSchedule(const std::string &id,
                            const std::vector<std::string> &dims) {
-  PADDLE_ENFORCE_LE(dims.size(),
-                    kMaxDims,
-                    platform::errors::InvalidArgument(
-                        "The dims should not exceed the kMaxDims."));
+  PADDLE_ENFORCE_LE(
+      dims.size(),
+      kMaxDims,
+      phi::errors::InvalidArgument("The dims should not exceed the kMaxDims."));
   id_ = id;
   domain_dims = dims;
   for (auto &dim : domain_dims) {
@@ -92,13 +92,13 @@ TimeSchedule::TimeSchedule(const std::string &id,
 void TimeSchedule::OrderAfter(const TimeSchedule &other, int level) {
   PADDLE_ENFORCE_EQ(space_size(),
                     other.space_size(),
-                    platform::errors::InvalidArgument("space not match."));
+                    phi::errors::InvalidArgument("space not match."));
   PADDLE_ENFORCE_LT(level,
                     other.space_size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "level is larger than space size of other."));
   PADDLE_ENFORCE_GE(
-      level, 0, platform::errors::InvalidArgument("level is negative."));
+      level, 0, phi::errors::InvalidArgument("level is negative."));
   CHECK(!time_dims_.empty());
 
   root_time_ = std::max(root_time_, other.root_time_);
@@ -127,10 +127,10 @@ const std::string &TimeSchedule::id() const {
 }
 
 void TimeSchedule::ResizeTimeSpace(int size) {
-  PADDLE_ENFORCE_LE(size,
-                    kMaxDims,
-                    platform::errors::InvalidArgument(
-                        "The size should not exceed the kMaxDims."));
+  PADDLE_ENFORCE_LE(
+      size,
+      kMaxDims,
+      phi::errors::InvalidArgument("The size should not exceed the kMaxDims."));
   for (int i = time_dims_.size(); i < size; i++) {
     time_dims_.emplace_back("0", 0);
   }
@@ -210,7 +210,7 @@ void SchedulerBase::AddStage(const Stage &x) {
   } else {
     PADDLE_ENFORCE_EQ(ctx_.get(),
                       x.domin().ctx().get(),
-                      platform::errors::InvalidArgument("isl ctx not match."));
+                      phi::errors::InvalidArgument("isl ctx not match."));
   }
 }
 
@@ -262,7 +262,7 @@ SchedulerBase &SchedulerBase::After(const Stage &a, const Stage &b, int level) {
   PADDLE_ENFORCE_LT(
       level,
       space_size_,
-      platform::errors::InvalidArgument("level is larger than space size."));
+      phi::errors::InvalidArgument("level is larger than space size."));
   auto *a_node =
       schedule_graph_.RetrieveNode(a.id())->safe_as<ScheduleGraphNode>();
   auto *b_node =

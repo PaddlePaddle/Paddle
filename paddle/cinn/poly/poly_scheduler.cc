@@ -131,7 +131,7 @@ std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
   for (auto& group : groups) num_node_in_groups += group.nodes.size();
   PADDLE_ENFORCE_EQ(num_node_in_groups,
                     graph->num_nodes(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The value of num_node_in_groups %d is not equal to "
                         "the number of nodes %d in the graph.",
                         num_node_in_groups,
@@ -230,7 +230,7 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
       for (auto& edge : node->outlinks()) {
         PADDLE_ENFORCE_EQ(edge->source()->id(),
                           node->id(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The source node ID of edge %d does not match "
                               "the target node ID %d",
                               edge->source()->id(),
@@ -329,7 +329,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
   PADDLE_ENFORCE_EQ(
       graph_node_count,
       graph->node().size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The value of graph_node_count %d does not match the number of graph "
           "nodes %d.the groups should contain all the nodes in the graph.",
           graph_node_count,
@@ -350,10 +350,10 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
 
   // transform the DFG groups to schedule groups.
   CHECK(!schedule_graph_.nodes().empty());
-  PADDLE_ENFORCE_EQ(schedule_graph_.nodes().size(),
-                    dfg_->nodes().size(),
-                    platform::errors::InvalidArgument(
-                        "DFG graph is not match schedule graph"));
+  PADDLE_ENFORCE_EQ(
+      schedule_graph_.nodes().size(),
+      dfg_->nodes().size(),
+      phi::errors::InvalidArgument("DFG graph is not match schedule graph"));
   schedule_groups_.clear();
   for (auto& dfg_group : dfg_groups) {
     ScheduleGroup group;
@@ -368,17 +368,17 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
   PADDLE_ENFORCE_EQ(
       schedule_groups_.size(),
       dfg_groups.size(),
-      platform::errors::InvalidArgument("The size of schedule_groups %d does "
-                                        "not match the size of dfg_groups %d.",
-                                        schedule_groups_.size(),
-                                        dfg_groups.size()));
+      phi::errors::InvalidArgument("The size of schedule_groups %d does "
+                                   "not match the size of dfg_groups %d.",
+                                   schedule_groups_.size(),
+                                   dfg_groups.size()));
   PADDLE_ENFORCE_EQ(
       schedule_graph_.nodes().size(),
       dfg_groups.size(),
-      platform::errors::InvalidArgument("The size of schedule_graph %d does "
-                                        "not match the size of dfg_groups %d.",
-                                        schedule_graph_.size(),
-                                        dfg_groups.size()));
+      phi::errors::InvalidArgument("The size of schedule_graph %d does "
+                                   "not match the size of dfg_groups %d.",
+                                   schedule_graph_.size(),
+                                   dfg_groups.size()));
 
   // Schedule each group
   ScheduleGroups();
@@ -459,13 +459,13 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   for (auto& link : compute_at_links) {
     PADDLE_ENFORCE_NE(stage_map.count(link.first),
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "%s is not found in stage_map", link.first));
     PADDLE_ENFORCE_NE(
         stage_map.count(link.second.stage->tensor_->name),
         0,
-        platform::errors::PreconditionNotMet("%s is not found in stage_map",
-                                             link.second.stage->tensor_->name));
+        phi::errors::PreconditionNotMet("%s is not found in stage_map",
+                                        link.second.stage->tensor_->name));
     auto* a = stage_map.at(link.first);
     auto* b = stage_map.at(link.second.stage->tensor_->name);
     After(*a, *b, link.second.level);
@@ -521,7 +521,7 @@ PolyGroupScheduler::PolyGroupScheduler(const std::vector<Stage*>& stages)
   PADDLE_ENFORCE_GT(
       stages.size(),
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "stage size() %d is illegal.No stage is provided", stages.size()));
   for (auto* stage : stages) {
     AddStage(*stage);

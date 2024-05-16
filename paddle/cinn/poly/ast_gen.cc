@@ -374,7 +374,7 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(
       isl_ast_node_get_type(node.get()),
       isl_ast_node_block,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unexpected ISL node type. Expected type is isl_ast_node_block"));
   isl::ast_node_list list =
       isl::manage(isl_ast_node_block_get_children(node.get()));
@@ -394,7 +394,7 @@ void EatUser(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(
       isl_ast_node_get_type(node.get()),
       isl_ast_node_user,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unexpected ISL node type. Expected type is isl_ast_node_user"));
   isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
@@ -404,7 +404,7 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(
       isl_ast_node_get_type(node.get()),
       isl_ast_node_for,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unexpected ISL node type. Expected type is isl_ast_node_for"));
   // iter name
   isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(node.get()));
@@ -450,7 +450,7 @@ void EatIf(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(
       isl_ast_node_get_type(node.get()),
       isl_ast_node_if,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unexpected ISL node type. Expected type is isl_ast_node_if"));
   isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
   isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
@@ -579,7 +579,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           PADDLE_ENFORCE_EQ(
               ops.size(),
               3UL,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The ops size is incroccect. Expected ops size is 3"));
           ops[0]->set_type(Bool());
           *expr = ir::Select::Make(ops[0], ops[1], ops[2]);

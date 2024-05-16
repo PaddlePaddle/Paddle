@@ -60,9 +60,9 @@ void isl_set_dim_names(isl::map *map,
   PADDLE_ENFORCE_EQ(
       dim,
       names.size(),
-      platform::errors::InvalidArgument("The value of dim is Incrorrect. It "
-                                        "should be equal to names.size():%d",
-                                        names.size()));
+      phi::errors::InvalidArgument("The value of dim is Incrorrect. It "
+                                   "should be equal to names.size():%d",
+                                   names.size()));
   for (int i = 0; i < dim; i++) {
     *map = isl::manage(
         isl_map_set_dim_name(map->release(), dim_type, i, names[i].c_str()));
@@ -74,9 +74,9 @@ void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
   PADDLE_ENFORCE_EQ(
       dim,
       names.size(),
-      platform::errors::InvalidArgument("The value of dim is Incrorrect. It "
-                                        "should be equal to names.size():%d",
-                                        names.size()));
+      phi::errors::InvalidArgument("The value of dim is Incrorrect. It "
+                                   "should be equal to names.size():%d",
+                                   names.size()));
   for (int i = 0; i < dim; i++) {
     *set = isl::manage(
         isl_set_set_dim_name(set->release(), isl_dim_set, i, names[i].c_str()));
@@ -133,10 +133,10 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
     PADDLE_ENFORCE_LT(
         v,
         dim_names.size(),
-        platform::errors::OutOfRange("v (%d) is greater than the size of "
-                                     "dim_names (%d), which is not allowed",
-                                     v,
-                                     dim_names.size()));
+        phi::errors::OutOfRange("v (%d) is greater than the size of "
+                                "dim_names (%d), which is not allowed",
+                                v,
+                                dim_names.size()));
     selected_dim_names.push_back(dim_names[v]);
   }
 
@@ -155,7 +155,7 @@ isl_set *isl_get_preceding_axis(isl_set *set, int level, bool with_tuple_name) {
   PADDLE_ENFORCE_LT(
       level,
       n,
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "level should be less than n, but got level = %d and n = %d",
           level,
           n));
@@ -247,12 +247,12 @@ int isl_max_level_compatible(isl_set *a, isl_set *b) {
   PADDLE_ENFORCE_GE(
       an,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "an should be greater than or equal to 0, but got an = %d", an));
   PADDLE_ENFORCE_GE(
       bn,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "bn should be greater than or equal to 0, but got bn = %d", bn));
 
   int compatible_level = -1;
