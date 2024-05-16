@@ -63,7 +63,7 @@ def _broadcast_in_static_mode(
 
     if in_pir_mode():
         op_type = _to_inplace_op(op_type)
-        getattr(_C_ops, op_type)(tensor, src_rank_in_group, sync_op, ring_id)
+        getattr(_C_ops, op_type)(tensor, ring_id, src_rank_in_group, sync_op)
         return
 
     helper.append_op(
