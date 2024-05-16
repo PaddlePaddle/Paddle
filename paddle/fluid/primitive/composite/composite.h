@@ -85,12 +85,14 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
   if (switch_dynamic) {
-    // dynamic shape branch
-    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
-    Tensor idx =
-        reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
-    auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
-    value = prod<T>(axis_dims, {0}, false, false);
+    auto x_shape = shape<T>(x);
+    value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
+    for (size_t i = 1; i < axis_.size(); ++i) {
+      value =
+          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
+    }
+
+    value = cast<T>(value, x_tmp.dtype());
   } else {
     int64_t value_ = 1;
     for (size_t i = 0; i < axis_.size(); i++) {
@@ -827,6 +829,16 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto res = x * half * erf_out;
     return res;
   }
+}
+
+template <typename T>
+Tensor hardsigmoid_decomp(const Tensor& x, float slope, float offset) {
+  const double MAX_VALUE = 1.0;
+  const double MIN_VALUE = 0.0;
+  return maximum<T>(minimum<T>(x * full<T>(empty_shape, slope, x.dtype()) +
+                                   full<T>(empty_shape, offset, x.dtype()),
+                               full<T>(empty_shape, MAX_VALUE, x.dtype())),
+                    full<T>(empty_shape, MIN_VALUE, x.dtype()));
 }
 
 template <typename T>

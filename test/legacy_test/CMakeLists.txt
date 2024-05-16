@@ -492,7 +492,7 @@ foreach(TEST_OP ${TEST_OPS_WITH_GC})
 endforeach()
 
 # Switch some dy2st UT to eager mode
-set(TEST_EAGER_OPS test_jit_save_load_rename test_translated_layer)
+set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
 foreach(TEST_OP ${TEST_EAGER_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
@@ -810,7 +810,12 @@ set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
-set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pow_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_paddlescience PROPERTIES TIMEOUT 120 ENVIRONMENT
+                                "FLAGS_prim_vjp_skip_default_ops=False")
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
@@ -855,7 +860,7 @@ set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
 set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
-set_tests_properties(test_jit_save_load_rename PROPERTIES TIMEOUT 100)
+set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()
@@ -942,8 +947,11 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_sum_op
+    test_squeeze2_op
+    test_unsqueeze2_op
     test_elementwise_min_op
     test_take_along_axis_op
+    test_transpose_op
     test_strided_slice_op
     test_pad_op)
 
@@ -1056,3 +1064,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_pir_tests_properties()
+
+set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)

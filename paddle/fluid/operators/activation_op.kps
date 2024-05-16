@@ -80,329 +80,328 @@ using CudaELUGradNegativeAlphaFunctor =
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 #ifdef PADDLE_WITH_XPU_KP
 REGISTER_OP_KERNEL(
     brelu,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               phi::funcs::CudaHardTanhFunctor<float>>);
 REGISTER_OP_KERNEL(
     brelu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   phi::funcs::CudaHardTanhGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(ceil,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaCeilFunctor<float>>);
+REGISTER_OP_KERNEL(
+    ceil,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaCeilFunctor<float>>);
 REGISTER_OP_KERNEL(
     ceil_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaZeroGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     celu,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               phi::funcs::CudaCELUFunctor<float>>);
 REGISTER_OP_KERNEL(
     celu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   phi::funcs::CudaCELUGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(elu,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaELUFunctor<float>>);
+REGISTER_OP_KERNEL(
+    elu,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaELUFunctor<float>>);
 REGISTER_OP_KERNEL(
     elu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaELUGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(exp,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaExpFunctor<float>>);
+REGISTER_OP_KERNEL(
+    exp,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaExpFunctor<float>>);
 REGISTER_OP_KERNEL(
     exp_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaExpGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(floor,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaFloorFunctor<float>>);
+REGISTER_OP_KERNEL(
+    floor,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaFloorFunctor<float>>);
 REGISTER_OP_KERNEL(
     floor_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaZeroGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     hard_shrink,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaHardShrinkFunctor<float>>);
 REGISTER_OP_KERNEL(
     hard_shrink_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaHardShrinkGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     hard_sigmoid,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaHardSigmoidFunctor<float>>);
 REGISTER_OP_KERNEL(
     hard_sigmoid_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaHardSigmoidGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(hard_swish,
                    KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                   phi::XPUPlace,
+                   ops::ActivationCudaKernel<phi::XPUContext,
                                              ops::CudaHardSwishFunctor<float>>);
 REGISTER_OP_KERNEL(
     hard_swish_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaHardSwishGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     leaky_relu,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               phi::funcs::CudaLeakyReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     leaky_relu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   phi::funcs::CudaLeakyReluGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(log,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaLogFunctor<float>>);
+REGISTER_OP_KERNEL(
+    log,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaLogFunctor<float>>);
 REGISTER_OP_KERNEL(
     log_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaLogGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(log1p,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaLog1pFunctor<float>>);
+REGISTER_OP_KERNEL(
+    log1p,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaLog1pFunctor<float>>);
 REGISTER_OP_KERNEL(
     log1p_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaLog1pGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     logsigmoid,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaLogSigmoidFunctor<float>>);
 REGISTER_OP_KERNEL(
     logsigmoid_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaLogSigmoidGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     reciprocal,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaReciprocalFunctor<float>>);
 REGISTER_OP_KERNEL(
     reciprocal_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaReciprocalGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     relu,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               phi::funcs::CudaReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     relu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   phi::funcs::CudaReluGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(relu6,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaRelu6Functor<float>>);
+REGISTER_OP_KERNEL(
+    relu6,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaRelu6Functor<float>>);
 REGISTER_OP_KERNEL(
     relu6_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaRelu6GradFunctor<float>>);
 
-REGISTER_OP_KERNEL(sigmoid,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaSigmoidFunctor<float>>);
+REGISTER_OP_KERNEL(
+    sigmoid,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaSigmoidFunctor<float>>);
 REGISTER_OP_KERNEL(
     sigmoid_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSigmoidGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(silu,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaSiluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    silu,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaSiluFunctor<float>>);
 REGISTER_OP_KERNEL(
     silu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSiluGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(soft_relu,
                    KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                   phi::XPUPlace,
+                   ops::ActivationCudaKernel<phi::XPUContext,
                                              ops::CudaSoftReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     soft_relu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSoftReluGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(softplus,
                    KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                   phi::XPUPlace,
+                   ops::ActivationCudaKernel<phi::XPUContext,
                                              ops::CudaSoftplusFunctor<float>>);
 REGISTER_OP_KERNEL(
     softplus_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSoftplusGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     softshrink,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaSoftShrinkFunctor<float>>);
 REGISTER_OP_KERNEL(
     softshrink_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSoftShrinkGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(softsign,
                    KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                   phi::XPUPlace,
+                   ops::ActivationCudaKernel<phi::XPUContext,
                                              ops::CudaSoftsignFunctor<float>>);
 REGISTER_OP_KERNEL(
     softsign_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSoftsignGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(sqrt,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaSqrtFunctor<float>>);
+REGISTER_OP_KERNEL(
+    sqrt,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaSqrtFunctor<float>>);
 REGISTER_OP_KERNEL(
     sqrt_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSqrtGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(square,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaSquareFunctor<float>>);
+REGISTER_OP_KERNEL(
+    square,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaSquareFunctor<float>>);
 REGISTER_OP_KERNEL(
     square_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSquareGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(swish,
-                   KP,
-                   plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaSwishFunctor<float>>);
+REGISTER_OP_KERNEL(
+    swish,
+    KP,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext, ops::CudaSwishFunctor<float>>);
 REGISTER_OP_KERNEL(
     swish_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaSwishGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(
     thresholded_relu,
     KP,
-    plat::XPUPlace,
-    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationCudaKernel<phi::XPUContext,
                               ops::CudaThresholdedReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     thresholded_relu_grad,
     KP,
-    plat::XPUPlace,
-    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+    phi::XPUPlace,
+    ops::ActivationGradCudaKernel<phi::XPUContext,
                                   ops::CudaThresholdedReluGradFunctor<float>>);
 
 #endif  // PADDLE_WITH_XPU_KP

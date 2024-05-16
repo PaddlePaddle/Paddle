@@ -221,15 +221,15 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
 // Make while_op could run on GPU place
 bool GetCondData(const phi::DenseTensor &cond) {
-  if (platform::is_cpu_place(cond.place())) {
+  if (cond.place().GetType() == phi::AllocationType::CPU) {
     return cond.data<bool>()[0];
   }
-  // when platform::is_gpu_place(cond.place()) or
-  // platform::is_xpu_place(cond.place()) is true
+  // when cond.place().GetType() == phi::AllocationType::GPU or
+  // cond.place().GetType() == phi::AllocationType::XPU is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
