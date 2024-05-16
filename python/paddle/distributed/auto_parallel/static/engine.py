@@ -53,6 +53,7 @@ from .dist_loader import (
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
+from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
 from .pir_pass import apply_partition_pass, apply_reshard_pass
 from .planner_v2 import Planner
@@ -632,9 +633,8 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_program = mix_fw_program.clone()
+        apply_mix2dist_pass(dist_program)
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
