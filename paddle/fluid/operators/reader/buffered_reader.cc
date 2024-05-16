@@ -47,7 +47,12 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size),
-      pin_memory_(pin_memory) {
+      pin_memory_(pin_memory),
+      position_(),
+      cpu_buffer_(),
+      cuda_buffer_(),
+      xpu_buffer_(),
+      custom_device_buffer_() {
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU && !pin_memory) {

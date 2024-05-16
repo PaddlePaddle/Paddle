@@ -198,7 +198,11 @@ class AllocatorFacadePrivate {
                std::map<phi::stream::stream_t, std::shared_ptr<Allocator>>>;
 #endif
 
-  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
+  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true)
+      : default_stream_safe_cuda_allocators_(),
+        default_cuda_malloc_async_allocators_(),
+        cuda_allocators_(),
+        allocators_() {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;
@@ -362,8 +366,7 @@ class AllocatorFacadePrivate {
                       allocators.end(),
                       platform::errors::NotFound(
                           "No allocator found for the place, %s", place));
-    VLOG(6) << "[GetAllocator]"
-            << " place = " << place << " size = " << size
+    VLOG(6) << "[GetAllocator]" << " place = " << place << " size = " << size
             << " Allocator = " << iter->second;
     return iter->second;
   }

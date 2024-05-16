@@ -361,7 +361,20 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }  // namespace
 
 AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
-    : config_(config) {
+    : config_(config),
+      fusion_statis_(nullptr),
+      executor_(nullptr),
+      feeds_(),
+      feed_names_(),
+      idx2feeds_(),
+      fetches_(),
+      idx2fetches_(),
+      feed_tensors_(),
+      output_hookfuncs_(),
+      input_hookfuncs_(),
+      shape_info_(),
+      shape_tensor_value_(),
+      device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
