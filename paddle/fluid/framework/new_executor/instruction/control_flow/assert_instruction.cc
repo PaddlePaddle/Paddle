@@ -24,7 +24,9 @@ AssertInstruction::AssertInstruction(size_t id,
                                      const platform::Place& place,
                                      ::pir::Operation* op,
                                      ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+    : InstructionBase(id, place),
+      op_(op),
+      type_(OpFuncType::kCpuSync) value_exe_info_(value_exe_info) {
   PADDLE_ENFORCE(op->isa<paddle::dialect::AssertOp>(),
                  phi::errors::PreconditionNotMet(
                      "Assert instruction only support assert op"));

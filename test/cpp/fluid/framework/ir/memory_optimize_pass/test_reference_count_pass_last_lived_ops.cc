@@ -82,7 +82,10 @@ static void AppendOp(BlockDesc *block,
 class ReferenceCountPassTestHelper {
  public:
   ReferenceCountPassTestHelper(const ProgramDesc &program, bool use_cuda)
-      : graph_(program) {
+      : graph_(program),
+        executor_(nullptr),
+        mem_opt_var_infos_(),
+        last_live_ops_of_vars_() {
     details::BuildStrategy build_strategy;
     build_strategy.enable_inplace_ = false;
     build_strategy.memory_optimize_ = false;

@@ -35,8 +35,8 @@ struct VarHandle;
 using DeviceType = paddle::platform::DeviceType;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
-  std::vector<std::string> out_varnames_;
-  std::vector<std::unique_ptr<ir::Node>> nodes_;
+  std::vector<std::string> out_varnames_();
+  std::vector<std::unique_ptr<ir::Node>> nodes_();
 
   void InitFusedBroadcastOp(std::vector<size_t> input_scope_idxes) {
     nodes_.clear();
