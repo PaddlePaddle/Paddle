@@ -112,7 +112,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                static_cast<int32_t>(weight_t->numel())};
 #if IS_TRT_VERSION_GE(8600)
       auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Constant, nvinfer1::Dims{1, n, hidden_in}, weight);
+          engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight);
       auto* fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
                                MatrixMultiply,
@@ -315,7 +315,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         auto* qkv_fc_weight_layer =
             TRT_ENGINE_ADD_LAYER(engine_,
                                  Constant,
-                                 nvinfer1::Dims{1, hidden_out, hidden_out},
+                                 nvinfer1::Dims3(1, hidden_out, hidden_out),
                                  weight);
         qkv_fc_layers[i] =
             TRT_ENGINE_ADD_LAYER(engine_,

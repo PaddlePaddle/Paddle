@@ -86,7 +86,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::ITensor* input_q_shape_tensor = Shape(input_q);
 #if IS_TRT_VERSION_GE(8600)
     auto* fc_q_weight_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, nvinfer1::Dims{1, n_q, hidden_in_q}, weight_q);
+        engine_, Constant, nvinfer1::Dims3(1, n_q, hidden_in_q), weight_q);
     auto* fc_q_layer =
         TRT_ENGINE_ADD_LAYER(engine_,
                              MatrixMultiply,
@@ -200,7 +200,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::ITensor* input_shape_tensor = Shape(input_kv);
 #if IS_TRT_VERSION_GE(8600)
     auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, nvinfer1::Dims{1, n, hidden_in}, weight_kv);
+        engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight_kv);
     auto* fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_,
                              MatrixMultiply,
