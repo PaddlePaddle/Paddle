@@ -112,6 +112,7 @@ class MeshgridOpInferSymbolicShapeTest(TestBase):
             input_spec = [x_spec, y_spec]
             net = apply_to_static(net, False, input_spec)
             net.eval()
+            paddle.core._set_prim_forward_blacklist("pd_op.meshgrid")
             check_infer_results(
                 net, input_spec, 'pd_op.meshgrid', self.expected
             )

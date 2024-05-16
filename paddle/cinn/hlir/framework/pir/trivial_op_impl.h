@@ -111,8 +111,6 @@ ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
 ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
                                       const ir::Expr& new_compute_body);
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
-
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 template <class DownStreamOp>

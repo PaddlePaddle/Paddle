@@ -86,11 +86,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 
         helper = LayerHelper(op_name, **locals())
 
-        if binary_op and x.dtype != y.dtype:
-            raise ValueError(
-                f"(InvalidArgument) The DataType of {op_name} Op's Variable must be consistent, but received {x.dtype} and {y.dtype}."
-            )
-
         if out is None:
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

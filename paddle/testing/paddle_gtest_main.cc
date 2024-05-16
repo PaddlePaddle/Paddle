@@ -35,7 +35,7 @@ int main(int argc, char** argv) {  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   if (paddle::flags::FindFlag("max_body_size")) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
-    envs.push_back("max_body_size");
+    envs.emplace_back("max_body_size");
   }
 #endif
 

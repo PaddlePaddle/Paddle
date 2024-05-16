@@ -23,13 +23,14 @@ USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
+USE_PIR_PASS(fuse_allreduce_split_to_reducescatter_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(matmul_transpose_fuse_pass);
-USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(matmul_add_act_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
@@ -54,13 +55,18 @@ USE_PIR_PASS(matmul_transpose_reshape_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(fc_onednn_enable_pass);
+USE_PIR_PASS(fc_activation_fuse_pass);
 USE_PIR_PASS(self_attention_fuse_pass);
 USE_PIR_PASS(softplus_activation_fuse_pass);
+USE_PIR_PASS(shuffle_channel_detect_pass);
+USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_onednn_fuse_pass);
 USE_PIR_PASS(conv_activation_onednn_fuse_pass);
 USE_PIR_PASS(conv_concat_activation_onednn_fuse_pass);
 USE_PIR_PASS(elementwise_act_onednn_fuse_pass);
 USE_PIR_PASS(operator_unsqueeze_onednn_fuse_pass);
+USE_PIR_PASS(operator_scale_onednn_fuse_pass);
+USE_PIR_PASS(onednn_placement_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU

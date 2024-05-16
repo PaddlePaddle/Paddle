@@ -1038,6 +1038,7 @@
     func : ReshapeWithXShapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
     local_shape: shape
+    global_shape: out
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1101,6 +1102,15 @@
   kernel:
     func: set_value_with_tensor
   backward: set_value_with_tensor_grad
+
+- op : shuffle_channel
+  args : (Tensor x, int group=1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShuffleChannelInferMeta
+  kernel :
+    func : shuffle_channel
+  backward : shuffle_channel_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1273,14 +1283,14 @@
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
   kernel :
     func : truncated_gaussian_random
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
     backend : place
     data_type : dtype
 

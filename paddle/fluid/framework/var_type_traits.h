@@ -37,7 +37,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #ifdef PADDLE_WITH_RCCL
-#include <rccl.h>
+#include <rccl/rccl.h>
 #endif
 #endif
 

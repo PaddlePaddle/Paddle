@@ -17,6 +17,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 PD_DECLARE_bool(new_executor_sequential_run);
@@ -56,6 +57,11 @@ class DependencyBuilder {
   }
 
   void ShareDependencyFrom(const DependencyBuilder& src);
+
+  bool IsSameDeviceContext(size_t op1, size_t op2) const {
+    return &((*instructions_)[op1].DeviceContext()) ==
+           &((*instructions_)[op2].DeviceContext());
+  }
 
  protected:
   void AddDependencyForCoalesceTensorOp();
@@ -115,6 +121,11 @@ class PirDependencyBuilder : public DependencyBuilder {
   void BuildDownstreamMap();
 
   void ShareDependencyFrom(const PirDependencyBuilder& src);
+
+  bool IsSameDeviceContext(size_t op1, size_t op2) const {
+    return &((instructions_)[op1]->DeviceContext()) ==
+           &((instructions_)[op2]->DeviceContext());
+  }
 
  private:
   void AddDependencyForCommunicationOp() override;

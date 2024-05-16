@@ -33,6 +33,7 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -250,8 +251,8 @@ ir::Expr CreateReduceExpr(
     const ir::Tensor& new_write_tensor,
     const ir::Tensor& origin_write_tensor) {
   VLOG(4) << "CreateReduceExpr Start.";
-  const std::vector<ir::Expr> indice_expr =
-      std::vector<ir::Expr>(output_iters.begin(), output_iters.end());
+  const std::vector<ir::Expr> indice_expr(output_iters.begin(),
+                                          output_iters.end());
   auto new_init_tensor = ir::Tensor(new_write_tensor->name + "__reduce_init",
                                     new_write_tensor->type(),
                                     new_write_tensor->shape,
@@ -333,8 +334,6 @@ ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
   return std::visit(Visitor(new_compute_body), fusible_op);
 }
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
-
 int GetTensorCounter() {
   static int counter = 1;
   return counter++;
@@ -358,13 +357,15 @@ std::vector<FusibleOp> TransformReduceLoopRange(
 
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "Create New Tensor Start";
-    ir::Tensor result = ir::Tensor(
-        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
-        downstream_load_tensor->type(),
+    const auto shape =
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->shape,
                                        fake_reduce_iter_idx)
-            : downstream_output_tensor->shape,
+            : downstream_output_tensor->shape;
+    ir::Tensor result = ir::Tensor(
+        downstream_load_tensor->name + "_" + std::to_string(GetTensorCounter()),
+        downstream_load_tensor->type(),
+        shape,
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->domain,
                                        fake_reduce_iter_idx)
@@ -564,9 +565,11 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
-  CHECK(FLAGS_group_schedule_tiling_first)
-      << "TrivialFusion must be used with tiling first, set "
-         "FLAGS_group_schedule_tiling_first=1";
+  PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "TrivialFusion must be used with tiling first, set "
+                        "FLAGS_group_schedule_tiling_first=1"));
   const auto& ops = trivial_fusion_detail::FilterVector(
       original_ops, [](const ::pir::Operation* op) {
         if (op->name() == "cinn_op.generate_shape") {
@@ -583,8 +586,10 @@ std::vector<ir::Expr> OperationFusion(
   const auto& fusion_nodes =
       cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents);
 
-  CHECK(fusion_nodes.size() == 1)
-      << "Only support one fusion node in backend now.";
+  PADDLE_ENFORCE_EQ(fusion_nodes.size(),
+                    1,
+                    ::common::errors::Unimplemented(
+                        "Only support one fusion node in backend now."));
 
   const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
