@@ -22,16 +22,16 @@ import paddle
 class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.x = np.random.randn(300, 2048).astype("float32")
-        self.y = np.random.randint(0, 2, (300, 2048)).astype("float32")
+        self.x = np.random.randn(300, 1000).astype("float32")
+        self.y = np.random.randint(0, 2, (300, 1000)).astype("float32")
         self.logits = paddle.to_tensor(self.x)
         self.labels = paddle.to_tensor(self.y)
         self.weight = paddle.to_tensor(
-            np.random.randn(300, 2048).astype("float32")
+            np.random.randn(300, 1000).astype("float32")
         )
         self.reduction = ["none", "mean", "sum"]
         self.pos_weight = paddle.to_tensor(
-            np.random.randn(2048).astype("float32")
+            np.random.randn(1000).astype("float32")
         )
 
     def test_binary_cross_entropy_with_logits(self):
@@ -57,14 +57,9 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
                 pos_weight=self.pos_weight,
             )
             paddle.core._set_prim_all_enabled(False)
-            if len(dynamic_result.shape) > 0:
-                np.testing.assert_allclose(
-                    dynamic_result.numpy(), static_result.numpy()
-                )
-            else:
-                np.testing.assert_allclose(
-                    dynamic_result.numpy(), static_result.numpy(), rtol=1e-5
-                )
+            np.testing.assert_allclose(
+                dynamic_result.numpy(), static_result.numpy()
+            )
 
 
 class TestBinaryCrossEntropyWithLogits1(TestBinaryCrossEntropyWithLogits):
