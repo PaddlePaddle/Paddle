@@ -212,12 +212,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         return static_param_dict
 
     def check_load_state_dict(self, orig_dict, load_dict):
-        try:
-            for var_name, value in orig_dict.items():
-                np.testing.assert_array_equal(value, load_dict[var_name])
-        except AssertionError as e:
-            print("load_dict:", load_dict)
-            print("orig_dict:", orig_dict)
+        for var_name, value in orig_dict.items():
+            np.testing.assert_array_equal(value, load_dict[var_name])
 
     @test_with_pir_api
     def test_load_default(self):
