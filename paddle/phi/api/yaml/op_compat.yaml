@@ -1106,12 +1106,18 @@
       support_tensor : true
 
 - op : fake_channel_wise_quantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_channel_wise_quantize_dequantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_abs_max
   inputs :
@@ -3895,6 +3901,12 @@
     {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
   outputs:
     {param_out : ParamOut, moment_out : MomentOut}
+
+- op: depend
+  inputs:
+    {x : X, dep : Dep}
+  outputs:
+    out : Out
 
 - op: detection_map
   backward: detection_map_grad

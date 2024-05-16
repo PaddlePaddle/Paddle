@@ -73,9 +73,14 @@ struct SigmoidBwdPosWeightFunctor {
       dx_data = static_cast<T>(0.);
       counts = 0;
     } else {
-      T simoid_x =
-          static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-x));
-      T diff = simoid_x * pos_weight - label;
+      T term1 = (x > 0) ? static_cast<T>(1) : static_cast<T>(0);
+      T e_x = phi::funcs::real_exp(-abs(x));
+      T down = 1 + e_x;
+      T abs_grad = (x >= 0) ? static_cast<T>(1) : static_cast<T>(-1);
+      T up = -e_x * abs_grad * pos_weight;
+      T term3 = up / down;
+
+      T diff = term1 - label + term3;
       dx_data = dout * diff;
       counts = 1;
     }

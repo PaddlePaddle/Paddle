@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import base
 from paddle.base import core
 
@@ -104,6 +105,7 @@ class TestElementWiseAddOp(unittest.TestCase):
             test_with_place(place)
 
     def test_check_forward_backward_with_scale_and_bias(self):
+        paddle.enable_static()
         np.random.seed(123)
         self.x = np.random.random((4, 32, 220, 220)).astype(np.float32)
         self.y = np.random.random(32).astype(np.float32)
@@ -113,4 +115,5 @@ class TestElementWiseAddOp(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
