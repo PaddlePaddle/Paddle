@@ -413,9 +413,12 @@ bool AnalysisPredictor::Init(
   // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
+  LOG(INFO) << "config_.use_optimization_model_"
+            << config_.use_optimized_model_;
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
+    LOG(INFO) << "optimization_model_path" << optimized_model_path;
     std::string optimized_model =
         optimized_model_path + "/" + "_optimized.pdmodel";
     std::string optimized_params =
