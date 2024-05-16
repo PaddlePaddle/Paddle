@@ -126,7 +126,6 @@ class TestSaveLoadBF16(unittest.TestCase):
 
             # get value before save
             main_program = framework.default_main_program()
-            # print(main_program)
             base_map = {}
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -214,19 +213,14 @@ class TestSaveLoadBF16(unittest.TestCase):
                     dtype='bfloat16',
                     custom_white_list={'slice'},
                     custom_black_list={'transpose2', 'concat'},
+                    use_promote=True,
                 ):
                     (
                         static_loss,
                         static_last_hidden,
                         static_last_cell,
                     ) = ptb_model(x, y, init_hidden, init_cell)
-                # NOTE:something wrong with grad scaler, fix later
-                # scaler = paddle.amp.GradScaler(
-                #     init_loss_scaling=2.0**16
-                # )
-                # scaled = scaler.scale(static_loss)
-                # scaler.minimize(sgd, scaled)
-                # sgd.minimize(static_loss)
+                sgd.minimize(static_loss)
                 exe.run(paddle.static.default_startup_program())
 
                 for i in range(batch_num):
