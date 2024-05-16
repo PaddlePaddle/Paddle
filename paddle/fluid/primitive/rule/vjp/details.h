@@ -878,6 +878,51 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void squeeze_grad(const Tensor& xshape,
+                  const Tensor& out_grad,
+                  const IntArray& axis,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    auto x_grad_out = unsqueeze<T>(out_grad, axis);
+    set_output<T>(x_grad_out, x_grad);
+  }
+}
+
+template <typename T>
+void unsqueeze_grad(const Tensor& xshape,
+                    const Tensor& out_grad,
+                    const IntArray& axis,
+                    Tensor* x_grad) {
+  // for xshape = [10, 2, 5], axis = [3, 1, 1], out_grad.shape = [10, 1, 1, 2,
+  // 5, 1], it outputs squeeze axis = [5, 2, 1]
+  const auto& IncreaseAxis = [](std::vector<int64_t>* axis_data,
+                                int64_t pivot) {
+    for (size_t i = 0; i < axis_data->size(); ++i) {
+      if ((*axis_data)[i] >= pivot) (*axis_data)[i] += 1;
+    }
+  };
+  const auto& GetRealAxis = [&](const IntArray& axis) -> decltype(auto) {
+    // for axis = [0, 3, 3], it outputs [0, 3, 3+1], because unsqueeze support
+    // duplicated axis.
+    std::vector<int64_t> output_axis;
+    const int64_t x_rank = xshape.dims().size() - 1;
+    const std::vector<int64_t> axis_data = axis.GetData();
+    for (size_t i = 0; i < axis_data.size(); ++i) {
+      int64_t value = axis_data[i];
+      if (value < 0) value += (x_rank + i + 1);
+      IncreaseAxis(&output_axis, value);
+      output_axis.push_back(value);
+    }
+    return output_axis;
+  };
+
+  if (x_grad) {
+    auto x_grad_out = squeeze<T>(out_grad, GetRealAxis(axis));
+    set_output<T>(x_grad_out, x_grad);
+  }
+}
+
+template <typename T>
 void matmul_grad(const Tensor& x,
                  const Tensor& y,
                  const Tensor& out_grad,

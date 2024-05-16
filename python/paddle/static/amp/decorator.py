@@ -271,6 +271,8 @@ class OptimizerWithMixedPrecision:
                 self._train_program, startup_program
             ):
                 self._init_amp_var()
+                if self._scaled_loss is None:
+                    self._scaled_loss = loss
                 params_grads = self._optimizer.backward(
                     self._scaled_loss,
                     startup_program,
