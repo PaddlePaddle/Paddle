@@ -748,6 +748,7 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
@@ -770,10 +771,8 @@ set(TEST_CINN_OPS
     test_top_k_v2_op
     test_elementwise_mul_op
     test_gather_nd_op
-    test_squeeze2_op
     test_elementwise_pow_op
     test_reshape_op
-    test_unsqueeze2_op
     test_meshgrid_op
     test_scale_op
     test_scatter_op
