@@ -431,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 
@@ -3202,6 +3205,13 @@ class OpTest(unittest.TestCase):
                         python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
+
+                    num_devices = len(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
+                    )
+                    if num_devices > paddle.device.cuda.device_count():
+                        self.skipTest("number of GPUs is not enough")
+
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,

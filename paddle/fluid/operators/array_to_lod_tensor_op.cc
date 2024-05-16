@@ -44,7 +44,7 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor {
-  using argument_type = platform::Place;
+  using argument_type = phi::Place;
   using result_type = void;
   std::vector<phi::DenseTensor> in;
   mutable phi::DenseTensor *out;
@@ -52,7 +52,7 @@ struct ArrayToLoDFunctor {
   template <typename Place>
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -91,7 +91,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
@@ -104,12 +104,11 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                       phi::errors::PreconditionNotMet(
                           "There's no element in the input array."));
     int rank = x[0].dims().size();
-    platform::Place place = x[0].place();
+    phi::Place place = x[0].place();
     auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
-    framework::DDim ins_dims = rank > 1
-                                   ? common::slice_ddim(x[0].dims(), 1, rank)
-                                   : common::make_ddim({0});
+    phi::DDim ins_dims = rank > 1 ? common::slice_ddim(x[0].dims(), 1, rank)
+                                  : common::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
       auto ins_i_dims = rank > 1 ? common::slice_ddim(x[i].dims(), 1, rank)
                                  : common::make_ddim({0});
@@ -147,7 +146,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     }
     auto ins_dim_vec = common::vectorize(ins_dims);
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
-    framework::DDim out_dims = common::make_ddim(ins_dim_vec);
+    phi::DDim out_dims = common::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
     out->mutable_data(place, data_type);
 

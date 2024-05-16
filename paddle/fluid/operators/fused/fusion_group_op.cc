@@ -26,8 +26,7 @@ class FusionGroupOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32,
-                          platform::CUDAPlace(0));
+    return phi::KernelKey(framework::proto::VarType::FP32, phi::GPUPlace(0));
   };
 };
 

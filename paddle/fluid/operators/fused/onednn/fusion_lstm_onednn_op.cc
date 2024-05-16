@@ -33,7 +33,7 @@ class LSTMMKLDNNHandler
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                     const OneDNNContext& dev_ctx,
                     const dnnl::engine onednn_engine,
-                    platform::Place cpu_place UNUSED,
+                    phi::Place cpu_place UNUSED,
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
                     const phi::DenseTensor* h0,
