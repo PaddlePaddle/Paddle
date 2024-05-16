@@ -21,6 +21,10 @@ from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
+from paddle.distributed.auto_parallel.static.operators.common import (
+    is_data_parallel_reduce_op,
+    is_data_parallel_scale_op,
+)
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
@@ -573,8 +577,64 @@ def _overlap_send_recv(program):
                 pass
 
 
-def _add_ops_into_block(src_block, dst_block, ops):
-    for op in ops:
+def _add_ops_into_block(
+    src_block,
+    dst_block,
+    ops,
+    gradient_sync_after_accumulate=False,
+    grad_to_global_grad=None,
+    dist_context=None,
+):
+    def _rename_grad_to_global_grad(op, op_idx, ops_len, dist_context):
+        def set_op_dist_attr(op):
+            for input_name in op.input_arg_names:
+                if input_name in grad_to_global_grad:
+                    input_dims_mapping = (
+                        reduce_op_dist_attr.get_input_dims_mapping(input_name)
+                    )
+                    op._rename_input(
+                        input_name, grad_to_global_grad[input_name]
+                    )
+                    reduce_op_dist_attr.set_input_dims_mapping(
+                        grad_to_global_grad[input_name], input_dims_mapping
+                    )
+            for output_name in op.output_arg_names:
+                if output_name in grad_to_global_grad:
+                    output_dims_mapping = (
+                        reduce_op_dist_attr.get_output_dims_mapping(output_name)
+                    )
+                    op._rename_output(
+                        output_name, grad_to_global_grad[output_name]
+                    )
+                    reduce_op_dist_attr.set_output_dims_mapping(
+                        grad_to_global_grad[output_name], output_dims_mapping
+                    )
+
+        if is_data_parallel_reduce_op(op):
+            reduce_op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            op_input_names = op.desc.input_arg_names()
+            # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
+            # Such types input names are caused by shared parameter policy.
+            # Gradient merge should accumulate the gradient of ops without renaming.
+            if "@RENAME" in op_input_names[0]:
+                return
+            set_op_dist_attr(op)
+            if op_idx + 1 < ops_len and ops[op_idx + 1].type == "nop":
+                set_op_dist_attr(ops[op_idx + 1])
+
+            if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+                scale_index = op_idx + 1
+                if scale_index < ops_len and is_data_parallel_scale_op(
+                    ops[scale_index]
+                ):
+                    set_op_dist_attr(ops[scale_index])
+
+    ops_len = len(ops)
+    for idx, op in enumerate(ops):
+        if gradient_sync_after_accumulate:
+            _rename_grad_to_global_grad(
+                op, idx, ops_len=ops_len, dist_context=dist_context
+            )
         _create_program(src_block, dst_block, op)
 
 
@@ -674,7 +734,12 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
 
 
 def _program_for_vpp(
-    program, num_model_chunks, dist_context, enable_send_recv_overlap=False
+    program,
+    num_model_chunks,
+    dist_context,
+    enable_send_recv_overlap=False,
+    grad_to_global_grad=None,
+    gradient_sync_after_accumulate=False,
 ):
     if enable_send_recv_overlap:
         _overlap_send_recv(program)
@@ -698,6 +763,7 @@ def _program_for_vpp(
         type_to_ops["fetch"] = []
 
         for ip, op in enumerate(block.ops):
+            dist_op = dist_context.get_dist_op_for_program(op)
             if is_forward_op(op):
                 type = oprole_type[0]
             elif is_backward_op(op):
@@ -710,8 +776,6 @@ def _program_for_vpp(
                     + str(op.attr('op_role'))
                     + " isn't one of Forward, Backward or Optimizer."
                 )
-
-            dist_op = dist_context.get_dist_op_for_program(op)
             if _is_fetch_op(op):
                 type_to_ops["fetch"].append(op)
             elif is_optimize_op(op):
@@ -735,6 +799,88 @@ def _program_for_vpp(
 
         return type_to_ops
 
+    def _remove_dp_reduce_ops(cur_block):
+        removed_op_idx = []
+        ops_len = len(cur_block.ops)
+        for idx, op in list(enumerate(cur_block.ops)):
+            if is_data_parallel_reduce_op(op):
+                op_input_names = op.desc.input_arg_names()
+                # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
+                # Such types input names are caused by shared parameter policy.
+                # Gradient merge should accumulate the gradient of ops without renaming.
+                if "@RENAME" in op_input_names[0]:
+                    continue
+                removed_op_idx.append(idx)
+                if idx + 1 < ops_len and ops[idx + 1].type == "nop":
+                    removed_op_idx.append(idx + 1)
+
+                if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+                    scale_index = idx + 1
+                    if scale_index < ops_len and is_data_parallel_scale_op(
+                        ops[scale_index]
+                    ):
+                        removed_op_idx.append(scale_index)
+
+        for idx in removed_op_idx[::-1]:
+            cur_block._remove_op(idx, sync=False)
+        cur_block._sync_with_cpp()
+
+    def _move_dp_reduce_after_accumulate(
+        cur_block, grad_to_global_grad, dist_context
+    ):
+        ops = cur_block.ops
+        ops_len = len(ops)
+        global_grad_names = grad_to_global_grad.values()
+        grad_to_reduce_idx = {}
+        grad_to_add_idx = {}
+        removed_nop_idx = []
+        for idx, op in enumerate(ops):
+            if is_data_parallel_reduce_op(op):
+                input_name = op.input_arg_names[0]
+                if input_name in global_grad_names:
+                    grad_to_reduce_idx[input_name] = idx
+                    if idx + 1 < ops_len and ops[idx + 1].type == "nop":
+                        removed_nop_idx.append(idx + 1)
+            if op.type == "elementwise_add":
+                input_name_0 = op.input_arg_names[0]
+                input_name_1 = op.input_arg_names[1]
+                if (
+                    input_name_0 in global_grad_names
+                    and input_name_1 in grad_to_global_grad
+                ):
+                    grad_to_add_idx[input_name_0] = idx
+        assert len(grad_to_reduce_idx) == len(
+            grad_to_add_idx
+        ), f"The length of grad_to_reduce_idx({len(grad_to_reduce_idx)}) must be the same as the length of grad_to_add_idx: {len(grad_to_add_idx)}"
+        idx_to_move = []
+        for grad_name, reduce_idx in grad_to_reduce_idx.items():
+            assert grad_name in grad_to_add_idx
+            idx_to_move.append((reduce_idx, grad_to_add_idx[grad_name]))
+        for reduce_idx, add_idx in reversed(idx_to_move):
+            origin_add_op = ops[add_idx]
+            ref_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                origin_add_op
+            )
+            ref_process_mesh = ref_op_dist_attr.process_mesh
+            ref_dims_mapping = ref_op_dist_attr.get_output_dims_mapping(
+                origin_add_op.output_arg_names[0]
+            )
+            ref_chunk_id = ref_op_dist_attr.chunk_id
+            new_op = cur_block._insert_op_without_sync(reduce_idx, type="nop")
+            new_op.desc.copy_from(origin_add_op.desc)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                new_op,
+                ref_process_mesh,
+                ref_dims_mapping,
+                dist_context,
+                chunk_id=ref_chunk_id,
+            )
+
+            cur_block._remove_op(add_idx + 1)
+        for idx in reversed(removed_nop_idx):
+            cur_block._remove_op(idx + 1)
+        cur_block._sync_with_cpp()
+
     type_to_program = OrderedDict()
 
     for ib, src_block in enumerate(program.blocks):
@@ -746,8 +892,36 @@ def _program_for_vpp(
             for type, ops in type_to_ops.items():
                 type_to_program[type] = Program()
                 dst_block = type_to_program[type].block(0)
-                _add_ops_into_block(src_block, dst_block, ops)
+                _add_ops_into_block(
+                    src_block,
+                    dst_block,
+                    ops,
+                    gradient_sync_after_accumulate=gradient_sync_after_accumulate,
+                    grad_to_global_grad=grad_to_global_grad,
+                    dist_context=dist_context,
+                )
+                dst_block._sync_with_cpp()
+                _remove_dp_reduce_ops(dst_block)
                 dst_blocks.append(dst_block)
+                if "backward" in type:
+                    new_type = type + "_has_dp_comm"
+                    type_to_program[new_type] = Program()
+                    new_dst_block = type_to_program[new_type].block(0)
+                    _add_ops_into_block(
+                        src_block,
+                        new_dst_block,
+                        ops,
+                        gradient_sync_after_accumulate=gradient_sync_after_accumulate,
+                        grad_to_global_grad=grad_to_global_grad,
+                        dist_context=dist_context,
+                    )
+                    new_dst_block._sync_with_cpp()
+                    _move_dp_reduce_after_accumulate(
+                        new_dst_block,
+                        grad_to_global_grad,
+                        dist_context=dist_context,
+                    )
+                    dst_blocks.append(new_dst_block)
         else:
             for type, ops in type_to_ops.items():
                 if len(ops) > 0:
@@ -757,8 +931,40 @@ def _program_for_vpp(
                     dst_block._set_forward_block_idx(
                         src_block.forward_block_idx
                     )
-                    _add_ops_into_block(src_block, dst_block, ops)
+                    _add_ops_into_block(
+                        src_block,
+                        dst_block,
+                        ops,
+                        gradient_sync_after_accumulate=gradient_sync_after_accumulate,
+                        grad_to_global_grad=grad_to_global_grad,
+                        dist_context=dist_context,
+                    )
+                    dst_block._sync_with_cpp()
+                    _remove_dp_reduce_ops(dst_block)
                     dst_blocks.append(dst_block)
+                    if "backward" in type:
+                        new_type = type + "_has_dp_comm"
+                        new_dst_block = type_to_program[new_type]._create_block(
+                            parent_idx=src_block.parent_idx
+                        )
+                        new_dst_block._set_forward_block_idx(
+                            src_block.forward_block_idx
+                        )
+                        _add_ops_into_block(
+                            src_block,
+                            new_dst_block,
+                            ops,
+                            gradient_sync_after_accumulate=gradient_sync_after_accumulate,
+                            grad_to_global_grad=grad_to_global_grad,
+                            dist_context=dist_context,
+                        )
+                        new_dst_block._sync_with_cpp()
+                        _move_dp_reduce_after_accumulate(
+                            new_dst_block,
+                            grad_to_global_grad,
+                            dist_context=dist_context,
+                        )
+                        dst_blocks.append(new_dst_block)
 
         for fetch_op in fetch_ops:
             in_name = fetch_op.input('X')[0]

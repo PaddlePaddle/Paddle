@@ -66,7 +66,7 @@ class PipelinePassBase(PassBase):
             shadow_var_between_sub_programs(sub_programs)
 
         for i in range(len(job_types)):
-            logger.debug(
+            logger.info(
                 f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
             )
 
