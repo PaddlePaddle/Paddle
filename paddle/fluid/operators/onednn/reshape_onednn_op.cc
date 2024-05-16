@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/flatten_op.h"
-#include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace {
@@ -27,6 +26,70 @@ enum class ReshapeKernelOpName {
 
 namespace paddle {
 namespace operators {
+
+phi::DDim GetOutputShape(const std::vector<int> squeeze_dims,
+                         const phi::DDim& in_dims,
+                         bool is_runtime) {
+  size_t num_squeeze_dims = squeeze_dims.size();
+  std::vector<bool> should_squeeze(in_dims.size(), false);
+
+  // Mark dimensions need to be squeezed.
+  if (num_squeeze_dims == 0) {
+    for (int i = 0; i < in_dims.size(); ++i) {
+      if (in_dims[i] == 1) {
+        should_squeeze[i] = true;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < num_squeeze_dims; ++i) {
+      int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
+                                        : squeeze_dims[i];
+
+      PADDLE_ENFORCE_GE(
+          current,
+          0,
+          phi::errors::InvalidArgument(
+              "Each axis in Attr(axes) should be in the range of [%d, %d]"
+              "But current axis is:%d, input tensor's shape = [%s].",
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
+      PADDLE_ENFORCE_LT(
+          current,
+          in_dims.size(),
+          phi::errors::InvalidArgument(
+              "Each axis in Attr(axes) should be in the range of [%d, %d]"
+              "But current axis is:%d, input tensor's shape = [%s].",
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
+
+      if (!should_squeeze[current]) {
+        if (is_runtime) {
+          // At run time, dim of 1 is allowed to squeeze
+          if (in_dims[current] == 1) {
+            should_squeeze[current] = true;
+          }
+        } else {
+          // At compile time, dim of -1 or 1 is allowed to squeeze
+          if (in_dims[current] == 1 || in_dims[current] == -1) {
+            should_squeeze[current] = true;
+          }
+        }
+      }
+    }
+  }
+  // Make output dimensions
+  std::vector<int64_t> output_shape;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    if (!should_squeeze[i]) {
+      output_shape.push_back(in_dims[i]);
+    }
+  }
+  return common::make_ddim(output_shape);
+}
 
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {

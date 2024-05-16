@@ -483,8 +483,9 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_concat_op test_elementwise_add_op
-                     test_elementwise_sub_op test_gather_op test_mean_op)
+set(TEST_OPS_WITH_GC
+    test_concat_op test_elementwise_add_op test_lookup_table_op
+    test_elementwise_sub_op test_gather_op test_mean_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -811,6 +812,8 @@ if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_pow_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(
   test_paddlescience PROPERTIES TIMEOUT 120 ENVIRONMENT
                                 "FLAGS_prim_vjp_skip_default_ops=False")
@@ -945,8 +948,11 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_sum_op
+    test_squeeze2_op
+    test_unsqueeze2_op
     test_elementwise_min_op
     test_take_along_axis_op
+    test_transpose_op
     test_strided_slice_op
     test_pad_op)
 
@@ -978,6 +984,8 @@ set(STATIC_BUILD_TESTS
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
     test_decayed_adagrad_op
     test_eig_op
     test_fake_dequantize_op
@@ -1003,6 +1011,7 @@ set(STATIC_BUILD_TESTS
     test_sync_batch_norm_op
     test_unique
     test_update_loss_scaling_op
+    test_segment_ops
     test_while_op)
 
 if(NOT WITH_GPU)
@@ -1058,4 +1067,9 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
+set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
+
 set_pir_tests_properties()
+
+set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)

@@ -1659,6 +1659,31 @@ PHI_DEFINE_EXPORTED_bool(
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
 
+/**
+ * Apply CSE optimize pass in Dy2St
+ * Name: enable_cse_in_dy2st
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply CSE optimize pass in Dy2St.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
+                         false,
+                         "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Max count of eliminate redundant computation in CSE, for debug usage
+ * Name: cse_max_count
+ * Since Version: 3.0.0
+ * Value Range: int32, default=-1
+ * Example:
+ * Note: If -1, will not limit the max count of eliminate redundant computation.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    cse_max_count,
+    -1,
+    "Max count of eliminate redundant computation in CSE, for debug usage");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",

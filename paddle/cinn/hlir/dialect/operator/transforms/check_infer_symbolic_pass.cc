@@ -136,23 +136,6 @@ class BlockDimExprsAsserter {
   DimExprs4ValueT MakeOpDimExprs4Value(const pir::Operation* op) {
     auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
     InitLocalShapeAnalysis(*op, shape_analysis.get());
-
-    pir::Operation* mut_op = const_cast<pir::Operation*>(op);
-    auto interface =
-        mut_op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    if (!interface) {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-    } else {
-      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
-      // is done.
-      bool infer_result = interface.InferSymbolicShape(
-          shape_analysis->GetInferSymbolicShapeContext());
-      PADDLE_ENFORCE_EQ(infer_result,
-                        true,
-                        ::common::errors::PreconditionNotMet(
-                            "InferSymbolicShape for %s failed.", op->name()));
-    }
     return [shape_analysis](
                pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
       return shape_analysis->GetShapeOrDataForValue(value);
