@@ -57,6 +57,7 @@ USE_PIR_PASS(fc_onednn_enable_pass);
 USE_PIR_PASS(fc_activation_fuse_pass);
 USE_PIR_PASS(self_attention_fuse_pass);
 USE_PIR_PASS(softplus_activation_fuse_pass);
+USE_PIR_PASS(shuffle_channel_detect_pass);
 USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_onednn_fuse_pass);
 USE_PIR_PASS(conv_activation_onednn_fuse_pass);

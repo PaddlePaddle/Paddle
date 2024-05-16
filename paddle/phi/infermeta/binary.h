@@ -75,6 +75,11 @@ void BinomialInferMeta(const MetaTensor& count,
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config = MetaConfig());
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -180,6 +185,14 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
                                        MetaTensor* softmax,
                                        MetaTensor* loss,
                                        MetaConfig config = MetaConfig());
+
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length);
 
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
@@ -588,6 +601,14 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
+
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out);
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
