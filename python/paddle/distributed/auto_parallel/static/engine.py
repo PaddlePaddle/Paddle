@@ -275,7 +275,10 @@ class Engine:
         inputs_spec = []
         labels_spec = []
 
-        data = dataloader._get_input_spec()
+        if hasattr(dataloader, "_get_input_spec"):
+            data = dataloader._get_input_spec()
+        else:
+            data = next(iter(dataloader))
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
