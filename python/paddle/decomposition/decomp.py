@@ -846,10 +846,10 @@ def decompose_dist_program(pir_program):
     '''
     Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
     '''
-    # Todo(CZ): Decompose backward ops.
-    # Todo(CZ): Decompose backward ops.
+    # decomp forward composite ops
+    decompose(pir_program, [])
 
-    # decompose(pir_program, [])
+    # decomp backward ops
     block = pir_program.global_block()
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
@@ -861,7 +861,14 @@ def decompose_dist_program(pir_program):
                 decomp_outs = call_decomp_vjp(op)
                 new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
                 op.replace_all_uses_with(new_outs)
-                block.remove_op(op)
+
+                remove_op = True
+                for item in op.results():
+                    if item.has_one_use():
+                        remove_op = False
+                        break
+                if remove_op:
+                    block.remove_op(op)
     print("end**********", pir_program)
 
 
