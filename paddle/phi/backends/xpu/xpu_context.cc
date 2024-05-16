@@ -191,7 +191,7 @@ struct XPUContext::Impl {
           std::bind(&XHPCBufferManager::Save, &xhpc_buf_mgr_);
       context_->set_overload_alloc(
           overload_alloc_fn, overload_free_fn, overload_save_fn);
-      gm_default_size = 0;
+      gm_default_size = 1;
       VLOG(1) << "XPUAPI_DEFUAULT_SIZE is disabled because you overload the "
                  "alloc of xhpc. If you want to use XPUAPI_DEFAULT_SIZE, "
                  "please set XPU_PADDLE_DISABLE_ALLOC_OVERLOAD=1";
