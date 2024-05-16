@@ -1126,8 +1126,8 @@ def fused_multi_transformer(
             >>> x = paddle.rand(shape=(2, 4, 128), dtype="float16")
 
             >>> # ln_scale: [embed_dim], ln_bias: [embed_dim]
-            >>> ln_scale = paddle.rand(shape=(128,), dtype="float16")
-            >>> ln_bias = paddle.rand(shape=(128,), dtype="float16")
+            >>> ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
             >>> # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
             >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float16")
@@ -1138,8 +1138,8 @@ def fused_multi_transformer(
             >>> linear_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
-            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float16")
-            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float16")
+            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
             >>> # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
             >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float16")
@@ -1150,7 +1150,7 @@ def fused_multi_transformer(
             >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # self attention mask: [batch_size, 1, seq_len, seq_len]
-            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float16")
+            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
 
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_multi_transformer(
