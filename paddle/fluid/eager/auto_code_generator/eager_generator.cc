@@ -266,6 +266,7 @@ class GradNodeGenerationInfo {
   };
 
  public:
+  GradNodeGenerationInfo() : op_base_infos_() {}
   const std::string& GetFwdOpType() const { return fwd_op_type_; }
   void SetFwdOpType(const std::string& op_type) { fwd_op_type_ = op_type; }
 

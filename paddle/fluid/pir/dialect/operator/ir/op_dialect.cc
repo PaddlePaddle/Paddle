@@ -301,8 +301,7 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
   os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
     phi::IntArray data = int_array_attr.data();
-    os << "IntArray)"
-       << "[";
+    os << "IntArray)" << "[";
     const auto& inner_data = data.GetData();
     pir::detail::PrintInterleave(
         inner_data.begin(),
@@ -460,6 +459,8 @@ class AttributeManager {
     static AttributeManager instance;
     return instance;
   }
+
+  AttributeManager() : char_pointers_(), pointers_size_() {}
 
   ~AttributeManager() {
     for (size_t i = 0; i < char_pointers_.size(); i++) {
