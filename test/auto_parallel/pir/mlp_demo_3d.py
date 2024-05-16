@@ -25,12 +25,13 @@ from paddle import nn
 from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
     apply_mix2dist_pass,
 )
+from paddle.distributed.communication.reduce import ReduceOp
 from paddle.framework import _current_expected_place
 
 BATCH_SIZE = 4
-BATCH_NUM = 2
-IMAGE_SIZE = 4
-CLASS_NUM = 2
+BATCH_NUM = 10
+IMAGE_SIZE = 16
+CLASS_NUM = 8
 
 
 class HybridParallelDemoNet(nn.Layer):
@@ -89,7 +90,10 @@ class TestML3DParallel(unittest.TestCase):
         )
         loss_fn = nn.MSELoss()
         loader = create_data_loader(
-            batch_size=4, batch_num=1, image_size=4, class_num=2
+            batch_size=BATCH_SIZE,
+            batch_num=BATCH_NUM,
+            image_size=IMAGE_SIZE,
+            class_num=CLASS_NUM,
         )
         dist_loader = dist.shard_dataloader(
             loader, shard_dims="x", meshes=[mesh1, mesh2]
@@ -192,23 +196,18 @@ class TestML3DParallel(unittest.TestCase):
         dy_losses = self.run_dynamic(dy_layer, dy_opt, dist_loader)
         dy2st_losses = self.run_dy2static(dy2st_layer, dy2st_opt, dist_loader)
 
-        # for i in range(len(dy_losses)):
-        #     print("===== batch %d ====="%i)
-        #     if "out" in self.dy_fetch_values[i]:
-        #         print("==== dy_out ====")
-        #         print(self.dy_fetch_values[i]["out"])
-        #         print("==== dy2st_out ====")
-        #         print(self.dy2st_fetch_values[i]["out"])
-
         paddle.disable_static()
-        if dist.get_rank() in self.mesh2.process_ids:
+        rank_id = dist.get_rank()
+        if rank_id in [4, 6]:
+            self.loss_avg_pg = dist.new_group([4, 6])
+        if rank_id in [5, 7]:
+            self.loss_avg_pg = dist.new_group([5, 7])
+        if rank_id in self.mesh2.process_ids:
             pd_loss_dy2st = paddle.to_tensor(dy2st_losses)
-            pg = dist.new_group(self.mesh2.process_ids)
-            paddle.distributed.all_reduce(pd_loss_dy2st, group=pg)
-            pd_loss_dy2st = pd_loss_dy2st / 4
+            paddle.distributed.all_reduce(
+                pd_loss_dy2st, op=ReduceOp.AVG, group=self.loss_avg_pg
+            )
             dy2st_losses = pd_loss_dy2st.numpy()
-            # print("dy_losses:", dy_losses)
-            # print("dy2st_losses:", dy2st_losses)
             np.testing.assert_equal(dy_losses, dy2st_losses)
 
     def run_dy2static(self, layer, opt, dist_loader):
@@ -227,34 +226,16 @@ class TestML3DParallel(unittest.TestCase):
             _current_expected_place()
         )
         dist_model._engine._init_comm()
-        # print("==== dist program ====")
-        # print(dist_model._engine._pir_dist_main_progs[mode])
-        # print("==== dense program ====")
-        # print(dist_model._engine._pir_dense_main_progs[mode])
-        # print("==== dense program ops ====")
-        # ops = dist_model._engine._pir_dense_main_progs[mode].global_block().ops
-        # for i, op in enumerate(dist_model._engine._pir_dense_main_progs[mode].global_block().ops):
-        #     print(i, op)
-        # if dist.get_rank() < 4:
-        #     pass
-        #     # dist_model.fetch_value(ops[10].result(0), "linear_0.weight.grad")
-        # else:
-        #     dist_model.fetch_value(ops[6].result(0), "out")
-        #     # dist_model.fetch_value(ops[21].result(0), "linear_1.weight.grad")
 
         loss_list = []
-        self.dy2st_fetch_values = []
         for batch_id, data in enumerate(dist_loader()):
             if isinstance(data, dict):
                 image = data['image']
                 label = data['label']
             else:
                 image, label = data
-            # print("==== dy2st label ====")
-            # print(label)
             loss = dist_model(image, label)
             loss_list.append(loss)
-            self.dy2st_fetch_values.append(dist_model.outs)
 
         return np.array(loss_list)
 
@@ -262,9 +243,7 @@ class TestML3DParallel(unittest.TestCase):
         # create loss
         loss_fn = nn.MSELoss()
         loss_list = []
-        self.dy_fetch_values = []
         for batch_id, data in enumerate(dist_loader()):
-            values = {}
             if isinstance(data, dict):
                 image = data['image']
                 label = data['label']
@@ -273,27 +252,18 @@ class TestML3DParallel(unittest.TestCase):
             if is_recompute:
                 image.stop_gradient = False
             out = layer(image)
-            # print("==== image ====")
-            # print(image)
-            # print("==== dy label ====")
-            # print(label)
             loss = loss_fn(out, label)
-            # print("==== loss ====")
-            # print(loss)
             loss_list.append(loss.numpy())
             loss.backward()
-            if dist.get_rank() < 4:
-                pass
-                # values["linear_0.weight.grad"] = layer.linear_0.weight.grad.numpy()
-            else:
-                # values["linear_1.weight.grad"] = layer.linear_1.weight.grad.numpy()
-                values["out"] = out.numpy()
-            self.dy_fetch_values.append(values)
 
             opt.step()
             opt.clear_grad()
         return np.array(loss_list)
 
+    def run_test_cases(self):
+        self.test_to_static_program()
+        self.test_loss_value()
+
 
 if __name__ == "__main__":
-    TestML3DParallel().test_loss_value()
+    TestML3DParallel().run_test_cases()

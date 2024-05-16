@@ -100,10 +100,6 @@ def create_data_loader(
     nsamples = batch_size * batch_num
     images = np.random.rand(nsamples, image_size).astype('float32')
     labels = np.random.rand(nsamples, class_num).astype('float32')
-    print("==== images ====")
-    print(images)
-    print("==== labels ====")
-    print(labels)
     dataset = RandomDataset(images, labels, nsamples)
     loader = DataLoader(dataset, batch_size=batch_size)
     return loader
