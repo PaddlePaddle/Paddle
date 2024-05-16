@@ -27,30 +27,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
-struct ClipAndFakeQuantDequantFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  int round_type,
-                  phi::DenseTensor *out);
-};
-
-template <typename T, typename DeviceContext>
-class FakeQuantizeDequantizeAbsMaxKernel
-    : public FakeAbsMaxKernelBase<DeviceContext, T> {
- protected:
-  void RunClipFunctor(const DeviceContext &dev_ctx,
-                      const phi::DenseTensor &in,
-                      const phi::DenseTensor &scale,
-                      int bin_cnt,
-                      int round_type,
-                      phi::DenseTensor *out) const override {
-    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, bin_cnt, round_type, out);
-  }
-};
 
 template <typename T, typename DeviceContext>
 class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
