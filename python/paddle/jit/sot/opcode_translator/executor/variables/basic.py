@@ -53,6 +53,7 @@ from ..tracker import (
     GetAttrTracker,
     GetIterTracker,
     GlobalTracker,
+    LocalTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
@@ -611,7 +612,7 @@ class SymbolicIntVariable(ConstantVariable):
         return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
 
     def _reconstruct(self, codegen: PyCodeGen):
-        codegen.gen_load_const(paddle.to_tensor(self.value))
+        codegen.gen_load_fast(self.out_var_name)
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
@@ -638,7 +639,11 @@ class SymbolicIntVariable(ConstantVariable):
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and isinstance(value, int):
+        if (
+            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and isinstance(value, int)
+            and isinstance(tracker, LocalTracker)
+        ):
             return SymbolicIntVariable(value, graph, tracker)
         return None
 
