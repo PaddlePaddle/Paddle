@@ -45,10 +45,9 @@ class TestBuildFakeProgram(unittest.TestCase):
                 # dense tensor could not access dist tensor attribute
                 with self.assertRaises(ValueError):
                     tmp = input._local_shape
-                with self.assertRaises(ValueError):
-                    tmp = input.dist_attr()
-                with self.assertRaises(ValueError):
-                    tmp = w0.dist_attr()
+
+                self.assertIsNone(input.dist_attr())
+                self.assertIsNone(w0.dist_attr())
 
                 dist_input = dtensor_from_local(input, mesh, [dist.Replicate()])
                 dist_w0 = dtensor_from_local(w0, mesh, [dist.Replicate()])
