@@ -65,7 +65,7 @@ class UnionFindSet {
 
   bool HasSameRoot(const T& p, const T& q) const { return Find(p) == Find(q); }
 
-  std::unordered_map<T, T>* GetMap() { return &parent_; }
+  std::unordered_map<T, T>* MutMap() { return &parent_; }
 
  private:
   std::unordered_map<T, T> parent_;

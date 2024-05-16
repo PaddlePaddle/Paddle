@@ -380,6 +380,14 @@ bool IsCompiledWithHETERPS() {
 #endif
 }
 
+bool IsCompiledWithGPUGRAPH() {
+#ifndef PADDLE_WITH_GPU_GRAPH
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_DNNL
   return false;
@@ -2157,6 +2165,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
            &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
@@ -2342,6 +2351,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
