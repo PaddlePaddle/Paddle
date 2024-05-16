@@ -446,36 +446,36 @@ class PartialProgramLayerHook:
 class OperatorIndexPreservePass:
     counter = 0
 
-    def __init__(self, indice, pass_fn):
+    def __init__(self, index, pass_fn):
         self.name = f"preserved_index_{OperatorIndexPreservePass.counter}"
         OperatorIndexPreservePass.counter += 1
         self.pass_fn = pass_fn
-        self.indice = indice
+        self.index = index
 
     def __call__(self, program):
         paddle.base.libpaddle.pir.append_shadow_outputs(
             program,
             [program.global_block().ops[0].result(0)],
-            self.indice,
+            self.index,
             self.name,
             True,
         )
         program = self.pass_fn(program)
-        new_indice = 0
+        new_index = 0
         for op in program.global_block().ops:
             if (
                 op.name() == "builtin.shadow_output"
                 and self.name in op.attrs()["output_name"]
             ):
                 break
-            new_indice += 1
+            new_index += 1
         # remove forward_backward_seperator
-        if new_indice >= len(program.global_block().ops):
+        if new_index >= len(program.global_block().ops):
             raise RuntimeError(
                 f"Can't find index preserve label {self.name}, don't remove it in pass."
             )
-        program.global_block().remove_op(program.global_block().ops[new_indice])
-        self.indice = new_indice
+        program.global_block().remove_op(program.global_block().ops[new_index])
+        self.index = new_index
         return program
 
 
@@ -491,7 +491,7 @@ class IndicesPreservePass:
             passes.append(OperatorIndexPreservePass(index, passes[idx]))
         new_program = passes[-1](program)
 
-        self.new_indices = [p.indice for p in passes[1:]]
+        self.new_indices = [p.index for p in passes[1:]]
         return new_program
 
 
