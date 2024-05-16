@@ -861,7 +861,7 @@
     param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
   optional: param
   data_transform :
-    skip_transform : current_step, k, nranks
+    skip_transform : current_step, nranks
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
