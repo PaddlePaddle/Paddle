@@ -426,3 +426,193 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         outputs={'out': out},
     )
     return out
+
+
+########################### adaptive layer norm ###############################
+@triton.jit
+def adaptive_layer_norm_kernel(
+    x_ptr,
+    y_ptr,
+    weight_ptr,
+    bias_ptr,
+    scale_ptr,
+    shift_ptr,
+    stride_xm,
+    N,
+    seq_size,
+    epsilon,
+    BLOCK_SIZE: tl.constexpr,
+):
+    row = tl.program_id(axis=0)
+    x_ptr += row * stride_xm
+    y_ptr += row * stride_xm
+    # Compute mean
+    _mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
+        _mean += eles
+    mean = tl.sum(_mean, axis=0) / N
+    # Compute variance
+    _var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        x = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
+        x = tl.where(cols < N, x - mean, 0.0)
+        _var += x * x
+    var = tl.sum(_var, axis=0) / N
+    rstd = 1 / tl.sqrt(var + epsilon)
+    # Compute output
+    scale_ptr += (row // seq_size) * stride_xm
+    shift_ptr += (row // seq_size) * stride_xm
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        mask = cols < N
+        eles = tl.load(x_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+        x_hat = (eles - mean) * rstd
+        if weight_ptr is not None:
+            weights = tl.load(weight_ptr + cols, mask=mask, other=0.0)
+            x_hat = x_hat * weights
+        if bias_ptr is not None:
+            bias = tl.load(bias_ptr + cols, mask=mask, other=0.0)
+            x_hat = x_hat + bias
+        scales = tl.load(scale_ptr + cols, mask=mask, other=0.0)
+        shift = tl.load(shift_ptr + cols, mask=mask, other=0.0)
+        y = x_hat * (1 + scales) + shift
+        tl.store(y_ptr + cols, y, mask=mask)
+
+
+def adaptive_layer_norm(x, scale, shift, epsilon=1e-05, weight=None, bias=None):
+    ## 函数界限检查 和 参数准备
+    assert (
+        len(x.shape) == 3
+    ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
+    if weight is not None:
+        assert len(weight.shape) == 1
+        assert (
+            weight.shape[-1] == x.shape[-1]
+        ), "x and weight should have same shape[-1] == feature_dim"
+    if bias is not None:
+        assert len(bias.shape) == 1
+        assert (
+            bias.shape[-1] == x.shape[-1]
+        ), "x and bias should have same shape[-1] == feature_dim"
+    assert (
+        len(scale.shape) == 2 and len(shift.shape) == 2
+    ), "scale and shift should be 2-dim [batch_size, feature_dim]"
+    assert (
+        scale.shape[0] == shift.shape[0] == x.shape[0]
+    ), "x, scale and shift should have same shape[0] == batch_size"
+    assert (
+        scale.shape[1] == shift.shape[1] == x.shape[-1]
+    ), "x, scale and shift should have same shape[-1] == feature_dim"
+
+    ## 暂时这样对齐动态图
+    if in_dynamic_or_pir_mode():
+        y = paddle.empty_like(x)
+        M = x.shape[0] * x.shape[1]
+        N = x.shape[2]
+        seq_size = x.shape[1]
+        BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
+
+        adaptive_layer_norm_kernel[(M,)](
+            x,
+            y,
+            weight,
+            bias,
+            scale,
+            shift,
+            N,
+            N,
+            seq_size,
+            epsilon,
+            BLOCK_SIZE=BLOCK_SIZE,
+        )
+        return y
+
+    ########################### 后续内容尚未完成 ###############################
+    op_name = "triton_adaptive_layer_norm"
+
+    ## 如果在动态图模式下且算子已经添加好了，则直接调用自定义算子
+    if (
+        op_name in OpProtoHolder.instance().op_proto_map.keys()
+        and in_dynamic_or_pir_mode()
+    ):
+        outs = _C_ops._run_custom_op(
+            op_name, x, scale, shift, epsilon, weight, bias
+        )
+        return outs[0]
+
+    ## 否则，先添加自定义算子
+    # value_hint = get_value_hint(x_list)
+    # address_hint = get_pointer_hint(dtypes)
+    python_package_name = f"{op_name}_package"
+    generated_dir = os.path.join("/tyk/Paddle/kai/triton/generated", op_name)
+    os.makedirs(generated_dir, exist_ok=True)
+
+    if op_name not in OpProtoHolder.instance().op_proto_map.keys():
+        so_path = get_or_generate_so_path(generated_dir, python_package_name)
+        print("we find so_path: ", so_path)
+        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
+    ## 执行算子
+    if in_dynamic_or_pir_mode():
+        outs = _C_ops._run_custom_op(
+            op_name, x, scale, shift, epsilon, weight, bias
+        )
+        return outs[0]
+    else:
+        # check_variable_and_dtype
+        helper = LayerHelper(op_name, **locals())
+        inputs = {
+            'x': x,
+            'scale': scale,
+            'shift': shift,
+            'weight@OPTIONAL': weight,
+            'bias@OPTIONAL': bias,
+        }
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type=op_name,
+            inputs=inputs,
+            attrs={
+                'epsilon': epsilon,
+            },
+            outputs={'out': out},
+        )
+        return out
+
+
+triton_adaptive_layer_norm_template = """"""
+
+
+def get_or_generate_so_path(generated_dir, python_package_name, op_name):
+    so_path = find_so_path(generated_dir, python_package_name)
+    op_dict = {"op_name": op_name}
+    if so_path is None:
+        paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
+        with open(paddle_custom_op_file_path, "w") as f:
+            f.write(
+                SubstituteTemplate(triton_adaptive_layer_norm_template, op_dict)
+            )
+            f.close()
+
+        py_script_file = f"{generated_dir}/triton_kernels.py"
+        extract_triton_kernel(adaptive_layer_norm_kernel, py_script_file)
+
+        codegen_commands = []
+        # ahead of time compile command.
+        aot_template = f"""{python_path}   {compile_file} {py_script_file}   -n adaptive_layer_norm_kernel   \
+          -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel """
+        codegen_commands.append(aot_template)
+        multi_process_do(codegen_commands)
+        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
+        re = os.system(link_command)
+        assert re == 0
+        # rename the .c file to .cu
+        rename_c_to_cu(generated_dir)
+        # build the package to so, not install
+        build_package(generated_dir, python_package_name)
+        so_path = find_so_path(generated_dir, python_package_name)
+    assert so_path is not None
+    return so_path
