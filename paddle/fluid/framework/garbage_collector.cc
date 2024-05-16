@@ -29,9 +29,9 @@ namespace framework {
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
-    : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))),
-      garbages_(std::make_unique<GarbageQueue>()),
-      mutex_(nullptr) {
+    : garbages_(std::make_unique<GarbageQueue>()),
+      mutex_(nullptr),
+      max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
   if (max_memory_size_ > 1) {
     mutex_ = std::make_unique<std::mutex>();
