@@ -54,7 +54,7 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 

@@ -201,8 +201,7 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 }
 
 // (seq_len, shape) -> return [seq_len] + list(shape)
-framework::DDim RecurrentBase::PrependDims(size_t seq_len,
-                                           const framework::DDim &src) {
+phi::DDim RecurrentBase::PrependDims(size_t seq_len, const phi::DDim &src) {
   auto dims = common::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
   return common::make_ddim(dims);
@@ -215,7 +214,7 @@ RecurrentOp::RecurrentOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentOp::RunImpl(const framework::Scope &scope,
-                          const platform::Place &place) const {
+                          const phi::Place &place) const {
   bool has_state = Attr<bool>(kHasStates);
   auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
 
@@ -348,7 +347,7 @@ RecurrentGradOp::RecurrentGradOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentGradOp::RunImpl(const framework::Scope &scope,
-                              const platform::Place &place) const {
+                              const phi::Place &place) const {
   bool has_state = Attr<bool>(kHasStates);
   const size_t seq_len = static_cast<size_t>(GetSequenceLength(scope));
 

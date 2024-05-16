@@ -63,6 +63,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
     {"pd_op.expand", "broadcast_to"},
+    {"pd_op.where", "select"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 

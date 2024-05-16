@@ -22,7 +22,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.framework import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
@@ -91,6 +90,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         self.assertEqual(ret.shape, ())
 
+    @test_with_pir_api
     def test_0d_tensor_backward(self):
         '''
         pseudocode:
@@ -105,15 +105,15 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         def backward_fn(dy):
             return -5 * dy
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
             data.stop_gradient = False
             out = paddle.static.nn.static_pylayer(
                 forward_fn, [data], backward_fn
             )
-            append_backward(out)
+            grad_list = append_backward(out, [data])
 
         place = (
             base.CUDAPlace(0)
@@ -121,9 +121,21 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        ret, x_grad = exe.run(
-            main_program, fetch_list=[out.name, data.grad_name]
-        )
+
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p.is_same(data):
+                    data_grad = g
+            ret, x_grad = exe.run(
+                main_program,
+                fetch_list=[out, data_grad],
+            )
+        else:
+            ret, x_grad = exe.run(
+                main_program,
+                fetch_list=[out.name, data.grad_name],
+            )
+
         np.testing.assert_allclose(np.asarray(ret), np.array(-6.0), rtol=1e-05)
         self.assertEqual(ret.shape, ())
 
@@ -189,6 +201,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         exe.run(main_program)
         self.assertIsNone(out)
 
+    @test_with_pir_api
     def test_wrong_structure_exception(self):
         """
         test not all ``stop_gradient`` of inputs is True when ``backward_fn`` is None, and
@@ -201,9 +214,9 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         def backward_fn(daout, dbout):
             return 3 * daout, -dbout
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             data_1 = paddle.static.data(
                 name="data_1", shape=[2, 4], dtype="float32"
             )
@@ -224,12 +237,14 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
                 out = paddle.static.nn.static_pylayer(
                     forward_fn, [data_1, data_2], backward_fn=backward_fn
                 )
+                append_backward(out, [data_1, data_2])
 
 
 class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_cond_inside_static_pylayer(self):
         """
         forward propagation:
@@ -267,9 +282,9 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
                 lambda: daout * daout,
             )
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             i = paddle.static.data(name="i", shape=[1], dtype="float32")
             i.stop_gradient = False
             a = 2.0 * i
@@ -278,7 +293,7 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             )
             out = out_i + out_a
             loss = paddle.exp(out)
-            append_backward(loss)
+            grad_list = append_backward(loss, [i, a, out_i, out_a, out])
 
         place = (
             base.CUDAPlace(0)
@@ -306,18 +321,51 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
                 expected_a_grad = expected_out_grad * expected_out_grad
                 expected_i_grad = 3 * expected_out_grad + 2 * expected_a_grad
 
-            ret = exe.run(
-                main_program,
-                feed={'i': np.full((1), feed_i, dtype=np.float32)},
-                fetch_list=[
-                    out.name,
-                    out.grad_name,
-                    out_i.grad_name,
-                    out_a.grad_name,
-                    a.grad_name,
-                    i.grad_name,
-                ],
-            )
+            if paddle.framework.in_pir_mode():
+                out_grad = None
+                out_i_grad = None
+                out_a_grad = None
+                a_grad = None
+                i_grad = None
+
+                for p, g in grad_list:
+                    if p.is_same(out_i):
+                        out_i_grad = g
+                    elif p.is_same(out_a):
+                        out_a_grad = g
+                    elif p.is_same(a):
+                        a_grad = g
+                    elif p.is_same(i):
+                        i_grad = g
+                    elif p.is_same(out):
+                        out_grad = g
+
+                ret = exe.run(
+                    main_program,
+                    feed={'i': np.full((1), feed_i, dtype=np.float32)},
+                    fetch_list=[
+                        out,
+                        out_grad,
+                        out_i_grad,
+                        out_a_grad,
+                        a_grad,
+                        i_grad,
+                    ],
+                )
+            else:
+                ret = exe.run(
+                    main_program,
+                    feed={'i': np.full((1), feed_i, dtype=np.float32)},
+                    fetch_list=[
+                        out.name,
+                        out.grad_name,
+                        out_i.grad_name,
+                        out_a.grad_name,
+                        a.grad_name,
+                        i.grad_name,
+                    ],
+                )
+
             np.testing.assert_allclose(
                 np.asarray(ret[0]), expected_out, rtol=1e-05
             )
@@ -342,6 +390,7 @@ class TestStaticPyLayerBackward(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_identity_backward(self):
         def forward_fn(x):
             return x
@@ -349,10 +398,10 @@ class TestStaticPyLayerBackward(unittest.TestCase):
         def backward_fn(dy):
             return dy
 
-        main_program = Program()
-        start_program = Program()
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
         input_shape = (2, 4)
-        with program_guard(main_program, start_program):
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.static.data(
                 name="X", shape=input_shape, dtype="float32"
             )
@@ -361,7 +410,7 @@ class TestStaticPyLayerBackward(unittest.TestCase):
                 forward_fn, [data], backward_fn
             )
             loss = paddle.mean(out)
-            append_backward(loss)
+            grad_list = append_backward(loss, [data])
 
         place = (
             paddle.CUDAPlace(0)
@@ -370,13 +419,26 @@ class TestStaticPyLayerBackward(unittest.TestCase):
         )
         exe = base.Executor(place)
         randn_x = np.random.random(size=input_shape).astype(np.float32)
-        ret, x_grad = exe.run(
-            main_program,
-            feed={
-                'X': randn_x,
-            },
-            fetch_list=[out.name, data.grad_name],
-        )
+
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p.is_same(data):
+                    data_grad = g
+            ret, x_grad = exe.run(
+                main_program,
+                feed={
+                    'X': randn_x,
+                },
+                fetch_list=[out, data_grad],
+            )
+        else:
+            ret, x_grad = exe.run(
+                main_program,
+                feed={
+                    'X': randn_x,
+                },
+                fetch_list=[out.name, data.grad_name],
+            )
 
         np.testing.assert_allclose(
             np.asarray(ret),
@@ -394,6 +456,7 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             rtol=1e-05,
         )
 
+    @test_with_pir_api
     def test_static_pylayer_backward(self):
         '''
         pseudocode:
@@ -408,10 +471,10 @@ class TestStaticPyLayerBackward(unittest.TestCase):
         def backward_fn(dy):
             return paddle.tanh(dy)
 
-        main_program = Program()
-        start_program = Program()
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
         input_shape = (3, 4)
-        with program_guard(main_program, start_program):
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.full(
                 shape=input_shape, dtype='float32', fill_value=-2.0
             )
@@ -420,7 +483,7 @@ class TestStaticPyLayerBackward(unittest.TestCase):
                 forward_fn, [data], backward_fn
             )
             loss = paddle.mean(out)
-            append_backward(loss)
+            grad_list = append_backward(loss, [data])
 
         place = (
             paddle.CUDAPlace(0)
@@ -428,9 +491,21 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             else paddle.CPUPlace()
         )
         exe = base.Executor(place)
-        ret, x_grad = exe.run(
-            main_program, fetch_list=[out.name, data.grad_name]
-        )
+
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p.is_same(data):
+                    data_grad = g
+            ret, x_grad = exe.run(
+                main_program,
+                fetch_list=[out, data_grad],
+            )
+        else:
+            ret, x_grad = exe.run(
+                main_program,
+                fetch_list=[out.name, data.grad_name],
+            )
+
         np.testing.assert_allclose(
             np.asarray(ret),
             np.full(input_shape, -6.0, dtype=np.float32),

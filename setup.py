@@ -742,9 +742,11 @@ def is_transpiler():
         f.write(
             cnt
             % {
-                'mode': 'PSLIB'
-                if env_dict.get("WITH_PSLIB") == 'ON'
-                else 'TRANSPILER'
+                'mode': (
+                    'PSLIB'
+                    if env_dict.get("WITH_PSLIB") == 'ON'
+                    else 'TRANSPILER'
+                )
             }
         )
 
@@ -1302,6 +1304,16 @@ def get_package_data_and_package_dir():
         ext_modules = []
     elif sys.platform == 'darwin':
         ext_modules = []
+
+    # type hints
+    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+    package_data['paddle.framework'] = package_data.get(
+        'paddle.framework', []
+    ) + ['*.pyi']
+    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+        '*.pyi'
+    ]
+
     return package_data, package_dir, ext_modules
 
 
@@ -1615,6 +1627,7 @@ def get_setup_parameters():
         'paddle.geometric.sampling',
         'paddle.pir',
         'paddle.decomposition',
+        'paddle._typing',
     ]
 
     paddle_bins = ''
@@ -1869,6 +1882,7 @@ def main():
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',
+            'Typing :: Typed',
         ],
     )
 

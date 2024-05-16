@@ -157,10 +157,10 @@ void IRScheduleInjectiveCPU(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
-                             const std::vector<int> &output_shape,
-                             const cinn::common::Target &target) {
-  VLOG(3) << "Begin IRCudaScheduleInjective ";
+void IRGpuScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
+                            const std::vector<int> &output_shape,
+                            const cinn::common::Target &target) {
+  VLOG(3) << "Begin IRGpuScheduleInjective ";
   auto all_blocks = ir_sch.GetAllBlocks();
   auto loops = ir_sch.GetLoops(all_blocks[0]);
   auto fused = ir_sch.Fuse(loops);
@@ -176,11 +176,11 @@ void IRCudaScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
   } else {
     ir_sch.Bind(fused, "threadIdx.x");
   }
-  VLOG(3) << "After IRCudaScheduleInjective, new ir is : "
+  VLOG(3) << "After IRGpuScheduleInjective, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
+std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
     const cinn::common::CINNValuePack &arg_pack,
     const std::vector<int> &output_shape,
     const cinn::common::Target &target) {
@@ -359,11 +359,11 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                          ir::Tensor output,
-                          int last_dimension_num,
-                          const cinn::common::Target &target) {
-  VLOG(3) << "Before IRCudaScheduleReduce : "
+void IRGpuScheduleReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                         ir::Tensor output,
+                         int last_dimension_num,
+                         const cinn::common::Target &target) {
+  VLOG(3) << "Before IRGpuScheduleReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
   int parallel_thread_num = 1;
   auto &output_shape = output->shape;
@@ -411,15 +411,15 @@ void IRCudaScheduleReduce(ir::IRSchedule &ir_sch,  // NOLINT
     auto loops = ir_sch.GetLoops(output->name);
     ir_sch.Bind(loops[0], "blockIdx.x");
   }
-  VLOG(3) << "After IRCudaScheduleReduce : "
+  VLOG(3) << "After IRGpuScheduleReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
-                                       ir::Tensor tmp_out,
-                                       ir::Tensor out,
-                                       const cinn::common::Target &target) {
-  VLOG(3) << "Before IRCudaScheduleBlockReduceInternal : "
+void IRGpuScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
+                                      ir::Tensor tmp_out,
+                                      ir::Tensor out,
+                                      const cinn::common::Target &target) {
+  VLOG(3) << "Before IRGpuScheduleBlockReduceInternal : "
           << ir_sch.GetModule().GetExprs().at(0);
   int fuse_times = ir_sch.GetLoops(tmp_out->name).size() - 2;
   for (int idx = 0; idx < fuse_times; ++idx) {
@@ -509,16 +509,16 @@ void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
     }
   }
 
-  VLOG(3) << "After IRCudaScheduleBlockReduceInternal : "
+  VLOG(3) << "After IRGpuScheduleBlockReduceInternal : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                               ir::Tensor reduce_tmp_out,
-                               ir::Tensor tmp_out,
-                               ir::Tensor out,
-                               const cinn::common::Target &target) {
-  VLOG(3) << "Before IRCudaScheduleBlockReduce : "
+void IRGpuScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                              ir::Tensor reduce_tmp_out,
+                              ir::Tensor tmp_out,
+                              ir::Tensor out,
+                              const cinn::common::Target &target) {
+  VLOG(3) << "Before IRGpuScheduleBlockReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
   int tmp_put_shape_size_without_reduce = 0;
   for (auto i : tmp_out->shape) {
@@ -659,16 +659,16 @@ void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
     }
   }
 
-  VLOG(3) << "After IRCudaScheduleBlockReduce : "
+  VLOG(3) << "After IRGpuScheduleBlockReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                                      ir::Tensor reshape,
-                                      ir::Tensor internal,
-                                      ir::Tensor reduce_out,
-                                      const cinn::common::Target &target) {
-  VLOG(3) << "Before IRCudaScheduleBlockShuffleReduce : "
+void IRGpuScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                                     ir::Tensor reshape,
+                                     ir::Tensor internal,
+                                     ir::Tensor reduce_out,
+                                     const cinn::common::Target &target) {
+  VLOG(3) << "Before IRGpuScheduleBlockShuffleReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
   // reshape compute inline
   {
@@ -921,17 +921,17 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       ir_sch.Unroll(r_loops.back());
     }
   }
-  VLOG(3) << "After IRCudaScheduleBlockShuffleReduce : "
+  VLOG(3) << "After IRGpuScheduleBlockShuffleReduce : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
-                                 ir::Tensor reshape,
-                                 ir::Tensor internal,
-                                 ir::Tensor tmp_out,
-                                 ir::Tensor out,
-                                 const cinn::common::Target &target) {
-  VLOG(3) << "Before IRCudaTwoStepReduceSchedule : "
+void IRGpuTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
+                                ir::Tensor reshape,
+                                ir::Tensor internal,
+                                ir::Tensor tmp_out,
+                                ir::Tensor out,
+                                const cinn::common::Target &target) {
+  VLOG(3) << "Before IRGpuTwoStepReduceSchedule : "
           << ir_sch.GetModule().GetExprs().at(0);
   // fuse axis
   int fuse_times =
@@ -1038,7 +1038,7 @@ void IRCudaTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
       }
     }
   }
-  VLOG(3) << "After IRCudaTwoStepReduceSchedule : "
+  VLOG(3) << "After IRGpuTwoStepReduceSchedule : "
           << ir_sch.GetModule().GetExprs().at(0);
   // ir_sch.SimpleComputeAt(ir_sch.GetBlock(tmp_out->name),
   // ir_sch.GetLoops(out->name)[0]);
