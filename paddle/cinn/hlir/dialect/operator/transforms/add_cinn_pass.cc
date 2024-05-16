@@ -219,13 +219,21 @@ int64_t GetOpCount(const ::pir::Operation* op) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  PirToPyCodeConverter(program)
+      .file_name("original_programs.py")
+      .dump_symbolic_shape(false)
+      .SaveIfFlagEnabled();
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
-  PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
+  PirToPyCodeConverter(program)
+      .file_name("group_op_programs.py")
+      .SaveIfFlagEnabled();
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
+  PirToPyCodeConverter(program)
+      .file_name("fusion_op_programs.py")
+      .SaveIfFlagEnabled();
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
