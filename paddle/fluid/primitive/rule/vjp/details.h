@@ -176,19 +176,7 @@ void mean_grad(const Tensor& x,
         axis_data.push_back(i);
       }
     }
-    bool switch_dynamic = false;
-    int64_t factor = 1;
-    for (int64_t idx : axis_data) {
-      if (idx < 0) idx += x_dim.size();
-      if (x_dim[idx] == -1) {
-        switch_dynamic = true;
-        break;
-      } else {
-        factor *= x_dim[idx];
-      }
-    }
-
-    if (switch_dynamic) {
+    if (has_dynamic_shape(x_dim, axis_data)) {
       auto x_shape = shape<T>(x);
       factor_tensor =
           slice<T>(x_shape, {0}, {axis_data[0]}, {axis_data[0] + 1}, {1}, {0});
@@ -200,6 +188,11 @@ void mean_grad(const Tensor& x,
       }
       factor_tensor = cast<T>(factor_tensor, x.dtype());
     } else {
+      int64_t factor = 1;
+      for (int64_t idx : axis_data) {
+        if (idx < 0) idx += x_dim.size();
+        factor *= x_dim[idx];
+      }
       factor_tensor = full<T>(std::vector<int64_t>{}, factor, x.dtype());
     }
     return factor_tensor;
