@@ -477,6 +477,28 @@
     func : p_recv_array
     param : [peer, dtype, out_shape]
 
+- op : p_send
+  args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
+  output :
+  infer_meta :
+    func : PSendInferMeta
+    param : [x, peer]
+  kernel :
+    func : p_send
+    param : [x, peer, dynamic_shape]
+    data_type : x
+
+- op : p_send_array
+  args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta :
+    func : PSendArrayInferMeta
+    param : [x, peer]
+  kernel :
+    func : p_send_array
+    param : [x, peer, dynamic_shape]
+    data_type : x
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
   output : Tensor(out)
