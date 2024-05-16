@@ -42,7 +42,6 @@ from ...utils import (
     log,
     log_do,
 )
-from ...utils.envs import ENV_SOT_ALLOW_DYNAMIC_SHAPE
 from ..custom_code import CustomCode
 from ..instruction_utils import (
     Instruction,
@@ -89,7 +88,6 @@ from .variables import (
     NullVariable,
     SequenceIterVariable,
     SliceVariable,
-    SymbolicIntVariable,
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
@@ -1659,14 +1657,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 if name in free_or_cell_vars
                 else LocalTracker(name)
             )
-            if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and isinstance(value, int):
-                self._locals[name] = SymbolicIntVariable(
-                    value, self._graph, tracker
-                )
-            else:
-                self._locals[name] = VariableFactory.from_value(
-                    value, self._graph, tracker, debug_name=name
-                )
+            self._locals[name] = VariableFactory.from_value(
+                value, self._graph, tracker, debug_name=name
+            )
 
         for name in free_or_cell_vars:
             # create a cell for each variable.

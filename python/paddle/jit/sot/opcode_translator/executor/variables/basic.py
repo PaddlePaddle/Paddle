@@ -27,6 +27,7 @@ from paddle.framework import core
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     ConstTypes,
     FallbackError,
@@ -634,6 +635,12 @@ class SymbolicIntVariable(ConstantVariable):
             const.graph,
             const.tracker,
         )
+
+    @VariableFactory.register_from_value(successor="ConstantVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and isinstance(value, int):
+            return SymbolicIntVariable(value, graph, tracker)
+        return None
 
 
 class ParameterVariable(TensorVariable):
