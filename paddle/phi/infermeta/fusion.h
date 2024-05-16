@@ -976,6 +976,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          MetaTensor* reordered_c0,
                          MetaTensor* checked_cell);
 
+<<<<<<< Updated upstream
 void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      const MetaTensor& cvm,
                                      const std::string& pooltype,
@@ -983,5 +984,15 @@ void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      int axis,
                                      MetaTensor* out,
                                      MetaConfig config = MetaConfig());
+=======
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds);
+>>>>>>> Stashed changes
 
 }  // namespace phi

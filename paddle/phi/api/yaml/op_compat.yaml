@@ -3991,6 +3991,13 @@
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
+- op: fused_token_prune
+  inputs:
+    {attn : Attn, x : X, mask : Mask, new_mask : NewMask}
+  outputs:
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
+  attrs:
+
 - op: fusion_seqpool_cvm_concat
   inputs:
     {x : X, cvm : CVM}

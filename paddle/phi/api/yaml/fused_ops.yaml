@@ -367,6 +367,16 @@
     func : fused_scale_bias_relu_conv_bn
     data_type : x
 
+- op : fused_token_prune
+  args: (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token
+    = true, bool keep_order = false)
+  output: Tensor (slimmed_x), Tensor (cls_inds)
+  infer_meta:
+    func: FusedTokenPruneInferMeta
+  kernel:
+    func: fused_token_prune
+  support_dygraph_mode : true
+
 - op : fusion_gru
   args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool force_fp32_output = false)
   output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
