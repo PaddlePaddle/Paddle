@@ -16,31 +16,7 @@ file(
   "test_trt_convert_*.py")
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
-if(NOT WITH_DISTRIBUTE)
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_delete_c_identity_op_pass")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
-endif()
-
 if(WIN32)
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_fused_token_prune")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_trans_layernorm")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_trans_layernorm")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_argsort")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES
-       "test_trt_convert_elementwiseadd_transpose")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_elementwiseadd_transpose")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER
-       "test_trt_convert_elementwiseadd_transpose")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER
-       "test_trt_convert_quantize_dequantize_linear")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_explicit_quantization")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES
        "test_trt_explicit_quantization_mobilenet")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES

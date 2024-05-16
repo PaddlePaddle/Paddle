@@ -665,6 +665,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
         config.set_optim_cache_dir(self.cache_dir)
+        config.enable_new_ir()
+        config.enable_new_executor()
         if use_trt:
             config.switch_ir_debug()
             config.enable_tensorrt_engine(
