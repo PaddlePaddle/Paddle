@@ -127,7 +127,7 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                 mean = paddle.mean(out1)
                 paddle.static.append_backward(mean)
 
-                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                out = exe.run(main_program, {}, fetch_list=[out1])
                 np.testing.assert_allclose(
                     out[0],
                     x_data + y_data.reshape(100, 1, 1),
@@ -158,7 +158,7 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                 mean = paddle.mean(out1)
                 paddle.static.append_backward(mean)
 
-                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                out = exe.run(main_program, {}, fetch_list=[out1])
                 np.testing.assert_allclose(
                     out[0],
                     x_data + y_data.reshape(100, 1, 1),
@@ -325,7 +325,7 @@ class TestReduceOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor(arr, dtype='int32')
                 out1 = paddle.all(x)
 
-                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                out = exe.run(main_program, {}, fetch_list=[out1])
                 np.testing.assert_array_equal(out[0], np.all(arr))
 
     def test_with_axis(self):
@@ -341,7 +341,7 @@ class TestReduceOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor(arr, dtype='int32')
                 out1 = paddle.all(x, axis=0)
 
-                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                out = exe.run(main_program, {}, fetch_list=[out1])
                 np.testing.assert_array_equal(out[0], np.all(arr, axis=0))
 
 
@@ -424,7 +424,7 @@ class TestSetValueOp(unittest.TestCase):
             with paddle.static.program_guard(main_program):
                 x = paddle.ones(shape=[2, 3, 4], dtype="float32")
                 x = paddle.static.setitem(x, (0, 0), 6)
-        ret = exe.run(main_program, fetch_list=x.name)
+        ret = exe.run(main_program, fetch_list=[x])
 
         x_data = np.ones([2, 3, 4]).astype("float32")
         x_data[0, 0] = 6
@@ -442,7 +442,7 @@ class TestSetValueOp(unittest.TestCase):
                 x = paddle.ones(shape=[2, 3, 4], dtype="float32")
                 zero = paddle.full([], 0, dtype="int32")
                 x = paddle.static.setitem(x, zero, 6)
-        ret = exe.run(main_program, fetch_list=x.name)
+        ret = exe.run(main_program, fetch_list=[x])
 
         x_data = np.ones([2, 3, 4]).astype("float32")
         x_data[0] = 6
@@ -515,8 +515,8 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
                 )
         l = pir.translate_to_pir(main_program.desc)
         assert (
-            l.global_block().ops[2].name() == "pd_op.share_data"
-        ), "share_buffer should be translated to share_data"
+            l.global_block().ops[2].name() == "pd_op.share_data_"
+        ), "share_buffer should be translated to share_data_"
 
 
 class TestDataOp(unittest.TestCase):
@@ -534,7 +534,7 @@ class TestDataOp(unittest.TestCase):
         self.assertTrue(l.global_block().ops[0].name() == "pd_op.data")
         data_op = l.global_block().ops[0]
         self.assertIn("dtype", data_op.attrs())
-        self.assertEqual(str(data_op.attrs()["dtype"]), "DataType.INT64")
+        self.assertEqual(str(data_op.attrs()["dtype"]), "paddle.int64")
 
 
 class TestCheckUnregisteredOp(unittest.TestCase):

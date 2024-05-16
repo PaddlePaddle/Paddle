@@ -39,6 +39,35 @@ class SToRReshardFunction(ReshardFunction):
             return False
         return True
 
+    def infer_allgather_dist_type(self, in_value, split_axis):
+        tensor_ndim = len(in_value.shape)
+        in_dist_attr = in_value.dist_attr()
+        split_mesh_dim = in_dist_attr.dims_mapping[split_axis]
+        mesh = in_dist_attr.process_mesh
+
+        # Calculate local shape. In nd_mesh_reshard, multiple tensor axis
+        # may be shard and it will call this 1-D s_to_r function on each
+        # axis. In this case, we should recompute the local and global shape.
+        out_local_shape = list(in_value.shape)
+        out_local_shape[split_axis] = (
+            in_value.shape[split_axis] // mesh.shape[split_mesh_dim]
+        )
+        out_global_shape = list(out_local_shape)
+        out_global_shape[0] *= mesh.shape[split_mesh_dim]
+        out_type = paddle.pir.create_shaped_type(
+            in_value.type(), out_global_shape
+        )
+
+        out_dims_mapping = list(in_dist_attr.dims_mapping)
+        out_dims_mapping[split_axis] = -1
+        out_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            mesh, out_dims_mapping, {}
+        )
+        out_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            out_type, out_dist_attr
+        )
+        return out_type
+
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         def get_split_axis_with_dims_mapping(dims_mapping):
             split_axis = {}
@@ -92,7 +121,8 @@ class SToRReshardFunction(ReshardFunction):
         allgather_value = paddle._C_ops.c_allgather(
             src_value, group.id, num_of_process, True
         )
-        allgather_value.set_type(dst_type)
+        allgather_type = self.infer_allgather_dist_type(src_value, split_axis)
+        allgather_value.set_type(allgather_type)
 
         # set op_dist_attr
         new_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(

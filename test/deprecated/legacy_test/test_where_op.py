@@ -763,7 +763,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             z = paddle.concat(list(y), axis=1)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+                feed={'x': data}, fetch_list=[z], return_numpy=False
             )
         expect_out = np.array([[0, 0], [1, 1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
@@ -777,7 +777,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             z = paddle.concat(list(y), axis=1)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+                feed={'x': data}, fetch_list=[z], return_numpy=False
             )
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
