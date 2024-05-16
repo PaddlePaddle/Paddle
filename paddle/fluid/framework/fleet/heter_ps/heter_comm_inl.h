@@ -1615,6 +1615,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   }
 
   for (int i = 0; i < total_device; ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
     sync_stream(resource_->remote_stream(i, num));
     if (h_left[i] == -1) {
       continue;
@@ -1631,6 +1632,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
                 val_type_size);
   }
 
+  AnyDeviceGuard guard2(dev_id);
   auto d_merged_vals = MemoryAlloc(place, uniq_len * val_type_size);
   auto d_merged_vals_ptr = reinterpret_cast<float *>(d_merged_vals->ptr());
   heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr,

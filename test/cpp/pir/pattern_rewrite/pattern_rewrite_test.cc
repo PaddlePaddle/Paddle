@@ -218,8 +218,10 @@ class RedundantTransposeFusePattern
     auto prev_trans_op = prev_op->dyn_cast<paddle::dialect::TransposeOp>();
     if (prev_trans_op) {
       std::vector<int> axis_first = GetAxis(prev_trans_op);
-      IR_ENFORCE(axis_first.size() == axis_last.size(),
-                 "transpose op's perm rank should be same.");
+      PADDLE_ENFORCE_EQ(axis_first.size(),
+                        axis_last.size(),
+                        phi::errors::InvalidArgument(
+                            "transpose op's perm rank should be same."));
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.set_insertion_point(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(

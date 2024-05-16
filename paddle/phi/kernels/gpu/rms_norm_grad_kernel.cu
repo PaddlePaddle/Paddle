@@ -18,22 +18,29 @@ limitations under the License. */
  *     with minor changes. */
 
 #include <assert.h>
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
+namespace cub = hipcub;
+#define GPU(str) hip##str
+#else
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
 #include <cub/cub.cuh>
-#include "paddle/phi/kernels/gpu/rms_norm_funcs.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#define GPU(str) cuda##str
 #endif
+#include "paddle/phi/kernels/gpu/rms_norm_funcs.h"
 
 namespace phi {
 
 namespace {
-#ifndef PADDLE_WITH_HIP
 
 template <typename T, typename U, typename V, typename Context>
 void HostRMSNormGradient(const Context& dev_ctx,
@@ -46,7 +53,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          double epsilon,
                          T* grad_input,
                          V* grad_gamma) {
-  cudaStream_t stream = dev_ctx.stream();
+  GPU(Stream_t) stream = dev_ctx.stream();
   if (gamma != NULL) {
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
@@ -144,7 +151,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                           grad_x->data<T>(),
                           grad_scale->data<SCALE_TYPE>()));
 }
-#endif
+
 }  // namespace
 
 template <typename T, typename Context>
@@ -161,10 +168,6 @@ void RmsNormGradKernel(const Context& dev_ctx,
                        const float quant_scale,
                        DenseTensor* grad_x,
                        DenseTensor* grad_norm_weight) {
-#if defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "Please compile with CUDA, ROCM platform isn't support it."));
-#else
   if (bias || residual || norm_bias) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "bias or residual or norm_bias is not supported yet"));
@@ -181,7 +184,6 @@ void RmsNormGradKernel(const Context& dev_ctx,
                                      grad_x,
                                      grad_norm_weight,
                                      begin_norm_axis);
-#endif
 }
 }  // namespace phi
 

@@ -159,13 +159,19 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     // Currently, we DO NOT support the case that any element in `axes` `starts`
     // or `ends` is a Symbol.
     auto vec_int64 = details::VecExpr2Int64(starts);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `starts` must be int64_t");
+    PADDLE_ENFORCE_EQ(
+        vec_int64.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "for slice op, all the elements in `starts` must be int64_t"));
     std::vector<int64_t> starts_int = vec_int64.value();
 
     vec_int64 = details::VecExpr2Int64(ends);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `ends` must be int64_t");
+    PADDLE_ENFORCE_EQ(
+        vec_int64.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "for slice op, all the elements in `ends` must be int64_t"));
     std::vector<int64_t> ends_int = vec_int64.value();
 
     const int64_t start =

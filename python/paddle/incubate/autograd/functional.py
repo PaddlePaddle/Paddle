@@ -598,7 +598,7 @@ def _separate(xs):
     or ``detach`` .
 
     Internally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
-    computional graph, which will reduce gradients along all path from ys to xs.
+    computational graph, which will reduce gradients along all path from ys to xs.
 
     However, functional autograd API such as ``vjp``, ``jvp`` is stateless, and
     only compute gradients with a given ``func`` .

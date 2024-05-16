@@ -112,10 +112,6 @@ class TestWeightDecay(unittest.TestCase):
         feeder = base.DataFeeder(feed_list=feed_list, place=place)
         exe.run(base.default_startup_program())
 
-        exec_strategy = base.ExecutionStrategy()
-        if use_fast_executor:
-            exec_strategy.use_experimental_executor = True
-
         build_strategy = base.BuildStrategy()
         build_strategy.reduce_strategy = (
             base.BuildStrategy.ReduceStrategy.Reduce

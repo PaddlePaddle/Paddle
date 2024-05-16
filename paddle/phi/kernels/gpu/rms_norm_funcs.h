@@ -21,22 +21,29 @@ limitations under the License. */
 #pragma once
 
 #include <assert.h>
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
+#define GPU(str) hip##str
+#else
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
 #include <cub/cub.cuh>
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
+#define GPU(str) cuda##str
 #endif
 
 namespace phi {
 
 namespace {  // NOLINT
-#ifndef PADDLE_WITH_HIP
 
 #define DEFAULT_THROW(NAME, TYPE)                              \
   default:                                                     \
@@ -78,14 +85,22 @@ namespace {  // NOLINT
     }                                                                      \
   } while (0)
 
+#ifdef PADDLE_WITH_HIP
+#define WARP_SIZE 64
+#else
 #define WARP_SIZE 32
+#endif
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_XOR(T value,
                                            int laneMask,
                                            int width = WARP_SIZE,
                                            unsigned int mask = 0xffffffff) {
+#ifdef PADDLE_WITH_HIP
+  return __shfl_xor(value, laneMask, width);
+#else
   return __shfl_xor_sync(mask, value, laneMask, width);
+#endif
 }
 
 template <typename T>
@@ -93,7 +108,11 @@ __device__ __forceinline__ T WARP_SHFL(T value,
                                        int srcLane,
                                        int width = WARP_SIZE,
                                        unsigned int mask = 0xffffffff) {
+#ifdef PADDLE_WITH_HIP
+  return __shfl(value, srcLane, width);
+#else
   return __shfl_sync(mask, value, srcLane, width);
+#endif
 }
 
 template <typename U>
@@ -296,11 +315,21 @@ __device__ void cuWelfordMuSigma2(const phi::dtype::float16* __restrict__ vals,
       for (int k = 0; k < 8; k += 2) {
         float2 curr = __half22float2(*((__half2*)(lvals + l + k)));  // NOLINT
         if (!rms_only) {
+#ifdef PADDLE_WITH_HIP
+          cuWelfordOnlineSum(static_cast<float>(curr.x), mu, sigma2, count);
+          cuWelfordOnlineSum(static_cast<float>(curr.y), mu, sigma2, count);
+#else
           cuWelfordOnlineSum(curr.x, mu, sigma2, count);
           cuWelfordOnlineSum(curr.y, mu, sigma2, count);
+#endif
         } else {
+#ifdef PADDLE_WITH_HIP
+          cuRMSOnlineSum(static_cast<float>(curr.x), sigma2);
+          cuRMSOnlineSum(static_cast<float>(curr.y), sigma2);
+#else
           cuRMSOnlineSum(curr.x, sigma2);
           cuRMSOnlineSum(curr.y, sigma2);
+#endif
         }
       }
     }
@@ -907,7 +936,7 @@ __global__ void cuComputeGradInput(const T* __restrict__ dout,
     __syncthreads();
   }
 }
-#endif
+
 }  // namespace
 
 }  // namespace phi

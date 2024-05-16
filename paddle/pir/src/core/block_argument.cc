@@ -21,8 +21,11 @@
 
 #include "paddle/common/enforce.h"
 
-#define CHECK_NULL_IMPL(func_name) \
-  IR_ENFORCE(impl_, "impl_ is null when called BlockArgument:" #func_name)
+#define CHECK_NULL_IMPL(func_name)  \
+  PADDLE_ENFORCE_NOT_NULL(          \
+      impl_,                        \
+      phi::errors::InvalidArgument( \
+          "impl_ is null when called BlockArgument:" #func_name))
 
 #define IMPL_ static_cast<detail::BlockArgumentImpl *>(impl_)
 

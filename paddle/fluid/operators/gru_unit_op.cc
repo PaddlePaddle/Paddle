@@ -45,7 +45,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(input_size,
                         frame_size * 3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The second dimension of Input(Input) must be 3 "
                             "times of frame_size in GRUUnitOp, but received %d "
                             "(Input) vs %d (frame_size).",
@@ -55,7 +55,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_height,
         frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
@@ -66,7 +66,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width,
         frame_size * 3,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
@@ -82,7 +82,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -91,7 +91,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_width,
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -203,7 +203,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           input_size,
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The second dimension of Input(Input) must be 3 "
               "times of frame_size in GRUUnitGradOp, but received %d "
               "(Input) vs %d (frame_size).",
@@ -213,7 +213,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_height,
         frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
@@ -224,7 +224,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width,
         frame_size * 3,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
@@ -240,7 +240,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -249,7 +249,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_width,
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,

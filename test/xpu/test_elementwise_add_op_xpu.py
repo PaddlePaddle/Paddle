@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import copy
 import unittest
 
 import numpy as np
@@ -26,6 +27,7 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -302,6 +304,40 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('elementwise_add')
 for stype in support_types:
     create_test_class(globals(), XPUTestElementwiseAddOp, stype)
+
+
+@unittest.skipIf(
+    core.get_xpu_device_version(0) != core.XPUVersion.XPU3,
+    "only supported on XPU3",
+)
+class TestTensorFloat32Bfloat16OrFloat16Add(unittest.TestCase):
+    def _float32_bfloat16_or_float16_add(self, y_dtype):
+        paddle.disable_static()
+        test_num = 5
+        val_range = 10000
+        shapes = []
+        for i in range(test_num):
+            shape = [
+                np.random.randint(1, val_range),
+                np.random.randint(1, val_range),
+            ]
+            shapes.append(shape)
+
+        for i, shape in enumerate(shapes):
+            x = paddle.randn(list(shape), dtype=paddle.float32)
+            x_copy = copy.deepcopy(x)
+            y = paddle.randn(list(shape), dtype=y_dtype)
+            x.add_(y)
+            x_copy.add_(paddle.cast(y, paddle.float32))
+            np.testing.assert_equal(x.numpy(), x_copy.numpy())
+            del x, x_copy
+
+    def test_float32_bfloat16_add(self):
+        self._float32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
+
+    def test_float32_float16_add(self):
+        self._float32_bfloat16_or_float16_add(y_dtype=paddle.float16)
+
 
 if __name__ == '__main__':
     unittest.main()

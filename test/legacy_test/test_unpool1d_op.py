@@ -135,6 +135,35 @@ class TestUnpool1DOpAPI_dygraph3(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
+    def test_case(self):
+        places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static()
+            input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool1d(
+                input_x, kernel_size=2, stride=2, return_mask=True
+            )
+            output_unpool = F.max_unpool1d(
+                output.astype("int64"),
+                indices,
+                kernel_size=2,
+                stride=2,
+                output_size=input_x.shape,
+            )
+            expected_output_unpool = unpool1dmax_forward_naive(
+                output.numpy(), indices.numpy(), [2], [2], [0], [16]
+            )
+            np.testing.assert_allclose(
+                output_unpool.numpy(), expected_output_unpool, rtol=1e-05
+            )
+
+        paddle.enable_static()
+
+
 class TestUnpool1DOpAPI_static(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):

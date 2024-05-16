@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -212,6 +213,7 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
     GET_IR_NODE(output);
 
     // Generate fuse op
+    auto* scope = param_scope();
     auto* block = reshape_1->Op()->Block();
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("qkv_attention_xpu");
@@ -219,6 +221,57 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
     fused_op_desc.SetInput("q", {input->Name()});
     fused_op_desc.SetInput("k", {input->Name()});
     fused_op_desc.SetInput("v", {input->Name()});
+    std::unordered_map<std::string, std::vector<float>> var_quant_scales =
+        GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
+    // recored q/k/v max, qk_max, and qkv_max
+    std::vector<Node*> input_max_nodes;
+    if (var_quant_scales.find(input->Name()) != var_quant_scales.end() &&
+        var_quant_scales.find(qk_matmul_out->Name()) !=
+            var_quant_scales.end() &&
+        var_quant_scales.find(qkv_matmul_out->Name()) !=
+            var_quant_scales.end()) {
+      std::vector<float> input_max_vec;
+      input_max_vec.push_back(var_quant_scales.at(input->Name())[0]);
+      input_max_vec.push_back(var_quant_scales.at(qk_matmul_out->Name())[0]);
+      input_max_vec.push_back(var_quant_scales.at(qkv_matmul_out->Name())[0]);
+      std::vector<std::string> quant_max_names = {
+          "input_max", "qk_max", "qkv_max"};
+      for (size_t i = 0; i < input_max_vec.size(); i++) {
+        std::string input_max_name =
+            input->Name() + "_" + std::to_string(i) + "_max_in";
+        int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+        VarDesc input_max_desc(input_max_name);
+        input_max_desc.SetPersistable(true);
+        input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
+        input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+        Node* input_max_in = graph->CreateVarNode(&input_max_desc);
+        auto* block_input_max_in_desc = block->Var(input_max_name);
+        block_input_max_in_desc->SetPersistable(input_max_desc.Persistable());
+        block_input_max_in_desc->SetShape(input_max_desc.GetShape());
+        block_input_max_in_desc->SetDataType(input_max_desc.GetDataType());
+
+        phi::DenseTensor input_max_in_cpu_tensor;
+        auto* cpu_ctx = static_cast<phi::CPUContext*>(
+            platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        input_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+        input_max_in_cpu_tensor.Resize({max_ptr_size});
+        std::vector<float> input_max(max_ptr_size, input_max_vec[i]);
+        memcpy(cpu_ctx->Alloc<float>(&input_max_in_cpu_tensor),
+               input_max.data(),
+               max_ptr_size * sizeof(float));
+        Assign(input_max_in_cpu_tensor,
+               scope->Var(input_max_name)->GetMutable<phi::DenseTensor>());
+        if (i == 0) {
+          fused_op_desc.SetInput("q_max", {input_max_name});
+          fused_op_desc.SetInput("k_max", {input_max_name});
+          fused_op_desc.SetInput("v_max", {input_max_name});
+        } else {
+          fused_op_desc.SetInput(quant_max_names[i], {input_max_name});
+        }
+        input_max_nodes.push_back(input_max_in);
+      }
+    }
+
     // set attributes of fuse_op
     if (with_q_scale) {
       float scale_val = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
@@ -239,16 +292,15 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
     fused_op_desc.SetAttr("out_dtype", input->Var()->GetDataType());
 
     // set output of fuse_op
-    VarDesc fused_op_out_max_desc("qkv_max");
-    Node* fused_op_out_max = graph->CreateVarNode(&fused_op_out_max_desc);
-    fused_op_desc.SetOutput("qkv_max", {"qkv_max"});
     fused_op_desc.SetOutput("qkv", {output->Name()});
 
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
 
     IR_NODE_LINK_TO(input, fused_op);
     IR_NODE_LINK_TO(fused_op, output);
-    IR_NODE_LINK_TO(fused_op, fused_op_out_max);
+    for (size_t i = 0; i < input_max_nodes.size(); i++) {
+      IR_NODE_LINK_TO(input_max_nodes[i], fused_op);
+    }
 
     // delete useless node
     std::unordered_set<const Node*> del_node_set;

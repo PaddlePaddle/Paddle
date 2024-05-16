@@ -112,7 +112,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_duration=300,
-            passes=["conv_transpose_bias_mkldnn_fuse_pass"],
+            passes=["conv_transpose_bias_onednn_fuse_pass"],
         )
 
 

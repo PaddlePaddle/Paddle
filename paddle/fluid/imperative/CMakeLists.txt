@@ -79,7 +79,8 @@ cc_library(
        layout_autotune
        ops_extra_info
        phi
-       common)
+       common
+       global_utils)
 cc_library(
   basic_engine
   SRCS basic_engine.cc

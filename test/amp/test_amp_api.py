@@ -293,7 +293,7 @@ class TestFp16Guard(AmpTestBase):
 
             x_fp32 = np.random.random(size=[1, 1, 28, 28]).astype("float32")
             (loss_data,) = exe.run(
-                main_program, feed={"X": x_fp32}, fetch_list=[loss.name]
+                main_program, feed={"X": x_fp32}, fetch_list=[loss]
             )
 
             self.assertEqual(

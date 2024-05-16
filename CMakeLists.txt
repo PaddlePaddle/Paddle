@@ -68,6 +68,7 @@ option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
+option(WITH_CPP_TEST "Compile PaddlePaddle skip cpp test" ON)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -306,7 +307,6 @@ option(
   SANITIZER_TYPE
   "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined"
   OFF)
-option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)

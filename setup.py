@@ -34,7 +34,6 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-# check python
 python_version = platform.python_version()
 version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
@@ -697,7 +696,7 @@ def cinn():
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
                 'with_pip_cuda_libraries': env_dict.get(
-                    "with_pip_cuda_libraries"
+                    "WITH_PIP_CUDA_LIBRARIES"
                 ),
             }
         )
@@ -743,9 +742,11 @@ def is_transpiler():
         f.write(
             cnt
             % {
-                'mode': 'PSLIB'
-                if env_dict.get("WITH_PSLIB") == 'ON'
-                else 'TRANSPILER'
+                'mode': (
+                    'PSLIB'
+                    if env_dict.get("WITH_PSLIB") == 'ON'
+                    else 'TRANSPILER'
+                )
             }
         )
 
@@ -1096,19 +1097,6 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
-    if env_dict.get("WITH_LITE") == 'ON':
-        shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            'libpaddle_full_api_shared' + ext_suffix
-        ]
-        if env_dict.get("LITE_WITH_NNADAPTER") == 'ON':
-            shutil.copy(env_dict.get("LITE_NNADAPTER_LIB"), libs_path)
-            package_data['paddle.libs'] += ['libnnadapter' + ext_suffix]
-            if env_dict.get("NNADAPTER_WITH_HUAWEI_ASCEND_NPU") == 'ON':
-                shutil.copy(env_dict.get("LITE_NNADAPTER_NPU_LIB"), libs_path)
-                package_data['paddle.libs'] += [
-                    'libnnadapter_driver_huawei_ascend_npu' + ext_suffix
-                ]
     if env_dict.get("WITH_CINN") == 'ON':
         shutil.copy(
             env_dict.get("CINN_LIB_LOCATION")
@@ -1164,7 +1152,7 @@ def get_package_data_and_package_dir():
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
         package_data['paddle.libs'] += ['libjvm' + ext_suffix]
-    if env_dict.get("WITH_MKLDNN") == 'ON':
+    if env_dict.get("WITH_ONEDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
             # TODO(typhoonzero): use install_name_tool to patch mkl libs once
@@ -1174,13 +1162,13 @@ def get_package_data_and_package_dir():
             # The reason is that all thirdparty libraries in the same directory,
             # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
             command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
-                "MKLDNN_SHARED_LIB"
+                "ONEDNN_SHARED_LIB"
             )
             if os.system(command) != 0:
                 raise Exception(
                     "patch libdnnl.so failed, command: %s" % command
                 )
-        shutil.copy(env_dict.get("MKLDNN_SHARED_LIB"), libs_path)
+        shutil.copy(env_dict.get("ONEDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
             package_data['paddle.libs'] += ['libdnnl.so.3']
         else:
@@ -1316,6 +1304,16 @@ def get_package_data_and_package_dir():
         ext_modules = []
     elif sys.platform == 'darwin':
         ext_modules = []
+
+    # type hints
+    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+    package_data['paddle.framework'] = package_data.get(
+        'paddle.framework', []
+    ) + ['*.pyi']
+    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+        '*.pyi'
+    ]
+
     return package_data, package_dir, ext_modules
 
 
@@ -1434,9 +1432,9 @@ def get_headers():
             )
         )
 
-    if env_dict.get("WITH_MKLDNN") == 'ON':
+    if env_dict.get("WITH_ONEDNN") == 'ON':
         headers += list(
-            find_files('*', env_dict.get("MKLDNN_INSTALL_DIR") + '/include')
+            find_files('*', env_dict.get("ONEDNN_INSTALL_DIR") + '/include')
         )  # mkldnn
 
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
@@ -1528,7 +1526,9 @@ def get_setup_parameters():
         'paddle.distributed.auto_parallel.static.operators',
         'paddle.distributed.auto_parallel.static.tuner',
         'paddle.distributed.auto_parallel.static.cost',
+        'paddle.distributed.auto_parallel.static.reshard_funcs',
         'paddle.distributed.passes',
+        'paddle.distributed.passes.pipeline_scheduler_pass',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
         'paddle.distributed.transpiler',
@@ -1627,6 +1627,7 @@ def get_setup_parameters():
         'paddle.geometric.sampling',
         'paddle.pir',
         'paddle.decomposition',
+        'paddle._typing',
     ]
 
     paddle_bins = ''
@@ -1881,6 +1882,7 @@ def main():
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',
+            'Typing :: Typed',
         ],
     )
 

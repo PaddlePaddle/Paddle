@@ -702,7 +702,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                              &arguments);
     }
 #ifdef PADDLE_WITH_DNNL
-    // For input that is Extra, only MKLDNN will use Extra Inputs
+    // For input that is Extra, only OneDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
             op_with_kernel->Type());

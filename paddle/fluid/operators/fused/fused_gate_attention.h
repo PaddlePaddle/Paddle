@@ -156,8 +156,8 @@ struct GateAttentionConfig {
     if (merge_qkv) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_weight,
-          platform::errors::NotFound("The input qkv_weight can not be nullptr "
-                                     "when merge_qkv is true."));
+          phi::errors::NotFound("The input qkv_weight can not be nullptr "
+                                "when merge_qkv is true."));
 
       // When q_dim == kv_dim, QKV matmul can be computed merged.
       // qkv_weight: shape=[3, num_heads, head_dim, q_dim]
@@ -172,12 +172,12 @@ struct GateAttentionConfig {
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           key,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "The input key can not be nullptr when merge_qkv is false."));
       PADDLE_ENFORCE_NOT_NULL(
           query_weight,
-          platform::errors::NotFound("The input query_weight can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input query_weight can not be "
+                                "nullptr when merge_qkv is false."));
 
       // When q_dim != kv_dim, QKV matmul must be computed saparately.
       // key: shape=[batch_size, seq_len_m, m_size, kv_dim]
@@ -414,8 +414,8 @@ class FMHAGateRef {
       // qkv_transpose_out = transpose(qkv_out)
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,
-          platform::errors::NotFound("The input qkv_transpose_out can not be "
-                                     "nullptr when merge_qkv is true."));
+          phi::errors::NotFound("The input qkv_transpose_out can not be "
+                                "nullptr when merge_qkv is true."));
 
       phi::DenseTensor* qkv_out = config->GetQKVOut();
       ComputeQKVTransposeForward(*qkv_out, qkv_transpose_out);
@@ -429,16 +429,16 @@ class FMHAGateRef {
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           q_transpose_out,
-          platform::errors::NotFound("The input q_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input q_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
       PADDLE_ENFORCE_NOT_NULL(
           k_transpose_out,
-          platform::errors::NotFound("The input k_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input k_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
       PADDLE_ENFORCE_NOT_NULL(
           v_transpose_out,
-          platform::errors::NotFound("The input v_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input v_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
 
       phi::DenseTensor* query_out = config->GetQueryOut();
       phi::DenseTensor* key_out = config->GetKeyOut();
@@ -544,8 +544,8 @@ class FMHAGateRef {
     if (merge_qkv_) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,
-          platform::errors::NotFound("The input qkv_transpose_out can not be "
-                                     "nullptr when merge_qkv is true."));
+          phi::errors::NotFound("The input qkv_transpose_out can not be "
+                                "nullptr when merge_qkv is true."));
 
       int64_t q_size = config->GetQuerySize();
       q_ptr = qkv_transpose_out->data<T>();
@@ -562,16 +562,16 @@ class FMHAGateRef {
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           q_transpose_out,
-          platform::errors::NotFound("The input q_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input q_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
       PADDLE_ENFORCE_NOT_NULL(
           k_transpose_out,
-          platform::errors::NotFound("The input k_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input k_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
       PADDLE_ENFORCE_NOT_NULL(
           v_transpose_out,
-          platform::errors::NotFound("The input v_transpose_out can not be "
-                                     "nullptr when merge_qkv is false."));
+          phi::errors::NotFound("The input v_transpose_out can not be "
+                                "nullptr when merge_qkv is false."));
 
       q_ptr = q_transpose_out->data<T>();
       k_ptr = k_transpose_out->data<T>();
@@ -787,11 +787,11 @@ class FMHAGateRef {
                                       phi::DenseTensor* nonbatched_bias_grad) {
     PADDLE_ENFORCE_NOT_NULL(
         qk_out_grad,
-        platform::errors::NotFound("The qk_out_grad can not be nullptr."));
+        phi::errors::NotFound("The qk_out_grad can not be nullptr."));
 
     PADDLE_ENFORCE_EQ(qk_out_grad->dims(),
                       softmax_out->dims(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of qk_out_grad and softmax_out is "
                           "expected to be the same. But received qk_out_grad's "
                           "shape = %s, softmax_out's shape = %s.",
@@ -800,7 +800,7 @@ class FMHAGateRef {
 
     PADDLE_ENFORCE_EQ(src_mask_grad,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "src_mask_grad is expected to be nullptr."));
 
     phi::SoftmaxBackwardCUDAKernelDriver<T>(
@@ -874,8 +874,8 @@ class FlashAttnWithGating {
 
     PADDLE_ENFORCE_NOT_NULL(
         qkv_transpose_out,
-        platform::errors::NotFound("The input qkv_transpose_out can not be "
-                                   "nullptr when merge_qkv is true."));
+        phi::errors::NotFound("The input qkv_transpose_out can not be "
+                              "nullptr when merge_qkv is true."));
 
     // 1. Transpose qkv_out for flash_attn.
     phi::DenseTensor* qkv_out = config->GetQKVOut();
@@ -989,8 +989,8 @@ class FlashAttnWithGating {
 
     PADDLE_ENFORCE_NOT_NULL(
         qkv_transpose_out,
-        platform::errors::NotFound("The input qkv_transpose_out can not be"
-                                   "nullptr when merge_qkv is true."));
+        phi::errors::NotFound("The input qkv_transpose_out can not be"
+                              "nullptr when merge_qkv is true."));
 
     int64_t q_size = config->GetQuerySize();
     const T* q_ptr = qkv_transpose_out->data<T>();

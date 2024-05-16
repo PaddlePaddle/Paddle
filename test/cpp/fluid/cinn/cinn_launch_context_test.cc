@@ -32,24 +32,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-USE_OP_ITSELF(cinn_instruction_run);
-PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);
-#ifdef PADDLE_WITH_CUDA
-PD_DECLARE_KERNEL(cinn_instruction_run, GPU, ALL_LAYOUT);
-#endif
-
 namespace paddle {
 namespace operators::details {
 
 using framework::OpDesc;
-using framework::ParallelExecutor;
 using framework::ProgramDesc;
 using framework::ir::Graph;
 using framework::paddle2cinn::Name2VarInfoMap;
@@ -223,46 +215,6 @@ TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   tensor2->mutable_data<int>(common::make_ddim({6, 7, 8}), place);
   ASSERT_THROW(launch_context->CheckTensorEquivalent("var2", *tensor2),
                paddle::platform::EnforceNotMet);
-}
-
-TEST_F(CinnLaunchContextTest, TestBuildCompiledProgram) {
-  platform::CPUPlace place;
-  framework::Scope scope;
-  ParallelExecutor* pe = nullptr;
-  ASSERT_NO_THROW((pe = launch_context->InitializePE(place, &scope)));
-
-  // check details of program build by compiled instructions
-  const ProgramDesc& program = pe->Graph().OriginProgram();
-  ASSERT_EQ(program.Size(), 1);
-  const auto& block = program.Block(0);
-  // vars
-  std::set<std::string> var_names = block.LocalVarNames();
-  ASSERT_EQ(var_names.size(), 5);
-  for (auto&& var_name : var_names) {
-    auto* var = block.FindVar(var_name);
-    ASSERT_NE(var, nullptr);
-    auto* buffer = launch_context->GetCinnBufferOfVar(var_name);
-    ASSERT_EQ(framework::DDim(buffer->dims, buffer->dimensions),
-              common::make_ddim(var->GetShape()));
-  }
-  ASSERT_TRUE(block.FindVar("var1")->Persistable());
-  ASSERT_FALSE(block.FindVar("var5")->Persistable());
-  ASSERT_TRUE(block.FindVar("var5")->IsParameter());
-  ASSERT_FALSE(block.FindVar("var1")->IsParameter());
-  // ops
-  ASSERT_EQ(block.OpSize(), 3);
-  auto* op1 = block.Op(0);
-  ASSERT_EQ(op1->Type(), "cinn_instruction_run");
-  ASSERT_EQ(op1->Input(kX), std::vector<std::string>({"var1", "var2"}));
-  ASSERT_EQ(op1->Output(kOutputs), std::vector<std::string>({"var3"}));
-  ASSERT_EQ(op1->GetAttrIfExists<int64_t>(kCachedIndex), 110);
-  ASSERT_EQ(op1->GetAttrIfExists<int64_t>(kInstructionIndex), 0);
-  auto* op3 = block.Op(2);
-  ASSERT_EQ(op3->Type(), "cinn_instruction_run");
-  ASSERT_EQ(op3->Input(kX), std::vector<std::string>({"var3", "cinn_var4"}));
-  ASSERT_EQ(op3->Output(kOutputs), std::vector<std::string>({"var5"}));
-  ASSERT_EQ(op3->GetAttrIfExists<int64_t>(kCachedIndex), 110);
-  ASSERT_EQ(op3->GetAttrIfExists<int64_t>(kInstructionIndex), 2);
 }
 
 // DEPRECATED(CtfGo): following test of callback assignment

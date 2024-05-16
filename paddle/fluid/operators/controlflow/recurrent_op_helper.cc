@@ -74,7 +74,7 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       ops.size(),
       grad_ops.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "There are more grad ops than forward ops in the graph or program, "
           "the number of ops is %d and the number of grad_ops is %d.",
           ops.size(),
@@ -95,7 +95,7 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       ops.size(),
       grad_ops.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "There are more grad ops than forward ops in the graph or program, "
           "the number of ops is %d and the number of grad_ops is %d.",
           ops.size(),
@@ -183,7 +183,7 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   PADDLE_ENFORCE_EQ(
       fwd_input.size(),
       in_grads.size(),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Backward input gradient number does not match forward "
           "input number. The number of forward input number is %d and the "
           "number of backward input gradient number is %d.",
@@ -203,7 +203,7 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   PADDLE_ENFORCE_EQ(
       fwd_param.size(),
       param_grads.size(),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Backward parameter gradient number does not match "
           "forward parameter number. The number of forward parameter number is "
           "%d and the number of backward parameter gradient is %d.",
@@ -269,15 +269,15 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       if (IsMatchedRecurrentOpAndRecurrentGradOp(fwd_op, bwd_op)) {
         PADDLE_ENFORCE_EQ(matched_fwd_op,
                           nullptr,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "Found multiple recurrent forward op matches "
                               "recurrent grad op."));
         matched_fwd_op = &fwd_op;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
-                            platform::errors::PreconditionNotMet(
-                                "Cannot find matched forward op."));
+    PADDLE_ENFORCE_NOT_NULL(
+        matched_fwd_op,
+        phi::errors::PreconditionNotMet("Cannot find matched forward op."));
     SetRecurrentOpAndRecurrentGradOpSkipVarAttr(*matched_fwd_op, bwd_op);
     recurrent_ops.erase(*matched_fwd_op);
   }

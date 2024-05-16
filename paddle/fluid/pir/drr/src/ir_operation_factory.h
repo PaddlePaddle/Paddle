@@ -30,13 +30,13 @@ class OperationFactory {
     return operation_factory;
   }
 
-  using operation_create_fn =
+  using OperationCreateFunction =
       std::function<pir::Operation*(const std::vector<pir::Value>&,
                                     const pir::AttributeMap&,
                                     pir::PatternRewriter&)>;
 
   void RegisterOperationCreator(const std::string& op_name,
-                                const operation_create_fn& create_fn) {
+                                const OperationCreateFunction& create_fn) {
     op_creator_map[op_name] = create_fn;
   }
 
@@ -76,7 +76,7 @@ class OperationFactory {
 #ifdef PADDLE_WITH_DNNL
   void RegisterOnednnOpGeneratedOpCreator();
 #endif
-  std::unordered_map<std::string, operation_create_fn> op_creator_map;
+  std::unordered_map<std::string, OperationCreateFunction> op_creator_map;
 };
 
 pir::Operation* CreateOperation(const OpCall& op_call,

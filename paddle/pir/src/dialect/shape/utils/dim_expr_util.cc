@@ -551,6 +551,82 @@ struct FoldOperandTrait<Add> {
   }
 };
 
+template <>
+struct FoldOperandTrait<Max> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() { return INT64_MIN; }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::max(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == INT64_MIN;
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == INT64_MIN;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
+template <>
+struct FoldOperandTrait<Min> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() { return INT64_MAX; }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::min(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == INT64_MAX;
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == INT64_MAX;
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
 using ConstRational = std::pair<std::int64_t, std::int64_t>;
 
 ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
@@ -589,12 +665,12 @@ ConstRational MulConstRational(const ConstRational& lhs,
   const auto [lhs_num, lhs_dem] = lhs;
   const auto [rhs_num, rhs_dem] = rhs;
   // Crossing is correct.
-  const auto [simplifed_lhs_num, simplifed_rhs_dem] =
+  const auto [simplified_lhs_num, simplified_rhs_dem] =
       SimplifiedConstRational(lhs_num, rhs_dem);
-  const auto [simplifed_rhs_num, simplifed_lhs_dem] =
+  const auto [simplified_rhs_num, simplified_lhs_dem] =
       SimplifiedConstRational(rhs_num, lhs_dem);
-  return ConstRational{simplifed_lhs_num * simplifed_rhs_num,
-                       simplifed_lhs_dem * simplifed_rhs_dem};
+  return ConstRational{simplified_lhs_num * simplified_rhs_num,
+                       simplified_lhs_dem * simplified_rhs_dem};
 }
 
 template <>
@@ -903,6 +979,8 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldUnitConstant<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Add>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Mul>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Add>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
@@ -1061,6 +1139,55 @@ DimExpr SubstituteDimExpr(
 }  // namespace symbol
 
 namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(common::Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
+  }
+
+  auto CompareForEqualPriority = common::Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::EQUAL;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::HIGHER;
+        else
+          return PriorityComparisonStatus::LOWER;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::EQUAL;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
+}
+
+}  // namespace symbol
+
+namespace symbol {
 namespace {
 
 void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
@@ -1081,7 +1208,7 @@ void CollectListDimExprSymbolsImpl(const List<DimExpr>& dim_exprs,
 std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   std::unordered_set<std::string> symbols;
   // clang-format off
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](std::int64_t dim_expr) { return; },
       [&](const std::string& dim_expr) { symbols.insert(dim_expr); },
       [&](const Negative<DimExpr>& dim_expr) {

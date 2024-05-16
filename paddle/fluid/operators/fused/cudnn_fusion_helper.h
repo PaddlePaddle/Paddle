@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 
 #if CUDNN_VERSION >= 8000
 
@@ -52,7 +52,7 @@ class CudnnFusionOp {
     PADDLE_ENFORCE_EQ(
         plan_created_,
         true,
-        platform::errors::Fatal(
+        phi::errors::Fatal(
             "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));
     PADDLE_ENFORCE_GPU_SUCCESS(

@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/run_program_op.h"
 
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 /* see [Why use single type kernel] */
 PD_REGISTER_STRUCT_KERNEL(

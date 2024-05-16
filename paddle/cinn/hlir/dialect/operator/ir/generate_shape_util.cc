@@ -369,21 +369,17 @@ MakeGetterDimExpr4SymbolName(
     symbol_name2symbol_bindins[GetSymbolNameBySymbolBinding(symbol_binding)]
         .emplace_back(symbol_binding);
   }
-  const auto& GetDimExpr =
-      [&](const GenerateShapeOp::SymbolBinding& symbol_binding) {
-        return std::visit(
-            [&](const auto& impl) {
-              return GetDimExprBySymbolBindingImpl(impl, DimExpr4InputDim);
-            },
-            symbol_binding);
-      };
-  return [map = std::move(symbol_name2symbol_bindins), GetDimExpr](
+  return [map = std::move(symbol_name2symbol_bindins), DimExpr4InputDim](
              const std::string& symbol_name) -> std::optional<DimExpr> {
     const auto& iter = map.find(symbol_name);
     if (iter == map.end()) return std::nullopt;
     std::optional<DimExpr> ret = std::nullopt;
     for (const auto& symbol_binding : iter->second) {
-      const auto& current = GetDimExpr(symbol_binding);
+      const auto& current = std::visit(
+          [&](const auto& impl) {
+            return GetDimExprBySymbolBindingImpl(impl, DimExpr4InputDim);
+          },
+          symbol_binding);
       if (!current.has_value()) return std::nullopt;
       if (ret.has_value()) {
         // Same names, same DimExprs.
@@ -617,6 +613,13 @@ bool MakeGenerateShapeOpAttribute(
                "they are handled by other passes";
     return false;
   }
+  // When minimal_inputs is empty, it means that all of out dim_expr must be
+  // int64.
+  if (minimal_inputs->empty()) {
+    for (const auto& dim_expr : out_dim_exprs) {
+      if (!dim_expr.isa<int64_t>()) return false;
+    }
+  }
   // generate output_dim_expr_attrs
   ConvertDimExprToAttributes(
       ir_context, out_dim_exprs, /*out*/ output_dim_expr_attrs);
@@ -627,6 +630,26 @@ bool MakeGenerateShapeOpAttribute(
                          *minimal_inputs,
                          symbol_names_in_out_dim_exprs,
                          /*out*/ symbol_bindings);
+
+  // check all dim exprs have symbol binding
+  for (const auto& symbol_name : symbol_names_in_out_dim_exprs) {
+    bool has_symbol_binding = false;
+    for (const auto& symbol_binding : *symbol_bindings) {
+      const std::string& symbol_binding_name = std::visit(
+          [&](const auto& symbol_binding) -> const std::string& {
+            return symbol_binding.symbol_name;
+          },
+          symbol_binding);
+      if (symbol_name == symbol_binding_name) {
+        has_symbol_binding = true;
+        break;
+      }
+    }
+    if (!has_symbol_binding) {
+      LOG(WARNING) << "no symbol binding found for dim expr: " << symbol_name;
+      return false;
+    }
+  }
   return true;
 }
 

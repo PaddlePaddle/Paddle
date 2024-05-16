@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
+#include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
 namespace paddle {
 namespace framework {

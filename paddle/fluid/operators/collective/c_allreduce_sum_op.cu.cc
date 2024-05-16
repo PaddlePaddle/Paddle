@@ -21,7 +21,6 @@ DEFINE_C_ALLREDUCE_CUDA_KERNEL(CAllReduceSum, kRedSum)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
                           GPU,
@@ -29,10 +28,10 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
                           ops::CAllReduceSumCUDAKernel,
                           float,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           double,
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

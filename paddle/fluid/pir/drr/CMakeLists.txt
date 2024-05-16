@@ -87,7 +87,7 @@ if(WITH_CINN)
   set(DRR_SRCS ${DRR_SRCS} ${CINN_SOURCE_FILE})
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
   set(pir_op_onednn_yaml
       ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml

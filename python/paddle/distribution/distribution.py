@@ -16,7 +16,6 @@
 # __all__ = ['Categorical',
 #            'MultivariateNormalDiag',
 #            'Normal',
-#            'sampling_id',
 #            'Uniform']
 
 import warnings
