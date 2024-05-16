@@ -675,11 +675,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer_int8,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerINT8OpKernel,
                           float,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

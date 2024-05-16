@@ -46,7 +46,7 @@ paddle.seed(seed)
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
@@ -1612,7 +1612,7 @@ class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     def config(self):
@@ -1629,7 +1629,7 @@ class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
     def config(self):
@@ -1649,7 +1649,7 @@ class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
     def config(self):
@@ -1671,7 +1671,7 @@ class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
     def config(self):
@@ -1692,7 +1692,7 @@ class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableNormTransformer1(
     TestFusedMultiTransformerOp
@@ -1711,7 +1711,7 @@ class TestFusedMultiTransformerOpVariableNormTransformer1(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableNormTransformer2(
     TestFusedMultiTransformerOp
@@ -1733,7 +1733,7 @@ class TestFusedMultiTransformerOpVariableNormTransformer2(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
     def config(self):
@@ -1752,7 +1752,7 @@ class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
     def config(self):
@@ -1774,7 +1774,7 @@ class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
     def config(self):
@@ -1798,7 +1798,7 @@ class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQAGenCache1(
     TestFusedMultiTransformerOp
@@ -1818,7 +1818,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache1(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQAGenCache2(
     TestFusedMultiTransformerOp
@@ -1841,7 +1841,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache2(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQAGenCache3(
     TestFusedMultiTransformerOp
@@ -1866,7 +1866,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache3(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQAGenCache4(
     TestFusedMultiTransformerOp
@@ -1890,7 +1890,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache4(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQADecoder1(
     TestFusedMultiTransformerOp
@@ -1912,7 +1912,7 @@ class TestFusedMultiTransformerOpVariableGQADecoder1(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQADecoder2(
     TestFusedMultiTransformerOp
@@ -1937,7 +1937,7 @@ class TestFusedMultiTransformerOpVariableGQADecoder2(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedMultiTransformerOpVariableGQADecoder3(
     TestFusedMultiTransformerOp

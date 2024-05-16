@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 struct CublasLtAlgoParam {
-  make - j$(nproc) int algoId;
+  int algoId;
   int swizzle;
   int customOption;
   int tile;

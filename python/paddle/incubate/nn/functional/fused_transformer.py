@@ -1118,9 +1118,26 @@ def fused_multi_transformer(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
+            >>> import sys
+            >>> import os
+            >>> import re
             >>> import paddle
             >>> paddle.device.set_device('gpu')
             >>> import paddle.incubate.nn.functional as F
+
+            >>> def get_cuda_version():
+            >>>     result = os.popen("nvcc --version").read()
+            >>>     regex = r'release (\S+),'
+            >>>     match = re.search(regex, result)
+            >>>     if match:
+            >>>         num = str(match.group(1))
+            >>>         integer, decimal = num.split('.')
+            >>>         return int(integer) * 1000 + int(float(decimal) * 10)
+            >>>     else:
+            >>>         return -1
+
+            >>> if not paddle.is_compiled_with_cuda() or get_cuda_version() < 11030 or paddle.device.cuda.get_device_capability()[0] < 8:
+            >>>     sys.exit(0)
 
             >>> # input: [batch_size, seq_len, embed_dim]
             >>> x = paddle.rand(shape=(2, 4, 128), dtype="float16")
