@@ -129,11 +129,6 @@ PyLayerInstruction::PyLayerInstruction(
                                   execution_config);
 
   std::set<std::string> fwd_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&fwd_block)) {
-    fwd_outputs_.push_back(fwd_inter_->GetNameByValue(value));
-    fwd_skip_gc_names_.push_back(fwd_inter_->GetNameByValue(value));
-    fwd_skip_gc_names_set.insert(fwd_inter_->GetNameByValue(value));
-  }
 
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
@@ -166,7 +161,6 @@ void PyLayerInstruction::Run() {
   paddle::platform::DontClearMKLDNNCache(fwd_inter_->GetPlace());
 #endif
   fwd_inter_->Run({}, false);
-  CopyBranchOutput(fwd_outputs_, output_vars_, fwd_inter_->InnerScope());
 }
 
 }  // namespace framework

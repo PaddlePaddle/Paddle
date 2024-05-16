@@ -40,8 +40,7 @@ def try_ast_func(func):
     return func
 
 
-@Singleton
-class StaticFunctionManager:
+class StaticFunctionManager(metaclass=Singleton):
     def __init__(self):
         self.code_map = {}
 
