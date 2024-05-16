@@ -73,7 +73,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         tmp_scale.Resize(common::make_dim(1));
         T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
-        FindAbsMaxFunctor<DeviceContext, T>()(
+        phi::funcs::FindAbsMaxFunctor<DeviceContext, T>()(
             dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
 
         auto* out_state = context.Output<phi::DenseTensor>("OutState");
@@ -84,25 +84,26 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         out_scale->mutable_data<T>(context.GetPlace());
         float moving_rate = context.Attr<float>("moving_rate");
 
-        FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
-                                                           *in_accum,
-                                                           *in_state,
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+        phi::funcs::FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx,
+            *in_accum,
+            *in_state,
+            cur_scale_data,
+            moving_rate,
+            out_state,
+            out_accum,
+            out_scale);
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
-          ClipAndFakeQuantFunctor<DeviceContext, T>()(
+          phi::funcs::ClipAndFakeQuantFunctor<DeviceContext, T>()(
               dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
         }
       } else {
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
-          ClipAndFakeQuantFunctor<DeviceContext, T>()(
+          phi::funcs::ClipAndFakeQuantFunctor<DeviceContext, T>()(
               dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
         }
       }

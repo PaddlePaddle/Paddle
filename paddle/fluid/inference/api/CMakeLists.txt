@@ -4,7 +4,7 @@ endif()
 
 add_subdirectory(details)
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
   set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/onednn_quantizer.cc)
   cc_library(

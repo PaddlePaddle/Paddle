@@ -52,7 +52,7 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float& lower) {
           PADDLE_ENFORCE_EQ(lower >= 0.0f && lower < 1.0f,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'RRelu_lower' must be between 0.0 and 1.0."));
         });
     float defalut_upper = 1. / 3.;
@@ -61,7 +61,7 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float& upper) {
           PADDLE_ENFORCE_EQ(upper > 0.0f && upper <= 1.0f,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'RRelu_upper' must be between 0.0 and 1.0."));
         });
     AddComment(R"DOC(

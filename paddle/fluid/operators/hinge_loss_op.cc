@@ -35,7 +35,7 @@ class HingeLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         pred_dims,
         label_dims,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(input) and Input(label) should have the same "
             "shape, but received input shape [%s] != label shape [%s]",
             pred_dims,
@@ -44,13 +44,13 @@ class HingeLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         pred_dims.size(),
         2,
-        platform::errors::InvalidArgument("Input(input) rank should be 2, "
-                                          "but received input rank(%d) != 2",
-                                          pred_dims.size()));
+        phi::errors::InvalidArgument("Input(input) rank should be 2, "
+                                     "but received input rank(%d) != 2",
+                                     pred_dims.size()));
 
     PADDLE_ENFORCE_EQ(pred_dims[1],
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second dimension of Input(input) should be 1, "
                           "as each row of input contains a real value, "
                           "but received second dimension of input (%d) != 1",
@@ -112,7 +112,7 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(loss_grad_dims,
                       pred_dims,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of loss gradient should be the same as "
                           "the shape of Input(input), but received the loss "
                           "gradient shape [%s] != input shape [%s]",

@@ -45,7 +45,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(common::make_ddim(new_shape));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be "
           "phi::DenseTensor, "
           "SelectedRows. But got "

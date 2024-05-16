@@ -50,7 +50,7 @@ class TestMatmulActFusePatternCase1(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.relu(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -101,7 +101,7 @@ class TestMatmulAddFusePatternCase2(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.swish(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -152,7 +152,7 @@ class TestMatmulAddFusePatternCase3(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.abs(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -203,7 +203,7 @@ class TestMatmulClipFusePatternCase4(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.clip(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -254,7 +254,7 @@ class TestMatmulAddFusePatternCase5(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.gelu(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -305,7 +305,7 @@ class TestMatmulAddFusePatternCase6(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.hardsigmoid(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -356,7 +356,7 @@ class TestMatmulAddFusePatternCase7(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.hardswish(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -407,7 +407,7 @@ class TestMatmulAddFusePatternCase8(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.leaky_relu(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -458,7 +458,7 @@ class TestMatmulAddFusePatternCase9(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.mish(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -509,7 +509,7 @@ class TestMatmulAddFusePatternCase10(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.relu6(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -560,7 +560,7 @@ class TestMatmulAddFusePatternCase11(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.sigmoid(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -611,7 +611,7 @@ class TestMatmulAddFusePatternCase12(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.sqrt(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -662,7 +662,7 @@ class TestMatmulAddFusePatternCase13(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.tanh(matmul_out)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -719,9 +719,9 @@ class TestFusedMatmulActFusePattern(PassTest):
                 out = paddle.add(matmul_out, bias)
                 act_out = paddle.nn.functional.relu(out)
                 act_out = paddle.assign(act_out)
-                self.pass_list = [
-                    'matmul_elementwise_add_fuse_pass',
-                    'matmul_activation_fuse_pass',
+                self.pass_attr_list = [
+                    {'matmul_elementwise_add_fuse_pass': {}},
+                    {'matmul_activation_fuse_pass': {}},
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -781,9 +781,9 @@ class TestFusedMatmulClipFusePattern(PassTest):
                 out = paddle.add(matmul_out, bias)
                 act_out = paddle.clip(out)
                 act_out = paddle.assign(act_out)
-                self.pass_list = [
-                    'matmul_elementwise_add_fuse_pass',
-                    'matmul_activation_fuse_pass',
+                self.pass_attr_list = [
+                    {'matmul_elementwise_add_fuse_pass': {}},
+                    {'matmul_activation_fuse_pass': {}},
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -843,9 +843,9 @@ class TestFusedMatmulsigmoidFusePattern(PassTest):
                 out = paddle.add(matmul_out, bias)
                 act_out = paddle.nn.functional.hardsigmoid(out)
                 act_out = paddle.assign(act_out)
-                self.pass_list = [
-                    'matmul_elementwise_add_fuse_pass',
-                    'matmul_activation_fuse_pass',
+                self.pass_attr_list = [
+                    {'matmul_elementwise_add_fuse_pass': {}},
+                    {'matmul_activation_fuse_pass': {}},
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -899,7 +899,7 @@ class TestMatmulGeluTanhFusePatternCase14(PassTest):
                 matmul_out = paddle.matmul(x, y)
                 out = paddle.nn.functional.gelu(matmul_out, approximate=True)
                 out = paddle.assign(out)
-                self.pass_list = ['matmul_activation_fuse_pass']
+                self.pass_attr_list = [{'matmul_activation_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),

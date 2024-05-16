@@ -23,8 +23,8 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -311,7 +311,7 @@ static void NMS(const phi::GPUContext &ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  memory::Copy(platform::CPUPlace(),
+  memory::Copy(phi::CPUPlace(),
                mask_host.data(),
                place,
                mask_dev,
@@ -336,7 +336,7 @@ static void NMS(const phi::GPUContext &ctx,
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
   memory::Copy(place,
                keep,
-               platform::CPUPlace(),
+               phi::CPUPlace(),
                keep_vec.data(),
                sizeof(int) * num_to_keep,
                ctx.stream());

@@ -31,7 +31,6 @@ class PirCompiler final {
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
   Target target_;
-  std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
 }  // namespace cinn::hlir::framework

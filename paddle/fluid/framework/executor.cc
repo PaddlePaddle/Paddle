@@ -609,7 +609,7 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   }
 #else
   LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+      << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
 }  // namespace framework

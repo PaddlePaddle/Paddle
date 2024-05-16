@@ -69,7 +69,7 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     auto in_dims = input->dims();
     int frame_size = static_cast<int>(in_dims[1] / 4);
-    framework::DDim dims({in_dims[0], frame_size});
+    phi::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
       phi::DenseTensor b = *bias;
@@ -252,7 +252,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         frame_size,
         out_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of Input(" +
                 framework::GradVarName("Hidden") +
                 ") should be %d, but received %d in LSTM@Grad operator.",
@@ -292,7 +292,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto ToBatch = [&batch_gate, &to_batch](const DeviceContext& ctx,
                                             const phi::DenseTensor& src,
-                                            const framework::DDim& dims,
+                                            const phi::DDim& dims,
                                             phi::DenseTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());

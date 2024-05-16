@@ -23,7 +23,6 @@ import sys
 # For ops in this whitelist, the check of instance size is 0 input will be skipped.
 # Ops in this whitelist need to be fixed later.
 NEED_TO_FIX_OP_LIST = [
-    'sequence_concat',
     'sequence_conv',
     'sequence_enumerate',
     'sequence_erase',

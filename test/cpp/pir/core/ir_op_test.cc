@@ -84,11 +84,11 @@ TEST(op_test, module_op_death) {
   std::vector<pir::Type> output_types = {pir::Float32Type::get(ctx)};
 
   EXPECT_THROW(pir::Operation::Create(inputs, {}, {}, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(pir::Operation::Create({}, attrs, {}, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(pir::Operation::Create({}, {}, output_types, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   pir::Program program(ctx);
 
@@ -114,7 +114,8 @@ TEST(op_test, trait_and_interface) {
   EXPECT_EQ(op2->HasInterface<test::InferShapeInterface>(), true);
 
   pir::OperationArgument argument(&ctx, "test.region");
-  EXPECT_THROW(builder.Build(std::move(argument)), pir::IrNotMetException);
+  EXPECT_THROW(builder.Build(std::move(argument)),
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, op_traits_test) {
@@ -163,7 +164,7 @@ TEST(op_test, same_operands_shape_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_shape_trait_test2) {
@@ -198,7 +199,7 @@ TEST(op_test, same_operands_shape_trait_test2) {
 
   EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test1) {
@@ -211,7 +212,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test2) {
@@ -236,7 +237,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test2) {
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test3) {
@@ -270,7 +271,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test3) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp3>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_element_type_trait_test1) {
@@ -283,7 +284,7 @@ TEST(op_test, same_operands_element_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_element_type_trait_test2) {
@@ -315,7 +316,7 @@ TEST(op_test, same_operands_element_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test1) {
@@ -328,7 +329,7 @@ TEST(op_test, same_operands_and_result_element_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test2) {
@@ -352,7 +353,7 @@ TEST(op_test, same_operands_and_result_element_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test3) {
@@ -391,13 +392,13 @@ TEST(op_test, same_operands_and_result_element_type_trait_test3) {
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp3>(
                    op1->result(0),
                    op1->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype2),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test1) {
@@ -410,7 +411,7 @@ TEST(op_test, same_operands_and_result_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test2) {
@@ -434,7 +435,7 @@ TEST(op_test, same_operands_and_result_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test3) {
@@ -477,28 +478,28 @@ TEST(op_test, same_operands_and_result_type_trait_test3) {
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype2),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype3),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op2->result(0),
                    op1->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(printer_test, custom_hooks) {

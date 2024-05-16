@@ -35,23 +35,23 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Scores"),
         true,
-        platform::errors::NotFound("Input(Scores) shouldn't be null."));
+        phi::errors::NotFound("Input(Scores) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("BboxDeltas"),
         true,
-        platform::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
+        phi::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("ImInfo"),
         true,
-        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
+        phi::errors::NotFound("Input(ImInfo) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Anchors"),
         true,
-        platform::errors::NotFound("Input(Anchors) shouldn't be null."));
+        phi::errors::NotFound("Input(Anchors) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Variances"),
         true,
-        platform::errors::NotFound("Input(Variances) shouldn't be null."));
+        phi::errors::NotFound("Input(Variances) shouldn't be null."));
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});

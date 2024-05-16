@@ -32,6 +32,7 @@ from ....utils import (
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
+    printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
@@ -39,6 +40,7 @@ from ..guard import (
     StringifyExpression,
     check_guard,
     object_equal_stringify_guard,
+    stringify_pyobject,
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
@@ -259,11 +261,15 @@ class TensorDtypeVariable(DataVariable):
             tensor_value_tracer = (
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
+            dtype_str, dtype_free_vars = stringify_pyobject(self.value)
             return [
                 StringifyExpression(
-                    f"str(MetaInfo.from_tensor({{}}).dtype) == '{str(self.value)}'",
+                    f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
                     [tensor_value_tracer],
-                    {"MetaInfo": MetaInfo},
+                    union_free_vars(
+                        {"MetaInfo": MetaInfo},
+                        dtype_free_vars,
+                    ),
                 )
             ]
         else:
@@ -604,7 +610,12 @@ class ObjectVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        return {"value": self.value}
+        # NOTE(SigureMo): There are some objects that cannot be printed, such as
+        # uninitialized dataclass, we should fallback to the class name.
+        if printable(self.value):
+            return {"value": self.value}
+        else:
+            return {"value": f"instance {self.value.__class__.__name__}"}
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value

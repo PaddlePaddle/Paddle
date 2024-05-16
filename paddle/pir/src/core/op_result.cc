@@ -19,7 +19,10 @@
 #include "paddle/common/enforce.h"
 
 #define CHECK_OPRESULT_NULL_IMPL(func_name) \
-  IR_ENFORCE(impl_, "impl_ pointer is null when call OpResult::" #func_name)
+  PADDLE_ENFORCE_NOT_NULL(                  \
+      impl_,                                \
+      phi::errors::InvalidArgument(         \
+          "impl_ pointer is null when call OpResult::" #func_name))
 #define IMPL_ static_cast<detail::OpResultImpl *>(impl_)
 
 namespace pir {

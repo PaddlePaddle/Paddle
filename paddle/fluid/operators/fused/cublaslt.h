@@ -54,7 +54,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -69,7 +69,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatmulDescCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -81,7 +81,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatmulDescSetAttribute execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -91,7 +91,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -100,7 +100,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -109,7 +109,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -212,7 +212,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "cublasLtMatmul execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));

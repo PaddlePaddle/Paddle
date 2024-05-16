@@ -89,7 +89,7 @@ void IndexKernel(const KPDevice &dev_ctx, Tensor *out, Functor func) {
           <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
       break;
     default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }

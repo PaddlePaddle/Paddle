@@ -140,7 +140,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
 
 void AlterLayoutPass(Graph* graph) {
   // alter layout only in X86 for it's specific layout requirements
-  if (graph->target_.arch == Target::Arch::X86) {
+  if (std::holds_alternative<common::X86Arch>(graph->target_.arch)) {
     auto store_nodes = std::get<0>(graph->topological_order());
     auto& shape_dict = graph->GetMutableAttrs<
         absl::flat_hash_map<std::string, framework::shape_t>>("infershape");

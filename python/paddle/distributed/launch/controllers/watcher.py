@@ -16,6 +16,8 @@ import os
 import time
 from threading import Thread
 
+import paddle
+
 from ..utils.nvsmi import get_gpu_info, get_gpu_process, get_gpu_util
 
 
@@ -28,6 +30,9 @@ class Watcher:
         self.gpu_util = []
 
         if not self.ctx.args.enable_gpu_log:
+            return
+
+        if paddle.is_compiled_with_rocm():
             return
 
         # gpu log file

@@ -50,8 +50,8 @@ class DependOp : public framework::OperatorBase {
     auto out_name = Output("Out");
     PADDLE_ENFORCE_EQ(x_name,
                       out_name,
-                      platform::errors::PreconditionNotMet(
-                          "Input(X) and Output(Out) varibale should be the "
+                      phi::errors::PreconditionNotMet(
+                          "Input(X) and Output(Out) variable should be the "
                           "same, but got Input is %s and Output is %s.",
                           x_name,
                           out_name));

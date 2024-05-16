@@ -21,6 +21,7 @@
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/core/type.h"
 
 TEST(layout_transformation_interface_test, operator) {
@@ -54,4 +55,25 @@ TEST(layout_transformation_interface_test, operator) {
             fused_conv->operands().size());
   EXPECT_EQ(layout_transformation_iface.RelevantOutputs(fused_conv).size(),
             fused_conv->results().size());
+}
+
+TEST(immutable_layout_trait_test, operator) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  pir::Builder builder(ctx, program.block());
+
+  auto build_input_value = [&](std::vector<int64_t> shape = {2, 2}) {
+    auto uniform = builder.Build<paddle::dialect::UniformOp>(
+        shape, phi::DataType::FLOAT32, 0.0, 1.0, 2, phi::CPUPlace());
+    return uniform;
+  };
+
+  auto out = builder.Build<pir::ShadowOutputOp>(
+      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).out(), "test");
+  EXPECT_TRUE(out->HasTrait<pir::ImmutableLayoutTrait>());
+
+  auto immutable_layout_trait = out->dyn_cast<pir::ImmutableLayoutTrait>();
+  EXPECT_TRUE(immutable_layout_trait);
 }

@@ -23,7 +23,7 @@ from paddle.base.core import (
     is_compiled_with_rocm,
 )
 
-if is_compiled_with_cuda() and not is_compiled_with_rocm():
+if is_compiled_with_cuda() or is_compiled_with_rocm():
     from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():

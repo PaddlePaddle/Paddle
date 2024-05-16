@@ -82,7 +82,10 @@ void Block::Assign(Iterator position, Operation *op) {
 }
 
 Operation *Block::Take(Operation *op) {
-  IR_ENFORCE(op && op->GetParent() == this, "iterator not own this block.");
+  PADDLE_ENFORCE_EQ(
+      op && op->GetParent() == this,
+      true,
+      phi::errors::InvalidArgument("iterator not own this block."));
   ops_.erase(Iterator(*op));
   return op;
 }

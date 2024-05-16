@@ -52,14 +52,14 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         expert_count_dtype,
         capacity_dtype,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dtype of the expert_count and capacity should be same"));
 
     PADDLE_ENFORCE_EQ(
         expert_count_dtype,
         framework::proto::VarType::INT64,
-        platform::errors::InvalidArgument("The dtype of the expert_count and "
-                                          "capacity should be same as int64"));
+        phi::errors::InvalidArgument("The dtype of the expert_count and "
+                                     "capacity should be same as int64"));
     return phi::KernelKey(expert_count_dtype, ctx.GetPlace());
   }
 };

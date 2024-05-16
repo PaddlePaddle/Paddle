@@ -252,7 +252,7 @@ std::vector<std::string> IrParser::ParseValueList() {
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
-      value_index.push_back("null");
+      value_index.emplace_back("null");
     } else {
       std::string str = index_token.val_;
       value_index.push_back(str);
@@ -310,9 +310,11 @@ AttributeMap IrParser::ParseAttributeMap() {
     } else if (token_val == ",") {
       key_token = ConsumeToken();
     } else {
-      IR_ENFORCE((token_val == "}") || (token_val == ","),
-                 "The token value of expectation is } or , , not " + token_val +
-                     "." + GetErrorLocationInfo());
+      PADDLE_ENFORCE_EQ((token_val == "}") || (token_val == ","),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The token value of expectation is } or , , not " +
+                            token_val + "." + GetErrorLocationInfo()));
     }
   }
   return attribute_map;

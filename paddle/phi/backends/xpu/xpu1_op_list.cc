@@ -161,7 +161,6 @@ XPUOpMap& get_kl1_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
-      {"iou_similarity", XPUKernelSet({phi::DataType::FLOAT32})},
       {"lamb", XPUKernelSet({phi::DataType::FLOAT32})},
       {"layer_norm_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"layer_norm", XPUKernelSet({phi::DataType::FLOAT32})},

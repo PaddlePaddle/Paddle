@@ -39,10 +39,10 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NE(quantization_scale,
                       0.0f,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Quantization scale must be different than 0.0f"));
     PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
-                   platform::errors::InvalidArgument(
+                   phi::errors::InvalidArgument(
                        "Quantization shift must be lower or equal to ",
                        "255 and greater or equal to 0, but got %f",
                        quantization_shift));

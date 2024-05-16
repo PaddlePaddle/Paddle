@@ -408,7 +408,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             warnings.simplefilter("always")
             with paddle.pir_utils.IrGuard():
                 x = paddle.static.data(name='x', shape=[3, 2, 1])
-                x.place()
+                _ = x.place
                 self.assertTrue(len(w) == 1)
                 self.assertTrue("place" in str(w[-1].message))
 

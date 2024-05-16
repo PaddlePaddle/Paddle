@@ -31,7 +31,7 @@ class BoxClipKernel : public framework::OpKernel<T> {
     if (input_box->lod().size()) {
       PADDLE_ENFORCE_EQ(input_box->lod().size(),
                         1UL,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Input(Input) of BoxClip only supports 1 level "
                             "of LoD. But received the "
                             "level = %d",

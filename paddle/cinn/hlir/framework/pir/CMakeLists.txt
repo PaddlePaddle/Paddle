@@ -11,4 +11,5 @@ gather_srcs(
   trivial_op_impl.cc
   trivial_op_util.cc
   compilation_task.cc
-  compilation_cache.cc)
+  compilation_cache.cc
+  fusion_info.cc)

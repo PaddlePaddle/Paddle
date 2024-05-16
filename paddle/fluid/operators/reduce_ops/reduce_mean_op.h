@@ -62,7 +62,7 @@ struct FP16MeanGradFunctor {
                   int size) {
     dx->device(place) = (dy->template cast<float>().broadcast(dim) /
                          dx->template cast<float>().constant(size))
-                            .template cast<platform::float16>();
+                            .template cast<phi::dtype::float16>();
   }
 };
 

@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/hostdevice.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -24,7 +24,7 @@ namespace operators {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 struct CheckLabelValue {
@@ -32,7 +32,7 @@ struct CheckLabelValue {
     PADDLE_ENFORCE_EQ(
         val == static_cast<T>(0) || val == static_cast<T>(1),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(label) value of modified_huber_loss_op expected to be 0 "
             "or 1, but got %ld. Please check label value.",
             val));

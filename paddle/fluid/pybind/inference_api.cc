@@ -107,7 +107,6 @@ void BindPaddlePlace(py::module *m);
 void BindPaddlePredictor(py::module *m);
 void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
-void BindLiteNNAdapterConfig(py::module *m);
 void BindXpuConfig(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
@@ -506,7 +505,6 @@ void BindInferenceApi(py::module *m) {
   BindPaddlePredictor(m);
   BindNativeConfig(m);
   BindNativePredictor(m);
-  BindLiteNNAdapterConfig(m);
   BindXpuConfig(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
@@ -846,7 +844,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
       .def("onnxruntime_enabled", &AnalysisConfig::use_onnxruntime)
-      .def("use_opencl", &AnalysisConfig::use_opencl)
       .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
@@ -971,14 +968,6 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int64_t>>(),
            py::arg("use_calib_mode") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
-      .def("enable_lite_engine",
-           &AnalysisConfig::EnableLiteEngine,
-           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("zero_copy") = false,
-           py::arg("passes_filter") = std::vector<std::string>(),
-           py::arg("ops_filter") = std::vector<std::string>())
-      .def("enable_opencl", &AnalysisConfig::EnableOpenCL)
-      .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,
@@ -1044,7 +1033,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_optimization_level",
            &AnalysisConfig::SetOptimizationLevel,
            py::arg("opt_level") = 2)
-      .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);
 
@@ -1062,24 +1050,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("rank", &DistConfig::rank)
       .def("comm_init_config", &DistConfig::comm_init_config)
       .def("use_dist_model", &DistConfig::use_dist_model);
-}
-
-void BindLiteNNAdapterConfig(py::module *m) {
-  py::class_<LiteNNAdapterConfig> lite_nnadapter_config(*m,
-                                                        "LiteNNAdapterConfig");
-
-  lite_nnadapter_config
-      .def("set_device_names", &LiteNNAdapterConfig::SetDeviceNames)
-      .def("set_context_properties", &LiteNNAdapterConfig::SetContextProperties)
-      .def("set_model_cache_dir", &LiteNNAdapterConfig::SetModelCacheDir)
-      .def("set_model_cache_buffers",
-           &LiteNNAdapterConfig::SetModelCacheBuffers)
-      .def("set_subgraph_partition_config_path",
-           &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath)
-      .def("set_subgraph_partition_config_buffer",
-           &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer)
-      .def("enable", &LiteNNAdapterConfig::Enable)
-      .def("disable", &LiteNNAdapterConfig::Disable);
 }
 
 void BindXpuConfig(py::module *m) {

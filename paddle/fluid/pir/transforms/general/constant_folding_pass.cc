@@ -59,8 +59,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
-      paddle::framework::interpreter::ExecutionConfig* exe_config,
-      std::vector<std::string>* deleted_vars)
+      paddle::framework::interpreter::ExecutionConfig* exe_config)
       : RewritePattern(MatchAnyOpTypeTag(),
                        1 /*benefit*/,
                        context,
@@ -68,8 +67,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         suffix_(suffix),
         place_(place),
         scope_(scope),
-        exe_config_(exe_config),
-        deleted_vars_(deleted_vars) {
+        exe_config_(exe_config) {
     exe_config_->create_local_scope = false;
   }
 
@@ -305,9 +303,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                                      var_name));
     auto from_op =
         builder.Build<Op>(var_name, op->operand_source(index).type());
-    if (op->operand_source(index).use_count() <= 1) {
-      deleted_vars_->push_back(var_name);
-    } else {
+    if (op->operand_source(index).use_count() > 1) {
       from_op->set_attribute(kAttrIsPersistable,
                              rewriter.array_attr({rewriter.bool_attr(true)}));
     }
@@ -401,7 +397,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   phi::Place place_;
   paddle::framework::Scope* scope_;
   paddle::framework::interpreter::ExecutionConfig* exe_config_;
-  std::vector<std::string>* deleted_vars_;
 };
 
 class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
@@ -411,10 +406,8 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
       size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
-      paddle::framework::interpreter::ExecutionConfig* exe_config,
-      std::vector<std::string>* deleted_vars)
-      : ConstantFoldingPattern(
-            context, suffix, place, scope, exe_config, deleted_vars) {}
+      paddle::framework::interpreter::ExecutionConfig* exe_config)
+      : ConstantFoldingPattern(context, suffix, place, scope, exe_config) {}
 
   bool Match(pir::Operation* op) const override {
     VLOG(4) << "constant_folding_pass applies match on [" << op->name()
@@ -496,15 +489,11 @@ class ConstantFoldingPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
-      ps.Add<ConstantFoldingPatternForTrain>(context,
-                                             &suffix_,
-                                             phi::CPUPlace{},
-                                             scope_,
-                                             &exe_config_,
-                                             &deleted_vars_);
+      ps.Add<ConstantFoldingPatternForTrain>(
+          context, &suffix_, phi::CPUPlace{}, scope_, &exe_config_);
     } else {
       ps.Add<ConstantFoldingPattern>(
-          context, &suffix_, place_, scope_, &exe_config_, &deleted_vars_);
+          context, &suffix_, place_, scope_, &exe_config_);
     }
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -523,12 +512,6 @@ class ConstantFoldingPass : public pir::Pass {
     cfg.max_iterations = 10;
     auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
     AddStatistics(num_rewrites, num_ops);
-    // delete old parameter var
-    scope_->EraseVars(deleted_vars_);
-    if (place_.GetType() != phi::AllocationType::CPU) {
-      paddle::memory::Release(place_);
-    }
-    paddle::memory::Release(phi::CPUPlace{});
   }
 
  private:
@@ -536,7 +519,6 @@ class ConstantFoldingPass : public pir::Pass {
   phi::Place place_{phi::CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
-  std::vector<std::string> deleted_vars_;
 
   pir::FrozenRewritePatternSet patterns_;
 };

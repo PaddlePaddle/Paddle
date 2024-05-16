@@ -185,6 +185,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "expand_as_v2",
         "swiglu",
         "tile",
+        "fused_rms_norm",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":

@@ -63,9 +63,37 @@ TEST(DimExprUtil, Calculate) {
   ASSERT_EQ(ret.Get<std::int64_t>(), 1);
 }
 
+TEST(DimExprUtil, GetDimExprPriority) {
+  DimExprBuilder builder;
+  int priority_int = GetDimExprPriority(builder.ConstSize(1));
+  ASSERT_EQ(priority_int, 0);
+  int priority_sym = GetDimExprPriority(builder.Symbol("S0"));
+  ASSERT_EQ(priority_sym, 1);
+  int priority_add =
+      GetDimExprPriority(builder.Add(DimExpr("S1"), DimExpr("S2")));
+  ASSERT_EQ(priority_add, 2);
+  int priority_bc =
+      GetDimExprPriority(builder.Broadcast(DimExpr("S3"), DimExpr("S4")));
+  ASSERT_EQ(priority_bc, 2);
+}
+
+TEST(DimExprUtil, CompareDimExprPriority) {
+  DimExprBuilder builder;
+  DimExpr sym_expr_0 = builder.Symbol("S0");
+  DimExpr sym_expr_1 = builder.Symbol("S1");
+  DimExpr add_expr = builder.Add(DimExpr("S2"), DimExpr("S3"));
+  DimExpr bc_expr = builder.Broadcast(DimExpr("S4"), DimExpr("S5"));
+  ASSERT_EQ(CompareDimExprPriority(sym_expr_0, sym_expr_1),
+            PriorityComparisonStatus::HIGHER);
+  ASSERT_EQ(CompareDimExprPriority(add_expr, sym_expr_0),
+            PriorityComparisonStatus::LOWER);
+  ASSERT_EQ(CompareDimExprPriority(add_expr, bc_expr),
+            PriorityComparisonStatus::EQUAL);
+}
+
 TEST(DimExpr, CollectDimExprSymbol) {
   DimExpr dim_expr = [&]() -> DimExpr {
-    DimExprBuilder builder(nullptr);
+    DimExprBuilder builder;
     DimExpr max_expr = builder.Max(DimExpr("S2"), DimExpr("S3"));
     DimExpr min_expr = builder.Min(max_expr, DimExpr("S4"));
     DimExpr broadcast_expr = builder.Broadcast(min_expr, DimExpr("S5"));

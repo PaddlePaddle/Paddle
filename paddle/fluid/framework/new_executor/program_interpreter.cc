@@ -150,7 +150,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   is_in_op_profiling_mode_ = enable_op_profiling;
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-  Build(feed_names, &op_func_nodes);
+  Build(feed_names, &op_func_nodes, switch_stream);
 
   if (!is_build_) {
     SetFeedVarsInplaceSkip(feed_names);
@@ -166,7 +166,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (switch_stream) {
-      BuildOpFuncNode(&op_func_nodes);
+      Convert(&op_func_nodes);
     }
 #endif
     RunImpl();
@@ -208,7 +208,8 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 
 void ProgramInterpreter::Build(
     const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+    bool switch_stream) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -216,7 +217,7 @@ void ProgramInterpreter::Build(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
@@ -678,7 +679,42 @@ std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
 void ProgramInterpreter::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
-  BuildOpFuncNode(op_func_nodes);
+  auto nodes = *op_func_nodes;
+  auto op_nums = nodes.size();
+  vec_instruction_.clear();
+  vec_instruction_.reserve(op_nums);
+  for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
+    auto& op_func_node = nodes[op_idx];
+    stream_analyzer_.SetForceEventsToWaitInfo(force_events_to_wait_);
+    auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (FLAGS_new_executor_use_cuda_graph) {
+      auto& op = op_func_node.operator_base_;
+      auto& op_type = op->Type();
+      if (op_type == interpreter::kMemcpyD2H ||
+          op_type == interpreter::kMemcpyH2D) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
+      }
+      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Device context of op %s must be [%s] while using "
+                            "cuda graph, but got [%s].",
+                            op_type,
+                            typeid(phi::GPUContext).name(),
+                            typeid(*dev_ctx_).name()));
+      // cuda graph needs to record all stream
+      phi::backends::gpu::CUDAGraphContextManager::Instance()
+          .RecordCapturingDeviceContext(dev_ctx_);
+    }
+#endif
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    vec_instruction_.back().UpdateRecordStreamForGcInfo();
+#endif
+  }
 
   BuildOperatorDependences();
 
@@ -715,7 +751,6 @@ void ProgramInterpreter::Convert(
   }
 
   // calculate last_live_ops_
-  auto op_nums = (*op_func_nodes).size();
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     Instruction& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
@@ -850,46 +885,6 @@ void ProgramInterpreter::Convert(
   }
 
   AnalyseExecuteOrderForTrace();
-}
-
-void ProgramInterpreter::BuildOpFuncNode(
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
-  auto nodes = *op_func_nodes;
-  auto op_nums = nodes.size();
-  vec_instruction_.clear();
-  vec_instruction_.reserve(op_nums);
-  for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
-    auto& op_func_node = nodes[op_idx];
-    stream_analyzer_.SetForceEventsToWaitInfo(force_events_to_wait_);
-    auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (FLAGS_new_executor_use_cuda_graph) {
-      auto& op = op_func_node.operator_base_;
-      auto& op_type = op->Type();
-      if (op_type == interpreter::kMemcpyD2H ||
-          op_type == interpreter::kMemcpyH2D) {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
-      }
-      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Device context of op %s must be [%s] while using "
-                            "cuda graph, but got [%s].",
-                            op_type,
-                            typeid(phi::GPUContext).name(),
-                            typeid(*dev_ctx_).name()));
-      // cuda graph needs to record all stream
-      phi::backends::gpu::CUDAGraphContextManager::Instance()
-          .RecordCapturingDeviceContext(dev_ctx_);
-    }
-#endif
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    vec_instruction_.back().UpdateRecordStreamForGcInfo();
-#endif
-  }
 }
 
 void ProgramInterpreter::BuildSkipShareLoDInfo() {

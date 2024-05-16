@@ -27,6 +27,7 @@ from . import (  # noqa: F401
     dist_fused_attention,
     dist_fused_dropout_add,
     dist_fused_feedforward,
+    dist_fused_rms_norm,
     dist_fused_rope,
     dist_layer_norm,
     dist_matmul,

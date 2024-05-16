@@ -54,6 +54,7 @@
 - scale
 - matmul
 - assign
+- assign_out_
 - max
 - min
 - maximum
@@ -121,3 +122,5 @@
 - randint
 - uniform
 - unique_consecutive
+- sigmoid
+- reduce_as
