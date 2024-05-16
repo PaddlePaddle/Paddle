@@ -33,18 +33,16 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
     std::vector<int> shape = phi::vectorize<int>(
         output.type().dyn_cast<pir::DenseTensorType>().dims());
 
-    if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
-      const auto& shape_info =
-          shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
-      int temp_dim = -1;
+    const auto& shape_info =
+        shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+    int temp_dim = -1;
 
-      for (size_t i = 0; i < shape_info.size(); ++i) {
-        if (shape_info[i].isa<int64_t>()) {
-          shape[i] = shape_info[i].Get<int64_t>();
-        } else {
-          shape[i] = temp_dim;
-          temp_dim = 1;
-        }
+    for (size_t i = 0; i < shape_info.size(); ++i) {
+      if (shape_info[i].isa<int64_t>()) {
+        shape[i] = shape_info[i].Get<int64_t>();
+      } else {
+        shape[i] = temp_dim;
+        temp_dim = 1;
       }
     }
     return shape;

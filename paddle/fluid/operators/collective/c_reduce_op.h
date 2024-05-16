@@ -181,9 +181,7 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -321,14 +319,14 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
-                                                               recvbuff,
-                                                               numel,
-                                                               dtype,
-                                                               nccl_red_type,
-                                                               root,
-                                                               comm->comm(),
-                                                               stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(sendbuff,
+                                                          recvbuff,
+                                                          numel,
+                                                          dtype,
+                                                          nccl_red_type,
+                                                          root,
+                                                          comm->comm(),
+                                                          stream));
     }
 #else
     PADDLE_ENFORCE_EQ(

@@ -250,7 +250,7 @@ class TestFeedData(unittest.TestCase):
             fetches = exe.run(
                 train_program,
                 feed={in_data.name: feed_in_data, label.name: feed_label},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
 

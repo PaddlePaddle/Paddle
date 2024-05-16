@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/beam_search_decode_op_def.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -48,20 +49,19 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
       phi::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
-    T* dstData =
-        dstTensor->template mutable_data<T>(paddle::platform::CPUPlace());
-    paddle::memory::Copy(paddle::platform::CPUPlace(),
-                         dstData,
-                         place,
-                         srcData,
-                         srcTensor.numel() * sizeof(T));
+    T* dstData = dstTensor->template mutable_data<T>(phi::CPUPlace());
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            dstData,
+                            place,
+                            srcData,
+                            srcTensor.numel() * sizeof(T));
   } else {
     T* dstData = dstTensor->template mutable_data<T>(place);
-    paddle::memory::Copy(place,
-                         dstData,
-                         paddle::platform::CPUPlace(),
-                         srcData,
-                         srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(place,
+                            dstData,
+                            phi::CPUPlace(),
+                            srcData,
+                            srcTensor.numel() * sizeof(T));
   }
 
   return xpu::Error_t::SUCCESS;
@@ -107,7 +107,7 @@ struct BeamSearchDecodeXPUFunctor {
     int r = 0;
 
     // First make a copy of XPU data on CPU
-    if (platform::is_xpu_place(step_ids[0].place())) {
+    if (step_ids[0].place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
         phi::DenseTensor out;
@@ -125,7 +125,7 @@ struct BeamSearchDecodeXPUFunctor {
       }
     }
 
-    if (platform::is_xpu_place(step_scores[0].place())) {
+    if (step_scores[0].place().GetType() == phi::AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
         phi::DenseTensor out;

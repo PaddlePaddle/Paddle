@@ -21,11 +21,29 @@ limitations under the License. */
 
 namespace pir {
 
-const phi::DeviceContext* GetDeviceContext(const phi::DenseTensor& x) {
+const phi::DeviceContext* GetDeviceContext(
+    const phi::DenseTensor& x, const phi::Place& place = phi::Place()) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const phi::DeviceContext* dev_ctx = nullptr;
-  auto place = x.place();
-  dev_ctx = pool.Get(place);
+  auto x_place = x.place();
+  if (x_place.GetType() != phi::AllocationType::UNDEFINED) {
+    dev_ctx = pool.Get(x_place);
+    return dev_ctx;
+  } else if (place.GetType() != phi::AllocationType::UNDEFINED) {
+    dev_ctx = pool.Get(place);
+    return dev_ctx;
+  } else {
+    phi::Place compile_place;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    compile_place = phi::GPUPlace();
+#elif defined(PADDLE_WITH_XPU)
+    compile_place = phi::XPUPlace();
+#else
+    compile_place = phi::CPUPlace();
+#endif
+    dev_ctx = pool.Get(compile_place);
+    return dev_ctx;
+  }
   return dev_ctx;
 }
 
@@ -136,7 +154,8 @@ void LoadFunction(const std::string& file_path,
                   int64_t seek,
                   const std::vector<int64_t>& shape,
                   bool load_as_fp16,
-                  phi::DenseTensor* out) {
+                  phi::DenseTensor* out,
+                  phi::Place place) {
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
@@ -147,7 +166,7 @@ void LoadFunction(const std::string& file_path,
   PADDLE_ENFORCE_NOT_NULL(out,
                           phi::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
-  const phi::DeviceContext* dev_ctx = GetDeviceContext(*out);
+  const phi::DeviceContext* dev_ctx = GetDeviceContext(*out, place);
 
   if (seek != -1) {
     PADDLE_ENFORCE_GE(seek,
@@ -170,7 +189,8 @@ void LoadFunction(const std::string& file_path,
 void LoadCombineFunction(const std::string& file_path,
                          const std::vector<std::string>& names,
                          std::vector<phi::DenseTensor*>* out,
-                         bool load_as_fp16) {
+                         bool load_as_fp16,
+                         phi::Place place) {
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
@@ -185,7 +205,7 @@ void LoadCombineFunction(const std::string& file_path,
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         out->size()));
-  const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)));
+  const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)), place);
   for (size_t i = 0; i < names.size(); i++) {
     auto tensor = out->at(i);
     paddle::framework::DeserializeFromStream(fin, tensor, *dev_ctx);

@@ -140,24 +140,10 @@ def _hash_with_id(*args):
     return hash(info)
 
 
-def _sorted(dict_):
-    """
-    Returns a sorted list of the dict keys, with error if keys not sortable.
-    """
-    try:
-        return sorted(dict_.keys())
-    except TypeError:
-        raise TypeError("nest only supports dicts with sortable keys.")
-
-
 def _yield_value(iterable):
     if isinstance(iterable, dict):
-        # Iterate through dictionaries in a deterministic order by sorting the
-        # keys. Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        for key in _sorted(iterable):
+        # NOTE: Keep order unchanged as python dict is ordered since python3.6
+        for key in iterable:
             yield iterable[key]
     else:
         yield from iterable
@@ -197,12 +183,7 @@ def _sequence_like(instance, args):
     Convert the sequence `args` to the same type as `instance`.
     """
     if isinstance(instance, dict):
-        # Pack dictionaries in a deterministic order by sorting the keys.
-        # Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        result = dict(zip(_sorted(instance), args))
+        result = dict(zip(instance, args))
         return type(instance)((key, result[key]) for key in instance.keys())
     elif (
         isinstance(instance, tuple)

@@ -488,6 +488,15 @@
   intermediate : softmax
   backward: fused_attention_grad
 
+- op: indices
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::IndicesInferMeta
+  kernel :
+    func : indices_coo{sparse_coo -> dense}
+    layout : x
+
 - op: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)

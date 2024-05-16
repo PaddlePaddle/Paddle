@@ -628,6 +628,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
 
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out);
+
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,
                          const IntArray& ends,

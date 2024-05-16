@@ -42,8 +42,7 @@ dummy_guard.expr = "lambda frame: True"
 dummy_guard.lambda_expr = "lambda frame: True"
 
 
-@Singleton
-class OpcodeExecutorCache:
+class OpcodeExecutorCache(metaclass=Singleton):
     """
     A singleton class that implements a cache for translated instructions.
     This cache is used to store previously translated instructions along with their corresponding guard functions.

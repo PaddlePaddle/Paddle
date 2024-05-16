@@ -326,6 +326,14 @@
           comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
           default : "true"
 
+- op : kldiv_loss
+  version :
+    - checkpoint : Upgrade kldiv_loss, add a new attribute [log_target]
+      action :
+        - add_attr : log_target
+          comment : In order to specify whether 'label' is passed in log space.
+          default : "false"
+
 - op : lamb
   version :
     - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].

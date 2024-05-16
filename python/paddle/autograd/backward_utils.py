@@ -25,6 +25,94 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
+# TODO: Consider a better way to mark these ops has no grad op.
+# Such as use a new trait to mark these ops.
+ALLOW_NO_GRAD_OPS = [
+    # Compare ops
+    "pd_op.equal",
+    "pd_op.equal_",
+    "pd_op.not_equal",
+    "pd_op.not_equal_",
+    "pd_op.less_than",
+    "pd_op.less_than_",
+    "pd_op.less_equal",
+    "pd_op.less_equal_",
+    "pd_op.greater_than",
+    "pd_op.greater_than_",
+    "pd_op.greater_equal",
+    "pd_op.greater_equal_",
+    # Logical ops
+    "pd_op.logical_and",
+    "pd_op.logical_and_",
+    "pd_op.logical_not",
+    "pd_op.logical_not_",
+    "pd_op.logical_or",
+    "pd_op.logical_or_",
+    "pd_op.logical_xor",
+    "pd_op.logical_xor_",
+    # Bitwise ops
+    "pd_op.bitwise_and",
+    "pd_op.bitwise_and_",
+    "pd_op.bitwise_left_shift",
+    "pd_op.bitwise_left_shift_",
+    "pd_op.bitwise_not",
+    "pd_op.bitwise_not_",
+    "pd_op.bitwise_or",
+    "pd_op.bitwise_or_",
+    "pd_op.bitwise_right_shift",
+    "pd_op.bitwise_right_shift_",
+    "pd_op.bitwise_xor",
+    "pd_op.bitwise_xor_",
+    # Array ops
+    "pd_op.assign_array",
+    "pd_op.array_length",
+    "pd_op.slice_array",
+    "pd_op.slice_array_dense",
+    "pd_op.assign_array",
+    "pd_op.assign_array_",
+    "pd_op.create_array",
+    "pd_op.create_array_like",
+    "pd_op.array_read",
+    "pd_op.array_write_",
+    "pd_op.array_pop",
+    # Others
+    "pd_op.remainder",
+    "pd_op.argmax",
+    "pd_op.print",
+    "pd_op.accuracy",
+    "pd_op.randint",
+    "pd_op.uniform",
+    "pd_op.gaussian",
+    "pd_op.bernoulli",
+    "pd_op.full_like",
+    "pd_op.assign_value_",
+    "pd_op.nextafter",
+    "pd_op.isnan",
+    "pd_op.isinf",
+    "pd_op.all",
+    "pd_op.any",
+    "pd_op.prior_box",
+    "pd_op.share_data",
+    "pd_op.floor_divide",
+]
+
+
+# TODO(CZ): to be removed when we support dynamic shape by default.
+ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
+    "pd_op.abs",
+    "pd_op.assign",
+    "pd_op.sin",
+    "pd_op.cos",
+    "pd_op.tanh",
+    "pd_op.cast",
+    "pd_op.log",
+    "pd_op.exp",
+    "pd_op.sqrt",
+    "pd_op.rsqrt",
+    "pd_op.sigmoid",
+    "pd_op.silu",
+]
+
 
 class ValueWrapper:
     def __init__(self, value) -> None:
@@ -246,17 +334,23 @@ def _check_vjp_dynamic_shape(op, inputs):
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
 @signature_safe_contextmanager
 def dynamic_shape_prim_vjp_guard(op, inputs):
-    skip_prim = (
-        core._is_bwd_prim_enabled()
-        and core._enable_prim_skip_dynamic_shape()
-        and _check_vjp_dynamic_shape(op, inputs)
-    )
+    origin_prim = core._is_bwd_prim_enabled()
+    if op.name() == "cf.tuple_push":
+        skip_prim = True
+    else:
+        skip_prim = (
+            origin_prim
+            and core._enable_prim_skip_dynamic_shape()
+            and _check_vjp_dynamic_shape(op, inputs)
+            and op.name() not in ALLOW_DYNAMIC_SHAPE_VJP_OPS
+        )
+
     try:
-        if skip_prim:
+        if origin_prim and skip_prim:
             core._set_prim_backward_enabled(False)
         yield
     finally:
-        if skip_prim:
+        if origin_prim:
             core._set_prim_backward_enabled(True)
 
 
@@ -281,6 +375,11 @@ def is_control_flow(op):
     return op.name() == "pd_op.if" or op.name() == "pd_op.while"
 
 
+def is_builtin_op(op):
+    dialect_name, opname = op.name().split(".")
+    return dialect_name == "builtin"
+
+
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
     for op in block.ops:
         if is_control_flow(op):
@@ -298,6 +397,8 @@ def get_real_op_inputs(op):
         return op.operands_source() + get_used_external_value(
             op.as_while_op().body()
         )
+    elif op.name() == "pd_op.pylayer":
+        return get_used_external_value(op)
     else:
         return op.operands_source()
 
@@ -462,6 +563,14 @@ def all_output_grad_none(list_of_list):
     return True
 
 
+def op_has_vjp(op):
+    # NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+    # not have a vjp interface, we still need to generate the backward
+    # block based on its registered backward function. To achieve this,
+    # we add more handling logic for `PyLayer` Op in the `call_vjp` function
+    return core.has_vjp(op) or op.name() == "pd_op.pylayer"
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
@@ -489,7 +598,7 @@ def return_map_value_list(value, map):
     output = []
     for i in range(len(value)):
         if value[i] in map:
-            output.append(map[value[i]])
+            output.append(return_map_value(value[i], map))
         else:
             output.append(value[i])
     return output
@@ -525,6 +634,7 @@ def get_grad_semantic_info(op):
         "builtin.combine",
         "pd_op.if",
         "pd_op.while",
+        "pd_op.pylayer",
         "cf.tuple_push",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]

@@ -10,7 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -157,7 +157,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -183,7 +183,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim out_dims =
+    phi::DDim out_dims =
         (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
                                           : common::make_ddim({nt, h, w, c}));
     const T* input_data = input->data<T>();
@@ -237,7 +237,7 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim in_grad_dims =
+    phi::DDim in_grad_dims =
         (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
                                           : common::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();
@@ -267,7 +267,6 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(temporal_shift,
                           GPU,

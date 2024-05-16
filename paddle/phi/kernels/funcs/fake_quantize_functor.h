@@ -89,5 +89,30 @@ class ClipAndFakeQuantFunctor {
                   DenseTensor *out);
 };
 
+template <typename Context, typename T>
+class FindMovingAverageAbsMaxFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &in_accum,
+                  const DenseTensor &in_state,
+                  const T *cur_scale,
+                  const float rate,
+                  DenseTensor *out_state,
+                  DenseTensor *out_accum,
+                  DenseTensor *out_scale);
+};
+
+template <typename Context, typename T>
+class FindRangeAbsMaxFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &cur_scale,
+                  const DenseTensor &last_scale,
+                  const DenseTensor &iter,
+                  const int window_size,
+                  DenseTensor *scales_arr,
+                  DenseTensor *out_scale);
+};
+
 }  // namespace funcs
 }  // namespace phi

@@ -19,11 +19,40 @@
 namespace phi {
 
 template <typename T, typename Context>
+void FakeQuantizeRangeAbsMaxKernel(const Context& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& in_scale,
+                                   const paddle::optional<DenseTensor>& iter,
+                                   int window_size,
+                                   int bit_length,
+                                   bool is_test,
+                                   int round_type,
+                                   DenseTensor* out,
+                                   DenseTensor* out_scale,
+                                   DenseTensor* out_scales);
+
+template <typename T, typename Context>
 void FakeQuantizeAbsMaxKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               int bit_length,
                               int round_type,
                               DenseTensor* out,
                               DenseTensor* out_scale);
+
+template <typename T, typename Context>
+void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& in_scale,
+    const paddle::optional<DenseTensor>& in_accum,
+    const paddle::optional<DenseTensor>& in_state,
+    float moving_rate,
+    int bit_length,
+    bool is_test,
+    int round_type,
+    DenseTensor* out,
+    DenseTensor* out_scale,
+    DenseTensor* out_state,
+    DenseTensor* out_accum);
 
 }  // namespace phi

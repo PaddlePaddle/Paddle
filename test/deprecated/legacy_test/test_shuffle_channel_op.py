@@ -17,10 +17,17 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+
+
+def shuffle_channel_wrapper(x, group=1):
+    return paddle._C_ops.shuffle_channel(x, group)
+
 
 class TestShuffleChannelOp(OpTest):
     def setUp(self):
         self.op_type = "shuffle_channel"
+        self.python_api = shuffle_channel_wrapper
         self.batch_size = 10
         self.input_channels = 16
         self.layer_h = 4
