@@ -207,6 +207,28 @@ class TestSwigluOp(OpTest):
         )
 
 
+class TestSwigluOp2(TestSwigluOp):
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.prim_op_type = "comp"
+        self.python_api = fused_swiglu_impl
+        self.public_python_api = fused_swiglu_impl
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        tmp_inputs = np.split(x, 2, axis=-1)
+        x = tmp_inputs[0]
+        y = tmp_inputs[1]
+        out_grad = np.random.uniform(-1, 1, x.shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+        self.placements = {
+            'x': [dist.Shard(1)],
+            'y': [dist.Shard(1)],
+            'out': [dist.Shard(1)],
+        }
+
+
 @unittest.skipIf(
     not paddle.base.core.is_compiled_with_dist(),
     "The spmd rule is should be tested with distributed=ON",
