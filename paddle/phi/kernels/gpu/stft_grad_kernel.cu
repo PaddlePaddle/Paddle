@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/stft_op.h"
+#include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/stft_grad_kernel_impl.h"
+#include "paddle/phi/kernels/stft_kernel.h"
 
-namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(stft_grad,
-                        ops::StftGradKernel<phi::GPUContext, float>,
-                        ops::StftGradKernel<phi::GPUContext, double>);
+PD_REGISTER_KERNEL(
+    stft_grad, GPU, ALL_LAYOUT, phi::StftGradKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+}

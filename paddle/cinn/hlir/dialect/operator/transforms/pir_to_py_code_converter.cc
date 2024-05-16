@@ -120,12 +120,87 @@ struct PirToPyCodeConverterHelper {
   IStrings DefineInit(const pir::ModuleOp& module) {
     IStrings def_init;
     def_init.push_back(IString("def __init__(self):"));
+    VisitEachConstraintBuildStmt(
+        [&](const std::string& stmt) { def_init.push_back(Indent(stmt)); });
     const auto* module_op = static_cast<const pir::Operation*>(module);
     auto* mut_module = const_cast<pir::Operation*>(module_op);
     mut_module->Walk(
         [&](pir::Operation* op) { def_init.push_back(Indent(DefineOp(op))); });
     def_init.push_back(Indent(""));
     return def_init;
+  }
+
+  template <typename DoEachConstraintBuildStmtT>
+  void VisitEachConstraintBuildStmt(
+      const DoEachConstraintBuildStmtT& DoEachConstraintBuildStmt) {
+    VisitEachEQCstr([&](const auto& lhs, const auto& rhs) {
+      DoEachConstraintBuildStmt(ConvertEQCstrBuildStmt(lhs, rhs));
+    });
+    VisitEachGtOneCstr([&](const auto& dim_expr) {
+      DoEachConstraintBuildStmt(ConvertGtOneCstrBuildStmt(dim_expr));
+    });
+    VisitEachBroadcastableCstr([&](const auto& lhs, const auto& rhs) {
+      DoEachConstraintBuildStmt(ConvertBroadcastableCstrBuildStmt(lhs, rhs));
+    });
+  }
+
+  template <typename DoEachEQCstrT>
+  void VisitEachEQCstr(const DoEachEQCstrT& DoEachEQCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    for (const auto& [lhs, rhs] : constraints_mgr.equals().GetMap()) {
+      if (lhs == rhs) continue;
+      DoEachEQCstr(lhs, rhs);
+    }
+  }
+
+  std::string ConvertEQCstrBuildStmt(const symbol::DimExpr& lhs,
+                                     const symbol::DimExpr& rhs) {
+    const std::string& lhs_str = ConvertDimExpr(lhs);
+    const std::string& rhs_str = ConvertDimExpr(rhs);
+    std::ostringstream ss;
+    ss << "self.add_eq_cstr(" << lhs_str << ", " << rhs_str << ")";
+    return ss.str();
+  }
+
+  template <typename DoEachGtOneCstrT>
+  void VisitEachGtOneCstr(const DoEachGtOneCstrT& DoEachGtOneCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    for (const auto& dim_expr : constraints_mgr.gtones()) {
+      DoEachGtOneCstr(dim_expr);
+    }
+  }
+
+  std::string ConvertGtOneCstrBuildStmt(const symbol::DimExpr& dim_expr) {
+    const std::string& dim_expr_str = ConvertDimExpr(dim_expr);
+    std::ostringstream ss;
+    ss << "self.add_gt_one_cstr(" << dim_expr_str << ")";
+    return ss.str();
+  }
+
+  template <typename DoEachBroadcastableCstrT>
+  void VisitEachBroadcastableCstr(
+      const DoEachBroadcastableCstrT& DoEachBroadcastableCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    const auto& broadcastables = constraints_mgr.broadcastables();
+    for (const auto& broadcastable : broadcastables) {
+      const auto& [lhs, rhs] = *broadcastable;
+      if (lhs == rhs) continue;
+      DoEachBroadcastableCstr(lhs, rhs);
+    }
+  }
+
+  std::string ConvertBroadcastableCstrBuildStmt(const symbol::DimExpr& lhs,
+                                                const symbol::DimExpr& rhs) {
+    const std::string& lhs_str = ConvertDimExpr(lhs);
+    const std::string& rhs_str = ConvertDimExpr(rhs);
+    std::ostringstream ss;
+    ss << "self.add_broadcastable_cstr(" << lhs_str << ", " << rhs_str << ")";
+    return ss.str();
+  }
+
+  const symbol::ConstraintsManager& GetConstraintsMgr() {
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program_);
+    return shape_analysis.constraints_manager();
   }
 
   IStrings ConvertModuleOp(const pir::ModuleOp& module) {

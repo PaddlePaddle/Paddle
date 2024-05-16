@@ -26,6 +26,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/overloaded.h"
 #include "paddle/pir/include/core/dll_decl.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace symbol {
 
@@ -238,6 +239,18 @@ template <>
 struct hash<symbol::DimExpr> {
   std::size_t operator()(const symbol::DimExpr& dim_expr) const {
     return symbol::GetHashValue(dim_expr);
+  }
+};
+
+template <>
+struct hash<std::vector<symbol::DimExpr>> {
+  std::size_t operator()(const std::vector<symbol::DimExpr>& dim_exprs) const {
+    std::size_t hash_value = 0;
+    const auto hash_func = std::hash<symbol::DimExpr>();
+    for (const auto& dim_expr : dim_exprs) {
+      hash_value = pir::detail::hash_combine(hash_value, hash_func(dim_expr));
+    }
+    return hash_value;
   }
 };
 
