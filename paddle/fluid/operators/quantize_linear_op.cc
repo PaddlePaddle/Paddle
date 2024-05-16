@@ -113,7 +113,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(quantize_linear,
 
 DECLARE_INFER_SHAPE_FUNCTOR(dequantize_linear,
                             DeQuantizeLinearInferShapeFunctor,
-                            PD_INFER_META(phi::DeQuantizeLinearInferMeta));
+                            PD_INFER_META(phi::QuantizeLinearInferMeta));
 REGISTER_OPERATOR(
     quantize_linear,
     ops::QuantizeLinearOp,
