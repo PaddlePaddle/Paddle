@@ -325,7 +325,7 @@ TEST(ctor_from_containers, span) {
   static_assert(!std::is_constructible<span<int>, const vec_t&>::value, "");
   static_assert(!std::is_constructible<span<int>, const deque_t&>::value, "");
 
-  static_assert(std::is_constructible<span<const int>, vec_t&>::value, "");
+  static_assert(std::is_constructible<span<const int>, vec_t&>::value);
   static_assert(std::is_constructible<span<const int>, const vec_t&>::value,
                 "");
   static_assert(!std::is_constructible<span<const int>, const deque_t&>::value,

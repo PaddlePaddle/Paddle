@@ -334,7 +334,7 @@ TEST(CopyTensor, bool_gpu_to_cpu) {
   EXPECT_EQ(tensor_dst->shape()[0], 2);
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
-  std::array<bool, 6> data_check;
+  std::array<bool, 6> data_check = {};
   data_check.fill(false);
   tensor_dst->CopyToCpu<bool>(data_check.data());
 

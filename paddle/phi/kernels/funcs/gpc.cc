@@ -1605,7 +1605,7 @@ void gpc_tristrip_clip(gpc_op op,
   vertex_node *rtn = nullptr;
   std::array<h_state, 2> horiz;
   vertex_type cft = NUL;
-  std::array<int, 2> in;
+  std::array<int, 2> in = {};
   std::array<int, 2> exists;
   std::array<int, 2> parity = {LEFT, LEFT};
   int s = 0;

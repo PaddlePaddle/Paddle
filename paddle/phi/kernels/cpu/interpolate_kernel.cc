@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
-  std::array<T, 4> coeffs;
+  std::array<T, 4> coeffs = {};
   funcs::get_cubic_upsample_coefficients<T>(coeffs.data(), t);
 
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];

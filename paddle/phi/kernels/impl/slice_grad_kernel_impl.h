@@ -97,7 +97,7 @@ void EigenPaddingCompute(
         // only last dimension need padding,
         // reshape the dimension of tensor in 2: [preceding, padding]
         std::vector<int64_t> in_tore_shape(2, 1), out_tore_shape(2, 1);
-        std::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
+        std::array<std::pair<int64_t, int64_t>, 2> reshaped_padding = {};
 
         // first dimension is the accumulate of preceding dimension
         for (int i = 0; i < pad_dim; i++) {

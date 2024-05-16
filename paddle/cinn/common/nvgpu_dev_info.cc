@@ -18,7 +18,7 @@ namespace cinn {
 namespace common {
 
 std::array<int, 3> NVGPUDevInfo::GetMaxGridDims() const {
-  std::array<int, 3> ret;
+  std::array<int, 3> ret = {};
   ret[0] = prop_.maxGridSize[0];
   ret[1] = prop_.maxGridSize[1];
   ret[2] = prop_.maxGridSize[2];
