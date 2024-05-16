@@ -1141,10 +1141,6 @@
     out_scale : OutScale
 
 - op : fake_quantize_dequantize_moving_average_abs_max
-  extra :
-    attrs : [int round_type = 1]
-
-- op : fake_quantize_dequantize_moving_average_abs_max
   inputs :
     x : X
     in_scale : InScale
