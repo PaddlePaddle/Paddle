@@ -360,18 +360,19 @@ class FunctionGraph:
             str, DynamicShape | SymbolicInt | int
         ] = self.dynamic_inputs
         for variable in find_traceable_vars(self.input_variables):
-            if isinstance(variable.tracker, LocalTracker):
-                name = variable.tracker.name
-                if (
-                    isinstance(variable, SymbolicIntVariable)
-                    and not variable.symbolic
-                ):
-                    dynamic_input = self.dynamic_inputs.get(name, None)
-                    if dynamic_input is None:
-                        dynamic_inputs[name] = variable.get_py_value()
-                    elif dynamic_input != variable.get_py_value():
-                        dynamic_inputs[name] = SymbolicInt()
-                        variable.symbolic = True
+            if not isinstance(variable.tracker, LocalTracker):
+                continue
+            name = variable.tracker.name
+            if (
+                isinstance(variable, SymbolicIntVariable)
+                and not variable.symbolic
+            ):
+                dynamic_input = self.dynamic_inputs.get(name, None)
+                if dynamic_input is None:
+                    dynamic_inputs[name] = variable.get_py_value()
+                elif dynamic_input != variable.get_py_value():
+                    dynamic_inputs[name] = SymbolicInt()
+                    variable.symbolic = True
 
     @property
     @event_register("guard_fn")
