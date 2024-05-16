@@ -53,11 +53,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     if (pending_count.find(&op) == pending_count.end()) {
       pending_count[&op] = 0;
     }
-    for (auto operand : op.operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
       } else {
@@ -79,11 +79,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     queue.pop();
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
-    for (auto& operand : op->operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(*op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       --pending_count[defined_op];
       if (defined_op && pending_count[defined_op] == 0 &&
           defined_op->GetParent() == block) {
@@ -109,11 +109,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
   std::unordered_set<pir::Operation*> producers;
 
   std::vector<pir::Operation*> vec_res;
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && !producers.count(source_op) &&
         source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
@@ -136,11 +136,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
@@ -148,12 +148,21 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   return producers;
 }
 
-std::unordered_set<pir::Operation*> GetConsumerOps(pir::Operation* op) {
+std::unordered_set<pir::Operation*> GetConsumerOps(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
   std::unordered_set<pir::Operation*> consumers;
 
   for (auto& result : op->results()) {
     for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      consumers.insert(it->owner());
+      auto parent_op = it->owner();
+      while (parent_op) {
+        if (op2id.count(parent_op)) {
+          consumers.insert(parent_op);
+          break;
+        }
+        parent_op = parent_op->GetParentOp();
+      }
     }
   }
   return consumers;
@@ -242,7 +251,7 @@ void SubgraphDetector::DoOpFusion() {
       }
 
       bool can_fused = true;
-      auto consumers = GetConsumerOps(producer);
+      auto consumers = GetConsumerOps(producer, op2id_);
       for (auto consumer : consumers) {
         if (!subgraph->op_set.count(consumer)) {
           can_fused = false;
@@ -501,7 +510,7 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 
   const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
     if (group_ops_set.find(op) != group_ops_set.end()) return false;
-    for (auto& value : op->operands_source()) {
+    for (auto& value : GetUsedExternalValue(*op)) {
       if (outputs_set.find(value) != outputs_set.end()) {
         return true;
       }
@@ -549,7 +558,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = pir::GetUsedExternalValue(*op);
+  std::vector<pir::Value> op_inputs = GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();

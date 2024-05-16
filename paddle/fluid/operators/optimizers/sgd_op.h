@@ -50,9 +50,9 @@ struct sgd_dense_param_kernel<T,
     int64_t rows_idx = 0;
     T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
-    auto sgd = phi::jit::KernelFuncs<phi::jit::SgdTuple<T>,
-                                     platform::CPUPlace>::Cache()
-                   .At(attr);
+    auto sgd =
+        phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
+            attr);
     sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
   }
 };
@@ -83,9 +83,9 @@ struct sgd_dense_param_kernel<T,
     attr.grad_width = grad_value.numel() / attr.grad_height;
     attr.selected_rows_size = grad_rows.size();
 
-    auto sgd = phi::jit::KernelFuncs<phi::jit::SgdTuple<T>,
-                                     platform::CPUPlace>::Cache()
-                   .At(attr);
+    auto sgd =
+        phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
+            attr);
     sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
   }
 };

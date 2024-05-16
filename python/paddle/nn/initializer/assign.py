@@ -186,10 +186,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # numpy array
             >>> data_1 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_1 = paddle.framework.ParamAttr(
+            >>> weight_attr_1 = paddle.ParamAttr(
             ...     name="linear_weight_1",
             ...     initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
-            >>> bias_attr_1 = paddle.framework.ParamAttr(
+            >>> bias_attr_1 = paddle.ParamAttr(
             ...     name="linear_bias_1",
             ...     initializer=paddle.nn.initializer.Assign(np.array([2])))
             >>> linear_1 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_1, bias_attr=bias_attr_1)
@@ -204,10 +204,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # python list
             >>> data_2 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_2 = paddle.framework.ParamAttr(
+            >>> weight_attr_2 = paddle.ParamAttr(
             ...     name="linear_weight_2",
             ...     initializer=paddle.nn.initializer.Assign([2, 2]))
-            >>> bias_attr_2 = paddle.framework.ParamAttr(
+            >>> bias_attr_2 = paddle.ParamAttr(
             ...     name="linear_bias_2",
             ...     initializer=paddle.nn.initializer.Assign([2]))
             >>> linear_2 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_2, bias_attr=bias_attr_2)
@@ -222,10 +222,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # tensor
             >>> data_3 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_3 = paddle.framework.ParamAttr(
+            >>> weight_attr_3 = paddle.ParamAttr(
             ...     name="linear_weight_3",
             ...     initializer=paddle.nn.initializer.Assign(paddle.full([2], 2)))
-            >>> bias_attr_3 = paddle.framework.ParamAttr(
+            >>> bias_attr_3 = paddle.ParamAttr(
             ...     name="linear_bias_3",
             ...     initializer=paddle.nn.initializer.Assign(paddle.full([1], 2)))
             >>> linear_3 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_3, bias_attr=bias_attr_3)
