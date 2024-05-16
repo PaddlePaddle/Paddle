@@ -35,12 +35,14 @@ class MyModel(nn.Layer):
         include_sublayers=True,
         structured_name_prefix="",
         use_hook=True,
+        keep_vars=True,
     ):
         st = super().state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             use_hook=use_hook,
+            keep_vars=keep_vars,
         )
         st["linear.new_weight"] = paddle.transpose(
             st.pop("linear.weight"), [1, 0]
@@ -75,6 +77,17 @@ def is_state_dict_equal(model1, model2):
     return True
 
 
+class MyModel3(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(100, 300)
+        buffer = paddle.to_tensor([0.0])
+        self.register_buffer("model_buffer", buffer, persistable=True)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
 class TestStateDictConvert(unittest.TestCase):
     def test_main(self):
         model1 = MyModel()
@@ -95,6 +108,38 @@ class TestStateDictReturn(unittest.TestCase):
         self.assertEqual(missing_keys[1], "linear.bias")
         self.assertEqual(len(unexpected_keys), 1)
         self.assertEqual(unexpected_keys[0], "unexpected_keys")
+
+
+class TestStateKeepVars(unittest.TestCase):
+    def test_true(self):
+        model = MyModel3()
+        x = paddle.randn([5, 100])
+        y = model(x)
+        y.backward()
+        st = model.state_dict()
+        detached_from_graph = (
+            False
+            if (st.linear.weight.grad == x.linear.weight.grad)
+            and (st.linear.bias.grad == x.linear.bias.grad)
+            and (st.model_buffer.grad == x.model_buffer.grad)
+            else True
+        )
+        self.assertEqual(detached_from_graph, False)
+
+    def test_false(self):
+        model = MyModel3()
+        x = paddle.randn([5, 100])
+        y = model(x)
+        y.backward()
+        st = model.state_dict(keep_vars=False)
+        detached_from_graph = (
+            True
+            if (st.linear.weight.grad is None)
+            and (st.linear.bias.grad is None)
+            and (st.model_buffer.grad is None)
+            else False
+        )
+        self.assertEqual(detached_from_graph, True)
 
 
 if __name__ == "__main__":
