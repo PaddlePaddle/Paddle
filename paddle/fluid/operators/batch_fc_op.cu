@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/batch_fc_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -237,7 +237,6 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = phi::GPUContext;
 
 PD_REGISTER_STRUCT_KERNEL(
     batch_fc, GPU, ALL_LAYOUT, ops::BatchFCCUDAKernel, float, double) {}

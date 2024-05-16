@@ -364,6 +364,41 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config) {
+  const auto& input_box_dims = input.dims();
+  const auto& im_info_dims = im_info.dims();
+
+  if (config.is_runtime) {
+    auto input_box_size = input_box_dims.size();
+    PADDLE_ENFORCE_EQ(
+        input_box_dims[input_box_size - 1],
+        4,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(Input) in BoxClipOp must be 4. "
+            "But received last dimension = %d",
+            input_box_dims[input_box_size - 1]));
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(Input) in BoxClipOp must be 2."
+                          " But received rank = %d",
+                          im_info_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        im_info_dims[1],
+        3,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(ImInfo) of BoxClipOp must be 3. "
+            "But received last dimension = %d",
+            im_info_dims[1]));
+  }
+  output->set_dims(input.dims());
+  output->set_dtype(input.dtype());
+  output->share_lod(input);
+}
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -3310,6 +3345,64 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
   }
+}
+
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const int x_rank = x_dims.size();
+  const auto& window_dims = window.dims();
+  const int window_size = static_cast<int>(window_dims[0]);
+
+  PADDLE_ENFORCE_EQ(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "Input(X) of StftOp should be a tensor with shape [N, T], "
+          "but got rank %s.",
+          x_rank));
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      phi::errors::InvalidArgument(
+          "Attribute(hop_length) should be greater than 0, but got %s.",
+          hop_length));
+  PADDLE_ENFORCE_EQ(
+      window_size,
+      n_fft,
+      phi::errors::InvalidArgument(
+          "Input(Window) of StftOp should be equal with n_fft %s, "
+          "but got %s.",
+          n_fft,
+          window_size));
+
+  int seq_length = static_cast<int>(x_dims[x_rank - 1]);
+  int n_frames = 1 + (seq_length - n_fft) / hop_length;
+
+  PADDLE_ENFORCE_LE(n_fft,
+                    seq_length,
+                    phi::errors::InvalidArgument(
+                        "Attribute(frame_length) should be less equal than "
+                        "sequence length, but got (%s) > (%s).",
+                        n_fft,
+                        seq_length));
+
+  std::vector<int64_t> output_shape;
+  output_shape.push_back(x_dims[0]);
+  if (onesided) {
+    output_shape.push_back(n_fft / 2 + 1);
+  } else {
+    output_shape.push_back(n_fft);
+  }
+  output_shape.push_back(n_frames);
+
+  out->set_dims(common::make_ddim(output_shape));
+  out->set_dtype(phi::dtype::ToComplex(x.dtype()));
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,

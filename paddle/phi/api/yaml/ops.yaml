@@ -459,6 +459,14 @@
     func : bmm
   backward : bmm_grad
 
+- op : box_clip
+  args: (Tensor input, Tensor im_info)
+  output: Tensor (output)
+  infer_meta:
+    func: BoxClipInferMeta
+  kernel:
+    func: box_clip
+
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
   output : Tensor(output_box)
@@ -1050,6 +1058,25 @@
   inplace: (x -> out)
   backward : expm1_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : fake_channel_wise_quantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0, bool is_test = false)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeChannelWiseQuantizeAbsMaxInferMeta
+  kernel :
+    func : fake_channel_wise_quantize_abs_max
+    data_type : x
+
+- op : fake_channel_wise_quantize_dequantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta
+  kernel :
+    func : fake_channel_wise_quantize_dequantize_abs_max
+    data_type : x
+  backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -2204,6 +2231,18 @@
     func : mv
   backward : mv_grad
 
+- op : nadam_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor momentum_decay_pow, Tensor beta2_pow, Tensor mu_product, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, float momentum_decay = 0.004f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(momentum_decay_pow_out), Tensor(beta2_pow_out), Tensor(mu_product_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(master_param_out)
+  infer_meta :
+    func : NAdamInferMeta
+  kernel :
+    func : nadam
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (momentum_decay_pow -> momentum_decay_pow_out), (beta2_pow -> beta2_pow_out), (mu_product -> mu_product_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
+
 - op : nanmedian
   args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
   output : Tensor(out), Tensor(medians)
@@ -2443,6 +2482,18 @@
     func : qr
   backward : qr_grad
 
+- op : radam_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(rho_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(master_param_out)
+  infer_meta :
+    func : RAdamInferMeta
+  kernel :
+    func : radam
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (rho -> rho_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (master_param->master_param_out)
+  traits : pir::SideEffectTrait
+
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
   output : Tensor(out)
@@ -2452,6 +2503,7 @@
     func : random_routing
     data_type : prob
   inplace : (topk_idx -> out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)
@@ -2888,6 +2940,19 @@
     data_type : x
   backward : solve_grad
 
+- op : sparse_attention
+  args: (Tensor q, Tensor k, Tensor v, Tensor offset, Tensor columns, Tensor key_padding_mask,
+    Tensor attn_mask)
+  output: Tensor (out), Tensor (sparse_dot_sdd), Tensor (softmax)
+  infer_meta:
+    func: SparseAttentionInferMeta
+  kernel:
+    func: sparse_attention
+    data_type: q
+  optional: key_padding_mask, attn_mask
+  intermediate: sparse_dot_sdd, softmax
+  backward: sparse_attention_grad
+
 - op : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
   output : Tensor
@@ -2972,6 +3037,16 @@
   kernel :
     func : stanh
   backward : stanh_grad
+
+- op : stft
+  args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
+  output: Tensor (out)
+  infer_meta:
+    func: StftInferMeta
+  kernel:
+    func: stft
+    data_type: x
+  backward: stft_grad
 
 - op : svd
   args : (Tensor x, bool full_matrices = false)
@@ -3139,6 +3214,7 @@
   output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
   infer_meta :
     func : UnbindInferMeta
+    spmd_rule : UnbindInferSpmdDynamic
   kernel :
     func : unbind
   backward : unbind_grad
@@ -3346,6 +3422,15 @@
     func : yolo_box_head
     data_type : x
 
+- op : yolo_box_post
+  args : (Tensor boxes0, Tensor boxes1, Tensor boxes2, Tensor image_shape, Tensor image_scale, int[] anchors0, int[] anchors1, int[] anchors2, int class_num, float conf_thresh, int downsample_ratio0, int downsample_ratio1, int downsample_ratio2, bool clip_bbox, float scale_x_y, float nms_threshold)
+  output : Tensor(out), Tensor(nms_rois_num)
+  infer_meta :
+    func : YoloBoxPostInferMeta
+  kernel :
+    func : yolo_box_post
+    data_type : boxes0
+
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -3357,6 +3442,18 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op: chunk_eval
+  args: (Tensor inference, Tensor label, Tensor seq_length, int num_chunk_types, str
+    chunk_scheme = "IOB", int[] excluded_chunk_types = {})
+  output: Tensor (precision), Tensor (recall), Tensor (f1_score), Tensor (num_infer_chunks),
+    Tensor (num_label_chunks), Tensor (num_correct_chunks)
+  infer_meta:
+    func: ChunkEvalInferMeta
+  kernel:
+    func: chunk_eval
+    data_type: DataType::FLOAT32
+  optional: seq_length
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
