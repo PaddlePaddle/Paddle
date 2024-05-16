@@ -23,6 +23,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
 namespace phi {
 
@@ -121,6 +122,85 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
           "data type %d for scale/output is not supported ",
           scale.dtype()));
       break;
+  }
+}
+
+template <typename T, typename Context>
+void QuantizeLinearKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& scale,
+                          const DenseTensor& zero_point,
+                          const paddle::optional<DenseTensor>& in_accum,
+                          const paddle::optional<DenseTensor>& in_state,
+                          int quant_axis,
+                          int bit_length,
+                          int round_type,
+                          bool is_test,
+                          bool only_observer,
+                          DenseTensor* out,
+                          DenseTensor* out_state,
+                          DenseTensor* out_accum,
+                          DenseTensor* out_scale) {
+  auto* in = &x;
+  auto* in_scale = &scale;
+  dev_ctx.template Alloc<float>(out);
+  int bin_cnt = std::pow(2, bit_length - 1) - 1;
+
+  if (quant_axis < 0) {
+    if (!is_test) {
+      // training
+      phi::DenseTensor tmp_scale;
+      tmp_scale.Resize(common::make_dim(1));
+      T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+
+      phi::funcs::FindAbsMaxFunctor<Context, T>()(
+          dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
+
+      dev_ctx.template Alloc<T>(out_state);
+      dev_ctx.template Alloc<T>(out_accum);
+      dev_ctx.template Alloc<T>(out_scale);
+
+      phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
+                                                               in_accum.get(),
+                                                               in_state.get(),
+                                                               cur_scale_data,
+                                                               0.9,
+                                                               out_state,
+                                                               out_accum,
+                                                               out_scale);
+      if (only_observer) {
+        phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      } else {
+        phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
+      }
+    } else {
+      if (only_observer) {
+        phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      } else {
+        phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+      }
+    }
+  } else {
+    if (!is_test) {
+      T* out_scale_data = dev_ctx.template Alloc<T>(out_scale);
+      phi::funcs::FindChannelAbsMaxFunctor<Context, T>()(
+          dev_ctx, *in, quant_axis, out_scale_data);
+      if (only_observer) {
+        phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      } else {
+        phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+      }
+    } else {
+      if (only_observer) {
+        phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+      } else {
+        phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+      }
+    }
   }
 }
 

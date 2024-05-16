@@ -128,3 +128,12 @@ PD_REGISTER_KERNEL(dequantize_linear,
                    phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+
+PD_REGISTER_KERNEL(quantize_linear,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::QuantizeLinearKernel,
+                   float,
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

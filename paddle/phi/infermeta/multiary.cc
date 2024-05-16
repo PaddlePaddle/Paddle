@@ -3844,13 +3844,37 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
 void QuantizeLinearInferMeta(const MetaTensor& x,
                              const MetaTensor& scale,
+                             const MetaTensor& zero_point,
                              const MetaTensor& in_accum,
                              const MetaTensor& in_state,
                              int quant_axis,
+                             int bit_length,
+                             int round_type,
+                             bool is_test,
+                             bool only_observer,
                              MetaTensor* y,
-                             MetaTensor* out_scale,
+                             MetaTensor* out_state,
                              MetaTensor* out_accum,
-                             MetaTensor* out_state) {
+                             MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1 || quant_axis == -1,
+      true,
+      phi::errors::InvalidArgument("'quant_axis' should be 0, 1 or -1, but "
+                                   "the received is %d",
+                                   quant_axis));
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'round_type' should be 0 or 1, 0 rounding to "
+                        "nearest ties to even and 1 is rounding to nearest "
+                        "ties away from zero.but the received is %d",
+                        round_type));
   y->set_dims(x.dims());
   y->share_lod(x);
   if (out_scale) {
