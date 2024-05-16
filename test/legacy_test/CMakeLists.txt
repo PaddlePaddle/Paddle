@@ -811,6 +811,8 @@ if(NOT WITH_COVERAGE)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_pow_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(
   test_paddlescience PROPERTIES TIMEOUT 120 ENVIRONMENT
                                 "FLAGS_prim_vjp_skip_default_ops=False")
@@ -945,8 +947,11 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_sum_op
+    test_squeeze2_op
+    test_unsqueeze2_op
     test_elementwise_min_op
     test_take_along_axis_op
+    test_transpose_op
     test_strided_slice_op
     test_pad_op)
 
@@ -1059,3 +1064,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_pir_tests_properties()
+
+set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)

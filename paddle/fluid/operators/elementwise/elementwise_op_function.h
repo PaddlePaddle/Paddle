@@ -25,12 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -40,9 +40,9 @@ limitations under the License. */
 #endif
 #include <thrust/iterator/iterator_adaptor.h>
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
