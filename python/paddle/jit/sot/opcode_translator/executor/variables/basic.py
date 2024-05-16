@@ -593,7 +593,7 @@ class SymbolicIntVariable(ConstantVariable):
         self.value = value
         self.tensor = paddle.to_tensor(value)
         self.meta = MetaInfo.from_tensor(self.tensor)
-        self.var_name = TensorVariable.var_name_generator.next()
+        self.var_name = self.var_name_generator.next()
         self.symbolic: bool = False
 
     def get_py_value(self, allow_tensor=False):
@@ -614,8 +614,16 @@ class SymbolicIntVariable(ConstantVariable):
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+
         if self.symbolic:
-            return []
+            return [
+                StringifyExpression(
+                    "isinstance({}, int)",
+                    [frame_value_tracer],
+                    union_free_vars(frame_value_tracer.free_vars),
+                )
+            ]
         else:
             return super().make_stringify_guard()
 
