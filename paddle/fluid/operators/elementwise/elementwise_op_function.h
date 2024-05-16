@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"

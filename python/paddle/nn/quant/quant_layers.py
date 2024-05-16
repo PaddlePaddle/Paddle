@@ -15,7 +15,7 @@
 import logging
 
 import paddle
-from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.base.log_helper import get_logger
@@ -351,16 +351,22 @@ class FakeQuantChannelWiseAbsMax(Layer):
 
             (
                 out,
-                _,
-            ) = _legacy_C_ops.fake_channel_wise_quantize_dequantize_abs_max(
-                input, quant_out, out_scale, *attrs
+                scale,
+            ) = _C_ops.fake_channel_wise_quantize_dequantize_abs_max(
+                input, self._quant_bits, 1, self._quant_axis
             )
-            return out
+            _C_ops.assign_out_(out, quant_out)
+            _C_ops.assign_out_(scale, out_scale)
+            return quant_out
 
         check_variable_and_dtype(
             input, 'input', ['float32'], "FakeQuantChannelWiseAbsMax"
         )
-        attrs = {'bit_length': self._quant_bits, 'quant_axis': self._quant_axis}
+        attrs = {
+            'bit_length': self._quant_bits,
+            'round_type': 1,
+            'quant_axis': self._quant_axis,
+        }
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",
