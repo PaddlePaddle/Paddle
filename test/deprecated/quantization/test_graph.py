@@ -93,7 +93,7 @@ class TestGraph(unittest.TestCase):
             for _ in range(iters):
                 data = next(train_reader())
                 loss_v = exe.run(
-                    binary, feed=feeder.feed(data), fetch_list=[loss.name]
+                    binary, feed=feeder.feed(data), fetch_list=[loss]
                 )
                 if not for_ci:
                     print('{}: {}'.format('loss', loss_v))

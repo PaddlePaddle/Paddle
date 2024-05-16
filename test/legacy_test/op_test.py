@@ -431,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 

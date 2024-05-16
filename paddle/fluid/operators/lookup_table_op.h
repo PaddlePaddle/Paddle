@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 

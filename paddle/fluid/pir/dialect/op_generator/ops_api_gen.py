@@ -109,7 +109,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'print',
     'number_count',
     'assign_value',
-    'share_data',
+    'share_data_',
     'onednn_to_paddle_layout',
     'lrn',
     'multi_gru',
@@ -144,6 +144,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reducescatter',
     'c_softmax_with_cross_entropy',
     'c_split',
+    'c_reducescatter_add',
     'decayed_adagrad',
     'distributed_fused_lamb',
     'distributed_fused_lamb_',
@@ -167,6 +168,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elementwise_div',
     'fused_elementwise_mul',
     'fused_elementwise_sub',
+    'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
     'lars_momentum_',
@@ -207,6 +209,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'gemm_epilogue',
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
@@ -215,7 +218,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'pull_box_sparse_',
     'push_box_sparse',
     'push_box_sparse_',
-    'c_reducescatter_add',
+    'send_and_recv',
+    'send_and_recv_',
 ]
 
 
