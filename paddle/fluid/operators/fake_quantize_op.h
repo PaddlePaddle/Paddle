@@ -37,36 +37,6 @@ struct ClipAndFakeQuantDequantFunctor {
                   phi::DenseTensor *out);
 };
 
-template <typename DeviceContext, typename T>
-struct FindChannelAbsMaxFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in_tensor,
-                  const int quant_axis,
-                  T *out_abs_max);
-};
-
-template <typename DeviceContext, typename T>
-struct ChannelClipAndFakeQuantFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  const int round_type,
-                  const int quant_axis,
-                  phi::DenseTensor *out);
-};
-
-template <typename DeviceContext, typename T>
-struct ChannelClipFakeQuantDequantFunctor {
-  void operator()(const DeviceContext &ctx,
-                  const phi::DenseTensor &in,
-                  const phi::DenseTensor &scale,
-                  const int bin_cnt,
-                  int round_type,
-                  const int quant_axis,
-                  phi::DenseTensor *out);
-};
-
 template <typename T, typename DeviceContext>
 class FakeQuantizeDequantizeAbsMaxKernel
     : public FakeAbsMaxKernelBase<DeviceContext, T> {
@@ -79,33 +49,6 @@ class FakeQuantizeDequantizeAbsMaxKernel
                       phi::DenseTensor *out) const override {
     ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, scale, bin_cnt, round_type, out);
-  }
-};
-
-template <typename T, typename DeviceContext>
-class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<phi::DenseTensor>("X");
-
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
-    out->mutable_data<T>(context.GetPlace());
-
-    int bit_length = context.Attr<int>("bit_length");
-    int round_type = context.Attr<int>("round_type");
-    int bin_cnt = std::pow(2, bit_length - 1) - 1;
-    int quant_axis = context.Attr<int>("quant_axis");
-    bool is_test = context.Attr<bool>("is_test");
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    if (!is_test) {
-      T *out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-      FindChannelAbsMaxFunctor<DeviceContext, T>()(
-          dev_ctx, *in, quant_axis, out_scale_data);
-    }
-    ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
   }
 };
 
