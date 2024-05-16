@@ -533,7 +533,7 @@
   kernel :
     func : distributed_fused_lamb
     data_type : DataType::FLOAT32
-    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
+    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
   optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, fp32_fused_param_out, fp16_fused_param_out, fp32_acc_fused_grad, fp16_acc_fused_grad, acc_step, stop_update
   inplace : (fp32_fused_param -> fp32_fused_param_out), (fp16_fused_param -> fp16_fused_param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1pow -> beta1pow_out), (beta2pow -> beta2pow_out), (param -> param_out)
 
@@ -1324,6 +1324,7 @@
     func : print_kernel
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : prod
   args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
@@ -1420,6 +1421,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1432,6 +1434,7 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+  traits : pir::SideEffectTrait
 
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
@@ -1865,16 +1868,17 @@
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
   kernel :
     func : truncated_gaussian_random
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
     backend : place
     data_type : dtype
+  traits : pir::SideEffectTrait
 
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
@@ -1888,6 +1892,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : uniform_random_batch_size_like
   args : (Tensor input, int[] shape, int input_dim_idx=0, int output_dim_idx=0, float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0,  int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
@@ -1898,6 +1903,7 @@
   kernel :
     func : uniform_random_batch_size_like
     data_type : dtype
+  traits : pir::SideEffectTrait
 
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)

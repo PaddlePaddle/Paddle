@@ -213,7 +213,7 @@ def decompose(
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
         start_index (int): The start index of decomposed operator in global block, default 0;
-        end_index (int): The end index of decomposed operator in global block, default -1 means all ops will be composed.
+        end_index (int): The end index of decomposed operator in global block, default -1 means all ops will be composed. start_index and end_index follow the principle of left closed and right open, that is [start_index, end_index).
 
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
