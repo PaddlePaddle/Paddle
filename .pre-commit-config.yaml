@@ -44,7 +44,7 @@ repos:
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
             (?x)^(
                 paddle/utils/.*|

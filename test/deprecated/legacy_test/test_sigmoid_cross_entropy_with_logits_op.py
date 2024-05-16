@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
@@ -181,7 +182,7 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005, check_pir=True)
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):

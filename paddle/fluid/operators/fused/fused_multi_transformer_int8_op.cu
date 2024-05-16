@@ -105,7 +105,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto out_seq_len = seq_len;
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
-                        platform::CPUPlace(),
+                        phi::CPUPlace(),
                         phi::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len

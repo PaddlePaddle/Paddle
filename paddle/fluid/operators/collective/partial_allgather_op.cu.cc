@@ -102,7 +102,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
             numel,
             nranks));
 
-    framework::DDim dims = in->dims();
+    phi::DDim dims = in->dims();
     out->mutable_data<T>(dims, place);
 
     int64_t send_numel = numel / nranks;
