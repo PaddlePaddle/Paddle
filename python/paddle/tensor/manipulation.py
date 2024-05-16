@@ -6415,7 +6415,7 @@ def view(x, shape_or_dtype, name=None):
 
             >>> x = paddle.rand([2, 4, 6], dtype="float32")
 
-            >>> out = paddle.view(x, paddle.uint8")
+            >>> out = paddle.view(x, paddle.uint8)
             >>> print(out.shape)
             [2, 4, 24]
 
