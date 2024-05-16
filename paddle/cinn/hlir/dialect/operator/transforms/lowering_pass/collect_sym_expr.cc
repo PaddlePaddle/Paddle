@@ -207,10 +207,6 @@ CreateGroupShapeOrDataExprs(
 
   // process the result values of each op.
   for (auto* op : group->ops()) {
-    // TODO(Hongqing-work): delete this after the shape analysis reconstruct is
-    // done.
-    InferSymbolicShapeForOperation(
-        op, local_shape_analysis.GetInferSymbolicShapeContext());
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
       if (result && !value2shape.count(result)) {

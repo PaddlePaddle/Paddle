@@ -252,7 +252,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
           },
           [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::NVGPUArch) {
-            pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
           },
       });
     }
