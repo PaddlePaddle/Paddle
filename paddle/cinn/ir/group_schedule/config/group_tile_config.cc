@@ -95,7 +95,7 @@ BuildPureStaticShapeConfig(
     } else {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
-                             /* rb_lower_bound = */ 257,
+                             /* rb_lower_bound = */ 2049,
                              /* rb_upper_bound = */ kMaxNumel};
       ScheduleConfig::TileConfig tile_config{
           /* warp_num = */ 32,
