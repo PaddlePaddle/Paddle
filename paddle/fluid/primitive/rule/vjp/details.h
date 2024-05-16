@@ -172,7 +172,7 @@ void mean_grad(const Tensor& x,
     auto axis_data = axis.GetData();
     const std::vector<int64_t> x_dim = x.shape();
     if (axis.size() == 0) {
-      for (int64_t i = 0; i < x_dim.size(); ++i) {
+      for (size_t i = 0; i < x_dim.size(); ++i) {
         axis_data.push_back(i);
       }
     }
