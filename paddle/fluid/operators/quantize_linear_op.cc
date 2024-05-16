@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {

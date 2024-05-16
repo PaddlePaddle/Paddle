@@ -18,15 +18,11 @@ namespace phi {
 
 KernelSignature QuantizeLinearOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("quantize_linear",
-                         {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
-                         {"quant_axis",
-                          "bit_length",
-                          "round_type",
-                          "is_test",
-                          "only_observer",
-                          "moving_rate"},
-                         {"Y", "OutState", "OutAccum", "OutScale"});
+  return KernelSignature(
+      "quantize_linear",
+      {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
+      {"quant_axis", "bit_length", "round_type", "is_test", "only_observer"},
+      {"Y", "OutState", "OutAccum", "OutScale"});
 }
 
 KernelSignature DeQuantizeLinearOpArgumentMapping(
@@ -41,7 +37,7 @@ KernelSignature DeQuantizeLinearOpArgumentMapping(
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(quantize_linear,
-                           phi::DeQuantizeLinearOpArgumentMapping);
+                           phi::QuantizeLinearOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(dequantize_linear,
                            phi::DeQuantizeLinearOpArgumentMapping);
