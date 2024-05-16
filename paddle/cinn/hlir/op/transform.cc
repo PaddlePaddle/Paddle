@@ -134,7 +134,7 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
         << "The input argument of matmul schedule is empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<CINNValue> results =
-        pe::IRCudaScheduleMatMul(arg_pack, output_shape, target);
+        pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
     *ret = CINNValuePack({results});
   });
 
@@ -660,7 +660,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         << "The input argument of matmul schedule is empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<CINNValue> results =
-        pe::IRCudaScheduleMatMul(arg_pack, output_shape, target);
+        pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
     *ret = CINNValuePack({results});
   });
 

@@ -30,7 +30,12 @@ pir::Attribute ArrayAttributeToIntArrayAttribute(
     const ::pir::ArrayAttribute& array_attr) {
   std::vector<int64_t> data;
   for (size_t i = 0; i < array_attr.size(); ++i) {
-    data.push_back(array_attr.at(i).dyn_cast<::pir::Int64Attribute>().data());
+    auto attr = array_attr.at(i);
+    if (attr.isa<::pir::Int32Attribute>()) {
+      data.push_back(attr.dyn_cast<::pir::Int32Attribute>().data());
+    } else {
+      data.push_back(attr.dyn_cast<::pir::Int64Attribute>().data());
+    }
   }
   pir::Attribute attr_data = paddle::dialect::IntArrayAttribute::get(
       pir::IrContext::Instance(), phi::IntArray(data));
@@ -145,6 +150,23 @@ const auto& handler_reduce_prod_op =
   return pd_op;
 }
 
+::pir::Operation* ConvertReshapeOp(::pir::Operation* op,
+                                   ::pir::IrMapping& ir_mapping,  // NOLINT
+                                   ::pir::Builder& builder) {     // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  attrs.at("shape").dyn_cast<::pir::ArrayAttribute>();
+  pir::Attribute shape = ArrayAttributeToIntArrayAttribute(
+      attrs.at("shape").dyn_cast<::pir::ArrayAttribute>());
+  attrs["shape"] = shape;
+  auto pd_op = builder.Build<paddle::dialect::ReshapeOp>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
 ::pir::Operation* ConvertConcatOp(::pir::Operation* op,
                                   ::pir::IrMapping& ir_mapping,  // NOLINT
                                   ::pir::Builder& builder) {     // NOLINT
@@ -232,6 +254,10 @@ REGISTER_TRANSFORM_RULES(reduce_prod_op,
 REGISTER_TRANSFORM_RULES(slice_op,
                          cinn::dialect::SliceOp::name(),
                          cinn::dialect::details::ConvertSliceOp);
+
+REGISTER_TRANSFORM_RULES(reshape_op,
+                         cinn::dialect::ReshapeOp::name(),
+                         cinn::dialect::details::ConvertReshapeOp);
 
 REGISTER_TRANSFORM_RULES(concat_op,
                          cinn::dialect::ConcatOp::name(),

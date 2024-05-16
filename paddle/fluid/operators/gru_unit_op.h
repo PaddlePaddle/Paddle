@@ -29,11 +29,8 @@ template <typename T, typename DeviceContext>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
-  void ActCompute(const int act_type,
-                  const Device& d,
-                  X x,
-                  Y y,
-                  platform::Place place) const {
+  void ActCompute(
+      const int act_type, const Device& d, X x, Y y, phi::Place place) const {
     if (act_type == identity) {
       y.device(d) = x;
     } else if (act_type == sigmoid) {
