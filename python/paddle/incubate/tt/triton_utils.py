@@ -20,6 +20,10 @@ import triton
 
 import paddle
 
+compile_file = triton.__path__[0] + "/tools/compile.py"
+link_file = triton.__path__[0] + "/tools/link.py"
+python_path = sys.executable
+
 
 def SubstituteTemplate(template, values):
     text = template

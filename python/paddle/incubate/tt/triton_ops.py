@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 
 import triton
 import triton.language as tl
@@ -27,13 +26,16 @@ from paddle.framework import in_dynamic_or_pir_mode
 from .triton_utils import (
     SubstituteTemplate,
     build_package,
+    compile_file,
     extract_triton_kernel,
     find_so_path,
     get_op_name_with_suffix,
     get_pointer_hint,
     get_value_hint,
+    link_file,
     multi_process_do,
     paddle_custom_op_head_part,
+    python_path,
     rename_c_to_cu,
     tune_and_invoke_part,
 )
@@ -351,15 +353,11 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
             f.write(SubstituteTemplate(triton_wint8_template, op_dict))
             f.close()
 
-        compile_file = triton.__path__[0] + "/tools/compile.py"
-        link_file = triton.__path__[0] + "/tools/link.py"
-        python_path = sys.executable
-
         # ahead of time compile command.
         aot_template = (
             f"""{python_path}   {compile_file} {py_script_file}   -n wint8_kernel   -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel """
             + """ -w {num_warps}   -ns {num_stages}  \
-        -s   "{address_hint} {value_hint}  {block_m},{block_n},{block_k}, 1, {split_k}"   \
+        -s   "{address_hint} {value_hint}  {block_m},{block_n},{block_k}, {group_size_m}, {split_k}"   \
         -g   "((M+{block_m}-1)/{block_m}) * ((N+{block_n}-1)/{block_n}), {split_k}, 1" \
         """
         )
@@ -370,6 +368,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
             block_m = config.kwargs["BLOCK_SIZE_M"]
             block_n = config.kwargs["BLOCK_SIZE_N"]
             block_k = config.kwargs["BLOCK_SIZE_K"]
+            group_size_m = config.kwargs["GROUP_SIZE_M"]
             num_stages = config.num_stages
             num_warps = config.num_warps
 
@@ -385,6 +384,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
                 block_n=block_n,
                 block_k=block_k,
                 split_k=split_k,
+                group_size_m=group_size_m,
             )
             codegen_commands.append(codegen_command)
 
