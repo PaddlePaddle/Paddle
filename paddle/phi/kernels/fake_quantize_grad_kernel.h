@@ -19,6 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
+void FakeChannelWiseQuantizeDequantizeAbsMaxGradKernel(const Context& dev_ctx,
+                                                       const DenseTensor& dout,
+                                                       int bit_length,
+                                                       int round_type,
+                                                       int quant_axis,
+                                                       DenseTensor* dx);
+
+template <typename T, typename Context>
 void FakeQuantizeDequantizeAbsMaxGradKernel(const Context& dev_ctx,
                                             const DenseTensor& dout,
                                             int bit_length,

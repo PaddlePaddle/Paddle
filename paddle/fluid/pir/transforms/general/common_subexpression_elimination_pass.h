@@ -11,20 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-#include "paddle/pir/include/core/program.h"
+namespace pir {
 
-namespace paddle {
-namespace dialect {
+class Pass;
 
-// pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+IR_API std::unique_ptr<Pass> CreateCommonSubexpressionEliminationPass();
 
-TEST_API std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog);
-
-void ProcessMixBlock(pir::Block* block);
-
-void VerifyDistBlock(pir::Block* block);
-
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace pir

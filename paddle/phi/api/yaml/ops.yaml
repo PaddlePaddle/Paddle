@@ -782,10 +782,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cumprod
-  args : (Tensor x,  int dim)
+  args : (Tensor x,  int dim, bool exclusive=false, bool reverse=false)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMetaCheckAxis
+    param : [x, dim]
   kernel :
     func : cumprod
   inplace: (x -> out)
@@ -1058,6 +1059,25 @@
   inplace: (x -> out)
   backward : expm1_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : fake_channel_wise_quantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0, bool is_test = false)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeChannelWiseQuantizeAbsMaxInferMeta
+  kernel :
+    func : fake_channel_wise_quantize_abs_max
+    data_type : x
+
+- op : fake_channel_wise_quantize_dequantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta
+  kernel :
+    func : fake_channel_wise_quantize_dequantize_abs_max
+    data_type : x
+  backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -2505,6 +2525,7 @@
     func : random_routing
     data_type : prob
   inplace : (topk_idx -> out)
+  traits : pir::SideEffectTrait
 
 - op : real
   args : (Tensor x)
