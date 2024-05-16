@@ -312,6 +312,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
 
         return var_dict
 
+
 def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_tensors = []
