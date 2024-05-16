@@ -3747,6 +3747,12 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: box_clip
+  inputs:
+    {input : Input, im_info : ImInfo}
+  outputs:
+    output : Output
+
 - op: c_allgather
   inputs :
     x : X

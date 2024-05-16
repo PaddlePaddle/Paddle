@@ -283,8 +283,7 @@ class StatementIR:
         return self.__str__()
 
 
-@Singleton
-class StatementIRFactory:
+class StatementIRFactory(metaclass=Singleton):
     """
     It is used to create a StatementIR.
     """
@@ -320,8 +319,7 @@ class StatementIRFactory:
             del self.cache[key]
 
 
-@Singleton
-class SIRRuntimeCache:
+class SIRRuntimeCache(metaclass=Singleton):
     """
     It is used to cache the runtime information of the StatementIR.
     """
