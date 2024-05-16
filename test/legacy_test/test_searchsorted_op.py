@@ -130,14 +130,17 @@ class TestSearchSortedBF16(OpTest):
         self.np_dtype = np.float32
         self.init_test_case()
 
-        Out = np.searchsorted(self.sorted_sequence, self.values, side=self.side)
         self.inputs = {
             'SortedSequence': convert_float_to_uint16(self.sorted_sequence),
             'Values': convert_float_to_uint16(self.values),
         }
         self.attrs = {"out_int32": False, "right": False}
         self.attrs["right"] = True if self.side == 'right' else False
-        self.outputs = {'Out': Out}
+        self.outputs = {
+            'Out': np.searchsorted(
+                self.sorted_sequence, self.values, side=self.side
+            )
+        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
