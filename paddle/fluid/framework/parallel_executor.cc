@@ -722,7 +722,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
   // Step 4. Create SSAGraph executor
-  /* std::vector<ir::Graph *> final_graphs =
+  std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -735,10 +735,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
             std::move(var_infos),
             member_->places_,
             std::move(member_->executor_));
-  } */
+  }
 
-  // ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
-  // SetReaderOpDeviceInfoOfGraphs(final_graphs);
+  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
+  SetReaderOpDeviceInfoOfGraphs(final_graphs);
 }
 
 ParallelExecutor::ParallelExecutor(const platform::Place &place,
