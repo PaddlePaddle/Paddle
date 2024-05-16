@@ -1847,6 +1847,28 @@ void group_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void swiglu_grad(const Tensor& x,
+                 const paddle::optional<Tensor>& y,
+                 const Tensor& dz,
+                 Tensor* dx,
+                 Tensor* dy) {
+  const auto& x_shape = x.shape();
+  int64_t m, n;
+  if (y) {
+    const auto& y_tensor = y.get();
+    const auto& y_shape = y.shape();
+    m = x.numel();
+    n = 1;
+    Tensor y_grad = silu_decomp<T>(x);
+  } else {
+    int axis = x_shape.size() - 1;
+    int num = 2;
+    auto res = flatten_to_2d(x_shape, axis);
+    std::vector<Tensor> xs = backend::split_with_num<T>(x, num, axis);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

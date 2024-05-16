@@ -188,5 +188,18 @@ static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
   }
 }
 
+static std::vector<int64_t> flatten_to_2d(const std::vector<int64_t>& src,
+                                          int num_col_dims) {
+  std::vector<int64_t> res(2, 1);
+  for (int i = 0; i < src.size(); i++) {
+    if (i < num_col_dims) {
+      res[0] *= src[i];
+    } else {
+      res[1] *= src[i];
+    }
+  }
+  return res;
+}
+
 }  // namespace primitive
 }  // namespace paddle
