@@ -174,7 +174,7 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
-    def get(self, key, default):
+    def get(self, key, default=None):
         if not self.__contains__(key):
             return default
         return self._items[ValueWrapper(key)]

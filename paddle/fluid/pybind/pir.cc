@@ -1687,13 +1687,14 @@ void AppendShadowOutput(Program *forward_program,
 int AppendShadowOutputs(Program *forward_program,
                         const std::vector<pir::Value> &outputs,
                         int start_point,
-                        std::string name_prefix) {
+                        std::string name_prefix,
+                        bool skip_check) {
   int counter = 0;
   std::unordered_set<pir::Value> added_value;
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (HasValueName(value)) {
+      if (HasValueName(value) && !skip_check) {
         shadow_output_name = GetValueName(value);
       }
       AppendShadowOutput(

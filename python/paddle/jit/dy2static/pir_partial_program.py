@@ -458,6 +458,7 @@ class OperatorIndexPreservePass:
             [program.global_block().ops[0].result(0)],
             self.indice,
             self.name,
+            True,
         )
         program = self.pass_fn(program)
         new_indice = 0
@@ -517,6 +518,7 @@ class ValuePreservePass:
             all_values,
             len(program.global_block().ops),
             "preserved_value_",
+            True,
         )
 
         # apply program pass
@@ -543,9 +545,9 @@ class ValuePreservePass:
             for v, name in value2name.items()
         }
         new_args = paddle.utils.map_structure(
-            lambda x: value2new_value[x]
-            if not is_fake_value(x)
-            else fake_value(),
+            lambda x: (
+                value2new_value[x] if not is_fake_value(x) else fake_value()
+            ),
             self.values,
         )
         self.values = new_args
@@ -678,6 +680,7 @@ class PartialProgramLayer:
             outputs,
             len(self._origin_main_program.global_block().ops),
             "output_",
+            False,
         )
         return RunnableProgram(
             self._origin_main_program, (inputs, params, outputs)
@@ -950,6 +953,7 @@ class PartialProgramLayer:
                     forward_outputs_grads,
                     len(program.global_block().ops),
                     "grad_input_",
+                    False,
                 )
                 op_between_forward_and_backward = (
                     len(program.global_block().ops) - forward_end_idx
@@ -1019,6 +1023,7 @@ class PartialProgramLayer:
             output_grads_to_append,
             backward_end_op_index,
             "grad_output_",
+            False,
         )
 
         backward_start_op_index = (
