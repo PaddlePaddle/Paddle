@@ -32,6 +32,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
     const phi::DenseTensor* X,
     phi::DenseTensor* Y) {
+  printf("ShangShang %s %d  SoftmaxCUDNNFunctor\n", __FILE__, __LINE__);
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
@@ -61,20 +62,16 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
                                             MIOPEN_SOFTMAX_ACCURATE,
                                             MIOPEN_SOFTMAX_MODE_INSTANCE));
 #elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_x_desc =
-      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_y_desc =
-      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnSoftmaxForward(context.cudnn_handle(),
-                                            CudnnDataType<T>::kOne(),
-                                            cudnn_x_desc,
-                                            X->data<T>(),
-                                            CudnnDataType<T>::kZero(),
-                                            cudnn_y_desc,
-                                            context.template Alloc<T>(Y),
-                                            MIOPEN_SOFTMAX_ACCURATE,
-                                            MIOPEN_SOFTMAX_MODE_INSTANCE));                                       
+  auto& cudnn_x_desc =
+      xDesc.descriptor<T>(X->data<T>(), layout, cudnn_tensor_dims);
+  auto& cudnn_y_desc =
+      xDesc.descriptor<T>(context.template Alloc<T>(Y),
+		          layout, cudnn_tensor_dims);
+  const int axis = cudnn_tensor_dims.size() - 1;
+  backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+  softmax_desc.descriptor(dynload::Softmax::Mode::SOFTMAX,
+		          dynload::Softmax::Algorithm::ACCURATE, axis)
+	  .Run(*context.cudnn_handle(), cudnn_y_desc, cudnn_x_desc);      
 #else
   cudnnTensorDescriptor_t cudnn_x_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
@@ -99,6 +96,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
     const phi::DenseTensor* Y,
     const phi::DenseTensor* YGrad,
     phi::DenseTensor* XGrad) {
+  printf("ShangShang %s %d  SoftmaxGradCUDNNFunctor\n", __FILE__, __LINE__);
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
@@ -133,24 +131,24 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                              MIOPEN_SOFTMAX_ACCURATE,
                                              MIOPEN_SOFTMAX_MODE_INSTANCE));
 #elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_y_desc =
-      yDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_xgrad_desc =
-      dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_ygrad_desc =
-      dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnSoftmaxBackward(context.cudnn_handle(),
-                                             CudnnDataType<T>::kOne(),
-                                             cudnn_y_desc,
-                                             Y->data<T>(),
-                                             cudnn_ygrad_desc,
-                                             YGrad->data<T>(),
-                                             CudnnDataType<T>::kZero(),
-                                             cudnn_xgrad_desc,
-                                             context.template Alloc<T>(XGrad),
-                                             MIOPEN_SOFTMAX_ACCURATE,
-                                             MIOPEN_SOFTMAX_MODE_INSTANCE));                                      
+  //auto& cudnn_y_desc =
+  //    yDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  //auto& cudnn_xgrad_desc =
+  //    dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  //auto& cudnn_ygrad_desc =
+  //    dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  //PADDLE_ENFORCE_GPU_SUCCESS(
+  //    phi::dynload::mudnnSoftmaxBackward(context.cudnn_handle(),
+  //                                           CudnnDataType<T>::kOne(),
+  //                                           cudnn_y_desc,
+  //                                           Y->data<T>(),
+  //                                           cudnn_ygrad_desc,
+  //                                           YGrad->data<T>(),
+  //                                           CudnnDataType<T>::kZero(),
+  //                                           cudnn_xgrad_desc,
+  //                                           context.template Alloc<T>(XGrad),
+  //                                           MIOPEN_SOFTMAX_ACCURATE,
+  //                                           MIOPEN_SOFTMAX_MODE_INSTANCE));                                      
 #else
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);

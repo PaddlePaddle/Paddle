@@ -756,7 +756,9 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #elif defined(PADDLE_WITH_MUSA)
-    mudnnTensorDescriptor_t  descp = desc.descriptor<T>(layout, tensor_dims);
+    auto& idesc = desc.descriptor<T>(logits_data, layout, tensor_dims);
+    ScopedTensorDescriptor out_desc;
+    auto& odesc = out_desc.descriptor<T>(softmax_data, layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -777,18 +779,11 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         MIOPEN_SOFTMAX_LOG,
         mode));
 #elif defined(PADDLE_WITH_MUSA)
-    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
-                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
-        handle,
-        MUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
+    backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+    softmax_desc.descriptor(dynload::Softmax::Mode::LOGSOFTMAX,
+		            dynload::Softmax::Algorithm::DIRECT,
+			    axis)
+	        .Run(*handle, odesc, idesc);      
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
@@ -1107,6 +1102,7 @@ void SwitchWarpSoftmaxForward(T* loss,
   int blocks = (batch_size + batches_per_block - 1) / batches_per_block;
   dim3 threads(kWarpSize, warps_per_block, 1);
 
+  printf("ShangShang %s %d SwitchWarpSoftmaxForward %d\n", __FILE__, __LINE__, log2_elements);
   switch (log2_elements) {
     SOFTMAX_WARP_FORWARD_CASE(0, LabelT, T, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, LabelT, T, AccT);
@@ -1203,7 +1199,7 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #elif defined(PADDLE_WITH_MUSA)
-    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);    
+    auto& idesc = desc.descriptor<T>(logits_data, layout, tensor_dims);    
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -1224,18 +1220,14 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
         MIOPEN_SOFTMAX_LOG,
         mode));
 #elif defined(PADDLE_WITH_MUSA)
-    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
-                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
-        handle,
-        MUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
+    ScopedTensorDescriptor odesc;
+    auto& odescp = odesc.descriptor<T>(softmax_data, layout, tensor_dims);    
+    // auto mode = axis == rank - 1  ? dynload::Softmax::Mode::LOGSOFTMAX
+    //                               : dynload::Softmax::Mode::SOFTMAX;
+    backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+    softmax_desc.descriptor(dynload::Softmax::Mode::LOGSOFTMAX,
+		            dynload::Softmax::Algorithm::DIRECT,
+			    axis).Run(*handle, odescp, idesc);      
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;

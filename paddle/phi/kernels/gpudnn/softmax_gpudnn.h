@@ -1031,6 +1031,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const bool log_mode,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
+  printf("ShangShang SoftmaxForwardCudnnKernel%s %d \n", __FILE__, __LINE__);
   auto handle = dev_ctx.cudnn_handle();
   GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 
@@ -1113,6 +1114,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
                                 const bool log_mode,
                                 const std::vector<int>& tensor_dims,
                                 T* dx_data) {
+  printf("ShangShang %s %d SoftmaxBackwardCudnnKernel \n", __FILE__, __LINE__);
   auto handle = dev_ctx.cudnn_handle();
   GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 
@@ -1136,7 +1138,17 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
       algo,
       mode));
 #elif defined(PADDLE_WITH_MUSA)
-  //      
+  auto& desc = scoped_desc.descriptor<T>(out_data, layout, tensor_dims);
+  ScopedTensorDescriptor scoped_dxdesc;
+  auto& dxdesc = scoped_dxdesc.descriptor<T>(dx_data, layout, tensor_dims);
+  ScopedTensorDescriptor scoped_dodesc;
+  auto& dodesc = scoped_dodesc.descriptor<T>(dout_data, layout, tensor_dims);
+  backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+  auto mode = log_mode ? dynload::Softmax::Mode::LOGSOFTMAX
+                       : dynload::Softmax::Mode::SOFTMAX;
+  auto algo = log_mode ? dynload::Softmax::Algorithm::DIRECT
+                       : dynload::Softmax::Algorithm::ACCURATE;
+  softmax_desc.descriptor(mode, algo, axis).RunBwd(*handle, dxdesc, desc, dodesc);
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
