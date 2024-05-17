@@ -1008,19 +1008,28 @@ def _program_for_zero_bubble_vpp(
                         type_to_ops["backward_w" + str(chunk_id)] = []
         type_to_ops["fetch"] = []
 
-        for ip, op in enumerate(block.ops):
-            if is_forward_op(op):
-                type = oprole_type[0]
-            elif is_backward_op(op):
-                type = _get_backward_op_type(block, op)[0]
-            elif is_optimize_op(op):
-                type = oprole_type[3]
+        dealed_op_idx = 0
+        dealed_types = []
+        for idx, op in enumerate(block.ops):
+            if idx < dealed_op_idx:
+                type = dealed_types[len(dealed_types) - dealed_op_idx + idx]
             else:
-                raise ValueError(
-                    "The op role: "
-                    + str(op.attr('op_role'))
-                    + " isn't one of Forward, Backward or Optimizer."
-                )
+                if is_forward_op(op):
+                    type = oprole_type[0]
+                elif is_backward_op(op):
+                    type = _get_backward_op_type(block, op, idx)
+                    dealed_op_idx = dealed_op_idx + len(type) - 1
+                    dealed_types = type[1:]
+                    type = type[0]
+                elif is_optimize_op(op):
+                    type = oprole_type[3]
+                else:
+                    raise ValueError(
+                        "The op role: "
+                        + str(op.attr('op_role'))
+                        + " isn't one of Forward, Backward or Optimizer."
+                    )
+                dealed_op_idx += 1
 
             dist_op = dist_context.get_dist_op_for_program(op)
             if _is_fetch_op(op):
@@ -1031,7 +1040,7 @@ def _program_for_zero_bubble_vpp(
                 type_to_ops[type + str(0)].append(op)
             elif op.type == "share_buffer":
                 dist_pre_op = dist_context.get_dist_op_for_program(
-                    block.ops[ip - 1]
+                    block.ops[idx - 1]
                 )
                 type_to_ops[type + str(dist_pre_op.dist_attr.chunk_id)].append(
                     op
