@@ -30,6 +30,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
@@ -89,6 +90,7 @@ void ApplyPdToCinnPass(
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->Run(program);
