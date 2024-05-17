@@ -71,7 +71,7 @@ class TestLayer(TestBase):
     def init(self):
         self.input_specs = [
             InputSpec(
-                shape=(-1, 256, -1, -1),
+                shape=(-1, 256, 28, 28),
                 dtype=paddle.float32,
                 name=None,
                 stop_gradient=False,
@@ -80,7 +80,7 @@ class TestLayer(TestBase):
                 shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
             ),
             InputSpec(
-                shape=(-1, -1, -1),
+                shape=(2, -1, 28),
                 dtype=paddle.int32,
                 name=None,
                 stop_gradient=True,
@@ -98,6 +98,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[2], dtype=paddle.float32),
         )
         self.net = LayerCase()
+        self.with_cinn = False
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ if(WITH_GPU)
       test_sub_graph_7
       test_sub_graph_9
       test_sub_graph_10
+      test_sub_graph_12
       test_sub_graph_13
       test_sub_graph_16
       test_sub_graph_17
@@ -26,7 +27,9 @@ if(WITH_GPU)
       test_sub_graph_28
       test_sub_graph_29
       test_sub_graph_30
+      test_sub_graph_31
       test_sub_graph_33
+      test_sub_graph_34
       test_sub_graph_40
       test_sub_graph_42
       test_sub_graph_43
@@ -34,11 +37,15 @@ if(WITH_GPU)
       test_sub_graph_48
       test_sub_graph_49
       test_sub_graph_add_n
+      test_sub_graph_add
       test_sub_graph_avg_pool2d
       test_sub_graph_chunk
       test_sub_graph_max_pool2d
       test_sub_graph_mul_reshape
       test_sub_graph_mul_swish
+      test_sub_graph_swish
+      test_sub_graph_mul_method
+      test_sub_graph_adaptive_avg_pool2d
       test_sub_graph_52
       test_sub_graph_55
       test_sub_graph_56
@@ -60,48 +67,44 @@ if(WITH_GPU)
       test_sub_graph_87
       test_sub_graph_88)
 
-  function(list_contains list element result)
-    set(${result}
-        FALSE
-        PARENT_SCOPE)
-    foreach(item IN LISTS ${list})
-      if("${item}" STREQUAL "${element}")
-        set(${result}
-            TRUE
-            PARENT_SCOPE)
-        return()
-      endif()
-    endforeach()
-  endfunction()
+  file(
+    GLOB DYNAMIC_BUILD_TESTS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "test_*.py")
+  string(REPLACE ".py" "" DYNAMIC_BUILD_TESTS "${DYNAMIC_BUILD_TESTS}")
+  #list(REMOVE_ITEM DYNAMIC_BUILD_TESTS STATIC_BUILD_TESTS)
 
-  foreach(cinn_sub_graph_test_name ${CINN_SUB_GRAPH_TEST})
-    string(REGEX REPLACE ".py" "" cinn_sub_graph_test_name
-                         ${cinn_sub_graph_test_name})
-    list_contains(STATIC_BUILD_TESTS ${cinn_sub_graph_test_name} is_in_static)
-    if(is_in_static)
-      add_test(
-        NAME ${cinn_sub_graph_test_name}
-        COMMAND
-          ${CMAKE_COMMAND} -E env
-          PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-          FLAGS_cinn_new_group_scheduler=1 FLAGS_enable_pir_api=1
-          FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
-          FLAGS_cudnn_deterministic=true ${PYTHON_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_sub_graph_test_name}.py
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    else()
-      add_test(
-        NAME ${cinn_sub_graph_test_name}
-        COMMAND
-          ${CMAKE_COMMAND} -E env
-          PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-          FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
-          FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=1
-          FLAGS_group_schedule_tiling_first=1 FLAGS_cudnn_deterministic=true
-          ${PYTHON_EXECUTABLE}
-          ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_sub_graph_test_name}.py
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    endif()
+  foreach(static_test ${STATIC_BUILD_TESTS})
+    list(REMOVE_ITEM DYNAMIC_BUILD_TESTS ${static_test})
+  endforeach()
+
+  foreach(cinn_sub_graph_test_name ${STATIC_BUILD_TESTS})
+    add_test(
+      NAME ${cinn_sub_graph_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        FLAGS_cinn_new_group_scheduler=1 FLAGS_enable_pir_api=1
+        FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+        FLAGS_cudnn_deterministic=true ${PYTHON_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_sub_graph_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES LABELS
+                                                                "RUN_TYPE=CINN")
+  endforeach()
+
+  foreach(cinn_sub_graph_test_name ${DYNAMIC_BUILD_TESTS})
+    add_test(
+      NAME ${cinn_sub_graph_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+        FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=1
+        FLAGS_group_schedule_tiling_first=1 FLAGS_cudnn_deterministic=true
+        ${PYTHON_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_sub_graph_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES LABELS
                                                                 "RUN_TYPE=CINN")
   endforeach()

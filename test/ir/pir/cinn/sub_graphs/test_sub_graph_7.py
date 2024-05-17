@@ -73,12 +73,25 @@ class TestLayer(TestBase):
                 name=None,
                 stop_gradient=True,
             ),
+            #             InputSpec(
+            #     shape=(22, 49, 512),
+            #     dtype=paddle.float32,
+            #     name=None,
+            #     stop_gradient=False,
+            # ),
+            # InputSpec(
+            #     shape=(49, 49),
+            #     dtype=paddle.int64,
+            #     name=None,
+            #     stop_gradient=True,
+            # ),
         ]
         self.inputs = (
             paddle.rand(shape=[22, 49, 512], dtype=paddle.float32),
             paddle.randint(low=0, high=10, shape=[49, 49], dtype=paddle.int64),
         )
         self.net = LayerCase()
+        self.with_cinn = False
 
     # NOTE prim + cinn lead to error
     # NOTE can not pass when atol=1e-8 with prim

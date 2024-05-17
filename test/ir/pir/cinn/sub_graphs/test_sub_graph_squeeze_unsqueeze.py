@@ -14,6 +14,8 @@
 
 from base import *  # noqa: F403
 
+from paddle.static import InputSpec
+
 
 class SqueezeCase(paddle.nn.Layer):
     def __init__(self):
@@ -39,16 +41,32 @@ class UnsqueezeCase(paddle.nn.Layer):
 
 class TestSplitSqueeze(TestBase):
     def init(self):
-        self.input_specs = []
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (paddle.rand(shape=[1, 12, 1, 64], dtype=paddle.float32),)
         self.net = SqueezeCase()
+        self.atol = 1e-8
 
 
 class TestSplitUnsqueeze(TestBase):
     def init(self):
-        self.input_specs = []
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (paddle.rand(shape=[1, 12, 1, 64], dtype=paddle.float32),)
         self.net = UnsqueezeCase()
+        self.atol = 1e-8
 
 
 if __name__ == '__main__':

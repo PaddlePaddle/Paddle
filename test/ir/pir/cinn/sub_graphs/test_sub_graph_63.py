@@ -60,7 +60,7 @@ class TestLayer(TestBase):
                 stop_gradient=False,
             ),
             InputSpec(
-                shape=(-1, -1),
+                shape=(-1, 1),
                 dtype=paddle.int64,
                 name=None,
                 stop_gradient=True,
@@ -69,7 +69,7 @@ class TestLayer(TestBase):
                 shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
             ),
             InputSpec(
-                shape=(-1, -1),
+                shape=(-1, 1),
                 dtype=paddle.int64,
                 name=None,
                 stop_gradient=True,

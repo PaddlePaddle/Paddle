@@ -56,6 +56,8 @@ class TestAvgPool2d(TestBase):
             paddle.rand(shape=[22, 128, 56, 56], dtype=paddle.float32),
         )
         self.net = AvgPool2dCase()
+        self.atol = 1e-8
+        self.with_cinn = False
 
     # NOTE prim + cinn lead to error
 

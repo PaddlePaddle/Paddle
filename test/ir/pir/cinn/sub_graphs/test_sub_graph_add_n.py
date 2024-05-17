@@ -17,6 +17,8 @@
 # api:paddle.tensor.math.add_n
 from base import *  # noqa: F403
 
+from paddle.static import InputSpec
+
 
 class AddNCase(paddle.nn.Layer):
     def __init__(self):
@@ -41,7 +43,56 @@ class AddNCase(paddle.nn.Layer):
 
 class TestAddN(TestBase):
     def init(self):
-        self.input_specs = []
+        self.input_specs = [
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[1], dtype=paddle.float32),
             paddle.rand(shape=[1], dtype=paddle.float32),
@@ -53,6 +104,7 @@ class TestAddN(TestBase):
             paddle.rand(shape=[1], dtype=paddle.float32),
         )
         self.net = AddNCase()
+        self.atol = 1e-8
 
 
 if __name__ == '__main__':

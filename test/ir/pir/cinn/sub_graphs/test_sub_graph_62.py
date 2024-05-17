@@ -17,6 +17,8 @@
 # method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__add__||method:__add__||method:__mul__
 from base import *  # noqa: F403
 
+from paddle.static import InputSpec
+
 
 class LayerCase(paddle.nn.Layer):
     def __init__(self):
@@ -50,12 +52,26 @@ class LayerCase(paddle.nn.Layer):
 
 class TestLayer(TestBase):
     def init(self):
-        self.input_specs = []
+        self.input_specs = [
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[1], dtype=paddle.float32),
             paddle.rand(shape=[1], dtype=paddle.float32),
         )
         self.net = LayerCase()
+        self.atol = 1e-8
 
 
 if __name__ == '__main__':

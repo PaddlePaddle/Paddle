@@ -14,6 +14,8 @@
 
 from base import *  # noqa: F403
 
+from paddle.static import InputSpec
+
 
 class LayerCase(paddle.nn.Layer):
     def __init__(self):
@@ -53,7 +55,14 @@ class LayerCase(paddle.nn.Layer):
 
 class TestLayer(TestBase):
     def init(self):
-        self.input_specs = []
+        self.input_specs = [
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (paddle.rand(shape=[12], dtype=paddle.float32),)
         self.net = LayerCase()
 

@@ -147,7 +147,55 @@ class TestLayer(TestBase):
                 dtype=paddle.float32,
                 name=None,
                 stop_gradient=False,
-            )
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
         ]
         self.inputs = (
             paddle.rand(shape=[1], dtype=paddle.float32),

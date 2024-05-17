@@ -54,6 +54,7 @@ class TestAdd(TestBase):
             paddle.rand(shape=[22, 196, 128], dtype=paddle.float32),
         )
         self.net = AddCase()
+        self.atol = 1e-8
 
 
 if __name__ == '__main__':

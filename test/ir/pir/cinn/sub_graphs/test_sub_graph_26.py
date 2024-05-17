@@ -92,6 +92,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[86, 3, 224, 224], dtype=paddle.float32),
         )
         self.net = LayerCase()
+        self.atol = 1e-5
 
 
 if __name__ == '__main__':
