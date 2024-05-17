@@ -23,6 +23,7 @@ import paddle
 import paddle.vision.transforms as T
 from paddle import nn
 from paddle.distributed import fleet
+from paddle.pir_utils import test_with_pir_api
 
 batch_size = 32
 
@@ -77,6 +78,7 @@ def get_dataloader(mode='train'):
     return train_loader
 
 
+@test_with_pir_api
 def train(args):
     main_program, startup_program, fetch_list = get_program(args)
     exe = paddle.static.Executor()
@@ -109,6 +111,7 @@ def train(args):
         paddle.static.save(main_program, model_path)
 
 
+@test_with_pir_api
 def eval(args):
     main_program, startup_program, fetch_list = get_program(args)
     exe = paddle.static.Executor()
