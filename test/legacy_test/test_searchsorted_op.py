@@ -100,9 +100,7 @@ class TestSearchSortedOp5(TestSearchSorted):
 class TestSearchSortedFP16(OpTest):
     def setUp(self):
         self.python_api = paddle.searchsorted
-        self.public_python_api = paddle.searchsorted
         self.op_type = "searchsorted"
-        self.python_out_sig = ["Out"]
         self.dtype = np.float16
         self.init_test_case()
 
@@ -119,8 +117,7 @@ class TestSearchSortedFP16(OpTest):
         }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output(check_pir=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
