@@ -236,7 +236,7 @@ void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "out_dtype", paddle::cpp::VarDescAPI::Type::FP32);
   PADDLE_ENFORCE_EQ(dtype.empty(),
-                    false,
+                    true,
                     phi::errors::InvalidArgument(
                         "The op \"cast\"'s attribute \"out_dtype\" should "
                         "not be unknown type! Please check."));
