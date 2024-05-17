@@ -23,4 +23,6 @@ PD_REGISTER_KERNEL(channel_shuffle_grad,
                    ALL_LAYOUT,
                    phi::ChannelShuffleGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

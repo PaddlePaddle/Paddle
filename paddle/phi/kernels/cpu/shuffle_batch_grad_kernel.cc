@@ -57,4 +57,6 @@ PD_REGISTER_KERNEL(shuffle_batch_grad,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

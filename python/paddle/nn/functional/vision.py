@@ -442,7 +442,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     See more details in :ref:`api_paddle_nn_ChannelShuffle`.
 
     Parameters:
-        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+        x (Tensor): 4-D tensor, the data type should be float32, float64, complex64 or complex128.
         groups (int): Number of groups to divide channels in.
         data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -496,7 +496,12 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
         return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float32', 'float64', 'complex64', 'complex128'],
+        'channel_shuffle',
+    )
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="channel_shuffle",
