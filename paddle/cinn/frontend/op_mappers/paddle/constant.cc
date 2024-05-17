@@ -87,11 +87,8 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  PADDLE_ENFORCE_NE(dtype.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The op \"fill_constant\"'s attribute \"dtype\" "
-                        "should not be unknown type! Please check."));
+  CHECK(!dtype.empty()) << "The op \"fill_constant\"'s attribute \"dtype\" "
+                           "should not be unknown type! Please check.";
 
   absl::optional<Variable> out;
   if (op_desc.HasInput("ValueTensor") &&
