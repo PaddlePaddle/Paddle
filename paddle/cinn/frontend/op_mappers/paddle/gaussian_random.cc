@@ -15,14 +15,17 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc,
                             const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of gaussian_random op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto shape_origin =
@@ -35,8 +38,11 @@ void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  CHECK(!dtype.empty()) << "The op \"gaussian_random\"'s attribute \"dtype\" "
-                           "should not be unknown type! Please check.";
+  PADDLE_ENFORCE_EQ(dtype.empty(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The op \"gaussian_random\"'s attribute \"dtype\" "
+                        "should not be unknown type! Please check."));
 
   VLOG(4) << out_name << "[" << cinn::utils::Join(shape, ", ")
           << "] = uniform_random(mean=" << mean << ", std=" << std
