@@ -73,10 +73,10 @@ struct DimUsage {
     oss << ", Index: " << idx_;
     oss << ", UsageIdx: " << usage_idx_;
     oss << ", ";
-    if (v_.defining_op() != nullptr) {
+    if (v_.defining_op()) {
       v_.defining_op()->Print(oss);
     } else {
-      oss << "nullptr";
+      oss << "No defining op.";
     }
     return oss.str();
   }

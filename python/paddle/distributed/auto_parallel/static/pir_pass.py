@@ -21,7 +21,7 @@ from .reshard_funcs.reshard_func_register import register_reshard_funcs
 
 register_reshard_funcs()
 
-partition_skip_op_list = ["builtin.combine"]
+partition_skip_op_list = ["builtin.combine", "builtin.split"]
 
 
 def reshard_single_value(op, operand, attr):
@@ -91,6 +91,8 @@ def apply_partition_pass(program):
     # pruning op and value not belong to cur rank
     cur_rank = paddle.distributed.get_rank()
     for op in program.global_block().ops[::-1]:
+        if op.name() in partition_skip_op_list:
+            continue
         if cur_rank not in op.dist_attr.process_mesh.process_ids:
             op.erase()
         else:
