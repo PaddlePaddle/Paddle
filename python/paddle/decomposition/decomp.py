@@ -861,14 +861,7 @@ def decompose_dist_program(pir_program):
                 decomp_outs = call_decomp_vjp(op)
                 new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
                 op.replace_all_uses_with(new_outs)
-
-                remove_op = True
-                for item in op.results():
-                    if item.has_one_use():
-                        remove_op = False
-                        break
-                if remove_op:
-                    block.remove_op(op)
+                block.remove_op(op)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

@@ -1061,8 +1061,7 @@ void BindDecompVjp(pybind11::module *m) {
     pir::OpInfo vjp_op_info = ctx->GetRegisteredOpInfo(vjp_op.name());
     auto decomp_vjp_interface_impl =
         vjp_op_info.GetInterfaceImpl<paddle::dialect::DecompVjpInterface>();
-    if (decomp_vjp_interface_impl == nullptr) return false;
-    return true;
+    return decomp_vjp_interface_impl != nullptr;
   });
 }
 
