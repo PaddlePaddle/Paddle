@@ -203,7 +203,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // =========== OpFusion ============
 
-  func_bodies = OperationFusion(ops, func_bodies);
+  // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
+  func_bodies = OperationFusion(ops, func_bodies, group->output_values());
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================
@@ -728,7 +729,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   group->mut_output_names().clear();
 
   // collect all output tensor.
-  for (auto op_result : group->GetGroupOutputValues()) {
+  for (auto op_result : group->output_values()) {
     if (tensor_map.count(op_result) == 0) {
       continue;
     }
