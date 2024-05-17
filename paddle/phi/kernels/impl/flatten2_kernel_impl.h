@@ -56,8 +56,7 @@ void Flatten2Kernel(const Context &dev_ctx,
 
   auto out_dims = common::make_ddim(GetOutputShape(axes, x_dims));
 
-  dev_ctx.template Alloc<in->type()>(out);
-
+  dev_ctx.Alloc(out, x.dtype());
   phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);
 }
@@ -75,7 +74,7 @@ void Flatten2GradKernel(const Context &dev_ctx,
   auto xshape_dims = x_shape.dims();
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
-  dev_ctx.template Alloc<d_out->type()>(d_x);
+  dev_ctx.Alloc(x_grad, out_grad.dtype());
   phi::Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
   d_x->Resize(x_dims);
 }

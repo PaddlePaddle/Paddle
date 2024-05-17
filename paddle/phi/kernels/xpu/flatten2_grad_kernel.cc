@@ -25,6 +25,6 @@ PD_REGISTER_KERNEL(flatten2_grad,
                    float,
                    int,
                    int8_t,
-                   int64_t);
+                   int64_t) {}
 
 #endif
