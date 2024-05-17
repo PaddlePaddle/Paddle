@@ -148,12 +148,11 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 
-// round eltwise primitive doesn't support BF16, nor does it support grad
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
-
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
+// round eltwise primitive doesn't support BF16, nor does it support grad
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Round, RoundOneDNNFunctor, decimals)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
