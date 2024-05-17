@@ -119,9 +119,9 @@ class TestStateKeepVars(unittest.TestCase):
         st = model.state_dict()
         detached_from_graph = (
             False
-            if (st["linear.weight"].grad == model.linear.weight.grad)
-            and (st["linear.bias"].grad == model.linear.bias.grad)
-            and (st["model_buffer"].grad == model.model_buffer.grad)
+            if (st["linear.weight"].grad == model.linear.weight.grad).all()
+            and (st["linear.bias"].grad == model.linear.bias.grad).all()
+            and (st["model_buffer"].grad == model.model_buffer.grad).all()
             else True
         )
         self.assertEqual(detached_from_graph, False)
