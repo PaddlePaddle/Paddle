@@ -57,8 +57,6 @@ void ConcatCooKernel(const Context& dev_ctx,
                      const std::vector<const SparseCooTensor*>& x,
                      const Scalar& axis_scalar,
                      SparseCooTensor* out) {
-  std::vector<const SparseTensorMeta*> meta_x_ptr;
-  meta_x_ptr.reserve(x.size());
   std::vector<DenseTensor> indices;
   std::vector<DenseTensor> values;
   std::vector<phi::DDim> x_dims;
@@ -71,12 +69,12 @@ void ConcatCooKernel(const Context& dev_ctx,
   DDim dims = x[0]->dims();
   DenseTensor out_indices;
   DenseTensor out_values;
+  // 替换成 使用指针的形式
   funcs::ConcatFunctor<Context, T> concat_functor_value;
   funcs::ConcatFunctor<Context, int64_t> concat_functor_indice;
   int64_t pos = 0;
   for (const auto* t : x) {
     check_cat_sparse_dims(t, pos, dims, axis, sparse_dim, dense_dim);
-    meta_x_ptr.push_back(&t->meta());
     x_dims.push_back(t->dims());
     pos++;
   }
@@ -84,11 +82,14 @@ void ConcatCooKernel(const Context& dev_ctx,
   EmptyLikeCooKernel<T, Context>(dev_ctx, *x[0], out);
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   if (axis < sparse_dim) {
-    int64_t out_nnz = 0;
+    int64_t out_nnz = 0, out_cols = 0;
+    std::vector<int64_t> indice_offset(x.size() + 1, 0);
     for (const auto* t : x) {
       indices.emplace_back(t->indices());
       values.emplace_back(t->values());
       out_nnz += t->nnz();
+      out_cols += t.dims()[axis];
+      indice_offset[i] = out_cols;
     }
     out_indices = phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
     // TODO(bapijun)  改掉这个 参考可能得算法写出来
@@ -104,7 +105,7 @@ void ConcatCooKernel(const Context& dev_ctx,
     concat_functor_value(dev_ctx, values, static_cast<int>(0), &out_values);
 
     int64_t col = 0;
-    int64_t cumulative_offset = 0;
+    // int64_t cumulative_offset = 0;
     auto* out_indices_data = out_indices.data<int64_t>();
     for (size_t i = 0; i < x.size(); i++) {
       int64_t this_piece_size = x[i]->nnz();
@@ -112,17 +113,15 @@ void ConcatCooKernel(const Context& dev_ctx,
         // indices下会在实际的concat的axis下增加之前的,每一轮下叠加值,
         // 例如针对两个indice [1, 2, 3, 4], [1, 2, 3], [1,
         // 2]进行concat,那么结果就是[1, 2, 3, 4, 1+4, 2+4, 3+4, 4+4, 1+ 4+3,
-        // 2+4+3] 这里4和3之前的indice的对应axis的numel
-        // 只处理axis维下的对应的indice
+        // 2+4+3]
         for (int64_t j = col; j < col + this_piece_size; j++) {
-          // out_nnz = out_indices->dims()[1]
-          out_indices_data[axis * out_nnz + j] += cumulative_offset;
+          // out_indices_data[axis * out_nnz + j] += cumulative_offset;
+          out_indices_data[axis * out_nnz + j] += indice_offset[i];
         }
       }
-      cumulative_offset += x[i]->dims()[axis];
+      // cumulative_offset += x[i]->dims()[axis];
       col += this_piece_size;
     }
-    VLOG(7) << "rabit hole" << '4';
 
     out->SetMember(out_indices, out_values, out_dims, x[0]->coalesced());
 
@@ -155,7 +154,7 @@ void ConcatCooKernel(const Context& dev_ctx,
       auto concat_value =
           std::make_shared<DenseTensor>();  // 创建DenseTensor的智能指针
       concat_functor_value(dev_ctx, now_values, values_dim, concat_value.get());
-
+      // 用 phi::funcs::StridedNumelCopyWithAxis<T, Context>
       values.push_back(*concat_value);
       indices.push_back(t->indices());
     }
@@ -231,16 +230,20 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
       // 替换掉方便编写的方法
       int64_t value_offset = 0;
+      // 改成合并的concat方法
       for (size_t i = 0; i < num_split; i++) {
         int nnz = nnz_vec[i];
         // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
-        std::memcpy(out_values_data + value_offset,
-                    values_data_vec[i],
-                    nnz * sizeof(T));
-        std::memcpy(out_cols_data + value_offset,
-                    cols_data_vec[i],
-                    nnz * sizeof(int64_t));
-
+        memory_utils::Copy(out_values_data,
+                           out_values_data + value_offset,
+                           cpu_place,
+                           values_data_vec[i],
+                           nnz * sizeof(T));
+        memory_utils::Copy(cpu_place,
+                           out_cols_data + value_offset,
+                           cpu_place,
+                           cols_data_vec[i],
+                           nnz * sizeof(int64_t));
         value_offset += nnz;
       }
       // rows_in_slice 保存的是每一个crows的和,方便concat的计算 多给1条方便优化
@@ -304,7 +307,7 @@ void ConcatCsrKernel(const Context& dev_ctx,
       out->SetMember(out_crows, out_cols, out_values, out_dims);
     }
 
-  } else {
+  } else if (x_dim == 3) {
     // dim==3
     if (axis == 0) {
       std::vector<DenseTensor> crows;
@@ -334,15 +337,7 @@ void ConcatCsrKernel(const Context& dev_ctx,
       // 对于dim == 1的情况类似于拆分到2d下dim=0的情况
       // 对于dim==1 的情况下batch必然要一致
       size_t batch = static_cast<int>(x[0]->dims()[0]);
-      // TODO(bapijun) 这里可以优化掉,只用一个
-      // for (size_t b = 0; b < batch; b++) {
-      //   out_crows_size += 1;
-      //   for (size_t i = 0; i < num_split; i++) {
-      //     int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
-      //     crows_numel.push_back(rows + 1);
-      //     out_crows_size += rows;
-      //   }
-      // }
+
       out_crows_size = batch;
       for (size_t i = 0; i < num_split; i++) {
         int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
@@ -374,12 +369,22 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
           if (x_crows_nnz) {
             // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
-            std::memcpy(out_values_data + value_offset,
-                        now_value_ptr,
-                        x_crows_nnz * sizeof(T));
-            std::memcpy(out_cols_data + value_offset,
-                        now_cols_ptr,
-                        x_crows_nnz * sizeof(int64_t));
+            memory_utils::Copy(cpu_place,
+                               out_values_data + value_offset,
+                               cpu_place,
+                               now_value_ptr,
+                               x_crows_nnz * sizeof(T));
+            memory_utils::Copy(cpu_place,
+                               out_cols_data + value_offset,
+                               cpu_place,
+                               now_cols_ptr,
+                               x_crows_nnz * sizeof(int64_t));
+            // std::memcpy(out_values_data + value_offset,
+            //             now_value_ptr,
+            //             x_crows_nnz * sizeof(T));
+            // std::memcpy(out_cols_data + value_offset,
+            //             now_cols_ptr,
+            //             x_crows_nnz * sizeof(int64_t));
           }
 
           value_offset += x_crows_nnz;
@@ -437,6 +442,12 @@ void ConcatCsrKernel(const Context& dev_ctx,
 
       out->SetMember(out_crows, out_cols, out_values, out_dims);
     }
+
+  } else {
+    // throw exception
+    phi::errors::InvalidArgument(
+        "Concat for Sparse CSR Tensor only support 2-D or 3-D, but got %d-D.",
+        x_dim);
   }
 }
 

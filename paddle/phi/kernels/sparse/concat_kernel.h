@@ -14,12 +14,22 @@
 
 #pragma once
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
+
 namespace phi {
 namespace sparse {
 template <typename T, typename Context>

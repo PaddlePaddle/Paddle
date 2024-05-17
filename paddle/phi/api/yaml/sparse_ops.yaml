@@ -464,6 +464,7 @@
     func : concat_coo{vec::sparse_coo -> sparse_coo},
            concat_csr{vec::sparse_csr -> sparse_csr}
     layout : x
+  backward: concat_grad
 
 - op: full_like
   args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
