@@ -15,8 +15,7 @@
 #include <iostream>
 
 #include "./cutlass_kernels/fp8_fp8_gemm_scale_bias_act.h"
-#include "paddle/phi/kernels/fusion/fp8_gemm/fp8_common.h"
-#include "paddle/phi/kernels/fusion/fp8_gemm/fp8_fp8_gemm_cublaslt.h"
+#include "paddle/phi/kernels/fusion/fp8_gemm_with_cutlass/fp8_common.h"
 
 #include "paddle/phi/backends/dynload/fp8_gemm_fused.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -30,7 +29,7 @@ namespace fusion {
 namespace cutlass_internal {
 
 template <typename InputType, typename Context>
-void fp8_fp8_fp16_gemm(
+void fp8_fp8_bf16_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
@@ -43,10 +42,7 @@ void fp8_fp8_fp16_gemm(
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
 
-  // cublaslt_fp8_fp8_fp16_gemm<Context>(dev_ctx, x, y, bias, trans_x, trans_y,
-  // scale, activation_type, out);
-
-  dev_ctx.template Alloc<phi::dtype::float16>(out);
+  dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
   auto place = dev_ctx.GetPlace();
   cudaStream_t stream = reinterpret_cast<cudaStream_t>(dev_ctx.stream());
   int64_t device_id = place.GetDeviceId();
@@ -89,7 +85,7 @@ void fp8_fp8_fp16_gemm(
 
   std::string input_dtype =
       (x.dtype() == phi::DataType::FLOAT8_E4M3FN) ? "e4m3" : "e5m2";
-  std::string output_dtype = "fp16";
+  std::string output_dtype = "bf16";
   std::string isbias = bias ? "bias_" : "";
   std::string act = (activation_type == "" || activation_type == "identity")
                         ? "identity"
@@ -101,14 +97,14 @@ void fp8_fp8_fp16_gemm(
   void* bias_data = nullptr;
   std::vector<int64_t> bias_dims{};
   if (bias) {
-    bias_data = reinterpret_cast<void*>(const_cast<phi::dtype::float16*>(
-        bias.get().data<phi::dtype::float16>()));
+    bias_data = reinterpret_cast<void*>(const_cast<phi::dtype::bfloat16*>(
+        bias.get().data<phi::dtype::bfloat16>()));
     bias_dims = common::vectorize(bias.get().dims());
   }
   GemmEpilogueAllParams params = {
       reinterpret_cast<const void*>(x.data<InputType>()),
       reinterpret_cast<const void*>(y.data<InputType>()),
-      reinterpret_cast<void*>(out->data<phi::dtype::float16>()),
+      reinterpret_cast<void*>(out->data<phi::dtype::bfloat16>()),
       scale,
       M,
       N,
@@ -123,8 +119,7 @@ void fp8_fp8_fp16_gemm(
       0.01,  // for leaky_relu
       bias_data,
       bias_dims,
-      gemm_config,
-  };
+      gemm_config};
   func fp8_gemm_func = (func)(dlsym(dlhandler, "fp8_fp8_gemm_scale_bias_act"));
   fp8_gemm_func(params);
 }
@@ -133,9 +128,9 @@ void fp8_fp8_fp16_gemm(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fp8_fp8_fp16_gemm_fused,
+PD_REGISTER_KERNEL(fp8_fp8_bf16_gemm_fused,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::fp8_fp8_fp16_gemm,
+                   phi::fusion::cutlass_internal::fp8_fp8_bf16_gemm,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2) {}

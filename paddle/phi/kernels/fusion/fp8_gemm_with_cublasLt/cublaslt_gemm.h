@@ -732,32 +732,51 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
 
   cublasLtEpilogue_t epilogue;
   const T* bias_ptr = nullptr;
-  if (bias && (activation_type == "" || activation_type == "identity")) {
-    epilogue = CUBLASLT_EPILOGUE_BIAS;
+  if (bias) {
     bias_ptr = const_cast<T*>(bias.get().data<T>());
     status =
         dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
                                             CUBLASLT_MATMUL_DESC_BIAS_POINTER,
                                             &bias_ptr,
                                             sizeof(bias_ptr));
-    status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
-                                                 CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                                 &epilogue,
-                                                 sizeof(epilogue));
-  }
-
-  if (bias && activation_type == "gelu") {
-    epilogue = CUBLASLT_EPILOGUE_GELU_BIAS;
-    bias_ptr = const_cast<T*>(bias.get().data<T>());
-    status =
-        dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
-                                            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-                                            &bias_ptr,
-                                            sizeof(bias_ptr));
-    status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
-                                                 CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                                 &epilogue,
-                                                 sizeof(epilogue));
+    if (activation_type == "" || activation_type == "identity") {
+      epilogue = CUBLASLT_EPILOGUE_BIAS;
+      status =
+          dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                              CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                              &epilogue,
+                                              sizeof(epilogue));
+    } else if (activation_type == "gelu") {
+      epilogue = CUBLASLT_EPILOGUE_GELU_BIAS;
+      status =
+          dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                              CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                              &epilogue,
+                                              sizeof(epilogue));
+    } else if (activation_type == "relu") {
+      epilogue = CUBLASLT_EPILOGUE_RELU_BIAS;
+      status =
+          dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                              CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                              &epilogue,
+                                              sizeof(epilogue));
+    }
+  } else {
+    if (activation_type == "gelu") {
+      epilogue = CUBLASLT_EPILOGUE_GELU;
+      status =
+          dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                              CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                              &epilogue,
+                                              sizeof(epilogue));
+    } else if (activation_type == "relu") {
+      epilogue = CUBLASLT_EPILOGUE_RELU;
+      status =
+          dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                              CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                              &epilogue,
+                                              sizeof(epilogue));
+    }
   }
 
   status = dyl::cublasLtMatrixLayoutCreate(&B_desc_, B_type, k, n, k);
@@ -828,6 +847,66 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                             temp_workspace_size,
                             dev_ctx.stream());
   }
+}
+
+template <typename Context>
+void cublaslt_fp8_fp8_fp16_gemm(
+    const Context& ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    const paddle::optional<DenseTensor>& bias,
+    bool transpose_x,
+    bool transpose_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& activation_type,
+    DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      y.dims().size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      x.dims()[1], y.dims()[0], "x_dims[1] needs to equal to y_dims[0]");
+  if (bias) {
+    PADDLE_ENFORCE_EQ(bias->dims()[0],
+                      y.dims()[1],
+                      "bias_vecotr_dim needs to equal to y_dims[1]");
+  }
+  PADDLE_ENFORCE_EQ(x.dims()[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(y.dims()[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+
+  ctx.template Alloc<phi::dtype::float16>(out);
+  CublasLtMatmulFP8<phi::dtype::float16>(
+      ctx, x, y, scale, bias, activation_type, out);
+}
+
+template <typename Context>
+void cublaslt_fp8_fp8_bf16_gemm(
+    const Context& ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    const paddle::optional<DenseTensor>& bias,
+    bool transpose_x,
+    bool transpose_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& activation_type,
+    DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      y.dims().size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      x.dims()[1], y.dims()[0], "x_dims[1] needs to equal to y_dims[0]");
+  if (bias) {
+    PADDLE_ENFORCE_EQ(bias->dims()[0],
+                      y.dims()[1],
+                      "bias_vecotr_dim needs to equal to y_dims[1]");
+  }
+  PADDLE_ENFORCE_EQ(x.dims()[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(y.dims()[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+
+  ctx.template Alloc<phi::dtype::bfloat16>(out);
+  CublasLtMatmulFP8<phi::dtype::bfloat16>(
+      ctx, x, y, scale, bias, activation_type, out);
 }
 
 }  // namespace cutlass_internal
