@@ -25,7 +25,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
