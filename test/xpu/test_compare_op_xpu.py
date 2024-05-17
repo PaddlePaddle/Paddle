@@ -24,8 +24,13 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle.base import core
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Unsupported on XPU3",
+)
 class TestCompareOpBase(XPUOpTest):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
