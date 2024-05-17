@@ -38,11 +38,8 @@ void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  PADDLE_ENFORCE_EQ(dtype.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The op \"gaussian_random\"'s attribute \"dtype\" "
-                        "should not be unknown type! Please check."));
+  CHECK(!dtype.empty()) << "The op \"gaussian_random\"'s attribute \"dtype\" "
+                           "should not be unknown type! Please check.";
 
   VLOG(4) << out_name << "[" << cinn::utils::Join(shape, ", ")
           << "] = uniform_random(mean=" << mean << ", std=" << std

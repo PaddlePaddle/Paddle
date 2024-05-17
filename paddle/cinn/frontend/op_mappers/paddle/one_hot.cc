@@ -43,11 +43,8 @@ void OneHotOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  PADDLE_ENFORCE_EQ(dtype.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The op \"ont_hot\"'s attribute \"dtype\" should "
-                        "not be unknown type! Please check."));
+  CHECK(!dtype.empty()) << "The op \"ont_hot\"'s attribute \"dtype\" should "
+                           "not be unknown type! Please check.";
 
   auto x = ctx.GetVar(x_name);
   x = ctx.Builder()->Slice(
@@ -81,11 +78,8 @@ void OneHotV2OpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  PADDLE_ENFORCE_EQ(dtype.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The op \"one_hot_v2\"'s attribute \"dtype\" should "
-                        "not be unknown type! Please check."));
+  CHECK(!dtype.empty()) << "The op \"one_hot_v2\"'s attribute \"dtype\" should "
+                           "not be unknown type! Please check.";
 
   auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->OneHot(x, on_value, off_value, depth, axis, dtype);
