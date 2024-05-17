@@ -34,8 +34,10 @@ namespace inference {
 namespace tensorrt {
 
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
+ public:
+  TensorRTDynamicShapeValueEngineTest() : engine_(nullptr), ctx_(nullptr) {}
+
  protected:
-  TensorRTDynamicEngineTest() : engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
     ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
