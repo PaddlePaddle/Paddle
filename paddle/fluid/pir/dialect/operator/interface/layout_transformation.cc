@@ -235,15 +235,14 @@ bool CanBeModifiedImpl<AddOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<AddOp>();
   if (auto x = concrete_op.x(), y = concrete_op.y(); x && y) {
     if (auto xt = x.type(), yt = y.type(); xt && yt) {
-      if (auto xdt = xt.dyn_cast<pir::DenseTensorType>,
-          ydt = yt.dyn_cast<pir::DenseTensorType>;
+      if (auto xdt = xt.dyn_cast<pir::DenseTensorType>(),
+          ydt = yt.dyn_cast<pir::DenseTensorType>();
           xdt && ydt) {
         if (xdt.dims().size() != ydt.dims().size()) {
           return false;
         }
       }
     }
-    return true;
   }
   return true;
 }
