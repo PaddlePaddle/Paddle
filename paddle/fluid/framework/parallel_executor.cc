@@ -761,7 +761,7 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)),
-      async_graphs_(nullptr),
+      async_graphs_(),
       var_infos_() {
   // Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy,
