@@ -2946,9 +2946,15 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
+  float decimals;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.round();
+    const T factor = static_cast<T>(std::pow(10, static_cast<T>(decimals)));
+    out.device(d) = (x * factor).round() / factor;
   }
 };
 
@@ -5157,11 +5163,17 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  float decimals;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
 
   // round(x) = round(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(round(x));
+    MPType factor = static_cast<MPType>(pow(10, static_cast<MPType>(decimals)));
+    return static_cast<T>(round(x * factor) / factor);
   }
 };
 
