@@ -97,22 +97,40 @@ class TestSearchSortedOp5(TestSearchSorted):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the float16",
 )
-class TestSearchSortedFP16(TestSearchSorted):
+class TestSearchSortedFP16(OpTest):
+    def setUp(self):
+        self.python_api = paddle.searchsorted
+        self.op_type = "searchsorted"
+        self.python_out_sig = ["Out"]
+        self.dtype = np.float16
+        self.init_test_case()
+
+        self.inputs = {
+            'SortedSequence': self.sorted_sequence,
+            'Values': self.value,
+        }
+        self.attrs = {"out_int32": False, "right": False}
+        self.attrs["right"] = True if self.side == 'right' else False
+        self.outputs = {
+            'Out': np.searchsorted(
+                self.sorted_sequence, self.values, side=self.side
+            )
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_pir=True)
+
     def init_test_case(self):
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float16")
-        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype("float16")
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.dtype)
         self.side = "left"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the float16",
-)
-class TestSearchSortedFP16_2(TestSearchSorted):
+class TestSearchSortedFP16_2(TestSearchSortedFP16):
     def init_test_case(self):
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float16")
-        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype("float16")
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.dtype)
         self.side = "right"
 
 
