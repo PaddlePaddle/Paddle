@@ -25,6 +25,9 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include <mublas.h>
+#include <musa_runtime.h>
+
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
 
@@ -369,7 +372,19 @@ struct CUBlas<phi::dtype::float16> {
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+         
+    float* alpha_float_p = reinterpret_cast<float *>(const_cast<void *>(alpha));
+    float* beta_float_p = reinterpret_cast<float *>(const_cast<void *>(beta));
+    (void)alpha_float_p;
+    (void)beta_float_p;
 
+    #if defined(__MUSACC__)
+
+      half h_alpha =__float2half(*alpha_float_p);
+      half h_beta=__float2half(*beta_float_p);
+      alpha = &h_alpha;
+      beta = &h_beta;
+    #endif
     dev_ctx->TensorCoreCublasCallIfAvailable([&](mublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mublasGemmEx(handle,
                                                             transa,
@@ -905,6 +920,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
+
   auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
   CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                        cuTransB,
@@ -1268,55 +1284,8 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                int batchCount,
                                                int64_t strideA,
                                                int64_t strideB) const {
-  // Note that cublas follows fortran order, so the order is different from
-  // the cblas convention.
-  // int lda = (transA == CblasNoTrans) ? K : M;
-  // int ldb = (transB == CblasNoTrans) ? N : K;
-  // int ldc = N;
-  // mublasOperation_t cuTransA =
-  //     (transA == CblasNoTrans) ? MUBLAS_OP_N : MUBLAS_OP_T;
-  // mublasOperation_t cuTransB =
-  //     (transB == CblasNoTrans) ? MUBLAS_OP_N : MUBLAS_OP_T;
-  // const int64_t strideC = M * N;
-
-  // float h_alpha = static_cast<float>(alpha);
-  // float h_beta = static_cast<float>(beta);
-
-  // mublasGemmAlgo_t algo = MUBLAS_GEMM_DEFAULT;
-  // bool use_tensor_op_math = context_.tensor_core_available();
-  // if (use_tensor_op_math) {
-  //   algo = MUBLAS_GEMM_DEFAULT_TENSOR_OP;
-  // }
-  // VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
-
-  // context_.TensorCoreCublasCallIfAvailable([&](mublasHandle_t handle) {
-  //   PADDLE_ENFORCE_GPU_SUCCESS(
-  //       phi::dynload::mublasGemmStridedBatchedEx(handle,
-  //                                                cuTransB,
-  //                                                cuTransA,
-  //                                                N,
-  //                                                M,
-  //                                                K,
-  //                                                &h_alpha,
-  //                                                B,
-  //                                                MUSA_R_16BF,
-  //                                                ldb,
-  //                                                strideB,
-  //                                                A,
-  //                                                MUSA_R_16BF,
-  //                                                lda,
-  //                                                strideA,
-  //                                                &h_beta,
-  //                                                C,
-  //                                                MUSA_R_16BF,
-  //                                                ldc,
-  //                                                strideC,
-  //                                                batchCount,
-  //                                                MUBLAS_COMPUTE_32F,
-  //                                                algo));
-  // });
-       PADDLE_THROW(
-        phi::errors::Unimplemented("murrently there are not mublasGemmStridedBatchedEx."));   
+  PADDLE_THROW(
+    phi::errors::Unimplemented("murrently there are not mublasGemmStridedBatchedEx."));   
 }
 
 template <>
