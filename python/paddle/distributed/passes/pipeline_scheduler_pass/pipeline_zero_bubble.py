@@ -563,7 +563,11 @@ class VScheduleCreator:
             prev_key = f"forward{chunk_id - 1}"
         elif job_type == "backward_b":
             current_key = f"backward_b{chunk_id}"
-            prev_key = f"backward_b{chunk_id + 1}"
+            prev_chunk_id = chunk_id + 1
+            if prev_chunk_id >= self.num_model_chunks:
+                prev_key = f"forward{self.num_model_chunks - 1}"
+            else:
+                prev_key = f"backward_b{chunk_id + 1}"
 
         micro_batch_id = self._job_counters[stage_id][current_key]
         if micro_batch_id >= self.num_micro_batch:
