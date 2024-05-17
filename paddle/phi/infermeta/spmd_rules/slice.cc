@@ -175,7 +175,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
@@ -303,10 +303,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dist_attr.dims_mapping()));
-  axes_sharding_info.emplace_back(
-      std::make_pair(input_axes, input_dist_attr.dims_mapping()));
+  axes_sharding_info.emplace_back(out_axes, out_dist_attr.dims_mapping());
+  axes_sharding_info.emplace_back(input_axes, input_dist_attr.dims_mapping());
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 

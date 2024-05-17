@@ -19,6 +19,19 @@
 namespace phi {
 
 template <typename T, typename Context>
+void FakeQuantizeRangeAbsMaxKernel(const Context& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& in_scale,
+                                   const paddle::optional<DenseTensor>& iter,
+                                   int window_size,
+                                   int bit_length,
+                                   bool is_test,
+                                   int round_type,
+                                   DenseTensor* out,
+                                   DenseTensor* out_scale,
+                                   DenseTensor* out_scales);
+
+template <typename T, typename Context>
 void FakeQuantizeAbsMaxKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               int bit_length,
@@ -41,5 +54,24 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxKernel(
     DenseTensor* out_scale,
     DenseTensor* out_state,
     DenseTensor* out_accum);
+
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeAbsMaxKernel(const Context& dev_ctx,
+                                         const DenseTensor& x,
+                                         int bit_length,
+                                         int round_type,
+                                         int quant_axis,
+                                         bool is_test,
+                                         DenseTensor* out,
+                                         DenseTensor* out_scale);
+
+template <typename T, typename Context>
+void FakeChannelWiseQuantizeDequantizeAbsMaxKernel(const Context& dev_ctx,
+                                                   const DenseTensor& x,
+                                                   int bit_length,
+                                                   int round_type,
+                                                   int quant_axis,
+                                                   DenseTensor* out,
+                                                   DenseTensor* out_scale);
 
 }  // namespace phi

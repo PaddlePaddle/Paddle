@@ -941,6 +941,15 @@ void MultiGruInferMeta(
     bool force_fp32_output,
     MetaTensor* hidden);
 
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len);
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out);
+
 void FusionLstmInferMeta(const MetaTensor& x,
                          const MetaTensor& weight_x,
                          const MetaTensor& weight_h,
@@ -966,5 +975,13 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          MetaTensor* reordered_h0,
                          MetaTensor* reordered_c0,
                          MetaTensor* checked_cell);
+
+void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                     const MetaTensor& cvm,
+                                     const std::string& pooltype,
+                                     bool use_cvm,
+                                     int axis,
+                                     MetaTensor* out,
+                                     MetaConfig config = MetaConfig());
 
 }  // namespace phi

@@ -24,16 +24,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using Sampler = math::Sampler;
-using DDim = framework::DDim;
+using Sampler = phi::math::Sampler;
+using DDim = phi::DDim;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -88,11 +88,11 @@ class NCEKernel : public framework::OpKernel<T> {
     Sampler *sampler;
     switch (sampler_type) {
       case 0: {
-        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 1: {
-        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 2: {
@@ -136,11 +136,11 @@ class NCEKernel : public framework::OpKernel<T> {
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          probs_data,
-                                          alias_data,
-                                          alias_probs_data,
-                                          seed);
+        sampler = new phi::math::CustomSampler(num_total_classes - 1,
+                                               probs_data,
+                                               alias_data,
+                                               alias_probs_data,
+                                               seed);
         break;
       }
       default: {
@@ -274,11 +274,11 @@ class NCEGradKernel : public framework::OpKernel<T> {
     Sampler *sampler;
     switch (sampler_type) {
       case 0: {
-        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 1: {
-        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 2: {
@@ -322,11 +322,11 @@ class NCEGradKernel : public framework::OpKernel<T> {
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          probs_data,
-                                          alias_data,
-                                          alias_probs_data,
-                                          seed);
+        sampler = new phi::math::CustomSampler(num_total_classes - 1,
+                                               probs_data,
+                                               alias_data,
+                                               alias_probs_data,
+                                               seed);
         break;
       }
       default: {

@@ -213,8 +213,8 @@ class PtbModel(paddle.nn.Layer):
         projection = paddle.matmul(rnn_out, self.softmax_weight)
         projection = paddle.add(projection, self.softmax_bias)
 
-        loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=projection, label=label, soft_label=False
+        loss = paddle.nn.functional.cross_entropy(
+            input=projection, label=label, soft_label=False, reduction="none"
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])

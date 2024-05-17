@@ -53,13 +53,14 @@ void WriteModule(const pir::Program& program,
  * deserilize program will be stored.
  * @param[in] pir_version  The current version of the PIR program format.
  *
- * @return Void. The function modifies the 'program' object to contain the data
- * read from the file.
+ * @return bool. The function modifies the 'program' object to contain the data
+ * read from the file. return bool indicates whether the program can use to
+ * funtune.
  *
  * @note If 'pir_version' is larger than the version of file, will trigger
  * version compatibility modification rule.
  */
-void ReadModule(const std::string& file_path,
+bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version);
 
@@ -127,7 +128,8 @@ void LoadFunction(const std::string& file_path,
                   int64_t seek,
                   const std::vector<int64_t>& shape,
                   bool load_as_fp16,
-                  phi::DenseTensor* out);
+                  phi::DenseTensor* out,
+                  phi::Place place = phi::Place());
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
@@ -145,5 +147,6 @@ void LoadFunction(const std::string& file_path,
 void LoadCombineFunction(const std::string& file_path,
                          const std::vector<std::string>& names,
                          std::vector<phi::DenseTensor*>* out,
-                         bool load_as_fp16);
+                         bool load_as_fp16,
+                         phi::Place place = phi::Place());
 }  // namespace pir
