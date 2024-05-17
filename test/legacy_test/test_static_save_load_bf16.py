@@ -211,7 +211,6 @@ class TestSaveLoadBF16(unittest.TestCase):
                     enable=True,
                     level='O2',
                     dtype='bfloat16',
-                    custom_white_list={'slice'},
                     custom_black_list={'transpose2', 'concat'},
                     use_promote=True,
                 ):
@@ -228,13 +227,11 @@ class TestSaveLoadBF16(unittest.TestCase):
                     y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, num_steps, 1))
                     y_data = y_data.reshape((-1, 1))
-                    # TODO investigate initializing model with "float32" instead of "uint16" as it was before
-                    # slice_op PR(datatypes in model graph are different than datatypes during runtime because of that)
                     init_hidden_data = np.zeros(
-                        (num_layers, batch_size, hidden_size), dtype='uint16'
+                        (num_layers, batch_size, hidden_size), dtype='float32'
                     )
                     init_cell_data = np.zeros(
-                        (num_layers, batch_size, hidden_size), dtype='uint16'
+                        (num_layers, batch_size, hidden_size), dtype='float32'
                     )
 
                     fetch_list = [
