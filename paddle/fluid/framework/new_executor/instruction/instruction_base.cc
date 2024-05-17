@@ -188,7 +188,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
 InstructionBase::InstructionBase(size_t id, const platform::Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
-      events_to_wait_info_,
+      events_to_wait_info_(),
       events_to_wait_(),
       gc_check_vars_(),
       eager_gc_vars_(),
