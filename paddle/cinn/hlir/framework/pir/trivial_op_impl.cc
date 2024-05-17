@@ -563,21 +563,13 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 }  // namespace trivial_fusion_detail
 
 std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& original_ops,
+    const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
   PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
                     true,
                     ::common::errors::PreconditionNotMet(
                         "TrivialFusion must be used with tiling first, set "
                         "FLAGS_group_schedule_tiling_first=1"));
-  const auto& ops = trivial_fusion_detail::FilterVector(
-      original_ops, [](const ::pir::Operation* op) {
-        if (op->name() == "cinn_op.generate_shape") {
-          return false;
-        }
-        return true;
-      });
-
   std::vector<cinn::fusion::BackendContent> contents;
   for (int i = 0; i < ops.size(); i++) {
     contents.emplace_back(ops[i], op_compute_bodies[i]);

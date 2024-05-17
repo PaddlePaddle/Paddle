@@ -317,8 +317,7 @@ class SplitGenerateShapeIntoShapeOps
                        "attr symbol_bindings MUST in attribute map for [%s] op",
                        op->name()));
     pir::Attribute attr = iter->second;
-    auto* Convert =
-        &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
+    auto* Convert = &cinn::dialect::ConvertAttributeToSymbolBindings;
     const auto& symbol_bindings = Convert(attr);
     PADDLE_ENFORCE(
         symbol_bindings.has_value(),
@@ -336,11 +335,10 @@ class SplitGenerateShapeIntoShapeOps
     };
   }
 
-  void InsertSymbolBinding(
-      cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::SymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
-      const {
+  void InsertSymbolBinding(cinn::dialect::GenerateShapeOp op,
+                           const cinn::dialect::SymbolBinding& symbol_binding,
+                           std::unordered_map<std::string, TensorDim>*
+                               symbol_name2tensor_dim) const {
     return std::visit(
         [&](const auto& impl) {
           return InsertSymbolBindingImpl(op, impl, symbol_name2tensor_dim);
@@ -350,7 +348,7 @@ class SplitGenerateShapeIntoShapeOps
 
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::DataSymbolBinding& symbol_binding,
+      const cinn::dialect::DataSymbolBinding& symbol_binding,
       std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
       const {
     (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInData{
@@ -360,7 +358,7 @@ class SplitGenerateShapeIntoShapeOps
 
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
+      const cinn::dialect::ShapeSymbolBinding& symbol_binding,
       std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
       const {
     (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInShape{
