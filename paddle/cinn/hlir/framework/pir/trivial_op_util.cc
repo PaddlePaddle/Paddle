@@ -179,7 +179,8 @@ namespace ExprSetFinderUtils {
 
 using ExprSet = std::vector<ir::Expr>;
 using Expr2ExprSet = std::function<ExprSet(const ir::Expr& x)>;
-ExprSetFinder::ExprSetFinder(Expr2ExprSet f, std::string s) : f_(f), name(s) {}
+ExprSetFinder::ExprSetFinder(Expr2ExprSet f, const std::string& s)
+    : f_(f), name(s) {}
 ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
 ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
@@ -330,9 +331,10 @@ ExprSetFinder ChildFors =
 ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
-        Collector([child](const ir::Expr* e) { return *e == child; });
+        Collector([child](const ir::Expr* e) { return *e == child; }, "");
     const auto& father_collector = Collector(
-        [&](const ir::Expr* current) { return !find_child(*current).empty(); });
+        [&](const ir::Expr* current) { return !find_child(*current).empty(); },
+        "");
     return father_collector(root);
   };
   return ExprSetFinder(f, "FindFather");
