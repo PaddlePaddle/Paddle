@@ -277,8 +277,8 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     }
   }
 
-  PADDLE_ENFORCE_NOT_NULL(
-      out, phi::errors::InvalidArgument("The the output should not be null."));
+  CHECK(out) << "assign_value's input should not empty, but " << out_name
+             << "not! Please check.";
   const auto& shape = utils::GetAttrOrDefault<std::vector<int>>(
       op_desc, "shape", out.value()->shape);
   if (shape != out.value()->shape) {
