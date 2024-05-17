@@ -435,7 +435,7 @@ class NormHelper {
   float epsilon_;
   float residual_alpha_;
   FusedDropoutLayerNormHelper<T, uint8_t> residual_bias_add_layernorm_helper_;
-  AttnLayerNorm<T> layernorm_helper_;
+  phi::fusion::AttnLayerNorm<T> layernorm_helper_;
 };
 
 template <typename T,
