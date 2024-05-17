@@ -47,6 +47,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -655,11 +656,11 @@ void BindOperation(py::module *m) {
       .def("operands", &Operation::operands)
       .def("results",
            [](Operation &self) -> py::list {
-             py::list op_list;
+             py::list value_list;
              for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(static_cast<pir::Value>(self.result(i)));
+               value_list.append(static_cast<pir::Value>(self.result(i)));
              }
-             return op_list;
+             return value_list;
            })
       .def(
           "blocks",
@@ -872,12 +873,12 @@ void BindOperation(py::module *m) {
           })
       .def_property(
           "dist_attr",
-          [](Operation &self) {
+          [](Operation &self) -> py::object {
             if (self.HasAttribute(kAttrOpDistAttr)) {
-              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+              return py::cast(
+                  self.attribute<OperationDistAttribute>(kAttrOpDistAttr));
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dist_attr is only for dist op."));
+              return py::cast<py::none>(Py_None);
             }
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
@@ -1168,15 +1169,16 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      .def(
-          "dist_attr",
-          [](Value &self) {
-            if (!self.type().isa<DistTypeInterface>()) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "dist_attr is only for dist type tensor."));
-            }
-            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
-          })
+      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
+      .def("dist_attr",
+           [](Value self) -> py::object {
+             auto type = self.type();
+             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
@@ -1225,6 +1227,28 @@ void BindType(py::module *m) {
           [](Type self, phi::DataType dtype) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
+          })
+      .def("dist_attr",
+           [](Type self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def_property(
+          "_local_shape",
+          [](Type self) {
+            if (!self.isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "_local_shape is only for distdense tensor."));
+            }
+            return phi::vectorize(
+                self.dyn_cast<DistDenseTensorType>().local_ddim());
+          },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set _local_shape when building static graph"));
           })
       .def("__str__", [](Type &self) {
         std::ostringstream print_stream;
@@ -2285,10 +2309,18 @@ void InferSymbolicShapePass(
   }
 }
 
+void CommonSubexpressionEliminationPass(
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program) {                          // NOLINT
+  pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
+  m->def("common_subexpression_elimination_pass",
+         CommonSubexpressionEliminationPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

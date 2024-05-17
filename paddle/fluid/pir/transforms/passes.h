@@ -23,6 +23,7 @@ USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
+USE_PIR_PASS(fuse_allreduce_split_to_reducescatter_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
@@ -72,4 +73,8 @@ USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(group_norm_silu_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
+#endif
+
+#ifdef PADDLE_WITH_CINN
+USE_PIR_PASS(convert_MEA_to_FA);
 #endif
