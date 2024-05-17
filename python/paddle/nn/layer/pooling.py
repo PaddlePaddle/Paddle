@@ -336,8 +336,7 @@ class LPPool1D(Layer):
 
     ..  math::
 
-        Output(N_i, C_i, l) = \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
-
+        Output(N_i, C_i, l) = sum(Input[N_i, C_i, stride \times l:stride \times l+k]^{norm\_type})^{1/norm\_type}
 
     Parameters:
         norm_type(int|float): The number the power operation.
@@ -374,7 +373,7 @@ class LPPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> LPPool1D = nn.LPPool1D(kernel_size=2, stride=2, padding=0)
+            >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
             >>> pool_out = LPPool1D(data)
             >>> print(pool_out.shape)
             [1, 3, 16]
@@ -427,15 +426,16 @@ class LPPool2D(Layer):
         Input:
             X shape: :math:`(N, C, :math:`H_{in}`, :math:`W_{in}`)`
         Attr:
-            kernel_size: ksize
+            kernel_size: kernel_size
+            norm_type: norm_type
 
         Output:
             Out shape: :math:`(N, C, :math:`H_{out}`, :math:`W_{out}`)`
 
         ..  math::
 
-            Output(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
-                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
+            Output(N_i, C_j, h, w)  = (\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
+                               Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)^{norm\_type})^{1 / norm\_type}
 
     Parameters:
         norm_type(int|float): The number the power operation.
@@ -454,8 +454,6 @@ class LPPool2D(Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
-        divisor_override(float, optional): If specified, it will be used as divisor, otherwise kernel_size will be
-            used. Default None.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
             `"NDHW"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
@@ -493,7 +491,6 @@ class LPPool2D(Layer):
         stride=None,
         padding=0,
         ceil_mode=False,
-        divisor_override=None,
         data_format="NCHW",
         name=None,
     ):
@@ -503,7 +500,6 @@ class LPPool2D(Layer):
         self.stride = kernel_size if stride is None else stride
         self.padding = padding
         self.ceil_mode = ceil_mode
-        self.divisor = divisor_override
         self.data_format = data_format
         self.name = name
 
@@ -515,7 +511,6 @@ class LPPool2D(Layer):
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
-            divisor_override=self.divisor,
             data_format=self.data_format,
             name=self.name,
         )

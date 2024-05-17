@@ -2472,7 +2472,6 @@ def lp_pool2d(
     stride=None,
     padding=0,
     ceil_mode=False,
-    divisor_override=None,
     data_format="NCHW",
     name=None,
 ):
@@ -2501,7 +2500,6 @@ def lp_pool2d(
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -2562,11 +2560,7 @@ def lp_pool2d(
             padding_algorithm,
             norm_type,
         )
-        if divisor_override is None:
-            return output
-        else:
-            _check_instance(divisor_override, "divisor_override")
-            return output * (kernel_size[0] * kernel_size[1]) / divisor_override
+        return output
     else:
         op_type = 'lp_pool2d'
         helper = LayerHelper(op_type, **locals())
@@ -2594,10 +2588,4 @@ def lp_pool2d(
             },
         )
 
-        if divisor_override is None:
-            return pool_out
-        else:
-            _check_instance(divisor_override, "divisor_override")
-            return (
-                pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
-            )
+        return pool_out
