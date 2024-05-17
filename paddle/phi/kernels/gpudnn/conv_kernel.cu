@@ -375,8 +375,15 @@ void ConvCudnnKernel(const Context& ctx,
   }
   if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
     VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
-    ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
-    TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
+    // ResizeToChannelLast<Context, T>(ctx, &filter,
+    // &transformed_filter_channel); TransToChannelLast<Context, T>(ctx,
+    // &filter, &transformed_filter_channel);
+    transformed_filter_channel.ShareDataWith(filter);
+    auto in_dims_vec = common::vectorize(filter.dims());
+    in_dims_vec[1] = filter.dims()[2];
+    in_dims_vec[2] = filter.dims()[3];
+    in_dims_vec[3] = filter.dims()[1];
+    transformed_filter_channel.Resize(common::make_ddim(in_dims_vec));
   } else {
     transformed_filter_channel.ShareDataWith(filter);
   }
