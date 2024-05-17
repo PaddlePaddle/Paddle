@@ -65,7 +65,11 @@ def _get_pir_persistable_var_names(program):
                 var.name = _generate_unique_var_name(var.name)
                 rename_new_old_dict[var.name] = origin_name
                 persistable_names.append(var.name)
-    return persistable_vars, persistable_names, rename_new_old_dict
+    return (
+        persistable_vars,
+        persistable_names,
+        rename_new_old_dict,
+    )
 
 
 class _PirProgramHolder:
@@ -91,6 +95,7 @@ class _PirProgramHolder:
             self._persistable_names,
             self._suffix_varname_dict,
         ) = _get_pir_persistable_var_names(self._infer_program)
+
         block = self._infer_program.global_block()
         for op in block.ops:
             if op.name() == 'pd_op.data':
@@ -175,8 +180,11 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
     persistable_var_name = program_holder.persistable_names
-
-    for name, var in sorted(zip(persistable_var_name, persistable_var)):
+    origin_persistable_var_name = [
+        program_holder._suffix_varname_dict[var_name]
+        for var_name in persistable_var_name
+    ]
+    for name, var in sorted(zip(origin_persistable_var_name, persistable_var)):
         if var.persistable:
             # use default shape and dtype
             new_var = framework.EagerParamBase(
@@ -210,6 +218,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
             list(load_var_dict.keys()),
             load_densetensor_list,
             False,
+            framework._current_expected_place(),
         )
     else:
         raise ValueError(
@@ -218,15 +227,6 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
         )
 
     return load_var_dict
-
-
-# NOTE(chenzhiyang): to adapt paddle.load to get state_dict
-def _remove_varname_suffix(var_dict, program_holder):
-    no_suffix_var_dict = {}
-    for var_name in var_dict:
-        no_suffix_name = program_holder._suffix_varname_dict[var_name]
-        no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
-    return no_suffix_var_dict
 
 
 def _construct_program_holders(model_path, model_filename=None):
@@ -278,9 +278,7 @@ def _construct_program_holders(model_path, model_filename=None):
     return program_holder_dict
 
 
-def _construct_params_and_buffers(
-    model_path, programs, params_filename=None, append_suffix=True
-):
+def _construct_params_and_buffers(model_path, programs, params_filename=None):
     params_path = os.path.join(model_path, str(params_filename))
 
     if params_filename is not None and not os.path.exists(params_path):
@@ -311,9 +309,6 @@ def _construct_params_and_buffers(
                     model_path, programs[func_name], file_name
                 )
             )
-
-        if not append_suffix:
-            var_dict = _remove_varname_suffix(var_dict, programs['forward'])
 
         return var_dict
 
@@ -347,8 +342,11 @@ def _run_dygraph(instance, input, program_holder):
         input_tensors.append(tensor)
 
     persistable_tensors = []
-
-    for var_name in program_holder.persistable_names:
+    origin_persistable_var_name = [
+        program_holder._suffix_varname_dict[var_name]
+        for var_name in program_holder.persistable_names
+    ]
+    for var_name in origin_persistable_var_name:
         dy_var_name = instance._persistable_var_name_dict[var_name]
         if dy_var_name in instance._parameters:
             persistable_tensors.append(instance._parameters[dy_var_name])

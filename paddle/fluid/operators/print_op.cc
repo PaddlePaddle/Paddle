@@ -52,7 +52,7 @@ class PrintOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     const auto in_var = scope.FindVar(Input("In"));
     auto out_var = scope.FindVar(Output("Out"));
 
@@ -72,7 +72,7 @@ class PrintOp : public framework::OperatorBase {
     out_tensor->set_lod(in_tensor.lod());
   }
 
-  void PrintValue(const platform::Place &place,
+  void PrintValue(const phi::Place &place,
                   const std::string &printed_var_name,
                   const phi::DenseTensor &in_tensor) const {
     std::string print_phase = Attr<std::string>("print_phase");

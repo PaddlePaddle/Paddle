@@ -77,6 +77,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'warprnnt',
     'bilateral_slice',
     'cast',
+    'fake_channel_wise_quantize_dequantize_abs_max',
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
