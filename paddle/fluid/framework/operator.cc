@@ -1124,7 +1124,7 @@ OperatorWithKernel::OperatorWithKernel(const std::string& type,
                                        const VariableNameMap& inputs,
                                        const VariableNameMap& outputs,
                                        const AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : OperatorBase(type, inputs, outputs, attrs), impl_(nullptr) {}
 
 OperatorWithKernel::~OperatorWithKernel() = default;
 

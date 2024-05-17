@@ -935,7 +935,7 @@ class OperatorWithKernel : public OperatorBase {
 
  private:
   struct CacheImpl;
-  mutable std::unique_ptr<CacheImpl> impl_ = nullptr;
+  mutable std::unique_ptr<CacheImpl> impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);
