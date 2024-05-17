@@ -22,7 +22,7 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
@@ -116,7 +116,7 @@ std::pair<ir::Module, std::string> GenReduceCode(
   // now.
   auto module = builder.Build();
   auto host_module_device_module =
-      backends::SplitCudaAndHostModule(module);  // NOLINT
+      backends::SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(host_module_device_module);
   auto& device_module = std::get<1>(host_module_device_module);
 
