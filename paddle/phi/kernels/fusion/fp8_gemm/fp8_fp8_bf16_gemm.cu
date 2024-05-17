@@ -14,19 +14,20 @@
 
 #include <iostream>
 
-#include "fp8_common.h"
 #include "./cutlass_kernels/fp8_fp8_gemm_scale_bias_act.h"
+#include "paddle/phi/kernels/fusion/fp8_gemm/fp8_common.h"
+#include "paddle/phi/kernels/fusion/fp8_gemm/fp8_fp8_gemm_cublaslt.h"
 
+#include "paddle/phi/backends/dynload/fp8_gemm_fused.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/backends/dynload/fp8_gemm_fused.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace phi{
-namespace fusion{
-namespace cutlass_internal{
+namespace phi {
+namespace fusion {
+namespace cutlass_internal {
 
 template <typename InputType, typename Context>
 void fp8_fp8_bf16_gemm(
@@ -42,6 +43,9 @@ void fp8_fp8_bf16_gemm(
   static_assert(std::is_same<Context, phi::GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
 
+  // cublaslt_fp8_fp8_bf16_gemm<Context>(dev_ctx, x, y, bias, trans_x, trans_y,
+  // scale, activation_type, out);
+
   dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
   auto place = dev_ctx.GetPlace();
   cudaStream_t stream = reinterpret_cast<cudaStream_t>(dev_ctx.stream());
@@ -49,29 +53,29 @@ void fp8_fp8_bf16_gemm(
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
   int rank = x.dims().size();
-  int M=0;
-  int K=0;
-  int N=0;
-  int lda = x.dims()[rank-1];
-  int ldb = y.dims()[rank-1];
-  int ldd = out->dims()[rank-1];
-  if(!trans_x){
-    M = x.dims()[rank-2];
-    K = x.dims()[rank-1];
+  int M = 0;
+  int K = 0;
+  int N = 0;
+  int lda = x.dims()[rank - 1];
+  int ldb = y.dims()[rank - 1];
+  int ldd = out->dims()[rank - 1];
+  if (!trans_x) {
+    M = x.dims()[rank - 2];
+    K = x.dims()[rank - 1];
 
-  }else{
-    M = x.dims()[rank-1];
-    K = x.dims()[rank-2];
+  } else {
+    M = x.dims()[rank - 1];
+    K = x.dims()[rank - 2];
   }
 
-  if(!trans_y){
-    N = y.dims()[rank-1];
-  }else{
-    N = y.dims()[rank-2];
+  if (!trans_y) {
+    N = y.dims()[rank - 1];
+  } else {
+    N = y.dims()[rank - 2];
   }
 
   int batch_count = 1;
-  for(size_t i=0; i<rank-2; ++i){
+  for (size_t i = 0; i < rank - 2; ++i) {
     batch_count *= x.dims()[i];
   }
 
@@ -83,17 +87,22 @@ void fp8_fp8_bf16_gemm(
         "library"));
   }
 
-  std::string input_dtype = (x.dtype() == phi::DataType::FLOAT8_E4M3FN)? "e4m3":"e5m2";
+  std::string input_dtype =
+      (x.dtype() == phi::DataType::FLOAT8_E4M3FN) ? "e4m3" : "e5m2";
   std::string output_dtype = "bf16";
-  std::string isbias = bias? "bias_":"";
-  std::string act = (activation_type==""||activation_type=="identity")? "identity":activation_type;
+  std::string isbias = bias ? "bias_" : "";
+  std::string act = (activation_type == "" || activation_type == "identity")
+                        ? "identity"
+                        : activation_type;
 
-  std::string gemm_config = input_dtype+"_"+ output_dtype+"_"+isbias+act;
+  std::string gemm_config =
+      input_dtype + "_" + output_dtype + "_" + isbias + act;
 
-  void *bias_data = nullptr;
+  void* bias_data = nullptr;
   std::vector<int64_t> bias_dims{};
-  if(bias){
-    bias_data = reinterpret_cast<void*>(const_cast<phi::dtype::bfloat16*>(bias.get().data<phi::dtype::bfloat16>()));
+  if (bias) {
+    bias_data = reinterpret_cast<void*>(const_cast<phi::dtype::bfloat16*>(
+        bias.get().data<phi::dtype::bfloat16>()));
     bias_dims = common::vectorize(bias.get().dims());
   }
   GemmEpilogueAllParams params = {
@@ -114,8 +123,7 @@ void fp8_fp8_bf16_gemm(
       0.01,  // for leaky_relu
       bias_data,
       bias_dims,
-      gemm_config
-  };
+      gemm_config};
   func fp8_gemm_func = (func)(dlsym(dlhandler, "fp8_fp8_gemm_scale_bias_act"));
   fp8_gemm_func(params);
 }

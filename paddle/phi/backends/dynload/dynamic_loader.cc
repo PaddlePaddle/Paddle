@@ -332,7 +332,7 @@ void* GetCublasDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12040) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so.12");
 #else
@@ -360,7 +360,7 @@ void* GetCublasLtDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12040) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so.12");
 #else
