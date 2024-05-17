@@ -719,12 +719,11 @@ bool WhileOp::InferSymbolicShape(
           continue;
         }
         symbol::DimExprBuilder builder;
-        if (original_input_shape[j] ==
+        if (yield_value_shape[j] ==
                 builder.Broadcast(input_arg_shape[j],
                                   original_input_shape[j]) ||
-            original_input_shape[j] ==
-                builder.Broadcast(original_input_shape[j],
-                                  input_arg_shape[j])) {
+            yield_value_shape[j] == builder.Broadcast(original_input_shape[j],
+                                                      input_arg_shape[j])) {
           infer_context->AddEqualCstr(original_input_shape[j],
                                       input_arg_shape[j]);
           continue;
