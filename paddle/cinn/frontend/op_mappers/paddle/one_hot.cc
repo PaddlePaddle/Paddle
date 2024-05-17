@@ -44,7 +44,7 @@ void OneHotOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
   PADDLE_ENFORCE_EQ(dtype.empty(),
-                    false,
+                    true,
                     phi::errors::InvalidArgument(
                         "The op \"ont_hot\"'s attribute \"dtype\" should "
                         "not be unknown type! Please check."));
@@ -82,7 +82,7 @@ void OneHotV2OpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
   PADDLE_ENFORCE_EQ(dtype.empty(),
-                    false,
+                    true,
                     phi::errors::InvalidArgument(
                         "The op \"one_hot_v2\"'s attribute \"dtype\" should "
                         "not be unknown type! Please check."));

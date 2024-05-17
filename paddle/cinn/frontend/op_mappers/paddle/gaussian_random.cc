@@ -39,7 +39,7 @@ void GaussianRandomOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::FP32);
   PADDLE_ENFORCE_EQ(dtype.empty(),
-                    false,
+                    true,
                     phi::errors::InvalidArgument(
                         "The op \"gaussian_random\"'s attribute \"dtype\" "
                         "should not be unknown type! Please check."));
