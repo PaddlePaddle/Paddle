@@ -76,7 +76,7 @@ class MergeLayernormOpConverter : public OpConverter {
           "mode."));
     }
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         merge_layernorm_layer, "merge_layernorm", {output_name}, test_mode);
   }
 };

@@ -86,7 +86,7 @@ def inplace_case_2(x):
     return x
 
 
-class TestExecutor(TestCaseBase):
+class TestInplaceApi(TestCaseBase):
     def test_case(self):
         self.assert_results(inplace_case_0, paddle.randn((1, 4)))
         self.assert_results(inplace_case_1, [paddle.randn((1, 4))])

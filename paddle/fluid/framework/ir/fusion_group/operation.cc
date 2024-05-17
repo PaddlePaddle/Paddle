@@ -152,7 +152,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
-  // For binary elementwise oprations:
+  // For binary elementwise operations:
   //  ${0} - x
   //  ${1} - y
   //  ${2} - out

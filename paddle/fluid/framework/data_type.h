@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 
 TEST_API std::string DataTypeToString(const proto::VarType::Type type);
-extern size_t SizeOfType(proto::VarType::Type type);
+TEST_API extern size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>
 struct IsComplex : public std::false_type {};
@@ -123,7 +123,7 @@ _ForEachDataType_(DefineDataTypeTrait);
 
 #undef DefineDataTypeTrait
 
-extern proto::VarType::Type ToDataType(std::type_index type);
+TEST_API extern proto::VarType::Type ToDataType(std::type_index type);
 extern std::type_index ToTypeIndex(proto::VarType::Type type);
 
 template <typename Visitor>

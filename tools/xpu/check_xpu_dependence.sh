@@ -23,6 +23,7 @@ fi
 
 xpu_base_url=$1
 xccl_base_url=$2
+BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
 
 echo "xpu_base_url: $xpu_base_url"
 echo "xccl_base_url: $xccl_base_url"
@@ -72,6 +73,18 @@ function check_files() {
     rm -f ./$local_file_name
     rm -rf ./$local_dir
 }
+
+# check xpu_base_url type
+if [[ $xpu_base_url != *"$BOS_PATTERN"* ]]; then
+    echo "The xpu_base_url does not contain bos url, assume it is local path"
+    if [[ ! -d $xpu_base_url ]]; then
+        echo "The xpu_base_url does not exist, please check it"
+        exit 1
+    fi
+    exit 0
+else
+    echo "The URL is a bos url, will follow default download & compile logic"
+fi
 
 # XRE
 xre_tar_file_names=("xre-kylin_aarch64" "xre-bdcentos_x86_64" "xre-ubuntu_x86_64" "xre-centos7_x86_64")

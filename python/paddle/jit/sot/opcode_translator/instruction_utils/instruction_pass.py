@@ -12,21 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import sys
+from typing import TYPE_CHECKING
+
 from paddle.jit.sot.utils import log, log_do
 
 from ...utils import InnerError
 from .instruction_utils import instrs_info
 from .stack_analyse import StackAnalyser
 
+if TYPE_CHECKING:
+    from .instruction_utils import Instruction
 
-def apply_instr_pass(instrs, code_options):
+
+def apply_instr_pass(instrs: list[Instruction], code_options):
     log(4, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
     log_do(4, lambda: print(instrs_info(instrs)))
-    supported_passes = (
+    supported_passes = [
         remove_load_store_pass,
         remove_duplicate_resume,
         check_precall_followed_by_call,
-    )
+    ]
+
+    if sys.version_info >= (3, 12):
+        supported_passes.append(check_for_iter_jump_to)
 
     for instr_pass in supported_passes:
         instr_pass(instrs, code_options)
@@ -38,7 +49,7 @@ def apply_instr_pass(instrs, code_options):
     log_do(4, lambda: print(instrs_info(instrs)))
 
 
-def find_stored_once_local_vars(instrs, code_options):
+def find_stored_once_local_vars(instrs: list[Instruction], code_options):
     """
     find out the local var names which is only stored once
     """
@@ -61,13 +72,13 @@ def find_stored_once_local_vars(instrs, code_options):
     return stored_once
 
 
-def find_loaded_once_local_vars(instrs, code_options):
+def find_loaded_once_local_vars(instrs: list[Instruction], code_options):
     """
     find out the local var names which is only stored once
     """
     loaded_vars = {}
     for instr in instrs:
-        if instr.opname == "LOAD_FAST":
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
             if instr.argval in loaded_vars:
                 loaded_vars[instr.argval] += 1
             else:
@@ -77,19 +88,21 @@ def find_loaded_once_local_vars(instrs, code_options):
     return loaded_once
 
 
-def find_related_local_opcodes(instrs, code_options):
+def find_related_local_opcodes(instrs: list[Instruction], code_options):
     """
-    find out the opcode pairs consist with LOAD_FAST and STORE_FAST
+    find out the opcode pairs consist with LOAD_FAST and STORE_FAST and LOAD_FAST_CHECK
     """
     stack = []
     opcode_pairs = []
     for instr in instrs:
-        if instr.opname == "LOAD_FAST":
+        if instr.opname in ["LOAD_FAST", "LOAD_FAST_CHECK"]:
             stack.append(instr)
         elif instr.opname == "STORE_FAST":
             if len(stack) > 0 and stack[-1] is not None:
                 opcode_pairs.append((stack[-1], instr))
             stack.pop()
+        elif "ROT" in instr.opname or "DUP" in instr.opname:
+            return []
         else:
             try:
                 pop_n, push_n = StackAnalyser().stack_effect(instr)
@@ -103,7 +116,7 @@ def find_related_local_opcodes(instrs, code_options):
     return opcode_pairs
 
 
-def remove_load_store_pass(instrs, code_options):
+def remove_load_store_pass(instrs: list[Instruction], code_options):
     """
     This question is extremely complex, so we just simplify it as
     'remove renames which is between var names who only stored once'
@@ -156,7 +169,8 @@ def remove_load_store_pass(instrs, code_options):
                 if a_name != b_name:
                     for instr in instrs:
                         if (
-                            instr.opname in ("LOAD_FAST", "STORE_FAST")
+                            instr.opname
+                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
                             and instr.argval == b_name
                         ):
                             instr.argval = a_name
@@ -209,7 +223,13 @@ def remove_load_store_pass(instrs, code_options):
                 code_range = instrs[last_store_idx : instrs.index(store_b)]
                 if (
                     not code_exist("STORE_FAST", b_name, code_range)
+                    and not code_exist("LOAD_FAST_CHECK", b_name, code_range)
                     and not code_exist("LOAD_FAST", b_name, code_range)
+                    and not code_exist(
+                        "LOAD_FAST_CHECK",
+                        a_name,
+                        instrs[instrs.index(store_b) :],
+                    )
                     and not code_exist(
                         "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
                     )
@@ -220,7 +240,8 @@ def remove_load_store_pass(instrs, code_options):
                     instrs.remove(store_b)
                     for instr in instrs[last_store_idx:]:
                         if (
-                            instr.opname in ("LOAD_FAST", "STORE_FAST")
+                            instr.opname
+                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
                             and instr.argval == a_name
                         ):
                             instr.argval = b_name
@@ -243,6 +264,7 @@ def remove_load_store_pass(instrs, code_options):
                 and opcode2 not in jump_target
                 and opcode1.opname == "STORE_FAST"
                 and opcode2.opname == "LOAD_FAST"
+                and opcode2.opname == "LOAD_FAST_CHECK"
                 and opcode1.argval == opcode2.argval
                 and opcode1.argval in loaded_once
             ):
@@ -253,7 +275,7 @@ def remove_load_store_pass(instrs, code_options):
                 idx += 1
 
 
-def remove_duplicate_resume(instrs, code_options):
+def remove_duplicate_resume(instrs: list[Instruction], code_options):
     resumes = list(filter(lambda instr: instr.opname == "RESUME", instrs))
     if not resumes:
         return
@@ -261,7 +283,7 @@ def remove_duplicate_resume(instrs, code_options):
         instrs.remove(resume)
 
 
-def check_precall_followed_by_call(instrs, code_options):
+def check_precall_followed_by_call(instrs: list[Instruction], code_options):
     """
     PRECALL should be followed by CALL, otherwise it will cause a segmentation fault
     """
@@ -270,3 +292,14 @@ def check_precall_followed_by_call(instrs, code_options):
             raise InnerError(
                 f"PRECALL is not followed by CALL in {code_options['co_name']}"
             )
+
+
+def check_for_iter_jump_to(instrs: list[Instruction], code_options):
+    """
+    Check if the `jump_to` of FOR_ITER is END_FOR, in Python3.12+
+    """
+    for instr in instrs:
+        if instr.opname == "FOR_ITER":
+            assert instr.jump_to is not None
+            if instr.jump_to.opname != "END_FOR":
+                raise InnerError("FOR_ITER jump_to is not END_FOR")

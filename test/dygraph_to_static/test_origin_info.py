@@ -18,7 +18,7 @@ import unittest
 import paddle
 from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
-    ORIGI_INFO,
+    ORIGIN_INFO,
     Location,
     OriginInfo,
     attach_origin_info,
@@ -139,7 +139,7 @@ class TestOriginInfo(unittest.TestCase):
 
         for i in range(self.line_num):
             node = self.transformed_node_list[i]
-            origin_info = getattr(node, ORIGI_INFO)
+            origin_info = getattr(node, ORIGIN_INFO)
             dy_rel_lineno = self.dy_rel_lineno_list[i]
             dy_abs_lineno = start_lineno + dy_rel_lineno
             dy_col_offset = self.dy_abs_col_offset[i]

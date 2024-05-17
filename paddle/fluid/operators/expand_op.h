@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
 namespace paddle {
 namespace operators {
@@ -31,48 +31,49 @@ inline std::vector<int> get_expand_times(
     auto* expand_tensor = ctx.Input<phi::DenseTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     phi::DenseTensor cpu_expand_tensor;
-    if (platform::is_gpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(expand_tensor->place())) {
+    if (expand_tensor->place().GetType() == phi::AllocationType::XPU) {
       paddle::framework::TensorCopySync(
-          *expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+          *expand_tensor, phi::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
 #endif
-    auto vec_epxand_times =
+    auto vec_expand_times =
         std::vector<int>(expand_data, expand_data + expand_tensor->numel());
-    return vec_epxand_times;
+    return vec_expand_times;
   }
 
   auto list_expand_times_tensor =
       ctx.MultiInput<phi::DenseTensor>("expand_times_tensor");
   if (list_expand_times_tensor.size() > 0) {
     // get tensor from
-    std::vector<int> vec_epxand_times;
+    std::vector<int> vec_expand_times;
     for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
       auto tensor = list_expand_times_tensor[i];
-      if (platform::is_gpu_place(tensor->place())) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_times.push_back(*temp.data<int32_t>());
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+        vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
-      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+      else if (tensor->place().GetType() ==  // NOLINT
+               phi::AllocationType::XPU) {   // NOLINT
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_times.push_back(*temp.data<int32_t>());
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+        vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #endif
       else {  // NOLINT
-        vec_epxand_times.push_back(*tensor->data<int32_t>());
+        vec_expand_times.push_back(*tensor->data<int32_t>());
       }
     }
 
-    return vec_epxand_times;
+    return vec_expand_times;
   } else {
     return ctx.Attr<std::vector<int>>("expand_times");
   }
@@ -81,13 +82,13 @@ inline std::vector<int> get_expand_times(
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::To32BitIndex;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
+using phi::To32BitIndex;
 
 template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
@@ -97,14 +98,14 @@ class ExpandKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank,
         MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED,
@@ -128,6 +129,12 @@ class ExpandKernel : public framework::OpKernel<T> {
       case 6:
         Expand<6>(context);
         break;
+      case 7:
+        Expand<7>(context);
+        break;
+      case 8:
+        Expand<8>(context);
+        break;
     }
   }
 
@@ -140,7 +147,7 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto expand_times = get_expand_times(context);
     PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
                       expand_times.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of elements (%d) of 'expand_times' for "
                           "Op(expand) must be equal to the number "
                           "of dimensions (%d) of the input.",
@@ -152,7 +159,7 @@ class ExpandKernel : public framework::OpKernel<T> {
       bcast_dims[i] = expand_times[i];
     }
 
-    framework::DDim out_dims(in_dims);
+    phi::DDim out_dims(in_dims);
     for (size_t i = 0; i < expand_times.size(); ++i) {
       out_dims[i] *= expand_times[i];
     }
@@ -166,10 +173,10 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, y, x, bcast_dims);
     }
   }
@@ -211,12 +218,12 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* out0 =
           context.Output<phi::DenseTensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(
-          *in0, context.GetPlace(), context.device_context(), out0);
+      phi::Copy(
+          context.device_context(), *in0, context.GetPlace(), false, out0);
     } else {
       PADDLE_ENFORCE_GE(dims,
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input "
                             "'Out@GRAD' for Op(expand_grad)"
                             " must be greater than or equal to 1, but "
@@ -224,7 +231,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                             dims));
       PADDLE_ENFORCE_LE(dims,
                         MAX_RANK_SUPPORTED,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
@@ -249,10 +256,17 @@ class ExpandGradKernel : public framework::OpKernel<T> {
         case 6:
           ExpandBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
           break;
+        case 7:
+          ExpandBackward<7>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 8:
+          ExpandBackward<8>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Only support tensor with rank being between 1 and 6. But "
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and %d. But "
               "received tensor's rank = %d.",
+              MAX_RANK_SUPPORTED,
               dims));
       }
     }
@@ -267,14 +281,14 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     size_t reduce_size = reduce_dims_vec.size();
     PADDLE_ENFORCE_EQ(reshape_size,
                       reshape_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reshape dimensions (%d).",
                           reshape_size,
                           reshape_dims_vec.size()));
     PADDLE_ENFORCE_EQ(reduce_size,
                       reduce_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reduce dimensions (%d).",
                           reduce_size,
@@ -294,8 +308,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, x_grad, out_grad, reduce_dims, reshape_dims);
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
+        Eval(place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

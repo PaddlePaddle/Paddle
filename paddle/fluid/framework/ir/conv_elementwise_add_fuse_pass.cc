@@ -15,6 +15,9 @@
 #include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
 #include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -121,14 +124,18 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
         static_cast<phi::DataType>(Get<int>("model_precision")) ==
             phi::DataType::FLOAT16 ||
         Get<bool>("enable_gpu_mixed");
+
     bool cutlass_enable = Get<bool>("use_cutlass");
     auto* scope = param_scope();
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_type, Get<int>("gpu_device_id"));
-    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+    int sm = 0;
+#ifdef PADDLE_WITH_CUDA
+    sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+#endif
+    if (cutlass_can_fuse && cutlass_enable && (is_fp16_precision || sm >= 80)) {
       new_op_desc.SetAttr("use_cudnn", false);
     }
-
     auto* elementwise_add_op_desc = elementwise_add_op->Op();
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");

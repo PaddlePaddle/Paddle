@@ -29,7 +29,8 @@
 namespace cinn {
 namespace dialect {
 
-class IR_API GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp
+    : public pir::Op<GroupOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.group"; }
@@ -49,7 +50,10 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+  std::vector<pir::Operation *> GetOperators() const;
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -73,10 +77,32 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+
+  std::vector<pir::Operation *> GetOperators() const;
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
+// YieldStoreOp represents a store operation for
+// seperate local variable and ouptut
+class IR_API YieldStoreOp
+    : public pir::Op<YieldStoreOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.yield_store"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
+                    pir::Type output_type);
+
+  void VerifySig();
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IR_API ConcatOp
@@ -97,7 +123,7 @@ class IR_API ConcatOp
 
   void VerifySig() const {}
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class IR_API SplitOp : public pir::Op<SplitOp> {
@@ -151,7 +177,7 @@ class IR_API GenerateShapeOp
 
   pir::Value out() { return result(0); }
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   static pir::Attribute ConvertSymbolBindingsToAttribute(
       pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
@@ -167,3 +193,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

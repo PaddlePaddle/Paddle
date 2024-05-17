@@ -32,7 +32,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 /*
-Squeeze and Excitaion Block Fusion for SE-ResNet
+Squeeze and Excitation Block Fusion for SE-ResNet
 Origin subgraph
         Input
         |    \

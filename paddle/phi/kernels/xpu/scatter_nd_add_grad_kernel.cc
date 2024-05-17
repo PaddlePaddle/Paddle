@@ -25,15 +25,15 @@ void ScatterNdAddGradKernel(const Context &ctx,
                             const DenseTensor &out_grad,
                             DenseTensor *x_grad,
                             DenseTensor *updates_grad) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   int ret = xpu::SUCCESS;
   const T *out_grad_data = out_grad.data<T>();
   if (x_grad) {
     auto *x_grad_data = ctx.template Alloc<T>(x_grad);
-    ret = xpu::copy<XPUT>(ctx.x_context(),
-                          reinterpret_cast<const XPUT *>(out_grad_data),
-                          reinterpret_cast<XPUT *>(x_grad_data),
-                          out_grad.numel());
+    ret = xpu::copy<XPUType>(ctx.x_context(),
+                             reinterpret_cast<const XPUType *>(out_grad_data),
+                             reinterpret_cast<XPUType *>(x_grad_data),
+                             out_grad.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   }
 
@@ -64,11 +64,12 @@ void ScatterNdAddGradKernel(const Context &ctx,
                                   out_grad_numel,
                                   remain_numel,
                                   updates_grad_numel));
-      ret = xpu::broadcast<XPUT>(ctx.x_context(),
-                                 reinterpret_cast<const XPUT *>(out_grad_data),
-                                 reinterpret_cast<XPUT *>(updates_grad_data),
-                                 {1, out_grad_numel},
-                                 {remain_numel, out_grad_numel});
+      ret = xpu::broadcast<XPUType>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType *>(out_grad_data),
+          reinterpret_cast<XPUType *>(updates_grad_data),
+          {1, out_grad_numel},
+          {remain_numel, out_grad_numel});
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
       return;
     }
@@ -84,19 +85,19 @@ void ScatterNdAddGradKernel(const Context &ctx,
         nullptr};
 
     if (index.dtype() == DataType::INT32) {
-      ret = xpu::gather_nd<XPUT, int>(
+      ret = xpu::gather_nd<XPUType, int>(
           ctx.x_context(),
-          reinterpret_cast<const XPUT *>(out_grad_data),
+          reinterpret_cast<const XPUType *>(out_grad_data),
           index.data<int>(),
-          reinterpret_cast<XPUT *>(updates_grad_data),
+          reinterpret_cast<XPUType *>(updates_grad_data),
           out_grad_shape_param,
           index_shape_vec);
     } else {
-      ret = xpu::gather_nd<XPUT, int64_t>(
+      ret = xpu::gather_nd<XPUType, int64_t>(
           ctx.x_context(),
-          reinterpret_cast<const XPUT *>(out_grad_data),
+          reinterpret_cast<const XPUType *>(out_grad_data),
           index.data<int64_t>(),
-          reinterpret_cast<XPUT *>(updates_grad_data),
+          reinterpret_cast<XPUType *>(updates_grad_data),
           out_grad_shape_param,
           index_shape_vec);
     }

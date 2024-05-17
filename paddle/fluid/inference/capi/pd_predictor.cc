@@ -92,7 +92,7 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config,
       config,
       paddle::platform::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  VLOG(3) << "Predoctor: PD_PredictorRun. ";
+  VLOG(3) << "Predictor: PD_PredictorRun. ";
   static std::map<std::string, std::unique_ptr<paddle::PaddlePredictor>>
       predictors;
   if (!predictors.count(config->config.model_dir())) {

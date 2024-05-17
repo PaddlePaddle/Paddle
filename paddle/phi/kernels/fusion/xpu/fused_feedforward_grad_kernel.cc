@@ -231,7 +231,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
 
   std::tie(info_d_dropout1, info_dw2, a_1, b_1, a_2, b_2) = fc_info;
 
-  // if l3_total_size >= dim_feedforward * bsz_seq * sizeof(T), first transpos
+  // if l3_total_size >= dim_feedforward * bsz_seq * sizeof(T), first transpose
   if (l3_total_size >= dim_feedforward * bsz_seq * sizeof(T) &&
       info_dw2.trans_x) {
     r = xpu::transpose<XPUTypeT>(xpu_ctx,

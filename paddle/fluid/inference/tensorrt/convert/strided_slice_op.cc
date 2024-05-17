@@ -180,7 +180,7 @@ class StridedSliceOpConverter : public OpConverter {
         layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
       }
     }
-    RreplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
   }
 };
 

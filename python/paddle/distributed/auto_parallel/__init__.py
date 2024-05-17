@@ -18,6 +18,7 @@ from .interface import (  # noqa: F401
     fetch,
     get_mesh,
     recompute,
+    set_mesh,
     shard_op,
     shard_tensor,
 )

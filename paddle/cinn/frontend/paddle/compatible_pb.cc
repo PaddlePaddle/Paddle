@@ -128,7 +128,9 @@ void OpAttrsAnyToCpp(const OpDescType &any_desc, cpp::OpDesc *cpp_desc) {
         break;
       }
       default:
-        LOG(FATAL) << "Unsupported attr type found " << static_cast<int>(type);
+        std::stringstream ss;
+        ss << "Unsupported attr type found " << static_cast<int>(type);
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   };
 
@@ -157,7 +159,9 @@ void OpAttrsCppToAny(const cpp::OpDesc &cpp_desc, OpDescType *any_desc) {
       IMPL_ONE(LONG, int64_t);
       IMPL_ONE(LONGS, std::vector<int64_t>);
       default:
-        LOG(FATAL) << "Unsupported attr type found: " << static_cast<int>(type);
+        std::stringstream ss;
+        ss << "Unsupported attr type found: " << static_cast<int>(type);
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   };
 #undef IMPL_ONE

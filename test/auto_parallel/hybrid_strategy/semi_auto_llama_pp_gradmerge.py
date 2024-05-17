@@ -20,7 +20,6 @@ from semi_auto_parallel_llama_model import (
     LlamaForCausalLMAuto,
     LlamaPretrainingCriterionAuto,
     get_mesh,
-    set_global_mesh,
 )
 
 import paddle
@@ -135,7 +134,7 @@ class TestLlamaAuto:
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
-        set_global_mesh(global_mesh)
+        dist.auto_parallel.set_mesh(global_mesh)
 
     def run_llama(self, to_static=0):
         if self.only_static and to_static == 0:
@@ -160,12 +159,15 @@ class TestLlamaAuto:
 
         micro_bsz = 2
         global_bsz = micro_bsz * self.dp * self.gradient_accumulation_steps
-
+        run_step = 5
+        total_sample_num = run_step * global_bsz
         global_step = 1
         tr_loss = float(0)
 
         if not to_static:
-            train_dataset = RandomDataset(self.config.seq_length)
+            train_dataset = RandomDataset(
+                self.config.seq_length, total_sample_num
+            )
             train_sampler = BatchSampler(
                 train_dataset,
                 batch_size=micro_bsz,
@@ -221,7 +223,9 @@ class TestLlamaAuto:
                 )
                 strategy.gradient_merge.avg = True
 
-            train_dataset = RandomDataset(self.config.seq_length)
+            train_dataset = RandomDataset(
+                self.config.seq_length, total_sample_num
+            )
             train_sampler = BatchSampler(
                 train_dataset,
                 batch_size=global_bsz,
@@ -283,7 +287,7 @@ class TestLlamaAuto:
                     lr_scheduler.step()
                     tr_loss = float(0)
 
-                    if step >= 10:
+                    if step >= run_step:
                         break
 
     def run_test_cases(self):

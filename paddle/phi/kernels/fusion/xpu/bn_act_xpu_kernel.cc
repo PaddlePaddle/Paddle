@@ -69,7 +69,7 @@ void BNActXPUKernel(const Context& dev_ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
 
   bool is_nchw = data_layout_str == "NCHW";

@@ -42,7 +42,7 @@ void LSTMJitCode::genCode() {
   }
 
   int offset = 0;
-  int d = num_ * sizeof(float);
+  int d = num_ * sizeof(float);  // NOLINT
   for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
     /* gates: W_ch, W_ih, W_fh, W_oh */
     ymm_t ymm_c = ymm_t(0);

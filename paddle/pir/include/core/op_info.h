@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+
 #include <functional>
+#include <string>
 #include <unordered_map>
 
 #include "paddle/pir/include/core/type_id.h"
@@ -31,7 +33,7 @@ typedef void (*VerifyPtr)(Operation *op);
 
 class IR_API OpInfo {
  public:
-  OpInfo() = default;
+  OpInfo(std::nullptr_t ptr = nullptr){};  // NOLINT
 
   OpInfo(const OpInfo &other) = default;
 
@@ -81,6 +83,8 @@ class IR_API OpInfo {
   static OpInfo RecoverFromVoidPointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
+
+  std::vector<std::string> GetAttributesName() const;
 
   friend class OpInfoImpl;
 

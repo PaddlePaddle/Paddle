@@ -16,12 +16,12 @@ from functools import cached_property
 
 import paddle
 from paddle.amp.auto_cast import amp_state
-from paddle.base import framework
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.unique_name import (
     UniqueNameGenerator,
     guard as UniqueNameGuard,
 )
+from paddle.framework import use_pir_api
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
@@ -41,18 +41,24 @@ class MetaInfo:
 
     @staticmethod
     def from_tensor(tensor):
-        # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.Value):
             name = "Value@NoName"
-            persistable = tensor.persistable
-            dtype = framework.paddle_type_to_proto_type[tensor.dtype]
-        else:
+        else:  # For Tensor or Variable
             name = tensor.name
-            persistable = tensor.persistable
-            dtype = tensor.dtype
+        persistable = tensor.persistable
+        dtype = tensor.dtype
+        expected_dtype_class = (
+            paddle.core.DataType
+            if paddle.framework.use_pir_api()
+            else paddle.core.VarDesc.VarType
+        )
+        assert isinstance(dtype, expected_dtype_class)
+
+        # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
-            dtype == paddle.float16
+            not use_pir_api()
+            and dtype == paddle.float16
             and current_amp_state is not None
             and current_amp_state["dtype"] == "float16"
         ):
@@ -97,8 +103,7 @@ class MetaInfo:
         return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
 
-@Singleton
-class VariableCreator:
+class VariableCreator(metaclass=Singleton):
     """
     We use the static graph Variable to infer the meta information of Tensor.
     This singleton class is used to create Variable for infer meta.
@@ -260,11 +265,16 @@ def infer_meta_for_layer(layer, *args, **kwargs):
         partial_program_layer,
     ) = layer.forward.get_concrete_program(*args_, **kwargs_)
 
+    if use_pir_api():
+        output_values = partial_program_layer._outputs.var_list
+    else:
+        output_values = concrete_program.outputs
+
     out = partial_program_layer._restore_out(
         [
             x
             for x in paddle.utils.flatten(
-                convert_variable_to_meta_info(concrete_program.outputs)
+                convert_variable_to_meta_info(output_values)
             )
             if isinstance(x, MetaInfo)
         ]
@@ -294,8 +304,7 @@ def ast_infer_meta(static_function, *args, **kwargs):
     return out
 
 
-@Singleton
-class SpecialInferMeta:
+class SpecialInferMeta(metaclass=Singleton):
     """
     There are some functions that cannot be inferred directly through static graph,
     and need to be implemented manually. This class is used to implement infer meta
@@ -329,8 +338,7 @@ class SpecialInferMeta:
         return inputs
 
 
-@Singleton
-class InferMetaCache(Cache):
+class InferMetaCache(Cache, metaclass=Singleton):
     def key_fn(
         self, func, *args, **kwargs
     ):  # args & kwargs have transformed to MetaInfo
@@ -351,8 +359,7 @@ class InferMetaCache(Cache):
         return infer_meta(func, *args, **kwargs)
 
 
-@Singleton
-class LayerInferMetaCache(Cache):
+class LayerInferMetaCache(Cache, metaclass=Singleton):
     def key_fn(self, layer, *args, **kwargs):
         params = [
             MetaInfo.from_tensor(x)

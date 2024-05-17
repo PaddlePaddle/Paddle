@@ -121,7 +121,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     bool model_from_memory,
     bool skip_load_params) {
   framework::Executor exe(place);
-  if (!model_from_memory) {
+  if (!model_from_memory) {  // NOLINT
     return Load(&exe, scope, program_path, params_path, !skip_load_params);
   } else {
     return LoadFromMemory(&exe, scope, program_path, params_path);

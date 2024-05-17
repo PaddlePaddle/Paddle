@@ -121,6 +121,14 @@ class IR_API SideEffectTrait : public OpTraitBase<SideEffectTrait> {
   using Base::Base;
 };
 
+///
+/// \brief This trait marks the op's layout can't be modified.
+///
+class IR_API ImmutableLayoutTrait : public OpTraitBase<ImmutableLayoutTrait> {
+ public:
+  using Base::Base;
+};
+
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
@@ -131,3 +139,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ImmutableLayoutTrait)

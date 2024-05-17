@@ -918,8 +918,8 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
       clock_gettime(CLOCK_REALTIME, &tp);
       double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
       static std::atomic<uint64_t> x(0);
-      std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
-      engine.seed(sseq);
+      std::seed_seq s_seq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+      engine.seed(s_seq);
     }
   };
   thread_local engine_wrapper_t r;
@@ -940,6 +940,32 @@ size_t FleetWrapper::GetAbsoluteSum(size_t start,
     ret += GetAbsoluteSum(pos1, pos2, level + 1, lod);
   }
   return ret;
+}
+
+void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
+#if (defined PADDLE_WITH_PSLIB) || (defined PADDLE_WITH_HETERPS)
+  assert(date.size() == 8);
+  int year = std::stoi(date.substr(0, 4));
+  int month = std::stoi(date.substr(4, 2));
+  int day = std::stoi(date.substr(6, 2));
+  struct std::tm b;
+  b.tm_year = year - 1900;
+  b.tm_mon = month - 1;
+  b.tm_mday = day;
+  b.tm_hour = b.tm_min = b.tm_sec = 0;
+  std::time_t seconds_from_1970 = std::mktime(&b);
+  int day_id = seconds_from_1970 / 86400;
+  VLOG(0) << "set date to " << year << "-" << month << "-" << day
+          << " day_id:" << day_id << " seconds_from_1970:" << seconds_from_1970;
+  auto ret = worker_ptr_->SetDayId(table_id, day_id);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "setdate : " << date << " failed";
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetDate does nothing when no pslib or heterps";
+#endif
 }
 
 }  // end namespace distributed

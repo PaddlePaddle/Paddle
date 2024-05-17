@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 
 namespace ops = paddle::operators;
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 
 PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
                           GPU,

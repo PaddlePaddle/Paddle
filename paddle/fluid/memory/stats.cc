@@ -36,7 +36,7 @@ class StatRegistry {
     auto it = stat_map_.find(GetStatKey(stat_type, dev_id));
     if (it == stat_map_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The STAT type \"%s\" for device %d has not been regeistered.",
+          "The STAT type \"%s\" for device %d has not been registered.",
           stat_type.c_str(),
           dev_id));
     }
@@ -171,7 +171,7 @@ int RegisterAllStats() {
   return 0;
 }
 
-UNUSED static int regiester_all_stats = RegisterAllStats();
+UNUSED static int register_all_stats = RegisterAllStats();
 
 }  // namespace memory
 }  // namespace paddle

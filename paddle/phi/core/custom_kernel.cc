@@ -55,12 +55,12 @@ void CustomKernelMap::RegisterCustomKernels() {
 
       kernels[pair.first][info_pair.first] = info_pair.second;
 
-      VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
+      VLOG(3) << "Succeed in registering kernel [" << pair.first << ":"
               << info_pair.first
               << "] to Paddle. It will be used like native ones.";
     }
   }
-  LOG(INFO) << "Successed in loading " << kernels_.size()
+  LOG(INFO) << "Succeed in loading " << kernels_.size()
             << " custom kernel(s) from loaded lib(s), will be "
             << "used like native ones.";
   kernels_.clear();

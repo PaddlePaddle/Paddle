@@ -38,10 +38,12 @@ void MultiClassNMSKernel(const Context& ctx,
                          DenseTensor* out,
                          DenseTensor* index,
                          DenseTensor* nms_rois_num) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
-  const XPUT* bboxes_data = reinterpret_cast<const XPUT*>(bboxes.data<T>());
-  const XPUT* scores_data = reinterpret_cast<const XPUT*>(scores.data<T>());
+  const XPUType* bboxes_data =
+      reinterpret_cast<const XPUType*>(bboxes.data<T>());
+  const XPUType* scores_data =
+      reinterpret_cast<const XPUType*>(scores.data<T>());
 
   bool return_index = index != nullptr;
   bool has_rois_num = rois_num.get_ptr() != nullptr;
@@ -90,7 +92,7 @@ void MultiClassNMSKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(
         boxes_count == score_dims[0],
         true,
-        phi::errors::InvalidArgument("boxes_count shuold equal score_dims[0].",
+        phi::errors::InvalidArgument("boxes_count should equal score_dims[0].",
                                      "But received: (%d) and (%d)",
                                      boxes_count,
                                      score_dims[0]));

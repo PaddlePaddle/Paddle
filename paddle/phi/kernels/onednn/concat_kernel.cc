@@ -72,6 +72,16 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
 };
 }  // namespace funcs
 
+bool ConcatCheckIfOneDNNSupport(const KernelContext* ctx) {
+  auto input0 = ctx->InputAt<DenseTensor>(0);
+  int batch_size =
+      !input0.lod().empty() ? input0.lod()[0].size() - 1 : input0.dims()[0];
+  if (ctx->InputsSize() > 64 && batch_size < 1000) {
+    return false;
+  }
+  return true;
+}
+
 static void EnforceLayouts(const std::vector<const DenseTensor*> inputs) {
   for (auto* input : inputs) {
     PADDLE_ENFORCE_EQ(
@@ -151,4 +161,6 @@ PD_REGISTER_KERNEL(concat,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->check_if_onednn_kernel_support_ = phi::ConcatCheckIfOneDNNSupport;
+}

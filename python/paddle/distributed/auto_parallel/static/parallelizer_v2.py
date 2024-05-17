@@ -17,7 +17,7 @@ import logging
 import os
 import time
 
-from paddle.distributed.passes import PassManager, new_pass
+from paddle.distributed.passes.pass_base import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
 
@@ -32,10 +32,15 @@ from .utils import (
     use_new_executor,
 )
 
-NEW_IR_PASS = [
+PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
+    'fuse_allreduce_split_to_reducescatter_pass',
     'fused_dropout_add_pass',
+]
+
+PIR_PYTHON_PASS = [
+    'eliminate_transpose',
 ]
 
 
@@ -92,9 +97,7 @@ class Parallelizer:
                 params_grads,
             )
             self._logger.debug(
-                "within parallel apply_pre_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_pre_optimization time: {time.time() - time0}, mode {self._mode}"
             )
             # Do logical partition
             time0 = time.time()
@@ -110,9 +113,7 @@ class Parallelizer:
             init_auto_parallel_rng()
 
             self._logger.debug(
-                "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel partitioner time: {time.time() - time0}, mode {self._mode}"
             )
             # Generate optimizer
             time0 = time.time()
@@ -123,9 +124,7 @@ class Parallelizer:
                 dist_params_grads,
             )
             self._logger.debug(
-                "within parallel optimizer time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel optimizer time: {time.time() - time0}, mode {self._mode}"
             )
 
             resharder = Resharder(
@@ -137,9 +136,7 @@ class Parallelizer:
             )
             resharder.reshard()
             self._logger.debug(
-                "within parallel reshard time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel reshard time: {time.time() - time0}, mode {self._mode}"
             )
             # Apply post optimization passes
             time0 = time.time()
@@ -147,9 +144,7 @@ class Parallelizer:
                 dist_main_prog, dist_startup_prog, rank, dist_params_grads
             )
             self._logger.debug(
-                "within parallel apply_post_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_post_optimization time: {time.time() - time0}, mode {self._mode}"
             )
         else:
             # Apply pre optimization passes
@@ -162,9 +157,7 @@ class Parallelizer:
                 serial_main_program, serial_startup_program, None, None, []
             )
             self._logger.debug(
-                "within parallel apply_pre_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_pre_optimization time: {time.time() - time0}, mode {self._mode}"
             )
             # Do logical partition
             time0 = time.time()
@@ -178,9 +171,7 @@ class Parallelizer:
             )
             # Do reshard process
             self._logger.debug(
-                "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel partitioner time: {time.time() - time0}, mode {self._mode}"
             )
             time0 = time.time()
             # Do reshard process
@@ -199,9 +190,7 @@ class Parallelizer:
             )
             resharder.reshard()
             self._logger.debug(
-                "within parallel reshard time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel reshard time: {time.time() - time0}, mode {self._mode}"
             )
             # Apply post optimization passes
             time0 = time.time()
@@ -209,9 +198,7 @@ class Parallelizer:
                 dist_main_prog, dist_startup_prog, rank, dist_params_grads
             )
             self._logger.debug(
-                "within parallel apply_post_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_post_optimization time: {time.time() - time0}, mode {self._mode}"
             )
 
         # Clone program for test
@@ -416,11 +403,20 @@ class Parallelizer:
             )
             dp_pass.apply([main_program], [startup_program], self._pass_context)
 
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
+
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            config[
+                "gradient_sync_after_accumulate"
+            ] = gradient_sync_after_accumulate
             if self._strategy.amp.enable:
                 amp_config = copy.deepcopy(self._strategy.amp.to_dict())
                 config["amp_dtype"] = amp_config['dtype']
@@ -485,7 +481,13 @@ class Parallelizer:
         if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
-            config["params_grads"] = params_grads
+            if gradient_sync_after_accumulate:
+                config["params_grads"] = global_params_grads
+                config[
+                    "gradient_sync_after_accumulate"
+                ] = gradient_sync_after_accumulate
+            else:
+                config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config
             )
@@ -516,13 +518,13 @@ class Parallelizer:
         ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
-                new_pass_list = []
+                program_pass_list = []
                 for p in self._strategy.fused_passes.fused_passes_list:
-                    if p in NEW_IR_PASS and enable_ir:
+                    if enable_ir and p in (PIR_PASS + PIR_PYTHON_PASS):
                         ir_pass_list.append(p)
                     else:
-                        new_pass_list.append(new_pass(p))
-                pass_manager = PassManager(new_pass_list)
+                        program_pass_list.append(new_pass(p))
+                pass_manager = PassManager(program_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
         main_program._pass_opt = {}

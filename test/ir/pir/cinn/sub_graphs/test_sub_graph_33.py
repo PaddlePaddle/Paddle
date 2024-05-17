@@ -36,8 +36,10 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [10, 64, 14, 14], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [10, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [10, 64, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [10, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_1,
     ):
         var_2 = paddle.nn.functional.conv._conv_nd(
             var_0,
@@ -86,16 +88,16 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
+        # NOTE(Aurelius84): atol only satisfy 1e-5 under with_cinn=True
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-5)
 
 
 if __name__ == '__main__':

@@ -125,7 +125,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -931,7 +931,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
       .def_property(
           "memory_optimize",
           [](const BuildStrategy &self) -> py::object {
-            if (self.memory_optimize_) {
+            if (self.memory_optimize_) {  // NOLINT
               return py::cast(self.memory_optimize_.get());
             } else {
               return py::cast(nullptr);

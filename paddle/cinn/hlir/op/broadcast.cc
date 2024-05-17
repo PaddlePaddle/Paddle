@@ -307,12 +307,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
                  output_shapes[0].end(),
                  out_shape.begin(),
                  [](const ir::Dim &dim) { return dim->dim_expr; });
-  std::vector<int> broadcast_axes;
-  CHECK_GT(attrs.attr_store.count("broadcast_axes"), 0);
-  broadcast_axes =
-      absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
 
   framework::CINNCompute broadcast_to_compute([=](lang::Args args,
                                                   lang::RetValue *ret) {
@@ -321,14 +316,24 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "The input tensors of broadcast_to compute is empty! Please check.";
-    CHECK_GE(pack_args.size(), 2U);
-    CHECK(pack_args[1].is_string());
-    std::string tensor_name = pack_args[1].operator std::string();
+    std::string tensor_name = [&] {
+      if (pack_args.size() == 2) {
+        return pack_args[1].operator std::string();
+      } else {
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          3,
+                          ::common::errors::InvalidArgument(
+                              "The number of input tensors is wrong. "
+                              "The expected inputs is 3, but now is %d.",
+                              pack_args.size()));
+        return pack_args[2].operator std::string();
+      }
+    }();
 
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
     ir::Tensor A = A_expr.as_tensor_ref();
-    auto out = pe::BroadcastTo(A, out_shape, broadcast_axes, tensor_name);
+    auto out = pe::BroadcastTo(A, out_shape, tensor_name);
     auto stages = CreateStages({A, out});
     *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
   });
@@ -426,86 +431,9 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "Gradient operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
-}
-
-std::shared_ptr<OpStrategy> StrategyForIsClose(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<shape_t> &output_shapes,
-    const Target &target) {
-  float rtol = 1e-05f, atol = 1e-08f;
-  bool equal_nan = false;
-  int axis = -1;
-
-  if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
-  }
-  if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
-  }
-  if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
-  }
-  if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
-  }
-
-  framework::CINNCompute isclose_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of isclose compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        int input_size = pack_args.size();
-
-        // the last pack argument is the output tensor name
-        std::string tensor_name = pack_args.back().operator std::string();
-        --input_size;
-        CHECK_EQ(input_size, 2)
-            << "The input number of isclose should be 2, but here "
-            << input_size << "! Please check.";
-
-        // the input tensor are in front
-        Expr x_expr = pack_args[0];
-        CHECK(x_expr.as_tensor());
-        auto x_tensor = x_expr.as_tensor_ref();
-
-        Expr y_expr = pack_args[1];
-        CHECK(y_expr.as_tensor());
-        auto y_tensor = y_expr.as_tensor_ref();
-
-        auto out = pe::IsClose(
-            x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
-
-        auto stages = CreateStages({out});
-        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(isclose_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
-                    "strategy.assertisclose",
-                    1);
-
-  return strategy;
-}
-
-std::vector<Type> InferDtypeForIsClose(const std::vector<Type> &inputs_type,
-                                       const framework::AttrMapType &attrs) {
-  int input_size = inputs_type.size();
-  CHECK_EQ(input_size, 2UL)
-      << "The input number of isclose should be a multiple of 2, but here "
-      << input_size << "! Please check.";
-  CHECK(inputs_type[0].is_float())
-      << "The op \"isclose\" only support float point dtype now, but here "
-      << inputs_type[0];
-  CHECK(inputs_type[0] == inputs_type[1])
-      << "The two inputs dtype sof isclose should be equal, but here x:"
-      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
-
-  return {Bool()};
+  PADDLE_THROW(phi::errors::Fatal(
+      "Gradient operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass."));
 }
 
 StrategyForBinary(elementwise_add, Add);
@@ -545,16 +473,16 @@ StrategyForBinary(logical_right_shift, LogicalRightShift);
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(broadcast_ops) {
-#define CINN_REGISTER_BINARY(op__, op_stragegy__)                              \
+#define CINN_REGISTER_BINARY(op__, op_strategy__)                              \
   CINN_REGISTER_OP(op__)                                                       \
       .describe(#op__ " function")                                             \
       .set_num_inputs(1)                                                       \
       .set_num_outputs(1)                                                      \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)          \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
           "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)                \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
       .set_attr("infershape",                                                  \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))        \
       .set_attr("inferdtype",                                                  \
@@ -567,13 +495,16 @@ CINN_REGISTER_HELPER(broadcast_ops) {
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)       \
       .set_support_level(4);
 
-#define CINN_REGISTER_BINARY_CMP(op__, op_stragegy__)                      \
+#define CINN_REGISTER_BINARY_CMP(op__, op_strategy__)                      \
   CINN_REGISTER_OP(op__)                                                   \
       .describe(#op__ " function")                                         \
       .set_num_inputs(1)                                                   \
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)      \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
+          "CINNStrategySymbolic",                                          \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))    \
       .set_attr("inferdtype",                                              \
@@ -634,24 +565,6 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))
 #endif
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(isclose)
-      .describe(
-          "This operator checks if all x and y satisfy the condition: |x - y| "
-          "<= atol + rtol * |y|")
-      .set_num_inputs(2)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForIsClose)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForIsClose))
-      .set_attr("inferlayout",
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)
       .set_support_level(4);

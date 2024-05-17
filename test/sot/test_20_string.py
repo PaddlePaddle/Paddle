@@ -65,7 +65,7 @@ def str_endswith():
     return (a1, a2, a3, a4, a5, a6, a7)
 
 
-class TestExecutor(TestCaseBase):
+class TestString(TestCaseBase):
     def test_string_format(self):
         self.assert_results(string_format, paddle.to_tensor(1))
 

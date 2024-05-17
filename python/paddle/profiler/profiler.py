@@ -855,7 +855,7 @@ class Profiler:
         views=None,
     ):
         r"""
-        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
+        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and user-defined summary.
 
         Args:
             sorted_by( :ref:`SortedKeys <api_paddle_profiler_SortedKeys>` , optional): how to rank the op table items, default value is SortedKeys.CPUTotal.

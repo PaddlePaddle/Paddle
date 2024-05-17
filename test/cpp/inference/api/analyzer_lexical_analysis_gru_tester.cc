@@ -49,7 +49,7 @@ std::vector<size_t> ReadSentenceLod(std::ifstream &file,
   file.clear();
   file.seekg(offset);
   file.read(reinterpret_cast<char *>(sentence_lod.data()),
-            total_sentences_num * sizeof(size_t));
+            total_sentences_num * sizeof(size_t));  // NOLINT
 
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");
@@ -274,7 +274,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     } else if (FLAGS_enable_int8_qat) {
       analysis_cfg.EnableMkldnnInt8();
     } else {
-      // if fp32 => disable mkldnn fc passes
+      // if fp32 => disable onednn fc passes
       // when passes are enabled dnnl error occurs for iterations==0
       analysis_cfg.DisableMkldnnFcPasses();
     }

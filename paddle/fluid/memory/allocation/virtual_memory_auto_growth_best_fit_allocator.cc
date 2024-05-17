@@ -22,9 +22,8 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
-  return block_size > (allock_size * 2) ||
-         (block_size - allock_size) > alignment;
+bool NeedSplit(size_t block_size, size_t alignment, size_t alloc_size) {
+  return block_size > (alloc_size * 2) || (block_size - alloc_size) > alignment;
 }
 
 VirtualMemoryAutoGrowthBestFitAllocator::

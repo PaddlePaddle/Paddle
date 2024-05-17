@@ -17,9 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,7 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name,
     phi::DenseTensor* out,
     const framework::ExecutionContext& ctx) {
-  // phi::DenseTensore dtype is vector<bool>, it will be converted to
+  // phi::DenseTensor dtype is vector<bool>, it will be converted to
   //  vector<int>.
   //  at the same time, we can not use vector<bool> to hold the value, because
   //  the c++ use bit value to replace byte value.
@@ -119,7 +119,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
         value_name = "int8_values";
         break;
       default:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported data type(code %d) for AssignValue operator, only "
             "supports bool, int32, float32, float64, int8 and int64.",
             dtype));

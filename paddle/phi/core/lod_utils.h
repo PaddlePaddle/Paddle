@@ -16,6 +16,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "paddle/utils/test_macros.h"
+
 namespace phi {
 using LoD = std::vector<std::vector<std::size_t>>;
 
@@ -24,7 +26,7 @@ using LoD = std::vector<std::vector<std::size_t>>;
  */
 LoD ToAbsOffset(const LoD& in);
 
-void AppendLoD(LoD* lod, const LoD& lod_length);
+TEST_API void AppendLoD(LoD* lod, const LoD& lod_length);
 
 /*
  * Convert between length-based LoD and offset-based LoD.
@@ -36,6 +38,6 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
  * then length_lod = [[2, 1], [3, 2, 4]]
  */
-LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+TEST_API LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
 }  // namespace  phi

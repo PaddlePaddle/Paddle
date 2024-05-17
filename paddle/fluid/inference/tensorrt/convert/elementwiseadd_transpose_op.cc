@@ -40,10 +40,10 @@ class ElementwiseaddTransposeOpConverter : public OpConverter {
           engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
       std::vector<std::string> output_names;
       output_names.emplace_back(op_desc.Output("Out").front());
-      RreplenishLayerAndOutput(elementwise_layer,
-                               "fuse_elementwiseadd_transpose",
-                               output_names,
-                               test_mode);
+      ReplenishLayerAndOutput(elementwise_layer,
+                              "fuse_elementwiseadd_transpose",
+                              output_names,
+                              test_mode);
     }
   }
 };

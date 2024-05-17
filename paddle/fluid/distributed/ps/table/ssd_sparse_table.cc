@@ -44,6 +44,8 @@ int32_t SSDSparseTable::Initialize() {
 
 int32_t SSDSparseTable::InitializeShard() { return 0; }
 
+void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
+
 int32_t SSDSparseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
@@ -102,7 +104,6 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                mf_value_size,
                select_value_size,
                pull_values,
-               keys,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
@@ -247,7 +248,11 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                               sizeof(uint64_t));
                 ret = &feature_value;
               }
+
+              _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
               _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
               int pull_data_idx = cur_ctx->batch_index[idx];
               pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
             }
@@ -259,7 +264,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       } else {
         ret = itr.value_ptr();
         // int pull_data_idx = keys[i].second;
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
@@ -308,7 +316,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
               shard_id, reinterpret_cast<char*>(&cur_key), sizeof(uint64_t));
           ret = &feature_value;
         }
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
         _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         int pull_data_idx = cur_ctx->batch_index[idx];
         pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }
@@ -432,8 +443,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
   size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
       _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
-  size_t update_value_col =
-      _value_accessor->GetAccessorInfo().update_size / sizeof(float);
+  // size_t update_value_col =
+  // _value_accessor->GetAccessorInfo().update_size / sizeof(float);
   {
     std::vector<std::future<int>> tasks(_real_local_shard_num);
     std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -445,13 +456,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
-              [this,
-               shard_id,
-               value_col,
-               mf_value_col,
-               update_value_col,
-               values,
-               &task_keys]() -> int {
+              [this, shard_id, value_col, mf_value_col, values, &task_keys]()
+                  -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_col];  // NOLINT
@@ -706,8 +712,10 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
           out_str.second.data(), out_str.second.size());
       if (0 != write_channel->write_line(::paddle::string::format_string(
                    "%lu %s", out_str.first, format_value.c_str()))) {
-        LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                   << channel_config.path;
+        std::stringstream ss;
+        ss << "SSDSparseTable save failed, retry it! path:"
+           << channel_config.path;
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       }
     }
     write_channel->close();
@@ -1647,8 +1655,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -1688,8 +1698,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -1971,8 +1983,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -2001,9 +2015,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
         if (0 !=
             write_channel_for_slot_feature->write(
                 region_for_slot_feature->_buf, region_for_slot_feature->_cur)) {
-          LOG(FATAL)
-              << "DownpourSparseSSDTable save feature failed, retry it! path:"
-              << channel_config_for_slot_feature.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
+             << channel_config_for_slot_feature.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region_for_slot_feature->reset();
@@ -2044,8 +2059,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2094,8 +2111,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           if (0 != write_channel_for_slot_feature->write_line(
                        paddle::string::format_string(
                            "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save feature failed, retry it! path:"
-                       << channel_config_for_slot_feature.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save feature failed, retry it! path:"
+               << channel_config_for_slot_feature.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2502,17 +2521,19 @@ int32_t SSDSparseTable::Load(const std::string& path,
   }
 
   int load_param = atoi(param.c_str());
-  size_t expect_shard_num = _sparse_table_shard_num;
-  if (file_list.size() != expect_shard_num) {
-    LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
-                 << " not equal to expect_shard_num:" << expect_shard_num;
-    return -1;
-  }
   if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
+  _value_accessor->SetDayId(_day_id);
+  VLOG(1) << " Load Set Dayid:" << _day_id;
   if (load_param > 3) {
+    size_t expect_shard_num = _sparse_table_shard_num;
+    if (file_list.size() != expect_shard_num) {
+      LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
+                   << " not equal to expect_shard_num:" << expect_shard_num;
+      return -1;
+    }
     size_t file_start_idx = _shard_idx * _avg_local_shard_num;
     return LoadWithString(file_start_idx,
                           file_start_idx + _real_local_shard_num,
@@ -2826,7 +2847,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                     abort();
                   }
                   last_k = k;
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   rocksdb::Status status = sst_writer.Put(
                       rocksdb::Slice(reinterpret_cast<char*>(&k),
                                      sizeof(uint64_t)),
@@ -2842,7 +2865,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                   }
                 } else {
                   auto& feature_value = shard[k];
+#ifdef PADDLE_WITH_PSLIB
                   _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   feature_value.resize(dim);
                   memcpy(const_cast<float*>(feature_value.data()),
                          convert_value,
@@ -2896,7 +2921,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
     auto sst_filelist = _afs_client.list(::paddle::string::format_string(
         "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
     if (!sst_filelist.empty()) {
-      int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
+      int ret = _db->ingest_external_file(shard_idx, sst_filelist);
       if (ret) {
         VLOG(0) << "ingest file failed";
         abort();
@@ -3038,7 +3063,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
               }
               VLOG(0) << "write sst_file shard " << shard_id << ": "
                       << butil::gettimeofday_ms() - show_begin << " ms";
-              int ret = _db->ingest_externel_file(shard_id, {filename});
+              int ret = _db->ingest_external_file(shard_id, {filename});
               if (ret) {
                 VLOG(0) << "ingest file failed"
                         << ", " << status.getState();

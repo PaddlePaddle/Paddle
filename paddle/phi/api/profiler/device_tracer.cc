@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
-PD_DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 
@@ -571,10 +571,10 @@ class DeviceTracerImpl : public DeviceTracer {
         Event *e = c->second;
         Event *parent = e->parent();
         while (parent) {
-          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
           parent = parent->parent();
         }
-        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
       }
     }
     for (const auto &r : mem_records_) {
@@ -583,10 +583,10 @@ class DeviceTracerImpl : public DeviceTracer {
         Event *e = c->second;
         Event *parent = e->parent();
         while (parent) {
-          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
           parent = parent->parent();
         }
-        e->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        e->AddCudaElapsedTime(r.start_ns, r.end_ns);  // NOLINT
       }
     }
 #endif
@@ -834,7 +834,7 @@ uint32_t GetCurSystemThreadId() {
   return id;
 }
 
-void RecoreCurThreadId(uint64_t id) {
+void RecordCurThreadId(uint64_t id) {
   std::lock_guard<std::mutex> lock(system_thread_id_map_mutex);
   auto gid = GetCurSystemThreadId();
   system_thread_id_map[gid] = id;

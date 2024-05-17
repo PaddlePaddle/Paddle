@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace gloo {
 namespace transport {
@@ -141,7 +141,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   PADDLE_ENFORCE_EQ(read_status,
                     0,
                     paddle::platform::errors::Fatal(
-                        "HdfsStore::get, path read faied: " + path));
+                        "HdfsStore::get, path read failed: " + path));
 #endif
   return result;
 }
@@ -165,7 +165,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
       int32_t last_check_rank = -1;
       for (size_t i = 0; i < check_key_status.size(); ++i) {
         if (!check_key_status[i]) {
-          last_check_rank = i;
+          last_check_rank = static_cast<int32_t>(i);
           break;
         }
       }
@@ -252,7 +252,7 @@ void ParallelConnectContext::connectFullMesh(
     connect_threads[i].reset(new std::thread(
         [&store, &transportContext, total_add_size, this](
             size_t thread_idx, size_t thread_num) -> void {
-          for (int i = thread_idx; i < size; i += thread_num) {
+          for (int i = thread_idx; i < size; i += thread_num) {  // NOLINT
             if (i == rank) {
               continue;
             }

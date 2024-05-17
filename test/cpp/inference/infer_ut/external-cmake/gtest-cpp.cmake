@@ -1,12 +1,12 @@
 find_package(Git REQUIRED)
 message("${CMAKE_BUILD_TYPE}")
 set(GTEST_PREFIX_DIR ${CMAKE_CURRENT_BINARY_DIR}/gtest)
-set(GTEST_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gtest/src/extern_gtest)
+set(PADDLE_SOURCE_DIR $ENV{PADDLE_SOURCE_DIR})
+set(GTEST_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gtest)
 set(GTEST_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/install/gtest)
 set(GTEST_INCLUDE_DIR
     "${GTEST_INSTALL_DIR}/include"
     CACHE PATH "gtest include directory." FORCE)
-set(GTEST_REPOSITORY https://github.com/google/googletest.git)
 set(GTEST_TAG release-1.8.1)
 include_directories(${GTEST_INCLUDE_DIR})
 if(WIN32)
@@ -30,8 +30,7 @@ endif()
 ExternalProject_Add(
   extern_gtest
   PREFIX gtest
-  GIT_REPOSITORY ${GTEST_REPOSITORY}
-  GIT_TAG ${GTEST_TAG}
+  SOURCE_DIR ${GTEST_SOURCE_DIR}
   DOWNLOAD_DIR "${DOWNLOAD_LOCATION}"
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}

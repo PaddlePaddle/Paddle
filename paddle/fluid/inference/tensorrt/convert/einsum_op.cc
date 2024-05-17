@@ -39,7 +39,7 @@ class EinsumOpConverter : public OpConverter {
         engine_, Einsum, input_tensors.data(), input_num, equation.c_str());
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "einsum", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "einsum", {output_name}, test_mode);
 #else
     VLOG(3) << "Einsum is not supported when TensorRT < 8.2.0";
 #endif

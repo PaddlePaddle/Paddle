@@ -31,8 +31,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct.DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
@@ -44,8 +44,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct->DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
@@ -104,7 +104,33 @@ void InterpreterCoreEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         event,
         ctx);
-    var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {

@@ -35,7 +35,7 @@ void DivideKernel(const Context& dev_ctx,
   } else {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
+    if (x_dims.size() >= y_dims.size()) {  // NOLINT
       funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
           dev_ctx, x, y, funcs::DivideFunctor<T>(), out, -1);
     } else {

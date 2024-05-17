@@ -20,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
-
 namespace phi {
 
 template <typename Context>
@@ -59,9 +58,8 @@ void SliceStridedKernel(const Context& ctx,
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
-  if (decrease_axis.size() > 0) {
-    for (int i = 0; i < static_cast<int>(decrease_axis.size()); ++i) {
-      int64_t axis = decrease_axis[i];
+  if (!decrease_axis.empty()) {
+    for (auto axis : decrease_axis) {
       decrease_flag[axis] = 1;
     }
 
@@ -97,5 +95,7 @@ void SliceStridedKernel(const Context& ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    slice, STRIDED, phi::SliceStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice,
+                                         STRIDED,
+                                         phi::SliceStridedKernel) {}

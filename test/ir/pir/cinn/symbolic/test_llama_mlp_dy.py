@@ -36,25 +36,16 @@ class LlamaMLP(nn.Layer):
         self.gate_proj = nn.Linear(
             self.hidden_size,
             self.intermediate_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
         self.up_proj = nn.Linear(
             self.hidden_size,
             self.intermediate_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
         self.down_proj = nn.Linear(
             self.intermediate_size,
             self.hidden_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
 
@@ -73,8 +64,11 @@ class TestLlamaMLP(unittest.TestCase):
         self.hidden_states.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        # FusionOp split by matmul:
+        # FusionOp1: concat
+        # FusionOp2: slice, generate_shape, etc.
+        utils.check_jit_kernel_number(static_fn, 2)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
         paddle.seed(2024)

@@ -16,10 +16,11 @@
 
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, pe, runtime
-from cinn.poly import create_stages
+
+from paddle import cinn
+from paddle.cinn import Target, ir, lang, pe, runtime
+from paddle.cinn.poly import create_stages
 
 
 class TestPETransform(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestPETransform(unittest.TestCase):
         self.k = 16
 
         self.target = Target()
-        self.target.arch = Target.Arch.X86
+        self.target.arch = Target.X86Arch()
         self.target.bits = Target.Bit.k64
         self.target.os = Target.OS.Linux
 

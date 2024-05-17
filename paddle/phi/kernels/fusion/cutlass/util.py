@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import re
 
 
@@ -35,3 +36,28 @@ def SubstituteTemplate(template, values):
                 changed = True
             text = newtext
     return text
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="The argument for generating the conv2d_bias_act kernels."
+    )
+
+    parser.add_argument(
+        "--cuda_arch",
+        type=str,
+        default=None,
+        help="The CUDA architecture to be generated.",
+    )
+    args = parser.parse_args()
+
+    return args
+
+
+def write_kernel_to_file(kernel, file_name):
+    with open(
+        file_name,
+        "w",
+    ) as f:
+        f.write(kernel)
+        f.close()

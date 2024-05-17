@@ -124,7 +124,7 @@ class Geometric(distribution.Distribution):
         return paddle.sqrt(self.variance)
 
     def pmf(self, k):
-        r"""Probability mass funciotn evaluated at k.
+        r"""Probability mass function evaluated at k.
 
         .. math::
 
@@ -341,5 +341,5 @@ class Geometric(distribution.Distribution):
             )
         else:
             raise TypeError(
-                f"Exected type of other is geometric.Geometric, but got {type(other)}"
+                f"Exacted type of other is geometric.Geometric, but got {type(other)}"
             )

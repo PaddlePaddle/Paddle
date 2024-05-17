@@ -478,9 +478,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
+        std::vector<const paddle::Tensor*> tmp;
         for (auto t : inputs_tensor[i]) {
-          grad_node->SetGradOutMeta(*t, i);
+          tmp.push_back(t);
         }
+        grad_node->SetGradOutMeta(tmp, i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
       }
@@ -490,9 +492,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       if (ctx->forward_output_tensor_is_duplicable[i]) {
         egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
         egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
-        for (auto t : outputs_tensor[i]) {
-          grad_node->SetGradInMeta(*t, i);
-        }
+        grad_node->SetGradInMeta(outputs_tensor[i], i);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
         egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);

@@ -103,7 +103,7 @@
   output : Tensor(weight_grad)
   infer_meta :
     func : EmbeddingGradInferMeta
-    param : [x,weght]
+    param : [x,weight]
   kernel :
     func : embedding_grad {dense, dense, dense -> dense}
            embedding_sparse_grad {dense, dense, dense -> selected_rows}

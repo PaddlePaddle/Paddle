@@ -15,12 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-from cinn.common import is_compiled_with_cuda
-from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 import paddle
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.frontend import NetBuilder
 
 INT32_MAX = (1 << 31) - 1
 INT32_MIN = -(1 << 31)

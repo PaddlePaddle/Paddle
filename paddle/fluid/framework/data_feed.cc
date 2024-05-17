@@ -572,15 +572,16 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
   char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
+#ifdef PADDLE_WITH_PSLIB
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
+#endif
 
   std::string filename;
   while (this->PickOneFile(&filename)) {
@@ -589,6 +590,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     platform::Timer timeline;
     timeline.Start();
     if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
       auto afs_reader = ps_gpu_ptr->OpenReader(filename);
       int read_len = 0;
       char* cursor = buf;
@@ -604,6 +606,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
         }
         cursor = buf + remain;
       }
+#endif
     } else {
       VLOG(0) << "Should Call InitAfsApi First";
     }
@@ -1813,7 +1816,7 @@ int PaddleBoxDataFeed::Next() {
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(pv_vec);
     } else {
       VLOG(3) << "finish reading, output_pv_channel_ size="
@@ -2113,7 +2116,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
   size_t pos = pipe_command_.find(".so");
-  if (pos != std::string::npos) {
+  if (pos != std::string::npos) {  // NOLINT
     pos = pipe_command_.rfind('|');
     if (pos == std::string::npos) {
       so_parser_name_ = pipe_command_;
@@ -2129,7 +2132,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
-  if (gpu_graph_mode_) {
+  if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
   } else {
     train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
@@ -2168,8 +2171,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib() {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
@@ -2206,6 +2208,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
     auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
       if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
         auto afs_reader = ps_gpu_ptr->OpenReader(filename);
         is_ok = parser->ParseFileInstance(
             [this, afs_reader](char* buf, int len) {
@@ -2213,6 +2216,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
             },
             pull_record_func,
             lines);
+#endif
       } else {
         int err_no = 0;
         this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
@@ -2780,7 +2784,7 @@ int SlotRecordInMemoryDataFeed::Next() {
     this->batch_size_ = batch.second;
     VLOG(3) << "batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(&records_[batch.first], this->batch_size_);
     } else {
       VLOG(3) << "finish reading for heterps, batch size zero, thread_id="

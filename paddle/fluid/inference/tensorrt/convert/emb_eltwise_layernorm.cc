@@ -171,12 +171,12 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       } else {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
-        RreplenishLayerAndOutput(layer,
-                                 "ManyEmbLayerNormVarlenPluginDynamicV1",
-                                 {output_name,
-                                  std::string("qkv_plugin_mask"),
-                                  std::string("max_seqlen_tensor")},
-                                 test_mode);
+        ReplenishLayerAndOutput(layer,
+                                "ManyEmbLayerNormVarlenPluginDynamicV1",
+                                {output_name,
+                                 std::string("qkv_plugin_mask"),
+                                 std::string("max_seqlen_tensor")},
+                                test_mode);
       }
     } else {
       for (int i = 0; i < input_num; i++) {
@@ -247,7 +247,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       }
       layer = plugin_layer;
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layer, "ManyEmbLayerNormPluginDynamicV1", {output_name}, test_mode);
     }
   }

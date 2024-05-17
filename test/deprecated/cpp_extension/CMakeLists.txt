@@ -1,0 +1,2 @@
+py_test(test_mixed_extension_setup SRCS test_mixed_extension_setup.py)
+set_tests_properties(test_mixed_extension_setup PROPERTIES TIMEOUT 120)

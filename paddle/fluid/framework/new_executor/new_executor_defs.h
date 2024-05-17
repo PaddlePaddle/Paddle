@@ -40,9 +40,13 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
+class InstructionBase;
+class ValueExecutionInfo;
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+using PirHookFunc =
+    std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
 using SchedulingPriority = int64_t;
 
@@ -82,7 +86,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;

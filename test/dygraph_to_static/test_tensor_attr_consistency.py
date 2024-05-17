@@ -93,6 +93,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'first_use',
         'get_defining_op',
         'has_one_use',
+        'has_name',
         'hash',
         'id',
         'initialized',
@@ -105,6 +106,19 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'set_shape',
         'set_type',
         'use_empty',
+        'is_dist_dense_tensor_type',
+        'dist_attr',
+        'update_dist_attr',
+        'is_combine',
+        'value_assign',
+        'replace_grad_users_with',
+        'do_model_average',
+        'is_distributed',
+        'is_parameter',
+        'need_clip',
+        'optimize_attr',
+        'regularizer',
+        'trainable',
     ]
 )
 

@@ -125,7 +125,7 @@ std::string Split::to_string() {
 std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims) {
   std::shared_ptr<DimTrans> ptr;
-  if (dims.size() == 0) {
+  if (dims.empty()) {
     ptr = std::make_shared<Singleton>();
   } else if (dims.size() == 1) {
     ptr = dims[0];

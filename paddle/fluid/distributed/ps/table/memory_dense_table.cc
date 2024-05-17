@@ -356,7 +356,7 @@ int32_t MemoryDenseTable::Save(const std::string &path,
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
-      result_buffer_param.emplace_back(std::move(os.str()));
+      result_buffer_param.emplace_back(os.str());
     }
   } else {
     std::ostringstream os;
@@ -368,7 +368,7 @@ int32_t MemoryDenseTable::Save(const std::string &path,
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
-      result_buffer_param.emplace_back(std::move(os.str()));
+      result_buffer_param.emplace_back(os.str());
     }
   }
 

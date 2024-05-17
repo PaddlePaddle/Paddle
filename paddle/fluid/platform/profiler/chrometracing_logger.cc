@@ -788,7 +788,7 @@ void ChromeTracingLogger::RefineDisplayName(
     "name": "process_name", "pid": %lld, "tid": %lld,
     "ph": "M",
     "args": {
-      "name": "Deivce %lld (%s)"
+      "name": "Device %lld (%s)"
     }
   },
    {

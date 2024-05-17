@@ -224,7 +224,7 @@ class Pool3dOpConverter : public OpConverter {
       layer = pool_layer;
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pool3d", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "pool3d", {output_name}, test_mode);
   }
 };
 

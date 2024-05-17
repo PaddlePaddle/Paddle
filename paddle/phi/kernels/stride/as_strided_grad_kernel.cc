@@ -16,8 +16,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/as_strided_kernel.h"
-#include "paddle/phi/kernels/fill_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 
 namespace phi {
 
@@ -32,15 +31,14 @@ void AsStridedGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   PD_VISIT_ALL_TYPES(input_grad->dtype(), "AsStridedGradKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(
-                           dev_ctx, *input_grad, 0, input_grad);
+                       phi::StridedTensorFill<data_t>(
+                           *input_grad, 0, input_grad);
                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   AsStridedKernel<Context>(dev_ctx, *input_grad, dims, stride, offset, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            out_grad,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -48,7 +46,8 @@ void AsStridedGradKernel(const Context& dev_ctx,
                            &tmp);
                      }));
 }
-
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    as_strided_grad, STRIDED, phi::AsStridedGradKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(as_strided_grad,
+                                         STRIDED,
+                                         phi::AsStridedGradKernel) {}

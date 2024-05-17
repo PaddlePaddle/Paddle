@@ -51,7 +51,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
 class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
@@ -106,7 +106,7 @@ static int special_type_value = 1;
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -161,7 +161,7 @@ class CPUKernel2Test : public OpKernel<float> {
 class OpKernelTestMultiInputsProtoAndCheckerMaker
     : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").AsDuplicable();
@@ -335,7 +335,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("phi::DenseTensor", "Input of phi::DenseTensor type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -357,7 +357,7 @@ class IndicateSelectedRowsDataTypeTest : public OperatorWithKernel {
 class IndicateSelectedRowsDataTypeTestProtoMaker
     : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("SelectedRows", "Input of SelectedRows type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -377,7 +377,7 @@ class IndicateOtherDataTypeTest : public OperatorWithKernel {
 };
 class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("Other", "Input of Other type Variable");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -512,7 +512,7 @@ class SetLoDLevelTest : public OperatorWithKernel {
 
 class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(phi::DenseTensor) Input Variable.");
     AddOutput("Out", "(phi::DenseTensor) Output Variable.");
     AddComment("This Op is only for Get/SetLoDLevel interface test.");
@@ -592,7 +592,7 @@ class OpUnusedVarTest : public OperatorWithKernel {
 
 class OpUnusedVarTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "input of test op");
     AddOutput("Y", "output of test op");
     AddComment("This is test op for unused var check.");

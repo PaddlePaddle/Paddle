@@ -30,7 +30,7 @@ class ShapeOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     nvinfer1::ILayer* layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "shape", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "shape", {output_name}, test_mode);
   }
 };
 

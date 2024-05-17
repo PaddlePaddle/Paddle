@@ -27,7 +27,7 @@ from paddle.incubate.distributed.fleet.base import (
 )
 from paddle.incubate.distributed.fleet.role_maker import (
     HeterRoleMaker,
-    MPISymetricRoleMaker,
+    MPISymmetricRoleMaker,
 )
 
 from .optimizer_factory import (
@@ -52,7 +52,7 @@ class PSLib(Fleet):
 
     def init(self, role_maker=None):
         if role_maker is None:
-            role_maker = MPISymetricRoleMaker()
+            role_maker = MPISymmetricRoleMaker()
         super().init(role_maker)
         self._fleet_ptr = core.Fleet()
         self._heter_ptr = None
@@ -224,7 +224,7 @@ class PSLib(Fleet):
             self._fleet_ptr.init_server(
                 self._dist_desc_str, self._role_maker.server_index() * 2
             )
-            if isinstance(self._role_maker, MPISymetricRoleMaker):
+            if isinstance(self._role_maker, MPISymmetricRoleMaker):
                 self._local_ip = self._fleet_ptr.run_server()
             else:
                 local_endpoint = self._role_maker.get_local_endpoint()

@@ -61,9 +61,9 @@ TEST(CodeGenC, module) {
   LOG(INFO) << "C.body: " << C->get_compute_op()->body.front();
 
   Target target;
-  target.arch = Target::Arch ::X86;
-  target.bits = Target::Bit ::k32;
-  target.os = Target::OS ::Linux;
+  target.arch = common::X86Arch{};
+  target.bits = Target::Bit::k32;
+  target.os = Target::OS::Linux;
   Module::Builder builder("module1", target);
 
   ast_gen_ius::TensorGroup tensor_group({A, B, C});

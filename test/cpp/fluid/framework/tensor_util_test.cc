@@ -68,8 +68,8 @@ TEST(TensorCopy, Tensor) {
     int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
                                                 platform::CPUPlace());
 
-    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    memcpy(src_ptr, arr, 9 * sizeof(int));
+    std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
     // CPU phi::DenseTensor to GPU phi::DenseTensor
     auto gpu_place = new platform::CUDAPlace(0);

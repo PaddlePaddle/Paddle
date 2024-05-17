@@ -434,9 +434,7 @@ def _handle_errors(max_time_out=None):
 
                 if time.time() - last_print_time > 30:
                     print(
-                        "hadoop operator timeout:args:{} timeout:{}".format(
-                            args, time.time() - start
-                        )
+                        f"hadoop operator timeout:args:{args} timeout:{time.time() - start}"
                     )
                     last_print_time = time.time()
 
@@ -611,8 +609,8 @@ class HDFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        cmd = ["-ls", fs_path]
-        ret, lines = self._run_safe_cmd(cmd)
+        cmd = f"ls {fs_path}"
+        ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
             raise ExecuteError(cmd)

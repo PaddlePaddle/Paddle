@@ -25,7 +25,7 @@ limitations under the License. */
         PADDLE_ENFORCE_EQ(vec_##attr_name__.size(),                        \
                           1UL,                                             \
                           platform::errors::InvalidArgument(               \
-                              "attr axes/starst/ends/steps 's size in "    \
+                              "attr axes/starts/ends/steps 's size in "    \
                               "set_value must be one, but got %d",         \
                               vec_##attr_name__.size()));                  \
       }                                                                    \
@@ -151,7 +151,7 @@ class SetValueConverter : public OpConverter {
         platform::errors::InvalidArgument(
             "ValueTensor‘s rank not equal to Input's rank, "
             "you should try use C++ API "
-            "config.exp_disable_tensorrt_ops({\"%s\"}) to forbind this op "
+            "config.exp_disable_tensorrt_ops({\"%s\"}) to forbid this op "
             "enter into TRT, "
             "please find the %s's real name from .pdmodel or shape.txt",
             output_name,
@@ -249,7 +249,7 @@ class SetValueConverter : public OpConverter {
 
       layer->setAxis(axes);
 
-      RreplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "static shape mode not supported in set value yet"));

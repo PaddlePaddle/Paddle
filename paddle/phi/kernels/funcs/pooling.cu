@@ -2454,7 +2454,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -2535,7 +2535,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -2767,7 +2767,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 1;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (ncd > max_grid_dim[1] * threads.y)
                       ? max_grid_dim[1]
@@ -2839,7 +2839,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 1;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (ncd > max_grid_dim[1] * threads.y)
                       ? max_grid_dim[1]
@@ -3105,7 +3105,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -3183,7 +3183,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)

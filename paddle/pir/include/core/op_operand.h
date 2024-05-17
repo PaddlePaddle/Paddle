@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <cstdint>
 #include "paddle/pir/include/core/dll_decl.h"
 

@@ -125,17 +125,25 @@ class TestAMPDecorate(unittest.TestCase):
     def check_results(self, fp32_layers=[], fp16_layers=[]):
         for idx in range(len(fp32_layers)):
             for layer in fp32_layers[idx].sublayers(include_self=False):
-                self.assertEqual(layer.weight.dtype, paddle.float32)
-                self.assertEqual(layer.bias.dtype, paddle.float32)
+                self.assertTrue(
+                    layer.weight.dtype
+                    in (paddle.float32, core.DataType.FLOAT32)
+                )
+                self.assertTrue(
+                    layer.bias.dtype in (paddle.float32, core.DataType.FLOAT32)
+                )
 
         for idx in range(len(fp16_layers)):
             for layer in fp16_layers[idx].sublayers(include_self=False):
-                self.assertEqual(layer.weight.dtype, paddle.float16)
-                self.assertEqual(layer.bias.dtype, paddle.float16)
+                self.assertTrue(
+                    layer.weight.dtype
+                    in (paddle.float16, core.DataType.FLOAT16)
+                )
+                self.assertTrue(
+                    layer.bias.dtype in (paddle.float16, core.DataType.FLOAT16)
+                )
 
     def test_excluded_layers(self):
-        if not paddle.amp.is_float16_supported():
-            return
         model = Model(4, 8, fp16_conv=False)
         model = paddle.amp.decorate(
             models=model,
@@ -151,8 +159,6 @@ class TestAMPDecorate(unittest.TestCase):
         )
 
     def test_excluded_layers_attr_list(self):
-        if not paddle.amp.is_float16_supported():
-            return
         model = Model(4, 8, fp16_conv=False, fp16_linear=False)
         model = paddle.amp.decorate(
             models=model,
@@ -169,8 +175,6 @@ class TestAMPDecorate(unittest.TestCase):
         )
 
     def test_excluded_layers_attr_types(self):
-        if not paddle.amp.is_float16_supported():
-            return
         model = Model(4, 8)
         model = paddle.amp.decorate(
             models=model,
@@ -187,8 +191,6 @@ class TestAMPDecorate(unittest.TestCase):
         )
 
     def test_excluded_layers_attr_none(self):
-        if not paddle.amp.is_float16_supported():
-            return
         model = Model(4, 8)
         model = paddle.amp.decorate(
             models=model,
@@ -206,8 +208,6 @@ class TestAMPDecorate(unittest.TestCase):
         )
 
     def test_excluded_layers_custom_layer(self):
-        if not paddle.amp.is_float16_supported():
-            return
         model = CustomLayer(4, 8)
         model = paddle.amp.decorate(
             models=model,
@@ -220,6 +220,17 @@ class TestAMPDecorate(unittest.TestCase):
         self.check_results(
             fp32_layers=[model.layernorm, model.conv._batch_norm],
         )
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                self.test_excluded_layers()
+                self.test_excluded_layers_attr_list()
+                self.test_excluded_layers_attr_types()
+                self.test_excluded_layers_attr_none()
+                self.test_excluded_layers_custom_layer()
 
 
 if __name__ == '__main__':

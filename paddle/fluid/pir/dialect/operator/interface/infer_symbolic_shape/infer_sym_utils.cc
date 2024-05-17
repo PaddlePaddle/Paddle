@@ -16,26 +16,47 @@
 
 namespace paddle::dialect::details {
 
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec) {
+  std::vector<int64_t> int64vec;
+  for (auto item : expr_vec) {
+    if (!item.isa<int64_t>()) {
+      return std::nullopt;
+    }
+    int64vec.push_back(item.Get<int64_t>());
+  }
+  return int64vec;
+}
+
+ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec) {
+  ExprVec expr_vec(int_vec.size(), 0);
+  std::transform(
+      int_vec.begin(),
+      int_vec.end(),
+      expr_vec.begin(),
+      [](int64_t val) -> symbol::DimExpr { return symbol::DimExpr(val); });
+  return expr_vec;
+}
+
 bool ReduceInferDim(pir::Operation *op,
-                    pir::ShapeConstraintIRAnalysis *shape_analysis,
+                    pir::InferSymbolicShapeContext *infer_context,
                     const std::vector<int64_t> &axis,
                     bool keep_dim,
                     bool reduce_all) {
   auto x = op->operand_source(0);
   int x_rank = x.type().dyn_cast<pir::DenseTensorType>().dims().size();
 
-  const std::vector<int64_t> formated_axis = [&] {
-    std::vector<int64_t> formated_axis = axis;
+  const std::vector<int64_t> formatted_axis = [&] {
+    std::vector<int64_t> formatted_axis = axis;
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + x_rank;
+        formatted_axis[i] = axis[i] + x_rank;
       }
     }
-    return formated_axis;
+    return formatted_axis;
   }();
 
   bool full_dim = true;
-  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
+  std::set<int64_t> dims_set(formatted_axis.begin(), formatted_axis.end());
   for (int64_t i = 0; i < x_rank; ++i) {
     if (dims_set.find(i) == dims_set.end()) {
       full_dim = false;
@@ -46,7 +67,7 @@ bool ReduceInferDim(pir::Operation *op,
   reduce_all = reduce_all || full_dim || empty_dim;
 
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x);
+      infer_context->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
       x_shape_or_data.data()->size() == 0) {
@@ -74,8 +95,29 @@ bool ReduceInferDim(pir::Operation *op,
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(shapes)};
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
+}
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::InferSymbolicShapeContext *infer_context,
+    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
+    int axis) {
+  for (size_t i = 1; i < shape_data_list.size(); ++i) {
+    infer_context->AddEqualCstr(shape_data_list[0].shape()[axis],
+                                shape_data_list[i].shape()[axis]);
+  }
+}
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::InferSymbolicShapeContext *infer_context,
+    const std::vector<pir::Value> &values,
+    int axis) {
+  for (size_t i = 1; i < values.size(); ++i) {
+    infer_context->AddEqualCstr(
+        infer_context->GetShapeOrDataForValue(values[0]).shape()[axis],
+        infer_context->GetShapeOrDataForValue(values[i]).shape()[axis]);
+  }
 }
 
 }  // namespace paddle::dialect::details

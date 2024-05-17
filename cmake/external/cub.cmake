@@ -29,7 +29,7 @@ if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
   set(CUB_TAG 1.16.0)
   execute_process(COMMAND git --git-dir=${CUB_SOURCE_DIR}/.git
                           --work-tree=${CUB_SOURCE_DIR} checkout ${CUB_TAG})
-  # cub 1.16.0 is not compitable with current thrust version
+  # cub 1.16.0 is not compatible with current thrust version
   add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
 else()
   set(CUB_TAG 1.8.0)

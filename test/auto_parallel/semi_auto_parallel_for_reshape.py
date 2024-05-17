@@ -55,6 +55,16 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
         assert y.shape == [30, 20, 10]
         assert y._local_shape == [15, 20, 10]
 
+    def test_shape_api_with_reshape(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        a = paddle.rand(shape=[4, 6, 8])
+        b = dist.shard_tensor(a, mesh, [dist.Shard(0)])
+
+        dist_shape = paddle.shape(b)
+        b = b.reshape((-1, dist_shape[-1]))
+        assert b.shape == [24, 8]
+        assert b._local_shape == [12, 8]
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -64,6 +74,7 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
             raise ValueError("Only support cpu or gpu backend.")
         self.test_reshape_forward()
         self.test_reshape_infer_shape()
+        self.test_shape_api_with_reshape()
 
 
 if __name__ == '__main__':

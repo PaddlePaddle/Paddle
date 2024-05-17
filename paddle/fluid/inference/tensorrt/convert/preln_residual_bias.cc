@@ -100,7 +100,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Y")[0]);
     output_names.push_back(op_desc.Output("BiasDropoutResidualOut")[0]);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "preln_residual_bias", output_names, test_mode);
   }
 };

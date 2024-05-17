@@ -116,7 +116,7 @@ class Binomial(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of binomial distribuion.
+        """Mean of binomial distribution.
 
         Returns:
             Tensor: mean value.

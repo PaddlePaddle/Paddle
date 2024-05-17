@@ -50,8 +50,11 @@ Expr Widen(Expr e, int lanes) {
     }
   }
 
-  CHECK_EQ(e.type().lanes(), 1)
-      << "Cannot broadcast lanes from " << e.type().lanes() << " to " << lanes;
+  PADDLE_ENFORCE_EQ(
+      e.type().lanes(),
+      1,
+      phi::errors::InvalidArgument(
+          "Cannot broadcast lanes from %d to %d.", e.type().lanes(), lanes));
   return ir::Broadcast::Make(e, lanes);
 }
 
@@ -742,7 +745,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (forloop->is_vectorized()) {
       Context::info_rgt().Get<int>("vectorized_forloop_count")++;
 
-      CHECK_GT(forloop->vectorize_info().factor, 0);
+      PADDLE_ENFORCE_GT(
+          forloop->vectorize_info().factor,
+          0,
+          phi::errors::InvalidArgument(
+              "The value of factor in forloop's vectorize_info is incorrect."
+              "Expected value is larger than 0, but receive %d. ",
+              forloop->vectorize_info().factor));
 
       CHECK(is_zero(forloop->min));
       Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
@@ -795,10 +804,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       }
 
       int extent = extent_int->value;
-      CHECK_GT(extent, 0)
-          << "Loop over " << Expr(new_forloop->loop_var) << " has extent "
-          << new_forloop->extent
-          << ". Can only vectorize loops over a constant extent > 1";
+      PADDLE_ENFORCE_GT(
+          extent,
+          0,
+          phi::errors::InvalidArgument(
+              "Loop over %s has extent %d"
+              ". Can only vectorize loops over a constant extent > 1",
+              Expr(new_forloop->loop_var),
+              new_forloop->extent));
 
       VLOG(2) << "Vectorizing " << new_forloop->loop_var << " extent "
               << extent;
@@ -810,7 +823,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
         cuda_vectorizer.Visit(&new_forloop->body);
         // unroll the new forloop to compute each element of the vector
         // iteratively
-        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
+        auto copied_loop =
+            ir::ir_utils::IRCopy(_new_forloop, /* copy_buffer_node = */ false);
         copied_loop.As<ir::For>()->set_unrolled();
         optim::UnrollLoop(&copied_loop);
         // add cast exprs of vector type in the front of vectorized forloop,
@@ -893,13 +907,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           Var new_iterator_outer(
               cinn::common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b =
-              Block::Make({For::Make(new_iterator_inner,
-                                     inner_for->min,
-                                     b,
-                                     ForType::Serial,
-                                     DeviceAPI::UNK,
-                                     ir::ir_utils::IRCopy(inner_for->body))});
+          Expr inner_for_b = Block::Make({For::Make(
+              new_iterator_inner,
+              inner_for->min,
+              b,
+              ForType::Serial,
+              DeviceAPI::UNK,
+              ir::ir_utils::IRCopy(inner_for->body,
+                                   /* copy_buffer_node = */ false))});
           cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 
@@ -925,7 +940,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   //! Split the forloop with size \p factor.
   //! @return The new forloop.
   Expr SplitForLoop(For *forloop, int factor) {
-    CHECK_GT(factor, 1);
+    PADDLE_ENFORCE_GT(factor,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The value of factor in SplitForLoop is incorrect."
+                          "Expected value is larger than 1, but receive %d. ",
+                          factor));
     auto *for_min_i = forloop->min.As<IntImm>();
     CHECK(forloop);
     if (!for_min_i) return Expr();

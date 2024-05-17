@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/split.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {

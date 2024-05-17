@@ -29,9 +29,15 @@ def group_case_for_parallel(rootPath):
         'exclusive_card_tests',
         'exclusive_card_tests_mem0',
     ]:
-        os.system(
-            f'cd {rootPath}/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak_20230908/{filename} --no-check-certificate'
-        )
+        OS_NAME = sys.platform
+        if OS_NAME.startswith('win'):
+            os.system(
+                f'cd {rootPath}/tools && wget --no-proxy https://paddle-windows.bj.bcebos.com/pre_test_bak_20230908/{filename} --no-check-certificate'
+            )
+        else:
+            os.system(
+                f'cd {rootPath}/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak_20230908/{filename} --no-check-certificate'
+            )
 
     # get nightly tests
     nightly_tests_file = open('%s/tools/nightly_case' % rootPath, 'r')

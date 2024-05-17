@@ -117,7 +117,7 @@ void TopkKernel(const Context& dev_ctx,
                                   out,
                                   indices,
                                   largest)) {
-        // Successed, return.
+        // Succeed, return.
         return;
       } else {
         VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "

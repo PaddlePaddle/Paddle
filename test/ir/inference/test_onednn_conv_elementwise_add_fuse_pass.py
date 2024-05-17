@@ -121,7 +121,7 @@ class TestOneDNNConvElementwiseAddFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=['conv_elementwise_add_mkldnn_fuse_pass']
+            quant=False, passes=['conv_elementwise_add_onednn_fuse_pass']
         )
 
 

@@ -19,13 +19,13 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 namespace paddle {
 namespace imperative {
 
@@ -74,7 +74,7 @@ static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents) {
-  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+  phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(context,
                   dense_tensors_,
                   0,
@@ -102,7 +102,7 @@ static void SplitTensorsForAllReduce(
     phi::funcs::StridedMemcpyWithAxis0<T, DeviceContext>(
         context, *in, shape_refer, &outs);
   } else {
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 }
@@ -179,8 +179,7 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     outs.emplace_back(&tensor);
     shape_refer.emplace_back(&tensor);
   }
-  operators::math::SplitFunctor<platform::XPUDeviceContext, float>
-      split_functor_;
+  phi::funcs::SplitFunctor<platform::XPUDeviceContext, float> split_functor_;
   split_functor_(context, *in, shape_refer, 0, &outs);
 }
 
@@ -227,7 +226,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
@@ -263,7 +262,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
@@ -493,8 +492,10 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
                 "using PyLayer in a DataParallel model, you can skip gradient "
                 "synchronization among multiple cards by 'no_sync', and "
                 "manually implement 'all_reduce' before model optimization. "
-                "There is an example showing specific implemetation processing "
-                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "There is an example showing specific implementation "
+                "processing "
+                "in official docs: "
+                "https://www.paddlepaddle.org.cn/documentation"
                 "/docs/api/paddle/DataParallel_cn.html"));
       }
       ++node_deps_[grad_pending_node.get()];

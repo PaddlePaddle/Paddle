@@ -43,6 +43,7 @@ void Internal_PyEvalFrameClearAndPop(PyThreadState *tstate,
                                      _PyInterpreterFrame *frame);
 _PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
                                                       size_t size);
+void Internal_PyFrame_ClearExceptCode(_PyInterpreterFrame *frame);
 #endif
 
 #endif

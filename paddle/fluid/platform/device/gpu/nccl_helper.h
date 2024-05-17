@@ -155,7 +155,8 @@ struct NCCLContext {
   int device_id() const { return ctx_->GetPlace().device; }
 };
 
-struct NCCLContextMap {
+class NCCLContextMap {
+ public:
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 

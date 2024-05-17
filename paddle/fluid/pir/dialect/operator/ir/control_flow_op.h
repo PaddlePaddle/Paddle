@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/include/core/block.h"
@@ -23,7 +24,7 @@
 namespace paddle {
 namespace dialect {
 
-class IfOp : public pir::Op<IfOp, VjpInterface> {
+class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.if"; }
@@ -55,33 +56,8 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
-};
 
-class PyLayerOp : public pir::Op<PyLayerOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.pylayer"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
-                    std::vector<pir::Type> &&output_types);
-
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
-                    std::unique_ptr<pir::Block> &&fwd_block);
-
-  pir::Value combined_inputs() { return operand_source(0); }
-  pir::Block &forward_block();
-  pir::Region &forward_region() { return (*this)->region(0); }
-
-  void Print(pir::IrPrinter &printer);  // NOLINT
-  void VerifySig();
-  void VerifyRegion();
-
-  void UpdateOutput();
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 ///
@@ -94,7 +70,8 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
 ///      cond, outputs = body(outputs)
 ///   }
 ///
-class WhileOp : public pir::Op<WhileOp, VjpInterface> {
+class WhileOp
+    : public pir::Op<WhileOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.while"; }
@@ -118,6 +95,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
@@ -168,9 +146,11 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 ///      print(summarize number of elements in data)
 ///   }
 ///
-class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
+class AssertOp
+    : public pir::Op<AssertOp, OpYamlInfoInterface, pir::SideEffectTrait> {
  public:
   using Op::Op;
+  static const char ERROR_INFO_ATTR_NAME[];
   static const char *name() { return "pd_op.assert"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[1];
@@ -188,7 +168,8 @@ class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
   pir::Value data() { return operand_source(1); }
 };
 
-class SelectInputOp : public pir::Op<SelectInputOp> {
+class SelectInputOp
+    : public pir::Op<SelectInputOp, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.select_input"; }
@@ -197,6 +178,7 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::Value out() { return result(0); }
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {
@@ -217,6 +199,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp);
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PyLayerOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)

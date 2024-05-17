@@ -127,5 +127,7 @@ class CodeGenCUDA_Dev : public CodeGenC {
   std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };
 
+ir::Expr CalculateSharedMemory(const ir::Expr& func_expr);
+
 }  // namespace backends
 }  // namespace cinn

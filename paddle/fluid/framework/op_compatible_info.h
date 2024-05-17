@@ -28,7 +28,7 @@ class OpCompatibleMap;
 
 enum class OpCompatibleType {
   compatible = 0,       //   support previous version
-  DEFIN_NOT = 1,        //   definitely can't support previous version
+  definite_not = 1,     //   definitely can't support previous version
   possible = 2,         //   possible can support previous version, not sure
   bug_fix = 3,          //   bug fix, can't support previous version
   precision_change = 4  //   precision change, may cause difference

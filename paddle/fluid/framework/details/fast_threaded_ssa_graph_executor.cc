@@ -49,8 +49,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       /*disable_setting_default_stream_for_allocator=*/true,
       /*stream_priority=*/0);
   if (ir::IsTopologySortOperationsUnique(*graph_)) {
-    VLOG(10)
-        << "Change thread number to 1 because the toposort order is unique";
+    VLOG(10) << "Change thread number to 1 because the topology sort order is "
+                "unique";
     strategy_.num_threads_ = 1;
     traced_ops_.clear();
     for (auto *op_node : TopologySortOperations(*graph_)) {

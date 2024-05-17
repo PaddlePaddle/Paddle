@@ -27,8 +27,8 @@ def get_paddle_includes():
     paddle_includes.append(f"{env_dict.get('PADDLE_SOURCE_DIR')}")
 
     # mkldnn
-    if env_dict.get("WITH_MKLDNN") == 'ON':
-        paddle_includes.append(f"{env_dict.get('MKLDNN_INSTALL_DIR')}/include")
+    if env_dict.get("WITH_ONEDNN") == 'ON':
+        paddle_includes.append(f"{env_dict.get('ONEDNN_INSTALL_DIR')}/include")
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         paddle_includes.append(f"{env_dict.get('externalError_INCLUDE_DIR')}")
     paddle_includes.append(f"{env_dict.get('PYBIND_INCLUDE_DIR')}")

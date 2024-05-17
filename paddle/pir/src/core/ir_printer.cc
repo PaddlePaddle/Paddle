@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -26,6 +27,8 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/core/value.h"
+
+COMMON_DECLARE_bool(pir_debug);
 
 namespace pir {
 
@@ -69,7 +72,7 @@ void BasicIrPrinter::PrintType(Type type) {
   } else if (type.isa<VectorType>()) {
     os << "vec[";
     auto inner_types = type.dyn_cast<VectorType>().data();
-    detail::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_types.begin(),
         inner_types.end(),
         [this](Type v) { this->PrintType(v); },
@@ -132,7 +135,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
     os << "[";
-    detail::PrintInterleave(
+    pir::detail::PrintInterleave(
         vec.begin(),
         vec.end(),
         [this](Attribute v) { this->PrintAttribute(v); },
@@ -182,6 +185,10 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
   os << " \"" << op->name() << "\"";
 
+  if (FLAGS_pir_debug) {
+    os << " [id:" << op->id() << "]";
+  }
+
   // TODO(lyk): add API to get operands directly
   PrintOpOperands(op);
 
@@ -216,6 +223,16 @@ void IrPrinter::PrintRegion(const Region& region) {
 void IrPrinter::PrintBlock(const Block& block) {
   os << indentation() << "{\n";
   AddIndentation();
+  if (!block.kwargs_empty()) {
+    os << indentation() << "^kw:";
+    auto cur = block.kwargs_begin(), end = block.kwargs_end();
+    PrintValue(cur->second);
+    while (++cur != end) {
+      os << ", ";
+      PrintValue(cur->second);
+    }
+    os << "\n";
+  }
   for (auto& item : block) {
     PrintOperation(&item);
     os << "\n";
@@ -241,10 +258,11 @@ void IrPrinter::PrintValue(Value v) {
     aliases_[key] = new_name;
     os << new_name;
   } else {
-    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
-    cur_block_argument_number_++;
-    aliases_[key] = new_name;
-    os << new_name;
+    auto arg = v.dyn_cast<BlockArgument>();
+    os << (aliases_[key] =
+               arg.is_kwarg()
+                   ? "%kwarg_" + arg.keyword()
+                   : "%arg_" + std::to_string(cur_block_argument_number_++));
   }
 }
 
@@ -256,7 +274,7 @@ void IrPrinter::PrintOpResult(Operation* op) {
   for (size_t idx = 0; idx < num_op_result; idx++) {
     op_results.push_back(op->result(idx));
   }
-  detail::PrintInterleave(
+  pir::detail::PrintInterleave(
       op_results.begin(),
       op_results.end(),
       [this](Value v) { this->PrintValue(v); },
@@ -266,11 +284,15 @@ void IrPrinter::PrintOpResult(Operation* op) {
 
 void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
-  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
+  std::map<std::string, Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
+
+  // Filter out the callstack attribute
+  order_attributes.erase("op_callstack");
+
   os << " {";
 
-  detail::PrintInterleave(
+  pir::detail::PrintInterleave(
       order_attributes.begin(),
       order_attributes.end(),
       [this](std::pair<std::string, Attribute> it) {
@@ -291,7 +313,7 @@ void IrPrinter::PrintOpOperands(Operation* op) {
   for (size_t idx = 0; idx < num_op_operands; idx++) {
     op_operands.push_back(op->operand_source(idx));
   }
-  detail::PrintInterleave(
+  pir::detail::PrintInterleave(
       op_operands.begin(),
       op_operands.end(),
       [this](Value v) { this->PrintValue(v); },
@@ -312,7 +334,7 @@ void IrPrinter::PrintOperandsType(Operation* op) {
     }
   }
   os << " (";
-  detail::PrintInterleave(
+  pir::detail::PrintInterleave(
       op_operand_types.begin(),
       op_operand_types.end(),
       [this](Type t) { this->PrintType(t); },
@@ -332,7 +354,7 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       op_result_types.emplace_back(nullptr);
     }
   }
-  detail::PrintInterleave(
+  pir::detail::PrintInterleave(
       op_result_types.begin(),
       op_result_types.end(),
       [this](Type t) { this->PrintType(t); },
@@ -341,7 +363,9 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
 
 void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
-  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  PADDLE_ENFORCE_EQ(aliases_.find(key),
+                    aliases_.end(),
+                    phi::errors::InvalidArgument("Value already has alias"));
   aliases_[key] = alias;
 }
 

@@ -238,7 +238,7 @@ void SectionWorker::TrainFiles() {
 #endif
   }  // max_memory_size >= 0
 
-  if (schedule_mode_ == 0) {
+  if (schedule_mode_ == 0) {  // NOLINT
     RunFThenB(gc);
   } else {
     Run1F1B(gc);

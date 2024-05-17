@@ -20,6 +20,7 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 
@@ -51,7 +52,11 @@ void TransposeData(float* data, int M, int N) {
 }
 
 void ReverseHWData(float* data, std::vector<int> shape) {
-  CHECK_EQ(shape.size(), 4UL);
+  PADDLE_ENFORCE_EQ(shape.size(),
+                    4UL,
+                    phi::errors::InvalidArgument(
+                        "The shape size of the data is not equal to 4! Please "
+                        "check."));
   for (int i = 0; i < shape[0] * shape[1]; i++) {
     int num = shape[2] * shape[3];
     std::reverse(data + (i * num), data + (i * num + num));
@@ -61,7 +66,11 @@ void ReverseHWData(float* data, std::vector<int> shape) {
 void PaddleModelToProgram::AddOpMapper_feed() {
   op_mappers_["feed"] = [&](const paddle::cpp::OpDesc& op_desc) {
     auto outs = op_desc.Output("Out");
-    CHECK_EQ(outs.size(), 1UL);
+    PADDLE_ENFORCE_EQ(outs.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the feed op is not equal to 1! "
+                          "Please check."));
     VLOG(2) << "Model get feed [" << outs[0] << "]";
     CHECK(input_shape_map_.count(outs[0]));
     auto input_shape = input_shape_map_[outs[0]];
@@ -72,7 +81,11 @@ void PaddleModelToProgram::AddOpMapper_feed() {
 
 void PaddleModelToProgram::AddOpMapper_fetch() {
   op_mappers_["fetch"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the fetch op is not equal to 1! "
+                          "Please check."));
     auto output_names = op_desc.Input("X");
     for (auto& output_name : output_names) {
       VLOG(2) << "fetch model output: [" << output_name << "]";
@@ -83,7 +96,11 @@ void PaddleModelToProgram::AddOpMapper_fetch() {
 
 void PaddleModelToProgram::AddOpMapper_scale() {
   op_mappers_["scale"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the scale op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
     auto x = GetVar(utils::TransValidVarName(x_name));
     float scale{};
@@ -92,7 +109,11 @@ void PaddleModelToProgram::AddOpMapper_scale() {
       scale = op_desc.GetAttr<float>("scale");
     } else {  // the newly refactored format
       // load scale tensor
-      CHECK_EQ(op_desc.Input("ScaleTensor").size(), 1UL);
+      PADDLE_ENFORCE_EQ(op_desc.Input("ScaleTensor").size(),
+                        1UL,
+                        phi::errors::InvalidArgument(
+                            "The input size of the ScaleTensor is not equal to "
+                            "1! Please check."));
       auto* scale_tensor_var =
           scope_->FindVar(op_desc.Input("ScaleTensor").front());
       CHECK(scale_tensor_var) << "No scale tensor found in the scope";
@@ -104,11 +125,16 @@ void PaddleModelToProgram::AddOpMapper_scale() {
     if (op_desc.HasAttr("bias")) {  // the old model format
       bias = op_desc.GetAttr<float>("bias");
     } else {
-      LOG(FATAL) << "Didn't find [bias] attr in Scale operator!!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Didn't find [bias] attr in Scale operator!!"));
     }
     absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
     auto out = net_builder_->Scale(x, scale, bias);
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the scale op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     AddVar(utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -117,9 +143,17 @@ void PaddleModelToProgram::AddOpMapper_scale() {
 
 void PaddleModelToProgram::AddOpMapper_mul() {
   op_mappers_["mul"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the mul op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the mul op is not equal to 1! "
+                          "Please check."));
     auto y_name = op_desc.Input("Y").front();
     auto x = GetVar(utils::TransValidVarName(x_name));
     TransposeVar(TransValidVarName(y_name));
@@ -135,7 +169,11 @@ void PaddleModelToProgram::AddOpMapper_mul() {
     const auto& out =
         net_builder_->Mul(x, y, x_num_col_dims, y_num_col_dims, true);
 
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the mul op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     AddVar(utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -144,9 +182,17 @@ void PaddleModelToProgram::AddOpMapper_mul() {
 
 void PaddleModelToProgram::AddOpMapper_matmul() {
   op_mappers_["matmul"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the matmul op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the matmul op is not equal to 1! "
+                          "Please check."));
     auto y_name = op_desc.Input("Y").front();
     auto x = GetVar(utils::TransValidVarName(x_name));
     auto y = GetVar(utils::TransValidVarName(y_name));
@@ -156,7 +202,11 @@ void PaddleModelToProgram::AddOpMapper_matmul() {
     VLOG(4) << "x shape: " << utils::Join(x->shape, ",");
     VLOG(4) << "y shape: " << utils::Join(y->shape, ",");
     auto out = net_builder_->Matmul(x, y, trans_a, trans_b, alpha);
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the matmul op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     AddVar(utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -165,13 +215,23 @@ void PaddleModelToProgram::AddOpMapper_matmul() {
 
 void PaddleModelToProgram::AddOpMapper_reshape2() {
   op_mappers_["reshape2"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("X").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The input size of the reshape2 op is not equal to 1! "
+            "Please check."));
     auto x_name = op_desc.Input("X").front();
     auto x = GetVar(utils::TransValidVarName(x_name));
     std::vector<int> shape = op_desc.GetAttr<std::vector<int>>("shape");
     VLOG(4) << "x shape: " << utils::Join(x->shape, ",");
     auto out = net_builder_->Reshape(x, shape);
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the reshape2 op is not equal to 1! "
+            "Please check."));
     auto out_name = op_desc.Output("Out").front();
     AddVar(utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -181,7 +241,11 @@ void PaddleModelToProgram::AddOpMapper_reshape2() {
 void PaddleModelToProgram::AddOpMapper_concat() {
   op_mappers_["concat"] = [&](const paddle::cpp::OpDesc& op_desc) {
     int input_size = op_desc.Input("X").size();
-    CHECK_GE(input_size, 2UL);
+    PADDLE_ENFORCE_GE(input_size,
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the concat op is less than 2! "
+                          "Please check."));
     std::vector<Variable> input_vars;
     for (int i = 0; i < input_size; i++) {
       auto name = op_desc.Input("X")[i];
@@ -190,7 +254,11 @@ void PaddleModelToProgram::AddOpMapper_concat() {
     int axis = op_desc.GetAttr<int>("axis");
     VLOG(4) << "axis in op concat is : " << axis;
     auto out = net_builder_->Concat(input_vars, axis);
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the concat op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     AddVar(utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -199,9 +267,17 @@ void PaddleModelToProgram::AddOpMapper_concat() {
 
 void PaddleModelToProgram::AddOpMapper_assign() {
   op_mappers_["assign"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the assign op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the assign op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     auto x = GetVar(TransValidVarName(x_name));
     auto out = net_builder_->Identity(x);
@@ -212,14 +288,23 @@ void PaddleModelToProgram::AddOpMapper_assign() {
 
 void PaddleModelToProgram::AddOpMapper_fill_constant() {
   op_mappers_["fill_constant"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the fill_constant op is not equal "
+            "to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     CHECK(op_desc.HasAttr("shape"));
     auto shape = op_desc.GetAttr<std::vector<int64_t>>("shape");
     std::vector<int> shapes;
     for (size_t i = 0; i < shape.size(); i++) {
-      CHECK_LE(shape[i], std::numeric_limits<int32_t>::max());
+      PADDLE_ENFORCE_LE(shape[i],
+                        std::numeric_limits<int32_t>::max(),
+                        phi::errors::InvalidArgument(
+                            "The shape size of the data is too large! Please "
+                            "check."));
       shapes.push_back(static_cast<int>(shape[i]));
     }
     CHECK(op_desc.HasAttr("dtype"));
@@ -243,7 +328,9 @@ void PaddleModelToProgram::AddOpMapper_fill_constant() {
       DO(INT32, int);
 #undef DO
       default:
-        LOG(FATAL) << "unknown data type " << dtype;
+        std::stringstream ss;
+        ss << "unknown data type " << dtype;
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     AddVar(TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
@@ -252,9 +339,18 @@ void PaddleModelToProgram::AddOpMapper_fill_constant() {
 
 void PaddleModelToProgram::AddOpMapper_transpose2() {
   op_mappers_["transpose2"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the transpose2 op is not equal to "
+                          "1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the transpose2 op is not equal to "
+            "1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     auto x = GetVar(TransValidVarName(x_name));
     CHECK(op_desc.HasAttr("axis"));
@@ -269,9 +365,17 @@ void PaddleModelToProgram::AddOpMapper_transpose2() {
 
 void PaddleModelToProgram::AddOpMapper_exp() {
   op_mappers_["exp"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the exp op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the exp op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     auto x = GetVar(TransValidVarName(x_name));
 
@@ -284,9 +388,17 @@ void PaddleModelToProgram::AddOpMapper_exp() {
 
 void PaddleModelToProgram::AddOpMapper_relu() {
   op_mappers_["relu"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the relu op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the relu op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
     auto x = GetVar(TransValidVarName(x_name));
     auto out = net_builder_->Relu(x);
@@ -298,9 +410,18 @@ void PaddleModelToProgram::AddOpMapper_relu() {
 
 void PaddleModelToProgram::AddOpMapper_softmax() {
   op_mappers_["softmax"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the softmax op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the softmax op is not equal to 1! "
+            "Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     int axis = 0;
@@ -318,11 +439,23 @@ void PaddleModelToProgram::AddOpMapper_softmax() {
 
 void PaddleModelToProgram::AddOpMapper_elementwise_add() {
   op_mappers_["elementwise_add"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_add op is not "
+                          "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_add op is not "
+                          "equal to 1! Please check."));
     auto y_name = op_desc.Input("Y").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the elementwise_add op is not "
+                          "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     int axis = op_desc.GetAttr<int>("axis");
 
@@ -337,11 +470,23 @@ void PaddleModelToProgram::AddOpMapper_elementwise_add() {
 
 void PaddleModelToProgram::AddOpMapper_elementwise_mul() {
   op_mappers_["elementwise_mul"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_mul op is not "
+                          "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_mul op is not "
+                          "equal to 1! Please check."));
     auto y_name = op_desc.Input("Y").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the elementwise_mul op is not "
+                          "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     int axis = op_desc.GetAttr<int>("axis");
 
@@ -356,11 +501,23 @@ void PaddleModelToProgram::AddOpMapper_elementwise_mul() {
 
 void PaddleModelToProgram::AddOpMapper_elementwise_div() {
   op_mappers_["elementwise_div"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_div op is not "
+                          "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_div op is not "
+                          "equal to 1! Please check."));
     auto y_name = op_desc.Input("Y").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the elementwise_div op is not "
+                          "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     CHECK(op_desc.HasAttr("axis"));
     int axis = op_desc.GetAttr<int>("axis");
@@ -376,11 +533,23 @@ void PaddleModelToProgram::AddOpMapper_elementwise_div() {
 
 void PaddleModelToProgram::AddOpMapper_elementwise_sub() {
   op_mappers_["elementwise_sub"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_sub op is not "
+                          "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the elementwise_sub op is not "
+                          "equal to 1! Please check."));
     auto y_name = op_desc.Input("Y").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the elementwise_sub op is not "
+                          "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     CHECK(op_desc.HasAttr("axis"));
     int axis = op_desc.GetAttr<int>("axis");
@@ -396,9 +565,17 @@ void PaddleModelToProgram::AddOpMapper_elementwise_sub() {
 
 void PaddleModelToProgram::AddOpMapper_relu6() {
   op_mappers_["relu6"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the relu6 op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the relu6 op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     auto x = GetVar(TransValidVarName(x_name));
@@ -407,39 +584,106 @@ void PaddleModelToProgram::AddOpMapper_relu6() {
     var_model_to_program_map_[out_name] = out->id;
   };
 }
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::UnknownArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::X86Arch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  CHECK(op_desc.HasAttr("paddings"));
+  auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
+  CHECK(op_desc.HasAttr("strides"));
+  auto strides = op_desc.GetAttr<std::vector<int>>("strides");
+  CHECK(op_desc.HasAttr("dilations"));
+  auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
+  CHECK(op_desc.HasAttr("groups"));
+  auto groups = op_desc.GetAttr<int>("groups");
+  CHECK(op_desc.HasAttr("data_format"));
+  std::string data_format = op_desc.GetAttr<std::string>("data_format");
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+  return net_builder->Conv2d(
+      x, y, strides, paddings, dilations, groups, data_format);
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::ARMArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::NVGPUArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  CHECK(op_desc.HasAttr("paddings"));
+  auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
+  CHECK(op_desc.HasAttr("strides"));
+  auto strides = op_desc.GetAttr<std::vector<int>>("strides");
+  CHECK(op_desc.HasAttr("dilations"));
+  auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
+  CHECK(op_desc.HasAttr("groups"));
+  auto groups = op_desc.GetAttr<int>("groups");
+  CHECK(op_desc.HasAttr("data_format"));
+  std::string data_format = op_desc.GetAttr<std::string>("data_format");
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+  Variable out;
+  return net_builder->DepthwiseConv2d(
+      x, y, strides, paddings, dilations, groups, data_format);
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2d(common::Arch arch,
+                                    T* net_builder,
+                                    const paddle::cpp::OpDesc& op_desc,
+                                    const Variable& x,
+                                    const Variable& y) {
+  return std::visit(
+      [&](const auto& impl) {
+        return AddOpMapperDepthwiseConv2dImpl(impl, net_builder, op_desc, x, y);
+      },
+      arch.variant());
+}
+
 void PaddleModelToProgram::AddOpMapper_depthwise_conv2d() {
   op_mappers_["depthwise_conv2d"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Input").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the depthwise_conv2d "
+                                     "op is not equal to 1! Please check."));
     auto x_name = op_desc.Input("Input").front();
-    CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Filter").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the depthwise_conv2d "
+                                     "op is not equal to 1! Please check."));
     auto y_name = op_desc.Input("Filter").front();
-    CHECK_EQ(op_desc.Output("Output").size(), 1UL);
-    auto out_name = op_desc.Output("Output").front();
-
-    CHECK(op_desc.HasAttr("paddings"));
-    auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
-    CHECK(op_desc.HasAttr("strides"));
-    auto strides = op_desc.GetAttr<std::vector<int>>("strides");
-    CHECK(op_desc.HasAttr("dilations"));
-    auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
-    CHECK(op_desc.HasAttr("groups"));
-    auto groups = op_desc.GetAttr<int>("groups");
-    CHECK(op_desc.HasAttr("data_format"));
-    std::string data_format = op_desc.GetAttr<std::string>("data_format");
-    if (data_format == "AnyLayout") {
-      data_format = "NCHW";
-    }
     auto x = GetVar(TransValidVarName(x_name));
     auto y = GetVar(TransValidVarName(y_name));
-    Variable out;
-    if (target_.arch == Target::Arch::X86) {
-      out = net_builder_->Conv2d(
-          x, y, strides, paddings, dilations, groups, data_format);
-    } else {
-      out = net_builder_->DepthwiseConv2d(
-          x, y, strides, paddings, dilations, groups, data_format);
-    }
-
+    auto* net_builder = net_builder_.get();
+    Variable out =
+        AddOpMapperDepthwiseConv2d(target_.arch, net_builder, op_desc, x, y);
+    CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+    auto out_name = op_desc.Output("Output").front();
     AddVar(TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
@@ -447,11 +691,23 @@ void PaddleModelToProgram::AddOpMapper_depthwise_conv2d() {
 
 void PaddleModelToProgram::AddOpMapper_conv2d() {
   op_mappers_["conv2d"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Input").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the conv2d op is not "
+                                     "equal to 1! Please check."));
     auto x_name = op_desc.Input("Input").front();
-    CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Filter").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the conv2d op is not "
+                                     "equal to 1! Please check."));
     auto y_name = op_desc.Input("Filter").front();
-    CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Output").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output size of the conv2d op is not "
+                                     "equal to 1! Please check."));
     auto out_name = op_desc.Output("Output").front();
 
     CHECK(op_desc.HasAttr("paddings"));
@@ -479,9 +735,17 @@ void PaddleModelToProgram::AddOpMapper_conv2d() {
 
 void PaddleModelToProgram::AddOpMapper_pool2d() {
   op_mappers_["pool2d"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("X").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the pool2d op is not "
+                                     "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output size of the pool2d op is not "
+                                     "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     CHECK(op_desc.HasAttr("pooling_type"));
@@ -522,15 +786,35 @@ void PaddleModelToProgram::AddOpMapper_pool2d() {
 
 void PaddleModelToProgram::AddOpMapper_batchnorm() {
   op_mappers_["batch_norm"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("X").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the batch_norm op is "
+                                     "not equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Input("Scale").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Scale").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the batch_norm op is "
+                                     "not equal to 1! Please check."));
     auto scale_name = op_desc.Input("Scale").front();
-    CHECK_EQ(op_desc.Input("Bias").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Bias").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the batch_norm op is "
+                                     "not equal to 1! Please check."));
     auto bias_name = op_desc.Input("Bias").front();
-    CHECK_EQ(op_desc.Input("Mean").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Mean").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the batch_norm op is "
+                                     "not equal to 1! Please check."));
     auto mean_name = op_desc.Input("Mean").front();
-    CHECK_EQ(op_desc.Input("Variance").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("Variance").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the batch_norm op is "
+                                     "not equal to 1! Please check."));
     auto variance_name = op_desc.Input("Variance").front();
     CHECK(!op_desc.Output("Y").empty());
     auto out_name = op_desc.Output("Y").front();
@@ -558,9 +842,17 @@ void PaddleModelToProgram::AddOpMapper_batchnorm() {
 
 void PaddleModelToProgram::AddOpMapper_sigmoid() {
   op_mappers_["sigmoid"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("X").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input size of the sigmoid op is not "
+                                     "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output size of the sigmoid op is not "
+                                     "equal to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
     auto x = GetVar(TransValidVarName(x_name));
     auto out = net_builder_->Sigmoid(x);
@@ -572,9 +864,17 @@ void PaddleModelToProgram::AddOpMapper_sigmoid() {
 
 void PaddleModelToProgram::AddOpMapper_slice() {
   op_mappers_["slice"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the slice op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("Input").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output size of the slice op is not equal to 1! "
+                          "Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
@@ -594,9 +894,18 @@ void PaddleModelToProgram::AddOpMapper_slice() {
 
 void PaddleModelToProgram::AddOpMapper_dropout_infer() {
   op_mappers_["dropout"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input size of the dropout op is not equal to 1! "
+                          "Please check."));
     auto x_name = op_desc.Input("X").front();
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the dropout op is not equal to 1! "
+            "Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
@@ -622,7 +931,9 @@ void PaddleModelToProgram::AddOp(const paddle::cpp::OpDesc& op_desc) {
     return;
   }
   // feed op's output is a input of the model
-  LOG(FATAL) << "Not supported op [" << op_desc.Type() << "] found";
+  std::stringstream ss;
+  ss << "Not supported op [" << op_desc.Type() << "] found";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 void PaddleModelToProgram::TransposeVar(const std::string& name) {
@@ -630,13 +941,13 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (target_.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 2)
           << "The y data's shape size of op [mul] is not equal to 2! Please "
              "check.";
       TransposeData(data, tensor->shape().data()[0], tensor->shape().data()[1]);
-    } else if (target_.arch == Target::Arch::NVGPU) {
+    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
 #ifdef CINN_WITH_CUDA
       // To use cublas mul api, there is no need to transpose data.
 #ifndef CINN_WITH_CUDNN
@@ -658,7 +969,8 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
           cudaMemcpyHostToDevice));
 #endif
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      PADDLE_THROW(phi::errors::Fatal(
+          "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
     } else {
       CINN_NOT_IMPLEMENTED
@@ -674,7 +986,9 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
     var->type = Float(32);
     AddVar(name, var, true);
   } else {
-    LOG(FATAL) << "No var called [" << name << "] exists";
+    std::stringstream ss;
+    ss << "No var called [" << name << "] exists";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -683,13 +997,13 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (target_.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 4)
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data, tensor->shape().data());
-    } else if (target_.arch == Target::Arch::NVGPU) {
+    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
 #ifdef CINN_WITH_CUDA
       std::vector<float> data(tensor->shape().numel());
       CUDA_CALL(cudaMemcpy(
@@ -707,13 +1021,16 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
           tensor->shape().numel() * sizeof(float),
           cudaMemcpyHostToDevice));
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      PADDLE_THROW(phi::errors::Fatal(
+          "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
     } else {
       CINN_NOT_IMPLEMENTED
     }
   } else {
-    LOG(FATAL) << "No var called [" << name << "] exists";
+    std::stringstream ss;
+    ss << "No var called [" << name << "] exists";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -736,7 +1053,9 @@ Variable PaddleModelToProgram::GetVar(const std::string& name) {
     return var;
   }
 
-  LOG(FATAL) << "No var called [" << name << "] exists";
+  std::stringstream ss;
+  ss << "No var called [" << name << "] exists";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Variable();
 }
 
@@ -762,8 +1081,10 @@ std::unique_ptr<Program> PaddleModelToProgram::operator()(
                         false,
                         target_);
   }
-  CHECK_EQ(program_desc.BlocksSize(), 1)
-      << "CINN can only support the model with a single block";
+  PADDLE_ENFORCE_EQ(program_desc.BlocksSize(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "CINN can only support the model with a single block"));
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);
 
   for (int i = 0; i < block_desc->OpsSize(); i++) {

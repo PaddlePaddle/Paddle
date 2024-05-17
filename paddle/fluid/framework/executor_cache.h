@@ -27,7 +27,7 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/pir/include/core/dialect.h"
@@ -272,6 +272,12 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
 
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
                                             phi::Place place);
+
+std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
+    const std::unique_ptr<::pir::Program> program,
+    const pir::Block* block,
+    const phi::Place& place,
+    const paddle::framework::Scope* scope);
 
 std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,

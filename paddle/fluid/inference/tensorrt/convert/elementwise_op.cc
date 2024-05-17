@@ -162,7 +162,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          *(less_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "greater_equal") {
       auto* greater_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
@@ -181,7 +181,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          *(greater_layer->getOutput(0)),
                                          *(equal_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kOR);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "mod") {
       auto* div_layer =
           TRT_ENGINE_ADD_LAYER(engine_,
@@ -203,7 +203,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          *(mul_layer->getOutput(0)),
                                          nvinfer1::ElementWiseOperation::kSUB);
       SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else {
       auto op_pair = ops.find(op_type_);
       PADDLE_ENFORCE_NE(
@@ -217,7 +217,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       auto* layer = TRT_ENGINE_ADD_LAYER(
           engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
       SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
-      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     }
   }
 
@@ -350,7 +350,7 @@ class PowOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kPOW);
     SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
   }
 };
 

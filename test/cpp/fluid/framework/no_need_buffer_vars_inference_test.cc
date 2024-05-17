@@ -51,7 +51,7 @@ TEST(test_no_need_buffer_vars_inference, test_dygraph) {
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(TestNoNeedBufferVarsInferer, "X1", "X2");
 
-TEST(test_no_need_buffer_vars_inference, test_nullptr_comparation) {
+TEST(test_no_need_buffer_vars_inference, test_nullptr_comparison) {
   InferNoNeedBufferVarsFN infer_fn;
   ASSERT_FALSE(static_cast<bool>(infer_fn));
   ASSERT_TRUE(!infer_fn);

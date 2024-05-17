@@ -19,6 +19,18 @@
 namespace cinn {
 namespace ir {
 
+class BindCudaTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "BindCudaTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void BindCudaTactic::Init(ScheduleContext* context) { context_ = context; }
 
 const std::unordered_map<IterativeSpaceInfo::AxisType, std::string>
@@ -54,6 +66,10 @@ void BindCudaTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
       sch->Bind(loops[loop_idx], axis_type2bind_info.at(axis_type));
     }
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateBindCudaTactic() {
+  return std::make_unique<BindCudaTactic>();
 }
 
 }  // namespace ir

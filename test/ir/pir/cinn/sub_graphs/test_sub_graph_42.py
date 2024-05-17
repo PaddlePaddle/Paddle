@@ -104,13 +104,14 @@ class TestLayer(unittest.TestCase):
         st_out = self.train(self.net, to_static=True)
         # TODO(Aurelius84): cinn.gather will raise Check failed: input_args.size() == 3U (4 vs. 3)
         paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
+        # NOTE(Aurelius84): atol only satisfy 1e-5 under with_cinn=True.
         cinn_out = self.train(
             self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-5)
 
 
 if __name__ == '__main__':

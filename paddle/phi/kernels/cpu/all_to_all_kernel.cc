@@ -45,8 +45,7 @@ void AllToAllKernel(const phi::CustomContext& dev_ctx,
 
   std::vector<void*> sendbuf, recvbuf;
   std::vector<size_t> sendsize(send_numel, nranks);
-  std::vector<phi::ccl::CCLDataType> sendtype(
-      phi::ccl::ToCCLDataType(x.dtype()), nranks);
+  std::vector<phi::DataType> sendtype(x.dtype(), nranks);
   for (auto i = 0; i < nranks; ++i) {
     sendbuf.push_back(x.data<T>() + i * send_numel);
     recvbuf.push_back(out->data<T>() + i * send_numel);

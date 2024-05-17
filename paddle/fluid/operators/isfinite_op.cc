@@ -61,7 +61,7 @@ class OverflowOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           true,
           false,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The input type mismatch, the type of Input(X) must be Tensor or "
               "SelectedRows, please check your input."));
     }
@@ -86,7 +86,7 @@ If any X contains Inf or Nan, the Out will generate a indicator.
 Out = Inf if any X contains Inf,
 Out = Nan if any X contains Nan,
 Out = 0 if no Inf/Nan detected.
-If X contains both Inf/Nan, it will return the first indicator it meeted.
+If X contains both Inf/Nan, it will return the first indicator it met.
 
 %s
 )DOC",

@@ -34,8 +34,9 @@
 // paddle/fluid/pir/dialect/CMakeLists.txt.
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/enforce.h"
 #include "test/cpp/pir/tools/macros_utils.h"
-
 class AddOp : public pir::Op<AddOp> {
  public:
   using Op::Op;
@@ -51,10 +52,12 @@ class AddOp : public pir::Op<AddOp> {
 };
 void AddOp::VerifySig() {
   if (num_operands() != 2) {
-    throw("The size of inputs must be equal to 2.");
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "The size of inputs must be equal to 2."));
   }
   if (num_results() != 1) {
-    throw("The size of outputs must be equal to 1.");
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "The size of outputs must be equal to 1."));
   }
 }
 void AddOp::Build(pir::Builder &,

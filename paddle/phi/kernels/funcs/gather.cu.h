@@ -301,7 +301,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
   auto* out_data = ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(ctx, out, static_cast<T>(0.0));
+  phi::funcs::set_constant(ctx, out, static_cast<float>(0.0));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_size);
   auto stream = ctx.stream();

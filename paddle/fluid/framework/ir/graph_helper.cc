@@ -134,11 +134,10 @@ bool VarDescIsConsistency(const Graph &graph) {
   }
   for (auto &iter : var_name2node_set) {
     auto &first_node = *iter.second.begin();
-    bool is_persistable = std::any_of(iter.second.begin(),
-                                      iter.second.end(),
-                                      [&first_node](const ir::Node *node) {
-                                        return node->Var()->Persistable();
-                                      });
+    bool is_persistable = std::any_of(
+        iter.second.begin(), iter.second.end(), [](const ir::Node *node) {
+          return node->Var()->Persistable();
+        });
     if (is_persistable) {
       bool is_consistency =
           std::all_of(iter.second.begin(),

@@ -52,14 +52,14 @@ class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
 
  public:
-  explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::vector<std::string> &bcast_vars,
-                            const std::string &loss_var_name,
-                            Scope *scope,
-                            const std::vector<Scope *> &local_scopes,
-                            const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy,
-                            ir::Graph *graph);
+  TEST_API explicit ParallelExecutor(const std::vector<platform::Place> &places,
+                                     const std::vector<std::string> &bcast_vars,
+                                     const std::string &loss_var_name,
+                                     Scope *scope,
+                                     const std::vector<Scope *> &local_scopes,
+                                     const ExecutionStrategy &exec_strategy,
+                                     const BuildStrategy &build_strategy,
+                                     ir::Graph *graph);
 
   // NOTE(Aurelius84): Construct a PE running on single device for @to_static
   explicit ParallelExecutor(const platform::Place &place,
@@ -68,7 +68,7 @@ class ParallelExecutor {
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
 
-  ~ParallelExecutor();
+  TEST_API ~ParallelExecutor();
 
   size_t DeviceCount() const;
 
@@ -98,7 +98,7 @@ class ParallelExecutor {
   void ResetOpHandleScopeMapOfGraphs(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
-  const ir::Graph &Graph() const;
+  TEST_API const ir::Graph &Graph() const;
   void PrepareVariables(Scope *scope);
 
   void SkipMemoryReuse(size_t scope_idx,

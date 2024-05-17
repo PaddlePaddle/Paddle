@@ -102,6 +102,9 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
+// fused_softplus is about to be removed, the test uses fused_softplus and is
+// disabled
+/*
 TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
   int thread_num = 2;
   // init input data
@@ -149,6 +152,7 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
 
   std::cout << "finish multi-thread test" << std::endl;
 }
+*/
 
 }  // namespace paddle_infer
 

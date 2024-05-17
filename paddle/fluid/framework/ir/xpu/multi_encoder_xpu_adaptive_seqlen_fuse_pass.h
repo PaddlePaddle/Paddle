@@ -40,7 +40,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
   /*
   adaptive seqlen V1, before:
 
-      inpu_var*     mask_var*
+      input_var*     mask_var*
           |             |
           |             |
     embedding_xpu     matmul
@@ -59,7 +59,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
 
   after:
 
-        inpu_var*    mask_var*
+        input_var*    mask_var*
           \             /
            \           /
           embedding_xpu
@@ -76,12 +76,13 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
               |
            out_var*
   */
-  int ApplyAdaptiveSeqlenPassV1(ir::Graph* graph) const;
+  int ApplyAdaptiveSeqlenPassV1(ir::Graph* graph,
+                                const std::string& matmul_type) const;
 
   /*
   adaptive seqlen V2, before:
 
-      inpu_var*          mask_var*
+      input_var*          mask_var*
           |                 |
           |                 |
     embedding_xpu        not_equal
@@ -115,7 +116,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
 
   after:
 
-        inpu_var*    mask_var*
+        input_var*    mask_var*
           \             /
            \           /
           embedding_xpu
@@ -132,7 +133,49 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
               |
            out_var*
   */
-  int ApplyAdaptiveSeqlenPassV2(ir::Graph* graph) const;
+  int ApplyAdaptiveSeqlenPassV2(ir::Graph* graph,
+                                const std::string& matmul_type) const;
+
+  /*
+    adaptive seqlen V3, before:
+                      x            mask
+                      |             |
+                      |             |
+                      |           matmul
+                      |             |
+                      |             |
+                      |           scale
+                      |           /
+                      |        stack
+                      |         |
+                      |        /
+                      |      /
+                  multi_encoder_xpu
+                      |
+                      |
+                     out
+  -------------------------------------------
+   After the pass apply:
+                      x      mask
+                      |        |
+                      |        |
+                      | xpu_adaptive_mask
+                      |        |     |
+            sequence_unpad<--length  |
+                      |              |
+                      |            pad_seq_len
+                      |            seq_lod
+                      |            /
+                      |          /
+                      |        /
+              multi_encoder_xpu
+                      |
+                      |
+                    out
+  -------------------------------------------
+  */
+  int ApplyAdaptiveSeqlenPassV3(ir::Graph* graph,
+                                const std::string& matmul_type) const;
 
  private:
   const std::string name_scope_{"multi_encoder_xpu_adaptive_seqlen_fuse_pass"};

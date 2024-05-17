@@ -303,7 +303,7 @@ class RnnNativeOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
+    ReplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
     // free
     if (is_bidirec) {
       for (auto& weight_bias : weight_bias_vec) delete[] weight_bias;

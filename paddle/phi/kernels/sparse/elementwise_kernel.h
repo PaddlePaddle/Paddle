@@ -91,6 +91,7 @@ void ElementWiseAddDenseKernel(const Context& dev_ctx,
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
     phi::AddKernel<T, Context>(dev_ctx, x.values(), y, out->mutable_values());
     out->SetIndicesDict(x.GetIndicesDict());
+    out->SetKmaps(x.GetKmaps());
   } else {
     PADDLE_THROW(
         errors::Unimplemented("Not support Sparse + Dense in GPU mode"));

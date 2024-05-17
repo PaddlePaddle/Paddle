@@ -74,7 +74,7 @@ class IR_API StorageManager {
       return static_cast<const Storage &>(*existing) == param;
     };
     auto constructor = [&]() {
-      auto *storage = Storage::Construct(param);
+      auto *storage = Storage::Construct(std::move(param));
       if (init_func) init_func(storage);
       return storage;
     };

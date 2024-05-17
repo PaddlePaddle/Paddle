@@ -108,9 +108,7 @@ def _check_fft_axes(x, axes):
     for axis in axes:
         if not isinstance(axis, int) or axis < -ndim or axis >= ndim:
             raise ValueError(
-                "FFT axes {} contains invalid value ({}), it should be in range [-{}, {})".format(
-                    axes, axis, ndim, ndim
-                )
+                f"FFT axes {axes} contains invalid value ({axis}), it should be in range [-{ndim}, {ndim})"
             )
 
 
@@ -1528,9 +1526,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft]
 
@@ -1578,9 +1574,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 
@@ -1640,9 +1634,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 

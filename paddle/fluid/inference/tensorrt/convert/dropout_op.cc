@@ -43,7 +43,7 @@ class DropoutOpConverter : public OpConverter {
         downgrade_in_infer == "upscale_in_train") {
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
       return;
     }
 
@@ -75,7 +75,7 @@ class DropoutOpConverter : public OpConverter {
                         std::move(weight_tensor));
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
   }
 };
 

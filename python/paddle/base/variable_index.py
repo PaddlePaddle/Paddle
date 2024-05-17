@@ -125,9 +125,7 @@ def get_value_for_bool_tensor(var, item):
         if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
-                "dimension {}, the target dimension is {}, but received {}.".format(
-                    i, var.shape[i], dim_len
-                )
+                f"dimension {i}, the target dimension is {var.shape[i]}, but received {dim_len}."
             )
         i += 1
     if len(item.shape) == len(var.shape):
@@ -160,9 +158,7 @@ def _setitem_for_tensor_array(var, item, value):
         return array_write(x=value, i=item, array=var)
     else:
         raise NotImplementedError(
-            "Only support __setitem__ by Int/Variable in tensor_array, but gets {}".format(
-                type(item)
-            )
+            f"Only support __setitem__ by Int/Variable in tensor_array, but gets {type(item)}"
         )
 
 
@@ -173,12 +169,12 @@ def deal_advanced_index(
     Transpose origin Tensor and advanced indices to the front.
 
     Returns:
-        transed_tensor (Tensor): transposed tensor, corresbonding with advanced indices
-        transed_index (List): advanced indices transed to the front
+        transed_tensor (Tensor): transposed tensor, corresponding with advanced indices
+        transed_index (List): advanced indices transposed to the front
         trans_back_dim (List): order of axes to transpose back to original order. Only used in __setitem__.
         pos_of_new_dim (int):  axis of new dim in the result. Only used in __getitem__.
         rank_of_new_dim (int): rank of new dim in the result. Only used in __getitem__.
-        transed_value_tensor (Tensor): value tensor transed to the front. Only used in __setitem__.
+        transed_value_tensor (Tensor): value tensor transposed to the front. Only used in __setitem__.
     """
     transed_dim = []
     transed_index = []
@@ -362,9 +358,7 @@ def parse_index(x, indices):
                 and len(slice_item) != x.shape[dim]
             ):
                 raise IndexError(
-                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                        len(slice_item), x.shape[dim], dim
-                    )
+                    f"The shape of boolean index {len(slice_item)} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                 )
 
             has_advanced_index = True
@@ -382,9 +376,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -399,9 +391,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -409,9 +399,7 @@ def parse_index(x, indices):
             dim += 1
         else:
             raise IndexError(
-                "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
-                    slice_item
-                )
+                f"Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {slice_item}."
             )
         if not slice_is_same_to_original(start, end, step):
             starts.append(start)
@@ -771,7 +759,7 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
-                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+                # TODO(zoooo0820): support strided_slice_array until PIR API is ready
 
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
@@ -883,7 +871,7 @@ def _getitem_static(x, indices):
             _,
         ) = deal_advanced_index(out, advanced_index, False, None)
 
-        # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
+        # TODO(zooooo0820): Replacing gather_nd to another advanced OP for handling of mixed indexes more efficiently
         if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
             0
         ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
@@ -908,8 +896,8 @@ def _getitem_static(x, indices):
 
         if pos_of_new_dim != 0:
             perm = (
-                list(range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim))
-                + list(range(0, pos_of_new_dim))
+                list(range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim))
+                + list(range(0, rank_of_new_dim))
                 + list(range(pos_of_new_dim + rank_of_new_dim, out.ndim))
             )
             out = out.transpose(perm)
@@ -919,7 +907,7 @@ def _getitem_static(x, indices):
 
 def parse_bool_and_broadcast_indices(indices):
     # deal with multiple Tensors and translating bool tensor to int tensor.
-    # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
+    # In static mode, bool-tensor cannot be broadcasted since its corresponding int tensor's shape cannot be infered.
     for i, indice in enumerate(indices):
         if (
             indice.dtype == paddle.bool

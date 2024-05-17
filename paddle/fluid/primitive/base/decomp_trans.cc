@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
+#include <regex>
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -23,8 +24,8 @@
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/program.h"
 
-COMMON_DECLARE_bool(prim_skip_dynamic);
 COMMON_DECLARE_bool(prim_check_ops);
+COMMON_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -41,8 +42,51 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.batch_norm",
                                                           "pd_op.batch_norm_"};
 //
-std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
-                                                           "pd_op.unsqueeze"};
+std::unordered_set<std::string> dynamic_shape_blacklist = {
+    "pd_op.squeeze",
+    "pd_op.unsqueeze",
+    "pd_op.batch_norm",
+    "pd_op.batch_norm_",
+    "pd_op.bmm",
+    "pd_op.elu",
+    "pd_op.flatten",
+    "pd_op.instance_norm",
+    "pd_op.one_hot"};
+
+namespace {
+std::set<std::string> StringSplit(const std::string& str) {
+  std::istringstream iss(str);
+  std::set<std::string> tokens;
+  std::string token;
+
+  while (std::getline(iss, token, ';')) {
+    size_t startpos = token.find_first_not_of(" ");
+    size_t endpos = token.find_last_not_of(" ");
+    if ((startpos != std::string::npos) && (endpos != std::string::npos)) {
+      token = token.substr(startpos, endpos - startpos + 1);
+    } else if (startpos != std::string::npos) {
+      token = token.substr(startpos);
+    }
+    tokens.insert(token);
+  }
+  return tokens;
+}
+
+void RemoveOp(pir::Block* block, pir::Operation* op) {
+  bool remove_op = true;
+  for (auto& item : op->results()) {
+    if (item.HasOneUse()) {
+      remove_op = false;
+      break;
+    }
+  }
+  if (remove_op) {
+    auto op_iter = std::find(block->begin(), block->end(), *op);
+    block->erase(op_iter);
+  }
+}
+
+}  // namespace
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
   std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
@@ -51,18 +95,6 @@ static bool has_dynamic_shape(const phi::DDim& dims) {
   } else {
     return false;
   }
-}
-
-static void check_ops(const std::string& op_name) {
-  auto primitives_set = GetPrimitiveOpNames();
-  auto it = primitives_set.find(op_name);
-  if (it == primitives_set.end()) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
-                                     "should not contain none primitive op %s.",
-                                     op_name));
-  }
-  return;
 }
 
 static const phi::DDim GetValueDims(pir::Value value) {
@@ -132,6 +164,29 @@ bool has_decomp_rule(const pir::Operation& op) {
   return true;
 }
 
+void DecompProgram::check_ops() {
+  auto primitives_set = GetPrimitiveOpNames();
+  std::set<std::string> undecomposed_set;
+  for (const auto& element : decomposed_prog_ops_set_) {
+    if (primitives_set.find(element) == primitives_set.end() &&
+        blacklist_.find(element) == blacklist_.end()) {
+      undecomposed_set.insert(element);
+    }
+  }
+  if (!undecomposed_set.empty()) {
+    std::string decomposed_ops_stream;
+    for (const auto& item : undecomposed_set) {
+      decomposed_ops_stream.append(" ");
+      decomposed_ops_stream.append(item);
+    }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[Prim] Currently, decomposed program "
+        "should not contain none primitive ops: %s .",
+        decomposed_ops_stream));
+  }
+  return;
+}
+
 bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
   for (auto item : op->operands()) {
     auto value = item.source();
@@ -162,19 +217,20 @@ void DecompProgram::check_decomp_outputs(
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (skip_invalid_op_check &&
-        paddle::dialect::IsEmptyValue(decomp_outs[i])) {
+        (paddle::dialect::IsEmptyValue(orig_outs[i]) ||
+         paddle::dialect::IsEmptyValue(decomp_outs[i]))) {
       VLOG(4) << "[Prim] Decomp op skip check of " << i
               << "-index output of op " << op_name;
     } else {
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(orig_outs[i]),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its origin %d-index output is invalid",
               op_name,
               i));
       PADDLE_ENFORCE(
           !paddle::dialect::IsEmptyValue(decomp_outs[i]),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its decomp %d-index output is invalid",
               op_name,
               i));
@@ -182,7 +238,7 @@ void DecompProgram::check_decomp_outputs(
       auto decomp_dtype = GetValueDtype(decomp_outs[i]);
 
       PADDLE_ENFORCE(orig_dtype == decomp_dtype,
-                     paddle::platform::errors::PreconditionNotMet(
+                     common::errors::PreconditionNotMet(
                          "[Prim] For op %s, its origin %d-index output dtype "
                          "%s is not equal to "
                          "decomp output dtype %s ",
@@ -196,7 +252,7 @@ void DecompProgram::check_decomp_outputs(
 
       PADDLE_ENFORCE(
           orig_dim.size() == decomp_dim.size(),
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, its origin %d-index output rank of shape"
               "[%s] is not equal to "
               "decomp output rank of shape[%s] ",
@@ -218,7 +274,7 @@ void DecompProgram::check_decomp_outputs(
         if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
           PADDLE_ENFORCE(
               orig_dim[j] == decomp_dim[j],
-              paddle::platform::errors::PreconditionNotMet(
+              common::errors::PreconditionNotMet(
                   "[Prim] For op %s, its origin %d-index output shape "
                   "[%s] is not equal to "
                   "decomp output shape [%s] ",
@@ -240,7 +296,7 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
-      paddle::platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "[Prim] For op %s, its origin output num %d is not equal to "
           "decomp output num %d ",
           op_name,
@@ -252,7 +308,7 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
       PADDLE_ENFORCE_EQ(
           decomp_outs[i].size(),
           1,
-          paddle::platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "[Prim] For op %s, each element of decomp output num must "
               "be 1, but num of index %d is %d ",
               op_name,
@@ -264,16 +320,16 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
   return new_decomp_outs;
 }
 
-std::vector<pir::Value> DecompProgram::construct_dst_vars(
+void DecompProgram::construct_dst_vars(
     const std::string& op_name,
     const std::vector<pir::Value>& orig_outs,
     const std::vector<pir::Value>& decomp_outs,
-    std::unordered_map<pir::Value, int> orig_vars_dict) {
-  std::vector<pir::Value> tar_vars(src_vars_.size());
+    std::unordered_map<pir::Value, int> orig_vars_dict,
+    std::vector<pir::Value>* tar_vars) {
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
       decomp_outs.size(),
-      paddle::platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "[Prim] For op %s, its origin output num %d is not equal to "
           "decomp output num %d ",
           op_name,
@@ -281,10 +337,9 @@ std::vector<pir::Value> DecompProgram::construct_dst_vars(
           decomp_outs.size()));
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
-      tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
+      (*tar_vars)[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
     }
   }
-  return tar_vars;
 }
 
 std::vector<pir::Value> DecompProgram::get_dst_vars() {
@@ -303,11 +358,11 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
-  if (blacklist_.size() > 0) {
-    if (blacklist_.find(op_name) != blacklist_.end()) {
-      flag = false;
-    }
-  }
+  auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
+  if (from_flag_blacklist.size() > 0)
+    blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
+  if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
+    flag = false;
   return flag;
 }
 
@@ -320,6 +375,35 @@ std::vector<std::vector<pir::Value>> call_decomp_rule(pir::Operation* op) {
                      op->name()));
   std::vector<std::vector<pir::Value>> decomp_res = decomp_interface.Decomp(op);
   return decomp_res;
+}
+
+std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
+  std::vector<pir::Operation*> ops_list;
+  for (auto& op : *block) {
+    ops_list.push_back(&op);
+  }
+  if (program_->block() != block || (start_index_ == 0 && end_index_ == -1)) {
+    return ops_list;
+  }
+
+  VLOG(4) << "start_index_:  " << start_index_ << ", end_index_: " << end_index_
+          << ", ops_list.size(): " << ops_list.size();
+  int start_idx = std::max(start_index_, 0);
+  int end_idx = (end_index_ == -1) ? ops_list.size() : end_index_;
+  if (start_idx == end_idx) {
+    return std::vector<pir::Operation*>();
+  }
+  PADDLE_ENFORCE_LT(start_idx,
+                    end_idx,
+                    common::errors::PreconditionNotMet(
+                        "Required start_idx < end_idx in DecompProgram."));
+  PADDLE_ENFORCE_LE(
+      end_idx,
+      ops_list.size(),
+      common::errors::PreconditionNotMet(
+          "Requred end_idx <= block.ops().size() in DecompProgram."));
+  return std::vector<pir::Operation*>(ops_list.begin() + start_idx,
+                                      ops_list.begin() + end_idx);
 }
 
 void DecompProgram::decomp_program() {
@@ -347,9 +431,7 @@ void DecompProgram::decomp_program() {
               << decomp_prog_stream.str() << std::endl;
   }
   if (FLAGS_prim_check_ops) {
-    for (auto& op : *block) {
-      check_ops(op.name());
-    }
+    check_ops();
   }
   dst_vars_ = tar_vars;
   return;
@@ -359,10 +441,7 @@ void DecompProgram::decomp_block(
     pir::Block* block,
     const std::unordered_map<pir::Value, int>& orig_vars_dict,
     std::vector<pir::Value>& tar_vars) {  // NOLINT
-  std::vector<pir::Operation*> ops_list;
-  for (auto& op : *block) {
-    ops_list.push_back(&op);
-  }
+  std::vector<pir::Operation*> ops_list = parse_block_ops(block);
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
     if (op->name() == "pd_op.if") {
@@ -376,10 +455,6 @@ void DecompProgram::decomp_block(
     }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
-    if (enable_prim && FLAGS_prim_skip_dynamic &&
-        check_decomp_dynamic_shape(op)) {
-      enable_prim = false;
-    }
     if (enable_prim && check_decomp_dynamic_shape(op) &&
         dynamic_shape_blacklist.find(op->name()) !=
             dynamic_shape_blacklist.end()) {
@@ -392,24 +467,46 @@ void DecompProgram::decomp_block(
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       std::vector<pir::Value> orig_outs = op->results();
-      std::vector<pir::Value> standard_decomp_res =
-          format_decomp_res(op->name(), orig_outs, decomp_res);
-      check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
-      tar_vars = construct_dst_vars(
-          op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
+      bool is_next_builtin_split = false;
 
-      op->ReplaceAllUsesWith(standard_decomp_res);
-      bool remove_op = true;
-      for (auto& item : op->results()) {
-        if (item.HasOneUse()) {
-          remove_op = false;
-          break;
+      for (size_t i = 0; i < orig_outs.size(); i++) {
+        auto item = orig_outs[i];
+        if (item.use_count() == 1) {
+          auto next_op = item.first_use().owner();
+          if (next_op->name() == "builtin.split") {
+            is_next_builtin_split = true;
+
+            check_decomp_outputs(
+                next_op->name(), next_op->results(), decomp_res[i]);
+            construct_dst_vars(next_op->name(),
+                               next_op->results(),
+                               decomp_res[i],
+                               orig_vars_dict,
+                               &tar_vars);
+
+            next_op->ReplaceAllUsesWith(decomp_res[i]);
+            RemoveOp(block, next_op);
+          }
         }
       }
-      if (remove_op) {
-        auto op_iter = std::find(block->begin(), block->end(), *op);
-        block->erase(op_iter);
+      if (!is_next_builtin_split) {
+        std::vector<pir::Value> standard_decomp_res =
+            format_decomp_res(op->name(), orig_outs, decomp_res);
+        check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
+        construct_dst_vars(op->name(),
+                           orig_outs,
+                           standard_decomp_res,
+                           orig_vars_dict,
+                           &tar_vars);
+
+        op->ReplaceAllUsesWith(standard_decomp_res);
       }
+      RemoveOp(block, op);
+    }
+  }
+  if (FLAGS_prim_check_ops) {
+    for (auto& op : *block) {
+      decomposed_prog_ops_set_.insert(op.name());
     }
   }
   for (size_t i = 0; i < tar_vars.size(); i++) {

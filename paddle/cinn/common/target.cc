@@ -22,8 +22,10 @@
 #include <sstream>
 
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
@@ -42,29 +44,57 @@ bool Target::operator==(const Target &other) const {
          features == other.features;
 }
 
-int Target::runtime_arch() const {
-  switch (arch) {
-    case Arch::Unk:
-      return cinn_unk_device;
-    case Arch::X86:
-      return cinn_x86_device;
-    case Arch::ARM:
-      return cinn_arm_device;
-    default:
-      LOG(FATAL) << "Not supported arch";
-  }
-  return -1;
+int GetRuntimeArchImpl(UnknownArch) { return cinn_unk_device; }
+
+int GetRuntimeArchImpl(X86Arch) { return cinn_x86_device; }
+
+int GetRuntimeArchImpl(ARMArch) { return cinn_arm_device; }
+
+int GetRuntimeArchImpl(NVGPUArch) {
+  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
 }
 
-int Target::max_num_threads() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max number of threads.";
-  return 1024;
+int GetRuntimeArch(Arch arch) {
+  return std::visit([](const auto &impl) { return GetRuntimeArchImpl(impl); },
+                    arch.variant());
 }
 
-int Target::get_multi_processor_count() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get multi processor count";
+int Target::runtime_arch() const { return GetRuntimeArch(arch); }
+
+int GetMaxNumThreadsImpl(UnknownArch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
+}
+
+int GetMaxNumThreadsImpl(X86Arch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
+}
+
+int GetMaxNumThreadsImpl(ARMArch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get max number of threads.";
+}
+
+int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
+
+int GetMaxNumThreads(Arch arch) {
+  return std::visit([](const auto &impl) { return GetMaxNumThreadsImpl(impl); },
+                    arch.variant());
+}
+
+int Target::max_num_threads() const { return GetMaxNumThreads(arch); }
+
+int GetMultiProcessCountImpl(UnknownArch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get multi processor count.";
+}
+
+int GetMultiProcessCountImpl(X86Arch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get multi processor count.";
+}
+
+int GetMultiProcessCountImpl(ARMArch arch) {
+  LOG(FATAL) << "The target is not GPU! Cannot get multi processor count.";
+}
+
+int GetMultiProcessCountImpl(NVGPUArch arch) {
   int num_sm = 0;
 #ifdef CINN_WITH_CUDA
   cudaDeviceGetAttribute(
@@ -73,9 +103,32 @@ int Target::get_multi_processor_count() const {
   return num_sm;
 }
 
-int Target::get_max_threads_per_sm() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max threads per stream processor";
+int GetMultiProcessCount(Arch arch) {
+  return std::visit(
+      [](const auto &impl) { return GetMultiProcessCountImpl(impl); },
+      arch.variant());
+}
+
+int Target::get_multi_processor_count() const {
+  return GetMultiProcessCount(arch);
+}
+
+int GetMaxThreadsPerSmImpl(UnknownArch arch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max threads per stream processor";
+}
+
+int GetMaxThreadsPerSmImpl(X86Arch arch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max threads per stream processor";
+}
+
+int GetMaxThreadsPerSmImpl(ARMArch arch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max threads per stream processor";
+}
+
+int GetMaxThreadsPerSmImpl(NVGPUArch arch) {
   int max_thread = 0;
 #ifdef CINN_WITH_CUDA
   cudaDeviceGetAttribute(
@@ -84,9 +137,30 @@ int Target::get_max_threads_per_sm() const {
   return max_thread;
 }
 
-int Target::get_max_blocks_per_sm() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max blocks per stream processor";
+int GetMaxThreadsPerSm(Arch arch) {
+  return std::visit(
+      [](const auto &impl) { return GetMaxThreadsPerSmImpl(impl); },
+      arch.variant());
+}
+
+int Target::get_max_threads_per_sm() const { return GetMaxThreadsPerSm(arch); }
+
+int GetMaxBlocksPerSmImpl(UnknownArch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max blocks per stream processor";
+}
+
+int GetMaxBlocksPerSmImpl(X86Arch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max blocks per stream processor";
+}
+
+int GetMaxBlocksPerSmImpl(ARMArch) {
+  LOG(FATAL)
+      << "The target is not GPU! Cannot get max blocks per stream processor";
+}
+
+int GetMaxBlocksPerSmImpl(NVGPUArch) {
   int max_blocks = 1;
 #ifdef CINN_WITH_CUDA
   cudaDeviceGetAttribute(
@@ -94,6 +168,14 @@ int Target::get_max_blocks_per_sm() const {
 #endif
   return max_blocks;
 }
+
+int GetMaxBlocksPerSm(Arch arch) {
+  return std::visit(
+      [](const auto &impl) { return GetMaxBlocksPerSmImpl(impl); },
+      arch.variant());
+}
+
+int Target::get_max_blocks_per_sm() const { return GetMaxBlocksPerSm(arch); }
 
 std::vector<Target::Lib> Target::get_target_libs() const { return libs; }
 
@@ -106,7 +188,7 @@ int Target::get_target_bits() const {
     case Bit::Unk:
       return 0;
     default:
-      LOG(FATAL) << "Not supported Bit";
+      PADDLE_THROW(phi::errors::InvalidArgument("Not supported Bit"));
   }
   return -1;
 }
@@ -132,21 +214,7 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
   }
 
   os << ",";
-
-  switch (target.arch) {
-    case Target::Arch::X86:
-      os << "x86";
-      break;
-    case Target::Arch::ARM:
-      os << "arm";
-      break;
-    case Target::Arch::NVGPU:
-      os << "nvgpu";
-      break;
-    case Target::Arch::Unk:
-      os << "unk";
-      break;
-  }
+  os << target.arch;
   os << ",";
 
   switch (target.bits) {
@@ -165,39 +233,26 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, Target::Arch arch) {
-  switch (arch) {
-    case Target::Arch::Unk:
-      os << "Unk";
-      break;
-    case Target::Arch::X86:
-      os << "X86";
-      break;
-    case Target::Arch::ARM:
-      os << "ARM";
-      break;
-    case Target::Arch::NVGPU:
-      os << "NVGPU";
-      break;
-  }
-  return os;
-}
-
 const Target &UnkTarget() {
   static Target target(
-      Target::OS::Unk, Target::Arch::Unk, Target::Bit::Unk, {}, {});
+      Target::OS::Unk, UnknownArch{}, Target::Bit::Unk, {}, {});
   return target;
 }
 const Target &DefaultHostTarget() {
-  static Target target(
-      Target::OS::Linux, Target::Arch::X86, Target::Bit::k64, {}, {});
+  static Target target(Target::OS::Linux, X86Arch{}, Target::Bit::k64, {}, {});
   return target;
 }
 
 const Target &DefaultNVGPUTarget() {
   static Target target(
-      Target::OS::Linux, Target::Arch::NVGPU, Target::Bit::k64, {}, {});
+      Target::OS::Linux, NVGPUArch{}, Target::Bit::k64, {}, {});
   return target;
+}
+
+const Target &DefaultDeviceTarget() {
+#ifdef CINN_WITH_CUDA
+  return DefaultNVGPUTarget();
+#endif
 }
 
 int GetMaxThreads() {

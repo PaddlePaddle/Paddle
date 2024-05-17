@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 static const int MIN_PORT = 8500;
 static const int MAX_PORT = 65535;

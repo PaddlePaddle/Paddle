@@ -24,11 +24,7 @@ gather_srcs(
   visualize_helper.cc
   compile_error.cc)
 
-# TODO(Aurelius84): pir_compiler depends on op_dialect_vjp and could
-# not found under CINN_ONLY mode
-if(NOT CINN_ONLY)
-  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
-endif()
+cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
 
 if(WITH_CUDA)
   cinn_nv_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)

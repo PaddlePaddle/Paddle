@@ -131,6 +131,7 @@ class TestBatchNormOpNHWCFp64(TestBatchNormOp):
         self.data_format = "NHWC"
         self.use_global_stats = None
         self.check_prim_pir = True
+        self.check_prim_pir_grad = True
         self.check_cpu_prim_pir_grad = True
 
 

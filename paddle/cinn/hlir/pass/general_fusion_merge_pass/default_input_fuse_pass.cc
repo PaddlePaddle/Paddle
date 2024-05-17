@@ -63,7 +63,7 @@ class DefaultInputFusePass final : public InputFusePass {
       bool fusionable = false;
       for (auto& groups : fusionable_consumers) {
         auto& last = groups.back();
-        if (!HorizontalFuseUtil<InputFusePassCtx>::DetectFusabilityByKind(
+        if (!HorizontalFuseUtil<InputFusePassCtx>::DetectFusibilityByKind(
                 ctx, candidate, last)) {
           continue;
         }

@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def TopPProcess(probs, top_p):
@@ -138,11 +139,17 @@ class TestTopPAPI(unittest.TestCase):
                 paddle_result[1], paddle_result[3], rtol=1e-05
             )
 
-    def test_cases(self):
+    def test_dygraph(self):
         if core.is_compiled_with_cuda():
             places = [core.CUDAPlace(0)]
             for place in places:
                 self.run_dygraph(place)
+
+    @test_with_pir_api
+    def test_static(self):
+        if core.is_compiled_with_cuda():
+            places = [core.CUDAPlace(0)]
+            for place in places:
                 self.run_static(place)
 
 

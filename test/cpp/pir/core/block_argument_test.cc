@@ -103,3 +103,22 @@ TEST(block_argument_test, kwargs) {
   EXPECT_EQ(block->kwargs_size(), 4u);
   EXPECT_EQ(value.type(), builder.bool_type());
 }
+
+TEST(block_argument_test, fatal) {
+  auto block = new pir::Block();
+  auto arg = block->AddArg(nullptr);
+  auto op = pir::Operation::Create({arg}, {}, {}, nullptr);
+  EXPECT_DEATH(delete block,
+               "Destroyed a position block argument that is still in use.*");
+  auto kwarg = block->AddKwarg("a", nullptr);
+  arg.ReplaceAllUsesWith(kwarg);
+  block->ClearArgs();
+  EXPECT_DEATH(delete block,
+               "Destroyed a keyword block argument that is still in use.*");
+
+  op->Destroy();
+  op = pir::Operation::Create({}, {}, {}, nullptr, 0, {block});
+  EXPECT_DEATH(delete block, "Destroyed a block that is still in use.*");
+  op->Destroy();
+  delete block;
+}

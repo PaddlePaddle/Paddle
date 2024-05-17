@@ -56,7 +56,7 @@ from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
 from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
     DistributedAdam,  # noqa: F401
 )
-from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
+from paddle.incubate.distributed.fleet.role_maker import MPISymmetricRoleMaker
 from paddle.static import (
     Executor,
     Program,
@@ -99,7 +99,7 @@ class FleetTranspiler(Fleet):
 
     def init(self, role_maker=None):
         if role_maker is None:
-            role_maker = MPISymetricRoleMaker()
+            role_maker = MPISymmetricRoleMaker()
         super().init(role_maker)
         if self._fleet_ptr is None:
             self._fleet_ptr = core.Fleet()
@@ -144,7 +144,7 @@ class FleetTranspiler(Fleet):
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
-                        "GeoStrategy can not support large scale embeding now, please use paddle.static.nn.embedding"
+                        "GeoStrategy can not support large scale embedding now, please use paddle.static.nn.embedding"
                     )
 
                 init_attrs = []
@@ -174,10 +174,10 @@ class FleetTranspiler(Fleet):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        # if MPISymetricRoleMaker is defined
+        # if MPISymmetricRoleMaker is defined
         # we suppose a user wants to submit job on mpi cluster
 
-        if isinstance(self._role_maker, MPISymetricRoleMaker):
+        if isinstance(self._role_maker, MPISymmetricRoleMaker):
             # check whether server has been initialized
             wait_server_ready(self.server_endpoints(to_string=False))
 
@@ -257,14 +257,14 @@ class FleetTranspiler(Fleet):
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
                 True
             )
-            distribtued_varnames = (
+            distributed_varnames = (
                 self.compiled_config.get_sparse_varname_on_ps(False)
             )
 
             remaining_vars = list(
                 filter(
                     FleetTranspiler.__exclude_vars(
-                        sparse_varnames + distribtued_varnames
+                        sparse_varnames + distributed_varnames
                     ),
                     self.main_program.list_vars(),
                 )
@@ -282,7 +282,7 @@ class FleetTranspiler(Fleet):
             )
 
             # todo(tangwei12) load distributed vars
-            # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
+            # self._load_sparse_params(dirname=model_dir, varnames=distributed_varnames)
 
     def init_server(self, model_dir=None, **kwargs):
         """
@@ -333,7 +333,7 @@ class FleetTranspiler(Fleet):
 
         if self._inner_mode == PSMode.TRANSPILER:
             self._communicator.stop()
-            if isinstance(self._role_maker, MPISymetricRoleMaker):
+            if isinstance(self._role_maker, MPISymmetricRoleMaker):
                 self._role_maker._finalize()
             self._executor.close()
         else:
@@ -510,9 +510,7 @@ class FleetTranspiler(Fleet):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".format(
-                    op, supported_opts
-                )
+                f"fleet can not support optimizer: {op}, only this can be supported: {supported_opts}"
             )
 
         reshaped_names = [

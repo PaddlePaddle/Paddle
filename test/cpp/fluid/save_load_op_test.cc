@@ -17,12 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(save);
-PD_DECLARE_KERNEL(save, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(save_sr, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
-USE_OP_ITSELF(load);
-PD_DECLARE_KERNEL(load, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(load_sr, CPU, ALL_LAYOUT);
 
 TEST(SaveLoadOp, CPU) {
@@ -62,7 +58,7 @@ TEST(SaveLoadOp, CPU) {
   }
   auto& actual_lod = target->lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
@@ -145,7 +141,7 @@ TEST(SaveFP16Op, CPU) {
   }
   auto& actual_lod = target->lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
@@ -195,7 +191,7 @@ TEST(LoadFP16Op, CPU) {
 
   auto& actual_lod = target.lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }

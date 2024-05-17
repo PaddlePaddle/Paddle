@@ -54,7 +54,9 @@ std::string Type2StrForNN(cinn::common::Type type) {
   } else if (type.is_float16()) {
     return "fp16";
   }
-  LOG(FATAL) << "NN Not Support " << type;
+  std::stringstream ss;
+  ss << "NN Not Support " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -650,7 +652,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
 }
 
 #ifdef CINN_WITH_DNNL
-std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
+std::vector<ir::Tensor> Conv2d_NCHW_ONEDNN(const ir::Tensor &input,
                                            const ir::Tensor &weights,
                                            int pad_h,
                                            int pad_w,
@@ -672,7 +674,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
   auto call = Compute(
       {Expr(1)},
       [=]() -> Expr {
-        return lang::CallExtern("cinn_cpu_mkldnn_conv2d_nchw_fp32",
+        return lang::CallExtern("cinn_cpu_onednn_conv2d_nchw_fp32",
                                 {
                                     Expr(input->shape[0]),    // batch_size
                                     Expr(input->shape[1]),    // c_in
@@ -692,7 +694,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
                                     weights                   // weights
                                 });
       },
-      UniqName("conv2d_nchw_mkldnn_out"));
+      UniqName("conv2d_nchw_onednn_out"));
   auto out = call->TupleGet(0);
   out->WithBuffer(input->type());
   return {out, call};
@@ -1018,11 +1020,11 @@ std::vector<ir::Tensor> Softmax(const ir::Tensor &A,
 }
 
 #ifdef CINN_WITH_DNNL
-std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
+std::vector<ir::Tensor> SoftmaxONEDNN(const ir::Tensor &A,
                                       int axis,
                                       const std::string &output_name) {
   CHECK_LE(A->shape.size(), 4U)
-      << "Input's dimension of mkldnn softmax op is less than 4! Please check.";
+      << "Input's dimension of onednn softmax op is less than 4! Please check.";
   if (axis == -1) {
     axis = A->shape.size() - 1;
   }
@@ -1034,7 +1036,7 @@ std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
   auto call = Compute(
       {Expr(1)},
       [=]() -> Expr {
-        return lang::CallExtern("cinn_cpu_mkldnn_softmax_fp32",
+        return lang::CallExtern("cinn_cpu_onednn_softmax_fp32",
                                 {
                                     shape[0],    // batch_size
                                     shape[1],    // c_in
@@ -1397,7 +1399,9 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
   } else if (data_format == "NWC") {
     width_axis = 1;
   } else {
-    LOG(FATAL) << "Unsupported data format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "Unsupported data format: " << data_format << std::endl;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK_EQ(tensor->shape.size(), 3U)
       << "pool1d requires tensor's shape_size to be 3\n";
@@ -1459,7 +1463,7 @@ std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
         UniqName(output_name));
     return {ret, temp};
   } else {
-    LOG(FATAL) << "unsupported pooling type.";
+    PADDLE_THROW(phi::errors::InvalidArgument("unsupported pooling type."));
   }
   return {};
 }
@@ -1486,7 +1490,9 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
     height_axis = 2;
     width_axis = 3;
   } else {
-    LOG(FATAL) << "Unsupported data format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "Unsupported data format: " << data_format << std::endl;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK(tensor->shape.size() == 4U || tensor->shape.size() == 5U)
       << "pool2d requires tensor's shape_size to be 4 or 5\n";
@@ -1524,7 +1530,9 @@ std::vector<Tensor> Pool3d(const Tensor &tensor,
     height_axis = 2;
     width_axis = 3;
   } else {
-    LOG(FATAL) << "Unsupported data format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "Unsupported data format: " << data_format << std::endl;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   CHECK_EQ(tensor->shape.size(), 5U)
       << "pool1d requires tensor's shape_size to be 5\n";
@@ -1558,8 +1566,9 @@ Tensor DropoutInfer(const ir::Tensor &tensor,
     // fusion schedule.
     return Identity(tensor, output_name).front();
   } else {
-    LOG(FATAL) << "dropout_implementation attr must be 'downgrade_in_infer' or "
-                  "'upscale_in_train'\n";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "dropout_implementation attr must be 'downgrade_in_infer' or "
+        "'upscale_in_train'\n"));
   }
 }
 

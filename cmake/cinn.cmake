@@ -59,7 +59,7 @@ if(WITH_MKL)
   add_dependencies(cinn_mklml ${MKLML_PROJECT})
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
@@ -164,28 +164,23 @@ cinn_cc_library(
   isl
   ginac
   pybind
+  op_fusion
+  cinn_op_dialect
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-if(NOT CINN_ONLY)
-  target_link_libraries(cinnapi op_dialect pir phi)
-  add_dependencies(cinnapi op_dialect pir phi)
-endif()
+target_link_libraries(cinnapi op_dialect pir phi)
+add_dependencies(cinnapi op_dialect pir phi)
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
-  if(WITH_MKLDNN)
-    target_link_libraries(cinnapi ${MKLDNN_LIB})
-    add_dependencies(cinnapi ${MKLDNN_PROJECT})
+  if(WITH_ONEDNN)
+    target_link_libraries(cinnapi ${ONEDNN_LIB})
+    add_dependencies(cinnapi ${ONEDNN_PROJECT})
   endif()
-endif()
-
-if(CINN_ONLY)
-  target_link_libraries(cinnapi common)
-  add_dependencies(cinnapi common)
 endif()
 
 if(WITH_GPU)
@@ -227,29 +222,26 @@ function(gen_cinncore LINKTYPE)
     schedule_desc_proto
     absl
     isl
-    ginac)
+    ginac
+    pybind
+    op_fusion
+    cinn_op_dialect
+    ${jitify_deps})
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-  if(NOT CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
-    add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
-  endif()
+  target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
+  add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
 
-  add_dependencies(${CINNCORE_TARGET} pybind)
+  # add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
 
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
     add_dependencies(${CINNCORE_TARGET} cinn_mklml)
-    if(WITH_MKLDNN)
-      target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
-      add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
+    if(WITH_ONEDNN)
+      target_link_libraries(${CINNCORE_TARGET} ${ONEDNN_LIB})
+      add_dependencies(${CINNCORE_TARGET} ${ONEDNN_PROJECT})
     endif()
-  endif()
-
-  if(CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} common)
-    add_dependencies(${CINNCORE_TARGET} common)
   endif()
 
   if(WITH_GPU)
@@ -261,16 +253,16 @@ function(gen_cinncore LINKTYPE)
       ${CUBLAS}
       ${CUDNN}
       ${CURAND}
-      ${CUSOLVER}
-      ${jitify_deps})
+      ${CUSOLVER})
+    # ${jitify_deps})
     if(NVTX_FOUND)
       target_link_libraries(${CINNCORE_TARGET} ${CUDA_NVTX_LIB})
     endif()
   endif()
 
   if(WITH_CUTLASS)
-    target_link_libraries(cinnapi cutlass)
-    add_dependencies(cinnapi cutlass)
+    target_link_libraries(${CINNCORE_TARGET} cutlass)
+    add_dependencies(${CINNCORE_TARGET} cutlass)
   endif()
 endfunction()
 

@@ -47,7 +47,7 @@ class LookupTableOpConverter : public OpConverter {
 
     auto* gather_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Gather, *w_tensor, *reshape_layer->getOutput(0), 0);
-    RreplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
+    ReplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
   }
 };
 
@@ -68,7 +68,7 @@ class LookupTableV2OpConverter : public OpConverter {
 
     auto* gather_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *w_tensor, *ids_tensor, 0);
-    RreplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
+    ReplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
   }
 };
 

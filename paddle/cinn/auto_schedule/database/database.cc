@@ -54,7 +54,7 @@ std::unique_ptr<Database> Database::Make(const DatabaseConfig& config) {
         config.capacity_per_task, config.record_file_path, true);
   }
 
-  LOG(FATAL) << "Unimplemented database type.";
+  PADDLE_THROW(phi::errors::Unimplemented("Unimplemented database type."));
   return nullptr;
 }
 

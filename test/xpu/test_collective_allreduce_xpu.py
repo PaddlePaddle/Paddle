@@ -29,7 +29,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
 
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
-        "run test when having at leaset 2 XPUs.",
+        "run test when having at least 2 XPUs.",
     )
     def test_allreduce(self):
         support_types = get_xpu_op_support_types('c_allreduce_sum')
@@ -42,7 +42,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
 
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
-        "run test when having at leaset 2 XPUs.",
+        "run test when having at least 2 XPUs.",
     )
     def test_allreduce_dygraph(self):
         support_types = get_xpu_op_support_types('c_allreduce_sum')

@@ -144,7 +144,7 @@ TEST(Tensor, ReshapeCopied) {
 
   stages->InsertLazily(B);
 
-  ir::Module::Builder builder("some_modue", cinn::common::DefaultHostTarget());
+  ir::Module::Builder builder("some_module", cinn::common::DefaultHostTarget());
   auto func = lang::Lower("fn", stages, {A, B}, {}, {}, &builder);
 
   backends::CodeGenC codegenc(cinn::common::DefaultHostTarget());

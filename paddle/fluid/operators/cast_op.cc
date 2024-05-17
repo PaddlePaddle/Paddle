@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -94,11 +94,11 @@ class CastOp : public framework::OperatorWithKernel {
     auto *tensor = ctx.Input<phi::DenseTensor>("X");
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The tensor of Input(X) is not initialized."));
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
-    if (platform::is_cuda_pinned_place(tensor_place)) {
+    if (tensor_place.GetType() == phi::AllocationType::GPUPINNED) {
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             ctx.device_context().GetPlace());
     }

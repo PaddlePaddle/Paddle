@@ -74,7 +74,7 @@ class TransferLayoutFunctor {
       PADDLE_ENFORCE_NE(
           in_layout,
           out_layout,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (in_layout != DataLayout::ONEDNN && out_layout == DataLayout::ONEDNN) {
@@ -110,7 +110,7 @@ class TransferLayoutFunctor {
         }
         VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
                 << target_layout;
-        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Case2 - transform from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
         phi::funcs::TransDataLayoutFromOneDNN(in_layout,
                                               target_layout,
@@ -119,11 +119,11 @@ class TransferLayoutFunctor {
                                               dev_ctx_.GetPlace());
       }
     } else {
-      // Case3 - transfrom between Non-ONEDNN OPKernels
+      // Case3 - transform between Non-ONEDNN OPKernels
       TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
     }
 #else
-    // Case3 - transfrom between Non-ONEDNN OPKernels
+    // Case3 - transform between Non-ONEDNN OPKernels
     TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
 #endif
     framework::SetTensorToVariable(*in_, out_tensor, out_);
@@ -136,7 +136,7 @@ class TransferLayoutFunctor {
     PADDLE_ENFORCE_EQ(
         common::arity(in.dims()),
         4,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
             in.dims()));
 

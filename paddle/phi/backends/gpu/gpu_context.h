@@ -69,7 +69,7 @@ class DnnWorkspaceHandle {
 
   void ResetWorkspace();
 
-  void ReallocWorkspace(size_t required_workspace_bytes);
+  TEST_API void ReallocWorkspace(size_t required_workspace_bytes);
 
   DnnWorkspaceHandle(DnnWorkspaceHandle&&) = default;
   DnnWorkspaceHandle& operator=(DnnWorkspaceHandle&&) = delete;
@@ -139,7 +139,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   int GetMaxThreadsPerBlock() const;
 
   /*! \brief  Return the max grid dim size in the device context */
-  std::array<int, 3> GetCUDAMaxGridDimSize() const;
+  std::array<unsigned int, 3> GetCUDAMaxGridDimSize() const;
 
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
@@ -254,7 +254,7 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   void SetMaxThreadsPerBlock(int val);
 
-  void SetMaxGridDimSize(const std::array<int, 3>& val);
+  void SetMaxGridDimSize(const std::array<unsigned int, 3>& val);
 
   void SetDriverVersion(int val);
 

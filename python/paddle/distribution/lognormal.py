@@ -97,7 +97,7 @@ class LogNormal(TransformedDistribution):
 
     @property
     def mean(self):
-        """Mean of lognormal distribuion.
+        """Mean of lognormal distribution.
 
         Returns:
             Tensor: mean value.

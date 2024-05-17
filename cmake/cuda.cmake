@@ -173,6 +173,8 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
+    message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
+    add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
     if(WITH_NV_JETSON)
       set(cuda_arch_bin "87")
     else()
@@ -183,6 +185,8 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       endif()
     endif()
   elseif(${CUDA_ARCH_NAME} STREQUAL "Hopper")
+    message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
+    add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
     set(cuda_arch_bin "90")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
@@ -196,8 +200,17 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       to get a full wheel package to resolve this warning.
       While, this version will still work on local GPU architecture.")
     detect_installed_gpus(cuda_arch_bin)
+    if(${cuda_arch_bin} MATCHES "[ ]*(8\.0|8\.6|8\.9|9\.0)[ ]*")
+      message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
+      add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
+    endif()
   else() # (${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(cuda_arch_bin ${CUDA_ARCH_BIN})
+
+    if(${CUDA_ARCH_BIN} MATCHES "[ ]*(80|86|89|90)[ ]*")
+      message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
+      add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
+    endif()
   endif()
 
   if(NEW_RELEASE_JIT)
@@ -294,13 +307,13 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
-# Set C++14 support
+# Set C++17 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 set(CMAKE_CUDA_STANDARD 17)
 
-# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
+# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
 # So replace /W[1-4] with /W0
 if(WIN32)
   string(REGEX REPLACE "/W[1-4]" " /W0 " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")

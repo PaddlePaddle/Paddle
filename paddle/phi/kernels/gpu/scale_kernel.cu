@@ -45,7 +45,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -61,8 +61,7 @@ void ScaleKernel(const Context& dev_ctx,
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T, MT>(
-          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
+      ScaleFunctor<T, MT>(scale.to<MT>(), bias.to<MT>(), bias_after_scale));
 }
 
 }  // namespace phi

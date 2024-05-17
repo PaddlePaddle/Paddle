@@ -14,8 +14,10 @@
 
 #include "paddle/phi/core/device_context.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -70,7 +72,7 @@ struct DeviceContext::Impl {
     pinned_allocator_ = allocator;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void SetCUDAGraphAllocator(const Allocator* allocator) {
     // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
     // validation of the allocator here
@@ -163,7 +165,7 @@ struct DeviceContext::Impl {
         (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     bool must_cuda_graph_allocator =
         (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
@@ -289,7 +291,7 @@ struct DeviceContext::Impl {
   const Allocator* zero_allocator_{nullptr};
   const Allocator* host_zero_allocator_{nullptr};
   const Allocator* pinned_allocator_{nullptr};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const Allocator* cuda_graph_allocator_{nullptr};
 #endif
   Generator* device_generator_{nullptr};
@@ -309,7 +311,7 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetPinnedAllocator(&other.GetPinnedAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (other.IsCUDAGraphAllocatorValid()) {
     impl_->SetCUDAGraphAllocator(&other.GetCUDAGraphAllocator());
   }
@@ -340,7 +342,7 @@ const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void DeviceContext::SetCUDAGraphAllocator(const Allocator* allocator) {
   impl_->SetCUDAGraphAllocator(allocator);
 }
@@ -415,7 +417,7 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template dtype* DeviceContext::Alloc(                              \
+  template TEST_API dtype* DeviceContext::Alloc(                     \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
   template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
                                            size_t requested_size) const;

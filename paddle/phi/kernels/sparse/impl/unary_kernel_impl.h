@@ -37,6 +37,7 @@ namespace sparse {
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
     out->SetIndicesDict(x.GetIndicesDict());                               \
+    out->SetKmaps(x.GetKmaps());                                           \
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -138,6 +139,7 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -188,6 +190,7 @@ void CastCooKernel(const Context& dev_ctx,
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -249,6 +252,7 @@ void IsnanCooKernel(const Context& dev_ctx,
   phi::IsnanKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

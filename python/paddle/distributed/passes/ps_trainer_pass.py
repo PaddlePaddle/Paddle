@@ -565,11 +565,7 @@ class DeleteOptimizesPass(PassBase):
             set(remote_optimize_op_role_vars)
         )  # param + grad
         print(
-            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}".format(
-                remote_optimize_vars,
-                remote_optimize_op_role_vars,
-                local_optimize_vars,
-            )
+            f"remote_optimize_vars: {remote_optimize_vars}, remote_optimize_op_role_vars: {remote_optimize_op_role_vars}, local_optimize_vars: {local_optimize_vars}"
         )
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
@@ -845,10 +841,20 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        from ..transpiler.collective import SingleProcessMultiThread
+        if core._is_compiled_with_gpu_graph() is False:
+            from ..transpiler.collective import MultiThread
+
+            t = MultiThread()
+            print("ps_transpile_pass use MultiThread for non_gpu_graph mode")
+        else:
+            from ..transpiler.collective import SingleProcessMultiThread
+
+            t = SingleProcessMultiThread()
+            print(
+                "ps_transpile_pass use SingleProcessMultiThread for gpu_graph mode"
+            )
 
         attrs = pass_ctx._attrs
-        t = SingleProcessMultiThread()
         env = get_dist_env()
         t.transpile(
             startup_program=startup_program,

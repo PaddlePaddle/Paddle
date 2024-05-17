@@ -165,7 +165,7 @@ class XPUTestArgsortOp_LargeN(XPUOpTestWrapper):
                 2,
                 8732,
                 1,
-            ]  # test for 8192 < n <= 10240 + nees_transpose
+            ]  # test for 8192 < n <= 10240 + need_transpose
             self.axis = 1
 
     class TestArgsortOpCase4(TestArgsortOpCase1):
@@ -174,8 +174,82 @@ class XPUTestArgsortOp_LargeN(XPUOpTestWrapper):
                 2,
                 10241,
                 1,
-            ]  # test for 10240 < n <= 16384 + nees_transpose
+            ]  # test for 10240 < n <= 16384 + need_transpose
             self.axis = 1
+
+    class TestStableArgsortOpCase1(XPUOpTest):
+        def init_test_case(self):
+            self.x = np.array([100.0, 50.0, 10.0] * 10)
+            self.axis = -1
+            self.descending = False
+
+        def setUp(self):
+            self.set_xpu()
+            self.op_type = "argsort"
+            self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
+            self.init_test_case()
+            self.stable = True
+
+            self.inputs = {"X": self.x}
+            self.attrs = {
+                "axis": self.axis,
+                "descending": self.descending,
+                "stable": self.stable,
+            }
+            self.get_output()
+            self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
+
+        def get_output(self):
+            if self.descending:
+                self.indices = np.argsort(
+                    -self.x, kind='stable', axis=self.axis
+                )
+                self.sorted_x = -np.sort(-self.x, kind='stable', axis=self.axis)
+            else:
+                self.indices = np.argsort(self.x, kind='stable', axis=self.axis)
+                self.sorted_x = np.sort(self.x, kind='stable', axis=self.axis)
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, {'X'}, 'Out')
+
+    class TestStableArgsortOpCase2(TestStableArgsortOpCase1):
+        def init_test_case(self):
+            self.x = np.array([100.0, 50.0, 10.0] * 10).reshape([30, 1])
+            self.axis = 0
+            self.descending = False
+
+    class TestStableArgsortOpCase3(TestStableArgsortOpCase1):
+        def init_test_case(self):
+            self.x = np.array([100.0, 50.0, 10.0] * 10).reshape([1, 30])
+            self.axis = 1
+            self.descending = True
+
+    class TestStableArgsortOpCase4(TestStableArgsortOpCase1):
+        def init_test_case(self):
+            self.x = np.array(
+                [
+                    [
+                        [100.0, 50.0, -10.0, 1.0],
+                        [0.0, 0.0, 1.0, 1.0],
+                        [100.0, 50.0, -10.0, 1.0],
+                    ],
+                    [
+                        [70.0, -30.0, 60.0, 100.0],
+                        [0.0, 0.0, 1.0, 1.0],
+                        [100.0, 50.0, -10.0, 1.0],
+                    ],
+                ]
+                * 20
+            )
+            self.axis = 0
+            self.descending = True
 
 
 support_types = get_xpu_op_support_types('argsort')
