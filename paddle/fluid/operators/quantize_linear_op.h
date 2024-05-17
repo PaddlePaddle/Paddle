@@ -84,14 +84,15 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         out_scale->mutable_data<T>(context.GetPlace());
         float moving_rate = context.Attr<float>("moving_rate");
 
-        FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(dev_ctx,
-                                                           *in_accum,
-                                                           *in_state,
-                                                           cur_scale_data,
-                                                           moving_rate,
-                                                           out_state,
-                                                           out_accum,
-                                                           out_scale);
+        phi::funcs::FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx,
+            *in_accum,
+            *in_state,
+            cur_scale_data,
+            moving_rate,
+            out_state,
+            out_accum,
+            out_scale);
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
@@ -110,19 +111,19 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
       if (!is_test) {
         auto* out_scale = context.Output<phi::DenseTensor>("OutScale");
         T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-        FindChannelAbsMaxFunctor<DeviceContext, T>()(
+        phi::funcs::FindChannelAbsMaxFunctor<DeviceContext, T>()(
             dev_ctx, *in, quant_axis, out_scale_data);
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
-          ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+          phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
               dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
         }
       } else {
         if (only_observer) {
           framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
         } else {
-          ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+          phi::funcs::ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
               dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
         }
       }

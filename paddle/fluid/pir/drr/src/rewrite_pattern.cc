@@ -544,7 +544,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     size_t new_max_input_op_index = max_input_op_index + 1;
     op_2_temp_program_index[new_op] = new_max_input_op_index;
     if (new_max_input_op_index >= temp_program.size()) {
-      temp_program.push_back({});
+      temp_program.emplace_back();
     }
     temp_program[new_max_input_op_index].push_back(new_op);
   });

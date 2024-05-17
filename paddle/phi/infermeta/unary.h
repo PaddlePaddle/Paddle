@@ -225,6 +225,21 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
+void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                            int bit_length,
+                                            int round_type,
+                                            int quant_axis,
+                                            bool is_test,
+                                            MetaTensor* out,
+                                            MetaTensor* out_scale);
+
+void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                                      int bit_length,
+                                                      int round_type,
+                                                      int quant_axis,
+                                                      MetaTensor* out,
+                                                      MetaTensor* out_scale);
+
 void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                  int bit_length,
                                  int round_type,
@@ -627,6 +642,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaConfig config = MetaConfig());
 
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out);
 
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,

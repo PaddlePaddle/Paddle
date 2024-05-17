@@ -16,44 +16,4 @@
 #include <memory>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace phi {
-// Out = sum(abs(X))
-template <typename T, typename Context>
-void L1NormKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-
-  auto x_tmp = phi::EigenVector<T>::Flatten(x);
-  auto out_tmp = phi::EigenScalar<T>::From(*out);
-  auto& dev = *dev_ctx.eigen_device();
-
-  phi::funcs::EigenL1Norm<std::decay_t<decltype(dev)>, T>::Eval(
-      dev, out_tmp, x_tmp);
-}
-
-// dX = dout * sign(X)
-template <typename T, typename Context>
-void L1NormGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& out_grad,
-                      DenseTensor* x_grad) {
-  PADDLE_ENFORCE_EQ(out_grad.numel(),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Input(GRAD@Out) of L1NormGradOp should be a scalar."));
-  dev_ctx.template Alloc<T>(x_grad);
-
-  auto x_eigen = phi::EigenVector<T>::Flatten(x);
-  auto d_out_eigen = phi::EigenVector<T>::Flatten(out_grad);
-  auto dx_eigen = phi::EigenVector<T>::Flatten(*x_grad);
-  auto& dev = *dev_ctx.eigen_device();
-
-  Eigen::DSizes<Eigen::DenseIndex, 1> x_dsize(x.numel());
-  phi::funcs::EigenL1NormGrad<std::decay_t<decltype(dev)>, T>::Eval(
-      dev, dx_eigen, d_out_eigen, x_eigen, x_dsize);
-}
-}  // namespace phi

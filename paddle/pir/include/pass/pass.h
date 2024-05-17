@@ -176,11 +176,11 @@ class IR_API Pass {
     Set<std::string>("__custom_log__", new std::string{custom_log});
   }
 
-  AnalysisManager analysis_manager() { return pass_state().am; }
+  AnalysisManager analysis_manager();
 
-  detail::PassExecutionState& pass_state();
+  std::optional<detail::PassExecutionState>& pass_state();
 
-  void SignalPassFailure() { pass_state().pass_failed = true; }
+  void SignalPassFailure();
 
  private:
   detail::PassInfo pass_info_;

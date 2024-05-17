@@ -40,11 +40,11 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     out.Resize({1});
-    auto cpu = platform::CPUPlace();
+    auto cpu = phi::CPUPlace();
     *out.mutable_data<int64_t>(cpu) = static_cast<int64_t>(x.size());
   }
 };

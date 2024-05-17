@@ -20,7 +20,7 @@ namespace reader {
 
 PyReader::PyReader(
     const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-    const std::vector<framework::DDim>& dims,
+    const std::vector<phi::DDim>& dims,
     const std::vector<framework::proto::VarType::Type>& var_types,
     const std::vector<bool>& need_check_feed)
     : framework::FileReader(dims, var_types, need_check_feed) {

@@ -123,7 +123,7 @@ class LSTMOp : public framework::OperatorWithKernel {
               b_dims[1]));
     }
 
-    framework::DDim out_dims({in_dims[0], frame_size});
+    phi::DDim out_dims({in_dims[0], frame_size});
     ctx->SetOutputDim("Hidden", out_dims);
     ctx->SetOutputDim("Cell", out_dims);
     if (!is_test) {

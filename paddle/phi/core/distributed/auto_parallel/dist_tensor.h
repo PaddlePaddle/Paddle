@@ -178,6 +178,15 @@ class DistTensor final
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
 
+  /// \brief Set the flag indicating whether to skip checking the process mesh.
+  /// \note Currently only used for the MoE apis,
+  /// it receives the inputs with different process meshes and outputs the dist
+  /// tensor with global process mesh.
+  /// \return void
+  void unsafe_set_skip_check_mesh(bool skip);
+
+  bool skip_check_mesh() const { return dist_attr_.skip_check_mesh(); }
+
   void clear();
 
  private:

@@ -1034,7 +1034,13 @@ class KLDivLoss(Layer):
 
     KL divergence loss is calculated as follows:
 
+    If `log_target` is False:
+
     $$l(x, y) = y * (\log(y) - x)$$
+
+    If `log_target` is True:
+
+    $$l(x, y) = \exp(y) * (y - x)$$
 
     Here :math:`x` is input and :math:`y` is label.
 
@@ -1054,6 +1060,7 @@ class KLDivLoss(Layer):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
+        log_target (bool, optional): Indicate whether `label` is passed in log space. Default is False.
 
     Shape:
 
@@ -1097,14 +1104,25 @@ class KLDivLoss(Layer):
             >>> print(pred_loss.shape)
             [5, 20]
 
+            >>> # if label is in the log space, set log_target = True
+            >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
+            >>> log_target = paddle.log(target)
+            >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
+            >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
+            >>> pred_loss_1 = kldiv_criterion_1(x, target)
+            >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
+            >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
     """
 
-    def __init__(self, reduction='mean'):
+    def __init__(self, reduction='mean', log_target=False):
         super().__init__()
         self.reduction = reduction
+        self.log_target = log_target
 
     def forward(self, input, label):
-        out = F.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction, self.log_target)
         return out
 
 

@@ -125,8 +125,8 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
                               std::vector<pir::Attribute>>;
   OperationDistAttrStorage(ParamKey&& param)  // NOLINT
       : mesh_attr(std::get<0>(param)),
-        operand_attrs(std::get<1>(param)),
-        result_attrs(std::get<2>(param)) {}
+        operands(std::get<1>(param)),
+        results(std::get<2>(param)) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -156,13 +156,13 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return mesh_attr == std::get<0>(key) && operand_attrs == std::get<1>(key) &&
-           result_attrs == std::get<2>(key);
+    return mesh_attr == std::get<0>(key) && operands == std::get<1>(key) &&
+           results == std::get<2>(key);
   }
 
   ProcessMeshAttribute mesh_attr;
-  std::vector<pir::Attribute> operand_attrs;
-  std::vector<pir::Attribute> result_attrs;
+  std::vector<pir::Attribute> operands;
+  std::vector<pir::Attribute> results;
 };
 
 }  // namespace dialect
