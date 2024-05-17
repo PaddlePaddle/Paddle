@@ -372,7 +372,7 @@ attr_types_map = {
         'pir::ArrayAttribute<pir::StrAttribute>',
         'const std::vector<std::string>&',
     ],
-    'Place': ['paddle::dialect::PlaceAttribute', 'const Place&'],
+    'Place': ['paddle::dialect::PlaceAttribute', 'const phi::Place&'],
     'DataLayout': [
         'paddle::dialect::DataLayoutAttribute',
         'DataLayout',
