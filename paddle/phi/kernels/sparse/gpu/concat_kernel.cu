@@ -312,7 +312,7 @@ __global__ void ConcatCsr3D1ASetValuesColsKernel(
     // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
     while (next_offset <= tid_x) {
       curr_offset = next_offset;
-      ++index;
+      ++b;
       next_offset += in_batch_crows[b + 1];
     }
     IndexT local_col = tid_x - curr_offset;
@@ -365,17 +365,40 @@ __global__ void ConcatCsr3D2ASetvaluesKernel(
     const size_t in_num,
     const IndexT batch,
     PointerWrapperT in_crows_data,
-    DarrayWrapperT
-        in_matrix_nnx_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
+    DarrayWrapperT in_matrix_nnx_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
     PointerWrapperT in_max_batch_nnz,
     DarrayWrapperT in_batch_offsets,  // 这里是每一轮batch的最大值
     IndexT* out_values) {
   // total_nnz = in_matrix_nnx的和 =
 
   // 根据i和b获取的最大nnz 可以在上一个核函数获取
+  IndexT b = 0;
+  IndexT next_offset = 0;
+  IndexT curr_offset = 0;
   IndexT now_nnz = in_max_batch_nnz[tid_z][tid_y];
   CUDA_KERNEL_LOOP_TYPE(tid_x, now_nnz, IndexT) {
     // TODO(bapijun) 使用什么方式优化
+    next_offset += in_batch_crows[b + 1];
+    curr_offset += in_batch_crows[b];
+    // curr_offset 初始化到最接近tid的对一轮
+    // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
+    while (next_offset <= tid_x) {
+      curr_offset = next_offset;
+      ++b;
+      next_offset += in_batch_crows[b + 1];
+    }
+    IndexT local_col = tid_x - curr_offset;
+
+    IndexT j = (b - 1) * in_num;
+    next_offset = in_matrix_nnx_offset[j + in_num];
+    curr_offset = in_matrix_nnx_offset[j];
+
+    while (next_offset <= local_col) {
+      curr_offset = next_offset;
+      j = j+in_num;
+      next_offset = in_matrix_nnx_offset[j + in_num];
+    }
+    
     // 根据in_batch_offsets 获取到当前的batch下的最大值
   }
 }
