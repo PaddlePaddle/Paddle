@@ -187,17 +187,21 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 
+std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr) {
+  ir::Expr compute_schedule_block_realize =
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
+          .GetSingle(expr);
+
+  const std::vector<Expr>& all_iter_expr =
+      compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
+          ->iter_values;
+  return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+}
+
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   auto GetUnorderedAllIterVars = [](const ReduceOp& op) {
-    ir::Expr compute_schedule_block_realize =
-        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
-            .GetSingle(_GetRootExpr(op));
-
-    const std::vector<Expr>& all_iter_expr =
-        compute_schedule_block_realize.As<ir::ScheduleBlockRealize>()
-            ->iter_values;
-    return ComposeUtils::ExprVec2VarVec(all_iter_expr);
+    return GetAllIterVars(_GetRootExpr(op));
   };
 
   // Iter Vars not appearing in outer_iter_vars are pushed into
@@ -564,12 +568,11 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
-    const std::vector<ir::Expr>& op_compute_bodies) {
-  PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
-                    true,
-                    ::common::errors::PreconditionNotMet(
-                        "TrivialFusion must be used with tiling first, set "
-                        "FLAGS_group_schedule_tiling_first=1"));
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs) {
+  CHECK(FLAGS_group_schedule_tiling_first)
+      << "TrivialFusion must be used with tiling first, set "
+         "FLAGS_group_schedule_tiling_first=1";
   const auto& ops = trivial_fusion_detail::FilterVector(
       original_ops, [](const ::pir::Operation* op) {
         if (op->name() == "cinn_op.generate_shape") {
@@ -581,10 +584,9 @@ std::vector<ir::Expr> OperationFusion(
   std::vector<cinn::fusion::BackendContent> contents;
   for (int i = 0; i < ops.size(); i++) {
     contents.emplace_back(ops[i], op_compute_bodies[i]);
-    // contents.emplace_back(ops[i]);
   }
   const auto& fusion_nodes =
-      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents);
+      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
 
   PADDLE_ENFORCE_EQ(fusion_nodes.size(),
                     1,
