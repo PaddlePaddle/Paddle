@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 
 VariableScope::VariableScope(Scope* scope)
-    : var_list_(0), name2id_(0), vec_meta_info_(), data_transfer_added_vars_() {
+    : var_list_(), name2id_(0), vec_meta_info_(), data_transfer_added_vars_() {
   // for @EMPTY@ variable
   name2id_[kEmptyVarName] = kEmptyVarIndex;
   var_list_.push_back(nullptr);
