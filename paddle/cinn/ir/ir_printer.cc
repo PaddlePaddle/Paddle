@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cfenv>
 #include <iomanip>
 #include <limits>
 #include <vector>
@@ -91,6 +92,7 @@ void IrPrinter::Visit(const UIntImm *x) {
 }
 void IrPrinter::Visit(const FloatImm *x) {
   std::ostringstream ss;
+  std::fesetround(FE_TOWARDZERO);
   if (x->type().is_float16()) {
     if (std::isinf(x->value)) {
       ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
