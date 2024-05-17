@@ -215,6 +215,10 @@ class TestML3DParallel(unittest.TestCase):
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
         dist_model.train()
         mode = "train"
+        dist_program = dist_model._engine.main_program
+        dist_model._fetch_value(
+            dist_program.global_block().ops[4].result(0), "fetch_value"
+        )
 
         # TODO(2024-Q2) hack for engine api
         dist_model._engine._has_prepared[mode] = True
@@ -235,6 +239,7 @@ class TestML3DParallel(unittest.TestCase):
             else:
                 image, label = data
             loss = dist_model(image, label)
+            assert "fetch_value" in dist_model.outs
             loss_list.append(loss)
 
         return np.array(loss_list)

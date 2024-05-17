@@ -2220,7 +2220,7 @@ class DistModel:
             else:
                 return None
 
-    def fetch_value(self, value, name=None):
+    def _fetch_value(self, value, name=None):
         """
         Get the value of the variable with the given name.
 
