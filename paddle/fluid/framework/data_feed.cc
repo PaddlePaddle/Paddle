@@ -364,7 +364,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed()
       input_pv_channel_(nullptr),
       output_pv_channel_(nullptr),
       consume_pv_channel_(nullptr),
-      batch_offsets_(nullptr) {
+      batch_offsets_() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
