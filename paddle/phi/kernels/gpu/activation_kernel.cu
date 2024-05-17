@@ -110,7 +110,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Round, CudaRoundFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
 
@@ -133,6 +132,7 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Round, CudaRoundFunctor, decimals)
 
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      CudaHardTanhFunctor,
