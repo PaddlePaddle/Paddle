@@ -100,6 +100,7 @@ class TestSearchSortedOp5(TestSearchSorted):
 class TestSearchSortedFP16(OpTest):
     def setUp(self):
         self.python_api = paddle.searchsorted
+        self.public_python_api = paddle.searchsorted
         self.op_type = "searchsorted"
         self.python_out_sig = ["Out"]
         self.dtype = np.float16
@@ -107,7 +108,7 @@ class TestSearchSortedFP16(OpTest):
 
         self.inputs = {
             'SortedSequence': self.sorted_sequence,
-            'Values': self.value,
+            'Values': self.values,
         }
         self.attrs = {"out_int32": False, "right": False}
         self.attrs["right"] = True if self.side == 'right' else False
@@ -142,6 +143,7 @@ class TestSearchSortedFP16_2(TestSearchSortedFP16):
 class TestSearchSortedBF16(OpTest):
     def setUp(self):
         self.python_api = paddle.searchsorted
+        self.public_python_api = paddle.searchsorted
         self.op_type = "searchsorted"
         self.python_out_sig = ["Out"]
         self.dtype = np.uint16
