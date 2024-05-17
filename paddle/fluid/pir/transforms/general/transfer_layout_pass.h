@@ -17,7 +17,6 @@
 #include <memory>
 
 #include "paddle/pir/include/core/dll_decl.h"
-#include "paddle/pir/include/pass/pass.h"
 
 namespace pir {
 

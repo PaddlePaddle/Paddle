@@ -33,7 +33,7 @@ TEST(layout_transformation_interface_test, operator) {
 
   auto build_input_value = [&](std::vector<int64_t> shape = {2, 2}) {
     auto uniform = builder.Build<paddle::dialect::UniformOp>(
-        shape, phi::DataType::FLOAT32, 0.0, 1.0, 2, phi::CPUPlace());
+        shape, phi::DataType::FLOAT16, 0.0, 1.0, 2, phi::CPUPlace());
     return uniform;
   };
 
