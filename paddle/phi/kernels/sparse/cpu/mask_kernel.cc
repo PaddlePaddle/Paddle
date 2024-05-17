@@ -87,6 +87,104 @@ void MaskCooKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename IntT>
+void MaskCsr2DCPUKernel(const CPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        const SparseCsrTensor& mask,
+                        SparseCsrTensor* out) {
+  const DenseTensor& mask_cols = mask.cols();
+  const DenseTensor& mask_crows = mask.crows();
+  int64_t num_non_zeros = mask.nnz();
+
+  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+
+  phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
+  phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
+
+  int64_t numel = 0;
+  for (int64_t i = 0; i < mask_crows.numel() - 1; ++i) {
+    for (int64_t j = mask_crows.data<IntT>()[i];
+         j < mask_crows.data<IntT>()[i + 1];
+         ++j) {
+      IntT col_idx = mask_cols.data<IntT>()[numel];
+
+      out_values.data<T>()[numel] =
+          x.data<T>()[(i / x.dims()[0]) * x.dims()[1] +
+                      (i % x.dims()[0]) * x.dims()[1] + col_idx];
+
+      ++numel;
+    }
+  }
+
+  out->SetMember(out_crows, out_cols, out_values, x.dims());
+}
+
+template <typename T, typename IntT>
+void MaskCsr3DCPUKernel(const CPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        const SparseCsrTensor& mask,
+                        SparseCsrTensor* out) {
+  const DenseTensor& mask_cols = mask.cols();
+  const DenseTensor& mask_crows = mask.crows();
+  int64_t num_non_zeros = mask.nnz();
+
+  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+
+  phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
+  phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
+
+  int64_t numel = 0;
+  for (int64_t i = 0; i < mask_crows.numel() - 1; ++i) {
+    for (int64_t j = mask_crows.data<IntT>()[i];
+         j < mask_crows.data<IntT>()[i + 1];
+         ++j) {
+      IntT col_idx = mask_cols.data<IntT>()[numel];
+
+      out_values.data<T>()[numel] =
+          x.data<T>()[(i / x.dims()[0]) * (x.dims()[1] * x.dims()[2]) +
+                      (i % x.dims()[0]) * x.dims()[2] + col_idx];
+
+      ++numel;
+    }
+  }
+
+  out->SetMember(out_crows, out_cols, out_values, x.dims());
+}
+
+/**
+ * @brief Filter the DenseTensor x by the
+ * mask.crows(), mask.cols() and output a SparseCsrTensor
+ * x and mask must have the same shape.
+ **/
+template <typename T, typename Context>
+void MaskCsrKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const SparseCsrTensor& mask,
+                   SparseCsrTensor* out) {
+  const phi::DDim& x_dims = x.dims();
+  if (x_dims.size() == 2) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        mask.crows().dtype(), "MaskCsr2DCPUKernel", ([&] {
+          MaskCsr2DCPUKernel<T, data_t>(dev_ctx, x, mask, out);
+        }));
+  } else if (x_dims.size() == 3) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        mask.crows().dtype(), "MaskCsr3DCPUKernel", ([&] {
+          MaskCsr3DCPUKernel<T, data_t>(dev_ctx, x, mask, out);
+        }));
+  } else {
+    // throw exception
+    phi::errors::InvalidArgument(
+        "mask_as for Sparse CSR Tensor only support 2-D or 3-D, but got "
+        "%d-D.",
+        x_dims.size());
+  }
+}
+
+template <typename T, typename IntT>
 void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
@@ -166,11 +264,7 @@ void MaskAsCsrKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const SparseCsrTensor& mask,
                      SparseCsrTensor* out) {
-  // transform csr format to coo format, and then use coo kernel
-  const SparseCooTensor mask_coo = CsrToCoo<T, Context>(dev_ctx, mask);
-  SparseCooTensor out_coo;
-  MaskAsCooKernel<T, Context>(dev_ctx, x, mask_coo, &out_coo);
-  CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);
+  MaskCsrKernel<T, Context>(dev_ctx, x, mask, out);
 }
 
 }  // namespace sparse
