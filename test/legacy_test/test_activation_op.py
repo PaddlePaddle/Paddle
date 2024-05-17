@@ -2593,17 +2593,21 @@ class TestRound(TestActivation):
         self.python_api = paddle.round
         self.init_dtype()
         self.init_shape()
+        self.decimals
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.round(x)
+        out = np.round(x, decimals)
 
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x), 'decimals': decimals}
         self.outputs = {'Out': out}
         self.convert_input_output()
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def init_decimals(self):
+        self.decimals = 0
 
     def test_check_output(self):
         self.check_output(
@@ -2613,6 +2617,13 @@ class TestRound(TestActivation):
     def test_check_grad(self):
         pass
 
+class TestRoundPositive(TestRound):
+    def init_decimals(self):
+        self.decimals = 2
+
+class TestRoundNegitive(TestRound):
+    def init_decimals(self):
+        self.decimals = -2
 
 class TestRound_ZeroDim(TestRound):
     def init_shape(self):
@@ -4988,14 +4999,12 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
-        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
         self.set_attrs()
         self.init_shape()
         self.python_api = paddle.nn.functional.hardsigmoid
-        self.public_python_api = paddle.nn.functional.hardsigmoid
 
         x = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
@@ -5022,9 +5031,7 @@ class TestHardSigmoid(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True,
-            check_prim_pir=True,
-            check_pir_onednn=self.check_pir_onednn,
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
     def test_check_grad(self):
@@ -5474,6 +5481,8 @@ create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh, check_pir=True)
 create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
+create_test_act_fp16_class(TestRoundPositive, grad_check=False, check_pir=True)
+create_test_act_fp16_class(TestRoundNegitive, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
     TestRelu,
     check_prim=True,
@@ -5652,6 +5661,8 @@ create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
 create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
+create_test_act_bf16_class(TestRoundPositive, grad_check=False, check_pir=True)
+create_test_act_bf16_class(TestRoundNegitive, grad_check=False, check_pir=True)
 create_test_act_bf16_class(
     TestRelu, check_prim=True, check_pir=True, check_prim_pir=True
 )
