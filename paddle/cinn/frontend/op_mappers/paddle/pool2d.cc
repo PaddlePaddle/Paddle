@@ -38,10 +38,10 @@ void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc,
                         "The pool2d op should have pooling_type attribute."));
   auto pooling_type =
       utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
-  CHPADDLE_ENFORCE_EQECK(op_desc.HasAttr("ksize"),
-                         true,
-                         phi::errors::InvalidArgument(
-                             "The pool2d op should have ksize attribute."));
+  PADDLE_ENFORCE_EQECK(op_desc.HasAttr("ksize"),
+                       true,
+                       phi::errors::InvalidArgument(
+                           "The pool2d op should have ksize attribute."));
   auto ksize = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ksize");
 
   auto strides =
