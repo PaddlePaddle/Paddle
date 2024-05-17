@@ -103,7 +103,7 @@ def extract_triton_kernel(kernel, file_name):
     assert len(re.findall("@triton.jit", py_script)) == 1
 
     py_script = py_script[py_script.find("@triton.jit") :]
-    py_script = "import triton\nimport triton.language as tl\n" + py_script
+    py_script = "import triton\nimport triton.language as tl\n\n\n" + py_script
 
     py_script = py_script.replace("if bias_ptr is not None", "if bias_ptr")
 
@@ -232,7 +232,8 @@ def get_pointer_hint(dtypes):
     return hint
 
 
-paddle_custom_op_head_part = """ #include <vector>
+paddle_custom_op_head_part = """#include <vector>
+#include <map>
 #include "${op_name}_kernel.h"
 #include "paddle/extension.h"
 
@@ -258,10 +259,11 @@ CUdeviceptr get_tensor_ptr(const paddle::Tensor& input){
 
 tune_and_invoke_part = """
 if (!map_problem_${op_name}.count(problem_size)) {
-    std::cout << "we are tuning for ${op_name} which key is: ";
+    std::cout << "we are tuning for ${op_name} which key is: {";
     for (int i = 0; i < problem_size.size(); i++) {
         std::cout << problem_size[i] << ", ";
     }
+    std::cout << "}" << std::endl;
 
     float min_time = 10000.f;
     int select_id = -1;
