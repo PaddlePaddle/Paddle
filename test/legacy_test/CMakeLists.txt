@@ -483,8 +483,9 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_concat_op test_elementwise_add_op
-                     test_elementwise_sub_op test_gather_op test_mean_op)
+set(TEST_OPS_WITH_GC
+    test_concat_op test_elementwise_add_op test_lookup_table_op
+    test_elementwise_sub_op test_gather_op test_mean_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -861,6 +862,9 @@ set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
 set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
 set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
+set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)
+
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()
@@ -953,7 +957,8 @@ set(TEST_CINN_OPS
     test_take_along_axis_op
     test_transpose_op
     test_strided_slice_op
-    test_pad_op)
+    test_pad_op
+    test_pool2d_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -983,6 +988,8 @@ set(STATIC_BUILD_TESTS
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
     test_decayed_adagrad_op
     test_eig_op
     test_fake_dequantize_op
@@ -1008,6 +1015,7 @@ set(STATIC_BUILD_TESTS
     test_sync_batch_norm_op
     test_unique
     test_update_loss_scaling_op
+    test_segment_ops
     test_while_op)
 
 if(NOT WITH_GPU)
@@ -1062,6 +1070,8 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
+
+set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
 
 set_pir_tests_properties()
 

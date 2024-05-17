@@ -145,6 +145,11 @@ inline bool NeedTypePromotion(const std::string& op_name,
         (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
       return false;
     }
+#elif defined(PADDLE_WITH_XPU)
+    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
+        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
+      return false;
+    }
 #endif
 
     if ((is_support_float(x) && is_support_float(y)) ||
