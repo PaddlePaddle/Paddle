@@ -1871,7 +1871,7 @@ class Layer:
         structured_name_prefix="",
         include_non_persistable_buffer=False,
         use_hook=True,
-        keep_vars=False,
+        keep_vars=True,
     ):
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
@@ -1917,6 +1917,7 @@ class Layer:
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer,
                             use_hook,
+                            keep_vars,
                         )
                     )
                     destination = destination_temp
