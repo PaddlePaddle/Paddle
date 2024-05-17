@@ -704,92 +704,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              padding_offset_tensor,
                              *sequence_lengths,
                              seq_len);
-        // }
-        // else {
-        //   if (gqa_group_size > 0) {
-        //     PADDLE_THROW(phi::errors::Unimplemented(
-        //         "GQA is just supported when FLAGS_fmha_mode is "
-        //         "flash_attention_v2"));
-        //   }
-        //   const phi::DenseTensor *pre_cache_kv_tensor =
-        //       pre_caches.size() > 0 ? pre_caches[i] : nullptr;
-        //   phi::DenseTensor *pre_cache_kv_out_tmp =
-        //       cache_offset > 0 ? &pre_cache_kv_out : nullptr;
-        //   phi::DenseTensor *src_mask_tmp =
-        //       cache_offset > 0 ? &src_mask_out : nullptr;
-        //   const int *sequence_lengths_data =
-        //       encoder_remove_padding ? sequence_lengths->data<int>() :
-        //       nullptr;
-        //   qkv_bias_add_transpose_split<T>(
-        //       dev_ctx,
-        //       q_transpose_out_data,
-        //       kv_transpose_out_data,
-        //       qkv_out_data,
-        //       qkv_bias ? qkv_bias->data<T>() : nullptr,
-        //       padding_offset_data,
-        //       token_num,
-        //       bsz,
-        //       num_head,
-        //       seq_len,
-        //       dim_head,
-        //       compute_bias);
-
-        //   // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        //   // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
-        //   if (rotary_emb_dims != 0) {
-        //     auto *rotary_emb_data = rotary_tensor->data<float>();
-        //     const int *sequence_lengths_data =
-        //         encoder_remove_padding ? sequence_lengths->data<int>()
-        //                                : nullptr;
-        //     rotary_qk(dev_ctx,
-        //               q_transpose_out_data,
-        //               kv_transpose_out_data,
-        //               q_transpose_out_data,
-        //               kv_transpose_out_data,
-        //               rotary_emb_data,
-        //               sequence_lengths_data,
-        //               rotary_emb_dims,
-        //               rotary_tensor->dims()[1],
-        //               bsz,
-        //               num_head,
-        //               seq_len,
-        //               dim_head,
-        //               use_neox_rotary_style);
-        //   }
-
-        //   phi::DenseTensor *tmp_padding_offset_tensor =
-        //       encoder_remove_padding ? &padding_offset_tensor : nullptr;
-        //   fmha_compute.Compute(pre_cache_kv_tensor,
-        //                        src_mask,
-        //                        tmp_padding_offset_tensor,
-        //                        sequence_lengths,
-        //                        &q_transpose_out,
-        //                        &kv_transpose_out,
-        //                        pre_cache_kv_out_tmp,
-        //                        &qk_out,
-        //                        src_mask_tmp,
-        //                        &softmax_out,
-        //                        &attn_dropout_mask_out,
-        //                        &attn_dropout_out,
-        //                        &qktv_out,
-        //                        &fmha_out,
-        //                        token_num,
-        //                        mask_broadcast_num_heads);
-        //   write_cache_kv_helper.Compute(
-        //       &pre_cache_kv_out,
-        //       cache_kv_out,       // int8_t
-        //       &kv_transpose_out,  // T
-        //       sequence_lengths_data,
-        //       cache_bsz,
-        //       bsz,
-        //       num_head,
-        //       seq_len,
-        //       dim_head,
-        //       cache_offset,
-        //       (do_cachekv_quant) ? cache_k_scale[i] : -1.0,
-        //       (do_cachekv_quant) ? cache_v_scale[i] : -1.0);
-        // }
-
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
         qkv_bias_add_transpose_split<T>(
@@ -832,8 +746,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         phi::DenseTensor *tmp_padding_offset_tensor =
             encoder_remove_padding ? &padding_offset_tensor : nullptr;
 
-        // if (FLAGS_fmha_mode == "flash_attention_v2" &&
-        // encoder_remove_padding) {
         if (encoder_remove_padding) {
           TransposeSplit<T>(dev_ctx,
                             unpadding_q.data<T>(),
@@ -879,24 +791,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               &softmax_lse,
               &seed_offset);
         }
-        // else {
-        //   fmha_compute.Compute(cache_kv,
-        //                        src_mask,
-        //                        tmp_padding_offset_tensor,
-        //                        sequence_lengths,
-        //                        &q_transpose_out,
-        //                        &kv_transpose_out,
-        //                        cache_kv_out,
-        //                        &qk_out,
-        //                        nullptr,
-        //                        &softmax_out,
-        //                        &attn_dropout_mask_out,
-        //                        &attn_dropout_out,
-        //                        &qktv_out,
-        //                        &fmha_out,
-        //                        token_num,
-        //                        mask_broadcast_num_heads);
-        // }
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(2) << "step3";

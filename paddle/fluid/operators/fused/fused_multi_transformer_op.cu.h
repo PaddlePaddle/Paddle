@@ -919,7 +919,7 @@ __global__ __launch_bounds__(
     return;
   }
 
-  typedef PDDataTypeTraits<T> traits_;
+  typedef phi::PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
@@ -1427,7 +1427,7 @@ __global__ void masked_multihead_attention_kernel(
     return;
   }
 
-  typedef PDDataTypeTraits<T> traits_;
+  typedef phi::PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
@@ -5355,7 +5355,7 @@ void CacheKernel(const phi::GPUContext &dev_ctx,
                  const phi::DenseTensor *cache_k_zero_points = nullptr,
                  const phi::DenseTensor *cache_v_zero_points = nullptr,
                  int gqa_group_size = -1) {
-  typedef PDDataTypeTraits<T> traits_;
+  typedef phi::PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
   auto qkv_dims = qkv.dims();

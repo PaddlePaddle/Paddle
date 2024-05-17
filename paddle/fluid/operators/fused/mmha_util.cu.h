@@ -45,7 +45,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/operators/fused/datatype_traits.h"
+#include "paddle/phi/common/datatype_traits.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"

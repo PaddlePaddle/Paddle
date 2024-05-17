@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-// #include
-// "paddle/fluid/operators/fused/cutlass/cutlass_kernels/gemm_dequant.h"
-// #include
-// "paddle/fluid/operators/fused/cutlass/cutlass_kernels/intA_intB_interleaved_gemm/intA_intB_gemm_template.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
@@ -256,30 +252,21 @@ class BiasActHelper {
   int cols_;
 };
 
-template <typename T, typename nvT = typename PDDataTypeTraits<T>::DataType>
+template <typename T,
+          typename nvT = typename phi::PDDataTypeTraits<T>::DataType>
 class GEMMHelper {
  public:
-  GEMMHelper(
-      const phi::GPUContext &dev_ctx,
-      int token_num,
-      int dim_ffn,
-      int dim_embed,
-      const std::string gemm_method,
-      // paddle::operators::CutlassFpAIntBGemmRunner<nvT, uint8_t>
-      //     *int8_mixed_gemm_runner,
-      // paddle::operators::CutlassFpAIntBGemmRunner<nvT, cutlass::uint4b_t>
-      //     *int4_mixed_gemm_runner,
-      // paddle::operators::CutlassIntAIntBInterleavedGemmRunner<nvT, int8_t>
-      //     *int8_int8_interleaved_gemm_runner,
-      bool transpose_weight = false)
+  GEMMHelper(const phi::GPUContext &dev_ctx,
+             int token_num,
+             int dim_ffn,
+             int dim_embed,
+             const std::string gemm_method,
+             bool transpose_weight = false)
       : dev_ctx_(dev_ctx),
         token_num_(token_num),
         dim_ffn_(dim_ffn),
         dim_embed_(dim_embed),
         gemm_method_(gemm_method),
-        // int8_mixed_gemm_runner_(int8_mixed_gemm_runner),
-        // int4_mixed_gemm_runner_(int4_mixed_gemm_runner),
-        // int8_int8_interleaved_gemm_runner_(int8_int8_interleaved_gemm_runner),
         transpose_weight_(transpose_weight) {}
 
   // dst = act(fc(src[0]) + bias) * src[1]
@@ -296,93 +283,9 @@ class GEMMHelper {
     if (bias == nullptr) {
       compute_bias = false;
     }
-    using NvType = typename PDDataTypeTraits<T>::DataType;
+    using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
-    if (gemm_method_ == "weight-only") {
-      // VLOG(5) << "do weight-only gemm int8";
-      // if (bias) {
-      //   int8_mixed_gemm_runner_->gemm_bias_act(
-      //       reinterpret_cast<const NvType *>(input->data<T>()),
-      //       reinterpret_cast<const uint8_t *>(weight->data<int8_t>()),
-      //       reinterpret_cast<const NvType *>(scale->data<T>()),
-      //       reinterpret_cast<const NvType *>(bias->data<T>()),
-      //       reinterpret_cast<NvType *>(output->data<T>()),
-      //       token_num_,
-      //       dim_ffn_,
-      //       dim_embed_,
-      //       "none",
-      //       reinterpret_cast<char *>(workspace->data<uint8_t>()),
-      //       workspace->numel(),
-      //       dev_ctx_.stream());
-      // } else {
-      //   int8_mixed_gemm_runner_->gemm(
-      //       reinterpret_cast<const NvType *>(input->data<T>()),
-      //       reinterpret_cast<const uint8_t *>(weight->data<int8_t>()),
-      //       reinterpret_cast<const NvType *>(scale->data<T>()),
-      //       reinterpret_cast<NvType *>(output->data<T>()),
-      //       token_num_,
-      //       dim_ffn_,
-      //       dim_embed_,
-      //       reinterpret_cast<char *>(workspace->data<uint8_t>()),
-      //       workspace->numel(),
-      //       dev_ctx_.stream());
-      // }
-      // VLOG(5) << "input:" << *input;
-      // VLOG(5) << "output:" << *output;
-    } else if (gemm_method_ == "weight-only-int4") {
-      // VLOG(5) << "do weight-only gemm";
-      // if (bias) {
-      //   int4_mixed_gemm_runner_->gemm_bias_act(
-      //       reinterpret_cast<const NvType *>(input->data<T>()),
-      //       reinterpret_cast<const cutlass::uint4b_t
-      //       *>(weight->data<int8_t>()), reinterpret_cast<const NvType
-      //       *>(scale->data<T>()), reinterpret_cast<const NvType
-      //       *>(bias->data<T>()), reinterpret_cast<NvType
-      //       *>(output->data<T>()), token_num_, dim_ffn_, dim_embed_, "none",
-      //       reinterpret_cast<char *>(workspace->data<uint8_t>()),
-      //       workspace->numel(),
-      //       dev_ctx_.stream());
-      // } else {
-      //   int4_mixed_gemm_runner_->gemm(
-      //       reinterpret_cast<const NvType *>(input->data<T>()),
-      //       reinterpret_cast<const cutlass::uint4b_t
-      //       *>(weight->data<int8_t>()), reinterpret_cast<const NvType
-      //       *>(scale->data<T>()), reinterpret_cast<NvType
-      //       *>(output->data<T>()), token_num_, dim_ffn_, dim_embed_,
-      //       reinterpret_cast<char *>(workspace->data<uint8_t>()),
-      //       workspace->numel(),
-      //       dev_ctx_.stream());
-      // }
-      // VLOG(5) << "input:" << *input;
-      // VLOG(5) << "output:" << *output;
-    } else if (gemm_method_ == "weightonly_gemv") {
-      // // TODO(zhengzekang): support weightonly gemv int4
-      // const T *bias_data = bias ? bias->data<T>() : nullptr;
-      // phi::GemvWeightonlyInt8Wrapper<T, phi::GPUContext>(dev_ctx_,
-      //                                                    input->data<T>(),
-      //                                                    weight->data<int8_t>(),
-      //                                                    bias_data,
-      //                                                    scale->data<T>(),
-      //                                                    dim_ffn_,
-      //                                                    dim_embed_,
-      //                                                    "None",
-      //                                                    /*act_method*/
-      //                                                    output->data<T>());
-    } else if (gemm_method_ == "LLM.int8") {
-      // // Note(Zhengzekang): LLM Gemm donot support fused add_bias.
-      // LLMGemm<T, nvT>(dev_ctx_,
-      //                 weight,
-      //                 input,
-      //                 scale,
-      //                 int8_int8_interleaved_gemm_runner_,
-      //                 FLAGS_custom_llm_int8_threshold,
-      //                 output,
-      //                 workspace,
-      //                 "LLMGemm",
-      //                 token_num_,
-      //                 dim_embed_,
-      //                 dim_ffn_);
-    } else if (gemm_method_ == "None") {
+    if (gemm_method_ == "None") {
       auto ffn_linear_compute = phi::fusion::AttnMatMul<T>(dev_ctx_,
                                                            false,
                                                            transpose_weight_,
@@ -404,12 +307,6 @@ class GEMMHelper {
   int dim_ffn_;
   int dim_embed_;
   std::string gemm_method_;
-  // paddle::operators::CutlassFpAIntBGemmRunner<nvT, uint8_t>
-  //     *int8_mixed_gemm_runner_;
-  // paddle::operators::CutlassFpAIntBGemmRunner<nvT, cutlass::uint4b_t>
-  //     *int4_mixed_gemm_runner_;
-  // paddle::operators::CutlassIntAIntBInterleavedGemmRunner<nvT, int8_t>
-  //     *int8_int8_interleaved_gemm_runner_;
   bool transpose_weight_;  // Just For AttnMatmul.
 };
 
@@ -524,19 +421,6 @@ class NormHelper {
                                        output_data,
                                        mean_data,
                                        var_data);
-      // } else if (norm_type_ == "rmsnorm") {
-      //   // For rmsnorm, it use Input's type weight and bias.
-      //   const T *norm_weight_data =
-      //       norm_weight ? norm_weight->data<T>() : nullptr;
-      //   const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      //   phi::RmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-      //                                           x_data,
-      //                                           norm_weight_data,
-      //                                           norm_bias_data,
-      //                                           epsilon_,
-      //                                           rows_,
-      //                                           cols_,
-      //                                           output_data);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
@@ -554,7 +438,8 @@ class NormHelper {
   AttnLayerNorm<T> layernorm_helper_;
 };
 
-template <typename T, typename nvT = typename PDDataTypeTraits<T>::DataType>
+template <typename T,
+          typename nvT = typename phi::PDDataTypeTraits<T>::DataType>
 class FFNHelper {
  public:
   FFNHelper(const phi::GPUContext &dev_ctx,
