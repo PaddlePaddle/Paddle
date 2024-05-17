@@ -212,6 +212,8 @@ class Engine:
         self._fwd_main_progs = {}
         self._pir_dist_main_progs = {}
         self._pir_dense_main_progs = {}
+        self._pir_fetch_values = []
+        self._pir_user_defined_fetch_names = []
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -1809,6 +1811,7 @@ class Engine:
                 fetch_names = []
             else:
                 fetch_names = [loss_value]
+            fetch_names += self._pir_fetch_values
 
         outs = self._executor.run(
             self.main_program,
@@ -1821,8 +1824,12 @@ class Engine:
         if self._in_pir_mode:
             if no_fetch:
                 logs = {"outputs": None, "loss": None}
+                start_idx = 0
             else:
                 logs = {"outputs": outs[0], "loss": outs[0]}
+                start_idx = 1
+            for i, name in enumerate(self._pir_user_defined_fetch_names):
+                logs[name] = outs[start_idx + i]
             return logs
 
         logs = self._prepare_logger(
