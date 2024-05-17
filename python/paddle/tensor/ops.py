@@ -725,10 +725,10 @@ def round(x, decimals=0, name=None):
         [-1., -0.,  1.,  1.])
 
         # decimal 1
-        >>> out = paddle.round(x, decimal=0)
+        >>> out = paddle.round(x, decimal=1)
         >>> print(out)
         Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [1.2, -1.0, 3.5, 0.7])
+        [-0.50000000, -0.30000001,  0.69999999,  1.50000000])
     """
     assert isinstance(decimals, int), "round decimal must need int input"
     decimals = float(decimals)
