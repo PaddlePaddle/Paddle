@@ -1424,7 +1424,12 @@ class OutputSelector:
             if in_pir_mode():
                 amp_attrs = core._get_amp_attrs()
                 amp_level = amp_attrs._amp_level
-                if (amp_level == core.AmpLevel.O2) and (
+                apply_amp_level_list = [
+                    core.AmpLevel.O0,
+                    core.AmpLevel.O1,
+                    core.AmpLevel.O2,
+                ]
+                if (amp_level in apply_amp_level_list) and (
                     not all_has_same_dtype(outs)
                 ):
                     warnings.warn(
