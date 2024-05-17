@@ -121,6 +121,7 @@ void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
     x_indexs_map[x_indexs[i]] = i;
   }
+
   *out = phi::EmptyLike<T>(dev_ctx, x.values());
   phi::funcs::SetConstant<CPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
