@@ -74,3 +74,7 @@ USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(group_norm_silu_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
 #endif
+
+#ifdef PADDLE_WITH_CINN
+USE_PIR_PASS(convert_MEA_to_FA);
+#endif
