@@ -189,6 +189,7 @@ def run_model(
         x = paddle.to_tensor(x_data)
         x.stop_gradient = False
         level = 'O2' if pure_fp16 else 'O1'
+        #TODO@mt-ai: when linear fp16 is supported, we should set it to True
         with paddle.amp.auto_cast(False, level=level):
             y_pred = model(x)
             loss = y_pred.mean()
@@ -306,6 +307,7 @@ class TestRecompute(unittest.TestCase):
     def test_fc_net_with_amp(self):
         self.test_base_case(enable_autocast=True)
 
+    #TODO@mt-ai: when linear fp16 is supported, we should uncomment it
     # def test_fc_net_with_fp16(self):
     #     self.test_base_case(enable_autocast=True, pure_fp16=True)
 
