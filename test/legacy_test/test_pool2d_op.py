@@ -368,6 +368,37 @@ def pool2d_wrapper_use_cudnn(
     )
 
 
+def lp_pool2d_wrapper(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="lp",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.lp_pool2d(
+        X,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+        2,
+    )
+
+
 class TestPool2D_Op_Mixin:
     def setUp(self):
         self.op_type = "pool2d"
@@ -521,6 +552,85 @@ class TestPool2D_Op_Mixin:
 
 class TestPool2D_Op(TestPool2D_Op_Mixin, OpTest):
     pass
+
+
+class TestLPPool2D_Op(TestPool2D_Op):
+    def setUp(self):
+        self.op_type = "lp_pool2d"
+        self.use_cudnn = False
+        self.init_kernel_type()
+        self.use_mkldnn = False
+        self.init_data_type()
+        self.init_test_case()
+        self.padding_algorithm = "EXPLICIT"
+        self.init_paddings()
+        self.init_global_pool()
+        self.init_kernel_type()
+        self.init_ceil_mode()
+        self.init_exclusive()
+        self.init_adaptive()
+        self.init_data_format()
+        self.init_shape()
+        self.norm_type = 2
+        self.pool_type = 'lp'
+
+        if self.is_bfloat16_op():
+            input = np.random.random(self.shape).astype(np.float32)
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
+        output = pool2D_forward_naive(
+            input,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            self.data_format,
+            self.pool_type,
+            self.padding_algorithm,
+            self.norm_type,
+        )
+
+        if self.is_bfloat16_op():
+            output = convert_float_to_uint16(output)
+            self.inputs = {'x': convert_float_to_uint16(input)}
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {'x': OpTest.np_dtype_to_base_dtype(input)}
+
+        self.attrs = {
+            'strides': self.strides,
+            'paddings': self.paddings,
+            'kernel_size': self.ksize,
+            'pooling_type': self.pool_type,
+            'global_pooling': self.global_pool,
+            'ceil_mode': self.ceil_mode,
+            'data_format': self.data_format,
+            "padding_algorithm": self.padding_algorithm,
+            'norm_type': self.norm_type,
+        }
+
+        self.outputs = {'out': output}
+
+        self.python_api = lp_pool2d_wrapper
+
+    def has_cudnn(self):
+        return False
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(
+            {'x'},
+            'out',
+            max_relative_error=0.07,
+            check_dygraph=(not self.use_mkldnn),
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestCase1(TestPool2D_Op):

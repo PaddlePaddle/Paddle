@@ -2395,7 +2395,7 @@ def lp_pool1d(
             >>> print(pool_out.shape)
             [1, 3, 16]
     """
-    """NCL to NCHW"""
+    # NCL to NCHW
     data_format = "NCHW"
     if not in_dynamic_mode():
         check_variable_and_dtype(
