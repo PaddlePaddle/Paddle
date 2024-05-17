@@ -53,7 +53,7 @@ TEST(layout_transformation_interface_test, operator) {
       fused_conv, common::DataLayout::NHWC));
   EXPECT_EQ(layout_transformation_iface.RelevantInputs(fused_conv).size(),
             fused_conv->operands().size());
-  EXPECT_EQ(layout_transformation_iface.RelevantOutputs(fused_conv).size(), 1);
+  EXPECT_EQ(layout_transformation_iface.RelevantOutputs(fused_conv).size(), 1u);
 }
 
 TEST(immutable_layout_trait_test, operator) {
