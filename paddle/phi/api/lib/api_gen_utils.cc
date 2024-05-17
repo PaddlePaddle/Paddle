@@ -139,6 +139,36 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 }
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::SparseCooTensor*>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::SparseCsrTensor*>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::TensorBase*>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::SelectedRows*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
@@ -284,6 +314,33 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
     }
   }
   return out->impl().get();
+}
+
+std::vector<phi::TensorBase*> SetSparseKernelOutputVector(
+    std::vector<Tensor*> out, TensorType type) {
+  std::vector<phi::TensorBase*> meta_tensors;
+  for (auto& t : out) {
+    if (!t) {
+      meta_tensors.push_back(nullptr);
+    } else if (!t->initialized()) {
+      if (type == TensorType::VEC_SPARSE_COO) {
+        auto sparse_tensor = std::make_shared<phi::SparseCooTensor>(
+            phi::DenseTensor(), phi::DenseTensor(), phi::DDim{-1});
+        t->set_impl(sparse_tensor);
+        meta_tensors.push_back(sparse_tensor.get());
+
+      } else if (type == TensorType::VEC_SPARSE_CSR) {
+        auto sparse_tensor =
+            std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
+                                                   phi::DenseTensor(),
+                                                   phi::DenseTensor(),
+                                                   phi::DDim{-1, -1});
+        t->set_impl(sparse_tensor);
+        meta_tensors.push_back(sparse_tensor.get());
+      }
+    }
+  }
+  return meta_tensors;
 }
 
 phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {

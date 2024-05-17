@@ -37,6 +37,26 @@ void KernelContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 
+void KernelContext::EmplaceBackInputs(
+    const std::vector<const phi::SparseCooTensor*>& inputs) {
+  int index = static_cast<int>(inputs_.size());
+  // Record the start and end index of the input
+  input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
+  inputs_.insert(inputs_.end(),
+                 std::make_move_iterator(inputs.begin()),
+                 std::make_move_iterator(inputs.end()));
+}
+
+void KernelContext::EmplaceBackInputs(
+    const std::vector<const phi::SparseCsrTensor*>& inputs) {
+  int index = static_cast<int>(inputs_.size());
+  // Record the start and end index of the input
+  input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
+  inputs_.insert(inputs_.end(),
+                 std::make_move_iterator(inputs.begin()),
+                 std::make_move_iterator(inputs.end()));
+}
+
 void KernelContext::EmplaceBackInputsWithoutSetRange(
     paddle::small_vector<const TensorBase*> inputs) {
   inputs_.insert(inputs_.end(),
@@ -57,6 +77,16 @@ void KernelContext::EmplaceBackOutputWithoutSetRange(TensorBase* output) {
 
 void KernelContext::EmplaceBackOutputs(
     paddle::small_vector<TensorBase*> outputs) {
+  int index = static_cast<int>(outputs_.size());
+  // Record the start and end index of the input
+  output_range_.emplace_back(
+      std::pair<int, int>(index, index + outputs.size()));
+  outputs_.insert(outputs_.end(),
+                  std::make_move_iterator(outputs.begin()),
+                  std::make_move_iterator(outputs.end()));
+}
+
+void KernelContext::EmplaceBackOutputs(std::vector<TensorBase*> outputs) {
   int index = static_cast<int>(outputs_.size());
   // Record the start and end index of the input
   output_range_.emplace_back(

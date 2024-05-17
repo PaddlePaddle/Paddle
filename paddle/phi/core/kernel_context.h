@@ -53,6 +53,12 @@ class KernelContext {
 
   void EmplaceBackInputs(paddle::small_vector<const TensorBase*> inputs);
 
+  void EmplaceBackInputs(
+      const std::vector<const phi::SparseCooTensor*>& inputs);
+
+  void EmplaceBackInputs(
+      const std::vector<const phi::SparseCsrTensor*>& inputs);
+
   void EmplaceBackInputsWithoutSetRange(
       paddle::small_vector<const TensorBase*> inputs);
 
@@ -61,6 +67,8 @@ class KernelContext {
   void EmplaceBackOutputWithoutSetRange(TensorBase* output);
 
   void EmplaceBackOutputs(paddle::small_vector<TensorBase*> outputs);
+
+  void EmplaceBackOutputs(std::vector<TensorBase*> outputs);
 
   void EmplaceBackOutputsWithoutSetRange(
       paddle::small_vector<TensorBase*> outputs);
