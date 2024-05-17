@@ -728,7 +728,7 @@
     param : [x, dim]
   kernel :
     func : cumprod
-  inplace: (x -> out)
+  # inplace: (x -> out)
   backward : cumprod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
