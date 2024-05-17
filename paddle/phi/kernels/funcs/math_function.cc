@@ -21,6 +21,8 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
+#elif PADDLE_USE_ACCELERATE
+#include <Accelerate/Accelerate.h>
 #endif
 
 #include <memory>
