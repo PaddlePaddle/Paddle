@@ -25,12 +25,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -40,15 +40,15 @@ limitations under the License. */
 #endif
 #include <thrust/iterator/iterator_adaptor.h>
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif
 
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define DIVUP(x, y) (((x) + (y)-1) / (y))
@@ -474,7 +474,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     phi::DenseTensor *intermediate_out) {
   size_t N = static_cast<size_t>(common::product(x_dim));
 
-  platform::ForRange<DeviceContext> for_range(
+  phi::funcs::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
 
   for_range(
@@ -654,7 +654,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
   size_t N = static_cast<size_t>(common::product(x_dim));
-  platform::ForRange<DeviceContext> for_range(
+  phi::funcs::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
@@ -1597,7 +1597,7 @@ static inline std::vector<int> GetReduceDim(const phi::DDim &in,
 
 template <typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
-                     const platform::Place &place,
+                     const phi::Place &place,
                      int axis,
                      std::vector<const phi::DenseTensor *> ins,
                      const phi::DenseTensor *dout,
@@ -1610,7 +1610,7 @@ void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
 
 template <typename T, typename Functor>
 void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
-                    const platform::Place &place,
+                    const phi::Place &place,
                     int axis,
                     std::vector<const phi::DenseTensor *> ins,
                     const phi::DenseTensor *dout,
