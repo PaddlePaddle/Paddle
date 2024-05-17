@@ -36,6 +36,10 @@ namespace gpu {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
+#define MUDNN_SOFTMAX_MODE_INSTANCE 0
+
+#define MUDNN_SOFTMAX_MODE_CHANNEL 1
+
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,

@@ -20,6 +20,7 @@ from test_softmax_op import stable_softmax
 
 import paddle
 from paddle.base import Program, core, program_guard
+core.is_compiled_with_rocm = lambda : True
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):

@@ -61,20 +61,16 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
                                             MIOPEN_SOFTMAX_ACCURATE,
                                             MIOPEN_SOFTMAX_MODE_INSTANCE));
 #elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_x_desc =
-      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_y_desc =
-      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnSoftmaxForward(context.cudnn_handle(),
-                                            CudnnDataType<T>::kOne(),
-                                            cudnn_x_desc,
-                                            X->data<T>(),
-                                            CudnnDataType<T>::kZero(),
-                                            cudnn_y_desc,
-                                            context.template Alloc<T>(Y),
-                                            MIOPEN_SOFTMAX_ACCURATE,
-                                            MIOPEN_SOFTMAX_MODE_INSTANCE));                                       
+  auto& cudnn_x_desc =
+      xDesc.descriptor<T>(X->data<T>(), layout, cudnn_tensor_dims);
+  auto& cudnn_y_desc =
+      yDesc.descriptor<T>(context.template Alloc<T>(Y),
+		          layout, cudnn_tensor_dims);
+  backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+  softmax_desc.descriptor(dynload::Softmax::Mode::SOFTMAX,
+                          dynload::Softmax::Algorithm::ACCURATE,
+                          MUDNN_SOFTMAX_MODE_CHANNEL)
+              .Run(*context.cudnn_handle(), cudnn_y_desc, cudnn_x_desc);
 #else
   cudnnTensorDescriptor_t cudnn_x_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
@@ -133,24 +129,20 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                              MIOPEN_SOFTMAX_ACCURATE,
                                              MIOPEN_SOFTMAX_MODE_INSTANCE));
 #elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_y_desc =
-      yDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_xgrad_desc =
-      dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  mudnnTensorDescriptor_t cudnn_ygrad_desc =
-      dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnSoftmaxBackward(context.cudnn_handle(),
-                                             CudnnDataType<T>::kOne(),
-                                             cudnn_y_desc,
-                                             Y->data<T>(),
-                                             cudnn_ygrad_desc,
-                                             YGrad->data<T>(),
-                                             CudnnDataType<T>::kZero(),
-                                             cudnn_xgrad_desc,
-                                             context.template Alloc<T>(XGrad),
-                                             MIOPEN_SOFTMAX_ACCURATE,
-                                             MIOPEN_SOFTMAX_MODE_INSTANCE));                                      
+  auto& cudnn_y_desc =
+      yDesc.descriptor<T>(Y->data<T>(), layout, cudnn_tensor_dims);
+  auto& cudnn_ygrad_desc =
+      dyDesc.descriptor<T>(YGrad->data<T>(), layout, cudnn_tensor_dims);
+  auto& cudnn_xgrad_desc =
+      dxDesc.descriptor<T>(context.template Alloc<T>(XGrad), layout, cudnn_tensor_dims);
+  backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+  softmax_desc.descriptor(dynload::Softmax::Mode::SOFTMAX,
+                          dynload::Softmax::Algorithm::ACCURATE,
+                          MUDNN_SOFTMAX_MODE_CHANNEL)
+              .RunBwd(*context.cudnn_handle(),
+                      cudnn_xgrad_desc,
+                      cudnn_y_desc,
+                      cudnn_ygrad_desc);
 #else
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);
@@ -183,7 +175,7 @@ template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
 #endif
 
 // MIOPEN do not support double
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#if !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif

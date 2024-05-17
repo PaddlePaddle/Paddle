@@ -1052,6 +1052,8 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
       algo,
       mode));
 #elif defined(PADDLE_WITH_MUSA)
+  auto axis_mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
+	                            : MUDNN_SOFTMAX_MODE_CHANNEL;
   auto& idesc = scoped_desc.descriptor<T>(x_data, layout, tensor_dims);
   ScopedTensorDescriptor out_scoped_desc;
   auto& odesc = out_scoped_desc.descriptor<T>(out_data, layout, tensor_dims);
@@ -1060,7 +1062,8 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                        : dynload::Softmax::Mode::SOFTMAX;
   auto algo = log_mode ? dynload::Softmax::Algorithm::DIRECT
                        : dynload::Softmax::Algorithm::ACCURATE;
-  softmax_desc.descriptor(mode, algo, axis).Run(*handle, odesc, idesc);      
+  softmax_desc.descriptor(mode, algo, axis_mode)
+	      .Run(*handle, odesc, idesc);      
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
@@ -1136,7 +1139,20 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
       algo,
       mode));
 #elif defined(PADDLE_WITH_MUSA)
-  //      
+  auto axis_mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
+	                            : MUDNN_SOFTMAX_MODE_CHANNEL;
+  auto& desc = scoped_desc.descriptor<T>(out_data, layout, tensor_dims);
+  ScopedTensorDescriptor scoped_dxdesc;
+  auto& dxdesc = scoped_dxdesc.descriptor<T>(dx_data, layout, tensor_dims);
+  ScopedTensorDescriptor scoped_dodesc;
+  auto& dodesc = scoped_dodesc.descriptor<T>(dout_data, layout, tensor_dims);
+  backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
+  auto mode = log_mode ? dynload::Softmax::Mode::LOGSOFTMAX
+                       : dynload::Softmax::Mode::SOFTMAX;
+  auto algo = log_mode ? dynload::Softmax::Algorithm::DIRECT
+                       : dynload::Softmax::Algorithm::ACCURATE;
+  softmax_desc.descriptor(mode, algo, axis_mode)
+              .RunBwd(*handle, dxdesc, desc, dodesc);
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
