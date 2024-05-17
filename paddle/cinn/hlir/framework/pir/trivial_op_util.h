@@ -141,7 +141,10 @@ ExprSetFinder Collector(Teller t, const std::string& name) {
 template <typename FilterFunc>
 ExprSetFinder FilterMaker(FilterFunc func, const std::string& name) {
   return ExprSetFinder(
-      [=](const ir::Expr& x) -> ExprSet { return func(x) ? {x} : {}; }, name);
+      [=](const ir::Expr& x) -> ExprSet {
+        return func(x) ? ExprSet{x} : ExprSet();
+      },
+      name);
 }
 
 extern ExprSetFinder Identity;
