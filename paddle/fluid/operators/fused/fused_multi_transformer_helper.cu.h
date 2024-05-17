@@ -30,44 +30,6 @@ FusedMultiTransformer.
 namespace paddle {
 namespace operators {
 
-template <typename T>
-static void PrintFrontNPerLine(const phi::DenseTensor &a,
-                               int rows,
-                               int cols,
-                               int n) {
-  if (!FLAGS_print_matrix) return;
-  std::vector<T> a_h(a.numel());
-
-  cudaMemcpy(
-      a_h.data(), a.data<T>(), a.numel() * sizeof(T), cudaMemcpyDeviceToHost);
-
-  for (int line = 0; line < rows; ++line) {
-    std::cout << "[" << line << "] ";
-    for (int i = 0; i < n; ++i) {
-      if (std::is_same<T, int8_t>::value) {
-        std::cout << (int)(a_h[line * cols + i]) << " ";  // NOLINT
-      } else {
-        std::cout << a_h[line * cols + i] << " ";  // NOLINT
-      }
-    }
-    std::cout << "\n";
-  }
-}
-
-template <typename T>
-struct AddTriFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
-    return a + b + c;
-  }
-};
-
-template <typename T>
-struct SmoothFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
-    return (a + b) * c;
-  }
-};
-
 namespace {  // NOLINT
 
 template <typename T>

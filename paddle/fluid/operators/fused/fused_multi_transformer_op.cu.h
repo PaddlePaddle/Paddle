@@ -540,9 +540,6 @@ struct CudaSwishFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// for debug
-// #define _DEBUG_FUSED_MULTI_TRANSFORMER
-
 template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
@@ -554,10 +551,6 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup *pg = map->get(ring_id);
-    // std::vector<phi::DenseTensor> in_tensor;
-    // std::vector<phi::DenseTensor> out_tensor;
-    // in_tensor.push_back(tensor);
-    // out_tensor.push_back(tensor);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
     auto task = pg->AllReduce(&tensor, tensor, opts, false, true);
@@ -5271,129 +5264,6 @@ void gqa_rotary_qk_variable(
                                                       seq_len,
                                                       dim_head,
                                                       gqa_group_size);
-}
-
-template <typename T, int VecSize = 1>
-__global__ void cache_kernel(
-    const T *__restrict__ qkv,  // [num_tokens, num_heads + 2 * gqa_group_size,
-                                // head_size]
-    T *__restrict__ key_cache,  // [num_blocks, gqa_group_size, block_size,
-                                // head_size]
-    T *__restrict__ value_cache,  // [num_blocks, gqa_group_size, block_size,
-                                  // head_size]
-    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
-    const int *__restrict__ padding_offsets,  // [num_tokens]
-    const int *__restrict__ seq_lens,         // [bsz]
-    const int max_seq_len,
-    const int max_blocks_per_seq,
-    const int num_heads,
-    const int head_size,
-    const int block_size,
-    const int elem_cnt,
-    const int gqa_group_size) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  LoadT src_vec;
-
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const int64_t hidden_size = gqa_group_size * head_size;
-  const int64_t offset = 2 * hidden_size;
-  for (int32_t linear_index = global_thread_idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    const int token_idx = linear_index / offset;
-    const int bias = linear_index % offset;
-    const int qkv_id = bias / hidden_size;  // skip q
-    const int qkv_bias = bias % hidden_size;
-    const int hi = qkv_bias / head_size;
-    const int h_bias = qkv_bias % head_size;
-    const int ori_token_idx = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_idx / max_seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
-    const int ori_seq_id = ori_token_idx % max_seq_len;
-
-    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
-    const int block_idx = block_table_now[ori_seq_id / block_size];
-    const int block_offset = ori_seq_id % block_size;
-
-    const int tgt_idx = block_idx * gqa_group_size * block_size * head_size +
-                        hi * block_size * head_size + block_offset * head_size +
-                        h_bias;
-    const int ori_idx =
-        token_idx * (num_heads + 2 * gqa_group_size) * head_size +
-        num_heads * head_size + qkv_id * hidden_size + hi * head_size + h_bias;
-    phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
-    if (qkv_id == 0) {
-      phi::Store<T, VecSize>(src_vec, &key_cache[tgt_idx]);
-    } else {
-      phi::Store<T, VecSize>(src_vec, &value_cache[tgt_idx]);
-    }
-  }
-}
-
-template <typename T>
-void CacheKernel(const phi::GPUContext &dev_ctx,
-                 const phi::DenseTensor
-                     &qkv,  // [token_num, 3, num_head, head_dim] ([token_num,
-                            // num_head + 2 * gqa_group_size, head_dim] if GQA)
-                 const phi::DenseTensor &block_tables,
-                 const phi::DenseTensor &padding_offsets,
-                 const phi::DenseTensor &seq_lens,
-                 const int max_seq_len,
-                 phi::DenseTensor *key_cache_out,
-                 phi::DenseTensor *value_cache_out,
-                 const std::string &cache_quant_type_str,
-                 const int num_heads,
-                 const int head_size,
-                 const int round_type = 0,
-                 const bool use_nf4 = false,
-                 const float max_bound = 0.0,
-                 const float min_bound = 0.0,
-                 const int cache_k_group_num = 1,
-                 const phi::DenseTensor *cache_k_scales = nullptr,
-                 const phi::DenseTensor *cache_v_scales = nullptr,
-                 const phi::DenseTensor *cache_k_zero_points = nullptr,
-                 const phi::DenseTensor *cache_v_zero_points = nullptr,
-                 int gqa_group_size = -1) {
-  typedef phi::PDDataTypeTraits<T> traits_;
-  typedef typename traits_::DataType DataType_;
-
-  auto qkv_dims = qkv.dims();
-  const int max_blocks_per_seq = block_tables.dims()[1];
-  const int num_tokens = qkv_dims[0];
-  if (gqa_group_size <= 0) {
-    gqa_group_size = num_heads;
-  }
-  const int32_t block_size = key_cache_out->dims()[2];
-  const int elem_nums =
-      num_tokens * 2 * gqa_group_size * head_size;  // just k and v
-  constexpr int PackSize = 16 / sizeof(T);
-  const int pack_num = elem_nums / PackSize;
-  const int blocksize = 128;
-  int grid_size = 1;
-  GetNumBlocks(pack_num, &grid_size);
-
-  if (cache_k_scales) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("cache kv quant is not supported for now"));
-  } else {
-    VLOG(1) << "cache kv not quant";
-    cache_kernel<DataType_, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
-            reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
-            reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
-            reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
-            block_tables.data<int>(),
-            padding_offsets.data<int>(),
-            seq_lens.data<int>(),
-            max_seq_len,
-            max_blocks_per_seq,
-            num_heads,
-            head_size,
-            block_size,
-            elem_nums,
-            gqa_group_size);
-  }
 }
 
 }  // namespace
