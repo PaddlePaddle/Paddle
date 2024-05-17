@@ -2005,5 +2005,13 @@ class TestDygraphInplaceBernoulli2(TestDygraphInplaceBernoulli):
         self.p = 0.5
 
 
+class TestDygraphInplaceBernoulliError(unittest.TestCase):
+    def test_broadcast_error(self):
+        var = paddle.randn([3, 4])
+        p = paddle.randn([5])
+        with self.assertRaises(ValueError):
+            var.bernoulli_(p)
+
+
 if __name__ == '__main__':
     unittest.main()

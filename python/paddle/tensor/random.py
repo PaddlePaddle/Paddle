@@ -115,7 +115,7 @@ def bernoulli_(x, p=0.5, name=None):
         x(Tensor): The input tensor to be filled with random values.
         p (float|Tensor, optional): The success probability parameter of the output Tensor's bernoulli distribution.
             If ``p`` is float, all elements of the output Tensor shared the same success probability.
-            If ``p`` is a Tensor, it has per-element success probabilities.
+            If ``p`` is a Tensor, it has per-element success probabilities, and the shape should be broadcastable to ``x``.
             Default is 0.5
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -136,6 +136,16 @@ def bernoulli_(x, p=0.5, name=None):
             [[1., 0., 1., 0.],
              [0., 1., 1., 0.],
              [0., 1., 1., 1.]])
+
+            >>> x = paddle.randn([3, 4])
+            >>> p = paddle.randn([3, 1])
+            >>> x.bernoulli_(p)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 0., 0., 1.],
+             [1., 0., 1., 0.],
+             [1., 0., 0., 0.]])
 
     """
     x.uniform_(0.0, 1.0)
