@@ -1189,7 +1189,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = squeeze<T>(res, {0});
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
       auto x_t_shape = shape<T>(x);
@@ -1212,7 +1212,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = std::get<0>(squeeze_decomp<T>(res, {0}));
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
 
