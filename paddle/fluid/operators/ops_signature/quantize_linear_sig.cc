@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature QuantizeLinearOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
-      "quantize_linear",
+      "quantize_linear_deprecated",
       {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
       {"quant_axis", "bit_length", "round_type", "is_test", "only_observer"},
       {"Y", "OutState", "OutAccum", "OutScale"});
@@ -28,7 +28,7 @@ KernelSignature QuantizeLinearOpArgumentMapping(
 KernelSignature DeQuantizeLinearOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
-      "dequantize_linear",
+      "dequantize_linear_deprecated",
       {"X", "Scale", "ZeroPoint", "InAccum", "InState"},
       {"quant_axis", "bit_length", "round_type", "is_test", "only_observer"},
       {"Y", "OutState", "OutAccum", "OutScale"});
