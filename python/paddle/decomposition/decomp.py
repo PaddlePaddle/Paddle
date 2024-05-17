@@ -869,7 +869,6 @@ def decompose_dist_program(pir_program):
                         break
                 if remove_op:
                     block.remove_op(op)
-    print("end**********", pir_program)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

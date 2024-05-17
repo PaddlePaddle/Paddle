@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ class TestPrimMode(unittest.TestCase):
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
-        print(whole_ops)
         if flag == "prim":
             assert 'pd_op.matmul_grad' not in whole_ops
         else:
