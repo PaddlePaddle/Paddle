@@ -686,7 +686,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)),
-      async_graphs_(nullptr),
+      async_graphs_(),
       var_infos_() {
   PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
