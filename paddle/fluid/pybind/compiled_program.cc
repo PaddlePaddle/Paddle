@@ -188,11 +188,70 @@ using namespace paddle::framework;               // NOLINT
 void BindCompiledProgram(pybind11::module &m) {  // NOLINT
   // -- python binds for compiled_program.
   py::class_<CompiledProgram> cp(m, "CompiledProgram");
+  py::class_<ExecutionStrategy> exec_strategy(cp, "ExecutionStrategy");
 
   py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
       .value("CPU", paddle::platform::DeviceType::CPU)
       .value("CUDA", paddle::platform::DeviceType::CUDA)
       .value("XPU", paddle::platform::DeviceType::XPU);
+  exec_strategy.def(py::init())
+      .def_property(
+          "num_threads",
+          [](const ExecutionStrategy &self) { return self.num_threads_; },
+          [](ExecutionStrategy &self, size_t num_threads) {
+            self.num_threads_ = num_threads;
+          })
+      .def_property(
+          "_use_device",
+          [](const ExecutionStrategy &self) { return self.use_device_; },
+          [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
+            self.use_device_ = use_device;
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
+              // use_device isn‘t exposed to users.
+      .def_property(
+          "allow_op_delay",
+          [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
+          [](ExecutionStrategy &self, bool allow_op_delay) {
+            self.allow_op_delay_ = allow_op_delay;
+          })
+      .def_property(
+          "num_iteration_per_drop_scope",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_drop_scope_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
+            self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
+          })
+      .def_property(
+          "num_iteration_per_run",
+          [](const ExecutionStrategy &self) {
+            return self.num_iteration_per_run_;
+          },
+          [](ExecutionStrategy &self, size_t num_iteration_per_run) {
+            self.num_iteration_per_run_ = num_iteration_per_run;
+          })
+      .def_property(
+          "use_thread_barrier",
+          [](const ExecutionStrategy &self) { return self.thread_barrier_; },
+          [](ExecutionStrategy &self, bool use_thread_barrier) {
+            self.thread_barrier_ = use_thread_barrier;
+          })
+      .def_property(
+          "_dry_run",
+          [](const ExecutionStrategy &self) { return self.dry_run_; },
+          [](ExecutionStrategy &self, bool dry_run) {
+            self.dry_run_ = dry_run;
+          });
+
+  exec_strategy.def_property(
+      "use_experimental_executor",
+      [](const ExecutionStrategy &self) {
+        return self.type_ == ExecutionStrategy::kExperimental;
+      },
+      [](ExecutionStrategy &self, bool experimental) {
+        self.type_ = experimental ? ExecutionStrategy::kExperimental
+                                  : ExecutionStrategy::kDefault;
+      });
 
   py::class_<BuildStrategy> build_strategy(cp, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to
@@ -1008,6 +1067,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                   const std::string &,
                   Scope *,
                   std::vector<Scope *> &,
+                  const ExecutionStrategy &,
                   const BuildStrategy &,
                   ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.

@@ -551,6 +551,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
                                  const std::string &loss_var_name,
                                  Scope *scope,
                                  const std::vector<Scope *> &local_scopes,
+                                 const ExecutionStrategy &exec_strategy,
                                  const BuildStrategy &build_strategy,
                                  ir::Graph *graph)
     : member_(new CompiledProgramPrivate(places, scope)) {
@@ -562,7 +563,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
-  InitProgramPrivateMemberInfo(build_strategy, places.size());
+  InitProgramPrivateMemberInfo(exec_strategy, build_strategy, places.size());
 
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -759,7 +760,10 @@ CompiledProgram::~CompiledProgram() {
 }
 
 void CompiledProgram::InitProgramPrivateMemberInfo(
-    const BuildStrategy &build_strategy, size_t device_count) {
+    const ExecutionStrategy &exec_strategy,
+    const BuildStrategy &build_strategy,
+    size_t device_count) {
+  member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
@@ -771,6 +775,48 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
+  if (member_->IsUseCUDA(member_->use_device_)) {
+    PADDLE_ENFORCE_EQ(
+        device_count,
+        1,
+        platform::errors::Unavailable("Windows can support Single GPU only."));
+  }
+#endif
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+  if (member_->IsUseCUDA(member_->use_device_)) {
+    PADDLE_ENFORCE_EQ(
+        device_count,
+        1,
+        platform::errors::PermissionDenied(
+            "Your machine has multiple cards, "
+            "but the WITH_NCCL option is not turned on during compilation, "
+            "and you cannot use multi-card training or prediction. "
+            "Please recompile and turn on the WITH_NCCL option."));
+  }
+#endif
+
+  std::string device_name;
+  if (member_->use_device_ == p::kCPU) {
+    device_name = "CPU";
+  } else if (member_->use_device_ == p::kCUDA) {
+    device_name = "CUDA";
+  } else if (member_->use_device_ == p::kXPU) {
+    device_name = "XPU";
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
+                                      "please use CPU/CUDA/XPU backend."));
+  }
+
+  VLOG(1) << string::Sprintf(
+      "The Program will be executed on %s using ParallelExecutor, %lu "
+      "cards are used, so %lu programs are executed in parallel.",
+      device_name,
+      device_count,
+      device_count);
 }
 void CompiledProgram::CreateLocalScopes(
     Scope *global_scope,

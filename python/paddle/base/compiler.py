@@ -19,8 +19,8 @@ from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
-BuildStrategy = core.ParallelExecutor.BuildStrategy
+ExecutionStrategy = core.CompiledProgram.ExecutionStrategy
+BuildStrategy = core.CompiledProgram.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
@@ -277,7 +277,7 @@ class CompiledProgram:
             raise RuntimeError(
                 "CUDA Graph is not allowed to capture when running the first batch."
             )
-        return core.ParallelExecutor(
+        return core.CompiledProgram(
             places,
             self._persistable_vars,
             '',
