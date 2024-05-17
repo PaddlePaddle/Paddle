@@ -54,29 +54,33 @@ void ArgOpMapperHelper(const paddle::cpp::OpDesc& op_desc,
       phi::errors::InvalidArgument("The input of Argmax/Argmin op must be 1."));
   auto x_name = op_desc.Input("X").front();
 
-  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
                     phi::errors::InvalidArgument(
-                        "The output of Argmax/Argmin op must be 1.");
+                        "The output of Argmax/Argmin op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
   auto axis = utils::GetAttrOrDefault<int64_t>(op_desc, "axis", -1);
-  PADDLE_ENFORCE_EQ(op_desc.HasAttr("axis"), true,
-                    phi::errors::InvalidArgument(
-                        "Argmax/Argmin op should has attribute "
-                        "\"axis\"! Please check."));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axis"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute "
+                                   "\"axis\"! Please check."));
 
   auto keepdims = utils::GetAttrOrDefault<bool>(op_desc, "keepdims", false);
-  PADDLE_ENFORCE_EQ(op_desc.HasAttr("keepdims"), true,
-                    phi::errors::InvalidArgument(
-                        "Argmax/Argmin op should has attribute"
-                        " \"keepdims\"! Please check."));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("keepdims"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute"
+                                   " \"keepdims\"! Please check."));
 
   auto flatten = utils::GetAttrOrDefault<bool>(op_desc, "flatten", false);
-  PADDLE_ENFORCE_EQ(op_desc.HasAttr("flatten"), true,
-                    phi::errors::InvalidArgument(
-                        "Argmax/Argmin op should has attribute"
-                        " \"flatten\"! Please check."));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("flatten"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute"
+                                   " \"flatten\"! Please check."));
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::INT64);
