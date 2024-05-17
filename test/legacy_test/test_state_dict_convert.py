@@ -121,7 +121,7 @@ class TestStateKeepVars(unittest.TestCase):
             False
             if (st["linear.weight"].grad == model.linear.weight.grad).all()
             and (st["linear.bias"].grad == model.linear.bias.grad).all()
-            and (st["model_buffer"].grad == model.model_buffer.grad).all()
+            and st["model_buffer"].grad == model.model_buffer.grad
             else True
         )
         self.assertEqual(detached_from_graph, False)
