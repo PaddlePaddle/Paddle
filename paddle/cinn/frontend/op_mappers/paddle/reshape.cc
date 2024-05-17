@@ -15,14 +15,17 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
                      const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Reshape op must be 1."));
   auto x_name = op_desc.Input("X").front();
   auto x = ctx.GetVar(x_name);
 
@@ -33,7 +36,10 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Reshape(x, shape);
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Reshape op must be 1."));
   auto out_name = op_desc.Output("Out").front();
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -42,7 +48,10 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 void ReshapeGradOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
   auto get_input_var = [&op_desc, &ctx](const std::string& op_name) {
-    CHECK_EQ(op_desc.Input(op_name).size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input(op_name).size(),
+        1UL,
+        phi::errors::InvalidArgument("The input of ReshapeGrad op must be 1."));
     auto var_name = op_desc.Input(op_name).front();
     return ctx.GetVar(var_name);
   };
