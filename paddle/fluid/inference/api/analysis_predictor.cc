@@ -447,6 +447,7 @@ bool AnalysisPredictor::Init(
   }
   std::string filename = config_.prog_file();
   std::string extension_ = filename.substr(filename.find_last_of(".") + 1);
+  LOG(INFO) << "extension " << extension_;
   if (config_.new_ir_enabled() && extension_ == "json") {
     if (!PreparePirProgram()) {
       return false;
@@ -765,8 +766,28 @@ bool AnalysisPredictor::PreparePirProgram() {
   std::string filename;
   if (!config_.prog_file().empty()) {
     filename = config_.prog_file();
+    LOG(INFO) << "filename" << filename;
     uint64_t pir_version = 1;
-    pir::ReadModule(filename, pir_program_.get(), pir_version);
+
+    LOG(INFO)<<"创建ctx之前";
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    LOG(INFO)<<"创建ctx之后";
+    if (ctx == nullptr) {
+      LOG(ERROR) << "IrContext instance is null.";
+      return false;
+    }
+    if (!pir_program_) {
+      LOG(INFO)<<"创建pir_program之前";
+      pir_program_ = std::make_shared<pir::Program>(ctx);
+      LOG(INFO)<<"创建pir_program之后";
+    }
+    // PADDLE_ENFORCE_NOT_NULL(pir_program_.get(), "pir_program_ is not initialized");
+    LOG(INFO) << "Preparing PIR program from file:" << filename;
+    bool success = pir::ReadModule(filename, pir_program_.get(), pir_version);
+    if (!success) {
+      LOG(ERROR) << "Failed to read module from file: " << filename;
+      return false;
+    }
     auto ir_printing_conditions = [this](::pir::Pass *pass,
                                          ::pir::Operation *op) {
       if (this->config_.ir_debug_passes_.empty()) {

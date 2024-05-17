@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include <glog/logging.h>
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
@@ -68,8 +69,20 @@ void WriteModule(const pir::Program& program,
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version) {
+  LOG(INFO) << "Entering ReadModule with file_path" << file_path;
   std::ifstream f(file_path);
-  Json data = Json::parse(f);
+  if (!f.is_open()) {
+    LOG(ERROR) << "Failed to open file: " << file_path;
+    return false;
+  }
+  LOG(INFO) << "File opened successfully.";
+  Json data;
+  try {
+    data = Json::parse(f);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Error parsing JSON: " << e.what();
+    return false;
+  }
 
   if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
       data[BASE_CODE][MAGIC] == PIR) {
@@ -82,9 +95,17 @@ bool ReadModule(const std::string& file_path,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));
   }
+  LOG(INFO) << "Model version check passed.";
 
   ProgramReader reader(pir_version);
-  reader.RecoverProgram(&(data[PROGRAM]), program);
+  try {
+    reader.RecoverProgram(&(data[PROGRAM]), program);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Error recovering program: " << e.what();
+    return false;
+  }
+
+  LOG(INFO) << "Program recovered successfully.";
 
   if (data[BASE_CODE].contains(TRAINABLE)) {
     return data[BASE_CODE][TRAINABLE].get<bool>();

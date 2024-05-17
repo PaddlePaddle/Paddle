@@ -343,6 +343,9 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
+
+
+  bool PreparePirProgram();
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
