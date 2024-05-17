@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decomp
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -33,8 +32,6 @@ class TestPrimMode(unittest.TestCase):
         self.y = np.random.random(self.shape_y).astype("float32")
 
     def base_net(self, flag=None):
-        if flag == "all":
-            core._set_prim_forward_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', self.shape_x, dtype='float32')
@@ -47,32 +44,26 @@ class TestPrimMode(unittest.TestCase):
             tmp2 = paddle.mean(tmp1)
             sum_out = paddle.sin(tmp2)
             gradients = grad(sum_out, (x, y))
-            # decomp.decompose_dist_program(main_program)
-            if flag == "all":
-                decomp.decompose_dist_program(main_program)
-                # print(main_program)
-            #     breakpoint()
+            if flag == "prim":
+                with decomp.prim_guard():
+                    decomp.decompose_dist_program(main_program)
             exe = paddle.static.Executor()
             [fwd, dx, dy] = exe.run(
                 feed={'x': self.x, 'y': self.y}, fetch_list=[sum_out, gradients]
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
-        if flag == "all":
-            core._set_prim_forward_enabled(False)
-        #     assert (
-        #         'pd_op.mean' not in whole_ops
-        #         and 'pd_op.add_grad' in whole_ops
-        #     )
-        # else:
-        #     assert (
-        #         'pd_op.mean' in whole_ops and 'pd_op.add_grad' in whole_ops
-        #     )
+        print(whole_ops)
+        if flag == "prim":
+            assert 'pd_op.matmul_grad' not in whole_ops
+        else:
+            assert 'pd_op.matmul_grad' in whole_ops
+
         return fwd, dx, dy
 
     def test_prim_all(self):
         res_ref = self.base_net()
-        res = self.base_net("all")
+        res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
