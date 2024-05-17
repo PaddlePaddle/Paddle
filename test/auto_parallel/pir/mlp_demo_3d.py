@@ -25,7 +25,6 @@ from paddle import nn
 from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
     apply_mix2dist_pass,
 )
-from paddle.distributed.communication.reduce import ReduceOp
 from paddle.framework import _current_expected_place
 
 BATCH_SIZE = 4
@@ -163,7 +162,7 @@ class TestML3DParallel(unittest.TestCase):
                 'pd_op.sgd_',
             ]
 
-        self.assertEqual(op_names, std_ops)
+        assert op_names == std_ops
 
     def test_loss_value(self):
         paddle.disable_static()
@@ -198,14 +197,15 @@ class TestML3DParallel(unittest.TestCase):
 
         paddle.disable_static()
         rank_id = dist.get_rank()
-        if rank_id in [4, 6]:
-            self.loss_avg_pg = dist.new_group([4, 6])
-        if rank_id in [5, 7]:
-            self.loss_avg_pg = dist.new_group([5, 7])
         if rank_id in self.mesh2.process_ids:
             pd_loss_dy2st = paddle.to_tensor(dy2st_losses)
-            paddle.distributed.all_reduce(
-                pd_loss_dy2st, op=ReduceOp.AVG, group=self.loss_avg_pg
+            pd_loss_dy2st = dist.auto_parallel.api.dtensor_from_local(
+                pd_loss_dy2st,
+                self.mesh2,
+                [dist.Partial(dist.ReduceType.kRedAvg), dist.Replicate()],
+            )
+            pd_loss_dy2st = dist.reshard(
+                pd_loss_dy2st, self.mesh2, [dist.Replicate(), dist.Replicate()]
             )
             dy2st_losses = pd_loss_dy2st.numpy()
             np.testing.assert_equal(dy_losses, dy2st_losses)
