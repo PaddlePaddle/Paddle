@@ -570,7 +570,7 @@ class VScheduleCreator:
             return False
 
         if (job_type == "forward" and chunk_id > 0) or (
-            job_type == "backward_b" and chunk_id < self.num_model_chunks - 1
+            job_type == "backward_b"
         ):
             prev_chunk_count = self._job_counters[stage_id][prev_key]
             current_chunk_count = self._job_counters[stage_id][current_key]
