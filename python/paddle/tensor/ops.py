@@ -682,48 +682,65 @@ def reciprocal(x, name=None):
         return out
 
 
-def round(x, name=None):
+def round(x, decimals=0, name=None):
     """
 
     Round the values in the input to the nearest integer value.
 
     .. code-block:: text
 
-        input:
-          x.shape = [4]
-          x.data = [1.2, -0.9, 3.4, 0.9]
+    input:
+        x.shape = [4]
+        x.data = [1.234, -0.987, 3.456, 0.654]
 
-        output:
-          out.shape = [4]
-          out.data = [1., -1., 3., 1.]
+    decimal: 0
+    output:
+        out.shape = [4]
+        out.data = [1., -1., 3., 1.]
+
+    decimal: 1
+    output:
+        out.shape = [4]
+        out.data = [1.2, -1.0, 3.5, 0.7]
 
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type float32, float64 or float16.
+        decimal(int): The decimal of the round
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Round operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+    .. code-block:: python
 
-            >>> import paddle
+        >>> import paddle
 
-            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
-            >>> out = paddle.round(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -0.,  1.,  2.])
+        >>> x = paddle.to_tensor([-0.543, -0.256, 0.678, 1.456])
+        
+        # decimal 0
+        >>> out = paddle.round(x, decimal=0)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-1., -0.,  1.,  1.])
+
+        # decimal 1
+        >>> out = paddle.round(x, decimal=0)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [1.2, -1.0, 3.5, 0.7])
     """
+    assert isinstance(decimals, int), "round decimal must need int input"
+    decimals = float(decimals)
     if in_dynamic_or_pir_mode():
-        return _C_ops.round(x)
+        return _C_ops.round(x, decimals)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
+        helper.append_op(type='round', inputs={"X": x}, attrs={"decimals":decimals}, outputs={"Out": out})
         return out
 
 
