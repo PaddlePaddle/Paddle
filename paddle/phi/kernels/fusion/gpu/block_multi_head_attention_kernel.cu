@@ -400,6 +400,8 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
+      auto fmha_shape = fmha_buf.dims();
+      fmha_buf.Resize({token_num, num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -420,6 +422,7 @@ void DispatchWithDtype(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
+      fmha_buf.Resize(fmha_shape);
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
