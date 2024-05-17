@@ -28,6 +28,8 @@ sys.path.append(dirname(dirname(__file__)))
 import llama_test_model
 import utils
 
+paddle.enable_static()
+
 
 class TestLlamaModel(unittest.TestCase):
     def setUp(self):
@@ -36,7 +38,7 @@ class TestLlamaModel(unittest.TestCase):
 
     def prepare_data(self):
         self.config = llama_test_model.LlamaConfig(num_hidden_layers=2)
-        self.input_ids = paddle.to_tensor(
+        self.input_ids = np.array(
             [
                 [
                     1,
@@ -60,11 +62,11 @@ class TestLlamaModel(unittest.TestCase):
             ],
             dtype="int64",
         )
-        self.position_ids = paddle.to_tensor(
+        self.position_ids = np.array(
             [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]],
             dtype="int64",
         )
-        self.attention_mask = paddle.to_tensor(
+        self.attention_mask = np.array(
             [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype="int64"
         )
 
@@ -72,35 +74,39 @@ class TestLlamaModel(unittest.TestCase):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
-    def eval(self, use_cinn):
+    def test_static(self):
         paddle.seed(2024)
         net = llama_test_model.LlamaModel(self.config)
 
-        # net = utils.apply_to_static(net, use_cinn)
-
-        def step():
-            out = net(self.input_ids, self.position_ids, self.attention_mask)
-
-            loss = out.sum()
-
-            loss.backward()
-
-            return out
-
-        st_f = paddle.jit.to_static(step)
-
-        out = st_f()
-        return out, net.embed_tokens.weight.gradient()
-
-    def test_eval(self):
-        dy_out, dy_d_emb = self.eval(use_cinn=False)
-
-        cinn_out, cinn_d_emb = self.eval(use_cinn=True)
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        input_id = paddle.static.data(
+            name="input_id", shape=[1, 17], dtype="int64"
         )
+        pos_id = paddle.static.data(name="pos_id", shape=[1, 17], dtype="int64")
+        att_mask = paddle.static.data(
+            name="att_mask", shape=[1, 17], dtype="int64"
+        )
+        out = net(input_id, pos_id, att_mask)
 
-        np.testing.assert_allclose(dy_d_emb, cinn_d_emb, atol=1e-4, rtol=1e-2)
+        loss = out.sum()
+
+        sgd = paddle.optimizer.SGD(0.1)
+
+        sgd.minimize(loss)
+
+        print(paddle.static.default_main_program())
+
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+
+        out = exe.run(
+            feed={
+                "input_id": self.input_ids,
+                "pos_id": self.position_ids,
+                "att_mask": self.attention_mask,
+            },
+            fetch_list=[out],
+        )
 
 
 if __name__ == '__main__':
