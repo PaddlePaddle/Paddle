@@ -195,7 +195,7 @@ struct PirToPyCodeConverterHelper {
     if (!constraints_mgr.has_value()) return;
     const auto& broadcastables = constraints_mgr.value()->broadcastables();
     for (const auto& broadcastable : broadcastables) {
-      const auto& [lhs, rhs] = *broadcastable;
+      const auto& [lhs, rhs] = broadcastable;
       if (lhs == rhs) continue;
       DoEachBroadcastableCstr(lhs, rhs);
     }
