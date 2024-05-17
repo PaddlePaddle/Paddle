@@ -322,29 +322,88 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+template <typename T>
 struct HorizontalFusionConstrain {
-  template <typename T>
   bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& first,
-                  const PatternNodePtr<T>& second) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, first)) {
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, lhs)) {
       return false;
     }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, second)) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, rhs)) {
       return false;
     }
-    const auto& first_dim = first->sink_op()
-                                ->result(0)
-                                .type()
-                                .template dyn_cast<pir::DenseTensorType>()
-                                .dims();
-    const auto& second_dim = second->sink_op()
-                                 ->result(0)
-                                 .type()
-                                 .template dyn_cast<pir::DenseTensorType>()
-                                 .dims();
-    return graph.topo_manager().CanFuse(first, second) &&
-           first_dim == second_dim;
+    const auto& lhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
+    const auto& rhs_pattern =
+        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
+
+    return graph.topo_manager().CanFuse(lhs, rhs) &&
+           PatternDimMatch(lhs_pattern.patterns_.back(),
+                           rhs_pattern.patterns_.back());
+  }
+
+  const pir::DenseTensorType::Dim& GetInputDim(pir::Operation* op) {
+    return op->operand_source(0)
+        .type()
+        .template dyn_cast<pir::DenseTensorType>()
+        .dims();
+  }
+
+  const pir::DenseTensorType::Dim& GetOutputDim(pir::Operation* op) {
+    return op->result(0)
+        .type()
+        .template dyn_cast<pir::DenseTensorType>()
+        .dims();
+  }
+
+  template <template <typename> class LhsPattern,
+            template <typename>
+            class RhsPattern>
+  bool PatternDimMatchImpl(const LhsPattern<T>& lhs, const RhsPattern<T>& rhs) {
+    VLOG(4) << "Horizontal Fusion failed with default pattern lhs = "
+            << lhs.name() << ", rhs = " << rhs.name();
+    return false;
+  }
+
+  bool PatternDimMatchImpl(const TrivialPattern<T>& lhs,
+                           const TrivialPattern<T>& rhs) {
+    VLOG(4) << "Horizontal Fusion between TrivialPattern";
+    return GetOutputDim(lhs.ops().back()) == GetOutputDim(rhs.ops().back());
+  }
+
+  bool PatternDimMatchImpl(const ReduceTreePattern<T>& lhs,
+                           const ReduceTreePattern<T>& rhs) {
+    VLOG(4) << "Horizontal Fusion between ReduceTreePattern";
+    const auto& lhs_op = lhs.GetRootPattern().GetReduceOp();
+    const auto& rhs_op = rhs.GetRootPattern().GetReduceOp();
+    return GetOutputDim(lhs_op) == GetOutputDim(rhs_op) &&
+           GetInputDim(lhs_op) == GetInputDim(rhs_op);
+  }
+
+  bool PatternDimMatchImpl(const ReduceTreePattern<T>& lhs,
+                           const ReduceTreePlusTrivialPattern<T>& rhs) {
+    VLOG(4) << "Horizontal Fusion between ReduceTreePattern and "
+               "ReduceTreePlusTrivialPattern";
+    const auto& lhs_op = lhs.GetRootPattern().GetReduceOp();
+    const auto& rhs_op = rhs.tree.GetRootPattern().GetReduceOp();
+    return GetOutputDim(lhs_op) == GetOutputDim(rhs_op) &&
+           GetInputDim(lhs_op) == GetInputDim(rhs_op);
+  }
+
+  bool PatternDimMatchImpl(const ReduceTreePlusTrivialPattern<T>& lhs,
+                           const ReduceTreePattern<T>& rhs) {
+    return PatternDimMatchImpl(rhs, lhs);
+  }
+
+  bool PatternDimMatch(const StmtPattern<T>& lhs_pattern,
+                       const StmtPattern<T>& rhs_pattern) {
+    return std::visit(
+        [&](const auto& lhs, const auto& rhs) {
+          return PatternDimMatchImpl(lhs, rhs);
+        },
+        lhs_pattern.variant(),
+        rhs_pattern.variant());
   }
 };
 

@@ -99,14 +99,17 @@ void PatternGraph<T>::ReduceLiftReduceTree() {
 
 template <typename T>
 void PatternGraph<T>::HorizontalFusion() {
-  GraphTransformer<NodePattern,
-                   T,
-                   StmtPatternGraphMatcher<TrivialPattern<T>>,
-                   LiftToHorizontalFusionPatternOperation>(this);
+  GraphTransformer<
+      NodePattern,
+      T,
+      Or<Or<StmtPatternGraphMatcher<TrivialPattern<T>>,
+            StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>>,
+         StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
+      LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,
                    T,
-                   HorizontalFusionConstrain,
+                   HorizontalFusionConstrain<T>,
                    HorizontalFusionOperation>(this);
 }
 
