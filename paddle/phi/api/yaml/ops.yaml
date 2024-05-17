@@ -882,6 +882,8 @@
     func: dgc_momentum
     data_type: param
   optional : master_param, master_param_out
+  data_transform :
+    skip_transform : current_step_tensor, nranks_tensor
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
