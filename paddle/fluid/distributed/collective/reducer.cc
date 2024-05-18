@@ -685,9 +685,9 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   for (const auto &it : gradnode_index_map_) {
     if (visited.count(it.first) == 0) {
       unused_vars_.push_back(it.second);
-      VLOG(3) << "[Rank " << process_group_->GetRank() << "]: " << "Tensor "
-              << tensors_[it.second].name() << " at index " << it.second
-              << " is marked as unused.";
+      VLOG(3) << "[Rank " << process_group_->GetRank() << "]: "
+              << "Tensor " << tensors_[it.second].name() << " at index "
+              << it.second << " is marked as unused.";
     }
   }
 }
@@ -1030,8 +1030,8 @@ void EagerReducer::ProcessUnusedDenseVars() {
     const bool global_unused = (local_used_vars_[var_index] == 0);
 
     // global used but local unused, set grad
-    VLOG(3) << "[Rank " << process_group_->GetRank() << "]: " << "Var ["
-            << var_index << "] [" << tensors_[var_index].name()
+    VLOG(3) << "[Rank " << process_group_->GetRank() << "]: "
+            << "Var [" << var_index << "] [" << tensors_[var_index].name()
             << "] global_unused: " << global_unused
             << "  has grad: " << HasGrad(var_index);
 
