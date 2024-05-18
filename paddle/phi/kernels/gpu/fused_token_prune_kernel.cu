@@ -29,7 +29,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/phi/kernels/funcs/fused_token_prune_op.cu.h"
+#include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 
 namespace phi {
 
