@@ -32,7 +32,7 @@ std::shared_ptr<RpcAgent> RpcAgent::rpc_agent_instance_ = nullptr;
 
 RpcAgent::RpcAgent(std::string name, std::vector<WorkerInfo> infos) {
   name_ = std::move(name);
-  for (auto info : infos) {
+  for (const auto &info : infos) {
     name_to_infos_.insert({info.name_, info});
     id_to_infos_.insert({info.id_, info});
   }
@@ -100,8 +100,7 @@ void OnRpcDone::Run() {
   promise_->set_value(response_.message());
   VLOG(2) << "Received response from " << cntl_.remote_side() << " to "
           << cntl_.local_side() << " (attached=" << cntl_.response_attachment()
-          << ")"
-          << " latency=" << cntl_.latency_us() << "us";
+          << ")" << " latency=" << cntl_.latency_us() << "us";
 }
 
 std::future<std::string> RpcAgent::InvokeRpc(const std::string &py_func,

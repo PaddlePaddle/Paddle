@@ -228,7 +228,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
       },
       [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
         symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
-        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
+        for (const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data :
              tensor_list) {
           simplified_tensor_list.push_back(
               TensorShapeOrDataVisitor(tensor_shape_or_data));
