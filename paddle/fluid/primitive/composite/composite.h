@@ -600,7 +600,7 @@ std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
   if (axis < 0) {
     axis = x.shape().size() + axis;
   }
-  int num = x.shape()[axis];
+  size_t num = x.shape()[axis];
   std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
   std::vector<int64_t> reshape_tmp;
   for (size_t i = 0; i < x.shape().size(); i++) {
