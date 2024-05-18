@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
