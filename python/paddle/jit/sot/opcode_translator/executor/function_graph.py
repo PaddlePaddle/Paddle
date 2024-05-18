@@ -192,12 +192,7 @@ class FunctionGraph:
         ],
     )
 
-    def __init__(
-        self,
-        frame,
-        # *,
-        **kwargs,
-    ):
+    def __init__(self, frame, **kwargs):
         self.sir_ctx = SymbolicTraceContext()
         self.inner_out = set()
         self.input_variables = []  # Store variables required within a function
