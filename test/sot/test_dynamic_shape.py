@@ -30,8 +30,8 @@ def foo(x):
     return x + s
 
 
-def bar(x, n):
-    return x + n
+def dynamic_int_input_func(x, n):
+    return (x + n) * 2 - 1, (n + 1) * 2 - 1
 
 
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
@@ -39,15 +39,15 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         with with_allow_dynamic_shape_guard(
             True
         ), test_instruction_translator_cache_context() as ctx:
-            self.assert_results(bar, paddle.randn([2, 3]), 1)
+            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 1)
             self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(bar, paddle.randn([2, 3]), 2)
+            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 2)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(bar, paddle.randn([2, 3]), 3)
+            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 3)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(bar, paddle.randn([2, 3]), 4)
+            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 4)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(bar, paddle.randn([2, 3]), 5)
+            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 5)
             self.assertEqual(ctx.translate_count, 2)
 
 
