@@ -19,29 +19,10 @@
 #include "paddle/phi/kernels/flatten_grad_kernel.h"
 #include "paddle/phi/kernels/flatten_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/flatten2_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
-static std::vector<int32_t> GetOutputShape(const int axis,
-                                           const phi::DDim &in_dims) {
-  if (in_dims.size() == 0) {
-    return {1};
-  }
-
-  int64_t outer = 1, inner = 1;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    if (i < axis) {
-      outer *= in_dims[i];
-    } else {
-      inner *= in_dims[i];
-    }
-  }
-  std::vector<int32_t> out_shape(2);
-  out_shape[0] = outer;
-  out_shape[1] = inner;
-  return out_shape;
-}
 
 template <typename T, typename Context>
 void Flatten2Kernel(const Context &dev_ctx,
@@ -54,7 +35,7 @@ void Flatten2Kernel(const Context &dev_ctx,
   auto *in = &x;
   auto x_dims = in->dims();
 
-  auto out_dims = common::make_ddim(GetOutputShape(axes, x_dims));
+  auto out_dims = common::make_ddim(phi::funcs::GetOutputShape(axes, x_dims));
 
   dev_ctx.Alloc(out, x.dtype());
   phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
