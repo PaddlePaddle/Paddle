@@ -11,15 +11,13 @@ set(op_gen_file
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 
 # YAML files for defining operators
-set(op_fwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/ops.parsed.yaml)
+set(op_fwd_yaml ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/ops.parsed.yaml)
 set(op_bwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/backward_ops.parsed.yaml)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/backward_ops.parsed.yaml)
 set(fused_op_fwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_ops.parsed.yaml)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/fused_ops.parsed.yaml)
 set(fused_op_bwd_yaml
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_backward.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/fused_backward.parsed.yaml)
 set(pir_op_fwd_src_yaml ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/ops.yaml)
 set(pir_op_bwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/ops_backward.yaml)
