@@ -26,12 +26,27 @@ namespace cinn::dialect::ir {
 
 class PirToPyCodeConverter {
  public:
-  PirToPyCodeConverter() = default;
+  explicit PirToPyCodeConverter(pir::Program* program)
+      : program_(program), file_name_(), dump_symbolic_shape_(true) {}
   PirToPyCodeConverter(const PirToPyCodeConverter&) = delete;
   PirToPyCodeConverter(PirToPyCodeConverter&&) = delete;
 
-  void SaveIfFlagEnabled(const std::string& tag,
-                         const pir::Program& program) const;
+  PirToPyCodeConverter& file_name(const std::string& file_name) {
+    file_name_ = file_name;
+    return *this;
+  }
+
+  PirToPyCodeConverter& dump_symbolic_shape(bool val) {
+    dump_symbolic_shape_ = val;
+    return *this;
+  }
+
+  void SaveIfFlagEnabled() const;
+
+ private:
+  pir::Program* program_;
+  std::string file_name_;
+  bool dump_symbolic_shape_;
 };
 
 }  // namespace cinn::dialect::ir
