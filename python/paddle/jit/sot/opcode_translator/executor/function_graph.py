@@ -105,9 +105,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, TensorVariable):
-            return x.get_symbol()
-        if isinstance(x, SymbolicIntVariable):
+        if isinstance(x, (TensorVariable, SymbolicIntVariable)):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
