@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/cross_entropy_op.h"
 #include "paddle/phi/common/float16.h"
 
-namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 PD_REGISTER_STRUCT_KERNEL(cross_entropy,

@@ -22,6 +22,9 @@ import paddle.pir.core as ir_static
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.distributed.auto_parallel.placement_type import (
+    to_placements,
+)
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -187,8 +190,11 @@ class FunctionSpec:
 
                     if isinstance(var_spec, DistributedInputSpec):
                         # paddle.distributed.shard_tensor(feed_value)
+                        placements = to_placements(
+                            var_spec.dims_mapping, var_spec
+                        )
                         dist_feed_value = paddle._pir_ops.shard_tensor(
-                            feed_value, var_spec.mesh, var_spec.dims_mapping
+                            feed_value, var_spec.mesh, placements
                         )
                         inputs.append(dist_feed_value)
                         # dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(

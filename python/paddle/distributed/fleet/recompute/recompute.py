@@ -530,7 +530,7 @@ def recompute(function, *args, **kwargs):
         check_recompute_necessary(check_args)
 
     if use_reentrant:
-        input_args = args
+        input_args = []
         # rearrange `position-args + keyword-args` into `position-args`
         if isinstance(function, paddle.nn.Layer):
             dyfunc_sig = inspect.signature(function.forward)
@@ -539,7 +539,26 @@ def recompute(function, *args, **kwargs):
 
         bound_args = dyfunc_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
-        input_args = list(bound_args.arguments.values())
+
+        for arg, param in zip(
+            bound_args.arguments.values(), dyfunc_sig.parameters.values()
+        ):
+            if param.kind == param.VAR_POSITIONAL:
+                input_args.extend(arg)
+            elif param.kind in (
+                param.POSITIONAL_ONLY,
+                param.POSITIONAL_OR_KEYWORD,
+            ):
+                input_args.append(arg)
+            elif param.kind == param.VAR_KEYWORD:
+                input_args.extend(arg.values())
+            elif param.kind == param.KEYWORD_ONLY:
+                raise ValueError(
+                    "Currently, keyword-only arguments are not supported when you want to send kwargs(dict parameter) to function with use_reentrant=True."
+                )
+            else:
+                raise ValueError("Unknown parameter kind.")
+
         return RecomputeFunction.apply(function, preserve, *input_args)
     else:
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)

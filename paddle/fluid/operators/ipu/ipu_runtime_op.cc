@@ -29,8 +29,7 @@ class IpuRuntimeOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const {
+  void RunImpl(const framework::Scope& scope, const phi::Place& place) const {
     auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);

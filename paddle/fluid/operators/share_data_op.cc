@@ -62,7 +62,7 @@ Return a tensor $Out$ that shares data with the input tensor $X$ and without ten
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(
     share_data,
     ops::ShareDataOp,

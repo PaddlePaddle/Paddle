@@ -53,7 +53,7 @@ class Fused2EmbeddingEltwiseLayernormPattern
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
 
-    pat.RequireNativeCall([](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
       auto w2_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w2"));
       if (w1_dtype != w2_dtype || (!w1_dtype.isa<pir::Float16Type>() &&
@@ -142,7 +142,7 @@ class Fused3EmbeddingEltwiseLayernormPattern
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
 
-    pat.RequireNativeCall([](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
       auto w2_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w2"));
       auto w3_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w3"));

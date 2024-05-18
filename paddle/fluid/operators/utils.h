@@ -39,18 +39,18 @@ inline std::vector<T> GetDataFromTensorList(
 
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
-      if (!platform::is_cpu_place(tensor->place())) {
+      if (!(tensor->place().GetType() == phi::AllocationType::CPU)) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
       } else {
         vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
       }
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
-      if (!platform::is_cpu_place(tensor->place())) {
+      if (!(tensor->place().GetType() == phi::AllocationType::CPU)) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
         vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
       } else {
@@ -66,7 +66,7 @@ inline std::vector<T> GetDataFromTensorList(
   return vec_new_data;
 }
 
-inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
+inline phi::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
@@ -89,9 +89,9 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
 template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
-  if (!platform::is_cpu_place(x->place())) {
+  if (!(x->place().GetType() == phi::AllocationType::CPU)) {
     phi::DenseTensor cpu_x;
-    framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
+    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     const platform::DeviceContext* dev_ctx = pool.Get(x->place());

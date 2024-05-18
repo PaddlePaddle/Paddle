@@ -15,10 +15,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
@@ -31,9 +31,9 @@ struct DequantizeFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor *scale,
                   T max_range,
                   phi::DenseTensor *out) {
-    auto in_e = framework::EigenVector<T>::Flatten(*in);
+    auto in_e = phi::EigenVector<T>::Flatten(*in);
     const T *scale_factor = scale->data<T>();
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
+    auto out_e = phi::EigenVector<T>::Flatten(*out);
 
     auto &dev = *dev_ctx.eigen_device();
     out_e.device(dev) = in_e * scale_factor[0] / max_range;
@@ -58,8 +58,8 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
         T s = scale_factor[i];
         phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
         phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
-        auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+        auto in_e = phi::EigenVector<T>::Flatten(one_channel_in);
+        auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
         auto &dev = *dev_ctx.eigen_device();
         out_e.device(dev) = in_e * s / max_range;
       }

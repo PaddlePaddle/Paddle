@@ -17,7 +17,7 @@
 #include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
                           GPU,
                           ALL_LAYOUT,

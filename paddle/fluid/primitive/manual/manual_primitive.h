@@ -30,5 +30,10 @@ Tensor full(const IntArray& shape,
   return backend::full<T>(shape, value, dtype, place);
 }
 
+template <typename T>
+Tensor assign_out_(const Tensor& x, const Tensor& output) {
+  return backend::assign_out_<T>(x, output);
+}
+
 }  // namespace primitive
 }  // namespace paddle

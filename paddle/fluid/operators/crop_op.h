@@ -16,8 +16,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
@@ -28,7 +28,7 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
@@ -57,11 +57,11 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                                      rank));
     const int* offsets_data;
     phi::DenseTensor cpu_tmp_tensor;
-    if (platform::is_cpu_place(offsets_tensor->place())) {
+    if (offsets_tensor->place().GetType() == phi::AllocationType::CPU) {
       offsets_data = offsets_tensor->data<int>();
     } else {
       framework::TensorCopySync(
-          *offsets_tensor, platform::CPUPlace(), &cpu_tmp_tensor);
+          *offsets_tensor, phi::CPUPlace(), &cpu_tmp_tensor);
       offsets_data = cpu_tmp_tensor.data<int>();
     }
     res = std::vector<int>(offsets_data, offsets_data + rank);

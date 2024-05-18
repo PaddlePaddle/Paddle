@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../deprecated/legacy_test")
 from test_lrn_op import TestLRNOp
 
 

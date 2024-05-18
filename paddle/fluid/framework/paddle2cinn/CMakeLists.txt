@@ -15,7 +15,6 @@ set(paddle2cinn_deps
     cinn_framework_proto
     schedule_desc_proto
     auto_schedule_proto
-    parallel_executor
     common)
 if(WITH_ONEDNN)
   set(paddle2cinn ${paddle2cinn} onednn)

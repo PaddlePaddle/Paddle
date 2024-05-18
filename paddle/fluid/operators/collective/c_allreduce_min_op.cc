@@ -41,7 +41,6 @@ DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceMin, kRedMin)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_min,
                              ops::CAllReduceOp,

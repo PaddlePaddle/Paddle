@@ -295,5 +295,37 @@ inline void FCOutputSize(const DDim &in_dims,
   out_dims.push_back(w_dims1);
 }
 
+inline std::vector<int64_t> GetReduceDims(const DenseTensor &in,
+                                          const DenseTensor &out) {
+  std::vector<int64_t> reduce_dims;
+  auto in_dims = in.dims();
+  auto out_dims = out.dims();
+  int diff = in_dims.size() - out_dims.size();
+  for (int i = 0; i < diff; ++i) {
+    reduce_dims.push_back(i);
+  }
+  for (int i = 0; i < out_dims.size(); ++i) {
+    if (out_dims[i] == 1 && in_dims[i + diff] != 1) {
+      reduce_dims.push_back(i + diff);
+    } else {
+      PADDLE_ENFORCE_EQ(
+          in_dims[i + diff],
+          out_dims[i],
+          phi::errors::InvalidArgument(
+              "ReduceDims dimension mismatch. Operands could "
+              "not be broadcast together with the shape of in_dims = [%s] and "
+              "the shape of out_dims = [%s]. Received [%d] in X is not equal "
+              "to "
+              "[%d] in Y at i:%d.",
+              in_dims,
+              out_dims,
+              in_dims[i + diff],
+              out_dims[i],
+              i));
+    }
+  }
+  return reduce_dims;
+}
+
 }  // namespace funcs
 }  // namespace phi

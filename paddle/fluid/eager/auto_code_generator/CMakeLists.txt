@@ -97,7 +97,7 @@ if(WIN32)
     message("Copied mkldnn.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/mkldnn.dll
-      COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
               ${eager_generator_path}
       DEPENDS onednn)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)

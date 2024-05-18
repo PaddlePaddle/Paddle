@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ class TestUnsqueezeOp(OpTest):
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.ori_shape).astype("float64"),
         }
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.if_enable_cinn()
 
     def if_enable_cinn(self):
@@ -46,7 +46,6 @@ class TestUnsqueezeOp(OpTest):
     def test_check_output(self):
         self.check_output(
             no_check_set=["XShape"],
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -55,7 +54,6 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(
             ["X"],
             "Out",
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -99,6 +97,22 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+# Test for output rank=7
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (1, 2, 3, 4)
+        self.new_shape = (10, 1, 1, 1, 1, 2, 5)
+
+
+# Test for output rank=8
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = (1, 2, 3, 4, 5)
+        self.new_shape = (10, 1, 1, 1, 1, 1, 2, 5)
 
 
 class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):

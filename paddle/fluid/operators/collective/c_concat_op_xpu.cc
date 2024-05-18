@@ -67,7 +67,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_XPU_BKCL)
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.Resize(temp_out_dims);
     dev_ctx.template Alloc(&temp_out, x->dtype());
@@ -160,7 +160,6 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_concat,
                           XPU,
@@ -169,5 +168,5 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           float,
                           int,
                           int64_t,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

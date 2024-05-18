@@ -14,6 +14,7 @@ set(TEST_IR_SYSTEM_CASES
     test_symbol_overload
     test_pir_to_static
     test_stop_gradient
+    test_cse_pass
     test_override_operator)
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 list(REMOVE_ITEM TEST_INTERP_CASES test_subgraph_exporter)
@@ -40,5 +41,3 @@ py_test_modules(
   FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(fused_pass)
-
-add_subdirectory(translator)

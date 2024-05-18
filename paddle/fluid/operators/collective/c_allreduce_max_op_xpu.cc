@@ -21,7 +21,7 @@ DEFINE_C_ALLREDUCE_XPU_KERNEL(CAllReduceMax, kRedMax)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_max,
                           XPU,
                           ALL_LAYOUT,

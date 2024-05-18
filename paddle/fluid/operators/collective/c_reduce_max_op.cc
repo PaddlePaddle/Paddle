@@ -39,7 +39,6 @@ DEFINE_C_REDUCE_CPU_KERNEL(CReduceMax, kRedMax)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_reduce_max,
                              ops::CReduceOp,
