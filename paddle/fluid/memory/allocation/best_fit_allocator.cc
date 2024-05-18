@@ -181,11 +181,12 @@ phi::Allocation* BestFitAllocator::AllocateImpl(size_t size) {
 BestFitAllocation::BestFitAllocation(
     paddle::memory::allocation::BestFitAllocator* allocator,
     typename details::ChunkList::iterator chunk_it)
-    : chunk_it_(chunk_it) {
-  uintptr_t ptr =
-      reinterpret_cast<uintptr_t>(allocator->BasePtr()) + chunk_it->offset_;
-  Allocation(reinterpret_cast<void*>(ptr), chunk_it->size_, allocator->Place());
-}
+    : Allocation(reinterpret_cast<void*>(
+                     reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
+                     chunk_it->offset_),
+                 chunk_it->size_,
+                 allocator->Place()),
+      chunk_it_(chunk_it) {}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
