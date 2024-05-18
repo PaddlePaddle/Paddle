@@ -243,7 +243,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
         dev_ctx.stream()));
     temp_size = temp_storage_bytes;
     temp_storage.Resize({temp_size});
-    temp_storage_data = temp_storage.mutable_data<uint8_t>(dev_ctx.GetPlace());
+    temp_storage_data = dev_ctx.template Alloc<uint8_t>(&temp_storage);
     PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortKeys(
         temp_storage_data,
         temp_storage_bytes,
