@@ -101,8 +101,10 @@ OTHER_PRIM_VJP_OPS = [
     'scatter_grad',
     'scatter_nd_add_grad',
     'slice_grad',
+    'squeeze_grad',
     'tile_grad',
     'topk_grad',
+    'unsqueeze_grad',
 ]
 
 # whole vjp list of primitive op vjp
@@ -117,6 +119,7 @@ CUSTOM_VJP = [
     'instance_norm_grad',
     'layer_norm_grad',
     'leaky_relu_grad',
+    'mean_grad',
     'minimum_grad',
     'pow_grad',
     'relu_grad',

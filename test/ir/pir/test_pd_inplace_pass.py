@@ -42,8 +42,8 @@ class TestPdInplacePass(unittest.TestCase):
                 )
 
 
-class TestInputsHasBeenModified(unittest.TestCase):
-    def test_inputs_has_been_modified(self):
+class TestInputsHasBeenInplaced(unittest.TestCase):
+    def test_inputs_has_been_inplaced(self):
         place = paddle.framework.core.Place()
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()

@@ -1448,6 +1448,11 @@ PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
                            "the logging directory to save pir py code");
 
+PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
+                         true,
+                         "whether truncate the logging files under directory "
+                         "FLAGS_logging_pir_py_code_dir");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
@@ -1658,6 +1663,31 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether to use check_infer_symbolic_pass. This pass can check "
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
+
+/**
+ * Apply CSE optimize pass in Dy2St
+ * Name: enable_cse_in_dy2st
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply CSE optimize pass in Dy2St.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
+                         false,
+                         "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Max count of eliminate redundant computation in CSE, for debug usage
+ * Name: cse_max_count
+ * Since Version: 3.0.0
+ * Value Range: int32, default=-1
+ * Example:
+ * Note: If -1, will not limit the max count of eliminate redundant computation.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    cse_max_count,
+    -1,
+    "Max count of eliminate redundant computation in CSE, for debug usage");
 
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
