@@ -52,7 +52,7 @@ class CompiledProgram {
                                     const std::string &loss_var_name,
                                     Scope *scope,
                                     const std::vector<Scope *> &local_scopes,
-                                    const ExecutionStrategy &exec_strategy,
+                                    // const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy,
                                     ir::Graph *graph);
 
@@ -66,8 +66,7 @@ class CompiledProgram {
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
 
-  void InitProgramPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
-                                    const BuildStrategy &build_strategy,
+  void InitProgramPrivateMemberInfo(const BuildStrategy &build_strategy,
                                     size_t device_count);
 
   void CreateLocalScopes(Scope *global_scope,

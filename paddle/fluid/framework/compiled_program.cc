@@ -329,7 +329,7 @@ class CompiledProgramPrivate {
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
-  DeviceType use_device_;
+  DeviceType use_device_ = p::kCUDA;
   bool use_all_reduce_;
   size_t nranks_;
 
@@ -551,7 +551,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
                                  const std::string &loss_var_name,
                                  Scope *scope,
                                  const std::vector<Scope *> &local_scopes,
-                                 const ExecutionStrategy &exec_strategy,
+                                 //  const ExecutionStrategy &exec_strategy,
                                  const BuildStrategy &build_strategy,
                                  ir::Graph *graph)
     : member_(new CompiledProgramPrivate(places, scope)) {
@@ -563,7 +563,7 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
-  InitProgramPrivateMemberInfo(exec_strategy, build_strategy, places.size());
+  InitProgramPrivateMemberInfo(build_strategy, places.size());
 
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -760,10 +760,10 @@ CompiledProgram::~CompiledProgram() {
 }
 
 void CompiledProgram::InitProgramPrivateMemberInfo(
-    const ExecutionStrategy &exec_strategy,
+    // const ExecutionStrategy &exec_strategy,
     const BuildStrategy &build_strategy,
     size_t device_count) {
-  member_->use_device_ = exec_strategy.use_device_;
+  // member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
@@ -810,13 +810,6 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
         platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
                                       "please use CPU/CUDA/XPU backend."));
   }
-
-  VLOG(1) << string::Sprintf(
-      "The Program will be executed on %s using ParallelExecutor, %lu "
-      "cards are used, so %lu programs are executed in parallel.",
-      device_name,
-      device_count,
-      device_count);
 }
 void CompiledProgram::CreateLocalScopes(
     Scope *global_scope,

@@ -188,13 +188,13 @@ using namespace paddle::framework;               // NOLINT
 void BindCompiledProgram(pybind11::module &m) {  // NOLINT
   // -- python binds for compiled_program.
   py::class_<CompiledProgram> cp(m, "CompiledProgram");
-  py::class_<ExecutionStrategy> exec_strategy(cp, "ExecutionStrategy");
+  // py::class_<ExecutionStrategy> exec_strategy(cp, "ExecutionStrategy");
 
   py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
       .value("CPU", paddle::platform::DeviceType::CPU)
       .value("CUDA", paddle::platform::DeviceType::CUDA)
       .value("XPU", paddle::platform::DeviceType::XPU);
-  exec_strategy.def(py::init())
+  /* exec_strategy.def(py::init())
       .def_property(
           "num_threads",
           [](const ExecutionStrategy &self) { return self.num_threads_; },
@@ -251,7 +251,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
       [](ExecutionStrategy &self, bool experimental) {
         self.type_ = experimental ? ExecutionStrategy::kExperimental
                                   : ExecutionStrategy::kDefault;
-      });
+      }); */
 
   py::class_<BuildStrategy> build_strategy(cp, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to
@@ -1067,7 +1067,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                   const std::string &,
                   Scope *,
                   std::vector<Scope *> &,
-                  const ExecutionStrategy &,
+                  // const ExecutionStrategy &,
                   const BuildStrategy &,
                   ir::Graph *>())
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
