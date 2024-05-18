@@ -400,6 +400,8 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
+      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
+      // q,k,v,out all in 3-D [token_num, num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
       fmha_buf.Resize({token_num, num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
@@ -422,6 +424,7 @@ void DispatchWithDtype(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
+      // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
     } else {
       qkv_transpose_split<T>(
