@@ -24,6 +24,8 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
@@ -135,8 +137,8 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   // 1. Filter attn by mask
   std::vector<const phi::DenseTensor*> ins;
   std::vector<phi::DenseTensor*> outs;
-  ins.emplace_back(attn);
-  ins.emplace_back(mask);
+  ins.emplace_back(&attn);
+  ins.emplace_back(&mask);
   outs.emplace_back(&attn_tmp);
   phi::funcs::LaunchElementwiseCudaKernel<T>(
       dev_ctx, ins, &outs, AttnMaskFunctor<T>());
@@ -241,7 +243,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
         dev_ctx.stream()));
     temp_size = temp_storage_bytes;
     temp_storage.Resize({temp_size});
-    temp_storage_data = temp_storage.mutable_data<uint8_t>(context.GetPlace());
+    temp_storage_data = temp_storage.mutable_data<uint8_t>(dev_ctx.GetPlace());
     PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortKeys(
         temp_storage_data,
         temp_storage_bytes,
@@ -257,7 +259,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   } else {
     phi::Copy(dev_ctx,
               slimmed_indices_tmp,
-              context.GetPlace(),
+              dev_ctx.GetPlace(),
               false,
               slimmed_indices);
   }
@@ -266,7 +268,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * slimmed_x_len);
   TakeAlongAxis<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          x->data<T>(),
+          x.data<T>(),
           out_slimmed_x_data,
           slimmed_indices->data<int64_t>(),
           bsz,
