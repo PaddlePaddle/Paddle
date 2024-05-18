@@ -189,7 +189,9 @@ class ZipVariable(SequenceIterVariable):
 
     @staticmethod
     def from_iterator(
-        value: list[VariableBase], graph: FunctionGraph | None, tracker: Tracker
+        value: list[VariableBase] | tuple[VariableBase, ...],
+        graph: FunctionGraph | None,
+        tracker: Tracker,
     ):
         assert isinstance(value, (list, tuple))
         zip_targets = []
