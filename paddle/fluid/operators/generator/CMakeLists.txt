@@ -66,7 +66,7 @@ install_py_pyyaml()
 install_py_jinja2()
 
 # parse ops
-set(parsed_op_dir ${CMAKE_BINARY_DIR}/paddle/phi/ops/yaml/generated)
+set(parsed_op_dir ${CMAKE_BINARY_DIR}/paddle/phi/ops/yaml)
 set(generated_op_path_1
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op1.cc)
 set(generated_op_path_2
