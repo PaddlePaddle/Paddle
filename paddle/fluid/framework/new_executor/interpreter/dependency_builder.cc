@@ -398,8 +398,9 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   }
 
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
-  VLOG(8) << "Add dependency from " << "prior_op_idx(" << prior_op_idx
-          << ") to " << "posterior_op_idx(" << posterior_op_idx << ")";
+  VLOG(8) << "Add dependency from "
+          << "prior_op_idx(" << prior_op_idx << ") to "
+          << "posterior_op_idx(" << posterior_op_idx << ")";
 }
 
 void DependencyBuilder::BuildDownstreamMap() {
@@ -683,8 +684,8 @@ void PirDependencyBuilder::BuildDownstreamMap() {
 
   auto op2dependences =
       std::map<size_t,
-               std::set<size_t>>();  // # map from op to the dependence list,
-                                     //  op must run after the dependence.
+               std::set<size_t>>();  //# map from op to the dependence list,
+                                     // op must run after the dependence.
   std::set<size_t>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 
@@ -822,7 +823,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
         ss << " ] before { ";
         for (auto index : it.second) {
           auto& op = ops[index];
-          ss << "(" << op->Type() << "_" << index << " ) " << " inputs [  ";
+          ss << "(" << op->Type() << "_" << index << " ) "
+             << " inputs [  ";
           for (auto& name_pair : op->Inputs()) {
             for (auto& name : name_pair.second) {
               ss << name << " ";
@@ -893,8 +895,8 @@ void DependencyBuilderSimplify::BuildDownstreamMap() {
                size_t>();  // # map from variable to recent write op.
   auto op2dependences =
       std::map<size_t,
-               std::set<size_t>>();  // # map from op to the dependence list,
-                                     //  op must run after the dependence.
+               std::set<size_t>>();  //# map from op to the dependence list,
+                                     // op must run after the dependence.
   std::set<std::string>
       remove_duplicate;  // remove the duplicate between inputs and outputs
 

@@ -246,7 +246,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
-        VLOG(3) << "[ncclAllReduce] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[ncclAllReduce] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -308,7 +309,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        VLOG(3) << "[AllToAll] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[AllToAll] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -354,7 +356,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
   phi::DenseTensor barrier_tensor{allocator.get(), meta};
 
-  VLOG(3) << "[Barrier] " << "barrier opt: " << opts.device_id;
+  VLOG(3) << "[Barrier] "
+          << "barrier opt: " << opts.device_id;
 
   auto task = AllReduce(&barrier_tensor,
                         barrier_tensor,
@@ -378,7 +381,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
 
-        VLOG(3) << "[ncclBroadcast] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[ncclBroadcast] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -406,7 +410,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
-        VLOG(3) << "[ncclReduce] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[ncclReduce] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -440,7 +445,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
-        VLOG(3) << "[ncclReduceScatter] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[ncclReduceScatter] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -484,7 +490,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
               comm_context->GetNcclComm());
         }
 
-        VLOG(3) << "[Scatter] " << "sendbuff: " << tensor_tmp.data()
+        VLOG(3) << "[Scatter] "
+                << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
@@ -568,7 +575,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
           comm_context->GetNcclComm());
     }
 
-    VLOG(3) << "[Gather] " << "sendbuff: " << tensor_tmp.data()
+    VLOG(3) << "[Gather] "
+            << "sendbuff: " << tensor_tmp.data()
             << ", count: " << tensor_tmp.numel() << ", datatype: "
             << NCCLDTypeToString(phi::ToNCCLDataType(tensor_tmp.dtype()))
             << ", root: " << opts.root_rank
@@ -611,7 +619,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
       [&](phi::distributed::NCCLCommContext* comm_context,
           gpuStream_t stream,
           int rank_in_group) {
-        VLOG(3) << "[ncclRecv] " << "recvbuff: " << tensor->data()
+        VLOG(3) << "[ncclRecv] "
+                << "recvbuff: " << tensor->data()
                 << ", count: " << tensor->numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor->dtype()))
                 << ", src_in_group: " << src_rank
@@ -648,7 +657,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
       [&](phi::distributed::NCCLCommContext* comm_context,
           gpuStream_t stream,
           int rank_in_group) {
-        VLOG(3) << "[ncclSend] " << "sendbuff: " << tensor_maybe_partial.data()
+        VLOG(3) << "[ncclSend] "
+                << "sendbuff: " << tensor_maybe_partial.data()
                 << ", count: " << tensor_maybe_partial.numel() << ", datatype: "
                 << NCCLDTypeToString(
                        phi::ToNCCLDataType(tensor_maybe_partial.dtype()))
