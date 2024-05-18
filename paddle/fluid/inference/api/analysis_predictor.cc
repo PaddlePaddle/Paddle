@@ -362,7 +362,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 
 AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
     : config_(config),
-      fusion_statis_(nullptr),
+      fusion_statis_(),
       executor_(nullptr),
       feeds_(),
       feed_names_(),
