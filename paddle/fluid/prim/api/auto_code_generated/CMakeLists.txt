@@ -91,7 +91,7 @@ set(tmp_eager_tensor_operants_h_path ${eager_tensor_operants_h_path}.tmp)
 set(tmp_static_tensor_operants_cc_path ${static_tensor_operants_cc_path}.tmp)
 set(tmp_static_tensor_operants_h_path ${static_tensor_operants_h_path}.tmp)
 set(tensor_api_yaml_path
-    ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/tensor_operants.yaml)
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.yaml)
 
 message("Prim tensor operants code generator")
 execute_process(

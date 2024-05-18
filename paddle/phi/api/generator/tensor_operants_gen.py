@@ -778,7 +778,7 @@ def main():
     parser.add_argument(
         '--tensor_api_yaml_path',
         help='path to tensor_api yaml file',
-        default='paddle/phi/ops/yaml/tensor_operants.yaml',
+        default='paddle/phi/api/lib/tensor_operants.yaml',
     )
 
     options = parser.parse_args()
