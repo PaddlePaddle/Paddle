@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/impl/flatten2_kernel_impl.h"
 
 PD_REGISTER_KERNEL(flatten2,
-                   GPU,
+                   XPU,
                    ALL_LAYOUT,
                    phi::Flatten2Kernel,
                    float,
