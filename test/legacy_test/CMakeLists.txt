@@ -1014,6 +1014,7 @@ set(STATIC_BUILD_TESTS
     test_sparse_pooling_op
     test_sync_batch_norm_op
     test_unique
+    test_shuffle_batch_op
     test_update_loss_scaling_op
     test_segment_ops
     test_while_op)
