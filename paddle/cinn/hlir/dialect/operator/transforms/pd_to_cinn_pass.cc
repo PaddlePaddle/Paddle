@@ -794,7 +794,8 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
                 {"dtype", pattern.Attr("uniform_dtype")},
                 {"diag_num", pattern.Attr("seed")},
                 {"diag_step", pattern.Attr("seed")},
-                {"diag_val", pattern.Attr("min_value")}});
+                {"diag_val", pattern.Attr("min_value")},
+                {"place", pattern.Attr("uniform_place")}});
     res.Tensor("ret") = cinn_uniform();
   }
 };

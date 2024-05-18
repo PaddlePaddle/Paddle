@@ -24,7 +24,7 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
@@ -246,7 +246,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
-            SplitCudaAndHostModule(module);  // NOLINT
+            SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
         auto& device_module = std::get<1>(_host_module_device_module_);
         CodeGenCUDA_Dev codegen(target_);
@@ -270,7 +270,8 @@ void Compiler::BuildDefault(const Module& module) {
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
-  auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
   VLOG(3) << "[CUDA] host module:\n" << host_module;
