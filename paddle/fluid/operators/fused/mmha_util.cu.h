@@ -58,8 +58,8 @@ namespace cub = hipcub;
 #include <cuda_bf16.h>
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 namespace {  // NOLINT
 namespace plat = paddle::platform;
@@ -2371,6 +2371,6 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
 
 }  // namespace
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi
 #endif

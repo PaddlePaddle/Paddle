@@ -27,8 +27,8 @@ This header file is to store General Function Helper which has been used in
 FusedMultiTransformer.
 */
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 namespace {  // NOLINT
 
@@ -187,7 +187,11 @@ class BiasActHelper {
     if (act_method_ == "geglu") {
       // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
       VLOG(5) << "doing geglu";
-      LaunchActFFNGlu<T, GeluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+      LaunchActFFNGlu<T,
+                      paddle::operators::GeluFunctor<T>,
+                      LoadFunc,
+                      StoreFunc,
+                      LoadT>(
           dev_ctx_, bias_data, rows_, cols_ / 2, load_func, store_func);
     } else if (act_method_ == "swiglu") {
       VLOG(5) << "doing swiglu";
@@ -196,15 +200,23 @@ class BiasActHelper {
     } else if (act_method_ == "gelu") {
       if (FLAGS_use_fast_math) {
         VLOG(5) << "doing Fast GELU";
-        LaunchBiasAct<T, FastGeluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+        LaunchBiasAct<T,
+                      paddle::operators::FastGeluFunctor<T>,
+                      LoadFunc,
+                      StoreFunc,
+                      LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       } else {
         VLOG(5) << "doing GELU";
-        LaunchBiasAct<T, GeluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+        LaunchBiasAct<T,
+                      paddle::operators::GeluFunctor<T>,
+                      LoadFunc,
+                      StoreFunc,
+                      LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently Only Support GeGLU, SwiGLU, GeLU"));
     }
   }
@@ -257,7 +269,7 @@ class GEMMHelper {
                                                            compute_bias);
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently GemmHelper only support `weight-only`, `LLM.int8`, "
           "`None`. "));
     }
@@ -291,9 +303,10 @@ class NormHelper {
                               // Layernorm. Need support rmsnorm.
         layernorm_helper_(dev_ctx_, epsilon_, rows_, cols_) {
     // VLOG(0) << "NormHelper residual_alpha:" << residual_alpha_;
-    DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+    paddle::operators::DropoutParam dropout_param(
+        true, 0, true, true, 0.0, nullptr, 0);
     residual_bias_add_layernorm_helper_ =
-        FusedDropoutLayerNormHelper<T, uint8_t>(
+        paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>(
             dev_ctx, rows_, cols_, dropout_param, epsilon_, residual_alpha_);
   }
 
@@ -314,7 +327,7 @@ class NormHelper {
                         phi::DenseTensor *var,
                         phi::DenseTensor *bias_residual_out,
                         phi::DenseTensor *output) {
-    using U = LayerNormParamType<T>;
+    using U = paddle::operators::LayerNormParamType<T>;
     const T *bias_data = bias ? bias->data<T>() : nullptr;
     U *mean_data = mean ? mean->data<U>() : nullptr;
     U *var_data = var ? var->data<U>() : nullptr;
@@ -355,7 +368,7 @@ class NormHelper {
       //                                                      bias_residual_out_data,
       //                                                      output_data);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
     }
   }
@@ -367,7 +380,7 @@ class NormHelper {
             phi::DenseTensor *mean,
             phi::DenseTensor *var,
             phi::DenseTensor *output) {
-    using U = LayerNormParamType<T>;
+    using U = paddle::operators::LayerNormParamType<T>;
     U *mean_data = mean ? mean->data<U>() : nullptr;
     U *var_data = var ? var->data<U>() : nullptr;
     T *output_data = output->data<T>();
@@ -384,7 +397,7 @@ class NormHelper {
                                        mean_data,
                                        var_data);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
     }
   }
@@ -396,7 +409,8 @@ class NormHelper {
   int cols_;
   float epsilon_;
   float residual_alpha_;
-  FusedDropoutLayerNormHelper<T, uint8_t> residual_bias_add_layernorm_helper_;
+  paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>
+      residual_bias_add_layernorm_helper_;
   phi::fusion::AttnLayerNorm<T> layernorm_helper_;
 };
 
@@ -523,5 +537,5 @@ class WriteCacheKVHelper {
 
 }  // namespace
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi

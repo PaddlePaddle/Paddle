@@ -32,24 +32,8 @@ PD_DECLARE_string(fmha_mode);
 PD_DECLARE_bool(print_matrix);
 PD_DECLARE_bool(fuse_softmax);
 
-namespace paddle {
-namespace operators {
-template <paddle::DataType D>
-class PDTraits;
-
-template <>
-class PDTraits<paddle::DataType::FLOAT32> {
- public:
-  typedef float DataType;
-  typedef float data_t;
-};
-
-template <>
-class PDTraits<paddle::DataType::FLOAT16> {
- public:
-  typedef half DataType;
-  typedef paddle::float16 data_t;
-};
+namespace phi {
+namespace fusion {
 
 class AttnDropoutParam {
  public:
@@ -85,85 +69,6 @@ class AttnDropoutParam {
   int seed_val_;
   const phi::DenseTensor* seed_;
 };
-
-template <typename T, int VecSize>
-__global__ void TransposeRemovingPadding(const T* input_data,
-                                         const int* seq_lens,
-                                         T* output_data,
-                                         const int batch_size,
-                                         const int num_head,
-                                         const int max_len_this_time,
-                                         const int seq_len,
-                                         const int head_dim,
-                                         const int token_num,
-                                         const int elem_cnt,
-                                         const int* padding_offset) {
-  // transpose and remove padding
-  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
-  // num_head, head_dim]
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const int dim_embed = num_head * head_dim;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  LoadT src_vec;
-
-  for (int32_t linear_index = idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    const int token_idx = linear_index / dim_embed;
-    const int ori_token_idx =
-        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
-    const int ori_batch_id = ori_token_idx / seq_len;
-    if (seq_lens && seq_lens[ori_batch_id] == 0) continue;
-    const int ori_seq_id = ori_token_idx % seq_len;
-    const int ori_head_id = (linear_index % dim_embed) / head_dim;
-    const int ori_head_lane = (linear_index % dim_embed) % head_dim;
-    const int ori_idx = ori_batch_id * num_head * max_len_this_time * head_dim +
-                        ori_head_id * max_len_this_time * head_dim +
-                        ori_seq_id * head_dim + ori_head_lane;
-    phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
-    phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
-  }
-}
-
-template <typename T>
-void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
-                                  const T* input_data,
-                                  const int* seq_lens,
-                                  T* output_data,
-                                  const int batch_size,
-                                  const int num_head,
-                                  const int max_len_this_time,
-                                  const int seq_len,
-                                  const int head_dim,
-                                  const int token_num,
-                                  const int* padding_offset) {
-  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
-  // num_head, head_dim]
-  constexpr int VEC_16B = 16;
-  const int elem_cnt = token_num * num_head * head_dim;
-  constexpr int PackSize = VEC_16B / sizeof(T);
-  PADDLE_ENFORCE_EQ(
-      head_dim % PackSize,
-      0,
-      phi::errors::PreconditionNotMet(
-          "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
-  const int32_t pack_num = elem_cnt / PackSize;
-  const int32_t block_size = 128;
-  int32_t grid_size = (pack_num + block_size - 1) / block_size;
-  TransposeRemovingPadding<T, PackSize>
-      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(input_data,
-                                                       seq_lens,
-                                                       output_data,
-                                                       batch_size,
-                                                       num_head,
-                                                       max_len_this_time,
-                                                       seq_len,
-                                                       head_dim,
-                                                       token_num,
-                                                       elem_cnt,
-                                                       padding_offset);
-}
 
 template <typename T>
 class FMHARef {
@@ -290,14 +195,15 @@ class FMHARef {
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
-                                        src_mask_tensor->data<T>(),
-                                        softmax_out_data,
-                                        batch_size_,
-                                        num_head_,
-                                        seq_len_,
-                                        mask_broadcast_num_heads,
-                                        dev_ctx_.stream());
+        paddle::operators::LaunchFusedSoftmaxMaskKernel<T>(
+            qk_out_data,
+            src_mask_tensor->data<T>(),
+            softmax_out_data,
+            batch_size_,
+            num_head_,
+            seq_len_,
+            mask_broadcast_num_heads,
+            dev_ctx_.stream());
       } else {
         std::vector<const phi::DenseTensor*> ins;
         std::vector<phi::DenseTensor*> outs;
@@ -524,10 +430,10 @@ class FMHARef {
           qk_out_tensor.dims() == src_mask_out_tensor.dims()) {
         VLOG(4) << "Special case when dy is not needed and dx doesn't "
                    "reduce";
-        framework::TensorCopy(*src_mask_out_grad_tensor,
-                              dev_ctx_.GetPlace(),
-                              dev_ctx_,
-                              qk_out_grad_tensor);
+        paddle::framework::TensorCopy(*src_mask_out_grad_tensor,
+                                      dev_ctx_.GetPlace(),
+                                      dev_ctx_,
+                                      qk_out_grad_tensor);
       } else {
         PADDLE_THROW(phi::errors::InvalidArgument(
             "Only used for the backward elementwise_add op when"
@@ -610,5 +516,5 @@ class FMHARef {
   AttnDropoutParam dropout_param_;
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi

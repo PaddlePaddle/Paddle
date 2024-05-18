@@ -30,105 +30,8 @@ PD_DECLARE_string(fmha_mode);
 PD_DECLARE_int64(custom_allreduce_one_shot_threshold);
 PD_DECLARE_int64(custom_allreduce_two_shot_threshold);
 
-namespace paddle {
-namespace operators {
-
-inline float fp32_from_bits(uint32_t w) {
-#if defined(__OPENCL_VERSION__)
-  return as_float(w);
-#elif defined(__CUDA_ARCH__)
-  return __uint_as_float((unsigned int)w);
-#elif defined(__INTEL_COMPILER)
-  return _castu32_f32(w);
-#else
-  union {
-    uint32_t as_bits;
-    float as_value;
-  } fp32 = {w};
-  return fp32.as_value;
-#endif
-}
-
-inline uint32_t fp32_to_bits(float f) {
-#if defined(__OPENCL_VERSION__)
-  return as_uint(f);
-#elif defined(__CUDA_ARCH__)
-  return (uint32_t)__float_as_uint(f);
-#elif defined(__INTEL_COMPILER)
-  return _castf32_u32(f);
-#else
-  union {
-    float as_value;
-    uint32_t as_bits;
-  } fp32 = {f};
-  return fp32.as_bits;
-#endif
-}
-
-static float CPUHalfConvert2Float(const uint16_t h) {
-  const uint32_t w = (uint32_t)h << 16;
-  const uint32_t sign = w & UINT32_C(0x80000000);
-  const uint32_t two_w = w + w;
-
-  constexpr uint32_t exp_offset = UINT32_C(0xE0) << 23;
-  // const float exp_scale = 0x1.0p-112f;
-  constexpr uint32_t scale_bits = (uint32_t)15 << 23;
-  float exp_scale_val;
-  std::memcpy(&exp_scale_val, &scale_bits, sizeof(exp_scale_val));
-  const float exp_scale = exp_scale_val;
-  const float normalized_value =
-      fp32_from_bits((two_w >> 4) + exp_offset) * exp_scale;
-
-  constexpr uint32_t magic_mask = UINT32_C(126) << 23;
-  constexpr float magic_bias = 0.5f;
-  const float denormalized_value =
-      fp32_from_bits((two_w >> 17) | magic_mask) - magic_bias;
-
-  constexpr uint32_t denormalized_cutoff = UINT32_C(1) << 27;
-  const uint32_t result =
-      sign | (two_w < denormalized_cutoff ? fp32_to_bits(denormalized_value)
-                                          : fp32_to_bits(normalized_value));
-  return fp32_from_bits(result);
-}
-
-template <typename T>
-static void PrintMatrix(const T *mat_d, int num, std::string name) {
-  // if (FLAGS_cublaslt_exhaustive_search_times != 114514) return;
-
-  std::vector<T> tmp(num);
-  cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
-
-  std::ofstream outfile;
-  outfile.open(name + ".txt", std::ios::out);
-  std::stringstream ss;
-
-  for (int i = 0; i < num; ++i) {
-    if (std::is_same<T, int8_t>::value) {
-      ss << static_cast<int>(tmp[i]) << std::endl;
-    } else {
-      ss << std::setprecision(8) << (float)(tmp[i]) << std::endl;  // NOLINT
-    }
-  }
-  outfile << ss.str();
-  outfile.close();
-}
-
-static void PrintHalfMatrix(const void *mat_d_ptr, int num, std::string name) {
-  VLOG(0) << "PRINT HALF MATRIX Num is: " << num;
-  const uint16_t *mat_d = reinterpret_cast<const uint16_t *>(mat_d_ptr);
-  std::vector<uint16_t> tmp(num);
-  cudaMemcpy(tmp.data(), mat_d, sizeof(uint16_t) * num, cudaMemcpyDeviceToHost);
-
-  std::ofstream outfile;
-  outfile.open(name + ".txt", std::ios::out);
-  std::stringstream ss;
-
-  for (int i = 0; i < num; ++i) {
-    ss << std::setprecision(8) << CPUHalfConvert2Float(tmp[i]) << std::endl;
-  }
-  outfile << ss.str();
-  outfile.close();
-}
+namespace phi {
+namespace fusion {
 
 template <typename T>
 struct Load {
@@ -556,19 +459,20 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto task = pg->AllReduce(&tensor, tensor, opts, false, true);
     task->Wait();
   } else {
-    auto dtype = platform::ToNCCLDataType(
-        framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = paddle::platform::ToNCCLDataType(
+        paddle::framework::TransToProtoVarType(tensor.dtype()));
     int64_t numel = tensor.numel();
     const void *sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();
     void *recvbuff = tensor.mutable_data<T>(place);
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto comm =
+        paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = ctx.stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
   }
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
       "parallel op."));
 #endif
@@ -2309,8 +2213,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
           cache_v_dequant_scale);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 
@@ -2860,7 +2764,7 @@ void write_int8_cache_kv(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % x,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   int max_size = max_seq_len * dim_head / x;
@@ -3019,7 +2923,7 @@ void write_cache_kv(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % x,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   int max_size = max_seq_len * dim_head / x;
@@ -3165,7 +3069,7 @@ void gqa_write_cachekv(
   PADDLE_ENFORCE_EQ(
       dim_head % x,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   const int64_t num_elems = unpadding_k.numel();
@@ -3459,7 +3363,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3499,7 +3403,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3597,7 +3501,7 @@ void gqa_qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3638,7 +3542,7 @@ void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -3979,12 +3883,12 @@ void InvokeGetPaddingOffset(const phi::GPUContext &dev_ctx,
                                                   sequence_lengths,
                                                   batch_size,
                                                   max_seq_len);
-  memory::Copy(platform::CPUPlace(),
-               h_token_num,
-               dev_ctx.GetPlace(),
-               d_token_num,
-               sizeof(int),
-               dev_ctx.stream());
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          h_token_num,
+                          dev_ctx.GetPlace(),
+                          d_token_num,
+                          sizeof(int),
+                          dev_ctx.stream());
 }
 
 template <typename T, int VecSize>
@@ -4031,7 +3935,7 @@ void InvokeRebuildPadding(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(dim_embed % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_embed=%d must be divisible by vec_size=%d",
                         dim_embed,
                         PackSize));
@@ -4085,12 +3989,12 @@ int GetMaxLen(const phi::GPUContext &dev_ctx,
   int max_len_cpu = 0;
   GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
       seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
-  memory::Copy(platform::CPUPlace(),
-               &max_len_cpu,
-               dev_ctx.GetPlace(),
-               max_len_tensor->data<int>(),
-               sizeof(int),
-               dev_ctx.stream());
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          &max_len_cpu,
+                          dev_ctx.GetPlace(),
+                          max_len_tensor->data<int>(),
+                          sizeof(int),
+                          dev_ctx.stream());
   return max_len_cpu;
 }
 
@@ -4169,7 +4073,7 @@ void GetDecoderTensor(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % PackSize,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, PackSize));
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -4285,7 +4189,7 @@ void InitValue(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       numel % PackSize,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "numel=%d must be divisible by vec_size=%d", numel, PackSize));
   const int pack_num = numel / PackSize;
   const int blocksize = 128;
@@ -4557,7 +4461,7 @@ void TransposeSplit(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -5268,5 +5172,5 @@ void gqa_rotary_qk_variable(
 
 }  // namespace
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi
