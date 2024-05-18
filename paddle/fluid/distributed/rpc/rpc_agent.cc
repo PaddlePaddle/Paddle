@@ -100,7 +100,8 @@ void OnRpcDone::Run() {
   promise_->set_value(response_.message());
   VLOG(2) << "Received response from " << cntl_.remote_side() << " to "
           << cntl_.local_side() << " (attached=" << cntl_.response_attachment()
-          << ")" << " latency=" << cntl_.latency_us() << "us";
+          << ")"
+          << " latency=" << cntl_.latency_us() << "us";
 }
 
 std::future<std::string> RpcAgent::InvokeRpc(const std::string &py_func,
