@@ -1,33 +1,29 @@
-set(parsed_yaml_path
-    "${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops")
+set(parsed_yaml_path "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated")
 set(fwd_path ${parsed_yaml_path}/ops.parsed.yaml)
 set(rev_path ${parsed_yaml_path}/backward_ops.parsed.yaml)
 set(fwd_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/new/ops.parsed.yaml)
 set(update_fwd_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/update_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/new/update_ops.parsed.yaml
 )
 set(rev_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/new/ops_backward.parsed.yaml
 )
 set(fused_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_ops.parsed.yaml)
 set(fused_rev_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_backward.parsed.yaml
 )
 
 set(sparse_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/sparse_ops.parsed.yaml)
 set(sparse_rev_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/sparse_backward.parsed.yaml
 )
 set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
-set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")
 set(destination_dir "${PADDLE_BINARY_DIR}/paddle/fluid/primitive/")
 set(scripts "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py")
 

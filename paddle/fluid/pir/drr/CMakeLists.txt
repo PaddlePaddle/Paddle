@@ -3,22 +3,18 @@ file(GLOB_RECURSE DRR_SRCS "*.cc")
 set(op_creator_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_creator_drr_gen.py
 )
-set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
+set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 set(op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/ops.parsed.yaml)
 set(op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/backward_ops.parsed.yaml)
 set(fused_op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
-)
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_ops.parsed.yaml)
 set(fused_op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/fused_backward.parsed.yaml
 )
 
-set(parsed_op_dir
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/new)
 
 set(op_yaml_file_1 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file_2 ${parsed_op_dir}/ops_backward.parsed.yaml)
@@ -90,11 +86,9 @@ endif()
 if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
   set(pir_op_onednn_yaml
-      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml
-  )
+      ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/generated/new/onednn.parsed.yaml)
   set(pd_ops_onednn_extra_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
-  )
+      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/ops_onednn_extra.yaml)
   set(onednn_op_creator_file
       ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
   )
