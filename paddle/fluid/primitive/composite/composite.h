@@ -595,6 +595,24 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
 }
 
 template <typename T>
+std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
+  std::vector<Tensor> res;
+  if (axis < 0) {
+    axis = x.shape().size() + axis;
+  }
+  int num = x.shape()[axis];
+  std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
+  std::vector<int64_t> reshape_tmp;
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    if (i != (uint64_t)axis) reshape_tmp.push_back(x.shape()[i]);
+  }
+  for (size_t i = 0; i < num; i++) {
+    res.push_back(reshape<T>(tmp[i], reshape_tmp));
+  }
+  return res;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
