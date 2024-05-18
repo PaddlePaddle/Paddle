@@ -51,7 +51,6 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
       : stream_(nullptr),
         allocator_(nullptr),
         device_prop_(nullptr),
-        allocations_scratch_(nullptr),
         semaphore_(nullptr),
         allocations_() {
     Eigen::initializeDeviceProp();
