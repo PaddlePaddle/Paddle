@@ -264,6 +264,7 @@ class ShapeOptimizationPass : public pir::Pass {
 symbol::TensorShapeOrDataDimExprs CreateShapeOrDataByDDim(
     const pir::DDim& dims) {
   std::vector<symbol::DimExpr> dim_exprs;
+  dim_exprs.reserve(dims.size());
   for (int i = 0; i < dims.size(); ++i) {
     dim_exprs.emplace_back(dims.at(i));
   }

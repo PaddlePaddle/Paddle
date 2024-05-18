@@ -303,6 +303,7 @@ phi::DenseTensor CheckAndTrans2NewContiguousTensor(
 std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
     const std::vector<phi::DenseTensor>& tensor) {
   std::vector<phi::DenseTensor> out;
+  out.reserve(tensor.size());
   for (auto& t : tensor) {
     out.emplace_back(CheckAndTrans2NewContiguousTensor(t));
   }
