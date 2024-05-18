@@ -171,55 +171,6 @@ class SymbolicInt(metaclass=Singleton):
         return "-1"
 
 
-class DynamicShape:
-    def __init__(self, shape: list[int | SymbolicInt]):
-        self.shape: list[int | SymbolicInt] = shape
-
-    @classmethod
-    def generate(
-        cls,
-        shape1: list[int | SymbolicInt] | DynamicShape,
-        shape2: list[int | SymbolicInt] | DynamicShape,
-    ):
-        assert len(shape1) == len(
-            shape2
-        ), "shape1 and shape2 must have the same length."
-        new_shape = []
-        for i, j in zip(shape1, shape2):
-            if isinstance(i, int) and i == j:
-                # NOTE(zrr1999): `j` maybe a SymbolicInt, so we need to append it instead of `i`.
-                new_shape.append(j)
-            else:
-                new_shape.append(SymbolicInt())
-        return cls(new_shape)
-
-    def get_dynamic_axes(self):
-        return [
-            i for i, s in enumerate(self.shape) if isinstance(s, SymbolicInt)
-        ]
-
-    def __len__(self):
-        return len(self.shape)
-
-    def __iter__(self):
-        return iter(self.shape)
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, DynamicShape):
-            other_shape = other.shape
-        else:
-            other_shape = list(other)
-        if len(self.shape) != len(other_shape):
-            return False
-        for i, j in zip(self.shape, other_shape):
-            if i != j:
-                return False
-        return True
-
-    def __str__(self) -> str:
-        return f"{self.shape}"
-
-
 class FunctionGraph:
     """
     A Graph representation corresponding to each FunctionFrame
