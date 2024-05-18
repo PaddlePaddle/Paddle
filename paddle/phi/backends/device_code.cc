@@ -364,8 +364,8 @@ bool GPUDeviceCode::Compile(bool include_path) {
                           "nvrtcGetProgramLog")) {
       return false;
     }
-    LOG(WARNING) << "JIT compiling of CUDA code failed:" << "\n  Kernel name: "
-                 << name_ << "\n  Kernel body:\n"
+    LOG(WARNING) << "JIT compiling of CUDA code failed:"
+                 << "\n  Kernel name: " << name_ << "\n  Kernel body:\n"
                  << kernel_ << "\n  Compiling log: " << log.data();
 
     return false;

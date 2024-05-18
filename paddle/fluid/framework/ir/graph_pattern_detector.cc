@@ -253,7 +253,8 @@ GraphPatternDetector::DetectPatterns() {
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
         VLOG(4) << "node " << item.second->Name() << "(" << item.second->id()
-                << ")" << " as " << item.first->name();
+                << ")"
+                << " as " << item.first->name();
       }
       VLOG(4) << "=========================================================";
     }
