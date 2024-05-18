@@ -20,6 +20,23 @@
 namespace paddle {
 namespace dialect {
 
+bool AllInputAreDist(const std::vector<pir::Value>& inputs) {
+  for (auto value : inputs) {
+    auto type = value.type();
+    if (!type || type.isa<DistTypeInterface>()) continue;
+    if (auto vec_type = value.type().dyn_cast<pir::VectorType>()) {
+      for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+        if (vec_type[idx] && !vec_type[idx].isa<DistTypeInterface>()) {
+          return false;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool HasDistInput(const std::vector<pir::Value>& inputs,
                   ProcessMeshAttribute* p_mesh_attr) {
   for (auto value : inputs) {
@@ -90,6 +107,20 @@ phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type) {
   phi_attr.set_dims_mapping(pir_attr.dims_mapping());
   phi_attr.set_partial_status(pir_attr.partial_status());
   return phi::distributed::DistMetaTensor(type.global_ddim(), phi_attr);
+}
+
+std::vector<phi::distributed::DistMetaTensor> CvtToDistMetaTensor(
+    pir::VectorType type) {
+  if (!type) return {};
+  std::vector<phi::distributed::DistMetaTensor> res;
+  for (size_t idx = 0; idx < type.size(); ++idx) {
+    if (auto dist_type = type[idx].dyn_cast<DistDenseTensorType>()) {
+      res.emplace_back(CvtToDistMetaTensor(dist_type));
+    } else {
+      res.emplace_back(phi::distributed::DistMetaTensor());
+    }
+  }
+  return res;
 }
 
 pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {

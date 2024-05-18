@@ -183,7 +183,7 @@ def _inference_optimize(program, prune_read_op=True):
 
     # remove all readers and the read_op if exist
     if prune_read_op:
-        warnings.warn("WAINING : need to remove the read_op, please add code ")
+        pass
 
     # change all `is_test` attributes to True
     for block in program.blocks:

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,13 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/include/core/value.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace pybind {
-using pir::Value;
-void BindPir(pybind11::module *m);
-const phi::DDim &GetValueDims(Value value);
-bool GetValueBoolAttr(Value value, const std::string &attr_name);
-std::string GetValueName(Value value);
-bool HasValueName(const Value &value);
-}  // namespace pybind
-}  // namespace paddle
+namespace phi {
+
+template <typename T, typename Context>
+void DependKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<const DenseTensor*>& dep,
+                  DenseTensor* out);
+}  // namespace phi
