@@ -392,8 +392,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
     VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-            << this->name() << " (addr: " << this << ") " << " to "
-            << fwd_in_meta->GetMutableGradNode()->name()
+            << this->name() << " (addr: " << this << ") "
+            << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
 
     meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
@@ -483,8 +483,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
     VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-            << this->name() << " (addr: " << this << ") " << " to "
-            << fwd_in_meta->GetMutableGradNode()->name()
+            << this->name() << " (addr: " << this << ") "
+            << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
 
     meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
@@ -561,8 +561,8 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
       VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-              << this->name() << " (addr: " << this << ") " << " to "
-              << fwd_in_meta->GetMutableGradNode()->name()
+              << this->name() << " (addr: " << this << ") "
+              << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
 
       meta.SetEdge(fwd_in_meta->GetMutableGradNode(),
@@ -641,8 +641,8 @@ void GradNodeBase::SetGradOutMeta(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
       VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-              << this->name() << " (addr: " << this << ") " << " to "
-              << fwd_in_meta->GetMutableGradNode()->name()
+              << this->name() << " (addr: " << this << ") "
+              << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
 
       meta.SetEdge(fwd_in_meta->GetMutableGradNode(),

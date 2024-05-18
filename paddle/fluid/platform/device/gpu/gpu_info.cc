@@ -515,7 +515,7 @@ class RecordedGpuMallocHelper {
   mutable std::unique_ptr<std::mutex> mtx_;
   static std::once_flag once_flag_;
   std::set<void *> gpu_ptrs;  // just for testing
-};  // NOLINT
+};                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
 
