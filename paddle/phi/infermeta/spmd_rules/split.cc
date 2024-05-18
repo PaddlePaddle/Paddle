@@ -85,7 +85,8 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   VLOG(4) << "Einsum Notation: " << x_axes << "-->" << out_axes;
   VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dist_attr_src.dims_mapping())
-          << "] " << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
+          << "] "
+          << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
   for (int64_t i = 0; i < num; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " dims_mapping: ["
             << str_join(out_dims_mapping) << "]";
@@ -195,8 +196,8 @@ SpmdInfo SplitWithNumInferSpmdReverse(
             << "dst_dims_mapping: ["
             << str_join(out_dist_attrs[i].dims_mapping()) << "]";
   }
-  VLOG(4) << "Input shape: [" << str_join(x_shape) << "] " << "dims_mapping: ["
-          << str_join(x_dims_mapping) << "]\n\n";
+  VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
+          << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
   // TODO(liuzhenhai): remedy this
   // return {{x_dist_attr}, {out_dist_attrs}};
   return {{x_dist_attr_dst}, ToArgDistAttr(out_dist_attrs)};
