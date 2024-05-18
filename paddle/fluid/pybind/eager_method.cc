@@ -443,15 +443,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 
   PyObject* base = ToPyObject(paddle::Tensor(
       std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))));
-
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(array_buffer) + array_offset;
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
       static_cast<int>(py_rank),
       py_dims,
       py_strides,
-      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
-                              array_offset),
+      reinterpret_cast<void*>(ptr),
       pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);

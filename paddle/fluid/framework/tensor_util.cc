@@ -334,11 +334,11 @@ void TensorCopySync(const phi::DenseTensor& src,
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }                                                // NOLINT
+  }  // NOLINT
   else if (platform::is_cpu_place(src_place) &&    // NOLINT
            platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }                                                 // NOLINT
+  }  // NOLINT
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_custom_place(
                dst_place)) { /* custom_device -> custom_device*/
@@ -354,11 +354,11 @@ void TensorCopySync(const phi::DenseTensor& src,
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }                                              // NOLINT
+  }  // NOLINT
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }                                              // NOLINT
+  }  // NOLINT
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
@@ -373,7 +373,7 @@ void TensorCopySync(const phi::DenseTensor& src,
       auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
     }
-  }       // NOLINT
+  }  // NOLINT
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
@@ -490,10 +490,11 @@ void TensorToStream(std::ostream& os,
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        uintptr_t ptr = reinterpret_cast<uintptr_t>(data);
         memory::Copy(cpu,
                      buf.get(),
                      tensor.place(),
-                     reinterpret_cast<const void*>(data),
+                     reinterpret_cast<const void*>(ptr),
                      size_to_write,
                      gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();

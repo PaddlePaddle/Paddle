@@ -223,9 +223,9 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_2_physical_map_.emplace(ptr, std::make_pair(handle, size));
 
   virtual_mem_alloced_offset_ += size;
-
+  uintptr_t temp_ptr = reinterpret_cast<uintptr_t>(ptr);
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));
+      reinterpret_cast<void*>(temp_ptr), size, platform::Place(place_));
 }
 
 }  // namespace allocation

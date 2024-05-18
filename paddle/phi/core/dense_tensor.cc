@@ -142,9 +142,8 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     }
     holder_ = std::move(holder);
   }
-
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 template <typename T>
@@ -180,8 +179,8 @@ void* DenseTensor::data() {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 const void* DenseTensor::data() const {
@@ -190,8 +189,8 @@ const void* DenseTensor::data() const {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
-  return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<const void*>(ptr);
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
