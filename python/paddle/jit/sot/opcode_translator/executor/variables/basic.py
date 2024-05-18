@@ -601,7 +601,7 @@ class TensorVariable(VariableBase):
         return None
 
 
-class SymbolicIntVariable(ConstantVariable):
+class SymbolicIntVariable(VariableBase):
     """
     TODO
     """
@@ -610,15 +610,20 @@ class SymbolicIntVariable(ConstantVariable):
 
     def __init__(
         self,
-        value: int,
+        value: int | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
-        super().__init__(value, graph, tracker)
-        self.value = value
-        self.tensor = paddle.to_tensor(value)
-        self.meta = MetaInfo.from_tensor(self.tensor)
+        super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
+        if isinstance(value, MetaInfo):
+            self.value = None
+            self.meta = value
+        else:
+            self.value = value
+            self.meta = MetaInfo(
+                [], paddle.int64, True, self.var_name, False, None, None
+            )
 
     def get_py_value(self, allow_tensor=False):
         return self.value
@@ -635,6 +640,8 @@ class SymbolicIntVariable(ConstantVariable):
 
     def _reconstruct(self, codegen: PyCodeGen):
         codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("item")
+        codegen.gen_call_method(0)  # TODO
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
@@ -648,10 +655,9 @@ class SymbolicIntVariable(ConstantVariable):
 
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
         symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+        symbolic_input.setdefault(self.value, 0)
         if self.value in symbolic_input:
             symbolic_input[self.value] += 1
-        else:
-            symbolic_input[self.value] = 1
 
         return [
             StringifyExpression(
