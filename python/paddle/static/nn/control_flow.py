@@ -1408,7 +1408,6 @@ class OutputSelector:
                 else:
                     return out_with_blocks[0][0].dtype
 
-            # breakpoint()
             new_outs = []
             expected_dtype = get_expected_precision(out_with_blocks)
             for out, block in out_with_blocks:
