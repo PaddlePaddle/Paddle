@@ -131,13 +131,13 @@ Tensor& Op::operator()() const {
 thread_local int64_t Op::count = 0;
 const char* Op::prefix = "@drr_temp@_";
 
-const char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =
+const std::string Tensor::SOURCE_INPUT_NONE_TENSOR_NAME =
     "__@source_input_none_tensor@__";
-const char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =
+const std::string Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME =
     "__@source_output_none_tensor@__";
-const char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =
+const std::string Tensor::RESULT_INPUT_NONE_TENSOR_NAME =
     "__@result_input_none_tensor@__";
-const char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =
+const std::string Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME =
     "__@result_output_none_tensor@__";
 
 void Tensor::Assign(const Tensor& other) {

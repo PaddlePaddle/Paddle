@@ -14,6 +14,7 @@
 
 #pragma once
 #include <vector>
+#include <array>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"

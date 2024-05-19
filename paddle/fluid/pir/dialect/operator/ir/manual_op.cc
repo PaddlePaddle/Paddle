@@ -1428,7 +1428,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   return argument_outputs;
 }
 
-const char *CreateArrayLikeOp::attributes_name[1] = {"val"};
+std::array<const char*, 1> CreateArrayLikeOp::attributes_name = {"val"};
 
 OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {

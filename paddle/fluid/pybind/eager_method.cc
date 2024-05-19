@@ -2497,7 +2497,7 @@ static PyObject* tensor_method_is_dist(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse__doc__,
+PyDoc_STRVAR(tensor_is_sparse__doc__,  // NOLINT
              R"DOC(is_sparse($self, /)
 --
 
@@ -2535,7 +2535,7 @@ static PyObject* tensor_method_is_sparse(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse_coo__doc__,
+PyDoc_STRVAR(tensor_is_sparse_coo__doc__,  // NOLINT
              R"DOC(is_sparse_coo($self, /)
 --
 
@@ -2572,7 +2572,7 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse_csr__doc__,
+PyDoc_STRVAR(tensor_is_sparse_csr__doc__,  // NOLINT
              R"DOC(is_sparse_csr($self, /)
 --
 
@@ -2610,7 +2610,7 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_to_sparse_csr__doc__,
+PyDoc_STRVAR(tensor_to_sparse_csr__doc__,  // NOLINT
              R"DOC(to_sparse_csr($self, /)
 --
 
@@ -2657,7 +2657,7 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_same_shape__doc__,
+PyDoc_STRVAR(tensor_is_same_shape__doc__,  // NOLINT
              R"DOC(is_same_shape($self, y, /)
 --
 
@@ -2970,7 +2970,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_data_ptr__doc__,
+PyDoc_STRVAR(tensor_data_ptr__doc__,  // NOLINT
              R"DOC(data_ptr($self, /)
 --
 
@@ -3033,7 +3033,7 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_get_strides__doc__,
+PyDoc_STRVAR(tensor_get_strides__doc__,  // NOLINT
              R"DOC(get_strides($self, /)
 --
 
@@ -3073,7 +3073,7 @@ static PyObject* tensor_method_strides(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_contiguous__doc__,
+PyDoc_STRVAR(tensor_contiguous__doc__,  // NOLINT
              R"DOC(contiguous($self, /)
 --
 
@@ -3125,7 +3125,7 @@ static PyObject* tensor_contiguous(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_contiguous__doc__,
+PyDoc_STRVAR(tensor_is_contiguous__doc__,  // NOLINT
              R"DOC(is_contiguous($self, /)
 --
 
@@ -3505,8 +3505,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {
-    // NOLINT
+PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,

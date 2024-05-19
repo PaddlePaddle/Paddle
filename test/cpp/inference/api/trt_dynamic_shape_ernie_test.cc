@@ -231,8 +231,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   const int run_batch = 2;
   const int run_seq_len = 71;
   const int max_seq_len = 128;
-
-  int32_t i1[run_seq_len] = {
+  std::vector<int32_t> i1 = {
       // sentence 1
       1,
       3558,
@@ -307,7 +306,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
       1012,
       102,
   };
-  int32_t i2[run_seq_len] = {// sentence 1
+  std::vector<int32_t> i2 = {// sentence 1
                              0,
                              0,
                              0,
@@ -381,11 +380,11 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
                              1,
                              1};
   // shape info of this batch
-  int32_t i3[3] = {0, 40, 71};
+  std::vector<int32_t> i3 = {0, 40, 71};
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  float i4[max_seq_len] = {0};
+  std::vector<float> i4 = {0};
 
   auto input_names = predictor->GetInputNames();
   // first input
