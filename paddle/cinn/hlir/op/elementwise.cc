@@ -1379,11 +1379,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     0U,
                     ::common::errors::InvalidArgument(
                         "No stop attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("start"),
+  PADDLE_ENFORCE_GT(attr_store.count("step"),
                     0U,
                     ::common::errors::InvalidArgument(
-                        "No end attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("start"),
+                        "No step attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("dtype"),
                     0U,
                     ::common::errors::InvalidArgument(
                         "No dtype attribute in arange Op! Please check."));
@@ -1403,7 +1403,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
             "The input argument of arange compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
 
-    CHECK_EQ(pack_args.size(), 1U);
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      1U,
+                      ::common::errors::InvalidArgument(
+                          "The number of input argument of arange should be at "
+                          "last 1. Please check."));
     std::string tensor_name = pack_args[0].operator std::string();
 
     auto out = pe::Arange(start, stop, step, dtype, tensor_name);
