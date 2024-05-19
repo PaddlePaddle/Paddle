@@ -4786,6 +4786,7 @@ void WhereInferMeta(const MetaTensor& condition,
   auto cond_dims = condition.dims();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+  auto out_dims = x_dims;
   PADDLE_ENFORCE_EQ(
       cond_dims.size(),
       x_dims.size(),
@@ -4794,6 +4795,13 @@ void WhereInferMeta(const MetaTensor& condition,
           "But received Condition's rank is [%d], X's rank is [%d]",
           cond_dims.size(),
           x_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    y_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "The dims of Inputs(X) and Inputs(Y) should be same. "
+                        "But received X's shape is [%d], Y's shape is [%d]",
+                        x_dims.size(),
+                        y_dims.size()));
   size_t cond_dims_size = static_cast<size_t>(cond_dims.size());
   for (size_t i = 0; i < cond_dims_size; ++i) {
     if (cond_dims[i] == -1 || x_dims[i] == -1) {
@@ -4808,15 +4816,9 @@ void WhereInferMeta(const MetaTensor& condition,
             i,
             cond_dims[i],
             x_dims[i]));
+    out_dims[i] = cond_dims[i] ? cond_dims[i] != -1 : x_dims[i];
   }
 
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    y_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "The dims of Inputs(X) and Inputs(Y) should be same. "
-                        "But received X's shape is [%d], Y's shape is [%d]",
-                        x_dims.size(),
-                        y_dims.size()));
   size_t x_dims_size = static_cast<size_t>(x_dims.size());
   for (size_t i = 0; i < x_dims_size; ++i) {
     if (x_dims[i] == -1 || y_dims[i] == -1) {
@@ -4831,9 +4833,12 @@ void WhereInferMeta(const MetaTensor& condition,
             i,
             x_dims[i],
             y_dims[i]));
+    if (out_dims[i] == -1) {
+      out_dims[i] = x_dims[i] ? x_dims[i] != -1 : y_dims[i];
+    }
   }
-
-  out->share_meta(x);
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 void YoloBoxPostInferMeta(const MetaTensor& boxes0,

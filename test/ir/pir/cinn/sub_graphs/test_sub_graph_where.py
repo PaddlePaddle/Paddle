@@ -65,6 +65,7 @@ class TestWhere(unittest.TestCase):
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        print(st.numpy(), 'cinn', cinn.numpy())
 
 
 if __name__ == '__main__':
