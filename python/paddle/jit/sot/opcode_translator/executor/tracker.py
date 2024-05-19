@@ -30,6 +30,12 @@ if TYPE_CHECKING:
     from .variables import VariableBase
 
 
+def match_expr_with_suffix(tracker: Tracker, expr: str, suffix: str) -> bool:
+    if not expr.endswith(suffix):
+        return False
+    return tracker.match_expr(expr.removesuffix(suffix))
+
+
 class Tracker:
     """
     Tracker is a base class responsible for tracking variables or objects in Python code.
@@ -363,7 +369,9 @@ class GetAttrTracker(Tracker):
 
     def match_expr(self, expr: str) -> bool:
         if self.attr.isidentifier():
-            return expr == f"{{}}.{self.attr}"
+            return match_expr_with_suffix(
+                self.obj.tracker, expr, f".{self.attr}"
+            )
         else:
             return expr == f"getattr({{}}, '{self.attr}')"
 
@@ -412,10 +420,9 @@ class GetItemTracker(Tracker):
 
     def match_expr(self, expr: str) -> bool:
         key_string, _ = stringify_pyobject(self.key)
-        if not expr.endswith(f"[{key_string}]"):
-            return False
-        return self.container.tracker.match_expr(
-            expr.removesuffix(f"[{key_string}]")
+
+        return match_expr_with_suffix(
+            self.container.tracker, expr, f"[{key_string}]"
         )
 
     def __repr__(self) -> str:
