@@ -901,9 +901,19 @@ for unary_fn in UNARY_OPS:
     for magic_method in magic_method_builtin_dispatch(unary_fn):
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicIntVariable",),
+            ("TensorVariable",),
             partial(
                 lambda magic_name, var: var.graph.call_tensor_method(
+                    magic_name, var
+                ),
+                magic_method.name,
+            ),
+        )
+        Dispatcher.register(
+            unary_fn,
+            ("SymbolicIntVariable",),
+            partial(
+                lambda magic_name, var: var.graph.call_symbolic_method(
                     magic_name, var
                 ),
                 magic_method.name,
