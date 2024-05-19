@@ -159,7 +159,7 @@ __global__ void ConcatCsr2D0ASetCrowsKernel(const IndexT total_crows_length,
 }
 
 template <typename IndexT, typename PointerWrapperT>
-__global__ void ConcatCsrGet2DRowsNnzKernel(const IndexT total_rows,
+__global__ void ConcatCsrGet2D1ARowsNnzKernel(const IndexT total_rows,
                                             const IndexT rows,
                                             PointerWrapperT in_crows_data,
                                             IndexT* in_rows_nnzs) {
@@ -228,66 +228,65 @@ __global__ void ConcatCsr2D1ASetCrowsKernel(const IndexT crows_nums,
   }
 }
 
-template <typename IndexT, typename PointerWrapperT>
-__global__ void ConcatCsrGet3D1ACrowsKernel(
-    const IndexT total_crows,
+template <typename IndexT, typename PointerWrapperT, typename DarrayWrapperT>
+__global__ void ConcatCsr3D1AGetHelpArrayKernel(
+
     const size_t in_num,
     const IndexT batch,
     PointerWrapperT in_crows_data,
-
     DarrayWrapperT in_rows,  // in_rows表示每一个的列数
-    IndexT* in_matrix_nnx) {
+    IndexT* in_matrix_crows_offset) {
   // 获取每轮(batch),也就是一个matrix下的nnz的数目
   // 对应于crows下每一个0开始到rows下的最后一位的数值
   // 例如 crows_data = [0,1,3,5, 8 , 0, 3, 4, 5 ,6] 这里两个需要获取的值是8和6.
-  CUDA_KERNEL_LOOP_TYPE(tid_x, total_crows, IndexT) {
-    // total_crows == batch* in_num
-    IndexT index = tid_x / batch;
-    IndexT b = tid_x % batch;
-    IndexT pos = b * (in_rows[index] + 1) - 1;
-    in_matrix_nnx[tid] = in_crows_data[index][pos];
-    // TODO(bapijun) 计算 in_matrix_nnx_offset
+  IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, batch, IndexT) {
+    for (; tid_y < in_num; tid_y += blockDim.y * gridDim.y) {
+        // total_crows == batch* in_num
+        IndexT pos = tid_y * (in_rows[index] + 1) - 1;
+        //tid_x 表示batch tid_y 表示index
+        in_matrix_crows_offset[tid_x *(in_num + 1) + tid_y] = in_crows_data[tid_x][pos];
+    }
+    
   }
+  __syncthreads();
+  // 优化
+  IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+  if (tid_y == 0) {
+    CUDA_KERNEL_LOOP_TYPE(tid_x, batch, IndexT) {
+      for (int i = 0; i < in_num ; i++) {
+        in_matrix_crows_offset[tid_x * (in_num +1) + i+1] += in_matrix_crows_offset[tid_x * (in_num +1) + i];
+      }
+    }
+  }
+  
 }
 
-template <typename IndexT, typename PointerWrapperT>
+template <typename IndexT, typename PointerWrapperT, typename DarrayWrapperT>
 __global__ void ConcatCsr3D1ASetCrowsKernel(
-    const IndexT out_crows_size,
-    const size_t in_num,
+    const IndexT in_num,
     const IndexT batch,
     PointerWrapperT in_crows_data,
-    DarrayWrapperT in_matrix_nnx_offset,  // 每个matrix中nnz的个数
-    DarrayWrapperT in_rows_offsets,       //
+    DarrayWrapperT rows_nums,       //每一列nnz的个数
+    DarrayWrapperT in_rows_offsets,//in_rows_offsets 每一个index下的rows的叠加值 
+    IndexT* in_matrix_crows_offset,  // 每个matrix中nnz的个数的叠加值
     IndexT* out_crows) {
-  // index表示位于第几个输入的
-  IndexT index = 0;
-  IndexT next_offset = 0;
-  IndexT curr_offset = 0;
-  // 每一轮batch中的0
-  if (b == 0 && local_col == 0) {
-    out_crows[in_nnz_offsets[b]] = 0;
-  }
-  CUDA_KERNEL_LOOP_TYPE(tid_x, out_crows_size, IndexT) {
-    // out_crows_size == batch *
-    // (各个in_num的rows的和)//注意这里第一位就让第一位处理即可
-    IndexT b = tid_x % batch;
-    IndexT rows_size = tid_x / batch;
-    next_offset = in_rows_offsets[index + 1];
-    curr_offset = in_rows_offsets[index];
-    // curr_offset 初始化到最接近tid的对一轮
-    // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
-    while (next_offset <= rows_size) {
-      curr_offset = next_offset;
-      ++index;
-      next_offset = in_rows_offsets[index + 1];
+  // rows_nums表示每一行的行数 tid_y== batch  tid_z == index
+  IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+  IndexT tid_z = blockIdx.z * blockDim.z + threadIdx.z;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, rows_nums[tib_x], IndexT) {
+    for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
+      for (; tid_z < in_num; tid_z += blockDim.z * gridDim.z) {
+        IndexT crows_pos = tib_y * (rows_nums[tid_z]) + tib_x;
+        // total_rows 总行数 in_rows_offsets 每一个index下的rows的叠加值 
+        // 这里多一轮tid_z表示每一轮batch开头的0
+        IndexT out_pos = tib_y * total_rows + in_rows_offsets[tid_z] + tid_x + tid_z;
+        out_crows[out_pos] = in_crows_data[tid_z][crows_pos] + in_matrix_crows_offset[tid_y *(in_num + 1) + tid_z];
+      }
     }
-    // IndexT  rows = in_rows_offsets[index];
-    IndexT local_col = rows_size - curr_offset;
-    // 在 in_matrix_nnx_offset中位置p =  index * batch + b
-    // out_crows中由于存在index个0
-    out_crows[tid + index] = in_crows_data[index][local_col] +
-                             in_matrix_nnx_offset[index * batch + b];
   }
+  
+ 
 }
 
 template <typename IndexT, typename PointerWrapperT>
@@ -298,7 +297,7 @@ __global__ void ConcatCsr3D1ASetValuesColsKernel(
     PointerWrapperT in_values_data,
     DarrayWrapperT
         in_matrix_nnx_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
-    DarrayWrapperT in_batch_offsets,  // 这里是
+    T * in_batch_crows, //每一batch的nnz数目
     IndexT* out_values) {
   IndexT b = 0;
   IndexT next_offset = 0;
@@ -336,6 +335,31 @@ __global__ void ConcatCsr3D1ASetValuesColsKernel(
 
     out_values[tid_x] = in_values[index][local_col2];
   }
+  //tid_y==b, tid_z==index
+  in_matrix_crows_offset[tid_y *(in_num + 1) + tid_z]
+  tid_y *(in_num + 1) + tid_z
+  IndexT next_offset = 0;
+  IndexT curr_offset = 0;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_nums, IndexT) {
+    indexT nnz = in_nnz[tid_x];// 这里的batch对应的是每一轮的nnz个数
+    IndexT pos = tid_y *(in_num + 1);
+    
+    for (; tid_y < nnz; tid_y += blockDim.y * gridDim.y) {
+      pos = tid_y *(in_num + 1);
+      next_offset += in_matrix_nnx_offset[b + 1];
+      curr_offset += in_matrix_nnx_offset[b];
+      // curr_offset 初始化到最接近tid的对一轮
+      // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
+      while (next_offset <= tid_x) {
+        curr_offset = next_offset;
+        ++b;
+        next_offset += in_batch_crows[b + 1];
+      }
+      IndexT local_col = tid_x - curr_offset;
+    }
+  
+  }
+
 }
 
 template <typename IndexT, typename PointerWrapperT>
@@ -343,10 +367,6 @@ __global__ void ConcatCsr3D2ASetCrowsKernel(
     const IndexT crows_num,
     const size_t in_num,
     PointerWrapperT in_crows_data,
-    DarrayWrapperT
-        in_matrix_nnx_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
-
-    DarrayWrapperT in_batch_offsets,  // 这里是
     IndexT* out_crows) {
   // total_nnz = in_matrix_nnx的和 =
   CUDA_KERNEL_LOOP_TYPE(tid_x, crows_num, IndexT) {
@@ -356,49 +376,108 @@ __global__ void ConcatCsr3D2ASetCrowsKernel(
       total = in_crows_data[i][tid_x];
     }
     out_crows[tid_x] = total;
+
   }
 }
 
 template <typename IndexT, typename PointerWrapperT>
-__global__ void ConcatCsr3D2ASetvaluesKernel(
-    const IndexT max_nnz,
+__global__ void ConcatCsr3D2AGetHelpArrayKernel(
+    const IndexT rows,//合集的行数
     const size_t in_num,
     const IndexT batch,
     PointerWrapperT in_crows_data,
-    DarrayWrapperT in_matrix_nnx_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
-    PointerWrapperT in_max_batch_nnz,
-    DarrayWrapperT in_batch_offsets,  // 这里是每一轮batch的最大值
-    IndexT* out_values) {
-  // total_nnz = in_matrix_nnx的和 =
+    IndexT * in_matrix_nnx,  // 实际对应的需要的那个值数组(每一行包含的数目,注意这里的对应方式方便计算)
+    IndexT * in_index_batch_nnz,//也需要获取.每一个index下对应batch下的nnz 需要用这个计算Setvalues的需要的最大值,也就是利用这个获取最大值
+    IndexT * in_batch_offsets,  // 这里是每一轮batch的最大值注意这里指的是叠加值 这里最好让0=0
+    ) {
+      // batch = tid_y;
+      // index  = tid_z;
+      IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+      IndexT tid_z = blockIdx.z * blockDim.z + threadIdx.z;
+      CUDA_KERNEL_LOOP_TYPE(tid_x, rows, IndexT) {
+        // 优化          
+        //对于绝大多数的情况下tid_y 和 tid_z都不大可能超出限制
+        for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
+          for (; tid_z < in_num; tid_z += blockDim.z * gridDim.z) {
+            IndexT curr_offset = tid_y * (row + 1) + tid_x;
+            // TODO now可能超过INTMAX
+            IndexT now = row * in_num * tid_y +row * tid_z  + tid_x;
+            in_matrix_nnx[now] = in_crows_data[tid_z][curr_offset + 1] -
+                                in_crows_data[tid_z][curr_offset];
+          }
+        }                   
+      }
 
+      // TODO 优化
+      if (tid_x == 0) {
+        for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
+          for (; tid_z < in_num; tid_z += blockDim.z * gridDim.z) {
+            IndexT max = 0;
+            // 每一轮batch的最为哪一位,也就是这一轮的nnz
+            now = (tib_y+1) * (row + 1) -1;
+            in_index_batch_nnz[tib_z * in_num + tib_y] = in_crows_data[i][now];
+          }
+        }
+         
+      }
+
+      // TODO 优化
+      if (tid_x == 0  && tid_z == 0) {
+        for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
+          for (int i = 0; i < in_num; i++) {
+            now = (tid_y+1) * (row + 1) -1;
+            in_batch_offsets[tid_y + 1] += in_crows_data[i][now];
+          }
+        }
+       
+
+    }
+
+template <typename T, typename IndexT, typename PointerWrapperT, typename PointerWrapperIndexT>
+__global__ void ConcatCsr3D2ASetvaluesKernel(
+    const size_t in_num,
+    const int rows,
+    const int batch,
+    PointerWrapperT in_values_data,
+    PointerWrapperIndexT in_cols_data,
+    IndexT* in_matrix_nnx,  // 实际对应的需要的那个值数组(每一行包含的数目,注意这里的对应方式方便计算)
+    IndexT* in_batch_offsets,  // 这里是每一轮batch的最大值注意这里指的是叠加值 这里最好让0=0
+    T* out_values,
+    IndexT* out_cols) {
+  
   // 根据i和b获取的最大nnz 可以在上一个核函数获取
-  IndexT b = 0;
+  tid_y = 0;// value对应的batch 
+  tid_z = 0;// index of in_num tensor
+  // tid_x 指的是对应的i b之后的位置 只包含i对应的值位置
   IndexT next_offset = 0;
   IndexT curr_offset = 0;
-  IndexT now_nnz = in_max_batch_nnz[tid_z][tid_y];
+  // 对应于每一个index下batch nnz个数,也就是crows对应位置的值
+  IndexT now_nnz = in_crows_data[tid_z][tid_y * (rows) - 1];
   CUDA_KERNEL_LOOP_TYPE(tid_x, now_nnz, IndexT) {
     // TODO(bapijun) 使用什么方式优化
-    next_offset += in_batch_crows[b + 1];
-    curr_offset += in_batch_crows[b];
-    // curr_offset 初始化到最接近tid的对一轮
-    // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
+		//注意这里b还是b-1
+		// 需要生成的代码,每一个index和batch中的包含的个数
+	// 在上一轮batch结束的基础上,针对代码进行循环
+	// 这里是b-1还是b
+	// 注意这里j是in_matrix_nnx数组的下标
+    IndexT j = (tid_y) * in_num;
+    
+    curr_offset = in_matrix_nnx[j];
+	next_offset = in_matrix_nnx[j + in_num] + curr_offset;
     while (next_offset <= tid_x) {
       curr_offset = next_offset;
-      ++b;
-      next_offset += in_batch_crows[b + 1];
-    }
-    IndexT local_col = tid_x - curr_offset;
-
-    IndexT j = (b - 1) * in_num;
-    next_offset = in_matrix_nnx_offset[j + in_num];
-    curr_offset = in_matrix_nnx_offset[j];
-
-    while (next_offset <= local_col) {
-      curr_offset = next_offset;
       j = j+in_num;
-      next_offset = in_matrix_nnx_offset[j + in_num];
+      next_offset += in_matrix_nnx[j + in_num];
     }
-    
+	total = tid_x - curr_offset;//total 表示落在改区间的内的实际位置
+    //这个时候对应的是在当前的跳跃的本地区间,所以最后需要回去
+	for (int i = (tid_y - 1) * in_num; i < j - 1; i++) {
+      total += in_matrix_nnx[i];
+  }
+	total += in_batch_offsets[tid_y];
+	
+	out_values[total] = in_values_data[tid_z][tid_x];
+	out_cols[total] = in_cols_data[tid_z][tid_x];
     // 根据in_batch_offsets 获取到当前的batch下的最大值
   }
 }
@@ -651,11 +730,12 @@ void ConcatCsrGPU2D1A<T, IntT, Context>(
   DenseTensor in_rows_nnzs_tensor = phi::Empty<IntT>(dev_ctx, {total_rows});
   IntT* d_in_rows_nnzs_data = in_rows_nnzs_tensor.data<IntT>();
 
+  const int64_t** crows_data_vec_data = crows_data_vec.data();
   PointerToPointer<IntT> crows_ptr_array(dev_ctx, in_num, crows_data_vec_data);
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_rows, 1);
-  ConcatCsrGetRowsNnzKernel<IntT, decltype(crows_ptr_array)>
+  ConcatCsrGet2D1ARowsNnzKernel<IntT, decltype(crows_ptr_array)>
       <<<config.block_per_grid.x,
          config.thread_per_block.x,
          0,
@@ -734,7 +814,8 @@ void ConcatCsrGPU3D0A(const Context& dev_ctx,
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
 
-void ConcatCsrGPU3D1A<T, IntT, Context>(
+template <typename T, typename IntT, typename Context>
+void ConcatCsrGPU3D1A(
     const Context& dev_ctx,
     const std::vector<const SparseCooTensor*>& x,
     size_t in_num,
@@ -751,49 +832,96 @@ void ConcatCsrGPU3D1A<T, IntT, Context>(
   size_t batch = static_cast<int>(x[0]->dims()[0]);
 
   out_crows_size = batch;
+  std::vector<IntT> rows_nums;
+  std::vector<IntT> rows_offsets;// 每一个index下的rows的叠加值 
+  int rows_offset = 0;
+  rows_offsets.push_back(rows_offset);
   for (size_t i = 0; i < in_num; i++) {
     int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
-    crows_numel.push_back(rows + 1);
+    rows_nums.push_back(rows);
     out_crows_size += batch * rows;
+    rows_offset += rows;
+    rows_offsets.push_back(rows_offset);
   }
   DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
   int64_t* out_crows_data = out_crows.data<int64_t>();
 
   PointerToPointer<IntT> crows_ptr_array(dev_ctx, in_num, crows_data_vec_data);
-  if (batch * in_num < 10) {  // 需要更精确的逻辑
-    for (size_t b = 0; b < batch; b++) {
-      // 针对每一轮batch的初始化
-      out_crows_data[crow_index] = 0;
-      crow_index++;
-      cumulative_offset = 0;
+  DArray<IntT> d_rows_nums(dev_ctx, rows_nums);
 
-      for (size_t i = 0; i < in_num; i++) {
-        const int64_t* x_crows_ptr = x[i]->crows().data<int64_t>();
-        // crows_numel[i] == 第i组的row+1
-        int64_t x_crows_nnz = x_crows_ptr[(b + 1) * (crows_numel[i]) - 1];
-        now_value_ptr = values_data_vec[i] + values_index[i];
-        now_cols_ptr = cols_data_vec[i] + values_index[i];
-        values_index[i] += x_crows_nnz;
+  DenseTensor matrix_crows_offset_tensor = phi::Empty<IntT>(dev_ctx, {batch*(in_num + 1)});\
+  // 辅助准二维数组,表示每一个index下batch的nnz的值的叠加值 index 一维 batch二维
+  //p = batch *(in_num + 1) + index
+  IntT* d_matrix_crows_offset = matrix_crows_offset_tensor.data<IntT>();
+  config = phi::backends::gpu::GetGpuLaunchConfig3D(dev_ctx, batch, in_num);
+  ConcatCsr3D1AGetHelpArrayKernel<IntT, decltype(crows_ptr_array), decltype(d_rows_nums)>(in_num, batch,in_crows_data,in_rows,d_matrix_crows_offset);
 
-        if (x_crows_nnz) {
-          // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
-          memory_utils::Copy(cpu_place,
-                             out_values_data + value_offset,
-                             cpu_place,
-                             now_value_ptr,
-                             x_crows_nnz * sizeof(T));
-          memory_utils::Copy(cpu_place,
-                             out_cols_data + value_offset,
-                             cpu_place,
-                             now_cols_ptr,
-                             x_crows_nnz * sizeof(int64_t));
-        }
+  DArray<IntT> d_rows_offsets(dev_ctx, rows_offsets);
+  ConcatCsr3D1ASetCrowsKernel(in_num, batch,in_crows_data, rows_nums, d_rows_offsets,in_matrix_crows_offset,out_crows);
 
-        value_offset += x_crows_nnz;
-      }
-    }
-  } else {
-  }
+
+
+  out->SetMember(out_crows, out_cols, out_values, out_dims);
+}
+
+template <typename T, typename IntT, typename Context>
+void ConcatCsrGPU3D2A(const Context& dev_ctx,
+                      const std::vector<const SparseCooTensor*>& x,
+                      size_t in_num,
+                      const phi::DDim& out_dims,
+                      T* out_values_data,
+                      IntT* out_cols_data,
+                      const DenseTensor& out_values,
+                      const DenseTensor& out_cols,
+                      const std::vector<const T*>& values_data_vec,
+                      const std::vector<const IntT*>& cols_data_vec,
+                      const std::vector<const IntT*>& crows_data_vec,
+                      SparseCooTensor* out) {
+  // 到这里为止所有的代码可以合并到前文去,这里留在这里只是为了未来方便调试
+  auto batch = static_cast<int>(x[0]->dims()[0]);
+  auto rows = static_cast<int>(x[0]->dims()[1]);
+  auto now_crow_numel = rows + 1;
+
+  DenseTensor out_crows = phi::Empty<IntT>(dev_ctx, {now_crow_numel});
+  IntT* out_crows_data = out_crows.data<IntT>();    
+
+  const IntT** crows_data_vec_data = crows_data_vec.data();
+  PointerToPointer<IntT> crows_ptr_array(dev_ctx, in_num, crows_data_vec_data);   
+
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, now_crow_numel, 1);
+  ConcatCsr3D2ASetCrowsKernel<IntT, decltype(crows_ptr_array)>(now_crow_numel, in_num, crows_ptr_array, out_crows_data);
+  
+  // 辅助计算的数组
+
+  DenseTensor in_matrix_nnz_tensor = phi::Empty<IntT>(dev_ctx, {in_num * batch * rows});
+  IntT* d_in_matrix_nnz = in_matrix_nnz_tensor.data<IntT>();
+
+  DenseTensor in_max_batch_nnz_tensor = phi::Empty<IntT>(dev_ctx, {in_num * batch});
+  IntT* d_in_max_batch_nnz = in_max_batch_nnz_tensor.data<IntT>();
+
+  DenseTensor in_batch_offsets_tensor = phi::Empty<IntT>(dev_ctx, {batch + 1});
+  IntT* d_in_batch_offsets = in_batch_offsets_tensor.data<IntT>();
+
+  config = phi::backends::gpu::GetGpuLaunchConfig3D(dev_ctx, rows, batch, in_num);
+  ConcatCsr3D2AGetHelpArrayKernel<IntT, decltype(crows_ptr_array)>(rows, in_num, batch, crows_ptr_array, d_in_matrix_nnz, d_in_max_batch_nnz, d_in_batch_offsets);
+
+  int max_batch_nnz = static_cast<int>(thrust::reduce(
+                    thrust::device_pointer_cast(d_in_max_batch_nnz),
+                   thrust::device_pointer_cast(d_in_max_batch_nnz) + in_num * batch,
+                   static_cast<IntT>(0),
+                   thrust::maximum<IntT>()));
+  thrust::inclusive_scan(
+        thrust::device_pointer_cast(d_in_batch_offsets) ,
+        thrust::device_pointer_cast(d_in_batch_offsets) + batch + 1,
+        d_in_batch_offsets);  
+  const IntT** cols_data_vec_data = cols_data_vec.data();
+  PointerToPointer<IntT> cols_ptr_array(dev_ctx, in_num, cols_data_vec_data);  
+  const T** values_data_vec_data = values_data_vec.data();
+  PointerToPointer<T> values_ptr_array(dev_ctx, in_num, values_data_vec_data);  
+
+  config = phi::backends::gpu::GetGpuLaunchConfig3D(max_batch_nnz, rows, batch, in_num);
+
+  ConcatCsr3D2ASetvaluesKernel(in_num, rows, batch, in_values_data,in_cols_data,in_matrix_nnx, in_batch_offsets, out_values,out_cols);             
 
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
