@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 from ....utils import BreakGraphError, FallbackError
 from ..pycode_generator import PyCodeGen
@@ -189,7 +189,7 @@ class ZipVariable(SequenceIterVariable):
 
     @staticmethod
     def from_iterator(
-        value: list[VariableBase] | tuple[VariableBase, ...],
+        value: Sequence[VariableBase],
         graph: FunctionGraph | None,
         tracker: Tracker,
     ):
