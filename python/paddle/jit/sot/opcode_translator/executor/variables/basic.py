@@ -673,7 +673,6 @@ class SymbolicIntVariable(VariableBase):
 
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
         for tracker_expr, symbolic_input in symbolic_inputs.items():
-            # TODO(zrr1999): We need to support all trackers that may require a guard.
             if tracker.match_expr(tracker_expr):
                 symbolic_input.setdefault(value, 0)
                 symbolic_input[value] += 1

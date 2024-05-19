@@ -69,6 +69,7 @@ class Tracker:
         """
         raise NotImplementedError()
 
+    # TODO(zrr1999): We need to support all trackers that may require a guard.
     def match_expr(self, expr: str) -> bool:
         """
         Match the expression with the tracked variables.
@@ -273,10 +274,6 @@ class ConstTracker(Tracker):
             value_str, [], union_free_vars(value_free_vars)
         )
 
-    def match_expr(self, expr: str) -> bool:
-        value_str, _ = stringify_pyobject(self.value)
-        return expr == value_str
-
     def __repr__(self) -> str:
         return f"ConstTracker(value={self.value})"
 
@@ -327,6 +324,8 @@ class BinaryOperatorTracker(Tracker):
             list(sub_exprs),
             union_free_vars(*list(sub_frees)),
         )
+
+    # TODO(zrr1999): impl match_expr
 
     def __repr__(self) -> str:
         return f"BinaryOperatorTracker(operator={self.operator})"
@@ -413,7 +412,11 @@ class GetItemTracker(Tracker):
 
     def match_expr(self, expr: str) -> bool:
         key_string, _ = stringify_pyobject(self.key)
-        return expr == f"{{}}[{key_string}]"
+        if not expr.endswith(f"[{key_string}]"):
+            return False
+        return self.container.tracker.match_expr(
+            expr.removesuffix(f"[{key_string}]")
+        )
 
     def __repr__(self) -> str:
         return f"GetItemTracker(key={self.key!r})"
@@ -447,6 +450,8 @@ class GetIterTracker(Tracker):
             [iter_source_tracer],
             union_free_vars(iter_source_tracer.free_vars),
         )
+
+    # TODO(zrr1999): impl match_expr
 
     def __repr__(self) -> str:
         return "GetIterTracker()"
@@ -507,6 +512,8 @@ class CreateLayerTracker(Tracker):
                 )
             ),
         )
+
+    # TODO(zrr1999): impl match_expr
 
     def __repr__(self) -> str:
         return f"CreateLayerTracker(Layer={self.layer_class}, args={self.args}, kwargs={self.kwargs})"
