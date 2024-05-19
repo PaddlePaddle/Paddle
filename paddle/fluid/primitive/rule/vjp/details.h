@@ -60,6 +60,31 @@ void cumsum_grad(const Tensor& x,
 }
 
 template <typename T>
+void cumprod_grad(const Tensor& x,
+                  const Tensor& out,
+                  const Tensor& out_grad,
+                  int dim,
+                  bool exclusive,
+                  bool reverse,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
+    auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
+    auto common_dx =
+        cumsum<T>(out * out_grad, dim, false, exclusive, !reverse) / x;
+    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
+    auto replace_one = (1 - zero_mask) * x + zero_mask * ones_tensor;
+    auto cumprod_recompute = cumprod<T>(replace_one, dim, exclusive, reverse);
+    auto zeros_dx = cumsum<T>(
+        cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
+    auto x_grad_res = (1 - zero_mask) * common_dx + zero_mask * zeros_dx;
+    set_output<T>(x_grad_res, x_grad);
+  }
+}
+
+template <typename T>
 void divide_grad(const Tensor& x,
                  const Tensor& y,
                  const Tensor& out,

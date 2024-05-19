@@ -572,6 +572,7 @@
     param: [x]
   kernel :
     func : cumprod_grad
+  composite: cumprod_grad(x, out, out_grad, dim, exclusive, reverse, x_grad)
 
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
