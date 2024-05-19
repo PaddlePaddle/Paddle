@@ -1082,22 +1082,16 @@ void cumprod_grad(const Tensor& x,
   if (x_grad) {
     // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
-    // std::cout<<"start cumprod 1\n";
     auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
     auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
-    // std::cout<<"start cumprod 2\n";
     auto common_dx =
         cumsum<T>(out * out_grad, dim, false, exclusive, !reverse) / x;
-    // std::cout<<"start cumprod 3\n";
     auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
     auto replace_one = (1 - zero_mask) * x + zero_mask * ones_tensor;
-    // std::cout<<"start cumprod 4\n";
     auto cumprod_recompute = cumprod<T>(replace_one, dim, exclusive, reverse);
     auto zeros_dx = cumsum<T>(
         cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
-    // std::cout<<"start cumprod 5\n";
     auto x_grad_res = (1 - zero_mask) * common_dx + zero_mask * zeros_dx;
-    // std::cout<<"start cumprod 6\n";
     set_output<T>(x_grad_res, x_grad);
   }
 }
