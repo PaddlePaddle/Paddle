@@ -42,7 +42,6 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
-    Singleton,
     SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
@@ -158,17 +157,6 @@ class VariableLoader:
             var.reconstruct(self._pycode_gen)
         else:
             self._pycode_gen.gen_load(self._store_var_info[var.id])
-
-
-class SymbolicInt(metaclass=Singleton):
-    def __eq__(self, other) -> bool:
-        return isinstance(other, (int, SymbolicInt))
-
-    def __repr__(self) -> str:
-        return "-1"
-
-    def __str__(self) -> str:
-        return "-1"
 
 
 class FunctionGraph:

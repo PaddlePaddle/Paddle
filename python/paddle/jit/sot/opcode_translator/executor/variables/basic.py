@@ -190,10 +190,8 @@ class ConstantVariable(VariableBase):
             symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
             symbolic_inputs.setdefault(frame_value_tracer.debug_expr, {})
             symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
-            if self.value in symbolic_input:
-                symbolic_input[self.value] += 1
-            else:
-                symbolic_input[self.value] = 1
+            symbolic_input.setdefault(self.value, 0)
+            symbolic_input[self.value] += 1
 
         return super().make_stringify_guard()
 
@@ -656,8 +654,7 @@ class SymbolicIntVariable(VariableBase):
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
         symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
         symbolic_input.setdefault(self.value, 0)
-        if self.value in symbolic_input:
-            symbolic_input[self.value] += 1
+        symbolic_input[self.value] += 1
 
         return [
             StringifyExpression(
@@ -684,10 +681,8 @@ class SymbolicIntVariable(VariableBase):
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
         for tracker_expr, symbolic_input in symbolic_inputs.items():
             if tracker.match_expr(tracker_expr):
-                if value in symbolic_input:
-                    symbolic_input[value] += 1
-                else:
-                    symbolic_input[value] = 1
+                symbolic_input.setdefault(value, 0)
+                symbolic_input[value] += 1
                 # TODO(zrr1999): determine frequency
                 return SymbolicIntVariable(value, graph, tracker)
         return None
