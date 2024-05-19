@@ -14,9 +14,13 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
+#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
+#include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
+#include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 PD_DECLARE_bool(use_gemm_dequant);
 
@@ -46,8 +50,8 @@ class BiasActHelper {
                const phi::DenseTensor *bias,
                phi::DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    Load<T> load_func(x->data<T>());
-    Store<T> store_func(output->data<T>());
+    phi::funcs::Load<T> load_func(x->data<T>());
+    phi::funcs::Store<T> store_func(output->data<T>());
     ComputeImpl(bias_data, load_func, store_func);
   }
 
@@ -95,32 +99,33 @@ class BiasActHelper {
                            phi::DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
     if (dequant_scales != nullptr && quant_scale > 0) {
-      DequantLoad<T> load_func(
+      phi::funcs::DequantLoad<T> load_func(
           x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      QuantStore<T> store_func(output->data<int8_t>(),
-                               quant_round_type,
-                               quant_scale,
-                               quant_max_bound,
-                               quant_min_bound);
-      ComputeImpl<DequantLoad<T>, QuantStore<T>, int32_t>(
-          bias_data, load_func, store_func);
+      phi::funcs::QuantStore<T> store_func(output->data<int8_t>(),
+                                           quant_round_type,
+                                           quant_scale,
+                                           quant_max_bound,
+                                           quant_min_bound);
+      ComputeImpl<phi::funcs::DequantLoad<T>,
+                  phi::funcs::QuantStore<T>,
+                  int32_t>(bias_data, load_func, store_func);
     } else if (dequant_scales == nullptr && quant_scale > 0) {
-      Load<T> load_func(x->data<T>());
-      QuantStore<T> store_func(output->data<int8_t>(),
-                               quant_round_type,
-                               quant_scale,
-                               quant_max_bound,
-                               quant_min_bound);
+      phi::funcs::Load<T> load_func(x->data<T>());
+      phi::funcs::QuantStore<T> store_func(output->data<int8_t>(),
+                                           quant_round_type,
+                                           quant_scale,
+                                           quant_max_bound,
+                                           quant_min_bound);
       ComputeImpl(bias_data, load_func, store_func);
     } else if (dequant_scales != nullptr && quant_scale <= 0) {
-      DequantLoad<T> load_func(
+      phi::funcs::DequantLoad<T> load_func(
           x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      Store<T> store_func(output->data<T>());
-      ComputeImpl<DequantLoad<T>, Store<T>, int32_t>(
+      phi::funcs::Store<T> store_func(output->data<T>());
+      ComputeImpl<phi::funcs::DequantLoad<T>, phi::funcs::Store<T>, int32_t>(
           bias_data, load_func, store_func);
     } else {
-      Load<T> load_func(x->data<T>());
-      Store<T> store_func(output->data<T>());
+      phi::funcs::Load<T> load_func(x->data<T>());
+      phi::funcs::Store<T> store_func(output->data<T>());
       ComputeImpl(bias_data, load_func, store_func);
     }
   }
@@ -138,44 +143,46 @@ class BiasActHelper {
     bool use_glu = (act_method_ == "geglu" || act_method_ == "swiglu");
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
     if (dequant_scales != nullptr && quant_scale > 0) {
-      DequantLoad<T> load_func(
+      phi::funcs::DequantLoad<T> load_func(
           x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      QuantStore<T, true> store_func(output->data<int8_t>(),
-                                     shift->data<T>(),
-                                     smooth->data<T>(),
-                                     use_glu ? cols_ / 2 : cols_,
-                                     quant_round_type,
-                                     quant_scale,
-                                     quant_max_bound,
-                                     quant_min_bound);
-      ComputeImpl<DequantLoad<T>, QuantStore<T, true>, int32_t>(
-          bias_data, load_func, store_func);
+      phi::funcs::QuantStore<T, true> store_func(output->data<int8_t>(),
+                                                 shift->data<T>(),
+                                                 smooth->data<T>(),
+                                                 use_glu ? cols_ / 2 : cols_,
+                                                 quant_round_type,
+                                                 quant_scale,
+                                                 quant_max_bound,
+                                                 quant_min_bound);
+      ComputeImpl<phi::funcs::DequantLoad<T>,
+                  phi::funcs::QuantStore<T, true>,
+                  int32_t>(bias_data, load_func, store_func);
     } else if (dequant_scales == nullptr && quant_scale > 0) {
-      Load<T> load_func(x->data<T>());
-      QuantStore<T, true> store_func(output->data<int8_t>(),
-                                     shift->data<T>(),
-                                     smooth->data<T>(),
-                                     use_glu ? cols_ / 2 : cols_,
-                                     quant_round_type,
-                                     quant_scale,
-                                     quant_max_bound,
-                                     quant_min_bound);
+      phi::funcs::Load<T> load_func(x->data<T>());
+      phi::funcs::QuantStore<T, true> store_func(output->data<int8_t>(),
+                                                 shift->data<T>(),
+                                                 smooth->data<T>(),
+                                                 use_glu ? cols_ / 2 : cols_,
+                                                 quant_round_type,
+                                                 quant_scale,
+                                                 quant_max_bound,
+                                                 quant_min_bound);
       ComputeImpl(bias_data, load_func, store_func);
     } else if (dequant_scales != nullptr && quant_scale <= 0) {
-      DequantLoad<T> load_func(
+      phi::funcs::DequantLoad<T> load_func(
           x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      Store<T, true> store_func(output->data<T>(),
-                                shift->data<T>(),
-                                smooth->data<T>(),
-                                use_glu ? cols_ / 2 : cols_);
-      ComputeImpl<DequantLoad<T>, Store<T, true>, int32_t>(
-          bias_data, load_func, store_func);
+      phi::funcs::Store<T, true> store_func(output->data<T>(),
+                                            shift->data<T>(),
+                                            smooth->data<T>(),
+                                            use_glu ? cols_ / 2 : cols_);
+      ComputeImpl<phi::funcs::DequantLoad<T>,
+                  phi::funcs::Store<T, true>,
+                  int32_t>(bias_data, load_func, store_func);
     } else {
-      Load<T> load_func(x->data<T>());
-      Store<T, true> store_func(output->data<T>(),
-                                shift->data<T>(),
-                                smooth->data<T>(),
-                                use_glu ? cols_ / 2 : cols_);
+      phi::funcs::Load<T> load_func(x->data<T>());
+      phi::funcs::Store<T, true> store_func(output->data<T>(),
+                                            shift->data<T>(),
+                                            smooth->data<T>(),
+                                            use_glu ? cols_ / 2 : cols_);
       ComputeImpl(bias_data, load_func, store_func);
     }
   }
@@ -411,7 +418,7 @@ class NormHelper {
   float residual_alpha_;
   paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper_;
-  phi::fusion::AttnLayerNorm<T> layernorm_helper_;
+  AttnLayerNorm<T> layernorm_helper_;
 };
 
 template <typename T,

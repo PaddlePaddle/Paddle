@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_multi_transformer_helper.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
+#include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 
 namespace paddle {
 namespace operators {

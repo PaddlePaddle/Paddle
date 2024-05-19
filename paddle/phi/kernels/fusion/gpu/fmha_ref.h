@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include "glog/logging.h"
 
 #include "paddle/phi/core/tensor_utils.h"
