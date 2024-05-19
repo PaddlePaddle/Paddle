@@ -246,6 +246,7 @@
   extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
 - op : round
+  extra_args : int decimals
 
 - op : scale
 

@@ -806,7 +806,7 @@ def reciprocal(x, name=None):
         return out
 
 
-def round(x, name=None):
+def round(x, decimals=0, name=None):
     """
 
     Round the values in the input to the nearest integer value.
@@ -823,6 +823,7 @@ def round(x, name=None):
 
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type float32, float64 or float16.
+        decimals(int): Rounded decimal place (default: 0).
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -840,14 +841,17 @@ def round(x, name=None):
             [-1., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.round(x)
+        return _C_ops.round(x,decimals)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
+        attrs = {
+            'decimals': int(decimals),
+        }
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
+        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
         return out
 
 

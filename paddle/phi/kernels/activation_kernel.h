@@ -68,7 +68,7 @@ DECLARE_ACTIVATION_KERNEL(Log)
 DECLARE_ACTIVATION_KERNEL(Log2)
 DECLARE_ACTIVATION_KERNEL(Log10)
 DECLARE_ACTIVATION_KERNEL(Log1p)
-DECLARE_ACTIVATION_KERNEL(Round)
+// DECLARE_ACTIVATION_KERNEL(Round)
 DECLARE_ACTIVATION_KERNEL(Floor)
 DECLARE_ACTIVATION_KERNEL(Ceil)
 DECLARE_ACTIVATION_KERNEL(Negative)
@@ -97,6 +97,12 @@ template <typename T, typename Context>
 void Relu6Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out);
+
+template <typename T, typename Context>
+void RoundKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const int decimals,
+               DenseTensor* out);
 
 template <typename T, typename Context>
 void SwishKernel(const Context& dev_ctx,
