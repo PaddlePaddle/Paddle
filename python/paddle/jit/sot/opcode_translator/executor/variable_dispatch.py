@@ -217,7 +217,7 @@ def dispatch_dict(var: ListVariable | TupleVariable):
 
 @Dispatcher.register_decorator(dict.fromkeys)
 def dispatch_dict_fromkeys(
-    seq: ListVariable | TupleVariable, default: VariableBase | None = None
+    seq: ListVariable | TupleVariable, default: VariableBase = None  # type: ignore
 ):
     if default is None:
         default = ConstantVariable.wrap_literal(None, seq.graph)
@@ -608,8 +608,8 @@ Dispatcher.register(
 def str_startswith(
     var: ConstantVariable,
     substr: ConstantVariable,
-    beg: ConstantVariable | None = None,
-    end: ConstantVariable | None = None,
+    beg: ConstantVariable = None,  # type: ignore
+    end: ConstantVariable = None,  # type: ignore
 ):  # type: ignore
     value = var.get_py_value()
     if end is None:
@@ -629,8 +629,8 @@ def str_startswith(
 def str_endswith(
     var: ConstantVariable,
     substr: ConstantVariable,
-    beg: ConstantVariable | None = None,
-    end: ConstantVariable | None = None,
+    beg: ConstantVariable = None,  # type: ignore
+    end: ConstantVariable = None,  # type: ignore
 ):  # type: ignore
     value = var.get_py_value()
     if end is None:

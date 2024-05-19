@@ -31,6 +31,7 @@ def foo(x):
 
 
 def dynamic_int_input_func(x, n):
+    x = paddle.reshape(x, [n, -1])
     return (x + n) * 2 - 1, (n + 1) * 2 - 1
 
 
@@ -39,15 +40,25 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         with with_allow_dynamic_shape_guard(
             True
         ), test_instruction_translator_cache_context() as ctx:
-            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 1)
+            self.assert_results(
+                dynamic_int_input_func, paddle.randn([3, 4, 5]), 1
+            )
             self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 2)
+            self.assert_results(
+                dynamic_int_input_func, paddle.randn([3, 4, 5]), 2
+            )
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 3)
+            self.assert_results(
+                dynamic_int_input_func, paddle.randn([3, 4, 5]), 3
+            )
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 4)
+            self.assert_results(
+                dynamic_int_input_func, paddle.randn([3, 4, 5]), 4
+            )
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(dynamic_int_input_func, paddle.randn([2, 3]), 5)
+            self.assert_results(
+                dynamic_int_input_func, paddle.randn([3, 4, 5]), 5
+            )
             self.assertEqual(ctx.translate_count, 2)
 
 
