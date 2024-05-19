@@ -28,9 +28,9 @@
 namespace paddle {
 namespace jit {
 
-Layer::Layer(std::shared_ptr<VariableMap>  params_map,
-             std::shared_ptr<VariableMap>  attrs_map,
-             FunctionInfoMap  info_map,
+Layer::Layer(std::shared_ptr<VariableMap> params_map,
+             std::shared_ptr<VariableMap> attrs_map,
+             FunctionInfoMap info_map,
              const phi::Place& place)
     : params_map_(std::move(params_map)),
       attrs_map_(std::move(attrs_map)),

@@ -22,8 +22,8 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-Plan::Plan(std::vector<std::shared_ptr<Job>>  job_list,
-           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>> 
+Plan::Plan(std::vector<std::shared_ptr<Job>> job_list,
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>
                type_to_program)
     : job_list_(std::move(job_list)),
       type_to_program_(std::move(type_to_program)),
@@ -42,10 +42,9 @@ Plan::Plan(std::vector<std::shared_ptr<Job>>  job_list,
   }
 }
 
-Plan::Plan(
-    std::vector<std::shared_ptr<Job>>  job_list,
-    std::unordered_map<std::string, std::shared_ptr<::pir::Program>> 
-        type_to_ir_program)
+Plan::Plan(std::vector<std::shared_ptr<Job>> job_list,
+           std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
+               type_to_ir_program)
     : job_list_(std::move(job_list)),
       type_to_ir_program_(std::move(type_to_ir_program)),
       micro_batch_num_(1) {
