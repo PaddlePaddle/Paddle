@@ -171,6 +171,12 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
       return true;
     });
 
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (bias_shape.size() != 1) return false;
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv =
@@ -246,6 +252,15 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
           match_ctx.Attr<int>("groups") < 1) {
         return false;
       }
+      return true;
+    });
+
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      auto other_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("other_param"));
+      if (bias_shape.size() != 1) return false;
+      if (other_param_shape.size() != 1) return false;
       return true;
     });
 
