@@ -21,7 +21,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
-#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -39,7 +38,6 @@ namespace framework {
 class CompiledProgramPrivate;
 
 using details::BuildStrategy;
-using details::ExecutionStrategy;
 namespace p = paddle::platform;
 using DeviceType = paddle::platform::DeviceType;
 
@@ -52,7 +50,6 @@ class CompiledProgram {
                                     const std::string &loss_var_name,
                                     Scope *scope,
                                     const std::vector<Scope *> &local_scopes,
-                                    // const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy,
                                     ir::Graph *graph);
 

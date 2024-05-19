@@ -551,7 +551,6 @@ CompiledProgram::CompiledProgram(const std::vector<platform::Place> &places,
                                  const std::string &loss_var_name,
                                  Scope *scope,
                                  const std::vector<Scope *> &local_scopes,
-                                 //  const ExecutionStrategy &exec_strategy,
                                  const BuildStrategy &build_strategy,
                                  ir::Graph *graph)
     : member_(new CompiledProgramPrivate(places, scope)) {
@@ -760,10 +759,7 @@ CompiledProgram::~CompiledProgram() {
 }
 
 void CompiledProgram::InitProgramPrivateMemberInfo(
-    // const ExecutionStrategy &exec_strategy,
-    const BuildStrategy &build_strategy,
-    size_t device_count) {
-  // member_->use_device_ = exec_strategy.use_device_;
+    const BuildStrategy &build_strategy, size_t device_count) {
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;

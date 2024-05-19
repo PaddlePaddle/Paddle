@@ -88,16 +88,12 @@ class ReferenceCountPassTestHelper {
     build_strategy.memory_optimize_ = false;
     FLAGS_eager_delete_tensor_gb = -1;
 
-    // details::ExecutionStrategy exec_strategy;
-    // exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
-
     compiled_program_ =
         std::make_unique<CompiledProgram>(CreatePlaces(1, use_cuda),
                                           std::vector<std::string>(),
                                           "",
                                           &scope_,
                                           std::vector<Scope *>(),
-                                          // exec_strategy,
                                           build_strategy,
                                           &graph_);
 
