@@ -50,7 +50,7 @@ class CustomTracer : public TracerBase {
 
   ~CustomTracer() override;
 
-  explicit CustomTracer(std::string  dev_type);
+  explicit CustomTracer(std::string dev_type);
 
  private:
   DISABLE_COPY_AND_ASSIGN(CustomTracer);

@@ -81,10 +81,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
           getter(std::move(getter)),
           default_getter(std::move(default_getter)) {}
 
-    VarInfo(bool is_public,
-            Getter getter,
-            Getter default_getter,
-            Setter setter)
+    VarInfo(bool is_public, Getter getter, Getter default_getter, Setter setter)
         : is_public(is_public),
           getter(std::move(getter)),
           default_getter(std::move(default_getter)),
@@ -262,7 +259,9 @@ struct RegisterGetterSetterVisitor {
   RegisterGetterSetterVisitor(std::string name,
                               bool is_writable,
                               void *value_ptr)
-      : name_(std::move(name)), is_writable_(is_writable), value_ptr_(value_ptr) {}
+      : name_(std::move(name)),
+        is_writable_(is_writable),
+        value_ptr_(value_ptr) {}
 
   template <typename T>
   void operator()(const T &default_value) const {
