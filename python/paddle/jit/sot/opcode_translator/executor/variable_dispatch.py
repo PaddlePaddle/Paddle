@@ -217,7 +217,8 @@ def dispatch_dict(var: ListVariable | TupleVariable):
 
 @Dispatcher.register_decorator(dict.fromkeys)
 def dispatch_dict_fromkeys(
-    seq: ListVariable | TupleVariable, default: VariableBase = None  # type: ignore
+    seq: ListVariable | TupleVariable,
+    default: VariableBase = None,  # type: ignore
 ):
     if default is None:
         default = ConstantVariable.wrap_literal(None, seq.graph)
@@ -610,7 +611,7 @@ def str_startswith(
     substr: ConstantVariable,
     beg: ConstantVariable = None,  # type: ignore
     end: ConstantVariable = None,  # type: ignore
-):  # type: ignore
+):
     value = var.get_py_value()
     if end is None:
         end = ConstantVariable(len(value), var.graph, DanglingTracker())
@@ -631,7 +632,7 @@ def str_endswith(
     substr: ConstantVariable,
     beg: ConstantVariable = None,  # type: ignore
     end: ConstantVariable = None,  # type: ignore
-):  # type: ignore
+):
     value = var.get_py_value()
     if end is None:
         end = ConstantVariable(len(value), var.graph, DanglingTracker())
@@ -1096,8 +1097,10 @@ Dispatcher.register(
 # base ** exp % mod
 @Dispatcher.register_decorator(pow)
 def dispatch_pow(
-    base: VariableBase, exp: VariableBase, mod: VariableBase | None = None
-):  # type: ignore
+    base: VariableBase,
+    exp: VariableBase,
+    mod: VariableBase = None,  # type: ignore
+):
     graph = base.graph
     result = BuiltinVariable(operator.pow, graph, DanglingTracker())(base, exp)
     if exp is not None:
@@ -1120,8 +1123,9 @@ Dispatcher.register(
 
 @Dispatcher.register_decorator(sum)
 def dispatch_sum(
-    var: ContainerVariable | TensorVariable, start: VariableBase | None = None
-):  # type: ignore
+    var: ContainerVariable | TensorVariable,
+    start: VariableBase = None,  # type: ignore
+):
     if start is None:
         start = ConstantVariable.wrap_literal(0, var.graph)
     elements = [
