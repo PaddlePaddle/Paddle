@@ -25,7 +25,7 @@ IrTensor::IrTensor(phi::DataType dtype,
                    size_t offset)
     : dims_(dims), dtype_(dtype), layout_(layout), lod_(lod), offset_(offset) {}
 
-IrTensor::IrTensor(const IrTensor& other) : TensorBase(other)  {
+IrTensor::IrTensor(const IrTensor& other) : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
