@@ -71,16 +71,24 @@ class Tracker:
 
     def match_expr(self, expr: str) -> bool:
         """
-        TODO(zrr1999)
+        Match the expression with the tracked variables.
+
+        Args:
+            expr (str): The expression to be matched.
+
+        Returns:
+            bool: True if the expression matches the tracked variables, False otherwise.
         """
-        raise NotImplementedError()
+        raise NotImplementedError(
+            f"match_expr is not implemented for {type(self)}"
+        )
 
     def is_traceable(self) -> bool:
         """
         Determine if all the tracked variables can be traced from the frame.
 
         Returns:
-            bool, True if all tracked variables are traceable, False otherwise.
+            bool: True if all tracked variables are traceable, False otherwise.
         """
         if self.changed:
             return False
@@ -185,6 +193,9 @@ class CellTracker(LocalTracker):
     def trace_value_from_frame(self):
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
 
+    def match_expr(self, expr: str) -> bool:
+        return expr == f"frame.f_locals['{self.name}']"
+
     def __repr__(self) -> str:
         return f"CellTracker(name={self.name})"
 
@@ -206,6 +217,9 @@ class GlobalTracker(Tracker):
 
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_globals['{self.name}']", [], {})
+
+    def match_expr(self, expr: str) -> bool:
+        return expr == f"frame.f_globals['{self.name}']"
 
     def __repr__(self) -> str:
         return f"GlobalTracker(name={self.name})"
@@ -231,6 +245,9 @@ class BuiltinTracker(Tracker):
             f"builtins.__dict__['{self.name}']", [], {"builtins": builtins}
         )
 
+    def match_expr(self, expr: str) -> bool:
+        return expr == f"builtins.__dict__['{self.name}']"
+
     def __repr__(self) -> str:
         return f"BuiltinTracker(name={self.name})"
 
@@ -253,8 +270,12 @@ class ConstTracker(Tracker):
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
         return StringifyExpression(
-            f"{value_str}", [], union_free_vars(value_free_vars)
+            value_str, [], union_free_vars(value_free_vars)
         )
+
+    def match_expr(self, expr: str) -> bool:
+        value_str, _ = stringify_pyobject(self.value)
+        return expr == value_str
 
     def __repr__(self) -> str:
         return f"ConstTracker(value={self.value})"
@@ -341,6 +362,12 @@ class GetAttrTracker(Tracker):
             union_free_vars(obj_tracer.free_vars),
         )
 
+    def match_expr(self, expr: str) -> bool:
+        if self.attr.isidentifier():
+            return expr == f"{{}}.{self.attr}"
+        else:
+            return expr == f"getattr({{}}, '{self.attr}')"
+
     def __repr__(self) -> str:
         return f"GetAttrTracker(attr={self.attr})"
 
@@ -383,6 +410,10 @@ class GetItemTracker(Tracker):
             [container_tracer],
             union_free_vars(container_tracer.free_vars, key_free_vars),
         )
+
+    def match_expr(self, expr: str) -> bool:
+        key_string, _ = stringify_pyobject(self.key)
+        return expr == f"{{}}[{key_string}]"
 
     def __repr__(self) -> str:
         return f"GetItemTracker(key={self.key!r})"
