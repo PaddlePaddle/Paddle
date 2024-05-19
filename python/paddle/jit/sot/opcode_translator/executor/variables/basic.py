@@ -53,7 +53,6 @@ from ..tracker import (
     GetAttrTracker,
     GetIterTracker,
     GlobalTracker,
-    LocalTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
@@ -180,9 +179,6 @@ class ConstantVariable(VariableBase):
             ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
             and isinstance(self.value, int)
             and self.tracker.need_guard()
-            and isinstance(
-                self.tracker, LocalTracker
-            )  # TODO(zrr1999): now only support local tracker
         ):
             from ..executor_cache import OpcodeExecutorCache
 
@@ -672,14 +668,12 @@ class SymbolicIntVariable(VariableBase):
             return
         if not tracker.need_guard():
             return
-        if not isinstance(tracker, LocalTracker):
-            # TODO(zrr1999): now only support local tracker
-            return
 
         from ..executor_cache import OpcodeExecutorCache
 
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
         for tracker_expr, symbolic_input in symbolic_inputs.items():
+            # TODO(zrr1999): We need to support all trackers that may require a guard.
             if tracker.match_expr(tracker_expr):
                 symbolic_input.setdefault(value, 0)
                 symbolic_input[value] += 1
