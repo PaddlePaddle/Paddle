@@ -641,7 +641,7 @@ const std::vector<std::string> kPirMkldnnPasses {
       "fc_activation_fuse_pass",             //
 #if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
     !defined(PADDLE_WITH_DNNL)
-  // self_attention_fuse_pass is not allowed under this defination
+  // self_attention_fuse_pass is not allowed under this definition
 #else
       "self_attention_fuse_pass",  //
 #endif

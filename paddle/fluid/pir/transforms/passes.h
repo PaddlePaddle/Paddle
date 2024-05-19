@@ -57,7 +57,7 @@ USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(fc_onednn_enable_pass);
 USE_PIR_PASS(fc_activation_fuse_pass);
 #if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML)
-// self_attention_fuse_pass is not allowed under this defination
+// self_attention_fuse_pass is not allowed under this definition
 #else
 USE_PIR_PASS(self_attention_fuse_pass);
 #endif
