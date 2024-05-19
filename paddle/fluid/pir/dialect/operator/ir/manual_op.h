@@ -229,7 +229,7 @@ class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
   using Op::Op;
   static const char *name() { return "pd_op.create_array_like"; }
   static constexpr uint32_t attributes_num = 1;
-  static const char *attributes_name[attributes_num];
+  static std::array<const char*, 1> attributes_name;
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
