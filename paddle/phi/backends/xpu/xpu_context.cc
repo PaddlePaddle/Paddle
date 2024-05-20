@@ -31,39 +31,6 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
-class XHPCBufferManager {
- public:
-  void* Alloc(const Place& place, size_t size, XPUStream xpu_stream) {
-    VLOG(3) << "Alloc " << size << " bytes from XHPC on stream" << xpu_stream;
-    phi::Stream stream(reinterpret_cast<StreamId>(xpu_stream));
-    auto allocation = memory_utils::Alloc(place, size, stream);
-    void* ret = allocation.get()->ptr();
-    allocations_to_free_.back().push_back(std::move(allocation));
-    return ret;
-  }
-
-  void Save() {
-    allocations_to_free_.emplace_back();
-    VLOG(3) << "XHPC ctx_guard created, " << allocations_to_free_.size()
-            << " are in use now.";
-  }
-
-  void Free() {
-    PADDLE_ENFORCE_GT(GetStackLevel(),
-                      0,
-                      errors::PreconditionNotMet(
-                          "No ctx_guard when overload_free is called"));
-    allocations_to_free_.pop_back();
-    VLOG(3) << "XHPC ctx_guard destropyed, " << allocations_to_free_.size()
-            << " are in use now.";
-  }
-
-  size_t GetStackLevel() const { return allocations_to_free_.size(); }
-
- private:
-  std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
-};
-
 struct XPUContext::Impl {
   void SetL3Cache(int64_t l3_size = 1024) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(context_->xpu_stream));
@@ -164,6 +131,39 @@ struct XPUContext::Impl {
     }
   }
 
+  class XHPCBufferManager {
+   public:
+    void* Alloc(const Place& place, size_t size, XPUStream xpu_stream) {
+      VLOG(3) << "Alloc " << size << " bytes from XHPC on stream "
+              << xpu_stream;
+      phi::Stream stream(reinterpret_cast<StreamId>(xpu_stream));
+      auto allocation = memory_utils::Alloc(place, size, stream);
+      void* ret = allocation.get()->ptr();
+      allocations_to_free_.back().push_back(std::move(allocation));
+      return ret;
+    }
+
+    void Save() {
+      allocations_to_free_.emplace_back();
+      VLOG(3) << "XHPC ctx_guard created, " << GetStackLevel()
+              << " are in use now.";
+    }
+
+    void Free() {
+      PADDLE_ENFORCE_GT(GetStackLevel(),
+                        0,
+                        errors::PreconditionNotMet(
+                            "No ctx_guard when overload_free is called"));
+      allocations_to_free_.pop_back();
+      VLOG(3) << "XHPC ctx_guard destropyed, " << GetStackLevel()
+              << " are in use now.";
+    }
+
+   private:
+    size_t GetStackLevel() const { return allocations_to_free_.size(); }
+    std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
+  };
+
   void Init(int64_t gm_default_size = 1024, int64_t l3_default_size = 1024) {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
@@ -180,10 +180,11 @@ struct XPUContext::Impl {
 
     if (std::getenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD") == nullptr) {
       // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
+      XPUStream s = context_->get_stream();
       auto overload_alloc_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_,
                                 &place = place_,
-                                &s = context_->get_stream()](size_t size) {
-        xhpc_buf_mgr.Alloc(place, size, s);
+                                &s = s](size_t size) -> void* {
+        return xhpc_buf_mgr.Alloc(place, size, s);
       };
       auto overload_save_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
         xhpc_buf_mgr.Save();
