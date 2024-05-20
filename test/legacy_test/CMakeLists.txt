@@ -113,7 +113,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-  list(REMOVE_ITEM TEST_OPS test_downpoursgd)
+  list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
@@ -484,8 +484,13 @@ endif()
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
-    test_concat_op test_elementwise_add_op test_lookup_table_op
-    test_elementwise_sub_op test_gather_op test_mean_op)
+    test_concat_op
+    test_elementwise_add_op
+    test_lookup_table_op
+    test_elementwise_sub_op
+    test_gather_op
+    test_mean_op
+    test_lod_reset_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
