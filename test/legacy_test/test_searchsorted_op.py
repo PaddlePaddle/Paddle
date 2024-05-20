@@ -97,7 +97,7 @@ class TestSearchSortedOp5(TestSearchSorted):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the float16",
 )
-class TestSearchSortedFP16(OpTest):
+class TestSearchSortedFP16OP(TestSearchSorted):
     def setUp(self):
         self.python_api = paddle.searchsorted
         self.op_type = "searchsorted"
@@ -105,8 +105,8 @@ class TestSearchSortedFP16(OpTest):
         self.init_test_case()
 
         self.inputs = {
-            'SortedSequence': self.sorted_sequence,
-            'Values': self.values,
+            'SortedSequence': self.sorted_sequence.astype(self.dtype),
+            'Values': self.values.astype(self.dtype),
         }
         self.attrs = {"out_int32": False, "right": False}
         self.attrs["right"] = True if self.side == 'right' else False
@@ -117,18 +117,19 @@ class TestSearchSortedFP16(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_pir=True)
 
     def init_test_case(self):
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
-        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.dtype)
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
         self.side = "left"
 
 
-class TestSearchSortedFP16_2(TestSearchSortedFP16):
+class TestSearchSortedFP16OP_2(TestSearchSortedFP16OP):
     def init_test_case(self):
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
-        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.dtype)
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
         self.side = "right"
 
 
@@ -137,7 +138,7 @@ class TestSearchSortedFP16_2(TestSearchSortedFP16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
 )
-class TestSearchSortedBF16(OpTest):
+class TestSearchSortedBF16(TestSearchSorted):
     def setUp(self):
         self.python_api = paddle.searchsorted
         self.public_python_api = paddle.searchsorted
