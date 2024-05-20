@@ -22,6 +22,10 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
+#if CUDA_VERSION >= 11000 && (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+#define CUDA_BFLOAT16_AVALIABLE
+#endif
+
 namespace phi {
 namespace fusion {
 
@@ -49,7 +53,7 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
   return __hmul(__hadd(a, b), c);
 }
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#if CUDA_VERSION >= 11000 && (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
@@ -688,7 +692,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (compute_dtype == "bf16") {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#if CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -771,7 +775,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#if CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -818,7 +822,7 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#if CUDA_BFLOAT16_AVALIABLE
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
