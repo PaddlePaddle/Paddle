@@ -70,8 +70,11 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
 void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
   const auto& value_type = val.type();
   if (!val || !value_type) {
-    PADDLE_THROW(
-        phi::errors::Fatal("Set static shape for null value is FOBBIDEN!"));
+    LOG(WARNING) << "Set static shape for null value";
+    if (val) {
+      LOG(WARNING) << "null value id: " << val.impl()->id();
+    }
+    return;
   }
   if (!IsStaticShape(val)) {
     LOG(WARNING) << "Risk on SetStaticShapeForValue for contain_unknown_dim";

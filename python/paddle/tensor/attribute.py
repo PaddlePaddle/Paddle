@@ -103,6 +103,7 @@ def shape(input):
             >>> print(res)
             [array([  3, 100, 100], dtype=int32)]
     """
+    return input.shape
     if in_dynamic_or_pir_mode():
         out = _C_ops.shape(input)
         out.stop_gradient = True

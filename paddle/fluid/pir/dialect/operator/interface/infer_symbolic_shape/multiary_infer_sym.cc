@@ -101,11 +101,23 @@ bool BicubicInterpOpInferSymbolicShape(
       return true;
     }
 
+    auto out_shape =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
     symbol::DimExpr out_h_tmp{0};
     symbol::DimExpr out_w_tmp{0};
-    const auto &next_sym = infer_context->GetNextSymName();
-    out_h_tmp = symbol::DimExpr(next_sym);
-    out_w_tmp = symbol::DimExpr(next_sym);
+    // const auto &next_sym = infer_context->GetNextSymName();
+    // out_h_tmp = symbol::DimExpr(next_sym);
+    // out_w_tmp = symbol::DimExpr(next_sym);
+    if (data_layout == DataLayout::kNCHW) {
+      out_h_tmp = symbol::DimExpr(out_shape[2]);
+      out_w_tmp = symbol::DimExpr(out_shape[3]);
+    } else {
+      out_h_tmp = symbol::DimExpr(out_shape[1]);
+      out_w_tmp = symbol::DimExpr(out_shape[2]);
+    }
 
     std::vector<symbol::DimExpr> dim_out;
     if (data_layout == DataLayout::kNCHW) {

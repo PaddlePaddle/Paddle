@@ -120,6 +120,7 @@ void ApplyBuildGroupOpPass(
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -194,6 +195,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -229,6 +231,9 @@ void ApplyCinnPass(::pir::Program* program,
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  std::cerr << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
   ApplyCinnLowerPass(program, CreatePassManager);
 }
 
