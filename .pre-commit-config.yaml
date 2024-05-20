@@ -5,8 +5,7 @@ exclude: |
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+|
-        third_party/.+|
-        python/paddle/tensor/tensor\.pyi|
+        third_party/.+
     )$
 repos:
 # Common hooks
