@@ -1328,11 +1328,29 @@ ir::Tensor Gather(const ir::Tensor& x,
         // 1) indice is got from `output_shape`
         // 2) transformed_indice is used in the input `x`
         std::vector<Expr> transformed_indice = indice;
-        // The element type of index maybe int64, but the index type is limited
-        // to int32 in CINN. See the below link for more details:
-        // https://github.com/PaddlePaddle/CINN/blob/85ab4981a38926dc5c1dbf672762cec335d2b857/cinn/ir/ir.cc#L477
-        transformed_indice[axis] =
-            ir::Cast::Make(cinn::common::Int(32), index(indice));
+
+        auto index_indice = std::vector<Expr>({indice[axis]});
+
+        if (index.ndims() > 1) {
+          PADDLE_ENFORCE_EQ(
+              index.ndims(),
+              2,
+              phi::errors::InvalidArgument(
+                  "index.ndims() should be 2 when index.ndims() is not 0 or 1"
+                  "in gather_op, but received value is [%d].",
+                  index.ndims()));
+          PADDLE_ENFORCE_EQ(
+              index->shape[1],
+              Expr(1),
+              phi::errors::InvalidArgument(
+                  "index->shape[1] should be 1 when index.ndims() = 2"
+                  "in gather_op."));
+
+          index_indice.push_back(Expr(0));
+        }
+
+        transformed_indice[axis] = index(index_indice);
+
         return x(transformed_indice);
       },
       name);
@@ -1365,7 +1383,29 @@ ir::Tensor Gather(const ir::Tensor& x,
         // 1) indice is got from `output_shape`
         // 2) transformed_indice is used in the input `x`
         std::vector<Expr> transformed_indice = indice;
-        transformed_indice[axis] = index(indice[axis]);
+
+        auto index_indice = std::vector<Expr>({indice[axis]});
+
+        if (index.ndims() > 1) {
+          PADDLE_ENFORCE_EQ(
+              index.ndims(),
+              2,
+              phi::errors::InvalidArgument(
+                  "index.ndims() should be 2 when index.ndims() is not 0 or 1"
+                  "in gather_op, but received value is [%d].",
+                  index.ndims()));
+          PADDLE_ENFORCE_EQ(
+              index->shape[1],
+              Expr(1),
+              phi::errors::InvalidArgument(
+                  "index->shape[1] should be 1 when index.ndims() = 2"
+                  "in gather_op."));
+
+          index_indice.push_back(Expr(0));
+        }
+
+        transformed_indice[axis] = index(index_indice);
+
         return x(transformed_indice);
       },
       name);
