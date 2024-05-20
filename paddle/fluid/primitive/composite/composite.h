@@ -212,14 +212,19 @@ template <typename T>
 std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
                                              const Tensor& label,
                                              float delta) {
-  auto delta_full = full<T>(input.shape(), delta, input.dtype());
+  Tensor delta_full;
+  if (has_dynamic_shape(input.shape())) {
+    delta_full =
+        backend::full_with_tensor<T>(shape<T>(input), delta, input.dtype());
+  } else {
+    delta_full = full<T>(input.shape(), delta, input.dtype());
+  }
   auto val = label - input;
   auto abs_val = abs<T>(val);
   auto ans = where<T>(abs_val <= delta_full,
                       0.5 * val * val,
                       delta_full * (abs_val - 0.5 * delta_full));
-  return std::make_tuple(cast<T>(ans, input.dtype()),
-                         cast<T>(val, input.dtype()));
+  return std::make_tuple(ans, val);
 }
 
 template <typename T>
