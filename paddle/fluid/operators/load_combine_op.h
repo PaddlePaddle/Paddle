@@ -69,7 +69,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
   void LoadParamsFromBuffer(
       const framework::ExecutionContext &context,
-      const platform::Place &place,
+      const phi::Place &place,
       std::istream *buffer,
       bool load_as_fp16,
       const std::vector<std::string> &out_var_names) const {

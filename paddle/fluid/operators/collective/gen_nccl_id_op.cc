@@ -65,7 +65,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     std::vector<std::string> trainers =
         Attr<std::vector<std::string>>("trainers");
     int trainer_id = Attr<int>("trainer_id");
@@ -213,7 +213,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {}
 };
 
 #endif

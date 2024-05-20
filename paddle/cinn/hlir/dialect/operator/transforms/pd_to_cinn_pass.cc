@@ -56,6 +56,7 @@ class SumOpPattern : public paddle::drr::DrrPatternBase {
     const auto &cinn_reduce_sum =
         res.Op(cinn::dialect::ReduceSumOp::name(),
                {{"dim", pattern.Attr("axis_info")},
+                {"dtype", pattern.Attr("dtype")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
@@ -128,8 +129,10 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
                     {"dtype", pattern.Attr("dtype_2")},
                     {"place", pattern.Attr("place_2")}});
 
-    const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
-                                    {{"keep_dim", pattern.Attr("keep_dim")}});
+    const auto &pd_max =
+        pattern.Op(paddle::dialect::ProdOp::name(),
+                   {{"keep_dim", pattern.Attr("keep_dim")},
+                    {"reduce_all", pattern.Attr("reduce_all")}});
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
@@ -137,7 +140,8 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceProdOp::name(),
                {{"dim", pattern.Attr("axis_info")},
-                {"keep_dim", pattern.Attr("keep_dim")}});
+                {"keep_dim", pattern.Attr("keep_dim")},
+                {"reduce_all", pattern.Attr("reduce_all")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
 };
@@ -790,7 +794,8 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
                 {"dtype", pattern.Attr("uniform_dtype")},
                 {"diag_num", pattern.Attr("seed")},
                 {"diag_step", pattern.Attr("seed")},
-                {"diag_val", pattern.Attr("min_value")}});
+                {"diag_val", pattern.Attr("min_value")},
+                {"place", pattern.Attr("uniform_place")}});
     res.Tensor("ret") = cinn_uniform();
   }
 };
@@ -1069,23 +1074,6 @@ class SigmoidOpPattern
   }
 };
 
-class WhereOpPattern : public pir::OpRewritePattern<paddle::dialect::WhereOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::WhereOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::WhereOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    auto select_op = rewriter.Build<cinn::dialect::SelectOp>(
-        op->operand_source(0), op->operand_source(1), op->operand_source(2));
-
-    rewriter.ReplaceAllUsesWith(op.result(0), select_op.result(0));
-
-    rewriter.EraseOp(op);
-
-    return true;
-  }
-};
-
 class GatherOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
  public:
@@ -1150,7 +1138,6 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<UnsqueezeOpPattern>(context);
   ps.Add<SigmoidOpPattern>(context);
   ps.Add<GatherOpPattern>(context);
-  ps.Add<WhereOpPattern>(context);
   ps.Add<FlattenOpPattern>(context);
 
   return ps;

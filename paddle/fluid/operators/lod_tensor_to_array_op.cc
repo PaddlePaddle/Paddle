@@ -45,7 +45,7 @@ struct LoDTensorToArrayFunctorImpl {
 };
 
 struct LoDTensorToArrayFunctor {
-  using argument_type = platform::Place;
+  using argument_type = phi::Place;
   using result_type = void;
   std::vector<const phi::DenseTensor *> ref_inputs_;
   mutable std::vector<phi::DenseTensor *> outputs_;
@@ -63,7 +63,7 @@ struct LoDTensorToArrayFunctor {
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -80,8 +80,7 @@ struct LoDTensorToArrayFunctor {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(framework::TransToProtoVarType(input_.dtype()),
-                             func);
+    phi::VisitDataType(input_.dtype(), func);
   }
 };
 
@@ -106,7 +105,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
                   .Get<phi::DenseTensor>();

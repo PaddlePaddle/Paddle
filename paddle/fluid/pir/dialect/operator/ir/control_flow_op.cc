@@ -14,8 +14,8 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::PyLayerOp, paddle::dialect::AssertOp,
-    paddle::dialect::SelectInputOp, paddle::dialect::SelectOutputOp
+    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::SelectOutputOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -378,115 +378,6 @@ bool IfOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
   }
 }
 
-void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
-                      pir::OperationArgument &argument,  // NOLINT
-                      pir::Value combined_inputs,
-                      std::vector<pir::Type> &&output_types) {
-  argument.AddInput(combined_inputs);
-  argument.output_types.swap(output_types);
-  argument.AddRegion().emplace_back();
-}
-
-void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
-                      pir::OperationArgument &argument,  // NOLINT
-                      pir::Value combined_inputs,
-                      std::unique_ptr<pir::Block> &&fwd_block) {
-  VLOG(4) << "Start build PyLayerOp";
-  if (fwd_block && !fwd_block->empty() &&
-      fwd_block->back().isa<pir::YieldOp>()) {
-    auto &op = fwd_block->back();
-
-    std::vector<pir::Attribute> outs_stop_gradient;
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      argument.AddOutput(op.operand(i).type());
-      auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
-          kStopGradientAttrName);
-      outs_stop_gradient.push_back(bool_attr ? bool_attr
-                                             : builder.bool_attr(false));
-    }
-
-    argument.AddAttribute(
-        kStopGradientAttrName,
-        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
-  }
-
-  argument.AddRegion().push_back(fwd_block.release());
-  argument.AddInput(combined_inputs);
-}
-
-pir::Block &PyLayerOp::forward_block() {
-  pir::Region &region = forward_region();
-  if (region.empty()) {
-    region.emplace_back();
-  }
-
-  return region.front();
-}
-
-void PyLayerOp::Print(pir::IrPrinter &printer) {
-  auto &os = printer.os;
-  auto op = operation();
-  printer.PrintOpResult(op);
-  os << " = \"" << name() << "\"";
-  printer.PrintOpOperands(op);
-  os << " -> ";
-  printer.PrintOpReturnType(op);
-  os << " {";
-  for (auto &item : forward_block()) {
-    os << "\n  ";
-    printer.PrintOperation(&item);
-  }
-  os << "\n }";
-}
-
-void PyLayerOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: PyLayerOp.";
-  // NOTE(MarioLulab): do nothing.
-}
-
-void PyLayerOp::VerifyRegion() {
-  VLOG(4) << "Start Verifying sub regions for: PyLayerOp.";
-  VLOG(4) << "Start Verifying forward block.";
-  PADDLE_ENFORCE_EQ((*this)->region(0).size(),
-                    1u,
-                    phi::errors::PreconditionNotMet(
-                        "The size %d of forward_region must be 1.",
-                        (*this)->region(0).size()));
-  if ((*this)->num_results() != 0) {
-    auto &fwd_last_op = (*this)->region(0).front().back();
-    PADDLE_ENFORCE_EQ(true,
-                      fwd_last_op.isa<pir::YieldOp>(),
-                      phi::errors::PreconditionNotMet(
-                          "The last of forward block must be YieldOp"));
-    PADDLE_ENFORCE_EQ(
-        fwd_last_op.num_operands(),
-        (*this)->num_results(),
-        phi::errors::PreconditionNotMet(
-            "The size of last of forward block op's input must be "
-            "equal to PyLayerOp's outputs num."));
-  }
-}
-
-void PyLayerOp::UpdateOutput() {
-  PADDLE_ENFORCE_NOT_NULL(*this,
-                          paddle::platform::errors::InvalidArgument(
-                              "The pylayer_op in PyLayerOp used to update "
-                              "output can't be nullptr"));
-  auto block = parent();
-  PADDLE_ENFORCE_NOT_NULL(
-      block,
-      paddle::platform::errors::InvalidArgument(
-          "The parent block of pylayer_op which used to update "
-          "output can't be nullptr"));
-  pir::Block::Iterator iter = **this;
-  pir::Builder builder(ir_context(), false);
-  auto new_pylayer_op =
-      builder.Build<PyLayerOp>(combined_inputs(), forward_region().TakeBack());
-  block->Assign(iter, new_pylayer_op);
-  PyLayerOp::operator=(new_pylayer_op);
-  VerifyRegion();
-}
-
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
@@ -594,11 +485,41 @@ void WhileOp::VerifySig() {
                         num_results(),
                         input_size));
   for (size_t index = 0; index < output_size; ++index) {
-    PADDLE_ENFORCE_EQ(
-        operand_type(index + 1),
-        result_type(index),
-        phi::errors::PreconditionNotMet(
-            "The (%d) result and operand type is not equal.", index));
+    auto input_type = operand_type(index + 1);
+    auto output_type = result_type(index);
+    if (input_type.isa<pir::DenseTensorType>()) {
+      // Support the case that the output tensor has -1 shape.
+      pir::DenseTensorType input_tensor_type =
+          input_type.dyn_cast<pir::DenseTensorType>();
+      pir::DenseTensorType output_tensor_type =
+          output_type.dyn_cast<pir::DenseTensorType>();
+
+      const common::DDim &output_dims = output_tensor_type.dims();
+      common::DDim new_input_dims = input_tensor_type.dims();
+      for (int i = 0; i < new_input_dims.size(); i++) {
+        if (output_dims[i] == -1) {
+          new_input_dims[i] = -1;
+        }
+      }
+      pir::DenseTensorType new_input_tensor_type =
+          pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                    input_tensor_type.dtype(),
+                                    new_input_dims,
+                                    input_tensor_type.data_layout(),
+                                    input_tensor_type.lod(),
+                                    input_tensor_type.offset());
+      PADDLE_ENFORCE_EQ(
+          new_input_tensor_type,
+          output_tensor_type,
+          phi::errors::PreconditionNotMet(
+              "The (%d) result and operand type is not equal.", index));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          input_type,
+          output_type,
+          phi::errors::PreconditionNotMet(
+              "The (%d) result and operand type is not equal.", index));
+    }
   }
 }
 
@@ -791,11 +712,22 @@ bool WhileOp::InferSymbolicShape(
                                     input_arg_shape[j]);
         continue;
       }
-      if (original_input_shape.size() == yield_value_shape.size() &&
-          original_input_shape[j] == yield_value_shape[j]) {
-        infer_context->AddEqualCstr(original_input_shape[j],
-                                    input_arg_shape[j]);
-        continue;
+      if (original_input_shape.size() == yield_value_shape.size()) {
+        if (original_input_shape[j] == yield_value_shape[j]) {
+          infer_context->AddEqualCstr(original_input_shape[j],
+                                      input_arg_shape[j]);
+          continue;
+        }
+        symbol::DimExprBuilder builder;
+        if (yield_value_shape[j] ==
+                builder.Broadcast(input_arg_shape[j],
+                                  original_input_shape[j]) ||
+            yield_value_shape[j] == builder.Broadcast(original_input_shape[j],
+                                                      input_arg_shape[j])) {
+          infer_context->AddEqualCstr(original_input_shape[j],
+                                      input_arg_shape[j]);
+          continue;
+        }
       }
     }
   }
@@ -1273,7 +1205,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PyLayerOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)
 

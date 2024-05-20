@@ -159,6 +159,42 @@ def pir_prune_with_input(program, feed_vars, target_vars):
             program.global_block().remove_op(op)
 
 
+def _inference_optimize(program, prune_read_op=True):
+    """
+    This method will create a new program and do following adjustments on it:
+    1. Remove all reader variables and their creator ops if exist.
+
+    2. Remove the :code:`read_op` if exists.
+
+    3. change the :code:`is_test`
+    attribute of operators to :code:`True`. All the :code:`Parameter`
+    information will be lost.
+
+    Args:
+        prune_read_op(bool): remove the read ops that are added by py_reader
+                             for cpp inference library
+
+    Notes: This API is a very low level API. Use
+    :code:`Program.clone(for_test=True)` instead.
+
+    Returns:
+        Program: The new program.
+    """
+
+    # remove all readers and the read_op if exist
+    if prune_read_op:
+        pass
+
+    # change all `is_test` attributes to True
+    for block in program.blocks:
+        for op in block.ops:
+            if op.has_attr("is_test"):
+                op.set_bool_attr("is_test", True)
+            if op.name() == "pd_op.batch_norm":
+                # Remove the output ReserveSpace of batch_norm if exists.
+                pass
+
+
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
@@ -242,7 +278,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     # if feed var is not conect with target_vars, it will be delete.
     if not skip_prune_program:
         pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
-    # copy_program = copy_program._inference_optimize(prune_read_op=True)
+    _inference_optimize(copy_program, prune_read_op=True)
 
     fetch_vars_tuple = []
     for i, var in enumerate(clone_fetch_vars):
@@ -415,6 +451,11 @@ def load_vars_pir(
         if main_program is None:
             main_program = default_main_program()
 
+        if not isinstance(main_program, paddle.static.Program):
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
+                % type(main_program)
+            )
         param, opt = get_pir_parameters(main_program)
         vars_list = param + opt
         load_vars_pir(
@@ -442,7 +483,14 @@ def load_vars_pir(
                         "The directory path and params cannot be None at the same time."
                     )
                 file_path = os.path.join(dirname, v.name)
-                core.load_func(file_path, -1, [], False, var.get_tensor())
+                core.load_func(
+                    file_path,
+                    -1,
+                    [],
+                    False,
+                    var.get_tensor(),
+                    executor._default_executor.get_place(),
+                )
             else:
                 load_var_map[v.name] = var
 
@@ -457,7 +505,11 @@ def load_vars_pir(
                 filename = os.path.join(dirname, filename)
 
             core.load_combine_func(
-                filename, load_var_names, load_var_list, False
+                filename,
+                load_var_names,
+                load_var_list,
+                False,
+                executor._default_executor.get_place(),
             )
             for name, var in zip(load_var_names, load_var_list):
                 set_var(name, np.array(var))

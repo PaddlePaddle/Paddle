@@ -180,12 +180,27 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   }
 }
 
-static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
-  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
-    return true;
-  } else {
-    return false;
+static bool has_dynamic_shape(const std::vector<int64_t>& shape) {
+  return std::find(shape.begin(), shape.end(), -1) != shape.end();
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& shape,
+                              const std::vector<int64_t>& axis) {
+  bool flag = false;
+  const int64_t rank = shape.size();
+  for (int64_t idx : axis) {
+    if (idx < 0) idx += rank;
+    PADDLE_ENFORCE_LT(
+        idx,
+        rank,
+        ::common::errors::PreconditionNotMet(
+            "Required idx < shape.size(), but received %d.", idx));
+    if (shape[idx] == -1) {
+      flag = true;
+      break;
+    }
   }
+  return flag;
 }
 
 }  // namespace primitive

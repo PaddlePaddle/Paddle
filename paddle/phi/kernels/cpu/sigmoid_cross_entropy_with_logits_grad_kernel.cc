@@ -47,8 +47,15 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     if (static_cast<int>(label) == ignore_index) {
       dx_data[idx] = static_cast<T>(0.);
     } else {
-      T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
-      T diff = simoid_x * pos_weight_idx - label;
+      T term1 = (x > 0) ? static_cast<T>(1) : static_cast<T>(0);
+
+      T e_x = std::exp(-std::abs(x));
+      T down = 1 + e_x;
+      T abs_grad = (x >= 0) ? static_cast<T>(1) : static_cast<T>(-1);
+      T up = -e_x * abs_grad * pos_weight_idx;
+      T term3 = up / down;
+
+      T diff = term1 - label + term3;
       dx_data[idx] = dout * diff;
     }
   }
