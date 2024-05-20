@@ -815,37 +815,18 @@ bool AnalysisPredictor::PreparePirProgram() {
         }
       }
     }
+
     const paddle::framework::Variable *var = nullptr;
     std::vector<phi::DenseTensor *> tensor_pointers;
     for (const auto &param : param_names) {
-      LOG(INFO) << "Parameter: " << param;
-      var = scope_->FindVar(param);
-      LOG(INFO) << "var " << var;
-      // 使用const_cast来获取非const指针
-      paddle::framework::Variable *mutable_var =
-          const_cast<paddle::framework::Variable *>(var);
-      // 检查holder_是否为空
-      if (!mutable_var->IsInitialized()) {
-        LOG(ERROR) << "Variable holder is not initialized for parameter: "
-                   << param;
-        continue;  // 或者处理这个错误
-      }
+      auto *raw_scope = scope_.get();
+      auto *ptr = const_cast<paddle::framework::Scope *>(raw_scope)->Var(param);
+      var = raw_scope->FindVar(param);
+      var = raw_scope->FindVar(param);
 
-      // 检查holder_中的类型是否为phi::DenseTensor
-      if (!mutable_var->IsType<phi::DenseTensor>()) {
-        LOG(ERROR) << "Variable for parameter " << param
-                   << " is not of type phi::DenseTensor.";
-        continue;  // 或者处理这个错误
-      }
-
-      phi::DenseTensor *tensor = mutable_var->GetMutable<phi::DenseTensor>();
-      if (tensor == nullptr) {
-        LOG(ERROR) << "Failed to get mutable phi::DenseTensor for parameter: "
-                   << param;
-        continue;  // 或者处理这个错误
-      }
-      tensor_pointers.push_back(tensor);
-      LOG(INFO) << "tensor " << tensor;
+      LOG(INFO) << "var->Type() " << var->Type();
+      LOG(INFO) << raw_scope << " Create variable " << param
+                << ", which pointer is " << ptr;
     }
 
     if (!success) {
