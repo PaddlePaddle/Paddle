@@ -142,7 +142,53 @@ std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
   }
   return ret;
 }
+std::unordered_set<std::string> ListDimExprGetSymbolSet(
+    const List<DimExpr>& dim_exprs) {
+  std::unordered_set<std::string> vars;
+  for (std::size_t i = 0; i < dim_exprs->size(); ++i) {
+    const auto& inner_vars = GetSymbolSet(dim_exprs->at(i));
+    vars.insert(inner_vars.begin(), inner_vars.end());
+  }
+  return vars;
+}
 }  // namespace
+
+std::unordered_set<std::string> GetSymbolSet(const DimExpr& dim_expr) {
+  std::unordered_set<std::string> vars;
+  auto lambdas = common::Overloaded{
+      [&](std::int64_t dim_expr) { return; },
+      [&](const std::string& dim_expr) { vars.insert(dim_expr); },
+      [&](const Negative<DimExpr>& dim_expr) {
+        const auto& inner_vars = GetSymbolSet(dim_expr->data);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Reciprocal<DimExpr>& dim_expr) {
+        const auto& inner_vars = GetSymbolSet(dim_expr->data);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Add<DimExpr>& dim_expr) {
+        const auto& inner_vars = ListDimExprGetSymbolSet(dim_expr.operands);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Mul<DimExpr>& dim_expr) {
+        const auto& inner_vars = ListDimExprGetSymbolSet(dim_expr.operands);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Max<DimExpr>& dim_expr) {
+        const auto& inner_vars = ListDimExprGetSymbolSet(dim_expr.operands);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Min<DimExpr>& dim_expr) {
+        const auto& inner_vars = ListDimExprGetSymbolSet(dim_expr.operands);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      },
+      [&](const Broadcast<DimExpr>& dim_expr) {
+        const auto& inner_vars = ListDimExprGetSymbolSet(dim_expr.operands);
+        vars.insert(inner_vars.begin(), inner_vars.end());
+      }};
+  std::visit(lambdas, dim_expr.variant());
+  return vars;
+}
 
 std::string ToString(const DimExpr& dim_expr) {
   auto lambdas = common::Overloaded{

@@ -73,13 +73,11 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_x, out_shape);
   }
   if (y_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_y, out_shape);
   }
   return true;
 }
