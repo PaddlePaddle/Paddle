@@ -76,7 +76,11 @@ PD_DEFINE_bool(group_schedule_tiling_first,
 
 PD_DEFINE_bool(support_reduce_stride_read,
                BoolFromEnv("FLAGS_support_reduce_stride_read", false),
-               "Whether to enable new group scheduler tiling first strategy.");
+               "Whether to enable stride read in reduced dim.");
+
+PD_DEFINE_bool(support_trivial_stride_read,
+               BoolFromEnv("FLAGS_support_trivial_stride_read", false),
+               "Whether to enable stride read in trivial dim.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",

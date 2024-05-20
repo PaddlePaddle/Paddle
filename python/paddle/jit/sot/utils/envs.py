@@ -66,3 +66,9 @@ def with_control_flow_guard(value: bool):
 def with_export_guard(value: str):
     with EnvironmentVariableGuard(ENV_SOT_EXPORT, value):
         yield
+
+
+@contextmanager
+def with_allow_dynamic_shape_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, value):
+        yield

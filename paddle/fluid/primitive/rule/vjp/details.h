@@ -1939,6 +1939,35 @@ void group_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void swiglu_grad(const Tensor& x,
+                 const paddle::optional<Tensor>& y,
+                 const Tensor& dz,
+                 Tensor* dx,
+                 Tensor* dy) {
+  const auto& x_shape = x.shape();
+  auto one_tensor = full<T>(x_shape, 1.0, x.dtype());
+  Tensor x_grad;
+  if (y) {
+    const auto& y_tensor = y.get();
+    Tensor sig = sigmoid<T>(x);
+    Tensor tmp = sig * x;
+    x_grad = dz * y_tensor * sig * (one_tensor + x - tmp);
+    Tensor y_grad = dz * tmp;
+    set_output<T>(y_grad, dy);
+  } else {
+    int axis = x.shape().size() - 1;
+    int num = 2;
+    std::vector<Tensor> xs = backend::split_with_num<T>(x, num, axis);
+    Tensor sig = sigmoid<T>(xs[0]);
+    Tensor tmp = sig * xs[0];
+    Tensor x0_grad = dz * xs[1] * sig * (one_tensor + xs[0] - tmp);
+    Tensor x1_grad = dz * tmp;
+    x_grad = concat<T>({x0_grad, x1_grad}, x_shape.size() - 1);
+  }
+  set_output<T>(x_grad, dx);
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

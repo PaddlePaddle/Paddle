@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
@@ -21,12 +21,9 @@ limitations under the License. */
 #include <iterator>
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -55,115 +52,8 @@ limitations under the License. */
 
 #define ROUNDUP(x, y) (DIVUP((x), (y)) * (y))
 
-namespace paddle {
-namespace operators {
-
-/*
- *  Pack input and output tensors into respective vectors with
- *  consideration of variable X`s class type.
- *  Input variable X is supported to be whether phi::DenseTensor or
- *  SelectedRows class type in this package function, once X
- *  was SelectedRows type, a valid pointer x_for_selectedrows
- *  is excepted to be passed in from op kernel for acquisition
- *  of the valid address of phi::DenseTensor created ahead in the function.
- */
-template <typename OutT>
-int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
-                          std::vector<const phi::DenseTensor *> *ins,
-                          std::vector<phi::DenseTensor *> *outs,
-                          phi::DenseTensor *x_for_selectedrows = nullptr) {
-  int axis = -1;
-  auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE_NOT_NULL(
-      x_var,
-      phi::errors::InvalidArgument(
-          "Unable to get input Variable X, Variable name is %s.\n",
-          ctx.InputName("X")));
-  auto *y = ctx.Input<phi::DenseTensor>("Y");
-  phi::DenseTensor *z;
-
-  if (x_var->IsType<phi::DenseTensor>()) {
-    auto *x = ctx.Input<phi::DenseTensor>("X");
-    z = ctx.Output<phi::DenseTensor>("Out");
-    ins->emplace_back(x);
-  } else if (x_var->IsType<phi::SelectedRows>()) {
-    PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "For elementwise_op, if X is Sparse, Y must be "
-                          "scalar. But received the size of Y = %d.",
-                          y->dims().size()));
-    PADDLE_ENFORCE_NOT_NULL(
-        x_for_selectedrows,
-        phi::errors::InvalidArgument(
-            "The parameter x_for_selectedrows is excepted to "
-            "be valid, once input variable X`s class type is "
-            "SelectedRows.\n"));
-    auto &x_sele = x_var->Get<phi::SelectedRows>();
-    auto out_sele = ctx.Output<phi::SelectedRows>("Out");
-    *x_for_selectedrows = x_sele.value();
-    out_sele->set_rows(x_sele.rows());
-    out_sele->set_height(x_sele.height());
-    out_sele->mutable_value()->Resize(x_sele.value().dims());
-    out_sele->mutable_value()->mutable_data(ctx.GetPlace(),
-                                            x_for_selectedrows->type());
-    z = ctx.Output<phi::SelectedRows>("Out")->mutable_value();
-    ins->emplace_back(x_for_selectedrows);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "X's type[%s] is not supported by elementwise_op. X's type should be "
-        "phi::DenseTensor or SelectedRows.",
-        framework::ToTypeName(x_var->Type())));
-  }
-  z->mutable_data<OutT>(ctx.GetPlace());
-  outs->emplace_back(z);
-
-  if (y != nullptr) {
-    ins->emplace_back(y);
-    axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-  }
-  return axis;
-}
-
-inline void GetBroadcastDimsArrays(const phi::DDim &x_dims,
-                                   const phi::DDim &y_dims,
-                                   int *x_dims_array,
-                                   int *y_dims_array,
-                                   int *out_dims_array,
-                                   const int max_dim,
-                                   const int axis) {
-  phi::funcs::GetBroadcastDimsArrays(x_dims,
-                                     y_dims,
-                                     x_dims_array,
-                                     y_dims_array,
-                                     out_dims_array,
-                                     max_dim,
-                                     axis);
-}
-
-inline phi::DDim trim_trailing_singular_dims(const phi::DDim &dims) {
-  return phi::funcs::TrimTrailingSingularDims(dims);
-}
-
-template <typename DeviceContext,
-          typename T,
-          typename DX_OP,
-          typename DY_OP,
-          typename Tout = T>
-void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
-                         const phi::DenseTensor &x,
-                         const phi::DenseTensor &y,
-                         const phi::DenseTensor &out,
-                         const phi::DenseTensor &dout,
-                         int axis,
-                         phi::DenseTensor *dx,
-                         phi::DenseTensor *dy,
-                         DX_OP dx_op,
-                         DY_OP dy_op) {
-  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
-  phi::funcs::ElemwiseGradCompute<DeviceContext, T, DX_OP, DY_OP, Tout>(
-      dev_ctx, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-}
+namespace phi {
+namespace funcs {
 
 // It is a common implementation to compute binary calculation with the support
 // of broadcast, supporting both CPU and GPU.
@@ -178,14 +68,13 @@ template <typename Functor,
           typename DeviceContext,
           typename T,
           typename OutType = T>
-void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+void ElementwiseComputeEx(const DeviceContext &dev_ctx,
                           const phi::DenseTensor *x,
                           const phi::DenseTensor *y,
                           int axis,
                           Functor func,
                           phi::DenseTensor *z) {
-  z->mutable_data<OutType>(ctx.GetPlace());
-  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
+  dev_ctx.template Alloc<OutType>(z);
   phi::funcs::ElementwiseCompute<Functor, T, OutType>(
       dev_ctx, *x, *y, func, z, axis);
 }
@@ -464,28 +353,26 @@ template <typename DeviceContext,
           typename T,
           typename CompoundFunctor,
           bool KeepIntermediateOut>
-void FusedElemwiseAndActComputeNoBroadcast(
-    const framework::ExecutionContext &ctx,
-    const phi::DDim &x_dim,
-    const phi::DenseTensor &x,
-    const phi::DenseTensor &y,
-    CompoundFunctor compound_functor,
-    phi::DenseTensor *out,
-    phi::DenseTensor *intermediate_out) {
+void FusedElemwiseAndActComputeNoBroadcast(const DeviceContext &dev_ctx,
+                                           const phi::DDim &x_dim,
+                                           const phi::DenseTensor &x,
+                                           const phi::DenseTensor &y,
+                                           CompoundFunctor compound_functor,
+                                           phi::DenseTensor *out,
+                                           phi::DenseTensor *intermediate_out) {
   size_t N = static_cast<size_t>(common::product(x_dim));
 
-  phi::funcs::ForRange<DeviceContext> for_range(
-      ctx.template device_context<DeviceContext>(), N);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
 
   for_range(
       FusedElemwiseAndActNoBroadcast<T, CompoundFunctor, KeepIntermediateOut>{
           x.data<T>(),
           y.data<T>(),
           compound_functor,
-          out->mutable_data<T>(ctx.GetPlace()),
+          dev_ctx.template Alloc<T>(out),
           intermediate_out == nullptr
               ? nullptr
-              : intermediate_out->mutable_data<T>(ctx.GetPlace())});
+              : dev_ctx.template Alloc<T>(intermediate_out)});
 }
 
 template <typename DeviceContext,
@@ -495,7 +382,7 @@ template <typename DeviceContext,
           bool KeepIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActComputeWithBroadcast(
-    const framework::ExecutionContext &ctx,
+    const DeviceContext &dev_ctx,
     const phi::DDim &x_dim,
     const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor &x,
@@ -505,7 +392,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
     phi::DenseTensor *out,
     phi::DenseTensor *intermediate_out) {
   axis = (axis == -1 ? x_dim.size() - y_dim_untrimed.size() : axis);
-  auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
+  auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
@@ -514,23 +401,23 @@ void FusedElemwiseAndActComputeWithBroadcast(
   if (post == 1) {
     int h = pre;
     int w = n;
-    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(),
+          dev_ctx.stream(),
           x.data<T>(),
           y.data<T>(),
           compound_functor,
           h,
           w,
-          out->mutable_data<T>(ctx.GetPlace()),
+          dev_ctx.template Alloc<T>(out),
           intermediate_out == nullptr
               ? nullptr
-              : intermediate_out->mutable_data<T>(ctx.GetPlace()));
+              : dev_ctx.template Alloc<T>(intermediate_out));
 #endif
     } else {
       FusedElemwiseAndActBroadcast1CPU<T,
@@ -543,30 +430,30 @@ void FusedElemwiseAndActComputeWithBroadcast(
           compound_functor,
           h,
           w,
-          out->mutable_data<T>(ctx.GetPlace()),
+          dev_ctx.template Alloc<T>(out),
           intermediate_out == nullptr
               ? nullptr
-              : intermediate_out->mutable_data<T>(ctx.GetPlace()));
+              : dev_ctx.template Alloc<T>(intermediate_out));
     }
   } else {
-    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast2CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(),
+          dev_ctx.stream(),
           x.data<T>(),
           y.data<T>(),
           pre,
           n,
           post,
           compound_functor,
-          out->mutable_data<T>(ctx.GetPlace()),
+          dev_ctx.template Alloc<T>(out),
           intermediate_out == nullptr
               ? nullptr
-              : intermediate_out->mutable_data<T>(ctx.GetPlace()));
+              : dev_ctx.template Alloc<T>(intermediate_out));
 #endif
     } else {
       FusedElemwiseAndActBroadcast2CPU<T,
@@ -580,10 +467,10 @@ void FusedElemwiseAndActComputeWithBroadcast(
           n,
           post,
           compound_functor,
-          out->mutable_data<T>(ctx.GetPlace()),
+          dev_ctx.template Alloc<T>(out),
           intermediate_out == nullptr
               ? nullptr
-              : intermediate_out->mutable_data<T>(ctx.GetPlace()));
+              : dev_ctx.template Alloc<T>(intermediate_out));
     }
   }
 }
@@ -638,7 +525,7 @@ template <typename DeviceContext,
           typename DIntermediate_OP,
           bool UseIntermediateOut>
 void FusedElemwiseAndActGradComputeNoBroadcast(
-    const framework::ExecutionContext &ctx,
+    const DeviceContext &dev_ctx,
     const phi::DDim &x_dim,
     const phi::DDim &y_dim UNUSED,
     const phi::DenseTensor *x,
@@ -654,8 +541,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
   size_t N = static_cast<size_t>(common::product(x_dim));
-  phi::funcs::ForRange<DeviceContext> for_range(
-      ctx.template device_context<DeviceContext>(), N);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();
@@ -674,11 +560,10 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
       dx_op,
       dy_op,
       dintermediate_op,
-      dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-      dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-      dintermediate == nullptr
-          ? nullptr
-          : dintermediate->mutable_data<T>(ctx.GetPlace())});
+      dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+      dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy),
+      dintermediate == nullptr ? nullptr
+                               : dev_ctx.template Alloc<T>(dintermediate)});
 }
 
 template <typename T,
@@ -1020,7 +905,7 @@ template <typename T,
           bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast1CUDA(
-    const framework::ExecutionContext &ctx,
+    const phi::GPUContext &dev_ctx,
     const T *x,
     const T *y,
     const T *intermediate_out,
@@ -1034,10 +919,10 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
     T *dx,
     T *dy,
     T *d_intermediate) {
-  gpuStream_t stream = ctx.cuda_device_context().stream();
+  gpuStream_t stream = dev_ctx.stream();
 
   dim3 blocks(BLOCK_X, BLOCK_Y);
-  int max_gpu_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
+  int max_gpu_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_gpu_threads / (BLOCK_X * BLOCK_Y), 1);
   int theory_block = (w + BLOCK_X - 1) / BLOCK_X;
   dim3 grids(std::min(theory_block, max_blocks));
@@ -1241,7 +1126,7 @@ template <typename DeviceContext,
           bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActGradComputeWithBroadcast(
-    const framework::ExecutionContext &ctx,
+    const DeviceContext &dev_ctx,
     const phi::DDim &x_dim,
     const phi::DDim &y_dim_untrimed,
     const phi::DenseTensor *x,
@@ -1257,7 +1142,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
   axis = (axis == -1 ? x_dim.size() - y_dim_untrimed.size() : axis);
-  auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
+  auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
@@ -1271,7 +1156,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     int h = pre;
     int w = n;
 
-    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T,
                                             DX_OP,
@@ -1280,7 +1165,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          ctx,
+          dev_ctx,
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
@@ -1291,11 +1176,10 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
           dx_op,
           dy_op,
           dintermediate_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-          dintermediate == nullptr
-              ? nullptr
-              : dintermediate->mutable_data<T>(ctx.GetPlace()));
+          dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+          dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy),
+          dintermediate == nullptr ? nullptr
+                                   : dev_ctx.template Alloc<T>(dintermediate));
 #endif
     } else {
       FusedElemwiseAndActGradBroadcast1CPU<T,
@@ -1315,14 +1199,13 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
           dx_op,
           dy_op,
           dintermediate_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-          dintermediate == nullptr
-              ? nullptr
-              : dintermediate->mutable_data<T>(ctx.GetPlace()));
+          dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+          dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy),
+          dintermediate == nullptr ? nullptr
+                                   : dev_ctx.template Alloc<T>(dintermediate));
     }
   } else {
-    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T,
                                             DX_OP,
@@ -1331,7 +1214,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(),
+          dev_ctx.stream(),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
@@ -1343,11 +1226,10 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
           dx_op,
           dy_op,
           dintermediate_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-          dintermediate == nullptr
-              ? nullptr
-              : dintermediate->mutable_data<T>(ctx.GetPlace()));
+          dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+          dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy),
+          dintermediate == nullptr ? nullptr
+                                   : dev_ctx.template Alloc<T>(dintermediate));
 #endif
     } else {
       FusedElemwiseAndActGradBroadcast2CPU<T,
@@ -1368,11 +1250,10 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
           dx_op,
           dy_op,
           dintermediate_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-          dintermediate == nullptr
-              ? nullptr
-              : dintermediate->mutable_data<T>(ctx.GetPlace()));
+          dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
+          dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy),
+          dintermediate == nullptr ? nullptr
+                                   : dev_ctx.template Alloc<T>(dintermediate));
     }
   }
 }
@@ -1384,7 +1265,7 @@ template <typename DeviceContext,
           typename DIntermediate_OP,
           bool UseIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
-void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
+void FusedElemwiseAndActGradComputeEx(const DeviceContext &dev_ctx,
                                       const phi::DenseTensor *x,
                                       const phi::DenseTensor *y,
                                       const phi::DenseTensor *out,
@@ -1411,7 +1292,7 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
                                               DY_OP,
                                               DIntermediate_OP,
                                               UseIntermediateOut>(
-        ctx,
+        dev_ctx,
         x_dim,
         y_dim,
         x,
@@ -1448,7 +1329,7 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
           DIntermediate_OP,
           UseIntermediateOut,
           true /*BcastY*/,
-          SameShapeOfIntermediateOutAndOut>(ctx,
+          SameShapeOfIntermediateOutAndOut>(dev_ctx,
                                             x_dim,
                                             y_dim,
                                             x,
@@ -1472,7 +1353,7 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
           DIntermediate_OP,
           UseIntermediateOut,
           false /*BcastY*/,
-          SameShapeOfIntermediateOutAndOut>(ctx,
+          SameShapeOfIntermediateOutAndOut>(dev_ctx,
                                             y_dim,
                                             x_dim,
                                             x,
@@ -1496,7 +1377,7 @@ template <typename DeviceContext,
           typename CompoundFunctor,
           bool KeepIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
-void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
+void FusedElemwiseAndActComputeEx(const DeviceContext &dev_ctx,
                                   const phi::DenseTensor &x,
                                   const phi::DenseTensor &y,
                                   int axis,
@@ -1518,7 +1399,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                           T,
                                           CompoundFunctor,
                                           KeepIntermediateOut>(
-        ctx, x_dim, x, y, compound_functor, out, intermediate_out);
+        dev_ctx, x_dim, x, y, compound_functor, out, intermediate_out);
   } else {
     // Whether the shape of Y is a continuous subsequence of X,
     // For more information please refer to the op's introduction.
@@ -1539,7 +1420,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                               true /*BcastY*/,
                                               KeepIntermediateOut,
                                               SameShapeOfIntermediateOutAndOut>(
-          ctx,
+          dev_ctx,
           x_dim /*OutShape*/,
           y_dim,
           x,
@@ -1562,7 +1443,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                               false /*BcastY*/,
                                               KeepIntermediateOut,
                                               SameShapeOfIntermediateOutAndOut>(
-          ctx,
+          dev_ctx,
           y_dim /*OutShape*/,
           x_dim,
           x,
@@ -1576,21 +1457,12 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
 }
 
 template <typename DeviceContext, typename T>
-static inline void GetDoubleGradSafeTensor(
-    const framework::ExecutionContext &ctx,
-    const phi::DenseTensor *x,
-    const phi::DenseTensor *ddx,
-    phi::DenseTensor *ddx_safe) {
-  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
+static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
+                                           const phi::DenseTensor *x,
+                                           const phi::DenseTensor *ddx,
+                                           phi::DenseTensor *ddx_safe) {
   phi::funcs::GetDoubleGradSafeTensor<DeviceContext, T>(
       dev_ctx, *x, ddx, ddx_safe);
-}
-
-// for broadcast backwards
-static inline std::vector<int> GetReduceDim(const phi::DDim &in,
-                                            const phi::DDim &out,
-                                            int axis) {
-  return phi::funcs::GetReduceDim(in, out, axis);
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -1621,5 +1493,5 @@ void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
 
 #endif
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
