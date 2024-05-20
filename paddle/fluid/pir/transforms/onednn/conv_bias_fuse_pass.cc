@@ -92,6 +92,11 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
         return true;
       });
     }
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (bias_shape.size() != 1) return false;
+      return true;
+    });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
@@ -166,6 +171,12 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
       return true;
     });
 
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (bias_shape.size() != 1) return false;
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv =
@@ -205,30 +216,34 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv =
-        pat.Op(paddle::dialect::Conv2dTransposeOp::name(),
+        pat.Op(paddle::onednn::dialect::Conv2dTransposeBiasOp::name(),
                {{"strides", pat.Attr("strides")},
                 {"paddings", pat.Attr("paddings")},
                 {"output_padding", pat.Attr("output_padding")},
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")}});
+                {"data_format", pat.Attr("data_format")},
+                {"force_fp32_output", pat.Attr("force_fp32_output")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"fuse_relu", pat.Attr("fuse_relu")},
+                {"fuse_activation", pat.Attr("fuse_activation")},
+                {"fuse_alpha", pat.Attr("fuse_alpha")},
+                {"fuse_beta", pat.Attr("fuse_beta")},
+                {"is_test", pat.Attr("is_test")}});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
+
     conv({&pat.Tensor("input"),
           &pat.Tensor("filter"),
+          &pat.Tensor("bias"),
           &pat.Tensor("output_size")},
          {&pat.Tensor("conv_out")});
 
-    pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
     pat.Tensor("result") =
-        add2(pat.Tensor("add_out"), pat.Tensor("other_param"));
+        add(pat.Tensor("conv_out"), pat.Tensor("other_param"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
-        return false;
-      }
       if (!pir::ValueIsPersistable(match_ctx.Tensor("other_param"))) {
         return false;
       }
@@ -241,6 +256,14 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
           match_ctx.Attr<int>("groups") < 1) {
         return false;
       }
+      return true;
+    });
+
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      auto other_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("other_param"));
+      if (bias_shape != other_param_shape) return false;
       return true;
     });
 
@@ -260,13 +283,13 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
-                   {"force_fp32_output", res.BoolAttr(false)},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
-                   {"fuse_relu", res.BoolAttr(false)},
-                   {"fuse_activation", res.StrAttr("")},
-                   {"fuse_alpha", res.Float32Attr(0.0f)},
-                   {"fuse_beta", res.Float32Attr(0.0f)},
-                   {"is_test", res.BoolAttr(true)},
+                   {"force_fp32_output", pat.Attr("force_fp32_output")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                   {"fuse_relu", pat.Attr("fuse_relu")},
+                   {"fuse_activation", pat.Attr("fuse_activation")},
+                   {"fuse_alpha", pat.Attr("fuse_alpha")},
+                   {"fuse_beta", pat.Attr("fuse_beta")},
+                   {"is_test", pat.Attr("is_test")},
                }});
 
     fused_conv({&res.Tensor("input"),

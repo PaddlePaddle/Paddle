@@ -171,7 +171,7 @@ const auto& handler_reduce_prod_op =
                                   ::pir::IrMapping& ir_mapping,  // NOLINT
                                   ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
   std::vector<pir::Value> vec_inputs;
   for (uint32_t i = 0; i < op->num_operands(); ++i) {
     vec_inputs.push_back(ir_mapping.Lookup(op->operand_source(i)));
@@ -191,7 +191,7 @@ const auto& handler_reduce_prod_op =
                                  ::pir::IrMapping& ir_mapping,  // NOLINT
                                  ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
 
   float scale = attrs.at("scale").dyn_cast<::pir::FloatAttribute>().data();
   float bias = attrs.at("bias").dyn_cast<pir::FloatAttribute>().data();
@@ -209,7 +209,7 @@ const auto& handler_reduce_prod_op =
                                 ::pir::IrMapping& ir_mapping,  // NOLINT
                                 ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
   auto pd_op = builder.Build<paddle::dialect::FlipOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
   for (uint32_t i = 0; i < op->num_results(); ++i) {
@@ -242,7 +242,7 @@ const auto& handler_reduce_prod_op =
                                    ::pir::IrMapping& ir_mapping,  // NOLINT
                                    ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
   double rtol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
   double atol = attrs.at("atol").dyn_cast<pir::FloatAttribute>().data();
   bool equal_nan = attrs.at("equal_nan").dyn_cast<pir::BoolAttribute>().data();
@@ -262,7 +262,7 @@ const auto& handler_reduce_prod_op =
                                   ::pir::IrMapping& ir_mapping,  // NOLINT
                                   ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
 
   std::vector<int64_t> shape_;
   auto attr_shape = attrs.at("out_shape").dyn_cast<::pir::ArrayAttribute>();
@@ -286,7 +286,7 @@ const auto& handler_reduce_prod_op =
                                    ::pir::IrMapping& ir_mapping,  // NOLINT
                                    ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
   std::vector<int64_t> shape;
   auto attr_shape = attrs.at("out_shape").dyn_cast<::pir::ArrayAttribute>();
   for (size_t i = 0; i < attr_shape.size(); ++i) {
@@ -313,7 +313,7 @@ const auto& handler_reduce_prod_op =
                                   ::pir::IrMapping& ir_mapping,  // NOLINT
                                   ::pir::Builder& builder) {     // NOLINT
   VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
-  auto attrs = op->attributes();
+  const auto& attrs = op->attributes();
   int axis = attrs.at("axis").dyn_cast<pir::Int32Attribute>().data();
   auto pd_op = builder.Build<paddle::dialect::GatherOp>(
       ir_mapping.Lookup(op->operand_source(0)),
