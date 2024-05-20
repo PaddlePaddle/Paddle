@@ -33,11 +33,13 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -45,6 +47,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -62,6 +65,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
@@ -87,6 +91,7 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+using pir::TuplePopOp;
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -119,6 +124,16 @@ namespace pybind {
 PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
+
+pir::Value FakeValue() {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return pir::Value(nullptr);
+}
+
+bool IsFakeValue(const pir::Value &value) {
+  // create a fake value to simplify `ForwardBackwardSplit`.
+  return value.impl() == nullptr || !value.type();
+}
 
 inline int64_t GetProgramInt64Attr(const std::shared_ptr<Program> &program,
                                    const std::string &attr_name,
@@ -192,6 +207,51 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
     }
   }
   return value;
+}
+
+void SetValueName(Value value, const std::string name) {
+  pir::Operation *define_op = value.defining_op();
+  if (define_op->isa<pir::ParameterOp>()) {
+    define_op->set_attribute(
+        "parameter_name",
+        pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  } else if (define_op->isa<paddle::dialect::DataOp>()) {
+    define_op->set_attribute(
+        "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
+  } else if (value.first_use()) {
+    auto nextOp = value.first_use().owner();
+    if (nextOp->isa<::pir::ShadowOutputOp>()) {
+      nextOp->set_attribute(
+          "output_name",
+          pir::StrAttribute::get(pir::IrContext::Instance(), name));
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only set name of Value which is "
+          "shadowoutput "));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only set name of Value that "
+        "is persistable"));
+  }
+}
+
+bool HasValueName(const Value &value) {
+  if (IsFakeValue(value)) {
+    return false;
+  }
+  if (value.defining_op()->isa<::pir::ParameterOp>() ||
+      value.defining_op()->isa<paddle::dialect::DataOp>() ||
+      value.isa<BlockArgument>() ||
+      (value.first_use() &&
+       (value.first_use().owner()->isa<::pir::ShadowOutputOp>()))) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 std::string GetValueName(Value value) {
@@ -286,7 +346,7 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_unique<Program>(pir::IrContext::Instance());
+        return std::make_shared<Program>(pir::IrContext::Instance());
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
@@ -375,7 +435,7 @@ void BindProgram(py::module *m) {
             for (auto op : self->block()->ops()) {
               for (auto var : op->results()) {
                 auto is_persistable =
-                    var.attribute<BoolAttribute>("persistable");
+                    var.attribute<BoolAttribute>(kAttrIsPersistable);
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
                     std::string var_name = GetValueName(var);
@@ -596,17 +656,23 @@ void BindOperation(py::module *m) {
       .def("operands", &Operation::operands)
       .def("results",
            [](Operation &self) -> py::list {
-             py::list op_list;
+             py::list value_list;
              for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(static_cast<pir::Value>(self.result(i)));
+               value_list.append(static_cast<pir::Value>(self.result(i)));
              }
-             return op_list;
+             return value_list;
            })
       .def(
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
       .def("has_attr", &Operation::HasAttribute)
+      .def("set_bool_attr",
+           [](Operation &self, std::string &attr_name, bool flag) {
+             self.set_attribute(
+                 attr_name,
+                 pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -622,6 +688,12 @@ void BindOperation(py::module *m) {
                }
              }
              return attrs_dict;
+           })
+      .def("set_execution_stream",
+           [](Operation &self, const std::string &exe_stream) {
+             self.set_attribute("execution_stream",
+                                pir::StrAttribute::get(
+                                    pir::IrContext::Instance(), exe_stream));
            })
       .def("set_scheduling_priority",
            [](Operation &self, int64_t priority) {
@@ -690,6 +762,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "Currently, we can only get input grad semantics of "
+                   "Operation that "
+                   "has OpYamlInfoInterface"));
+             }
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -709,13 +788,23 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> PyLayerOp {
              auto pylayer_op = self.dyn_cast<PyLayerOp>();
              if (!pylayer_op) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Can't cast non-pylayer_op type Operation to PyLayerOp."));
              }
              return pylayer_op;
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def(
+          "as_tuple_pop_op",
+          [](Operation &self) -> TuplePopOp {
+            auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
+            if (!tuple_pop_op) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
+            }
+            return tuple_pop_op;
+          })
       .def("__repr__",
 
            [](Operation &self) {
@@ -784,12 +873,12 @@ void BindOperation(py::module *m) {
           })
       .def_property(
           "dist_attr",
-          [](Operation &self) {
+          [](Operation &self) -> py::object {
             if (self.HasAttribute(kAttrOpDistAttr)) {
-              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+              return py::cast(
+                  self.attribute<OperationDistAttribute>(kAttrOpDistAttr));
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dist_attr is only for dist op."));
+              return py::cast<py::none>(Py_None);
             }
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
@@ -815,44 +904,42 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-phi::DataType GetValueDtype(Value value) {
-  if (!value.type()) {
+phi::DataType GetTensorDtype(Type type) {
+  if (!type) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorType>().dtype());
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<SelectedRowsType>().dtype());
-  } else if (value.type().isa<DenseTensorArrayType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorArrayType>().dtype());
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        value.type().dyn_cast<DistDenseTensorType>().dtype());
+  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
+    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
+    return dialect::TransToPhiDataType(select_rows.dtype());
+  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DistDenseTensorType."));
+        "SelectedRowsType, DenseTensorArrayType."));
   }
 }
+phi::DataType GetValueDtype(Value value) {
+  return GetTensorDtype(value.type());
+}
 
-const phi::DDim &GetValueDims(Value value) {
-  if (!value.type()) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+const phi::DDim &GetTensorDims(Type type) {
+  if (!type) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The type used to get dims is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return value.type().dyn_cast<DenseTensorType>().dims();
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return value.type().dyn_cast<SelectedRowsType>().dims();
-  } else if (value.type().isa<DistDenseTensorType>()) {
-    return value.type().dyn_cast<DistDenseTensorType>().global_ddim();
+  if (auto dense_type = type.dyn_cast<DenseTensorType>()) {
+    return dense_type.dims();
+  } else if (auto select_rows_type = type.dyn_cast<SelectedRowsType>()) {
+    return select_rows_type.dims();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and distdense"
-        "tensor."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently, we can only get shape for dense and selsect rows type."));
   }
+}
+const phi::DDim &GetValueDims(Value value) {
+  return GetTensorDims(value.type());
 }
 
 pir::Value apply(Value self, py::object func) {
@@ -969,21 +1056,12 @@ void BindValue(py::module *m) {
               return ss.str();
             }
           })
-      .def_property_readonly("name",
-                             [](Value self) { return GetValueName(self); })
-      .def_property_readonly(
-          "has_name",
-          [](Value self) {
-            if (self.defining_op()->isa<::pir::ParameterOp>() ||
-                self.defining_op()->isa<paddle::dialect::DataOp>() ||
-                self.isa<BlockArgument>() ||
-                (self.first_use() &&
-                 self.first_use().owner()->isa<::pir::ShadowOutputOp>())) {
-              return true;
-            } else {
-              return false;
-            }
-          })
+      .def_property(
+          "name",
+          [](Value self) { return GetValueName(self); },
+          [](Value self, const std::string &name) { SetValueName(self, name); })
+      .def_property_readonly("has_name",
+                             [](Value self) { return HasValueName(self); })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1079,7 +1157,7 @@ void BindValue(py::module *m) {
              auto share_data_op =
                  ApiBuilder::Instance()
                      .GetBuilder()
-                     ->Build<paddle::dialect::ShareDataOp>(self);
+                     ->Build<paddle::dialect::ShareData_Op>(self);
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
@@ -1091,22 +1169,20 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      .def(
-          "dist_attr",
-          [](Value &self) {
-            if (!self.type().isa<DistTypeInterface>()) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "dist_attr is only for dist type tensor."));
-            }
-            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
-          })
+      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
+      .def("dist_attr",
+           [](Value self) -> py::object {
+             auto type = self.type();
+             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      // The function will calculate the new local shape based on the global
+      // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        if (auto dist_type = self.type().dyn_cast<DistTypeInterface>()) {
-          self.set_type(dist_type.CopyWithNewDistAttr(dist_attr));
-        } else {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "update_dist_attr is only for dist type tensor."));
-        }
+        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
       });
 }
 
@@ -1137,11 +1213,48 @@ bool GetValueBoolAttr(Value value, const std::string &attr_name) {
 
 void BindType(py::module *m) {
   py::class_<Type> ir_type(*m, "Type");
-  ir_type.def("__eq__", &Type::operator==).def("__str__", [](Type &self) {
-    std::ostringstream print_stream;
-    print_stream << self;
-    return print_stream.str();
-  });
+  ir_type.def("__eq__", &Type::operator==)
+      .def_property(
+          "shape",
+          [](Type self) { return phi::vectorize(GetTensorDims(self)); },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Type self) { return GetTensorDtype(self); },
+          [](Type self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          })
+      .def("dist_attr",
+           [](Type self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def_property(
+          "_local_shape",
+          [](Type self) {
+            if (!self.isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "_local_shape is only for distdense tensor."));
+            }
+            return phi::vectorize(
+                self.dyn_cast<DistDenseTensorType>().local_ddim());
+          },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set _local_shape when building static graph"));
+          })
+      .def("__str__", [](Type &self) {
+        std::ostringstream print_stream;
+        print_stream << self;
+        return print_stream.str();
+      });
 
   m->def("create_shaped_type",
          [](Type &type, const std::vector<int> &shape) -> Type {
@@ -1206,7 +1319,6 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
-
   ir_insertion_point
       .def(
           "next",
@@ -1242,6 +1354,10 @@ void BindInsertionPoint(pybind11::module *m) {
             }
             return *(self.value.second);
           },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](PyInsertionPoint &self) { return self.value.first; },
           return_value_policy::reference);
 }
 
@@ -1465,16 +1581,6 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-pir::Value FakeValue() {
-  // create a fake value to simplify `ForwardBackwardSplit`.
-  return pir::Value(nullptr);
-}
-
-bool IsFakeValue(const pir::Value &value) {
-  // create a fake value to simplify `ForwardBackwardSplit`.
-  return value.impl() == nullptr || !value.type();
-}
-
 static auto GetNoNeedBufferValue(
     const ::pir::Block *whole_block,
     std::vector<int> range,
@@ -1583,10 +1689,12 @@ int AppendShadowOutputs(Program *forward_program,
                         std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::Value> added_value;
-
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
+      if (HasValueName(value)) {
+        shadow_output_name = GetValueName(value);
+      }
       AppendShadowOutput(
           forward_program, value, shadow_output_name, start_point + counter);
       counter += 1;
@@ -1716,6 +1824,9 @@ SplitedResult SplitForwardBackward(
         }
         std::string shadow_output_name =
             std::string("output_") + std::to_string(counter);
+        if (HasValueName(v)) {
+          shadow_output_name = GetValueName(v);
+        }
         auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
         pir::AttributeMap attribute_map = {
             {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
@@ -2198,10 +2309,18 @@ void InferSymbolicShapePass(
   }
 }
 
+void CommonSubexpressionEliminationPass(
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program) {                          // NOLINT
+  pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
+  m->def("common_subexpression_elimination_pass",
+         CommonSubexpressionEliminationPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

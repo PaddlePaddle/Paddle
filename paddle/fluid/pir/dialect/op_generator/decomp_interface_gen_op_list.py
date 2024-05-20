@@ -29,9 +29,11 @@ decomp_interface_declare_gen_op_list = [
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -67,9 +69,11 @@ decomp_interface_implementation_gen_op_list = [
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -93,6 +97,11 @@ decomp_interface_implementation_gen_op_list = [
     "unsqueeze",
 ]
 
-
 # xshape output will no longer used after decomp, but return none to keep output num the same as origin op
 decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]
+
+decomp_vjp_interface_declare_gen_op_list = [
+    "add_grad",
+    "matmul_grad",
+    "relu_grad",
+]

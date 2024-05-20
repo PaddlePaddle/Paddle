@@ -449,6 +449,8 @@ class TestTruncatedNormal(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), 1.0, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
+        self.assertAlmostEqual(init_op.attr('a'), -2.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('b'), 2.0, delta=DELTA)
 
         paddle.disable_static()
 
@@ -508,6 +510,34 @@ class TestTruncatedNormal(unittest.TestCase):
             ),
         )
         linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr)
+
+    def test_truncated_normal_initializer_cutoff(self):
+        """Test truncated normal initializer with cutoff"""
+        paddle.disable_static()
+
+        weight_attr = paddle.framework.ParamAttr(
+            name="linear_weight",
+            initializer=paddle.nn.initializer.TruncatedNormal(
+                mean=0.0, std=1.0, a=-10.0, b=10.0
+            ),
+        )
+        linear = paddle.nn.Linear(100, 500, weight_attr=weight_attr)
+        result = (linear.weight >= -10.0).all() * (linear.weight <= 10.0).all()
+        np.testing.assert_equal(result.numpy(), np.array(True))
+
+    def test_truncated_normal_initializer_cutoff2(self):
+        """Test truncated normal initializer with cutoff"""
+        paddle.disable_static()
+
+        weight_attr = paddle.framework.ParamAttr(
+            name="linear_weight2",
+            initializer=paddle.nn.initializer.TruncatedNormal(
+                mean=0.0, std=1.0, a=-1.0, b=1.0
+            ),
+        )
+        linear = paddle.nn.Linear(100, 500, weight_attr=weight_attr)
+        result = (linear.weight >= -1.0).all() * (linear.weight <= 1.0).all()
+        np.testing.assert_equal(result.numpy(), np.array(True))
 
 
 class TestXavierUniform(unittest.TestCase):
