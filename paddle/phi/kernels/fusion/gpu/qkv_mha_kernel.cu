@@ -555,7 +555,9 @@ void QKVMMHAKernel(const Context &dev_ctx,
                    const DenseTensor &v,
                    const paddle::optional<DenseTensor> &src_mask,
                    DenseTensor *out) {
+#ifndef PADDLE_WITH_HIP
   QKVDispatchWithDtype<T, Context>(dev_ctx, q, k, v, src_mask, out);
+#endif  // PADDLE_WITH_HIP
 }
 
 }  // namespace fusion
