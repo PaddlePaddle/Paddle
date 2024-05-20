@@ -411,8 +411,8 @@ void* GetCUDNNDsoHandle() {
 #ifdef WITH_PIP_CUDA_LIBRARIES
   if (CUDA_VERSION >= 12030) {
     return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so.9", false, {cuda_lib_path});
-  }else {
+        FLAGS_cudnn_dir, "libcudnn.so.9", false, {cuda_lib_path});
+  } else {
     return GetDsoHandleFromSearchPath(
         FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
   }
