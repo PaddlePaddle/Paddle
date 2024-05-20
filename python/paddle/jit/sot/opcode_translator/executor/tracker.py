@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import builtins
 import dis
+import re
 import sys
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
 def match_expr_with_suffix(tracker: Tracker, expr: str, suffix: str) -> bool:
     if not expr.endswith(suffix):
         return False
-    return tracker.match_expr(expr.removesuffix(suffix))
+    return tracker.match_expr(expr[: -len(suffix)])
 
 
 class Tracker:
@@ -75,7 +76,6 @@ class Tracker:
         """
         raise NotImplementedError()
 
-    # TODO(zrr1999): We need to support all trackers that may require a guard.
     def match_expr(self, expr: str) -> bool:
         """
         Match the expression with the tracked variables.
@@ -373,7 +373,10 @@ class GetAttrTracker(Tracker):
                 self.obj.tracker, expr, f".{self.attr}"
             )
         else:
-            return expr == f"getattr({{}}, '{self.attr}')"
+            match_obj = re.match(rf"getattr\((\S*), '{self.attr}'\)", expr)
+            if match_obj is None:
+                return False
+            return self.obj.tracker.match_expr(match_obj.groups()[0])
 
     def __repr__(self) -> str:
         return f"GetAttrTracker(attr={self.attr})"
