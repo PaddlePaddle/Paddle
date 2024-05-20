@@ -58,7 +58,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
 
     if (conv_name_ == paddle::dialect::Conv2dOp::name() ||
         conv_name_ == paddle::onednn::dialect::FusedConv2dOp::name()) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
           return false;
         }
@@ -75,7 +75,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
         return true;
       });
     } else {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
           return false;
         }
@@ -150,7 +150,7 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
         return false;
       }
@@ -225,7 +225,7 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("result") =
         add2(pat.Tensor("add_out"), pat.Tensor("other_param"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
         return false;
       }

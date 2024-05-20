@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 import paddle.nn.functional as F
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ArgMaxMinNet(paddle.nn.Layer):
@@ -298,8 +302,8 @@ class DiagonalOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[3, Min(2, 2)], data[NULL]',
-                'shape[2, Min(3, 2)], data[NULL]',
+                'shape[3, 2], data[NULL]',
+                'shape[2, 2], data[NULL]',
                 'shape[S2, Min(S0, S1)], data[NULL]',
                 'shape[S0, Min(S2, S1)], data[NULL]',
                 'shape[S0, S3], data[NULL]',
@@ -435,6 +439,48 @@ class MaxMinOpInferSymbolicShapeTest(TestBase):
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.max', self.expected)
             check_infer_results(net, input_spec, 'pd_op.min', self.expected)
+
+        return True
+
+
+class NonzeroNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out_nonzero = paddle.nonzero(x)
+        return out_nonzero
+
+
+class NonzeroOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        # pdb.set_trace()
+
+        for _ in range(np.random.randint(1, 10)):
+            self.cases[0][np.random.randint(0, 3)][np.random.randint(0, 4)][
+                np.random.randint(0, 5)
+            ] = 0
+
+        self.expected = [
+            'shape[S3, 3], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = NonzeroNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            check_infer_results(net, input_spec, 'pd_op.nonzero', self.expected)
 
         return True
 
@@ -589,9 +635,9 @@ class SplitOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 6, 5)]
         self.expected = [
-            'shape[S0, S1, S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
-            'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
+            'shape[S0, 6, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 5, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
             'shape[S0, 6, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',

@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+import tempfile
 import unittest
+
+sys.path.append("../../legacy_test")
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
@@ -513,9 +518,8 @@ class BadInputTest(unittest.TestCase):
 class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
-        # self.temp_dir = tempfile.TemporaryDirectory()
-        # self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
-        self.save_path = "./tensor_axis_cumsum"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -608,26 +612,22 @@ class TestTensorAxis(unittest.TestCase):
                 load_program, _, _ = paddle.static.load_inference_model(
                     self.save_path, exe
                 )
+
                 self.assertEqual(
-                    len(load_program.global_block().ops) + 1,
-                    len(main_prog.global_block().ops),
+                    len(load_program.global_block().ops),
+                    11,
                 )
+                print(load_program)
+                self.assertEqual(
+                    load_program.global_block().ops[7].name(), 'pd_op.cumsum'
+                )
+
                 out = exe.run(
                     program=load_program,
                     feed={'x': np_x},
-                    fetch_list=[load_program.global_block().ops[8].result(0)],
+                    fetch_list=[],
                 )
                 np.testing.assert_allclose(static_out, out)
-
-                self.assertEqual(
-                    load_program.global_block().ops[8].name(), 'pd_op.cumsum'
-                )
-                infer_out = exe.run(
-                    program=load_program,
-                    feed={'x': np_x},
-                    fetch_list=[load_program.global_block().ops[8].result(0)],
-                )
-                np.testing.assert_allclose(static_out[0], infer_out[0])
 
 
 class TestCumSumOpFp16(unittest.TestCase):

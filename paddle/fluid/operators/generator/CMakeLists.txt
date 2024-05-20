@@ -52,50 +52,16 @@ function(install_py_jinja2)
       OUTPUT_VARIABLE _jinja2_version
       ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-    if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
-      if(NOT _jinja2_version VERSION_LESS "2.11.3")
-        execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
-                                jinja2==2.11.3)
-      endif()
-      return()
-    endif()
-
     if(_jinja2_version)
       return()
     endif()
   endif()
 
-  if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
-                            jinja2==2.11.3)
-  else()
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U jinja2)
-  endif()
-endfunction()
-
-function(install_py_typing_extensions)
-  if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
-                            typing-extensions>=4.1.1)
-    return()
-  endif()
-
-  execute_process(
-    COMMAND
-      ${PYTHON_EXECUTABLE} "-c"
-      "import re, typing_extensions; print(re.compile('/__init__.py.*').sub('',typing_extensions.__file__))"
-    RESULT_VARIABLE _te_status
-    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-  if(NOT _te_status EQUAL 0)
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
-                            typing-extensions)
-  endif()
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U jinja2)
 endfunction()
 
 install_py_pyyaml()
 install_py_jinja2()
-install_py_typing_extensions()
 
 # parse ops
 set(parsed_op_dir

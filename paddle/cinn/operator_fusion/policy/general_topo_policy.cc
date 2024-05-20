@@ -24,7 +24,7 @@ template <typename T>
 bool IsDownstreamNode(const PatternNodePtr<T> start,
                       const PatternNodePtr<T> target) {
   if (start == target) return true;
-  for (const auto& down_node : start->downstream_) {
+  for (const auto& down_node : start->downstream()) {
     if (IsDownstreamNode(down_node, target)) return true;
   }
   return false;
@@ -33,7 +33,7 @@ bool IsDownstreamNode(const PatternNodePtr<T> start,
 template <typename T>
 bool IsIndirectDownstreamNode(const PatternNodePtr<T> start,
                               const PatternNodePtr<T> target) {
-  for (const auto& node : start->downstream_) {
+  for (const auto& node : start->downstream()) {
     if (node == target) continue;
     if (IsDownstreamNode(node, target)) return true;
   }

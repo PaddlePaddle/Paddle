@@ -16,11 +16,13 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework::pir {
 
 constexpr static char* kOpCallStack = "op_callstack";
+constexpr static char* kSymShapeStr = "sym_shape_str";
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
 
@@ -64,7 +66,8 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
       attributes.begin(), attributes.end());
   attr_infos_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
-    if (!attr_value || attr_name == kOpCallStack) continue;
+    if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr)
+      continue;
     attr_infos_.emplace_back(attr_name, attr_value);
   }
 }
@@ -109,6 +112,11 @@ std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
+  ParseOpInfos(group);
+  ParseInputDimExprs(group);
+}
+
+void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
 
@@ -140,13 +148,44 @@ FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   }
 }
 
+void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
+  // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
+  // In case of BroadcastTree, we will clone many Groups containing same ops.
+  // But its input valus is defining outside and will have same DimExprs in
+  // global ShapeAnalysis, which leading hash conflict unexpected.
+  const auto TryGetDimExprsFromGroup = [&](const ::pir::Value& value) -> bool {
+    if (!group.HasShapeOrDataExprs(value)) return false;
+    input_dim_exprs_.push_back(group.GetShapeOrDataExprs(value));
+    return true;
+  };
+  // NOTE(Aurelius84): If we can't get DimExpr from Group, we will find them
+  // from global ShapeAnalysis.
+  const auto TryeGetDimExprsFromGlobal =
+      [&](const ::pir::Value& value) -> bool {
+    auto& shape_analysis =
+        ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
+    input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
+    return true;
+  };
+
+  for (const auto& value : group.GetInputOpValues()) {
+    if (group.IsBroadcastLeaf()) {
+      TryGetDimExprsFromGroup(value);
+    } else {
+      TryeGetDimExprsFromGlobal(value);
+    }
+  }
+}
+
 std::size_t FusionInfo::hash() const {
   if (cached_hash_value_ != 0U) {
     return cached_hash_value_;
   }
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
+  for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
+
   return seed;
 }
 
@@ -155,32 +194,15 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   if (VLOG_IS_ON(5)) {
     os << "{\n";
     if (!FLAGS_enable_cinn_compile_cache)
-      os << "fn_name: " << fusion_info.unique_fn_name_;
+      os << "fn_name: " << fusion_info.unique_fn_name_ << ", ";
+    os << "input_dim_exprs: {";
+    for (const auto& dim_expr : fusion_info.input_dim_exprs_)
+      os << " " << dim_expr;
+    os << " }\n";
     for (const auto& op_info : fusion_info.op_infos_) os << op_info << "\n";
     os << "}\n";
   }
   return os;
-}
-
-std::size_t HashIntArgsMap(
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  std::size_t seed = 2153;
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    hash_combine(seed, input_idx);
-    hash_combine(seed, dim_idx.arg_idx);
-    hash_combine(seed, dim_idx.dim_idx);
-  }
-  return seed;
-}
-std::ostream& operator<<(
-    std::ostream& os,
-    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
-  os << "int_args_map: {\n";
-  for (const auto& [input_idx, dim_idx] : int_args_map) {
-    os << "input_idx: " << input_idx << ":[ " << dim_idx.arg_idx << ", "
-       << dim_idx.dim_idx << " ]\n";
-  }
-  os << "}\n";
 }
 
 std::vector<const ::pir::Operation*> TopologySort(

@@ -9,10 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/shuffle_channel_op.h"
-
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -122,16 +121,3 @@ REGISTER_OPERATOR(shuffle_channel,
                   ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
-
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelOpKernel,
-                          float,
-                          double) {}
-PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleChannelGradOpKernel,
-                          float,
-                          double) {}

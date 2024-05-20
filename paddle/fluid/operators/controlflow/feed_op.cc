@@ -153,6 +153,8 @@ class FeedOp : public framework::OperatorWithKernel {
             feed_sparse_tensor.coalesced());
         out_var->GetMutable<phi::SparseCooTensor>()->SetIndicesDict(
             feed_sparse_tensor.GetIndicesDict());
+        out_var->GetMutable<phi::SparseCooTensor>()->SetKmaps(
+            feed_sparse_tensor.GetKmaps());
       } else {
         PADDLE_THROW(
             phi::errors::Unimplemented("Only support DenseTensor, Strings, and "

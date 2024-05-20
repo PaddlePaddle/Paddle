@@ -19,8 +19,8 @@ void {op_name}::VerifySig() {{
   VLOG(4) << "Verifying inputs:";
   {{
   auto input_size = num_operands();
-  PADDLE_ENFORCE_EQ(input_size == {inputs_size}u, true, phi::errors::InvalidArgument(
-                    "The size %d of inputs must be equal to {inputs_size}.", input_size));{inputs_type_check}
+  PADDLE_ENFORCE_EQ(input_size , {inputs_size}, common::errors::InvalidArgument(
+                    "The size of inputs must be equal to {inputs_size}."));{inputs_type_check}
   }}
   VLOG(4) << "Verifying attributes:";
   {{{attributes_check}
@@ -28,8 +28,8 @@ void {op_name}::VerifySig() {{
   VLOG(4) << "Verifying outputs:";
   {{
   auto output_size = num_results();
-  PADDLE_ENFORCE_EQ(output_size == {outputs_size}u, true, phi::errors::InvalidArgument(
-                    "The size %d of outputs must be equal to {outputs_size}.", output_size));{outputs_type_check}
+  PADDLE_ENFORCE_EQ(output_size, {outputs_size}, common::errors::InvalidArgument(
+                    "The size of outputs must be equal to {outputs_size}."));{outputs_type_check}
   }}
   VLOG(4) << "End Verifying for: {op_name}.";
 }}

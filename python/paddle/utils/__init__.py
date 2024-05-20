@@ -31,7 +31,6 @@ from .layers_utils import (  # noqa: F401
     _packed_nest_with_indices,
     _recursive_assert_same_structure,
     _sequence_like,
-    _sorted,
     _yield_flat_nest,
     _yield_value,
     assert_same_structure,

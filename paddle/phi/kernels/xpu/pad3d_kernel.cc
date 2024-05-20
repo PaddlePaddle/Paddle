@@ -41,6 +41,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  in_dims[3] + pads[2] + pads[3],
                  in_dims[4] + pads[0] + pads[1]});
   } else {
+    // NDHWC
     is_ncdhw = false;
     out->Resize({in_dims[0],
                  in_dims[1] + pads[4] + pads[5],
@@ -57,10 +58,10 @@ void Pad3dKernel(const Context& dev_ctx,
   int in_height = in_dims[3];  // xh
   int in_width = in_dims[4];   // xw
   if (data_format == "NDHWC") {
-    channels = in_dims[4];
-    in_depth = in_dims[1];
-    in_height = in_dims[2];
-    in_width = in_dims[3];
+    channels = in_dims[4];   // c
+    in_depth = in_dims[1];   // xd
+    in_height = in_dims[2];  // xh
+    in_width = in_dims[3];   // xw
   }
 
   if (mode == "circular") {

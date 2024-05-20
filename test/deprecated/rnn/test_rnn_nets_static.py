@@ -32,19 +32,27 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
-    def __init__(self, time_major=True, direction="forward", place="cpu"):
+    def __init__(
+        self, time_major=True, direction="forward", place="cpu", mode="RNN_TANH"
+    ):
         super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
+        self.mode = mode
 
     def setUp(self):
         # Since `set_device` is global, set `set_device` in `setUp` rather than
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         rnn1 = SimpleRNN(
-            16, 32, 2, time_major=self.time_major, direction=self.direction
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            nonlinearity=self.mode,
         )
 
         mp = paddle.static.Program()
@@ -57,6 +65,7 @@ class TestSimpleRNN(unittest.TestCase):
                     2,
                     time_major=self.time_major,
                     direction=self.direction,
+                    activation=self.mode[4:].lower(),
                 )
 
         exe = paddle.static.Executor(place)
@@ -397,7 +406,9 @@ class TestLSTM(unittest.TestCase):
         x = np.random.randn(12, 4, 16)
         if not self.time_major:
             x = np.transpose(x, [1, 0, 2])
-        prev_h = np.random.randn(2 * self.num_directions, 4, 32)
+        prev_h = np.random.randn(
+            2 * self.num_directions, 4, getattr(self, "proj_size", 32)
+        )
         prev_c = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
@@ -411,7 +422,11 @@ class TestLSTM(unittest.TestCase):
                 )
                 init_h = paddle.static.data(
                     "init_h",
-                    [2 * self.num_directions, -1, 32],
+                    [
+                        2 * self.num_directions,
+                        -1,
+                        getattr(self, "proj_size", 32),
+                    ],
                     dtype=paddle.framework.get_default_dtype(),
                 )
                 init_c = paddle.static.data(
@@ -508,14 +523,69 @@ class TestLSTM(unittest.TestCase):
         self.test_with_input_lengths()
 
 
+class TestLSTMWithProjSize(TestLSTM):
+    def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        rnn1 = LSTM(
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            proj_size=8,
+        )
+
+        mp = paddle.static.Program()
+        sp = paddle.static.Program()
+        with paddle.base.unique_name.guard():
+            with paddle.static.program_guard(mp, sp):
+                rnn2 = paddle.nn.LSTM(
+                    16,
+                    32,
+                    2,
+                    time_major=self.time_major,
+                    direction=self.direction,
+                    proj_size=8,
+                )
+
+        exe = paddle.static.Executor(place)
+        scope = paddle.base.Scope()
+        with paddle.static.scope_guard(scope):
+            exe.run(sp)
+            convert_params_for_net_static(rnn1, rnn2, place)
+
+        self.mp = mp
+        self.sp = sp
+        self.rnn1 = rnn1
+        self.rnn2 = rnn2
+        self.proj_size = 8
+
+        self.place = place
+        self.executor = exe
+        self.scope = scope
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
     for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:
-                for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
+                for test_class in [
+                    TestSimpleRNN,
+                    TestLSTM,
+                    TestGRU,
+                    TestLSTMWithProjSize,
+                ]:
                     suite.addTest(test_class(time_major, direction, device))
+                    if test_class == TestSimpleRNN:
+                        suite.addTest(
+                            test_class(
+                                time_major, direction, device, mode="RNN_RELU"
+                            )
+                        )
     return suite
 
 

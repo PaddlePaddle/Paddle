@@ -26,24 +26,13 @@ os.environ['FLAGS_print_ir'] = '1'
 os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
+import utils
 
 
 class PrepareDecoderAttentionMask(nn.Layer):
@@ -104,7 +93,7 @@ class TestPrepareDecoderAttentionMask(unittest.TestCase):
             InputSpec(shape=[None, None], dtype="bool"),
         ]
         if mode == "static":
-            net = apply_to_static(net, use_cinn, input_spec)
+            net = utils.apply_to_static(net, use_cinn, input_spec)
             net.eval()
         out = net(self.input_ids, self.attention_mask)
         return out

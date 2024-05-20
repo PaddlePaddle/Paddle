@@ -42,6 +42,7 @@ DrrRewritePattern::DrrRewritePattern(
       pattern_name_(pattern_name),
       source_pattern_graph_(drr_context.source_pattern_graph()),
       constraints_(drr_context.constraints()),
+      post_processes_(drr_context.post_processes()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
       drr_pattern_owner_(drr_pattern_owner) {
   PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
@@ -64,6 +65,10 @@ bool DrrRewritePattern::MatchAndRewrite(
       std::make_shared<MatchContextImpl>();
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
+    MatchContext match_context{src_match_ctx};
+    for (const auto& post_process : post_processes_) {
+      post_process(match_context);
+    }
     PatternGraphRewrite(*src_match_ctx, rewriter);
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
@@ -539,7 +544,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     size_t new_max_input_op_index = max_input_op_index + 1;
     op_2_temp_program_index[new_op] = new_max_input_op_index;
     if (new_max_input_op_index >= temp_program.size()) {
-      temp_program.push_back({});
+      temp_program.emplace_back();
     }
     temp_program[new_max_input_op_index].push_back(new_op);
   });

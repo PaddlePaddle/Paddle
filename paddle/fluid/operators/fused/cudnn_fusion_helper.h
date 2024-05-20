@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 
 #if CUDNN_VERSION >= 8000
 

@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -84,25 +84,6 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   group_info->reduce_var_names =
       std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
                             fusion_group_info.reduce_var_name.end());
-
-  for (auto& op : group->output_ops()) {
-    group_info->direct_output_var_names.insert(ValueName(op->result(0)));
-    // collect all output tensor.
-    if (op->name() == "cinn_op.yield_store") {
-      auto input_var_name = ValueName(op->operand_source(0));
-      if (group_info->broadcast_info.count(input_var_name)) {
-        auto base_info = group_info->broadcast_info[input_var_name];
-        base_info.with_constrain = true;
-        group_info->broadcast_info[ValueName(op->result(0))] = base_info;
-      }
-    }
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      group_info->direct_output_var_names.insert(ValueName(opresult));
-    }
-  }
 
   for (auto& val : group->output_values()) {
     group_info->direct_output_var_names.insert(ValueName(val));
@@ -222,7 +203,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // =========== OpFusion ============
 
-  func_bodies = OperationFusion(ops, func_bodies);
+  // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
+  func_bodies = OperationFusion(ops, func_bodies, group->output_values());
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================
@@ -747,7 +729,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   group->mut_output_names().clear();
 
   // collect all output tensor.
-  for (auto op_result : group->GetGroupOutputValues()) {
+  for (auto op_result : group->output_values()) {
     if (tensor_map.count(op_result) == 0) {
       continue;
     }
@@ -1111,9 +1093,6 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
     auto shape = ::common::vectorize<int>(type_info.dims());
-    if (shape.empty()) {
-      shape.push_back(1);
-    }
     return lang::CreatePlaceHolder(
         shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }

@@ -7,7 +7,7 @@ if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
 add_subdirectory(controlflow)
-add_subdirectory(detection)
+
 if(WITH_DLNNE)
   add_subdirectory(dlnne)
 endif()
@@ -65,16 +65,6 @@ if(WITH_GPU)
     SRCS test_leaky_relu_grad_grad_functor.cc
          test_leaky_relu_grad_grad_functor.cu
     DEPS tensor device_context eigen3)
-  nv_test(
-    feed_forward_test
-    SRCS feed_forward_test.cu
-    DEPS fleet_executor
-         elementwise_add_op
-         matmul_op
-         tensor
-         phi
-         common
-         ${CINN_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test

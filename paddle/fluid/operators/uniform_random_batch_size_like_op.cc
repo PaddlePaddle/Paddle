@@ -179,7 +179,6 @@ with random values sampled from a uniform distribution.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     uniform_random_batch_size_like,
     ops::UniformRandomBatchSizeLikeOp,
@@ -194,4 +193,4 @@ PD_REGISTER_STRUCT_KERNEL(uniform_random_batch_size_like,
                           ops::CPUUniformRandomKernel,
                           float,
                           double,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}

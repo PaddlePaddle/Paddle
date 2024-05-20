@@ -17,11 +17,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
@@ -77,13 +77,13 @@ FiniteVisitor(Isfinite, All, GPU);
 inline void TensorContainsNAN(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
     return;
@@ -94,13 +94,13 @@ inline void TensorContainsNAN(const phi::DenseTensor& tensor,
 inline void TensorContainsInf(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
     return;
@@ -111,13 +111,13 @@ inline void TensorContainsInf(const phi::DenseTensor& tensor,
 inline void TensorIsfinite(const phi::DenseTensor& tensor,
                            phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));
     return;

@@ -37,7 +37,8 @@ __forceinline__ __device__ int8_t quant_helper(const T input,
   float quant_value = max_bound * scale * static_cast<float>(input);
 
   if (round_type == 0) {
-    quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+    quant_value =
+        static_cast<float>(phi::funcs::roundWithTiesToEven(quant_value));
   } else {
     quant_value = static_cast<float>(round(quant_value));
   }

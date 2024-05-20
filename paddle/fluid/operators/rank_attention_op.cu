@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -76,10 +77,10 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     Out->mutable_data<T>(ctx.GetPlace());
 
     // initialize
-    auto param_help_eigen = framework::EigenVector<T>::Flatten(param_help);
-    auto input_help_eigen = framework::EigenVector<T>::Flatten(*input_help);
-    auto ins_rank_eigen = framework::EigenVector<T>::Flatten(*ins_rank);
-    auto out_eigen = framework::EigenVector<T>::Flatten(*Out);
+    auto param_help_eigen = phi::EigenVector<T>::Flatten(param_help);
+    auto input_help_eigen = phi::EigenVector<T>::Flatten(*input_help);
+    auto ins_rank_eigen = phi::EigenVector<T>::Flatten(*ins_rank);
+    auto out_eigen = phi::EigenVector<T>::Flatten(*Out);
 
     auto &place =
         *ctx.template device_context<phi::GPUContext>().eigen_device();
@@ -183,7 +184,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     int max_ins = std::max(ins_num, max_size);
     // initialize out grad
     drank_para->mutable_data<T>(ctx.GetPlace());
-    auto drank_para_eigen = framework::EigenVector<T>::Flatten(*drank_para);
+    auto drank_para_eigen = phi::EigenVector<T>::Flatten(*drank_para);
     drank_para_eigen.device(place) =
         drank_para_eigen.constant(static_cast<T>(0));
 
@@ -193,7 +194,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_grad.mutable_data<T>(ctx.GetPlace());
     // initialize
-    auto param_grad_eigen = framework::EigenVector<T>::Flatten(param_grad);
+    auto param_grad_eigen = phi::EigenVector<T>::Flatten(param_grad);
     param_grad_eigen.device(place) =
         param_grad_eigen.constant(static_cast<T>(0));
     // get data ptr
