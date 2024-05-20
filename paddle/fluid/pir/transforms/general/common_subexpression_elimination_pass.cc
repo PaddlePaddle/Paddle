@@ -34,7 +34,7 @@ COMMON_DECLARE_int32(cse_max_count);
 
 namespace {
 
-// TODO(SigureMo): Consider use trait to check whether the operation is
+// TODO(SigureMo): Consider use interface to check whether the operation is
 // commutative.
 static std::unordered_map<std::string, std::vector<std::vector<size_t>>>
     kCommutativeOps = {
@@ -140,6 +140,54 @@ bool IsTerminateOp(pir::Operation* op) {
 bool IsTerminateValue(const pir::Value& value) {
   return !value.defining_op() || IsTerminateOp(value.defining_op());
 }
+
+struct Expression {
+ public:
+  Expression(
+      pir::Operation* op,
+      std::unordered_map<void*, std::pair<size_t, bool>>* op_info_registry)
+      : op_(op), op_info_registry_(op_info_registry) {}
+
+  pir::Operation* op() const { return op_; }
+
+  bool equal_to(const Expression& other) const {
+    // return hash() == other.hash();
+    return true;
+  }
+
+  size_t hash() const {
+    PADDLE_ENFORCE_EQ(
+        op_info_registry_->count(reinterpret_cast<void*>(op_)),
+        1,
+        common::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op_->name()));
+    return op_info_registry_->at(reinterpret_cast<void*>(op_)).first;
+  }
+
+  bool CanBeSafeToReplace() const {
+    PADDLE_ENFORCE_EQ(
+        op_info_registry_->count(reinterpret_cast<void*>(op_)),
+        1,
+        common::errors::PreconditionNotMet(
+            "The operation %s is not registered in the table.", op_->name()));
+    return op_info_registry_->at(reinterpret_cast<void*>(op_)).second;
+  }
+
+ private:
+  std::unordered_map<void*, std::pair<size_t, bool>>* op_info_registry_;
+  pir::Operation* op_;
+};
+
+struct ExpressionHash {
+  size_t operator()(const Expression& expr) const { return expr.hash(); }
+};
+
+struct ExpressionEqual {
+  bool operator()(const Expression& lhs, const Expression& rhs) const {
+    return lhs.equal_to(rhs);
+  }
+};
+
 struct ExpressionTable {
  public:
   ExpressionTable() = default;
@@ -172,17 +220,21 @@ struct ExpressionTable {
     return registered_ops_info_[reinterpret_cast<void*>(op)].second;
   }
 
-  void Insert(pir::Operation* op) { common_exprs_[GetOperationHash(op)] = op; }
+  void Insert(pir::Operation* op) {
+    const auto expr = Expression(op, &registered_ops_info_);
+    common_exprs_.insert(expr);
+  }
 
   std::optional<pir::Operation*> Lookup(pir::Operation* op) {
     VLOG(7) << "[Lookup] op [" << op << "] " << op->name() << " start";
-    size_t hash = GetOperationHash(op);
-    if (!common_exprs_.count(hash)) {
+    auto expr = Expression(op, &registered_ops_info_);
+    if (!common_exprs_.count(expr)) {
       return std::nullopt;
     }
+    auto found = common_exprs_.find(expr);
     VLOG(7) << "[Lookup] op [" << op << "] " << op->name()
-            << " found common subexpression: " << common_exprs_[hash]->name();
-    return common_exprs_[hash];
+            << " found common subexpression: " << found->op()->name();
+    return found->op();
   }
 
   size_t CalcOperationHash(pir::Operation* op) {
@@ -302,7 +354,7 @@ struct ExpressionTable {
   }
 
  private:
-  std::unordered_map<size_t, pir::Operation*> common_exprs_;
+  std::unordered_set<Expression, ExpressionHash, ExpressionEqual> common_exprs_;
   std::unordered_map<void*, std::pair<size_t, bool>> registered_ops_info_;
 };
 
