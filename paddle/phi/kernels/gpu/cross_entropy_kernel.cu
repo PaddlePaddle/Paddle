@@ -1102,7 +1102,6 @@ void SwitchWarpSoftmaxForward(T* loss,
   int blocks = (batch_size + batches_per_block - 1) / batches_per_block;
   dim3 threads(kWarpSize, warps_per_block, 1);
 
-  printf("ShangShang %s %d SwitchWarpSoftmaxForward %d\n", __FILE__, __LINE__, log2_elements);
   switch (log2_elements) {
     SOFTMAX_WARP_FORWARD_CASE(0, LabelT, T, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, LabelT, T, AccT);

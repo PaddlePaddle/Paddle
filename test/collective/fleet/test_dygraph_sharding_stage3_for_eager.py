@@ -14,17 +14,17 @@
 
 import unittest
 import sys
-sys.path.append("/workspace/Paddle/test")
+sys.path.append("/home/Paddle/test")
 from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphShardingStage3(TestMultipleGpus):
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage3(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage3.py')
+        self.run_mnist_2gpu('/home/Paddle/test/collective/fleet/dygraph_group_sharded_stage3.py')
 
     def test_dygraph_sharding_stage3_offload(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage3_offload.py')
+        self.run_mnist_2gpu('/home/Paddle/test/collective/fleet/dygraph_group_sharded_stage3_offload.py')
 
 
 if __name__ == "__main__":
