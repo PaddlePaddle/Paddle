@@ -453,12 +453,14 @@ class OperatorIndexPreservePass:
         self.index = index
 
     def __call__(self, program):
-        paddle.base.libpaddle.pir.append_shadow_outputs(
+        if len(program.global_block().ops) == 0:
+            assert self.index == 0
+            return self.pass_fn(program)
+        paddle.base.libpaddle.pir.append_shadow_output(
             program,
-            [program.global_block().ops[0].result(0)],
-            self.index,
+            program.global_block().ops[0].result(0),
             self.name,
-            True,
+            self.index,
         )
         program = self.pass_fn(program)
         new_index = 0
@@ -513,13 +515,17 @@ class ValuePreservePass:
         value2name = ValueDict(
             {v: f"preserved_value_{idx}" for idx, v in enumerate(all_values)}
         )
-        paddle.base.libpaddle.pir.append_shadow_outputs(
-            program,
-            all_values,
-            len(program.global_block().ops),
-            "preserved_value_",
-            True,
-        )
+        value2name = ValueDict()
+        for idx, v in enumerate(all_values):
+            value2name.setdefault(v, [])
+            name = f"preserved_value_{idx}"
+            value2name[v].append(name)
+            paddle.base.libpaddle.pir.append_shadow_output(
+                program,
+                v,
+                name,
+                len(program.global_block().ops),
+            )
 
         # apply program pass
         program = self.apply(program)
@@ -542,7 +548,8 @@ class ValuePreservePass:
         # get new values
         value2new_value = {
             v: name2new_value.get(name, fake_value())
-            for v, name in value2name.items()
+            for v, names in value2name.items()
+            for name in names
         }
         new_args = paddle.utils.map_structure(
             lambda x: (
@@ -680,7 +687,6 @@ class PartialProgramLayer:
             outputs,
             len(self._origin_main_program.global_block().ops),
             "output_",
-            False,
         )
         return RunnableProgram(
             self._origin_main_program, (inputs, params, outputs)
@@ -953,7 +959,6 @@ class PartialProgramLayer:
                     forward_outputs_grads,
                     len(program.global_block().ops),
                     "grad_input_",
-                    False,
                 )
                 op_between_forward_and_backward = (
                     len(program.global_block().ops) - forward_end_idx
@@ -1023,7 +1028,6 @@ class PartialProgramLayer:
             output_grads_to_append,
             backward_end_op_index,
             "grad_output_",
-            False,
         )
 
         backward_start_op_index = (

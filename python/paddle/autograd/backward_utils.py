@@ -184,6 +184,11 @@ class ValueDict:
             raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
 
+    def setdefault(self, key, default=None):
+        if not self.__contains__(key):
+            self[key] = default
+        return self[key]
+
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val
 

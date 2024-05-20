@@ -1664,7 +1664,7 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
-void AppendShadowOutput(Program *forward_program,
+void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
@@ -1675,30 +1675,29 @@ void AppendShadowOutput(Program *forward_program,
   };
   pir::Operation *operation =
       pir::Operation::Create({value}, attribute_map, {}, op_info);
-  auto position = forward_program->block()->begin();
+  auto position = program->block()->begin();
   std::advance(position, start_point);
-  if (position == forward_program->block()->end()) {
-    forward_program->block()->push_back(operation);
+  if (position == program->block()->end()) {
+    program->block()->push_back(operation);
   } else {
-    forward_program->block()->insert(position, operation);
+    program->block()->insert(position, operation);
   }
 }
 
-int AppendShadowOutputs(Program *forward_program,
+int AppendShadowOutputs(Program *program,
                         const std::vector<pir::Value> &outputs,
                         int start_point,
-                        std::string name_prefix,
-                        bool skip_check) {
+                        std::string name_prefix) {
   int counter = 0;
   std::unordered_set<pir::Value> added_value;
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (HasValueName(value) && !skip_check) {
+      if (HasValueName(value)) {
         shadow_output_name = GetValueName(value);
       }
       AppendShadowOutput(
-          forward_program, value, shadow_output_name, start_point + counter);
+          program, value, shadow_output_name, start_point + counter);
       counter += 1;
       added_value.insert(value);
     }
@@ -2199,6 +2198,7 @@ void BindUtils(pybind11::module *m) {
   m->def("remove_no_need_shadow_output", RemoveNoNeedShadowOutput);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("append_shadow_outputs", AppendShadowOutputs);
+  m->def("append_shadow_output", AppendShadowOutput);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
