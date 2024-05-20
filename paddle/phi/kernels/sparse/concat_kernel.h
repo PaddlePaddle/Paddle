@@ -32,6 +32,38 @@
 
 namespace phi {
 namespace sparse {
+
+template <typename T, typename Context>
+void ConcatFunctor(const Context& context,
+  const std::vector<phi::DenseTensor>& inputs,
+  int axis,
+  phi::DenseTensor* output) {
+  // Sometimes direct copies will be faster, this maybe need deeply analysis.  
+  if (axis == 0 && x.size() < 10) {
+    size_t output_offset = 0;
+    for (auto* in : x) {
+      if (in.numel() == 0UL) {
+        continue;
+      }
+      auto in_stride = common::stride_numel(in.dims());
+      auto out_stride = common::stride_numel(out->dims());
+      phi::funcs::StridedNumelCopyWithAxis<T, Context>(
+          dev_ctx,
+          axis,
+          out->data<T>() + output_offset,
+          out_stride,
+          in.data<T>(),
+          in_stride,
+          in_stride[axis]);
+      output_offset += in_stride[axis];
+    }
+  } else {
+    phi::funcs::ConcatFunctor<Context, T> functor;
+    functor(dev_ctx, inputs, axis, out);
+  }  
+ 
+}
+
 template <typename T, typename Context>
 void ConcatCooKernel(const Context& dev_ctx,
                      const std::vector<const SparseCooTensor*>& x,

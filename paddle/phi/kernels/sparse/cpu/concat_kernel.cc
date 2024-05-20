@@ -379,20 +379,14 @@ void ConcatCsrKernel(const Context& dev_ctx,
                                cpu_place,
                                now_cols_ptr,
                                x_crows_nnz * sizeof(int64_t));
-            // std::memcpy(out_values_data + value_offset,
-            //             now_value_ptr,
-            //             x_crows_nnz * sizeof(T));
-            // std::memcpy(out_cols_data + value_offset,
-            //             now_cols_ptr,
-            //             x_crows_nnz * sizeof(int64_t));
           }
-
           value_offset += x_crows_nnz;
           for (int64_t j = 1; j < crows_numel[i]; j++) {
             out_crows_data[crow_index] = now_crows_ptr[j] + cumulative_offset;
             crow_index++;
           }
           // nnz == 0的情况也不会阴险这里的计算,这时候crows_numel[*]==0
+          // 是不是和value_offset或者另一个等价
           cumulative_offset += now_crows_ptr[crows_numel[i] - 1];
         }
       }
