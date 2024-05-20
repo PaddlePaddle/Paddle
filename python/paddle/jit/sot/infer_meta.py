@@ -103,8 +103,7 @@ class MetaInfo:
         return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
 
-@Singleton
-class VariableCreator:
+class VariableCreator(metaclass=Singleton):
     """
     We use the static graph Variable to infer the meta information of Tensor.
     This singleton class is used to create Variable for infer meta.
@@ -305,8 +304,7 @@ def ast_infer_meta(static_function, *args, **kwargs):
     return out
 
 
-@Singleton
-class SpecialInferMeta:
+class SpecialInferMeta(metaclass=Singleton):
     """
     There are some functions that cannot be inferred directly through static graph,
     and need to be implemented manually. This class is used to implement infer meta
@@ -340,8 +338,7 @@ class SpecialInferMeta:
         return inputs
 
 
-@Singleton
-class InferMetaCache(Cache):
+class InferMetaCache(Cache, metaclass=Singleton):
     def key_fn(
         self, func, *args, **kwargs
     ):  # args & kwargs have transformed to MetaInfo
@@ -362,8 +359,7 @@ class InferMetaCache(Cache):
         return infer_meta(func, *args, **kwargs)
 
 
-@Singleton
-class LayerInferMetaCache(Cache):
+class LayerInferMetaCache(Cache, metaclass=Singleton):
     def key_fn(self, layer, *args, **kwargs):
         params = [
             MetaInfo.from_tensor(x)

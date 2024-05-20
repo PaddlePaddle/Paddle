@@ -18,8 +18,8 @@
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/math/sampler.h"
 
 namespace paddle {
 namespace distributed {
@@ -107,9 +107,8 @@ class LayerWiseSampler : public IndexSampler {
     while (layer_index >= start_sample_layer_) {
       auto layer_codes = tree_->GetLayerCodes(layer_index);
       layer_ids_.push_back(tree_->GetNodes(layer_codes));
-      auto sampler_temp =
-          std::make_shared<paddle::operators::math::UniformSampler>(
-              layer_ids_[idx].size() - 1, seed_);
+      auto sampler_temp = std::make_shared<phi::math::UniformSampler>(
+          layer_ids_[idx].size() - 1, seed_);
       sampler_vec_.push_back(sampler_temp);
       layer_index--;
       idx++;
@@ -131,7 +130,7 @@ class LayerWiseSampler : public IndexSampler {
   std::shared_ptr<TreeIndex> tree_{nullptr};
   int seed_{0};
   int start_sample_layer_{1};
-  std::vector<std::shared_ptr<paddle::operators::math::Sampler>> sampler_vec_;
+  std::vector<std::shared_ptr<phi::math::Sampler>> sampler_vec_;
   std::vector<std::vector<IndexNode>> layer_ids_;
 };
 

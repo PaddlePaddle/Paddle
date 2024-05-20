@@ -378,6 +378,8 @@ class RunnableProgram:
                 ):
                     old_name = name_defining_op.attrs()['output_name']
                     new_name = value2name[ufset.find_root(value)]
+                    if old_name == new_name:
+                        continue
                     paddle.core.pir.reset_shadow_output_name(
                         name_defining_op, new_name
                     )
@@ -385,10 +387,13 @@ class RunnableProgram:
                         continue
                     block = program2.global_block()
                     kwargs = block.kwargs()
-                    if old_name in kwargs and new_name not in kwargs:
-                        new_value = block.add_kwarg(
-                            new_name, kwargs[old_name].type()
-                        )
+                    if old_name in kwargs:
+                        if new_name not in kwargs:
+                            new_value = block.add_kwarg(
+                                new_name, kwargs[old_name].type()
+                            )
+                        else:
+                            new_value = kwargs[new_name]
                         kwargs[old_name].replace_all_uses_with(new_value)
                         block.erase_kwarg(old_name)
 
@@ -473,6 +478,9 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
+        if parameters is not None:
+            parameters[0][:] = self._params
+            parameters[1][:] = self._param_values
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
             self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
@@ -591,6 +599,17 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+        def apply_cse(program):
+            if not paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+                "FLAGS_enable_cse_in_dy2st"
+            ]:
+                return
+            pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
+                pm, program
+            )
+            pm.run(program)
+
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
@@ -600,6 +619,7 @@ class PartialProgramLayer:
                     pm, forward_program
                 )
                 pm.run(forward_program)
+                apply_cse(forward_program)
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
@@ -626,6 +646,8 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
+                apply_cse(forward_program)
+                apply_cse(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
@@ -914,10 +936,10 @@ class PartialProgramLayer:
 
     def _prepare_attributes(self):
         attrs = [
-            'forward_global_block',
-            self.program.forward_program.global_block(),
-            'backward_global_block',
-            self.program.backward_program.global_block(),
+            'forward_program',
+            self.program.forward_program,
+            'backward_program',
+            self.program.backward_program,
             'is_test',
             not self.training,
             'program_id',

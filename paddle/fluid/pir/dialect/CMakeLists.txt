@@ -260,6 +260,7 @@ set(op_dialect_srcs
     ${op_dialect_srcs}
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/api_builder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_pylayer_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_sparse_tensor.cc
@@ -313,8 +314,10 @@ cc_library(
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
+# set(op_decomp_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp_vjp.cc)
 set(op_dialect_vjp_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
     ${op_decomp_source_file}

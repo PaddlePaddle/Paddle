@@ -26,8 +26,8 @@ namespace operators {
 // 2. Each non-negative number of the two dimensions are same.
 // 3. For negative number in a dimension, it means unknown so it is compatible
 //    with any number.
-bool DimensionIsCompatibleWith(const framework::DDim& first,
-                               const framework::DDim& second) {
+bool DimensionIsCompatibleWith(const phi::DDim& first,
+                               const phi::DDim& second) {
   int dim_size = first.size();
   if (dim_size != second.size()) {
     return false;
@@ -46,7 +46,7 @@ class ReadInferShape : public framework::InferShapeBase {
     OP_INOUT_CHECK(ctx->HasInput("Reader"), "Input", "Reader", "read");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "read");
     if (!ctx->IsRuntime() && ctx->Attrs().Get<bool>("infer_out")) {
-      std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
+      std::vector<phi::DDim> reader_dims = ctx->GetReaderDims("Reader");
       std::vector<std::string> out_names = ctx->Outputs("Out");
       PADDLE_ENFORCE_EQ(
           reader_dims.size(),
@@ -99,7 +99,7 @@ class ReadOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     VLOG(3) << "read op in";
     framework::ReaderHolder* reader =
         GET_DATA_SAFELY(
@@ -123,7 +123,7 @@ class ReadOp : public framework::OperatorBase {
         phi::errors::InvalidArgument("input data number and output data "
                                      "number of read_op do not match"));
 
-    const std::vector<framework::DDim>& shapes = reader->Shapes();
+    const std::vector<phi::DDim>& shapes = reader->Shapes();
     const std::vector<framework::proto::VarType::Type>& var_types =
         reader->VarTypes();
     const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
