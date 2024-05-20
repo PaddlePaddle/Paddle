@@ -1084,14 +1084,24 @@ void cumprod_grad(const Tensor& x,
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
     auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
-    auto common_dx =
-        cumsum<T>(out * out_grad, dim, false, exclusive, !reverse) / x;
+    auto zero_mask_cumsum1 = cumsum<T>(zero_mask, dim, false, false, reverse);
+    auto zero_mask_cumsum2 = cumsum<T>(zero_mask, dim, false, true, reverse);
+    auto zero_mask_cumsum =
+        zero_mask_cumsum1 +
+        zero_mask_cumsum2;  // determine the index of first zero
     auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
-    auto replace_one = (1 - zero_mask) * x + zero_mask * ones_tensor;
-    auto cumprod_recompute = cumprod<T>(replace_one, dim, exclusive, reverse);
+    auto first_zero_mask =
+        cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
+    auto common_dx = cumsum<T>(out * out_grad, dim, false, exclusive, !reverse);
+    auto replace_one = (1 - zero_mask) * x + zero_mask;
+    auto replace_first_one = (1 - first_zero_mask) * x + first_zero_mask;
+    auto cumprod_recompute =
+        cumprod<T>(replace_first_one, dim, exclusive, reverse);
     auto zeros_dx = cumsum<T>(
         cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
-    auto x_grad_res = (1 - zero_mask) * common_dx + zero_mask * zeros_dx;
+    auto x_grad_res =
+        ((1 - first_zero_mask) * common_dx + first_zero_mask * zeros_dx) /
+        replace_one;
     set_output<T>(x_grad_res, x_grad);
   }
 }

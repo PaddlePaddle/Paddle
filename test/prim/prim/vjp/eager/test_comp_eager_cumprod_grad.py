@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 
 import numpy as np
@@ -25,6 +26,16 @@ from paddle.base import core
     ('primal', 'dtype'),
     [
         (
+            np.random.rand(
+                100,
+            ),
+            np.float32,
+        ),
+        (
+            np.random.rand(10, 10),
+            np.float32,
+        ),
+        (
             np.random.rand(2, 3, 4),
             np.float32,
         ),
@@ -32,12 +43,21 @@ from paddle.base import core
             np.random.rand(2, 3, 3, 4),
             np.float32,
         ),
+        (
+            np.random.rand(2, 3, 3, 4, 5),
+            np.float32,
+        ),
+        (
+            np.random.randint(1, 100, (2, 3, 4)),
+            np.int64,
+        ),
     ],
 )
 class TestCumprodGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
+        cls.zero_nums = [0, 1, 10, int(np.prod(cls.primal.shape))]
 
     def test_cumprod_grad_comp(self):
         def actual(primal, dim):
@@ -62,13 +82,20 @@ class TestCumprodGradComp(unittest.TestCase):
             )
             return x_cotangent[0]
 
-        for i in range(len(self.primal.shape)):
-            np.testing.assert_allclose(
-                actual=actual(self.primal, i),
-                desired=desired(self.primal, i),
-                rtol=1e-6,
-                atol=0,
-            )
+        for zero_num in self.zero_nums:
+            shape = self.primal.shape
+            x = self.primal.flatten()
+            indices = random.sample(range(x.size), zero_num)
+            for i in indices:
+                x[i] = 0
+            x = np.reshape(x, shape)
+            for i in range(len(self.primal.shape)):
+                np.testing.assert_allclose(
+                    actual=actual(x, i),
+                    desired=desired(x, i),
+                    rtol=1e-6,
+                    atol=0,
+                )
         core.set_prim_eager_enabled(False)
 
 

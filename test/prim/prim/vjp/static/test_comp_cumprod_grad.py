@@ -18,6 +18,8 @@ from paddle.base import core
 
 core._set_prim_backward_enabled(True)
 
+import random
+
 import numpy as np
 import parameterized as param
 
@@ -46,7 +48,24 @@ class PrimeNet(paddle.nn.Layer):
 @param.parameterized_class(
     ('primal', 'cotangent', 'dtype'),
     [
+        (
+            np.random.rand(
+                100,
+            ),
+            np.random.rand(
+                100,
+            ),
+            np.float32,
+        ),
         (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+        (np.random.rand(3, 4, 5), np.random.rand(3, 4, 5), np.float32),
+        (np.random.rand(2, 3, 4, 5), np.random.rand(2, 3, 4, 5), np.float32),
+        (
+            np.random.rand(2, 3, 2, 4, 5),
+            np.random.rand(2, 3, 2, 4, 5),
+            np.float32,
+        ),
+        (np.random.randint(1, 20, (10, 10)), np.random.rand(10, 10), np.int64),
     ],
 )
 class TestCumprodGradComp(unittest.TestCase):
@@ -54,6 +73,7 @@ class TestCumprodGradComp(unittest.TestCase):
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
         cls.cotangent = cls.cotangent.astype(cls.dtype)
+        cls.zero_nums = [0, 1, 10, int(np.prod(cls.primal.shape))]
 
     def train(self, use_prim, use_cinn):
         paddle.seed(2022)
@@ -108,13 +128,20 @@ class TestCumprodGradComp(unittest.TestCase):
                 fetch_list=[x_cotangent[0]],
             )[0]
 
-        for i in range(len(self.primal.shape)):
-            np.testing.assert_allclose(
-                actual=actual(self.primal, self.cotangent, i),
-                desired=desired(self.primal, self.cotangent, i),
-                rtol=1e-6,
-                atol=0,
-            )
+        for zero_num in self.zero_nums:
+            shape = self.primal.shape
+            x = self.primal.flatten()
+            indices = random.sample(range(x.size), zero_num)
+            for i in indices:
+                x[i] = 0
+            x = np.reshape(x, shape)
+            for i in range(len(self.primal.shape)):
+                np.testing.assert_allclose(
+                    actual=actual(x, self.cotangent, i),
+                    desired=desired(x, self.cotangent, i),
+                    rtol=1e-6,
+                    atol=0,
+                )
         core._set_prim_backward_enabled(False)
         paddle.disable_static()
 
