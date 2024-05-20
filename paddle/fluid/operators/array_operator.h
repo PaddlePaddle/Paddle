@@ -32,7 +32,7 @@ class ArrayOp : public framework::OperatorBase {
 
  protected:
   size_t GetOffset(const framework::Scope &scope,
-                   const platform::Place &place) const {
+                   const phi::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE_NOT_NULL(i, phi::errors::NotFound("Input(I) is not found."));
     auto &i_tensor = i->Get<phi::DenseTensor>();

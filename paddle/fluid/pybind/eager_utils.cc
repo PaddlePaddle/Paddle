@@ -117,14 +117,28 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
     return;
   }
   if (x->is_dist_tensor()) {
-    PADDLE_ENFORCE_EQ(
-        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
-            ->process_mesh(),
-        *mesh,
-        platform::errors::InvalidArgument(
-            "Input %s has different mesh. However all inputs should "
-            "have the same mesh.",
-            x->name()));
+    auto dist_ptr =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl());
+    if (!dist_ptr->skip_check_mesh() && x->dims().size() > 0) {
+      // NOTE(pkuzyc): In MoE expert parallelism, the mesh of the
+      // inputs and outputs of different experts are different, so
+      // skip checking mesh in the following two casees:
+      // 1. The ``skip_check_mesh_`` flag is true. The MoE-related apis
+      // sets this flag to indicate that the difference between tensor's
+      // mesh is allowed.
+      // 2. The tensor is a 0-D tensor. Specifically, in MoE expert
+      // parallelism, the learning rate's mesh is global, but expert
+      // weights' mesh is the subset of the global mesh, this is also
+      // allowed so skip checking the mesh of 0-D tensor.
+      PADDLE_ENFORCE_EQ(
+          std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+              ->process_mesh(),
+          *mesh,
+          platform::errors::InvalidArgument(
+              "Input %s has different mesh. However all inputs should "
+              "have the same mesh.",
+              x->name()));
+    }
     return;
   } else {
     PADDLE_ENFORCE_EQ(
@@ -2004,6 +2018,9 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
+  if (HasValueName(value)) {
+    tensor.set_name(GetValueName(value));
+  }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));

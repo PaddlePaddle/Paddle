@@ -214,7 +214,7 @@ RecurrentOp::RecurrentOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentOp::RunImpl(const framework::Scope &scope,
-                          const platform::Place &place) const {
+                          const phi::Place &place) const {
   bool has_state = Attr<bool>(kHasStates);
   auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
 
@@ -347,7 +347,7 @@ RecurrentGradOp::RecurrentGradOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentGradOp::RunImpl(const framework::Scope &scope,
-                              const platform::Place &place) const {
+                              const phi::Place &place) const {
   bool has_state = Attr<bool>(kHasStates);
   const size_t seq_len = static_cast<size_t>(GetSequenceLength(scope));
 
