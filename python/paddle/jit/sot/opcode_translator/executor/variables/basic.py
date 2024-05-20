@@ -34,6 +34,7 @@ from ....utils import (
     NameGenerator,
     paddle_tensor_methods,
     printable,
+    tmp_name_guard,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
@@ -672,12 +673,14 @@ class SymbolicIntVariable(VariableBase):
         from ..executor_cache import OpcodeExecutorCache
 
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
-        for tracker_expr, symbolic_input in symbolic_inputs.items():
-            if tracker.match_expr(tracker_expr):
-                symbolic_input.setdefault(value, 0)
-                symbolic_input[value] += 1
-                # TODO(zrr1999): determine frequency
-                return SymbolicIntVariable(value, graph, tracker)
+
+        with tmp_name_guard():
+            for tracker_expr, symbolic_input in symbolic_inputs.items():
+                if tracker.match_expr(tracker_expr):
+                    symbolic_input.setdefault(value, 0)
+                    symbolic_input[value] += 1
+                    # TODO(zrr1999): determine frequency
+                    return SymbolicIntVariable(value, graph, tracker)
         return None
 
 

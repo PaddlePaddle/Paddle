@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import builtins
 import dis
-import re
 import sys
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -29,12 +28,6 @@ if TYPE_CHECKING:
 
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
-
-
-def match_expr_with_suffix(tracker: Tracker, expr: str, suffix: str) -> bool:
-    if not expr.endswith(suffix):
-        return False
-    return tracker.match_expr(expr[: -len(suffix)])
 
 
 class Tracker:
@@ -187,6 +180,7 @@ class LocalTracker(Tracker):
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
 
     def match_expr(self, expr: str) -> bool:
+        self.trace_value_from_frame()
         return expr == f"frame.f_locals['{self.name}']"
 
     def __repr__(self) -> str:
@@ -368,15 +362,11 @@ class GetAttrTracker(Tracker):
         )
 
     def match_expr(self, expr: str) -> bool:
+        obj_tracer_expr = self.obj.tracker.trace_value_from_frame().debug_expr
         if self.attr.isidentifier():
-            return match_expr_with_suffix(
-                self.obj.tracker, expr, f".{self.attr}"
-            )
+            return expr == f"{obj_tracer_expr}.{self.attr}"
         else:
-            match_obj = re.match(rf"getattr\((\S*), '{self.attr}'\)", expr)
-            if match_obj is None:
-                return False
-            return self.obj.tracker.match_expr(match_obj.groups()[0])
+            return expr == f"getattr({obj_tracer_expr}, '{self.attr}')"
 
     def __repr__(self) -> str:
         return f"GetAttrTracker(attr={self.attr})"
@@ -422,11 +412,12 @@ class GetItemTracker(Tracker):
         )
 
     def match_expr(self, expr: str) -> bool:
+        container_tracer_expr = (
+            self.container.tracker.trace_value_from_frame().debug_expr
+        )
         key_string, _ = stringify_pyobject(self.key)
 
-        return match_expr_with_suffix(
-            self.container.tracker, expr, f"[{key_string}]"
-        )
+        return expr == f"{container_tracer_expr}[{key_string}]"
 
     def __repr__(self) -> str:
         return f"GetItemTracker(key={self.key!r})"
