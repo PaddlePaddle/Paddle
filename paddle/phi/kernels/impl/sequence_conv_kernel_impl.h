@@ -57,7 +57,8 @@ void SequenceConvKernel(const Context& dev_ctx,
 
   phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
   phi::DenseTensor col;
-  col.mutable_data<T>(col_shape, context.GetPlace());
+  col.Resize(col_shape);
+  dev_ctx.template Alloc<T>(&col);
   // Because if padding_trainable is false, padding data should be zeros.
   phi::funcs::SetConstant<DeviceContext, T> set_zero;
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
@@ -96,7 +97,6 @@ void SequenceConvGradKernel(const Context& dev_ctx,
   auto* filter_g = filter_grad;
   auto* padding_data_g = padding_data_grad;
   auto* in = &x;
-  auto* filter = &filter;
 
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
@@ -122,7 +122,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&col);
     // Because if padding_trainable is false, padding data should be zeros.
     set_zero(dev_ctx, &col, static_cast<T>(0));
-    blas.MatMul(*out_g, false, *filter, true, &col);
+    blas.MatMul(*out_g, false, filter, true, &col);
   }
   phi::math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
   phi::math::ContextProjectGradFunctor<DeviceContext, T>
@@ -173,7 +173,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     phi::DenseTensor filter_grad = *filter_g;
     phi::DenseTensor out_grad = *out_g;
 
-    const phi::DenseTensor* padding_data = nullptr;
+    const phi::DenseTensor* padding_data_p = nullptr;
     if (padding_trainable) {
       padding_data_p = &padding_data;
     }
