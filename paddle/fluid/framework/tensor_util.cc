@@ -327,7 +327,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   }
   auto size = src.numel() * phi::SizeOf(src.dtype());
   if (platform::is_cpu_place(src_place) &&
-      platform::is_cpu_place(dst_place)) {          // NOLINT
+      platform::is_cpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -490,11 +490,10 @@ void TensorToStream(std::ostream& os,
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        uintptr_t ptr = reinterpret_cast<uintptr_t>(data);
         memory::Copy(cpu,
                      buf.get(),
                      tensor.place(),
-                     reinterpret_cast<const void*>(ptr),
+                     reinterpret_cast<const void*>(data),   // NOLINT
                      size_to_write,
                      gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();

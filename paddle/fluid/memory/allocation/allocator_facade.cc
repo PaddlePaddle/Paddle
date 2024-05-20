@@ -362,8 +362,8 @@ class AllocatorFacadePrivate {
                       allocators.end(),
                       platform::errors::NotFound(
                           "No allocator found for the place, %s", place));
-    VLOG(6) << "[GetAllocator]" << " place = " << place << " size = " << size
-            << " Allocator = " << iter->second;
+    VLOG(6) << "[GetAllocator]"
+            << " place = " << place << " size = " << size
     return iter->second;
   }
 
