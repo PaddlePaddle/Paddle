@@ -141,12 +141,10 @@ class FusedDropoutHelper {
   FusedDropoutHelper(const phi::GPUContext& ctx,
                      const int rows,
                      const int cols,
-                     const DropoutParam& dropout_param,
-                     const float residual_alpha = 1.0) {
+                     const DropoutParam& dropout_param) {
     rows_ = rows;
     cols_ = cols;
     dropout_param_ = dropout_param;
-    residual_alpha_ = residual_alpha;
   }
 
   // out = residual + dropout( src + bias )
@@ -176,8 +174,7 @@ class FusedDropoutHelper {
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_next_in_scale,
-        residual_alpha_);
+        quant_next_in_scale);
   }
 
   void ResidualDropoutBiasGrad(const phi::GPUContext& ctx,
@@ -345,7 +342,6 @@ class FusedDropoutHelper {
   int rows_;
   int cols_;
   DropoutParam dropout_param_;
-  float residual_alpha_;
 };
 
 template <typename T>
@@ -370,23 +366,20 @@ class FusedDropoutLayerNormHelper
   FusedDropoutLayerNormHelper() {}
   FusedDropoutLayerNormHelper(const int rows,
                               const int cols,
-                              const float epsilon,
-                              const float residual_alpha = 1.0) {
+                              const float epsilon) {
     using U = LayerNormParamType<T>;
     this->rows_ = rows;
     this->cols_ = cols;
     epsilon_ = epsilon;
-    this->residual_alpha_ = residual_alpha;
   }
 
   FusedDropoutLayerNormHelper(const phi::GPUContext& ctx,
                               const int rows,
                               const int cols,
                               const DropoutParam& dropout_param,
-                              const float epsilon,
-                              const float residual_alpha = 1.0)
+                              const float epsilon)
       : FusedDropoutHelper<T, MaskType, InType, OutType>(
-            ctx, rows, cols, dropout_param, residual_alpha) {
+            ctx, rows, cols, dropout_param) {
     using U = LayerNormParamType<T>;
     epsilon_ = epsilon;
   }
@@ -499,8 +492,7 @@ class FusedDropoutLayerNormHelper
         quant_next_in_scale,
         quant_round_type,
         quant_max_bound,
-        quant_min_bound,
-        this->residual_alpha_);
+        quant_min_bound);
   }
 
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>

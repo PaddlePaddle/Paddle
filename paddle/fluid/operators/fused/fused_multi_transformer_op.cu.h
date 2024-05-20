@@ -36,8 +36,6 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
-
-PD_DECLARE_string(fmha_mode);
 namespace phi {
 namespace fusion {
 
@@ -748,11 +746,16 @@ inline size_t smem_size_in_bytes(
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func);
 
-template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
-void fmha_launch_kernel_impl(const Masked_multihead_attention_params<T> &params,
-                             const cudaStream_t &stream,
-                             LoadFunc load_func,
-                             StoreFunc store_func) {
+template <typename T,
+          int Dh,
+          int Dh_MAX,
+          typename LoadFunc,
+          typename StoreFunc,
+          bool WITH_INT8 = false>
+void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
+                        const cudaStream_t &stream,
+                        LoadFunc load_func,
+                        StoreFunc store_func) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(
@@ -793,253 +796,44 @@ void fmha_launch_kernel_impl(const Masked_multihead_attention_params<T> &params,
   }
 }
 
-template <typename T,
-          int Dh,
-          int Dh_MAX,
-          typename LoadFunc,
-          typename StoreFunc,
-          bool WITH_INT8 = false>
-void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
-                        const cudaStream_t &stream,
-                        LoadFunc load_func,
-                        StoreFunc store_func,
-                        uint8_t *cache_kv_I,
-                        float cache_k_quant_scale,
-                        float cache_v_quant_scale,
-                        float cache_k_dequant_scale,
-                        float cache_v_dequant_scale) {
-  fmha_launch_kernel_impl<T, Dh, Dh_MAX, LoadFunc, StoreFunc>(
-      params, stream, load_func, store_func);
-}
-
 template <typename T, typename LoadFunc, typename StoreFunc, bool WITH_INT8>
 void fmha_impl(const phi::GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
                LoadFunc load_func,
-               StoreFunc store_func,
-               uint8_t *cache_kv_I,
-               float cache_k_quant_scale,
-               float cache_v_quant_scale,
-               float cache_k_dequant_scale,
-               float cache_v_dequant_scale) {
+               StoreFunc store_func) {
   switch (dim_head) {
     case 10:
       fmha_launch_kernel<T, 10, 32, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 26:
       fmha_launch_kernel<T, 26, 32, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 32:
       fmha_launch_kernel<T, 32, 32, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 64:
       fmha_launch_kernel<T, 64, 64, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 96:
       fmha_launch_kernel<T, 96, 128, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 128:
       fmha_launch_kernel<T, 128, 128, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     case 192:
       fmha_launch_kernel<T, 192, 256, LoadFunc, StoreFunc, WITH_INT8>(
-          params,
-          dev_ctx.stream(),
-          load_func,
-          store_func,
-          cache_kv_I,
-          cache_k_quant_scale,
-          cache_v_quant_scale,
-          cache_k_dequant_scale,
-          cache_v_dequant_scale);
+          params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
       PADDLE_THROW(
           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
-  }
-}
-
-template <typename T, bool CACHE_KV_INT8>
-void DispatchFMHA(const phi::GPUContext &dev_ctx,
-                  const phi::DenseTensor &qkv_tensor,
-                  const Masked_multihead_attention_params<T> &params,
-                  int num_head,
-                  int dim_head,
-                  phi::DenseTensor *out_tensor,
-                  uint8_t *cache_kv_I,
-                  float cache_k_quant_scale,
-                  float cache_v_quant_scale,
-                  float cache_k_dequant_scale,
-                  float cache_v_dequant_scale) {
-  MMHALoad<T> load_func(qkv_tensor.data<T>());
-  MMHAStore<T> store_func(out_tensor->data<T>());
-  fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
-      dev_ctx,
-      params,
-      dim_head,
-      load_func,
-      store_func,
-      cache_kv_I,
-      cache_k_quant_scale,
-      cache_v_quant_scale,
-      cache_k_dequant_scale,
-      cache_v_dequant_scale);
-}
-
-template <typename T, bool CACHE_KV_INT8>
-void DispatchFMHA(const phi::GPUContext &dev_ctx,
-                  const phi::DenseTensor &qkv_tensor,
-                  const phi::DenseTensor &shift,
-                  const phi::DenseTensor &smooth,
-                  const Masked_multihead_attention_params<T> &params,
-                  int num_head,
-                  int dim_head,
-                  phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *dequant_qkv_scales = nullptr,
-                  const float quant_fmha_out_scale = -1,
-                  const int quant_round_type = 1,
-                  const float quant_max_bound = 127.0f,
-                  const float quant_min_bound = -127.0f,
-                  uint8_t *cache_kv_I = nullptr,
-                  float cache_k_quant_scale = -1.0f,
-                  float cache_v_quant_scale = -1.0f,
-                  float cache_k_dequant_scale = -1.0f,
-                  float cache_v_dequant_scale = -1.0f) {
-  if (dequant_qkv_scales != nullptr && quant_fmha_out_scale > 0) {
-    MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                   dequant_qkv_scales->data<float>(),
-                                   3 * num_head * dim_head);
-    MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
-                                          shift.data<T>(),
-                                          smooth.data<T>(),
-                                          num_head * dim_head,
-                                          quant_round_type,
-                                          quant_fmha_out_scale,
-                                          quant_max_bound,
-                                          quant_min_bound);
-    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
-        dev_ctx,
-        params,
-        dim_head,
-        load_func,
-        store_func,
-        cache_kv_I,
-        cache_k_quant_scale,
-        cache_v_quant_scale,
-        cache_k_dequant_scale,
-        cache_v_dequant_scale);
-  } else if (dequant_qkv_scales == nullptr && quant_fmha_out_scale > 0) {
-    MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
-                                          shift.data<T>(),
-                                          smooth.data<T>(),
-                                          num_head * dim_head,
-                                          quant_round_type,
-                                          quant_fmha_out_scale,
-                                          quant_max_bound,
-                                          quant_min_bound);
-    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
-        dev_ctx,
-        params,
-        dim_head,
-        load_func,
-        store_func,
-        cache_kv_I,
-        cache_k_quant_scale,
-        cache_v_quant_scale,
-        cache_k_dequant_scale,
-        cache_v_dequant_scale);
-  } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
-    MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                   dequant_qkv_scales->data<float>(),
-                                   3 * num_head * dim_head);
-    MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
-                                     shift.data<T>(),
-                                     smooth.data<T>(),
-                                     num_head * dim_head);
-    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
-        dev_ctx,
-        params,
-        dim_head,
-        load_func,
-        store_func,
-        cache_kv_I,
-        cache_k_quant_scale,
-        cache_v_quant_scale,
-        cache_k_dequant_scale,
-        cache_v_dequant_scale);
-  } else {
-    MMHALoad<T> load_func(qkv_tensor.data<T>());
-    MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
-                                     shift.data<T>(),
-                                     smooth.data<T>(),
-                                     num_head * dim_head);
-    fmha_impl<T, decltype(load_func), decltype(store_func), CACHE_KV_INT8>(
-        dev_ctx,
-        params,
-        dim_head,
-        load_func,
-        store_func,
-        cache_kv_I,
-        cache_k_quant_scale,
-        cache_v_quant_scale,
-        cache_k_dequant_scale,
-        cache_v_dequant_scale);
   }
 }
 
@@ -1066,17 +860,6 @@ void fmha(const phi::GPUContext &dev_ctx,
           const bool mask_broadcast_num_heads = true,
           const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
-          const phi::DenseTensor *dequant_qkv_scales = nullptr,
-          const phi::DenseTensor *shift = nullptr,
-          const phi::DenseTensor *smooth = nullptr,
-          const float cache_k_quant_scale = -1.0,
-          const float cache_v_quant_scale = -1.0,
-          const float cache_k_dequant_scale = -1.0,
-          const float cache_v_dequant_scale = -1.0,
-          const float quant_fmha_out_scale = -1,
-          const int quant_round_type = 1,
-          const float quant_max_bound = 127.0f,
-          const float quant_min_bound = -127.0f,
           const int gqa_group_size = -1) {
   Masked_multihead_attention_params<T> params;
   // params.out = out_tensor->data<T>();
@@ -1119,10 +902,6 @@ void fmha(const phi::GPUContext &dev_ctx,
   }
 
   if (beam_cache_offset_tensor) {
-    if (cache_k_quant_scale > 0) {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "MMHA with int8 cache kv does not support beam search yet"));
-    }
     params.beam_cache_offset = beam_cache_offset_tensor->data<int>();
     params.beam_width = beam_cache_offset_tensor->dims()[1];
   }
@@ -1147,73 +926,10 @@ void fmha(const phi::GPUContext &dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  if (shift != nullptr) {
-    if (cache_k_quant_scale > 0) {
-      DispatchFMHA<T, true>(dev_ctx,
-                            qkv_tensor,
-                            *shift,
-                            *smooth,
-                            params,
-                            num_head,
-                            dim_head,
-                            out_tensor,
-                            dequant_qkv_scales,
-                            quant_fmha_out_scale,
-                            quant_round_type,
-                            quant_max_bound,
-                            quant_min_bound,
-                            cache_kv_tensor->data<uint8_t>(),
-                            cache_k_quant_scale,
-                            cache_v_quant_scale,
-                            cache_k_dequant_scale,
-                            cache_v_dequant_scale);
-    } else {
-      DispatchFMHA<T, false>(dev_ctx,
-                             qkv_tensor,
-                             *shift,
-                             *smooth,
-                             params,
-                             num_head,
-                             dim_head,
-                             out_tensor,
-                             dequant_qkv_scales,
-                             quant_fmha_out_scale,
-                             quant_round_type,
-                             quant_max_bound,
-                             quant_min_bound,
-                             nullptr,
-                             cache_k_quant_scale,
-                             cache_v_quant_scale,
-                             cache_k_dequant_scale,
-                             cache_v_dequant_scale);
-    }
-  } else {
-    if (cache_k_quant_scale > 0) {
-      DispatchFMHA<T, true>(dev_ctx,
-                            qkv_tensor,
-                            params,
-                            num_head,
-                            dim_head,
-                            out_tensor,
-                            cache_kv_tensor->data<uint8_t>(),
-                            cache_k_quant_scale,
-                            cache_v_quant_scale,
-                            cache_k_dequant_scale,
-                            cache_v_dequant_scale);
-    } else {
-      DispatchFMHA<T, false>(dev_ctx,
-                             qkv_tensor,
-                             params,
-                             num_head,
-                             dim_head,
-                             out_tensor,
-                             nullptr,
-                             cache_k_quant_scale,
-                             cache_v_quant_scale,
-                             cache_k_dequant_scale,
-                             cache_v_dequant_scale);
-    }
-  }
+  MMHALoad<T> load_func(qkv_tensor.data<T>());
+  MMHAStore<T> store_func(out_tensor->data<T>());
+  fmha_impl<T, decltype(load_func), decltype(store_func), false>(
+      dev_ctx, params, dim_head, load_func, store_func);
 }
 
 // NOTE: simd with 16Bytes(128bit), float is 4, float16 is 8
@@ -1463,64 +1179,6 @@ void gqa_write_cachekv(
 
 template <typename T, int VecSize>
 __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
-                                                T *kv_buf,
-                                                const T *qkv,
-                                                const int *padding_offset,
-                                                const int *seq_lens,
-                                                const int32_t elem_cnt,
-                                                const int batch_size,
-                                                const int max_len_this_time,
-                                                const int seq_len,
-                                                const int token_num,
-                                                const int head_num,
-                                                const int size_per_head) {
-  const int32_t offset =
-      batch_size * max_len_this_time * head_num * size_per_head;
-  const int32_t hidden_size = head_num * size_per_head;
-  const int32_t fused_hidden_size = 3 * hidden_size;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  LoadT src_vec;
-
-  for (int32_t linear_index = global_thread_idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
-    int32_t bias_idx = linear_index % fused_hidden_size;
-    const int32_t token_idx = linear_index / fused_hidden_size;
-    const int32_t ori_token_idx =
-        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
-    const int32_t target_batch_id = ori_token_idx / seq_len;
-    if (seq_lens[target_batch_id] == 0) continue;
-    const int32_t seq_id = ori_token_idx % seq_len;
-
-    const int32_t qkv_id = bias_idx / hidden_size;
-    const int32_t head_id = (linear_index % hidden_size) / size_per_head;
-    const int32_t size_id = linear_index % size_per_head;
-
-    if (qkv_id == 0) {
-      phi::Store<T, VecSize>(
-          src_vec,
-          &q_buf[target_batch_id * head_num * max_len_this_time *
-                     size_per_head +
-                 head_id * max_len_this_time * size_per_head +
-                 seq_id * size_per_head + size_id]);
-    } else {
-      const int32_t kv_store_offset = (qkv_id - 1) * offset;
-      phi::Store<T, VecSize>(
-          src_vec,
-          &kv_buf[kv_store_offset +
-                  target_batch_id * head_num * max_len_this_time *
-                      size_per_head +
-                  head_id * max_len_this_time * size_per_head +
-                  seq_id * size_per_head + size_id]);
-    }
-  }
-}
-
-template <typename T, int VecSize>
-__global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 T *k_buf,
                                                 T *v_buf,
                                                 const T *qkv,
@@ -1564,6 +1222,46 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
       phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
     }
   }
+}
+
+template <typename T>
+void qkv_transpose_split(const phi::GPUContext &dev_ctx,
+                         T *q_buf,
+                         T *k_buf,
+                         T *v_buf,
+                         const T *qkv,
+                         const int *padding_offset,
+                         const int *seq_lens,
+                         const int token_num,
+                         const int batch_size,
+                         const int head_num,
+                         const int seq_len,
+                         const int size_per_head) {
+  const int32_t elem_cnt = token_num * head_num * size_per_head * 3;
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(size_per_head % PackSize,
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "dim_head=%d must be divisible by vec_size=%d",
+                        size_per_head,
+                        PackSize));
+  const int32_t pack_num = elem_cnt / PackSize;
+  const int32_t blocksize = 128;
+  int32_t grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+  fusedQKV_transpose_split_kernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
+                                                      k_buf,
+                                                      v_buf,
+                                                      qkv,
+                                                      padding_offset,
+                                                      seq_lens,
+                                                      elem_cnt,
+                                                      batch_size,
+                                                      seq_len,
+                                                      token_num,
+                                                      head_num,
+                                                      size_per_head);
 }
 
 template <typename T, int VecSize, bool ComputeBias>
@@ -1699,86 +1397,6 @@ void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
                                                         head_num,
                                                         size_per_head);
   }
-}
-
-template <typename T>
-void qkv_transpose_split(const phi::GPUContext &dev_ctx,
-                         T *q_buf,
-                         T *kv_buf,
-                         const T *qkv,
-                         const int *padding_offset,
-                         const int *seq_lens,
-                         const int token_num,
-                         const int batch_size,
-                         const int head_num,
-                         const int max_len_this_time,
-                         const int seq_len,
-                         const int size_per_head) {
-  const int32_t elem_cnt = token_num * head_num * size_per_head * 3;
-  constexpr int PackSize = VEC_16B / sizeof(T);
-  PADDLE_ENFORCE_EQ(size_per_head % PackSize,
-                    0,
-                    phi::errors::PreconditionNotMet(
-                        "dim_head=%d must be divisible by vec_size=%d",
-                        size_per_head,
-                        PackSize));
-  const int32_t pack_num = elem_cnt / PackSize;
-  const int32_t blocksize = 128;
-  int32_t grid_size = 1;
-  GetNumBlocks(pack_num, &grid_size);
-  fusedQKV_transpose_split_kernel<T, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
-                                                      kv_buf,
-                                                      qkv,
-                                                      padding_offset,
-                                                      seq_lens,
-                                                      elem_cnt,
-                                                      batch_size,
-                                                      max_len_this_time,
-                                                      seq_len,
-                                                      token_num,
-                                                      head_num,
-                                                      size_per_head);
-}
-
-template <typename T>
-void qkv_transpose_split(const phi::GPUContext &dev_ctx,
-                         T *q_buf,
-                         T *k_buf,
-                         T *v_buf,
-                         const T *qkv,
-                         const int *padding_offset,
-                         const int *seq_lens,
-                         const int token_num,
-                         const int batch_size,
-                         const int head_num,
-                         const int seq_len,
-                         const int size_per_head) {
-  const int32_t elem_cnt = token_num * head_num * size_per_head * 3;
-  constexpr int PackSize = VEC_16B / sizeof(T);
-  PADDLE_ENFORCE_EQ(size_per_head % PackSize,
-                    0,
-                    phi::errors::PreconditionNotMet(
-                        "dim_head=%d must be divisible by vec_size=%d",
-                        size_per_head,
-                        PackSize));
-  const int32_t pack_num = elem_cnt / PackSize;
-  const int32_t blocksize = 128;
-  int32_t grid_size = 1;
-  GetNumBlocks(pack_num, &grid_size);
-  fusedQKV_transpose_split_kernel<T, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
-                                                      k_buf,
-                                                      v_buf,
-                                                      qkv,
-                                                      padding_offset,
-                                                      seq_lens,
-                                                      elem_cnt,
-                                                      batch_size,
-                                                      seq_len,
-                                                      token_num,
-                                                      head_num,
-                                                      size_per_head);
 }
 
 template <typename T, int VecSize>

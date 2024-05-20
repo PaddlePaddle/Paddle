@@ -179,7 +179,7 @@ class NormHelper {
         true, 0, true, true, 0.0, nullptr, 0);
     residual_bias_add_layernorm_helper_ =
         paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>(
-            dev_ctx, rows_, cols_, dropout_param, epsilon_, residual_alpha_);
+            dev_ctx, rows_, cols_, dropout_param, epsilon_);
   }
 
   /*

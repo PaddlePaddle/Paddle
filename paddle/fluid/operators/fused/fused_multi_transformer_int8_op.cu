@@ -94,10 +94,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
-    // 2.1 rotary
-    auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
-    const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
-
     // 3. fmha
     phi::fusion::AttnDropoutParam attn_param(
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
@@ -106,7 +102,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
-    // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
 
     auto out_seq_len = seq_len;
     if (time_step) {
@@ -356,9 +351,9 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                              *qkv_bias,
                              src_mask,
                              nullptr,
-                             sequence_lengths,
-                             rotary_tensor,
-                             beam_cache_offset,
+                             nullptr,
+                             nullptr,
+                             nullptr,
                              cache_kv_out,
                              &fmha_out,
                              bsz,
@@ -368,7 +363,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                              num_head,
                              dim_head,
                              time_step->data<int>()[0],
-                             rotary_emb_dims,
+                             0,
                              1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference

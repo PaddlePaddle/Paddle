@@ -16,9 +16,6 @@ import os
 import random
 import unittest
 
-# now only support flash_attention_v2 and variable
-os.environ["FLAGS_fmha_mode"] = "flash_attention_v2"
-
 import numpy as np
 from op_test import OpTest
 from test_sparse_attention_op import get_cuda_version
@@ -42,6 +39,7 @@ np.random.seed(seed)
 paddle.seed(seed)
 
 
+# now only support flash_attention_v2 and variable
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
@@ -1638,11 +1636,7 @@ class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
         self.gen_cache_kv = True
         self.remove_padding = True
         self.layers = 4  # even layers
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1659,12 +1653,7 @@ class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
         self.remove_padding = True
         self.layers = 4  # even layers
         self.rotary_emb_dims = 2
-
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1681,11 +1670,7 @@ class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
         self.remove_padding = True
         self.layers = 3  # odd layers
         self.rotary_emb_dims = 2
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1722,11 +1707,7 @@ class TestFusedMultiTransformerOpVariableNormTransformer2(
         self.gen_cache_kv = False
         self.remove_padding = True
         self.layers = 4  # even layers
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1763,11 +1744,7 @@ class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
         self.query_length = 1
         self.key_length, self.value_length = 1, 1
         self.layers = 4  # even layers
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1786,11 +1763,7 @@ class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
         self.key_length, self.value_length = 1, 1
         self.layers = 4  # even layers
         self.rotary_emb_dims = 2
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 # gqa test
@@ -1830,11 +1803,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache2(
         self.gen_cache_kv = True
         self.remove_padding = True
         self.layers = 4  # even layers
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1854,12 +1823,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache3(
         self.remove_padding = True
         self.layers = 4  # even layers
         self.rotary_emb_dims = 2
-
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1879,11 +1843,7 @@ class TestFusedMultiTransformerOpVariableGQAGenCache4(
         self.remove_padding = True
         self.layers = 3  # odd layers
         self.rotary_emb_dims = 2
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1926,11 +1886,7 @@ class TestFusedMultiTransformerOpVariableGQADecoder2(
         self.query_length = 1
         self.key_length, self.value_length = 1, 1
         self.layers = 4  # even layers
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 @unittest.skipIf(
@@ -1952,11 +1908,7 @@ class TestFusedMultiTransformerOpVariableGQADecoder3(
         self.key_length, self.value_length = 1, 1
         self.layers = 4  # even layers
         self.rotary_emb_dims = 2
-        if (
-            "FLAGS_fmha_mode" in os.environ
-            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
-        ):
-            self.x_type = np.float16
+        self.x_type = np.float16
 
 
 class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
