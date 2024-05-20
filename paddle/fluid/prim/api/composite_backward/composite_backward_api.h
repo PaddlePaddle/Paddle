@@ -198,6 +198,50 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
+void reduce_as_grad(const Tensor& x,
+                    const Tensor& target,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> axis =
+      common::vectorize<int64_t>(get_reduce_dims(x.dims(), target.dims()));
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  bool reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+    }
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
   if (grad_x) {
     auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(x.dims()));

@@ -17,8 +17,8 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/dist_to_dense_pass.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pybind/dist_api.h"
 #include "paddle/fluid/pybind/dist_static_op_function.h"
 #include "paddle/phi/core/enforce.h"
@@ -122,10 +122,10 @@ OperationDistAttribute CreateOperationDistAttribute(
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
   m->def("create_op_dist_attribute", CreateOperationDistAttribute);
+  m->def("cvt_to_dist_type", &dialect::CvtToPirDistType);
 }
 
 void BindDistPassAPI(pybind11::module *module) {
-  module->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
   module->def("apply_dist2dense_pass", paddle::dialect::DistToDensePass);
 }
 

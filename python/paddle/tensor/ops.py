@@ -57,9 +57,6 @@ __all__ = []
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
-globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
-
-
 for _OP in set(__inplace_unary_func__):
     func = generate_inplace_fn(_OP)
     func.__module__ = __name__

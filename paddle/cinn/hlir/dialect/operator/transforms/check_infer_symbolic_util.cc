@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
 PD_DECLARE_bool(prim_all);

@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import re
-from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
 
 from ..base.data_feeder import check_variable_and_dtype
-from ..base.proto import framework_pb2
 from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
@@ -46,92 +44,6 @@ def _convert_(name):
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-def _type_to_str_(tp):
-    return framework_pb2.AttrType.Name(tp)
-
-
-_two_dollar_pattern_ = re.compile(r"\$\$([^\$]+)\$\$")
-_single_dollar_pattern_ = re.compile(r"\$([^\$]+)\$")
-_two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
-
-
-def escape_math(text):
-    # return _two_bang_pattern_.sub(
-    #    r'$$\1$$',
-    #    _single_dollar_pattern_.sub(r':math:\n`\1`',
-    #                                _two_dollar_pattern_.sub(r"!!\1!!", text)))
-    return _two_dollar_pattern_.sub(r':math:`\1`', text)
-
-
-def _generate_doc_string_(
-    op_proto, additional_args_lines=None, skip_attrs_set=None
-):
-    """
-    Generate docstring by OpProto
-
-    Args:
-        op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
-
-    Returns:
-        str: the document string
-    """
-
-    if not isinstance(op_proto, framework_pb2.OpProto):
-        raise TypeError("OpProto should be `framework_pb2.OpProto`")
-
-    buf = StringIO()
-    buf.write(escape_math(op_proto.comment))
-    buf.write('\nArgs:\n')
-    for each_input in op_proto.inputs:
-        line_begin = f'    {_convert_(each_input.name)}'
-        buf.write(line_begin)
-        buf.write(" (Tensor): ")
-        buf.write(escape_math(each_input.comment))
-        if each_input.duplicable:
-            buf.write("  Duplicatable.")
-        if each_input.dispensable:
-            buf.write("  Optional.")
-        buf.write('\n')
-
-    skip_attrs = OpProtoHolder.generated_op_attr_names()
-    skip_attrs.add("is_test")
-    skip_attrs.add("use_cudnn")
-
-    if skip_attrs_set:
-        for t in skip_attrs_set:
-            skip_attrs.add(t)
-
-    for each_attr in op_proto.attrs:
-        if each_attr.name in skip_attrs:
-            continue
-        buf.write('    ')
-        buf.write(each_attr.name)
-        buf.write(' (')
-        buf.write(_type_to_str_(each_attr.type))
-        buf.write('): ')
-        buf.write(escape_math(each_attr.comment))
-        buf.write('\n')
-
-    if additional_args_lines is not None:
-        for line in additional_args_lines:
-            line = line.strip()
-            buf.write('    ')
-            buf.write(line)
-            buf.write('\n')
-
-    if len(op_proto.outputs) != 0:
-        buf.write('\nReturns:\n')
-        buf.write('    ')
-        for each_opt in op_proto.outputs:
-            if not each_opt.intermediate:
-                break
-        buf.write(_convert_(each_opt.name))
-        buf.write(' (Tensor): ')
-        buf.write(escape_math(each_opt.comment))
-
-    return buf.getvalue()
 
 
 def generate_layer_fn(op_type):
@@ -245,7 +157,6 @@ def generate_layer_fn(op_type):
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
     return func
 
 

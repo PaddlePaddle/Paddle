@@ -252,7 +252,7 @@ std::vector<std::string> IrParser::ParseValueList() {
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
-      value_index.push_back("null");
+      value_index.emplace_back("null");
     } else {
       std::string str = index_token.val_;
       value_index.push_back(str);
