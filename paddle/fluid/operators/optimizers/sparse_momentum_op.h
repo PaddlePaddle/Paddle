@@ -304,11 +304,11 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto index = ctx.Input<phi::DenseTensor>("Index");
-    const auto& index_type = framework::TransToProtoVarType(index->dtype());
+    const auto& index_type = index->dtype();
     if (multi_precision) {
       if (use_nesterov) {
         auto update_method = UseNesterov<MPDType>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<MPDType, int, UseNesterov<MPDType>>(
               ctx, multi_precision, update_method);
         } else {
@@ -317,7 +317,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto update_method = NoNesterov<MPDType>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<MPDType, int, NoNesterov<MPDType>>(
               ctx, multi_precision, update_method);
         } else {
@@ -328,7 +328,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     } else {
       if (use_nesterov) {
         auto update_method = UseNesterov<T>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<T, int, UseNesterov<T>>(
               ctx, multi_precision, update_method);
         } else {
@@ -337,7 +337,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto update_method = NoNesterov<T>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<T, int, NoNesterov<T>>(
               ctx, multi_precision, update_method);
         } else {
@@ -371,11 +371,10 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
       framework::TensorCopy(*axis_tensor, phi::CPUPlace(), &cpu_axis);
-      const auto& axis_type =
-          framework::TransToProtoVarType(axis_tensor->dtype());
-      if (axis_type == framework::proto::VarType::INT32) {
+      const auto& axis_type = axis_tensor->dtype();
+      if (axis_type == phi::DataType::INT32) {
         axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT64) {
+      } else if (axis_type == phi::DataType::INT64) {
         axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
       }
     } else {
