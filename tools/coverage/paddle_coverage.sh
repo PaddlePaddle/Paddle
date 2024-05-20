@@ -254,7 +254,7 @@ if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1"
         echo "You must one RD(liuhongyu or lanxiang or zhenghuihuang or tianchao zhangliujie)to approval this PR."
         exit 9
     fi
-    python ${PADDLE_ROOT}/tools/get_pr_title.py || CINN_PR=1
+    python ${PADDLE_ROOT}/tools/get_pr_title.py || NOT_CINN_PR=1
     if [[ "${CINN_PR}" = "1" ]];then
         exit 9
     fi
