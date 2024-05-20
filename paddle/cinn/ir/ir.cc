@@ -434,6 +434,12 @@ void Select::replace(Expr old_op, Expr new_op) {
   }
 }
 
+void Cast::replace(Expr old_op, Expr new_op) {
+  if (v() == old_op) {
+    v() = new_op;
+  }
+}
+
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
   CHECK(t);
