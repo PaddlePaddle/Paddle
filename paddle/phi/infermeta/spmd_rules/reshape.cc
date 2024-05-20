@@ -351,5 +351,12 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
   return {{out_grad_dist_dst}, {x_shape_dist_dst}};
 }
 
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                                    const DistMetaTensor& out_grad) {
+  auto spmd_info = ReshapeGradInferSpmd(x_shape, out_grad);
+  spmd_info.first.insert(spmd_info.first.begin(), x_shape.dist_attr());
+  return spmd_info;
+}
+
 }  // namespace distributed
 }  // namespace phi
