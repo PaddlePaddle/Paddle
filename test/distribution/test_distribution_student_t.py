@@ -116,15 +116,15 @@ class TestStudentT(unittest.TestCase):
         sample_mean = samples.mean(axis=0)
         sample_variance = samples.var(axis=0)
 
-        # Tolerance value 0.3 is empirical value which is consistent with
+        # Tolerance value 0.1 is empirical value which is consistent with
         # TensorFlow
         np.testing.assert_allclose(
-            sample_mean, self._dist.mean, atol=0, rtol=0.30
+            sample_mean, self._dist.mean, atol=0, rtol=0.10
         )
-        # Tolerance value 0.3 is empirical value which is consistent with
+        # Tolerance value 0.1 is empirical value which is consistent with
         # TensorFlow
         np.testing.assert_allclose(
-            sample_variance, self._dist.variance, atol=0, rtol=0.30
+            sample_variance, self._dist.variance, atol=0, rtol=0.10
         )
 
     def _np_variance(self):
