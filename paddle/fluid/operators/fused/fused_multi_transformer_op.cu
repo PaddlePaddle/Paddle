@@ -58,8 +58,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     auto gqa_group_size = ctx.Attr<int>("gqa_group_size");
 
-    VLOG(1) << "gqa_group_size is " << gqa_group_size;
-
     auto *beam_cache_offset = ctx.Input<phi::DenseTensor>("BeamCacheOffset");
     int beam_size = 1;
     if (beam_cache_offset) {
@@ -211,20 +209,20 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_seq_len = seq_len;
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
-                        platform::CPUPlace(),
-                        platform::errors::PreconditionNotMet(
+                        phi::CPUPlace(),
+                        phi::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The value of time_step must > 0, but now is %d",
                             time_step_value));
       PADDLE_ENFORCE_EQ(
           seq_len,
           1,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
@@ -246,7 +244,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       } else if (src_mask->dims()[1] == num_head) {
         mask_broadcast_num_heads = false;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unknow dimension for attn_mask, the num_head(2nd) "
             "dimension is invalid, it should be 1 or num_head(%d), "
             "but got %d",
@@ -463,10 +461,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    VLOG(1) << "input_x->" << input_x->dims();
-
-    VLOG(1) << "input_x " << *input_x;
-
     for (int i = 0; i < layers; ++i) {
       // step1. layer_norm
       if (i == 0 && pre_layer_norm) {
@@ -478,13 +472,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                          buf1);
       }
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step1";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "ln1_out:" << *buf1;
-#endif
-#endif
-
       // step2. qkv
       // NOTE: In decoder stage, bias is fused in fmha. In encoder stage, bias
       // is fused in QKVBiasAddTransposeSplit
@@ -493,8 +480,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (!pre_layer_norm && i == 0) {
         const phi::DenseTensor *tmp_input_x =
             (encoder_remove_padding) ? &x_remove_padding : input_x;
-        VLOG(5) << "Doing !pre_layer_norm&&i==0, qkv gemm, mnk:" << token_num
-                << ", " << output_size << ", " << input_size;
         qkv_compute.Compute(tmp_input_x,
                             qkv_weights[i],
                             /*weight_scale*/ nullptr,
@@ -502,13 +487,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                             &mixgemm_workspace,
                             &qkv_out);
       } else {
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-        VLOG(2) << "qkv_weights:" << *(qkv_weights[i]);
-#endif
-#endif
-        VLOG(5) << "Doing qkv gemm, mnk:" << token_num << ", " << output_size
-                << ", " << input_size;
         qkv_compute.Compute(buf1,
                             qkv_weights[i],
                             /*weight_scale*/ nullptr,
@@ -516,16 +494,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                             &mixgemm_workspace,
                             &qkv_out);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step2";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "qkv_out:" << qkv_out;
-#endif
-#endif
-
-      // 2. cache kv
-      auto write_cache_kv_helper = phi::fusion::WriteCacheKVHelper<T>(
-          dev_ctx, quant_round_type, quant_max_bound, quant_min_bound);
 
       // step3. fmha
       const phi::DenseTensor *cache_kv =
@@ -539,7 +507,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
-        VLOG(1) << "sequence_lengths " << *sequence_lengths;
         phi::fusion::fmha<T>(dev_ctx,
                              qkv_out,
                              *qkv_bias,
@@ -579,11 +546,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         // encoder_remove_padding) {
 
         if (!encoder_remove_padding) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "encoder_remove_padding must be True, but got False"));
         }
         if (rotary_emb_dims != 0) {
-          VLOG(1) << "rotary_tensor " << *rotary_tensor;
           if (gqa_group_size <= 0) {
             phi::fusion::rotary_qk_variable(
                 dev_ctx,
@@ -651,18 +617,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               dim_head,
               gqa_group_size);
         }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-        VLOG(2) << "TransposeSplit";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-        VLOG(2) << "unpadding_q:" << unpadding_q;
-        VLOG(2) << "unpadding_k:" << unpadding_k;
-        VLOG(2) << "unpadding_v:" << unpadding_v;
-#endif
-#endif
         phi::Copy(
             dev_ctx, cu_seqlens_q, cu_seqlens_k.place(), false, &cu_seqlens_k);
-        VLOG(2) << "cu_seqlens_q:" << cu_seqlens_q;
-        VLOG(2) << "cu_seqlens_k:" << cu_seqlens_k;
 
         // fmha_out[token_num, num_head, dim_head]
         phi::FlashAttnUnpaddedKernel<T>(
@@ -783,14 +739,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               &seed_offset);
         }
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step3";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "fmha_out:" << fmha_out;
-#endif
-#endif
-      VLOG(5) << "Doing out_linear gemm, mnk:" << token_num << ", " << dim_embed
-              << ", " << hidden_size;
       if (pre_layer_norm) {
         out_linear_compute.Compute(&fmha_out,
                                    out_linear_weights[i],
@@ -799,7 +747,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                    &mixgemm_workspace,
                                    buf1);
 
-        VLOG(1) << "ALLREDUCE " << buf1->numel();
         phi::fusion::AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
       } else {
         out_linear_compute.Compute(&fmha_out,
@@ -811,12 +758,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
         phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step4";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "out_linear_out:" << *buf1;
-#endif
-#endif
 
       // step5. ln(residual + dropout(input + bias))
       if (pre_layer_norm) {
@@ -843,12 +784,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             buf0,
             buf1);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step5";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "ffn1_input:" << *buf1;
-#endif
-#endif
       // step6. ffn matmul1
       ffn1_helper.Compute(buf1,
                           ffn1_weights[i],
@@ -857,12 +792,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           &mixgemm_workspace,
                           &ffn1_out,
                           &ffn1_dropout_out);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step6";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "ffn1_output:" << ffn1_out;
-#endif
-#endif
 
       // step7. ffn2 matmul
       if (pre_layer_norm) {
@@ -880,36 +809,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                     &mixgemm_workspace,
                                     buf0);
       }
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step8.0";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      if (pre_layer_norm) {
-        VLOG(2) << "ffn2_out, buf1:" << *buf1;
-      } else {
-        VLOG(2) << "ffn2_out, buf0:" << *buf0;
-      }
-#endif
-#endif
 
       if (pre_layer_norm) {
-        VLOG(4) << "MPAllReduce 4: " << buf1->numel();
-        VLOG(1) << "ALLREDUCE ffn" << buf1->numel();
         phi::fusion::AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
       } else {
-        VLOG(4) << "MPAllReduce 4: " << buf0->numel();
         phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
-
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step8.1";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      if (pre_layer_norm) {
-        VLOG(2) << "ffn2_out_rd:" << *buf1;
-      } else {
-        VLOG(2) << "ffn2_out_rd:" << *buf0;
-      }
-#endif
-#endif
 
       // step8. residual bias
       // TODO(wangxi): remove dropout mask in inference
@@ -948,12 +853,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             buf1);
       }
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(2) << "step9";
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
-      VLOG(2) << "residual_out:" << *buf1;
-#endif
-#endif
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
         std::swap(buf0, buf1);

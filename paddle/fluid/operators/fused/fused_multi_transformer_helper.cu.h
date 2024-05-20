@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
-PD_DECLARE_bool(use_gemm_dequant);
-
-PD_DECLARE_bool(print_matrix);
 /*
 Note(Zhengzekang):
 This header file is to store General Function Helper which has been used in
@@ -55,138 +52,7 @@ class BiasActHelper {
     ComputeImpl(bias_data, load_func, store_func);
   }
 
-  void Compute(const phi::DenseTensor *x,
-               const phi::DenseTensor *bias,
-               const phi::DenseTensor *dequant_scales,
-               const phi::DenseTensor *shift,
-               const phi::DenseTensor *smooth,
-               const float quant_scale,
-               const int quant_round_type,
-               const float quant_max_bound,
-               const float quant_min_bound,
-               phi::DenseTensor *output) {
-    if (shift != nullptr) {
-      DispatchComputeImpl(x,
-                          bias,
-                          dequant_scales,
-                          shift,
-                          smooth,
-                          quant_scale,
-                          quant_round_type,
-                          quant_max_bound,
-                          quant_min_bound,
-                          output);
-    } else {
-      DispatchComputeImpl(x,
-                          bias,
-                          dequant_scales,
-                          quant_scale,
-                          quant_round_type,
-                          quant_max_bound,
-                          quant_min_bound,
-                          output);
-    }
-  }
-
  private:
-  void DispatchComputeImpl(const phi::DenseTensor *x,
-                           const phi::DenseTensor *bias,
-                           const phi::DenseTensor *dequant_scales,
-                           const float quant_scale,
-                           const int quant_round_type,
-                           const float quant_max_bound,
-                           const float quant_min_bound,
-                           phi::DenseTensor *output) {
-    const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    if (dequant_scales != nullptr && quant_scale > 0) {
-      phi::funcs::DequantLoad<T> load_func(
-          x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      phi::funcs::QuantStore<T> store_func(output->data<int8_t>(),
-                                           quant_round_type,
-                                           quant_scale,
-                                           quant_max_bound,
-                                           quant_min_bound);
-      ComputeImpl<phi::funcs::DequantLoad<T>,
-                  phi::funcs::QuantStore<T>,
-                  int32_t>(bias_data, load_func, store_func);
-    } else if (dequant_scales == nullptr && quant_scale > 0) {
-      phi::funcs::Load<T> load_func(x->data<T>());
-      phi::funcs::QuantStore<T> store_func(output->data<int8_t>(),
-                                           quant_round_type,
-                                           quant_scale,
-                                           quant_max_bound,
-                                           quant_min_bound);
-      ComputeImpl(bias_data, load_func, store_func);
-    } else if (dequant_scales != nullptr && quant_scale <= 0) {
-      phi::funcs::DequantLoad<T> load_func(
-          x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      phi::funcs::Store<T> store_func(output->data<T>());
-      ComputeImpl<phi::funcs::DequantLoad<T>, phi::funcs::Store<T>, int32_t>(
-          bias_data, load_func, store_func);
-    } else {
-      phi::funcs::Load<T> load_func(x->data<T>());
-      phi::funcs::Store<T> store_func(output->data<T>());
-      ComputeImpl(bias_data, load_func, store_func);
-    }
-  }
-
-  void DispatchComputeImpl(const phi::DenseTensor *x,
-                           const phi::DenseTensor *bias,
-                           const phi::DenseTensor *dequant_scales,
-                           const phi::DenseTensor *shift,
-                           const phi::DenseTensor *smooth,
-                           const float quant_scale,
-                           const int quant_round_type,
-                           const float quant_max_bound,
-                           const float quant_min_bound,
-                           phi::DenseTensor *output) {
-    bool use_glu = (act_method_ == "geglu" || act_method_ == "swiglu");
-    const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    if (dequant_scales != nullptr && quant_scale > 0) {
-      phi::funcs::DequantLoad<T> load_func(
-          x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      phi::funcs::QuantStore<T, true> store_func(output->data<int8_t>(),
-                                                 shift->data<T>(),
-                                                 smooth->data<T>(),
-                                                 use_glu ? cols_ / 2 : cols_,
-                                                 quant_round_type,
-                                                 quant_scale,
-                                                 quant_max_bound,
-                                                 quant_min_bound);
-      ComputeImpl<phi::funcs::DequantLoad<T>,
-                  phi::funcs::QuantStore<T, true>,
-                  int32_t>(bias_data, load_func, store_func);
-    } else if (dequant_scales == nullptr && quant_scale > 0) {
-      phi::funcs::Load<T> load_func(x->data<T>());
-      phi::funcs::QuantStore<T, true> store_func(output->data<int8_t>(),
-                                                 shift->data<T>(),
-                                                 smooth->data<T>(),
-                                                 use_glu ? cols_ / 2 : cols_,
-                                                 quant_round_type,
-                                                 quant_scale,
-                                                 quant_max_bound,
-                                                 quant_min_bound);
-      ComputeImpl(bias_data, load_func, store_func);
-    } else if (dequant_scales != nullptr && quant_scale <= 0) {
-      phi::funcs::DequantLoad<T> load_func(
-          x->data<int32_t>(), dequant_scales->data<float>(), cols_);
-      phi::funcs::Store<T, true> store_func(output->data<T>(),
-                                            shift->data<T>(),
-                                            smooth->data<T>(),
-                                            use_glu ? cols_ / 2 : cols_);
-      ComputeImpl<phi::funcs::DequantLoad<T>,
-                  phi::funcs::Store<T, true>,
-                  int32_t>(bias_data, load_func, store_func);
-    } else {
-      phi::funcs::Load<T> load_func(x->data<T>());
-      phi::funcs::Store<T, true> store_func(output->data<T>(),
-                                            shift->data<T>(),
-                                            smooth->data<T>(),
-                                            use_glu ? cols_ / 2 : cols_);
-      ComputeImpl(bias_data, load_func, store_func);
-    }
-  }
-
   template <typename LoadFunc, typename StoreFunc, typename LoadT = T>
   void ComputeImpl(const T *bias_data,
                    LoadFunc load_func,
@@ -277,8 +143,7 @@ class GEMMHelper {
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Currently GemmHelper only support `weight-only`, `LLM.int8`, "
-          "`None`. "));
+          "Currently GemmHelper only support `None`. "));
     }
   }
 
@@ -358,25 +223,9 @@ class NormHelper {
           output_data,
           mean_data,
           var_data);
-      // } else if (norm_type_ == "rmsnorm") {
-      //   // For rmsnorm, it use Input's type weight and bias.
-      //   const T *norm_weight_data =
-      //       norm_weight ? norm_weight->data<T>() : nullptr;
-      //   const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
-      //   phi::ResidualAddRmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
-      //                                                      x_data,
-      //                                                      residual_data,
-      //                                                      bias_data,
-      //                                                      norm_weight_data,
-      //                                                      norm_bias_data,
-      //                                                      epsilon_,
-      //                                                      rows_,
-      //                                                      cols_,
-      //                                                      bias_residual_out_data,
-      //                                                      output_data);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
+          "Currently NormHelper only support `layernorm`. "));
     }
   }
 
@@ -405,7 +254,7 @@ class NormHelper {
                                        var_data);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Currently NormHelper only support `layernorm`, `rmsnorm`. "));
+          "Currently NormHelper only support `layernorm`. "));
     }
   }
 
@@ -452,22 +301,13 @@ class FFNHelper {
     bias' shape [dim_ffn]
     output's shape [token_num, dim_ffn].
     */
-    // for debug
-    VLOG(5) << "FFNHelper,"
-            << " token_num_:" << token_num_ << " dim_ffn_:" << dim_ffn_
-            << " dim_embed_:" << dim_embed_;
     GEMMHelper<T, nvT> gemm_helper(
         dev_ctx_, token_num_, dim_ffn_, dim_embed_, gemm_method_);
     BiasActHelper<T> bias_act_helper(
         dev_ctx_, act_method_, token_num_, dim_ffn_);
 
     gemm_helper.Compute(input, weight, scale, bias, workspace, bias_out);
-    if (gemm_method_ == "LLm.int8") {
-      bias_act_helper.Compute(bias_out, bias, output);
-    } else {
-      // Note(Zhengzekang): Other Gemm method can fuse bias add.
-      bias_act_helper.Compute(bias_out, nullptr, output);
-    }
+    bias_act_helper.Compute(bias_out, nullptr, output);
   }
 
  private:
@@ -477,69 +317,6 @@ class FFNHelper {
   int dim_ffn_;
   int dim_embed_;
   std::string gemm_method_;
-};
-
-template <typename T>
-class WriteCacheKVHelper {
- public:
-  WriteCacheKVHelper(const phi::GPUContext &dev_ctx,
-                     int quant_round_type,
-                     float quant_max_bound,
-                     float quant_min_bound)
-      : dev_ctx_(dev_ctx),
-        quant_round_type_(quant_round_type),
-        quant_min_bound_(quant_min_bound),
-        quant_max_bound_(quant_max_bound) {}
-
-  void Compute(const phi::DenseTensor *pre_cache_kv_out,
-               phi::DenseTensor *cache_kv_out,
-               const phi::DenseTensor *kv_transpose_out,
-               const int *sequence_lengths_data,
-               const int cache_bsz,
-               const int bsz,
-               const int num_head,
-               const int seq_len,
-               const int dim_head,
-               const int cache_offset,
-               const float cache_k_scale,
-               const float cache_v_scale) {
-    if (cache_k_scale > 0) {
-      WriteInt8CacheKV<T>(dev_ctx_,
-                          pre_cache_kv_out,
-                          cache_kv_out,
-                          kv_transpose_out,
-                          sequence_lengths_data,
-                          cache_bsz,
-                          bsz,
-                          num_head,
-                          seq_len,
-                          dim_head,
-                          cache_offset,
-                          quant_round_type_,
-                          quant_max_bound_,
-                          quant_min_bound_,
-                          cache_k_scale,
-                          cache_v_scale);
-    } else {
-      WriteCacheKV<T>(dev_ctx_,
-                      pre_cache_kv_out,
-                      cache_kv_out,
-                      kv_transpose_out,
-                      sequence_lengths_data,
-                      cache_bsz,
-                      bsz,
-                      num_head,
-                      seq_len,
-                      dim_head,
-                      cache_offset);
-    }
-  }
-
- private:
-  const phi::GPUContext &dev_ctx_;
-  int quant_round_type_;
-  float quant_max_bound_;
-  float quant_min_bound_;
 };
 
 }  // namespace

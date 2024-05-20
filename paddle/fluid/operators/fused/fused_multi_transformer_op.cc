@@ -247,7 +247,7 @@ class FusedMultiTransformerOpOpMaker
                                 act_type == "swiglu" || act_type == "relu" ||
                                 act_type == "none",
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "Only support `gelu`, `geglu`, `swiglu`, "
                                 "`relu`, `none` activation in "
                                 "FusedMultiTransformer. "));
@@ -272,7 +272,7 @@ class FusedMultiTransformerOpOpMaker
           PADDLE_ENFORCE_EQ(
               norm_type == "layernorm" || norm_type == "rmsnorm",
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Only support `layernorm`, `rmsnorm` method for in"
                   "FusedMultiTransformerDyquant. "));
         });
