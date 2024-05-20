@@ -229,9 +229,6 @@
 - op : prior_box
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
-- op : quantize
-  extra_args : bool is_negative_input=false, str output_format="NHWC", bool bfloat16=false
-
 - op : relu
 
 - op : relu_grad
