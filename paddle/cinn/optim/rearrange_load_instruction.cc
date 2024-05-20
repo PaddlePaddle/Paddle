@@ -105,19 +105,13 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     op->stmts = new_stmts;
   }
 
-  // std::unordered_map<std::string, ir::Expr> collection_name_map_expr;
   std::vector<Expr> let_list;
   std::vector<Expr> stmts_list;
   bool is_inner_store;
   Expr last_op;
 
-  // VisitImpl(Expr);
   VisitImpl(ScheduleBlock);
   VisitImpl(For);
-  // VisitImpl(IntImm);
-  // VisitImplO(UIntImm);
-  // VisitImpl(FloatImm);
-  // VisitImpl(StringImm);
   VisitImpl(Cast);
   VisitImpl(PolyFor);
   VisitImpl(Select);
@@ -162,8 +156,6 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
 }  // namespace
 
 void RearrangeLoadInstruction(Expr *expr) {
-  VLOG(4) << "Before RearrangeLoadInstruction: \n" << *expr;
-
   RearrangeLoadInstructionMutator collector;
   collector(expr);
 }

@@ -88,8 +88,6 @@ struct Add : public BinaryOpNode<Add> {
 
   void Verify() const override;
 
-  // void replace(Expr old_op, Expr new_op);
-
   static const IrNodeTy _node_type_ = IrNodeTy::Add;
 };
 
@@ -102,8 +100,6 @@ struct Sub : public BinaryOpNode<Sub> {
   static Expr Make(Expr a, Expr b);
 
   void Verify() const override;
-
-  // void replace(Expr old_op, Expr new_op);
 
   static const IrNodeTy _node_type_ = IrNodeTy::Sub;
 };
@@ -118,8 +114,6 @@ struct Mul : public BinaryOpNode<Mul> {
 
   void Verify() const override;
 
-  // void replace(Expr old_op, Expr new_op);
-
   static const IrNodeTy _node_type_ = IrNodeTy::Mul;
 };
 
@@ -131,8 +125,6 @@ struct Div : public BinaryOpNode<Div> {
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
-
-  // void replace(Expr old_op, Expr new_op);
 
   static const IrNodeTy _node_type_ = IrNodeTy::Div;
 };
