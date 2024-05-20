@@ -25,7 +25,7 @@ namespace pir {
 
 using PassCreator = std::function<std::unique_ptr<Pass>()>;
 
-class PassRegistry {
+class IR_API PassRegistry {
  public:
   static PassRegistry &Instance();
 
