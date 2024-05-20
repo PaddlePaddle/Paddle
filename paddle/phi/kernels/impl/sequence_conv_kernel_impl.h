@@ -127,7 +127,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
   phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
   phi::math::ContextProjectGradFunctor<Context, T> seq_project_grad_functor;
 
-  if (in_g) {
+  if (in_g != nullptr) {
     dev_ctx.template Alloc<T>(in_g);
     in_g->set_lod(in->lod());
     set_zero(dev_ctx, in_g, static_cast<T>(0));
@@ -146,7 +146,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
                              &col);
   }
 
-  if (padding_trainable && padding_data_g) {
+  if (padding_trainable && padding_data_g != nullptr) {
     dev_ctx.template Alloc<T>(padding_data_g);
     set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
@@ -165,7 +165,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
                              &col);
   }
 
-  if (filter_g) {
+  if (filter_g != nullptr) {
     dev_ctx.template Alloc<T>(filter_g);
     set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
