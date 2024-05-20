@@ -249,7 +249,7 @@ FetchList ProgramInterpreter::Run(
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build, switch_stream);
 
-  if (is_build || !switch_stream) {
+  if (is_build && !switch_stream) {
     RunImpl();
   }
 
