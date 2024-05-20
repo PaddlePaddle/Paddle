@@ -4,20 +4,17 @@ set(op_creator_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_creator_drr_gen.py
 )
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
-set(op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/ops.parsed.yaml)
-set(op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/backward.parsed.yaml)
-set(fused_op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/fused_ops.parsed.yaml)
-set(fused_op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/fused_backward.parsed.yaml)
 
-set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/new)
+set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml)
 
-set(op_yaml_file_1 ${parsed_op_dir}/ops.parsed.yaml)
-set(op_yaml_file_2 ${parsed_op_dir}/backward.parsed.yaml)
-set(op_yaml_file_3 ${parsed_op_dir}/update_ops.parsed.yaml)
+set(op_forward_yaml_file ${parsed_op_dir}/ops.parsed.yaml)
+set(op_backward_yaml_file ${parsed_op_dir}/backward.parsed.yaml)
+set(fused_op_forward_yaml_file ${parsed_op_dir}/fused_ops.parsed.yaml)
+set(fused_op_backward_yaml_file ${parsed_op_dir}/fused_backward.parsed.yaml)
+
+set(op_yaml_file_1 ${parsed_op_dir}/new/static_ops.parsed.yaml)
+set(op_yaml_file_2 ${parsed_op_dir}/new/static_backward.parsed.yaml)
+set(op_yaml_file_3 ${parsed_op_dir}/new/update_ops.parsed.yaml)
 
 set(op_yaml_files
     ${op_forward_yaml_file},${op_backward_yaml_file},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file_1},${op_yaml_file_2},${op_yaml_file_3}
@@ -84,8 +81,7 @@ endif()
 
 if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
-  set(pir_op_onednn_yaml
-      ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/new/onednn.parsed.yaml)
+  set(pir_op_onednn_yaml ${parsed_op_dir}/new/onednn.parsed.yaml)
   set(pd_ops_onednn_extra_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/ops_onednn_extra.yaml)
   set(onednn_op_creator_file
