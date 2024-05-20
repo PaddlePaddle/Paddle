@@ -1674,6 +1674,15 @@ void ExpandAsInferMeta(const MetaTensor& x,
 #undef MAX_RANK_SUPPORTED
 }
 
+void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scale,
+                                   float max_range,
+                                   MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
+}
+
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
                                  int64_t offset,

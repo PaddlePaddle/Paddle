@@ -23,22 +23,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
-                  T max_range,
-                  phi::DenseTensor* out) {
-    auto in_e = phi::EigenVector<T>::Flatten(*in);
-    const T* scale_factor = scale->data<T>();
-    auto out_e = phi::EigenVector<T>::Flatten(*out);
-
-    auto& dev = *dev_ctx.eigen_device();
-    out_e.device(dev) = in_e * scale_factor[0] / max_range;
-  }
-};
-
-template <typename T>
 struct ChannelDequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
                   const phi::DenseTensor* in,
@@ -139,8 +123,6 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::CPUContext, float>;
-template struct DequantizeFunctor<phi::CPUContext, double>;
 template struct ChannelDequantizeFunctor<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctor<phi::CPUContext, double>;
 
@@ -270,19 +252,6 @@ Notes: In general, the per-channel quantization is only applied to weights and t
 
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
-
-REGISTER_OPERATOR(
-    fake_dequantize_max_abs,
-    ops::FakeDequantizeMaxAbsOp,
-    ops::FakeDequantizeMaxAbsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeDequantizeMaxAbsKernel,
-                          float,
-                          double) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_dequantize_max_abs,
