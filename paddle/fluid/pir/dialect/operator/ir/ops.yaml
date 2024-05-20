@@ -2063,3 +2063,11 @@
     func: sparse_momentum
     data_type: param
   optional: master_param, master_param_out
+
+- op : affine_channel
+  args : (Tensor x, Tensor Scale, Tensor Bias, str data_layout="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : AffineChannelInferMeta
+  kernel :
+    func: affine_channel

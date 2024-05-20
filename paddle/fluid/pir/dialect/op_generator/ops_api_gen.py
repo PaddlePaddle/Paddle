@@ -219,6 +219,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_box_sparse_',
     'send_and_recv',
     'send_and_recv_',
+    'affine_channel',
 ]
 
 
