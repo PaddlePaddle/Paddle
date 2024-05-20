@@ -384,9 +384,11 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      // for cutlass HWC kernel
+      // for cutlass HWC FP16/BF16 kernel
       if (op_type == "fused_conv2d_add_act" &&
-          desc.Input("ResidualData").size() == 0 && cutlass_enable) {
+          desc.Input("ResidualData").size() == 0 && cutlass_enable &&
+          desc.HasAttr("use_cudnn") &&
+          !PADDLE_GET_CONST(bool, desc.GetAttr("use_cudnn"))) {
         auto input_var_name = desc.Input("Input")[0];
         auto* input_var_desc = block->FindVarRecursive(input_var_name);
         auto input_dtype = input_var_desc->GetDataType();
