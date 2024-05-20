@@ -157,7 +157,13 @@ struct Expression {
   size_t hash() const { return GetOperationHash(op_); }
 
   bool equal_to(const Expression& other) const {
-    return CheckOperationEqual(op_, other.op());
+    bool is_equal = CheckOperationEqual(op_, other.op());
+    // TODO(SigureMo): clean this check before merge
+    PADDLE_ENFORCE_EQ(
+        is_equal,
+        true,
+        common::errors::PreconditionNotMet("Hash collision detected."));
+    return is_equal;
   }
 
   bool CanBeSafeToReplace() const {
