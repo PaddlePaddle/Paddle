@@ -57,7 +57,7 @@ class PassRegistry {
 };
 
 template <typename PassType>
-class PassRegistrar {
+class IR_API PassRegistrar {
  public:
   // In our design, various kinds of passes,
   // have their corresponding registry and registrar. The action of
