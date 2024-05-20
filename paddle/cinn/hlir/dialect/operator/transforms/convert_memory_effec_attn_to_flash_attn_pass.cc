@@ -40,6 +40,9 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
       paddle::dialect::MemoryEfficientAttentionOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::MemoryEfficientAttentionOp op) const override {
+#ifndef PADDLE_WITH_FLASHATTN
+    return false;
+#endif
     auto bias = op->operand_source(3);
     auto cu_seq_q = op->operand_source(4);
     auto cu_seq_k = op->operand_source(5);
