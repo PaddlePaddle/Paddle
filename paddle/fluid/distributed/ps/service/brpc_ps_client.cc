@@ -1916,8 +1916,8 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
   for (size_t i = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
     CHECK(pos + data_num <= data_size)
-        << "invalid dense size, cur pos[" << pos << "]" << " data_num["
-        << data_num << "] size[" << data_size << "]";
+        << "invalid dense size, cur pos[" << pos << "]"
+        << " data_num[" << data_num << "] size[" << data_size << "]";
     const float *region_data = (const float *)(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;
