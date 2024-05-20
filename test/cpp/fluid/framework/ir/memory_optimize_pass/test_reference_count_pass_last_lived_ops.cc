@@ -83,7 +83,7 @@ class ReferenceCountPassTestHelper {
  public:
   ReferenceCountPassTestHelper(const ProgramDesc &program, bool use_cuda)
       : graph_(program),
-        executor_(nullptr),
+        compiled_program_(nullptr),
         mem_opt_var_infos_(),
         last_live_ops_of_vars_() {
     details::BuildStrategy build_strategy;

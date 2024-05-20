@@ -701,6 +701,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param : [xshape, out_grad]
+    spmd_rule: StaticReshapeGradInferSpmd
   kernel :
     func : reshape_grad
     param : [out_grad]
