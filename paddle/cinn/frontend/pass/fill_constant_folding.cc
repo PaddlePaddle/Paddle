@@ -113,9 +113,12 @@ class FillConstantFoldingPass : public ProgramPass {
         continue;
       }
 
-      CHECK_EQ(instr->outputs.size(), 1UL)
-          << "The fill_constant op should has one, and only one output ! "
-             "Please check.";
+      PADDLE_ENFORCE_EQ(
+          instr->outputs.size(),
+          1UL,
+          phi::errors::InvalidArgument("The size of instr outputs is incorrect."
+                                       "Expected size is 1, but receive %d.",
+                                       instr->outputs.size()));
 
       const auto& shape = instr.GetAttrs<ShapeType>("shape");
       auto value = instr->attrs.at("value");

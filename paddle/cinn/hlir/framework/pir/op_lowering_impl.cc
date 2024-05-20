@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -729,7 +729,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   group->mut_output_names().clear();
 
   // collect all output tensor.
-  for (auto op_result : group->GetGroupOutputValues()) {
+  for (auto op_result : group->output_values()) {
     if (tensor_map.count(op_result) == 0) {
       continue;
     }
