@@ -18,6 +18,7 @@ from .envs import (  # noqa: F401
     ENV_COST_MODEL,
     ENV_MIN_GRAPH_SIZE,
     ENV_SHOW_TRACKERS,
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     ENV_SOT_LOG_LEVEL,
     ENV_SOT_WITH_CONTROL_FLOW,
@@ -25,6 +26,7 @@ from .envs import (  # noqa: F401
     cost_model_guard,
     min_graph_size_guard,
     strict_mode_guard,
+    with_allow_dynamic_shape_guard,
     with_control_flow_guard,
     with_export_guard,
 )
