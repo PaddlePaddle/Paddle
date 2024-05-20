@@ -90,10 +90,6 @@ from .norm import (  # noqa: F401
     SpectralNorm,
     SyncBatchNorm,
 )
-from .padding import (  # noqa: F401
-    ZeroPad1D,
-    ZeroPad3D,
-)
 from .pooling import (  # noqa: F401
     AdaptiveAvgPool1D,
     AdaptiveAvgPool2D,
