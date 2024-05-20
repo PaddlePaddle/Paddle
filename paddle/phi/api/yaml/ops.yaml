@@ -881,6 +881,23 @@
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
 
+- op : dgc_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
+    master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov
+    = false, str regularization_method = "", float regularization_coeff = 0.0f, bool
+    multi_precision = false, float rescale_grad = 1.0f, float rampup_begin_step =
+    -1.0)
+  output: Tensor (param_out), Tensor (velocity_out), Tensor (master_param_out), Tensor
+    (grad_out)
+  infer_meta:
+    func: DGCMomentumInferMeta
+  kernel:
+    func: dgc_momentum
+    data_type: param
+  optional : master_param, master_param_out
+  data_transform :
+    skip_transform : current_step_tensor, nranks_tensor
+
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
   output : Tensor
