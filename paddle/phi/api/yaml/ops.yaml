@@ -58,6 +58,19 @@
   backward : acosh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : adadelta_
+  args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update,
+    Tensor learning_rate, Tensor master_param, float rho = 0.95f, float epsilon =
+    1.0e-6f, bool multi_precision = false)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdadeltaInferMeta
+  kernel :
+    func : adadelta
+    data_type : param
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
+
 - op : adagrad_
   args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, Tensor master_param, float epsilon = 1.0e-6f, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(master_param_out)
@@ -818,6 +831,15 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : depend
+  args: (Tensor x, Tensor[] dep)
+  output: Tensor (out)
+  infer_meta:
+    func : UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: depend
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -858,6 +880,23 @@
     func: detection_map
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
+
+- op : dgc_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
+    master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov
+    = false, str regularization_method = "", float regularization_coeff = 0.0f, bool
+    multi_precision = false, float rescale_grad = 1.0f, float rampup_begin_step =
+    -1.0)
+  output: Tensor (param_out), Tensor (velocity_out), Tensor (master_param_out), Tensor
+    (grad_out)
+  infer_meta:
+    func: DGCMomentumInferMeta
+  kernel:
+    func: dgc_momentum
+    data_type: param
+  optional : master_param, master_param_out
+  data_transform :
+    skip_transform : current_step_tensor, nranks_tensor
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
@@ -1621,6 +1660,7 @@
   backward : index_sample_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)

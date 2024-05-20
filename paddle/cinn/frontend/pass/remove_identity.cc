@@ -223,10 +223,18 @@ class RemoveIdentityPass : public ProgramPass {
       if (!identity_ops.at(instr->op_type)(instr)) {
         continue;
       }
-      CHECK_EQ(instr->inputs.size(), 1)
-          << instr->op_type << " should have only 1 input. But here " << instr;
-      CHECK_EQ(instr->outputs.size(), 1)
-          << instr->op_type << " should have only 1 output. But here " << instr;
+      PADDLE_ENFORCE_EQ(
+          instr->inputs.size(),
+          1,
+          phi::errors::InvalidArgument("The size of instr inputs is incorrect."
+                                       "Expected size is 1, but receive %d.",
+                                       instr->inputs.size()));
+      PADDLE_ENFORCE_EQ(
+          instr->outputs.size(),
+          1,
+          phi::errors::InvalidArgument("The size of instr outputs is incorrect."
+                                       "Expected size is 1, but receive %d.",
+                                       instr->outputs.size()));
 
       auto& input_var = instr->inputs[0];
       auto& output_var = instr->outputs[0];
