@@ -44,9 +44,10 @@ def np_medain_min(data, keepdims=False):
         np_res = data_sort[i]
     if keepdims:
         new_shape = [1] * len(shape)
-        return np_res.reshape(new_shape)
-    else:
-        return np_res
+        np_res = np_res.reshape(new_shape)
+    return np_res + np.sum(
+        np.isnan(data).astype(data.dtype) * data, axis=-1, keepdims=keepdims
+    )
 
 
 def np_medain_min_axis(data, axis=None, keepdims=False):
@@ -95,9 +96,12 @@ def np_medain_min_axis(data, axis=None, keepdims=False):
     if keepdims:
         shape = list(data.shape)
         shape[axis] = 1
-        return np.reshape(np_res, shape)
+        np_res = np.reshape(np_res, shape)
     else:
-        return np.reshape(np_res, reshape[:-1])
+        np_res = np.reshape(np_res, reshape[:-1])
+    return np_res + np.sum(
+        np.isnan(data).astype(data.dtype) * data, axis=axis, keepdims=keepdims
+    )
 
 
 class TestMedianAvg(unittest.TestCase):
@@ -133,9 +137,10 @@ class TestMedianAvg(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [
-            [x, axis, keepdims]
+            [x.astype(dtype), axis, keepdims]
             for axis in [-1, 0, 1, 2, None]
             for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
         ]
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
@@ -147,9 +152,10 @@ class TestMedianAvg(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [
-            [x, axis, keepdims]
+            [x.astype(dtype), axis, keepdims]
             for axis in [-1, 0, 1, 2, None]
             for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
@@ -163,6 +169,20 @@ class TestMedianAvg(unittest.TestCase):
         self.assertRaises(ValueError, paddle.median, x, 2)
         self.assertRaises(ValueError, paddle.median, x, 2, False, 'max')
         self.assertRaises(ValueError, paddle.median, paddle.to_tensor([]))
+
+    def test_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
 
 
 class TestMedianMin(unittest.TestCase):
@@ -195,9 +215,10 @@ class TestMedianMin(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
         lis_tests = [
-            [x, axis, keepdims]
+            [x.astype(dtype), axis, keepdims]
             for axis in [-1, 0, 1, 2]
             for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
         ]
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
@@ -209,9 +230,10 @@ class TestMedianMin(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
         lis_tests = [
-            [x, axis, keepdims]
+            [x.astype(dtype), axis, keepdims]
             for axis in [-1, 0, 1, 2]
             for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
@@ -229,6 +251,20 @@ class TestMedianMin(unittest.TestCase):
         out, index = paddle.median(x, axis=1, mode='min')
         np.testing.assert_allclose(out.numpy(), [4.0, 14.0, 24.0])
         np.testing.assert_equal(index.numpy(), [4, 4, 4])
+
+    def test_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
 
 
 if __name__ == '__main__':
