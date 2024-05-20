@@ -30,8 +30,6 @@ from ..base import unique_name
 from ..base.core import set_static_op_arg_pre_cast_hook
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
-NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
-
 vartype_to_datatype = {
     VarDesc.VarType.FP32: DataType.FLOAT32,
     VarDesc.VarType.FP64: DataType.FLOAT64,
@@ -422,12 +420,9 @@ def _convert_into_value(tensor):
     )
 
     if isinstance(tensor, paddle.Tensor):
-        value = _global_parameter_recorder.get(
+        return _global_parameter_recorder.get(
             paddle.pir.core.default_main_program(), tensor
         )
-        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
-            value.persistable = False
-        return value
 
     return tensor
 
