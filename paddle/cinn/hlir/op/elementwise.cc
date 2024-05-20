@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -358,6 +359,14 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(const std::vector<std::string> &) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
+    }
+    void operator()(const std::vector<symbol::DimExpr> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<symbol::DimExpr>"));
+    }
+    void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);
@@ -1271,6 +1280,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("output_dim_exprs"),
+      ::common::errors::InvalidArgument("Expected attribute output_dim_exprs "
+                                        "in strategy for generate shape op"));
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("symbol_bindings"),
+      ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
+                                        "in strategy for generate shape op"));
+  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+      attrs.attr_store.at("output_dim_exprs"));
+  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+      attrs.attr_store.at("symbol_bindings"));
+
   framework::CINNCompute generate_shape_compute(
       [=](lang::Args args, lang::RetValue *ret) {
         PADDLE_ENFORCE(!args.empty(),
@@ -1287,16 +1309,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         auto stages = CreateStages({});
 
         std::string tensor_name = pack_args.back().operator std::string();
-        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
-                                          /*dtype=*/common::type_of<int64_t>(),
-                                          /*shape=*/
-                                          {
-                                              Expr(1),
-                                          },
-                                          /*domain=*/
-                                          {
-                                              Expr(1),
-                                          }));
+        ir::Tensor out = pe::GenerateShape(
+            inputs, symbol_bindings, output_dim_exprs, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
