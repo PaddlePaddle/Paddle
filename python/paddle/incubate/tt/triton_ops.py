@@ -622,21 +622,18 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     #     )
     #     return y
 
-    ########################### 后续内容尚未完成 ###############################
     op_name = "triton_adaptive_layer_norm"
+    ## 如果在动态图模式下且算子已经添加好了，则直接调用自定义算子
+    if (
+        op_name in OpProtoHolder.instance().op_proto_map.keys()
+        and in_dynamic_or_pir_mode()
+    ):
+        outs = _C_ops._run_custom_op(
+            op_name, x, scale, shift, weight, bias, epsilon
+        )
+        return outs[0]
 
     x_list = [M, N, seq_size, epsilon]
-
-    ## 如果在动态图模式下且算子已经添加好了，则直接调用自定义算子
-    # if (
-    #     op_name in OpProtoHolder.instance().op_proto_map.keys()
-    #     and in_dynamic_or_pir_mode()
-    # ):
-    #     outs = _C_ops._run_custom_op(
-    #         op_name, x, scale, shift, weight, bias, epsilon
-    #     )
-    #     return outs[0]
-
     value_hint = get_value_hint(x_list)
     dtypes = [x.dtype] * 6
     address_hint = get_pointer_hint(dtypes)
@@ -656,6 +653,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     so_path = find_so_path(generated_dir, python_package_name)
 
     if so_path is None:
+        print("== we do not find so_path, we need to compile it")
         with open(paddle_custom_op_file_path, "w") as f:
             f.write(
                 SubstituteTemplate(triton_adaptive_layer_norm_template, op_dict)
@@ -692,19 +690,19 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         so_path = find_so_path(generated_dir, python_package_name)
-        print("we find so_path: ", so_path)
+        print("== we find so_path: ", so_path)
         assert so_path is not None
         paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
 
     ## 执行算子
     if in_dynamic_or_pir_mode():
-        print(f"-------- we are in dynamic mode, op_name: {op_name}")
+        print(f"== we are in dynamic mode, op_name: {op_name}")
         outs = _C_ops._run_custom_op(
             op_name, x, scale, shift, weight, bias, epsilon
         )
         return outs[0]
     else:
-        print(f"-------- we are in static mode, op_name: {op_name}")
+        print(f"== we are in static mode, op_name: {op_name}")
         ## check_variable_and_dtype
         helper = LayerHelper(op_name, **locals())
         inputs = {
