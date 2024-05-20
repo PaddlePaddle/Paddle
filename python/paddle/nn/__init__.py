@@ -70,6 +70,8 @@ from .layer.common import (
     UpsamplingBilinear2D,
     UpsamplingNearest2D,
     ZeroPad2D,
+    ZeroPad1D,
+    ZeroPad3D,
 )
 
 # TODO: import all neural network related api under this directory,
@@ -121,10 +123,6 @@ from .layer.norm import (
     LocalResponseNorm,
     SpectralNorm,
     SyncBatchNorm,
-)
-from .layer.padding import (
-    ZeroPad1D,
-    ZeroPad3D,
 )
 from .layer.pooling import (
     AdaptiveAvgPool1D,
