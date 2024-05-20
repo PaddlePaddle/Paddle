@@ -206,10 +206,13 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     endif()
   else() # (${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(cuda_arch_bin ${CUDA_ARCH_BIN})
-
-    if(${CUDA_ARCH_BIN} MATCHES "[ ]*(80|86|89|90)[ ]*")
-      message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
-      add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
+    if(${CUDA_ARCH_BIN} MATCHES "[ ]*(70|75)[ ]*")
+      # nothing
+    else()
+      if(${CUDA_ARCH_BIN} MATCHES "[ ]*(80|86|89|90)[ ]*")
+        message(STATUS "Add Define CUDA_BFLOAT16_AVALIABLE")
+        add_definitions("-DCUDA_BFLOAT16_AVALIABLE")
+      endif()
     endif()
   endif()
 
