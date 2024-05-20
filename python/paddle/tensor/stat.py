@@ -570,7 +570,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             paddle.cast(paddle.isnan(x), dtype=x.dtype) * x,
             axis=axis,
             keepdim=True,
-        )
+        ).astype(x.dtype)
         if need_idx:
             # replace index using the first nan value's index on axis for out_idx
             x_isnan = paddle.isnan(x)

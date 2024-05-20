@@ -48,9 +48,7 @@ def np_medain_min(data, keepdims=False):
     if keepdims:
         new_shape = [1] * len(shape)
         np_res = np_res.reshape(new_shape)
-    return np_res + np.sum(
-        np.isnan(data).astype(data.dtype) * data, axis=-1, keepdims=keepdims
-    )
+    return np_res + np.sum(np.isnan(data).astype(data.dtype) * data)
 
 
 def np_medain_min_axis(data, axis=None, keepdims=False):
@@ -119,8 +117,8 @@ class TestMedianAvg(unittest.TestCase):
             * (np1_isnan.astype('int32') - np2_isnan.astype('int32'))
         )
         self.assertEqual(nan_mismatch, 0)
-        np1[np.isnan(np1)] = 0.0
-        np2[np.isnan(np2)] = 0.0
+        np1 = np.where(np.isnan(np1), 0.0, np1)
+        np2 = np.where(np.isnan(np2), 0.0, np2)
         mismatch = np.sum((np1 - np2) * (np1 - np2))
         self.assertAlmostEqual(mismatch, 0, delta=DELTA)
 
@@ -322,9 +320,14 @@ class TestMedianMin(unittest.TestCase):
         ]
         for axis, keepdims in lis_tests:
             res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
-            res_pd, _ = paddle.median(
-                paddle.to_tensor(x), axis, keepdims, mode='min'
-            )
+            if axis is None:
+                res_pd = paddle.median(
+                    paddle.to_tensor(x), axis, keepdims, mode='min'
+                )
+            else:
+                res_pd, _ = paddle.median(
+                    paddle.to_tensor(x), axis, keepdims, mode='min'
+                )
             np.testing.assert_allclose(res_pd.numpy(False), res_np)
 
 
