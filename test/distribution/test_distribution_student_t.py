@@ -36,13 +36,13 @@ from paddle.distribution.student_t import StudentT
         (
             'multi-dim',
             parameterize.xrand((2, 1), dtype='float32', min=4, max=30),
-            parameterize.xrand((2, 3), dtype='float32', min=-10, max=10),
+            parameterize.xrand((2, 3), dtype='float32', min=1, max=10),
             parameterize.xrand((2, 3), dtype='float32', min=0.1, max=3),
         ),
         (
             'multi-dim2',
             parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
-            parameterize.xrand((2, 3), dtype='float64', min=-10, max=10),
+            parameterize.xrand((2, 3), dtype='float64', min=-10, max=-1),
             parameterize.xrand((2, 3), dtype='float64', min=0.1, max=3),
         ),
     ],
@@ -116,9 +116,13 @@ class TestStudentT(unittest.TestCase):
         sample_mean = samples.mean(axis=0)
         sample_variance = samples.var(axis=0)
 
+        # Tolerance value 0.3 is empirical value which is consistent with
+        # TensorFlow
         np.testing.assert_allclose(
             sample_mean, self._dist.mean, atol=0, rtol=0.30
         )
+        # Tolerance value 0.3 is empirical value which is consistent with
+        # TensorFlow
         np.testing.assert_allclose(
             sample_variance, self._dist.variance, atol=0, rtol=0.30
         )

@@ -161,15 +161,15 @@ class StudentT(distribution.Distribution):
             Tensor: variance value.
         """
         var = self.df.clone().detach()
-        nan_index = self.df <= 1.0
-        var_index = self.df > 2.0
+        var_condition = self.df > 2.0
         var = paddle.where(
-            var_index,
+            var_condition,
             self.scale.pow(2) * var / (var - 2),
-            paddle.full_like(var, fill_value=float('inf')),
+            paddle.full_like(var, fill_value=float('nan')),
         )
+        inf_condition = (self.df <= 2.0).logical_and(self.df > 1.0)
         var = paddle.where(
-            nan_index, paddle.full_like(var, fill_value=float('nan')), var
+            inf_condition, paddle.full_like(var, fill_value=float('inf')), var
         )
         return var
 
