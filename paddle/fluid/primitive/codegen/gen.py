@@ -538,20 +538,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print("prim_path: ", args.prim_path)
-    print("fwd_path: ", args.fwd_path)
-    print("rev_path: ", args.rev_path)
-    print("compat_path: ", args.compat_path)
-    print("fwd_pd_op_path: ", args.fwd_pd_op_path)
-    print("update_fwd_pd_op_path: ", args.update_fwd_pd_op_path)
-    print("rev_pd_op_path: ", args.rev_pd_op_path)
-    print("fused_op_path: ", args.fused_op_path)
-    print("fused_rev_op_path: ", args.fused_rev_op_path)
-    print("sparse_op_path: ", args.sparse_op_path)
-    print("sparse_rev_op_path: ", args.sparse_rev_op_path)
-    print("templates_dir: ", args.templates_dir)
-    print("destination_dir: ", args.destination_dir)
-
     gen(
         pathlib.Path(args.prim_path),
         pathlib.Path(args.fwd_path),
