@@ -60,10 +60,10 @@ void SequenceConvKernel(const Context& dev_ctx,
   col.Resize(col_shape);
   dev_ctx.template Alloc<T>(&col);
   // Because if padding_trainable is false, padding data should be zeros.
-  phi::funcs::SetConstant<DeviceContext, T> set_zero;
-  auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+  phi::funcs::SetConstant<Context, T> set_zero;
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   set_zero(dev_ctx, &col, static_cast<T>(0));
-  phi::math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
+  phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
 
   seq_project_functor(dev_ctx,
                       *in,
@@ -124,9 +124,8 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, &col, static_cast<T>(0));
     blas.MatMul(*out_g, false, filter, true, &col);
   }
-  phi::math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
-  phi::math::ContextProjectGradFunctor<DeviceContext, T>
-      seq_project_grad_functor;
+  phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
+  phi::math::ContextProjectGradFunctor<Context, T> seq_project_grad_functor;
 
   if (in_g) {
     dev_ctx.template Alloc<T>(in_g);
