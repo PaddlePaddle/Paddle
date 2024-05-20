@@ -81,6 +81,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
+#include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
@@ -1828,6 +1829,9 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
                 << "): context wait and get last error";
 #endif
+      }
+      if (FLAGS_check_nan_inf) {
+        CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
       }
       VLOG(2) << "\ndone: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
