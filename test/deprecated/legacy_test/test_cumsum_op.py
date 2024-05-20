@@ -518,7 +518,7 @@ class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = "/home/zexuli/Paddle/test/deprecated/legacy_test/pir"
+        self.save_path = "/home/zexuli/Paddle-1/test/deprecated/legacy_test/pir"
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -536,7 +536,7 @@ class TestTensorAxis(unittest.TestCase):
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
     def test_static_and_infer(self):
-        if not paddle.framework.in_pir_mode():
+        if paddle.framework.in_pir_mode():
             paddle.enable_static()
             np_x = np.random.randn(9, 10, 11).astype('float32')
             main_prog = paddle.static.Program()
@@ -566,6 +566,8 @@ class TestTensorAxis(unittest.TestCase):
                 config = paddle_infer.Config(
                     self.save_path + '.json', self.save_path + '.pdiparams'
                 )
+                config.enable_new_ir()
+                config.enable_new_executor()
                 if paddle.is_compiled_with_cuda():
                     config.enable_use_gpu(100, 0)
                 else:

@@ -15,7 +15,6 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 
 #include <glog/logging.h>
-
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -24,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -769,21 +769,85 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "filename" << filename;
     uint64_t pir_version = 1;
 
-    LOG(INFO)<<"创建ctx之前";
+    LOG(INFO) << "创建ctx之前";
     pir::IrContext *ctx = pir::IrContext::Instance();
-    LOG(INFO)<<"创建ctx之后";
+    LOG(INFO) << "创建ctx之后";
     if (ctx == nullptr) {
       LOG(ERROR) << "IrContext instance is null.";
       return false;
     }
     if (!pir_program_) {
-      LOG(INFO)<<"创建pir_program之前";
+      LOG(INFO) << "创建pir_program之前";
       pir_program_ = std::make_shared<pir::Program>(ctx);
-      LOG(INFO)<<"创建pir_program之后";
+      LOG(INFO) << "创建pir_program之后";
     }
-    // PADDLE_ENFORCE_NOT_NULL(pir_program_.get(), "pir_program_ is not initialized");
+    // PADDLE_ENFORCE_NOT_NULL(pir_program_.get(), "pir_program_ is not
+    // initialized");
     LOG(INFO) << "Preparing PIR program from file:" << filename;
     bool success = pir::ReadModule(filename, pir_program_.get(), pir_version);
+    LOG(INFO) << "pir_program" << *(pir_program_.get());
+
+    std::vector<std::string> param_names;
+    std::string params_file = config_.params_file();
+
+    // 获取程序块
+    pir::Block *block = pir_program_->block();
+    if (block == nullptr) {
+      LOG(ERROR) << "block is null";
+      return false;
+    }
+    for (auto it = block->begin(); it != block->end(); ++it) {
+      pir::Operation &op = *it;
+      LOG(INFO) << "op " << op.name();
+      if (op.name() == "builtin.parameter") {
+        auto attrs = op.attributes();
+        auto iter = attrs.find("persistable");
+        if (iter != attrs.end() && iter->second) {
+          {
+            auto param_name_iter = attrs.find("parameter_name");
+            LOG(INFO) << "param_name " << param_name_iter->second;
+            std::stringstream ss;
+            ss << param_name_iter->second;
+            std::string param_name = ss.str();
+            LOG(INFO) << "param_name " << param_name;
+            param_names.push_back(param_name);
+          }
+        }
+      }
+    }
+    const paddle::framework::Variable *var = nullptr;
+    std::vector<phi::DenseTensor *> tensor_pointers;
+    for (const auto &param : param_names) {
+      LOG(INFO) << "Parameter: " << param;
+      var = scope_->FindVar(param);
+      LOG(INFO) << "var " << var;
+      // 使用const_cast来获取非const指针
+      paddle::framework::Variable *mutable_var =
+          const_cast<paddle::framework::Variable *>(var);
+      // 检查holder_是否为空
+      if (!mutable_var->IsInitialized()) {
+        LOG(ERROR) << "Variable holder is not initialized for parameter: "
+                   << param;
+        continue;  // 或者处理这个错误
+      }
+
+      // 检查holder_中的类型是否为phi::DenseTensor
+      if (!mutable_var->IsType<phi::DenseTensor>()) {
+        LOG(ERROR) << "Variable for parameter " << param
+                   << " is not of type phi::DenseTensor.";
+        continue;  // 或者处理这个错误
+      }
+
+      phi::DenseTensor *tensor = mutable_var->GetMutable<phi::DenseTensor>();
+      if (tensor == nullptr) {
+        LOG(ERROR) << "Failed to get mutable phi::DenseTensor for parameter: "
+                   << param;
+        continue;  // 或者处理这个错误
+      }
+      tensor_pointers.push_back(tensor);
+      LOG(INFO) << "tensor " << tensor;
+    }
+
     if (!success) {
       LOG(ERROR) << "Failed to read module from file: " << filename;
       return false;

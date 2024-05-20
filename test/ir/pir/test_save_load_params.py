@@ -42,6 +42,7 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
         scope = paddle.static.global_scope()
 
         def get_tensor(name):
+            print("name", name)
             t = scope.find_var(name).get_tensor()
             return t
 
@@ -123,6 +124,7 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 exe.run(prog, feed={'static_x': fake_inputs}, fetch_list=[loss])
 
                 param_dict, opt_dict = self.get_params(prog)
+                print("param_dict", param_dict)
                 # test save_func and load_func
                 save_dir = os.path.join(self.temp_dir.name, "save_params")
 
@@ -162,7 +164,10 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     self.temp_dir.name, "save_combine_params"
                 )
                 path = os.path.join(save_dir, 'demo.pdiparams')
+                print("path", path)
                 param_vec = list(param_dict.values())
+                print("param_vec", param_vec)
+                print("list(param_dict.keys())", list(param_dict.keys()))
                 paddle.base.core.save_combine_func(
                     param_vec, list(param_dict.keys()), path, True, False, False
                 )
@@ -170,6 +175,8 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 for tensor in param_vec:
                     tensor.set(np.zeros_like(np.array(tensor)), self.place)
                     param_new.append(tensor)
+                print("param_new", param_new)
+
                 paddle.base.core.load_combine_func(
                     path,
                     list(param_dict.keys()),
