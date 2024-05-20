@@ -1,4 +1,4 @@
-ret_  // Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ class MultiDeviceFeedReader {
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())),
-        readers_(nullptr),
+        readers_(),
         futures_(),
         exceptions_(),
         ret_(),
