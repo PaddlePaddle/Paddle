@@ -79,9 +79,7 @@ class Tracker:
         Returns:
             bool: True if the expression matches the tracked variables, False otherwise.
         """
-        raise NotImplementedError(
-            f"match_expr is not implemented for {type(self)}"
-        )
+        return self.trace_value_from_frame().inlined_expr == expr
 
     def is_traceable(self) -> bool:
         """
@@ -179,10 +177,6 @@ class LocalTracker(Tracker):
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
 
-    def match_expr(self, expr: str) -> bool:
-        self.trace_value_from_frame()
-        return expr == f"frame.f_locals['{self.name}']"
-
     def __repr__(self) -> str:
         return f"LocalTracker(name={self.name})"
 
@@ -193,9 +187,6 @@ class CellTracker(LocalTracker):
 
     def trace_value_from_frame(self):
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
-
-    def match_expr(self, expr: str) -> bool:
-        return expr == f"frame.f_locals['{self.name}']"
 
     def __repr__(self) -> str:
         return f"CellTracker(name={self.name})"
@@ -218,9 +209,6 @@ class GlobalTracker(Tracker):
 
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_globals['{self.name}']", [], {})
-
-    def match_expr(self, expr: str) -> bool:
-        return expr == f"frame.f_globals['{self.name}']"
 
     def __repr__(self) -> str:
         return f"GlobalTracker(name={self.name})"
@@ -245,9 +233,6 @@ class BuiltinTracker(Tracker):
         return StringifyExpression(
             f"builtins.__dict__['{self.name}']", [], {"builtins": builtins}
         )
-
-    def match_expr(self, expr: str) -> bool:
-        return expr == f"builtins.__dict__['{self.name}']"
 
     def __repr__(self) -> str:
         return f"BuiltinTracker(name={self.name})"
@@ -325,8 +310,6 @@ class BinaryOperatorTracker(Tracker):
             union_free_vars(*list(sub_frees)),
         )
 
-    # TODO(zrr1999): impl match_expr
-
     def __repr__(self) -> str:
         return f"BinaryOperatorTracker(operator={self.operator})"
 
@@ -360,13 +343,6 @@ class GetAttrTracker(Tracker):
             [obj_tracer],
             union_free_vars(obj_tracer.free_vars),
         )
-
-    def match_expr(self, expr: str) -> bool:
-        obj_tracer_expr = self.obj.tracker.trace_value_from_frame().debug_expr
-        if self.attr.isidentifier():
-            return expr == f"{obj_tracer_expr}.{self.attr}"
-        else:
-            return expr == f"getattr({obj_tracer_expr}, '{self.attr}')"
 
     def __repr__(self) -> str:
         return f"GetAttrTracker(attr={self.attr})"
@@ -411,14 +387,6 @@ class GetItemTracker(Tracker):
             union_free_vars(container_tracer.free_vars, key_free_vars),
         )
 
-    def match_expr(self, expr: str) -> bool:
-        container_tracer_expr = (
-            self.container.tracker.trace_value_from_frame().debug_expr
-        )
-        key_string, _ = stringify_pyobject(self.key)
-
-        return expr == f"{container_tracer_expr}[{key_string}]"
-
     def __repr__(self) -> str:
         return f"GetItemTracker(key={self.key!r})"
 
@@ -451,8 +419,6 @@ class GetIterTracker(Tracker):
             [iter_source_tracer],
             union_free_vars(iter_source_tracer.free_vars),
         )
-
-    # TODO(zrr1999): impl match_expr
 
     def __repr__(self) -> str:
         return "GetIterTracker()"
@@ -513,8 +479,6 @@ class CreateLayerTracker(Tracker):
                 )
             ),
         )
-
-    # TODO(zrr1999): impl match_expr
 
     def __repr__(self) -> str:
         return f"CreateLayerTracker(Layer={self.layer_class}, args={self.args}, kwargs={self.kwargs})"

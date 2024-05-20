@@ -184,8 +184,8 @@ class ConstantVariable(VariableBase):
 
             frame_value_tracer = self.tracker.trace_value_from_frame()
             symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
-            symbolic_inputs.setdefault(frame_value_tracer.debug_expr, {})
-            symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+            symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
+            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
             symbolic_input.setdefault(self.value, 0)
             symbolic_input[self.value] += 1
 
@@ -639,16 +639,16 @@ class SymbolicIntVariable(VariableBase):
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
 
-        assert frame_value_tracer.debug_expr in symbolic_inputs
-        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+        symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
         symbolic_input.setdefault(self.value, 0)
         symbolic_input[self.value] += 1
 
