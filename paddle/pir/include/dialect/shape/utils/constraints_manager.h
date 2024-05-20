@@ -19,26 +19,6 @@
 #include "paddle/common/union_find_set.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
-namespace std {
-template <>
-struct hash<std::pair<symbol::DimExpr, symbol::DimExpr>> {
-  size_t operator()(
-      const std::pair<symbol::DimExpr, symbol::DimExpr>& pair) const {
-    return pir::detail::hash_combine(GetHashValue(pair.first),
-                                     GetHashValue(pair.second));
-  }
-};
-
-template <>
-struct equal_to<std::pair<symbol::DimExpr, symbol::DimExpr>> {
-  bool operator()(
-      const std::pair<symbol::DimExpr, symbol::DimExpr>& lhs,
-      const std::pair<symbol::DimExpr, symbol::DimExpr>& rhs) const {
-    return lhs.first == rhs.first && lhs.second == rhs.second;
-  }
-};
-}  // namespace std
-
 namespace symbol {
 
 class IR_API ConstraintsManager {
@@ -60,53 +40,29 @@ class IR_API ConstraintsManager {
   bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
 
   template <typename DoEachClusterT>
-  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const {
-    equals_.VisitCluster(DoEachCluster);
-  }
+  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
   template <typename DoEachT>
-  void EqualConstraintsVisitor(const DoEachT& DoEach) {
-    auto equals_parents = equals_.MutMap();
-    for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
-      DoEach(it);
-    }
-  }
+  void EqualConstraintsVisitor(const DoEachT& DoEach);
 
   template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach) {
-    for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
-      DoEach(it);
-    }
-  }
+  void GTOneConstraintsVisitor(const DoEachT& DoEach);
 
   template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach) const {
-    for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
-      DoEach(it);
-    }
-  }
+  void GTOneConstraintsVisitor(const DoEachT& DoEach) const;
 
   template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) {
-    for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
-      DoEach(it);
-    }
-  }
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
 
   template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) const {
-    for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
-      DoEach(it);
-    }
-  }
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) const;
 
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
-  using BroadcastableConstraints =
-      std::unordered_set<std::pair<DimExpr, DimExpr>>;
+  using BroadcastableConstraints = std::unordered_set<Broadcastable<DimExpr>>;
 
   const EqualConstraints& equals() const { return equals_; }
 
