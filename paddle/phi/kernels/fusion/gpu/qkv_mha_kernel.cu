@@ -96,22 +96,6 @@ __global__ void qkv_attention_kernel(
   // printf("-------------\n");
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
-  // params.sequence_lengths[bi] means how many k and v we have cached in
-  // cache_kv.
-
-  // Dh = 128
-  // Dh_max = 128
-  // THREADS_PER_BLOCK = 128
-  // THDS_PER_KEY = 2
-  // THREADS_PER_VALUE = 16
-  //  WARPS_PER_BLOCK = 4
-  //  THREADS_PER_KEY = 2
-
-  // if( threadIdx.x == 0 && bi == 0 && blockIdx.x == 0)
-  // {
-  //   printf("param %d %d %d %d %d\n", Dh, Dh_MAX, THREADS_PER_KEY,
-  //   THREADS_PER_VALUE , THREADS_PER_BLOCK );
-  // }
 
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
@@ -214,10 +198,6 @@ __global__ void qkv_attention_kernel(
 
   static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
 
-  // printf("k vec   %d %d %d %d\n", K_VECS_PER_THREAD, K_VEC_SIZE ,
-  // K_VECS_PER_THREAD, K_ELTS_PER_THREAD);
-
-  // bfloat4[16] , each thread read 64 ele
   K_vec q[K_VECS_PER_THREAD];
 #pragma unroll
   for (int i = 0; i < K_VECS_PER_THREAD; ++i) {
@@ -237,10 +217,7 @@ __global__ void qkv_attention_kernel(
     K_vec k[K_VECS_PER_THREAD];
     K_vec k_vec_zero;
     zero(k_vec_zero);
-    // if( threadIdx.x == 0 && blockIdx.x == 0 && blockIdx.y == 0)
-    // {
-    //   printf("begin \n", qk);
-    // }
+
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
@@ -255,30 +232,7 @@ __global__ void qkv_attention_kernel(
     const T *q_ptr = reinterpret_cast<const T *>(q);
     const T *k_ptr = reinterpret_cast<const T *>(k);
 
-    // if( threadIdx.x == 0 && blockIdx.x == 0 && blockIdx.y == 0)
-    // {
-    //   printf("q k %f %f\n", float(q_ptr[0]), float(k_ptr[0]));
-    // }
-
-    // NOTE(liyurui): We should multiple q with inv_sqrt_dh first, for dot(q, k)
-    // may overflow with FP16 in large model.
-
-    // if( (threadIdx.x == 0 || threadIdx.x == 1 ) && blockIdx.x == 0 &&
-    // blockIdx.y == 0)
-    // {
-
-    //   printf("qk %f\n", qk);
-    // }
-
-    // bool is_mask = false;
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
-      // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
-      // auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
-      // // T mask = params.attn_mask[mask_bhi * (params.timestep + 1) + ti];
-      // if (params.attn_mask) {
-      //   T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
-      //   qk += static_cast<float>(mask);
-      // }
       qk_max = fmaxf(qk_max, qk);
 
       qk_smem[ti] = qk;
@@ -309,8 +263,6 @@ __global__ void qkv_attention_kernel(
 
   float sum = 0.f;
   for (int ti = tid; ti < act_time_step; ti += THREADS_PER_BLOCK) {
-    // bool is_mask = false;
-    // float logit = is_mask ? 0.f : __expf(qk_smem[ti] - qk_max);
     float logit = __expf(qk_smem[ti] - qk_max);
     sum += logit;
     qk_smem[ti] = logit;
@@ -318,7 +270,6 @@ __global__ void qkv_attention_kernel(
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
 
-  // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
   for (int ti = tid; ti < act_time_step; ti += THREADS_PER_BLOCK) {
@@ -326,26 +277,9 @@ __global__ void qkv_attention_kernel(
   }
   __syncthreads();
 
-  // if( (threadIdx.x == 0 || threadIdx.x == 1 ) && blockIdx.x == 0 &&
-  // blockIdx.y == 0)
-  // {
-
-  //   printf("softmax res %f\n", logits_smem[0]);
-  // }
-
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;  // 128 / 16 = 8
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
 
-  // now we have got [1, seq] ，distributed in logits_smem.
-  // next we compute [1, seq] * [seq, head_dim] = [1, head_dim]
-  // THREADS_PER_VALUE means num of threads per value's head_dim.
-  // we split the seq dimension for more cuda threads to compute.
-  // vo means the first seq index processed by this cuda thread in the value.
-  // vi means the head_dim index processed by this cuda thread in the value.
-  // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
-  // from vo and increases by a step V_PER_ITER.
-
-  // THREADS_PER_VALUE == 16
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
@@ -381,17 +315,6 @@ __global__ void qkv_attention_kernel(
   }
 
   __syncthreads();
-
-  // V_PER_ITER == 8
-  // THREADS_PER_BLOCK = 128
-  // THREADS_PER_VALUE = 16
-  // V_VEC_SIZE = 8
-  // if( (threadIdx.x == 0 ) && blockIdx.x == 0 && blockIdx.y == 0)
-  // {
-
-  //   printf("output %d %d %d %d\n", V_PER_ITER, THREADS_PER_BLOCK,
-  //   THREADS_PER_VALUE, V_VEC_SIZE);
-  // }
 
   // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
@@ -489,19 +412,14 @@ void q_kv_fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                              const cudaStream_t &stream,
                              LoadFunc load_func,
                              StoreFunc store_func) {
-  std::cerr << "fhm launch \n";
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
 
-  std::cerr << "dh " << Dh << "\t" << Dh_MAX << "\t" << THREADS_PER_VALUE
-            << std::endl;
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(
         T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream, load_func, store_func);
   } else if (params.timestep < 2048) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
-
-    std::cerr << "run here!!!\n";
     MMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
@@ -512,7 +430,6 @@ void q_kv_fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
                        load_func,
                        store_func);
 #else
-    std::cerr << "step here\n";
     MMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
@@ -542,7 +459,6 @@ void fmha_impl_qkv(const phi::GPUContext &dev_ctx,
                    int dim_head,
                    LoadFunc load_func,
                    StoreFunc store_func) {
-  std::cerr << "dim head " << dim_head << std::endl;
   switch (dim_head) {
     case 16:
       q_kv_fmha_launch_kernel<T, 16, 32>(
@@ -584,25 +500,10 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const Masked_multihead_attention_params<T> &params,
                   int dim_head,
                   phi::DenseTensor *out_tensor) {
-  std::cerr << "dispath \n";
-  std::cerr << "q dtype " << q.dtype() << std::endl;
   MMHALoad<T> load_func(q.data<T>());
   MMHAStore<T> store_func(out_tensor->data<T>());
   fmha_impl_qkv(dev_ctx, params, dim_head, load_func, store_func);
 }
-
-struct NormalVersion {};
-struct UnusedVersion {};
-
-template <typename T>
-struct DispatchDtypeTrait {
-  using FuncVersion = NormalVersion;
-};
-
-template <>
-struct DispatchDtypeTrait<int32_t> {
-  using FuncVersion = UnusedVersion;
-};
 
 template <typename T, typename Context>
 void QKVDispatchWithDtype(const Context &dev_ctx,
@@ -624,7 +525,6 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   // this num_head means query's head
   int num_head = q.dims()[2];
 
-  std::cerr << "num head " << num_head << std::endl;
   Masked_multihead_attention_params<T> params;
   bool mask_broadcast_num_heads = true;
 
@@ -641,10 +541,7 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   params.num_head = num_head;
   params.kv_num_head = k_num_head;
   params.timestep = timestep;
-
-  std::cerr << "time step " << params.timestep << std::endl;
   params.inv_sqrt_dh = inv_sqrt_dh;
-  std::cerr << "inv sqrt dh " << params.inv_sqrt_dh << std::endl;
 
   DispatchFMHA<T>(dev_ctx, q, params, dim_head, out);
 }
@@ -658,7 +555,6 @@ void QKVMMHAKernel(const Context &dev_ctx,
                    const DenseTensor &v,
                    const paddle::optional<DenseTensor> &src_mask,
                    DenseTensor *out) {
-  std::cerr << "11\n";
   QKVDispatchWithDtype<T, Context>(dev_ctx, q, k, v, src_mask, out);
 }
 
@@ -674,7 +570,7 @@ PD_REGISTER_KERNEL(qkv_mha,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
-PD_REGISTER_KERNEL(masked_multihead_attention,
+PD_REGISTER_KERNEL(qkv_mha,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::QKVMMHAKernel,
