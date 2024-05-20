@@ -63,6 +63,7 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
     PADDLE_THROW(phi::errors::Fatal(
         "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
   }
+
   return value_id_to_shape_or_data_.at(val.impl()->id());
 }
 
