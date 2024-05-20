@@ -83,10 +83,14 @@ bool RemoveOp(pir::Operation* op,
                    .dtype());
   };
 
-  bool can_remove = IsSameShape() && (!check_dtype || IsSameDataType()) &&
-                    !(UsedByShadowOutput(input) && UsedByShadowOutput(output));
+  const auto CanRemove = [&]() -> bool {
+    if (!IsSameShape()) return false;
+    if (check_dtype && !IsSameDataType()) return false;
+    if (UsedByShadowOutput(input) && UsedByShadowOutput(output)) return false;
+    return true;
+  };
 
-  if (can_remove) {
+  if (CanRemove()) {
     rewriter->ReplaceAllUsesWith(output, input);
     rewriter->EraseOp(op);
     return true;
