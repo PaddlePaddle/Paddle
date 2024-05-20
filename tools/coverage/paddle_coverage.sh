@@ -255,7 +255,7 @@ if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1"
         exit 9
     fi
     python ${PADDLE_ROOT}/tools/get_pr_title.py || NOT_CINN_PR=1
-    if [[ "${CINN_PR}" = "1" ]];then
+    if [[ "${NOT_CINN_PR}" = "1" ]];then
         exit 9
     fi
     echo "This PR belongs to the CINN direction, skip the coverage check in the PR-CI-Coverage pipeline."
