@@ -93,8 +93,6 @@ class TestLlamaModel(unittest.TestCase):
 
         sgd.minimize(loss)
 
-        print(paddle.static.default_main_program())
-
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
