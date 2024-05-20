@@ -4163,6 +4163,15 @@
   inputs :
     x : X
 
+- op: sequence_conv
+  backward: sequence_conv_grad
+  inputs:
+    {x : X, padding_data : PaddingData, filter : Filter}
+  attrs:
+    {padding_trainable : paddingTrainable, context_length : contextLength, context_start : contextStart, context_stride : contextStride}
+  outputs:
+    out : Out
+
 - op: set_value
   backward: set_value_grad
   inputs:
