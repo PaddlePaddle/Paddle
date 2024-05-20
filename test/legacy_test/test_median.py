@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 DELTA = 1e-6
@@ -184,6 +185,26 @@ class TestMedianAvg(unittest.TestCase):
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_float16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support float16",
+    )
+    def test_float16(self):
+        paddle.disable_static(core.CUDAPlace(0))
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        ).astype('float16')
+        lis_tests = [
+            [axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+        ]
+        for axis, keepdims in lis_tests:
+            res_np = np.median(x, axis=axis, keepdims=keepdims)
+            res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
+            self.check_numpy_res(res_pd.numpy(False), res_np.astype('float64'))
+
 
 class TestMedianMin(unittest.TestCase):
     def static_single_test_median(self, lis_test):
@@ -265,6 +286,28 @@ class TestMedianMin(unittest.TestCase):
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_float16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support float16",
+    )
+    def test_float16(self):
+        paddle.disable_static(core.CUDAPlace(0))
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        ).astype('float16')
+        lis_tests = [
+            [axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+        ]
+        for axis, keepdims in lis_tests:
+            res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
+            res_pd, _ = paddle.median(
+                paddle.to_tensor(x), axis, keepdims, mode='min'
+            )
+            np.testing.assert_allclose(res_pd.numpy(False), res_np)
 
 
 if __name__ == '__main__':

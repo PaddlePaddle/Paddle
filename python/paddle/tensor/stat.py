@@ -391,7 +391,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
     Compute the median along the specified axis.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
+        x (Tensor): The input Tensor, it's data type can be float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to perform median calculations ``axis`` should be int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
