@@ -15,6 +15,7 @@
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_printer.h"
@@ -345,6 +346,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
+      for (const auto& value : GetUsedExternalValue(block)) {
+        shape_analysis.GetShapeOrDataForValue(value);
+      }
       InferSymExprForBlock(block, infer_context);
     }
   }
