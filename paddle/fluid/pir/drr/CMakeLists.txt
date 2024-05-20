@@ -81,9 +81,10 @@ endif()
 
 if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
-  set(pir_op_onednn_yaml ${parsed_op_dir}/inconsistent/onednn.parsed.yaml)
+  set(pir_op_onednn_yaml
+      ${parsed_op_dir}/inconsistent/onednn_static.parsed.yaml)
   set(pd_ops_onednn_extra_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/ops_onednn_extra.yaml
+      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/onednn_ops_extra.yaml
   )
   set(onednn_op_creator_file
       ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
