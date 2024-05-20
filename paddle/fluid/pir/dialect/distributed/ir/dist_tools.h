@@ -23,11 +23,15 @@ namespace dialect {
 
 bool HasDistInput(const std::vector<pir::Value>& inputs,
                   ProcessMeshAttribute* p_mesh_attr = nullptr);
+bool AllInputAreDist(const std::vector<pir::Value>& inputs);
 
 void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr);
 
 phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type);
+
+std::vector<phi::distributed::DistMetaTensor> CvtToDistMetaTensor(
+    pir::VectorType type);
 pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr);
 
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
