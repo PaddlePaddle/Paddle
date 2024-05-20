@@ -191,10 +191,14 @@ class TransposeCollapsingPass : public ProgramPass {
     const auto& output_name = output->id;
 
     const auto& axis = transpose->GetAttrs<ShapeType>("axis");
-    CHECK_EQ(axis.size(), input->shape.size())
-        << "The transpose's axis size should equal with input variable's shape "
-           "size, but the transpose of ["
-        << input->id << "] not ! Please check.";
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        input->shape.size(),
+        phi::errors::InvalidArgument(
+            "The size of axis and input shape is not equal,"
+            "where the size of axis:%d but the size of input shape:%d.",
+            axis.size(),
+            input->shape.size()));
 
     bool can_remove = !fetch_ids.count(output_name);
 
@@ -372,9 +376,14 @@ class TransposeCollapsingPass : public ProgramPass {
   // 1, 0] = [1, 2, 0]
   ShapeType FuseTransposeAxis(const ShapeType& old_axis,
                               const ShapeType& new_axis) const {
-    CHECK_EQ(old_axis.size(), new_axis.size())
-        << "The transpose axis size should be " << old_axis.size()
-        << ", but here " << new_axis.size();
+    PADDLE_ENFORCE_EQ(
+        old_axis.size(),
+        new_axis.size(),
+        phi::errors::InvalidArgument(
+            "The size of old axis and new axis is not equal,"
+            "where the size of old axis:%d but the size of new axis:%d.",
+            old_axis.size(),
+            new_axis.size()));
 
     ShapeType axis = old_axis;
     for (int i = 0; i < new_axis.size(); ++i) {

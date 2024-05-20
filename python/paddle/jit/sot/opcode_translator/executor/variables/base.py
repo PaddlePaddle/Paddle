@@ -384,7 +384,7 @@ class VariableBase:
                 self.graph.add_global_guarded_variable(self)
             self._reconstruct(codegen)
 
-    def _reconstruct(self, codegen: PyCodeGen):
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
         """
         Abstract method to construct an opcode and append it into codegen.instructions
         """
