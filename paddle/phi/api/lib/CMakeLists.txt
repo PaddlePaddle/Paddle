@@ -4,7 +4,7 @@ set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/generator/api_base.py)
 set(api_gen_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/generator/api_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml)
 set(legacy_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/legacy_ops.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -18,7 +18,7 @@ set(bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/generator/backward_api_gen.py)
 set(bw_api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml)
 set(legacy_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/legacy_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_backward.yaml)
 set(bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api.h)
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)

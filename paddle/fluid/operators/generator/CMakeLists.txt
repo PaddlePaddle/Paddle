@@ -4,13 +4,13 @@ include(operators)
 # set yaml file path
 set(op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml)
 set(legacy_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/legacy_ops.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.yaml)
 set(bw_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml)
 set(static_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/legacy/static_ops.yaml)
 set(fused_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_ops.yaml)
 set(legacy_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/legacy_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_backward.yaml)
 set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml)
 set(sparse_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml)
@@ -112,17 +112,19 @@ message(
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}/new
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}/legacy
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${op_yaml_file}
           --output_path ${parsed_op_dir}/ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}
-          --output_path ${parsed_op_dir}/legacy_ops.parsed.yaml
+          --output_path ${parsed_op_dir}/new/dygraph_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${bw_op_yaml_file}
-          --output_path ${parsed_op_dir}/backward_ops.parsed.yaml --backward
+          --output_path ${parsed_op_dir}/backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_bw_op_yaml_file}
-    --output_path ${parsed_op_dir}/legacy_backward_ops.parsed.yaml --backward
+    --output_path ${parsed_op_dir}/new/dygraph_backward.parsed.yaml --backward
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
-          --output_path ${parsed_op_dir}/static_ops.parsed.yaml
+          --output_path ${parsed_op_dir}/legacy/static_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
           --output_path ${parsed_op_dir}/fused_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
@@ -132,7 +134,7 @@ execute_process(
     --output_path ${parsed_op_dir}/sparse_backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
-    --output_path ${parsed_op_dir}/static_backward.parsed.yaml --backward
+    --output_path ${parsed_op_dir}/legacy/static_backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_bw_op_yaml_file}
     --output_path ${parsed_op_dir}/fused_backward.parsed.yaml --backward
@@ -146,14 +148,15 @@ endforeach()
 # validation of op yamls
 message("validate op yaml:
 - ${parsed_op_dir}/ops.parsed.yaml
-- ${parsed_op_dir}/backward_ops.parsed.yaml")
+- ${parsed_op_dir}/backward.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${parsed_op_dir}/ops.parsed.yaml ${parsed_op_dir}/legacy_ops.parsed.yaml
-    --backward_yaml_paths ${parsed_op_dir}/backward_ops.parsed.yaml
-    ${parsed_op_dir}/legacy_backward_ops.parsed.yaml
+    ${parsed_op_dir}/ops.parsed.yaml
+    ${parsed_op_dir}/new/dygraph_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/backward.parsed.yaml
+    ${parsed_op_dir}/new/dygraph_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "ops validation failed, exiting.")
@@ -163,8 +166,8 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${parsed_op_dir}/static_ops.parsed.yaml --backward_yaml_paths
-    ${parsed_op_dir}/static_backward.parsed.yaml
+    ${parsed_op_dir}/legacy/static_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/legacy/static_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "static ops validation failed, exiting.")
@@ -202,7 +205,7 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
     ${parsed_op_dir}/ops.parsed.yaml --backward_yaml_path
-    ${parsed_op_dir}/backward_ops.parsed.yaml --op_version_yaml_path
+    ${parsed_op_dir}/backward.parsed.yaml --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
     --output_op_path "${generated_op_path_1}.tmp" "${generated_op_path_2}.tmp"
@@ -217,8 +220,8 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ${parsed_op_dir}/static_ops.parsed.yaml --backward_yaml_path
-    ${parsed_op_dir}/static_backward.parsed.yaml --op_version_yaml_path
+    ${parsed_op_dir}/legacy/static_ops.parsed.yaml --backward_yaml_path
+    ${parsed_op_dir}/legacy/static_backward.parsed.yaml --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
     --output_op_path "${generated_static_op_path}.tmp" --output_arg_map_path

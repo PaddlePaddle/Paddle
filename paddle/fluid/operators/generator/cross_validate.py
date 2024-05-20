@@ -52,4 +52,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    print(args.forward_yaml_paths)
+    print(args.backward_yaml_paths)
     main(args.forward_yaml_paths, args.backward_yaml_paths)

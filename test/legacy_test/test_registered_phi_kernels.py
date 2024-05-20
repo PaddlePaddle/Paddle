@@ -65,11 +65,11 @@ class TestRegisteredPhiKernels(unittest.TestCase):
 
         ops_yaml_path = [
             'paddle/phi/ops/yaml/ops.yaml',
-            'paddle/phi/ops/yaml/new/legacy_ops.yaml',
+            'paddle/phi/ops/yaml/new/dygraph_ops.yaml',
         ]
         bw_ops_yaml_path = [
             'paddle/phi/ops/yaml/backward.yaml',
-            'paddle/phi/ops/yaml/new/legacy_backward.yaml',
+            'paddle/phi/ops/yaml/new/dygraph_backward.yaml',
         ]
 
         for each_ops_yaml in ops_yaml_path:

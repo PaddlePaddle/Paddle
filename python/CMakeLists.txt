@@ -67,7 +67,7 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
-# Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
+# Standard op(phi op) description is defined in ops.yaml and dygraph_ops.yaml.
 # When users define composite rules of some nonbasic op, as for definition of args,
 # they are supposed to refer to standard op description. However, there exists
 # some gap of description between current op and standard ones. So special dictionary
@@ -77,7 +77,7 @@ add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml")
 
 set(ops_legacy_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/legacy_ops.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.yaml")
 
 set(ops_compat_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")
