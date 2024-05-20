@@ -89,7 +89,6 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
         axis[i],
         vec_x_dims_size,
         phi::errors::InvalidArgument("axis value should be < vec_x_dims_size"));
-    << "axis value should be < " << vec_x_dims_size;
     if (axis[i] < 0) {
       axis[i] += vec_x_dims_size;
     }
