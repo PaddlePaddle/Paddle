@@ -3,17 +3,6 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
-- op : adadelta_
-  args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
-  output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
-  infer_meta :
-    func : AdadeltaInferMeta
-  kernel :
-    func : adadelta
-    data_type : param
-  optional : master_param, master_param_out
-  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
-
 - op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -495,16 +484,6 @@
     param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
   optional: param
 
-- op : dgc_momentum
-  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
-  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
-  infer_meta :
-    func : DGCMomentumInferMeta
-  kernel :
-    func : dgc_momentum
-    data_type : param
-  optional : master_param, master_param_out
-
 - op : disable_check_model_nan_inf
   args: (Tensor x, int flag = 0)
   output: Tensor(out)
@@ -859,14 +838,6 @@
   kernel:
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
-
-- op : fused_token_prune
-  args : (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token = true, bool keep_order = false)
-  output : Tensor(slimmed_x), Tensor(cls_inds)
-  infer_meta :
-    func : FusedTokenPruneInferMeta
-  kernel:
-    func : fused_token_prune
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})

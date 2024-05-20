@@ -123,7 +123,7 @@ class NdMeshReshardFunction(ReshardFunction):
             for partial_dim, partial_type in in_partial_status.items():
                 if (
                     partial_dim in out_partial_status
-                    or ori_dst_dist_attr.dims_mapping[partial_dim] > -1
+                    or partial_dim in ori_dst_dist_attr.dims_mapping
                 ):
                     continue
 
