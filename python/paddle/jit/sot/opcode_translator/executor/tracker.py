@@ -69,6 +69,12 @@ class Tracker:
         """
         raise NotImplementedError()
 
+    def match_expr(self, expr: str) -> bool:
+        """
+        TODO(zrr1999)
+        """
+        raise NotImplementedError()
+
     def is_traceable(self) -> bool:
         """
         Determine if all the tracked variables can be traced from the frame.
@@ -164,6 +170,9 @@ class LocalTracker(Tracker):
 
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
+
+    def match_expr(self, expr: str) -> bool:
+        return expr == f"frame.f_locals['{self.name}']"
 
     def __repr__(self) -> str:
         return f"LocalTracker(name={self.name})"
