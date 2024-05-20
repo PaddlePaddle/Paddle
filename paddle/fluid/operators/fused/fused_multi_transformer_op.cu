@@ -13,7 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_multi_transformer_helper.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
