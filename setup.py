@@ -1313,6 +1313,9 @@ def get_package_data_and_package_dir():
     package_data['paddle.base'] = package_data.get('paddle.base', []) + [
         '*.pyi'
     ]
+    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
+        '*.pyi'
+    ]
 
     return package_data, package_dir, ext_modules
 

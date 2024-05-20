@@ -142,8 +142,8 @@ class TensorGen:
 
     def add_method(self, func: Member):
         """
-        1. insert docstring: tensor.pyi.in define the method without docstring
-        2. insert method: tensor.pyi.in NOT define the method
+        1. insert docstring: tensor.prototype.pyi define the method without docstring
+        2. insert method: tensor.prototype.pyi NOT define the method
         """
         methods = self.find_apis(func.name)
         if methods:
@@ -437,7 +437,7 @@ def main():
         "-i",
         "--input-file",
         type=str,
-        default="python/paddle/tensor/tensor.pyi.in",
+        default="python/paddle/tensor/tensor.prototype.pyi",
     )
 
     parser.add_argument(
