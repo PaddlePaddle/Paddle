@@ -58,6 +58,13 @@ _logger = get_logger(
 )
 
 
+def is_persistable(var):
+    """
+    Check whether the variable is persitable.
+    """
+    return var.persistable
+
+
 def get_pir_parameters(program):
     """
     Get parameters and optimizer variables from program.
@@ -67,7 +74,7 @@ def get_pir_parameters(program):
     params = []
     opts = []
     for var in program.list_vars():
-        if var.is_parameter and var.persistable:
+        if var.is_parameter:
             params.append(var)
         elif var.persistable and var.get_defining_op().name() == "pd_op.data":
             opts.append(var)
@@ -347,7 +354,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=list(filter(predicate, vars_list)),
             filename=filename,
         )
     else:
@@ -457,12 +464,15 @@ def load_vars_pir(
                 % type(main_program)
             )
         param, opt = get_pir_parameters(main_program)
-        vars_list = param + opt
+        vars = param + opt
+        paddle.base.libpaddle.pir.create_loaded_parameter(
+            vars, global_scope(), executor._default_executor
+        )
         load_vars_pir(
             executor,
             dirname=dirname,
             main_program=main_program,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=list(filter(predicate, vars)),
             filename=filename,
         )
     else:
@@ -471,9 +481,7 @@ def load_vars_pir(
 
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
-        paddle.base.libpaddle.pir.create_loaded_parameter(
-            vars, global_scope(), executor._default_executor
-        )
+
         for v in vars:
             var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
@@ -737,7 +745,7 @@ def save_pir_inference_model(
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,
-        # predicate=persistable, TODO(chenzhiyang): Is this filter needed here?
+        predicate=is_persistable,
         filename=params_filename,
     )
 
@@ -831,13 +839,15 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_filename, program, 1)
 
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
                 executor,
                 dirname=None,
                 main_program=program,
-                # predicate=persistable,
+                predicate=is_persistable,
                 filename=params_filename,
             )
     # load from file
@@ -884,7 +894,9 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_path, program, 1)
         # load parameters
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
 
@@ -892,7 +904,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 executor,
                 dirname=load_dirname,
                 main_program=program,
-                # predicate=persistable,
+                predicate=is_persistable,
                 filename=params_filename,
             )
 

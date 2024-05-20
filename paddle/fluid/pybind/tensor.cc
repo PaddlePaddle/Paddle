@@ -219,7 +219,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_slice", &phi::DenseTensor::Slice)
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
-           [](const phi::DenseTensor &self) { return self.IsInitialized(); })
+           [](const phi::DenseTensor &self) { return self.initialized(); })
       .def("_get_dims",
            [](const phi::DenseTensor &self) {
              return common::vectorize(self.dims());

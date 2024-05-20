@@ -53,18 +53,22 @@ def _generate_unique_var_name(prefix):
     return unique_name.generate(prefix)
 
 
-def _get_pir_persistable_var_names(program):
+from paddle.static.pir_io import get_pir_parameters
+
+
+def _get_pir_parameters_var_names(program):
     persistable_vars = []
     persistable_names = []
     rename_new_old_dict = {}
-    for block in program.blocks:
-        for var in block.all_parameters():
-            if var.persistable:
-                persistable_vars.append(var)
-                origin_name = var.name
-                var.name = _generate_unique_var_name(var.name)
-                rename_new_old_dict[var.name] = origin_name
-                persistable_names.append(var.name)
+    param, opt = get_pir_parameters(program)
+    vars = param + opt
+    for var in vars:
+        persistable_vars.append(var)
+        origin_name = var.name
+        var.name = _generate_unique_var_name(var.name)
+        rename_new_old_dict[var.name] = origin_name
+        persistable_names.append(var.name)
+
     return (
         persistable_vars,
         persistable_names,
@@ -79,8 +83,8 @@ class _PirProgramHolder:
         # input, output, persistable,
         self._input_vars = []
         self._output_vars = []
-        self._persistable_vars = []
-        self._persistable_names = []
+        self._parameter_vars = []
+        self._parameter_names = []
 
         self.support_train = trainable
         # append suffix var name dict
@@ -91,11 +95,10 @@ class _PirProgramHolder:
 
     def _preprocess(self):
         (
-            self._persistable_vars,
-            self._persistable_names,
+            self._parameter_vars,
+            self._parameter_names,
             self._suffix_varname_dict,
-        ) = _get_pir_persistable_var_names(self._infer_program)
-
+        ) = _get_pir_parameters_var_names(self._infer_program)
         block = self._infer_program.global_block()
         for op in block.ops:
             if op.name() == 'pd_op.data':
@@ -135,11 +138,11 @@ class _PirProgramHolder:
 
     @property
     def persistable_names(self):
-        return self._persistable_names
+        return self._parameter_names
 
     @property
     def persistable_vars(self):
-        return self._persistable_vars
+        return self._parameter_vars
 
 
 # [ PirTranslatedLayer : Run program in dygraph mode ]
@@ -173,10 +176,11 @@ class _PirProgramHolder:
 # which need get var info from program desc
 
 
-def _load_pir_persistable_vars(model_path, program_holder, params_filename):
+def _load_pir_parameter_vars(model_path, program_holder, params_filename):
     # construct var dict
     load_var_dict = {}
     load_var_list = []
+    other_var_dict = {}
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
     persistable_var_name = program_holder.persistable_names
@@ -193,6 +197,12 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
                 name=var.name,
                 persistable=True,
             )
+
+            new_var.stop_gradient = var.stop_gradient
+            load_var_dict[name] = new_var
+            load_var_list.append(new_var)
+            load_densetensor_list.append(new_var.get_tensor())
+
         else:
             new_var = core.eager.Tensor(
                 dtype=datatype_to_vartype[var.dtype],
@@ -202,11 +212,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
                 place=framework._current_expected_place(),
                 persistable=False,
             )
-
-        new_var.stop_gradient = var.stop_gradient
-        load_var_dict[name] = new_var
-        load_var_list.append(new_var)
-        load_densetensor_list.append(new_var.get_tensor())
+            other_var_dict[name] = new_var
 
     # load all vars
     assert params_filename is not None, "params_filename should not be None."
@@ -226,6 +232,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
             % var_file_path
         )
 
+    load_var_dict.update(other_var_dict)
     return load_var_dict
 
 
@@ -285,7 +292,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
         # When saving XX, there is only '*.pdmodel'
         return {}
     else:
-        var_dict = _load_pir_persistable_vars(
+        var_dict = _load_pir_parameter_vars(
             model_path, programs['forward'], params_filename
         )
         model_name = params_filename[: -len(INFER_PARAMS_SUFFIX)]
@@ -305,7 +312,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
                 continue
 
             var_dict.update(
-                _load_pir_persistable_vars(
+                _load_pir_parameter_vars(
                     model_path, programs[func_name], file_name
                 )
             )
