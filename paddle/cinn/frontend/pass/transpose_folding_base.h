@@ -103,10 +103,18 @@ class TransposeFoldingBase : public ProgramPass {
         !skip_instrs_.count((*instr)->op_type)) {
       return {};
     }
-    CHECK_EQ((*instr)->inputs.size(), 1UL)
-        << "The op " << (*instr)->op_type << " should has 1 input.";
-    CHECK_EQ((*instr)->outputs.size(), 1UL)
-        << "The op " << (*instr)->op_type << " should has 1 output.";
+    PADDLE_ENFORCE_EQ(
+        (*instr)->inputs.size(),
+        1UL,
+        phi::errors::InvalidArgument("The size of *instr's inputs is incorrect."
+                                     "Expected size is 1, but receive %d.",
+                                     (*instr)->inputs.size()));
+    PADDLE_ENFORCE_EQ((*instr)->outputs.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The size of *instr's outputs is incorrect."
+                          "Expected size is 1, but receive %d.",
+                          (*instr)->outputs.size()));
 
     VLOG(5) << "Try get matmul's folding instructions begin from ["
             << (*instr)->inputs[0]->id << "]";
