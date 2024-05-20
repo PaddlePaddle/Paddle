@@ -212,7 +212,6 @@ template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   if (has_dynamic_shape(x.shape()) || has_dynamic_shape(num_classes.shape())) {
     auto num_classes_tensor = get_slice<T>(num_classes, 0);
-
     auto x_shape_tensor = shape<T>(x);
     auto x_num_tensor = prod<T>(x_shape_tensor, {0}, true, false);
 
