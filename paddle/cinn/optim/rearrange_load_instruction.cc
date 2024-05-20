@@ -23,7 +23,8 @@
 #define VisitImpl(_TYPE)                                 \
   void Visit(const ir::_TYPE *op, Expr *expr) override { \
     auto old_last_op = last_op;                          \
-    last_op = Expr(const_cast<ir::_TYPE *>(op));         \
+    auto *ncop = const_cast<ir::_TYPE *>(op);            \
+    last_op = Expr(ncop);                                \
     ir::IRMutator<>::Visit(op, expr);                    \
     last_op = old_last_op;                               \
   }
@@ -34,6 +35,10 @@ namespace optim {
 namespace {
 
 struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
+  RearrangeLoadInstructionMutator() {
+    is_inner_store = false;
+    last_op = Expr(nullptr);
+  }
   void operator()(Expr *expr) { Visit(expr, expr); }
 
  private:
@@ -43,7 +48,6 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
           ir::_Var_::Make(common::UniqName("local_var"), op->type());
       auto let_op = ir::Let::Make(local_var, const_cast<ir::Load *>(op));
       let_list.push_back(let_op);
-      collection_name_map_expr[op->name()] = local_var;
       last_op->replace(Expr(const_cast<ir::Load *>(op)), local_var);
     }
   }
@@ -58,6 +62,8 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   }
 
   void Visit(const ir::Block *op, Expr *expr) override {
+    auto old_last_op = last_op;
+    last_op = Expr(const_cast<ir::Block *>(op));
     int old_let_size = let_list.size();
     int old_stmts_size = stmts_list.size();
 
@@ -70,12 +76,14 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     if (let_list.size() > old_let_size) {
       replaceBlock(const_cast<ir::Block *>(op), old_let_size, old_stmts_size);
     }
+    last_op = old_last_op;
+  }
+
+  void Visit(const ir::Expr *op, Expr *expr) override {
+    ir::IRMutator<>::Visit(op, expr);
   }
 
   void replaceBlock(ir::Block *op, int old_let_size, int old_stmts_size) {
-    auto old_last_op = last_op;
-    last_op = Expr(const_cast<ir::Block *>(op));
-
     std::vector<Expr> new_stmts;
 
     for (int i = old_let_size; i < let_list.size(); i++) {
@@ -95,23 +103,21 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     }
 
     op->stmts = new_stmts;
-
-    last_op = old_last_op;
   }
 
-  std::unordered_map<std::string, ir::Expr> collection_name_map_expr;
+  // std::unordered_map<std::string, ir::Expr> collection_name_map_expr;
   std::vector<Expr> let_list;
   std::vector<Expr> stmts_list;
-  bool is_inner_store = false;
-  Expr last_op = Expr(nullptr);
+  bool is_inner_store;
+  Expr last_op;
 
-  VisitImpl(Expr);
+  // VisitImpl(Expr);
   VisitImpl(ScheduleBlock);
   VisitImpl(For);
-  VisitImpl(IntImm);
-  VisitImpl(UIntImm);
-  VisitImpl(FloatImm);
-  VisitImpl(StringImm);
+  // VisitImpl(IntImm);
+  // VisitImplO(UIntImm);
+  // VisitImpl(FloatImm);
+  // VisitImpl(StringImm);
   VisitImpl(Cast);
   VisitImpl(PolyFor);
   VisitImpl(Select);
