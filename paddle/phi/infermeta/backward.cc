@@ -1186,16 +1186,16 @@ void SequenceConvGradInferMeta(const MetaTensor& x,
                                MetaTensor* x_grad,
                                MetaTensor* padding_data_grad,
                                MetaTensor* filter_grad) {
-  if (padding_trainable && padding_data_grad->initialized()) {
+  if (padding_trainable && padding_data_grad != nullptr) {
     padding_data_grad->set_dims(padding_data.dims());
     padding_data_grad->set_dtype(padding_data.dtype());
   }
-  if (x_grad->initialized()) {
+  if (x_grad != nullptr) {
     x_grad->set_dims(x.dims());
     x_grad->share_lod(x);
     x_grad->set_dtype(x.dtype());
   }
-  if (filter_grad->initialized()) {
+  if (filter_grad != nullptr) {
     filter_grad->set_dims(filter.dims());
     filter_grad->set_dtype(filter.dtype());
   }
