@@ -18,7 +18,6 @@
 
 namespace pir {
 class Type;
-
 class VectorType;
 class DenseTensorType;
 class BFloat16Type;
@@ -58,13 +57,16 @@ class Complex128Type;
 
 namespace cinn::dialect::ir {
 
+class NullType;
 class UnclassifiedType;
 
-using TypeAdtTypeIdBase = ::common::AdtBaseTypeId<
+using TypeAdtTypeIdBase =
+    ::common::AdtBaseTypeId<NullType,
 #define MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE(cls) cls,
-    FOR_EACH_PIR_ALTERNATIVE_TYPLE(MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE)
+                            FOR_EACH_PIR_ALTERNATIVE_TYPLE(
+                                MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE)
 #undef MAKE_TYPE_ADT_TYPE_ID_ALTERNATIVE
-        UnclassifiedType>;
+                                UnclassifiedType>;
 
 struct TypeAdtTypeId : public TypeAdtTypeIdBase {
   using TypeAdtTypeIdBase::TypeAdtTypeIdBase;
