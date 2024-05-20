@@ -52,7 +52,7 @@ bool InferSymbolicShapeContext::HasShapeOrDataForValue(Value val) const {
 }
 
 const symbol::ShapeOrDataDimExprs&
-InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) {
+InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
   // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprs
   if (!val) {
     static symbol::ShapeOrDataDimExprs empty{
@@ -60,13 +60,8 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) {
     return empty;
   }
   if (!HasShapeOrDataForValue(val)) {
-    // backtrack to infer shape from defining op
-    if (!val.defining_op()) {
-      SetStaticShapeForValue(val);
-    } else {
-      PADDLE_THROW(phi::errors::Fatal(
-          "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
-    }
+    PADDLE_THROW(phi::errors::Fatal(
+        "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
   }
   return value_id_to_shape_or_data_.at(val.impl()->id());
 }
