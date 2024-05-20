@@ -639,10 +639,8 @@ const std::vector<std::string> kPirMkldnnPasses {
       "matmul_add_act_fuse_pass",            //
       "fc_onednn_enable_pass",               //
       "fc_activation_fuse_pass",             //
-#if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
-    !defined(PADDLE_WITH_DNNL)
-  // self_attention_fuse_pass is not allowed under this definition
-#else
+#if defined(PADDLE_WITH_AVX512F) && defined(PADDLE_WITH_MKLML) && \
+    defined(PADDLE_WITH_DNNL)
       "self_attention_fuse_pass",  //
 #endif
       "softplus_activation_fuse_pass",            //
