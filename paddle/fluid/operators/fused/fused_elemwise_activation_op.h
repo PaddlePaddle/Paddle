@@ -19,8 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/phi/kernels/funcs/compound_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
@@ -62,22 +62,23 @@ static void RunBinaryCompoundFunctor(const framework::ExecutionContext &ctx,
   phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
       compound_func(binary_functor, unary_functor);
   int axis = ctx.Attr<int>("axis");
+  auto &dev_ctx = ctx.template device_context<DeviceContext>();
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<
+    phi::funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
         phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         true /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+        dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<
+    phi::funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
         phi::funcs::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         false /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+        dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
 
@@ -99,23 +100,23 @@ static void RunUnaryCompoundFunctors(const framework::ExecutionContext &ctx,
 
   phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
       compound_func(unary_functor, binary_functor);
-
+  auto &dev_ctx = ctx.template device_context<DeviceContext>();
   if (ctx.Attr<bool>("save_intermediate_out")) {
-    FusedElemwiseAndActComputeEx<
+    phi::funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
         phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         true /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+        dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
-    FusedElemwiseAndActComputeEx<
+    phi::funcs::FusedElemwiseAndActComputeEx<
         DeviceContext,
         T,
         phi::funcs::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         false /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+        dev_ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   }
 }
 
@@ -154,8 +155,9 @@ static void RunBinaryCompoundGradFunctors(
                                                             BinaryGradFunctor,
                                                             UnaryFunctor>;
 
+  auto &dev_ctx = ctx.template device_context<DeviceContext>();
   if (in_intermediate_out) {
-    FusedElemwiseAndActGradComputeEx<
+    phi::funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         BinaryCompoundDxFunctor,
@@ -163,7 +165,7 @@ static void RunBinaryCompoundGradFunctors(
         BinaryCompoundDIntermediateOutFunctor,
         true /*UseIntermediateOut*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx,
+        dev_ctx,
         in_x,
         in_y,
         in_out,
@@ -179,7 +181,7 @@ static void RunBinaryCompoundGradFunctors(
         BinaryCompoundDIntermediateOutFunctor(binary_grad_functor,
                                               unary_functor));
   } else {
-    FusedElemwiseAndActGradComputeEx<
+    phi::funcs::FusedElemwiseAndActGradComputeEx<
         DeviceContext,
         T,
         BinaryCompoundDxFunctor,
@@ -187,7 +189,7 @@ static void RunBinaryCompoundGradFunctors(
         BinaryCompoundDIntermediateOutFunctor,
         false /*UseIntermediateOut*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx,
+        dev_ctx,
         in_x,
         in_y,
         in_out,
@@ -245,15 +247,17 @@ static void RunUnaryCompoundGradFunctors(
                                                         BinaryFunctor,
                                                         InPlace>;
 
+  auto &dev_ctx = ctx.template device_context<DeviceContext>();
   if (in_intermediate_out) {
-    FusedElemwiseAndActGradComputeEx<DeviceContext,
-                                     T,
-                                     UnaryCompoundDxFunctor,
-                                     UnaryCompoundDyFunctor,
-                                     UnaryCompoundDIntermediateFunctor,
-                                     true /*UseIntermediateOut*/,
-                                     true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx,
+    phi::funcs::FusedElemwiseAndActGradComputeEx<
+        DeviceContext,
+        T,
+        UnaryCompoundDxFunctor,
+        UnaryCompoundDyFunctor,
+        UnaryCompoundDIntermediateFunctor,
+        true /*UseIntermediateOut*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
+        dev_ctx,
         in_x,
         in_y,
         in_out,
@@ -269,14 +273,15 @@ static void RunUnaryCompoundGradFunctors(
             unary_grad_functor, binary_functor, binary_grad_functor),
         UnaryCompoundDIntermediateFunctor(unary_grad_functor, binary_functor));
   } else {
-    FusedElemwiseAndActGradComputeEx<DeviceContext,
-                                     T,
-                                     UnaryCompoundDxFunctor,
-                                     UnaryCompoundDyFunctor,
-                                     UnaryCompoundDIntermediateFunctor,
-                                     false /*UseIntermediateOut*/,
-                                     true /*SameShapeOfIntermediateOutAndOut*/>(
-        ctx,
+    phi::funcs::FusedElemwiseAndActGradComputeEx<
+        DeviceContext,
+        T,
+        UnaryCompoundDxFunctor,
+        UnaryCompoundDyFunctor,
+        UnaryCompoundDIntermediateFunctor,
+        false /*UseIntermediateOut*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
+        dev_ctx,
         in_x,
         in_y,
         in_out,

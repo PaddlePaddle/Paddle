@@ -13,7 +13,7 @@
 #include <string>
 
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -979,8 +979,9 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_cw = c * out_w;
   int pixelNum = n * out_cw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("linear" == interp_method) {
     KeLinearInterpFw<T><<<config.block_per_grid,
@@ -1089,8 +1090,9 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpFw<T>
@@ -1255,8 +1257,9 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpFw<T>
@@ -1353,8 +1356,9 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   int out_cw = c * out_w;
   int pixelNum = n * out_cw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("linear" == interp_method) {
     KeLinearInterpBw<T>
@@ -1457,8 +1461,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpBw<T>
@@ -1611,8 +1616,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpBw<T>

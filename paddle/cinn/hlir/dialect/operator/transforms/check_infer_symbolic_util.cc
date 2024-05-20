@@ -28,6 +28,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
 PD_DECLARE_bool(prim_all);
@@ -353,8 +354,9 @@ struct ShapeSignatureGenerator {
   ConstrainedSymbolNamesList GetConstrainedSymbolNamesList(
       const ShapeAnalysisPtr& op_shape_analysis) {
     ConstrainedSymbolNamesList cstr_list;
-    auto* cstr_manager = op_shape_analysis->GetConstraintsManager();
-    VLOG(0) << "constraints:" << *cstr_manager;
+    const auto& cstr_manager = op_shape_analysis->constraints_manager();
+
+    VLOG(0) << "constraints:" << cstr_manager;
     cstr_manager->VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {

@@ -27,8 +27,13 @@
 
 namespace pir {
 
+void InferSymExprForAllValues(ModuleOp module_op);
+
 class IR_API InferSymbolicShapeContext {
  public:
+  InferSymbolicShapeContext() = default;
+  InferSymbolicShapeContext(const InferSymbolicShapeContext&) = delete;
+  InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
   void Init();
 
   const std::string GetNextSymName();
@@ -56,11 +61,13 @@ class IR_API InferSymbolicShapeContext {
   bool IsBroadcastable(const symbol::DimExpr& lhs,
                        const symbol::DimExpr& rhs) const;
 
-  symbol::ConstraintsManager* GetConstraintsManager();
-
   void PrintShapeOrDatas() const;
 
   int64_t GetSymbolIndex();
+
+  const symbol::ConstraintsManager& constraints_manager() const {
+    return constraints_manager_;
+  }
 
  private:
   symbol::ShapeOrDataDimExprs SimplifyBroadcastForShapeOrData(
@@ -69,7 +76,6 @@ class IR_API InferSymbolicShapeContext {
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 
- private:
   int64_t next_sym_idx_ = 0;
 
   std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
@@ -103,8 +109,6 @@ class IR_API ShapeConstraintIRAnalysis final
 
   bool IsBroadcastable(const symbol::DimExpr& lhs,
                        const symbol::DimExpr& rhs) const;
-
-  symbol::ConstraintsManager* GetConstraintsManager();
 
   // Used to debug
   void PrintShapeOrDatas() const;
@@ -145,7 +149,17 @@ class IR_API ShapeConstraintIRAnalysis final
     return &context_;
   }
 
+  const symbol::ConstraintsManager& constraints_manager() const {
+    return context_.constraints_manager();
+  }
+
  private:
+  InferSymbolicShapeContext* MutInferSymbolicShapeContext() {
+    return &context_;
+  }
+
+  friend void InferSymExprForAllValues(ModuleOp module_op);
+
   void SetStaticShapeForValue(Value val);
 
   void InferShapeOrDataForValue(Value val);

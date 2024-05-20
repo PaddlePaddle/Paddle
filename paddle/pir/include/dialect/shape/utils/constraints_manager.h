@@ -23,6 +23,10 @@ namespace symbol {
 
 class IR_API ConstraintsManager {
  public:
+  ConstraintsManager() = default;
+  ConstraintsManager(const ConstraintsManager&) = delete;
+  ConstraintsManager(ConstraintsManager&&) = delete;
+
   void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
 
   bool IsEqual(const DimExpr& lhs, const DimExpr& rhs) const;
@@ -42,7 +46,7 @@ class IR_API ConstraintsManager {
 
   template <typename DoEachT>
   void EqualConstraintsVisitor(const DoEachT& DoEach) {
-    auto equals_parents = equals_.GetMap();
+    auto equals_parents = equals_.MutMap();
     for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
       DoEach(it);
     }
@@ -65,15 +69,23 @@ class IR_API ConstraintsManager {
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
+  using EqualConstraints = common::UnionFindSet<DimExpr>;
+  using GTOneConstraints = std::unordered_set<DimExpr>;
+  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
+
+  const EqualConstraints& equals() const { return equals_; }
+
+  const GTOneConstraints& gtones() const { return gtones_; }
+
+  const BroadcastableConstraints& broadcastables() const {
+    return broadcastables_;
+  }
+
  private:
   void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;
-
-  using EqualConstraints = common::UnionFindSet<DimExpr>;
-  using GTOneConstraints = std::unordered_set<DimExpr>;
-  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
 
   EqualConstraints equals_;
   GTOneConstraints gtones_;

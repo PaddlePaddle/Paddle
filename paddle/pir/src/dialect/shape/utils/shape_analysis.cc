@@ -82,7 +82,7 @@ void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
     for (int i = 0; i < type_info.dims().size(); ++i) {
       int dim = type_info.dims()[i];
       if (dim > 0) {
-        static_shape.emplace_back(symbol::DimExpr{dim});
+        static_shape.emplace_back(dim);
       } else {
         static_shape.emplace_back(GetNextSymName());
       }
@@ -165,10 +165,6 @@ void InferSymbolicShapeContext::AddBroadcastableCstr(
 bool InferSymbolicShapeContext::IsBroadcastable(
     const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const {
   return constraints_manager_.IsBroadcastable(lhs, rhs);
-}
-
-symbol::ConstraintsManager* InferSymbolicShapeContext::GetConstraintsManager() {
-  return &constraints_manager_;
 }
 
 symbol::ShapeOrDataDimExprs
@@ -449,10 +445,6 @@ bool ShapeConstraintIRAnalysis::IsGreatThanOne(
 bool ShapeConstraintIRAnalysis::IsBroadcastable(
     const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const {
   return context_.IsBroadcastable(lhs, rhs);
-}
-
-symbol::ConstraintsManager* ShapeConstraintIRAnalysis::GetConstraintsManager() {
-  return context_.GetConstraintsManager();
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
