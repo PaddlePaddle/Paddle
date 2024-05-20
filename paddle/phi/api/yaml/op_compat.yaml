@@ -2783,7 +2783,7 @@
   outputs :
     output : Output
   attrs :
-    {scale : Scale, shift : Shift, include_self: Include_self}
+    {scale : Scale, shift : Shift, is_negative_input: is_negative_input}
 
 - op : quantize_linear
   inputs :
