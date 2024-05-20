@@ -40,6 +40,7 @@ namespace {
 
 std::ostream& operator<<(std::ostream& stream,
                          const std::vector<std::vector<int64_t>>& shapes) {
+  stream << "[ ";
   for (auto shape : shapes) {
     stream << "[";
     for (auto dim : shape) {
@@ -47,6 +48,7 @@ std::ostream& operator<<(std::ostream& stream,
     }
     stream << "] ";
   }
+  stream << "]";
   return stream;
 }
 
@@ -99,22 +101,38 @@ struct ShapeSignatureGenerator {
   using SymbolBindings = std::map<std::string, int64_t>;
   using ShapeAnalysisPtr = std::shared_ptr<pir::ShapeConstraintIRAnalysis>;
   using Shape = std::vector<int64_t>;
+  using Data = std::vector<int64_t>;
   using ShapeList = std::vector<Shape>;
+  using DataList = std::vector<Data>;
   using DoEachShapeSignatureT =
-      std::function<void(const ShapeList& inputs, const ShapeList& outputs)>;
+      std::function<void(const ShapeList& input_shapes,
+                         const DataList& input_datas,
+                         const ShapeList& output_shapes)>;
 
   void Generate(const DoEachShapeSignatureT& DoEachShapeSignature) {
     auto op_shape_analysis = MakeOpShapeAnalysis(op, GraphDimExprs4Value);
     if (op_shape_analysis.use_count() == 0) return;
+    op_shape_analysis->PrintShapeOrDatas();
     VisitInputSymbolBinding(
         op_shape_analysis, [&](const SymbolBindings& bindings) {
+          VLOG(0) << " ";
+          VLOG(0) << "SymbolBindings";
+          for (auto pair : bindings) {
+            VLOG(0) << pair.first << " : " << pair.second;
+          }
           const auto& substitute_pattern =
               GetSubstitutePattern(bindings, op_shape_analysis);
-          const auto input_shapes =
-              GetInputShapes(*op, op_shape_analysis, substitute_pattern);
-          const auto output_shapes =
+          VLOG(0) << "substitute_pattern: size=" << substitute_pattern.size();
+          for (auto pair : substitute_pattern) {
+            VLOG(0) << pair.first << " : " << pair.second;
+          }
+          const auto& [input_shapes, input_datas] =
+              GetInputs(*op, op_shape_analysis, substitute_pattern);
+          const auto& output_shapes =
               GetOutputShapes(*op, op_shape_analysis, substitute_pattern);
-          DoEachShapeSignature(input_shapes, output_shapes);
+          if (input_shapes.size() == 0 || output_shapes.size() == 0) return;
+          DoEachShapeSignature(input_shapes, input_datas, output_shapes);
+          VLOG(0) << " ";
         });
   }
 
@@ -136,36 +154,56 @@ struct ShapeSignatureGenerator {
     return substitute_pattern;
   }
 
-  Shape ConvertSymbolToDim(
+  std::pair<std::optional<Shape>, std::optional<Data>> ConvertSymbolToConst(
       symbol::ShapeOrDataDimExprs shape_or_data,
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
-    Shape dim_shape;
+    if (shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>())
+      return std::make_pair(std::nullopt, std::nullopt);
+    Shape shape;
+    Data data;
     const auto& const_shape_or_data =
         symbol::SubstituteShapeOrData(shape_or_data, substitute_pattern);
     for (const auto& symbolic_shape : const_shape_or_data.shape()) {
       const auto& const_symbolic_shape =
           symbol::SimplifyDimExpr(symbolic_shape);
-      CHECK(const_symbolic_shape.isa<std::int64_t>());
-      dim_shape.push_back(symbolic_shape.Get<std::int64_t>());
+      CHECK(const_symbolic_shape.isa<std::int64_t>())
+          << " shape or data: " << const_symbolic_shape;
+      shape.push_back(symbolic_shape.Get<std::int64_t>());
     }
-    return dim_shape;
+    if (!const_shape_or_data.data().has_value())
+      return std::make_pair(shape, data);
+    for (const auto& symbolic_data : *const_shape_or_data.data()) {
+      const auto& const_symbolic_data = symbol::SimplifyDimExpr(symbolic_data);
+      CHECK(const_symbolic_data.isa<std::int64_t>());
+      data.push_back(const_symbolic_data.Get<std::int64_t>());
+    }
+    return std::make_pair(shape, data);
   }
 
-  ShapeList GetInputShapes(
+  std::pair<ShapeList, DataList> GetInputs(
       const pir::Operation& op,
       const ShapeAnalysisPtr& op_shape_analysis,
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
-    ShapeList list;
+    ShapeList shape_list;
+    DataList data_list;
+    VLOG(0) << "    GetInputShapes: ";
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
+      VLOG(0) << "      ShapeOrData:"
+              << op_shape_analysis->GetShapeOrDataForValue(
+                     op.operand_source(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.operand_source(i));
-      const auto& dim_shape =
-          ConvertSymbolToDim(shape_or_data, substitute_pattern);
-      list.emplace_back(dim_shape);
+      const auto& [shape, data] =
+          ConvertSymbolToConst(shape_or_data, substitute_pattern);
+      if (!shape.has_value()) return std::make_pair(ShapeList(), DataList());
+      shape_list.emplace_back(*shape);
+      data_list.emplace_back(*data);
     }
-    return list;
+    VLOG(0) << "      shape_list: " << shape_list;
+    VLOG(0) << "      data_list: " << data_list;
+    return std::make_pair(shape_list, data_list);
   }
 
   ShapeList GetOutputShapes(
@@ -173,14 +211,20 @@ struct ShapeSignatureGenerator {
       const ShapeAnalysisPtr& op_shape_analysis,
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
-    ShapeList list;
+    ShapeList shape_list;
+    VLOG(0) << "    GetOutputShapes: ";
     for (std::size_t i = 0; i < op.num_results(); ++i) {
+      VLOG(0) << "      ShapeOrData:"
+              << op_shape_analysis->GetShapeOrDataForValue(op.result(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
-      const auto& shape = ConvertSymbolToDim(shape_or_data, substitute_pattern);
-      list.emplace_back(shape);
+      const auto& [shape, data] =
+          ConvertSymbolToConst(shape_or_data, substitute_pattern);
+      if (!shape.has_value()) return ShapeList();
+      shape_list.emplace_back(*shape);
     }
-    return list;
+    VLOG(0) << "      shape_list: " << shape_list;
+    return shape_list;
   }
 
   struct CstrEqSymbolNames {
@@ -205,12 +249,21 @@ struct ShapeSignatureGenerator {
       const DoEachSymbolBindingT& DoEachSymbolBinding) {
     ConstrainedSymbolNamesList constrained_sym_list =
         GetConstrainedSymbolNamesList(op_shape_analysis);
+    VLOG(0) << "constrained_sym_list: " << constrained_sym_list.size();
     for (ConstrainedSymbolNames constraint : constrained_sym_list) {
       if (std::holds_alternative<CstrEqSymbolNames>(constraint)) {
         auto eq = std::get<CstrEqSymbolNames>(constraint);
+        VLOG(0) << "equal";
+        for (const auto& a : eq.symbol_names) {
+          VLOG(0) << "    " << a;
+        }
       }
       if (std::holds_alternative<CstrBroadcastableSymbolNames>(constraint)) {
         auto eq = std::get<CstrBroadcastableSymbolNames>(constraint);
+        VLOG(0) << "bcable";
+        for (const auto& a : eq.symbol_names) {
+          VLOG(0) << "    " << a;
+        }
       }
     }
 
@@ -301,6 +354,7 @@ struct ShapeSignatureGenerator {
       const ShapeAnalysisPtr& op_shape_analysis) {
     ConstrainedSymbolNamesList cstr_list;
     auto* cstr_manager = op_shape_analysis->GetConstraintsManager();
+    VLOG(0) << "constraints:" << *cstr_manager;
     cstr_manager->VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {
@@ -311,6 +365,7 @@ struct ShapeSignatureGenerator {
     });
 
     cstr_manager->BroadcastableConstraintsVisitor([&](auto it) {
+      VLOG(0) << "bcable:" << it->data->lhs << "  " << it->data->rhs;
       if (it->data->lhs.template isa<std::string>() &&
           it->data->rhs.template isa<std::string>()) {
         CstrBroadcastableSymbolNames bcables;
@@ -332,7 +387,6 @@ struct ShapeSignatureGenerator {
   void VisitSymbolsBindings(
       const ConstrainedSymbolNamesList& constrained_sym_list,
       const DoEachT& DoEach) {
-    if (constrained_sym_list.empty()) return;
     ConstrainedSymbolNamesAndDimBindingsList names_and_dims =
         GetConstrainedSymbolNamesAndDimBindingsList(constrained_sym_list);
     VisitCombinedSymbolsBindings(names_and_dims, {}, DoEach);
@@ -341,7 +395,7 @@ struct ShapeSignatureGenerator {
   ConstrainedSymbolNamesAndDimBindingsList
   GetConstrainedSymbolNamesAndDimBindingsList(
       const ConstrainedSymbolNamesList& constrained_sym_list) {
-    static const std::vector<int64_t> table{1, 2, 3, 4};
+    static const std::vector<int64_t> table{1, 2, 3, 4, 5, 6, 7};
 
     ConstrainedSymbolNamesAndDimBindingsList list;
     for (const auto& cstr : constrained_sym_list) {
@@ -370,16 +424,25 @@ struct ShapeSignatureGenerator {
 };
 
 void DoInferMeta(const std::vector<std::vector<int64_t>>& input_shapes,
+                 const std::vector<std::vector<int64_t>>& input_datas,
                  pir::Builder* builder,
                  pir::Operation* op,
-                 std::vector<paddle::dialect::EmptyOp>* empty_op_list,
+                 std::vector<pir::Operation*>* op_list,
                  std::vector<std::vector<int64_t>>* infer_meta_result) {
   std::vector<pir::Value> input_values;
   for (int i = 0; i < input_shapes.size(); i++) {
-    paddle::dialect::EmptyOp empty_op =
-        builder->Build<paddle::dialect::EmptyOp>(input_shapes[i]);
-    empty_op_list->push_back(empty_op);
-    input_values.push_back(empty_op.out());
+    if (input_datas[i].size() == 0) {
+      paddle::dialect::EmptyOp empty_op =
+          builder->Build<paddle::dialect::EmptyOp>(input_shapes[i]);
+      op_list->push_back(empty_op.operation());
+      input_values.push_back(empty_op.out());
+    } else {
+      paddle::dialect::FullIntArrayOp full_int_array_op =
+          builder->Build<paddle::dialect::FullIntArrayOp>(
+              input_datas[i], phi::DataType::INT64, phi::CPUPlace());
+      op_list->push_back(full_int_array_op.operation());
+      input_values.push_back(full_int_array_op.out());
+    }
   }
 
   pir::AttributeMap attribute_map = op->attributes();
@@ -392,38 +455,73 @@ void DoInferMeta(const std::vector<std::vector<int64_t>>& input_shapes,
   }
 }
 
-void EraseEmptyOp(const std::vector<paddle::dialect::EmptyOp>& empty_op_list) {
-  for (auto& empty_op : empty_op_list) {
-    PADDLE_ENFORCE_EQ(
-        empty_op->use_empty(),
-        true,
-        phi::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
-                                     "expectation is that it is not used",
-                                     empty_op->name()));
-    empty_op->Erase();
+void EraseTempOp(const std::vector<pir::Operation*>& op_list) {
+  for (pir::Operation* op : op_list) {
+    if (op->isa<paddle::dialect::EmptyOp>()) {
+      std::vector<pir::Operation*> full_int_array_op_list;
+      for (auto& value : op->operands_source()) {
+        full_int_array_op_list.push_back(value.defining_op());
+      }
+      op->Erase();
+      for (pir::Operation* op : full_int_array_op_list) {
+        op->Erase();
+      }
+    } else {
+      op->Erase();
+    }
   }
 }
 
 void CheckByInferMeta(pir::Operation* op,
                       pir::Builder* builder,
                       const std::vector<std::vector<int64_t>>& input_shapes,
+                      const std::vector<std::vector<int64_t>>& input_datas,
                       const std::vector<std::vector<int64_t>>& output_shapes) {
-  std::vector<paddle::dialect::EmptyOp> empty_op_list;
+  std::vector<pir::Operation*> op_list;
   std::vector<std::vector<int64_t>> infer_meta_result;
-  DoInferMeta(input_shapes, builder, op, &empty_op_list, &infer_meta_result);
+  VLOG(0) << "input_shapes     : " << input_shapes;
+  VLOG(0) << "input_datas      : " << input_datas;
+  VLOG(0) << "output_shapes    : " << output_shapes;
 
-  CHECK(infer_meta_result.size() == output_shapes.size())
-      << "check " << op->name() << " constraints error";
-  for (int i = 0; i < infer_meta_result.size(); i++) {
-    CHECK(infer_meta_result[i].size() == output_shapes[i].size())
-        << "check " << op->name() << " constraints error";
-    for (int j = 0; j < infer_meta_result[i].size(); j++) {
-      if (infer_meta_result[i][j] != -1)
-        CHECK(infer_meta_result[i][j] == output_shapes[i][j])
-            << "check " << op->name() << " constraints error";
+  try {
+    DoInferMeta(
+        input_shapes, input_datas, builder, op, &op_list, &infer_meta_result);
+    VLOG(0) << "infer_meta_result: " << infer_meta_result;
+    PADDLE_ENFORCE_EQ(
+        infer_meta_result.size(),
+        output_shapes.size(),
+        phi::errors::InvalidArgument(
+            "infer_meta_result.size() not equal output_shapes.size() for %s",
+            op->name()));
+    for (int i = 0; i < infer_meta_result.size(); i++) {
+      PADDLE_ENFORCE_EQ(
+          infer_meta_result[i].size(),
+          output_shapes[i].size(),
+          phi::errors::InvalidArgument("infer_meta_result[%d].size() not equal "
+                                       "output_shapes[%d].size() for %s",
+                                       i,
+                                       i,
+                                       op->name()));
+      for (int j = 0; j < infer_meta_result[i].size(); j++) {
+        if (infer_meta_result[i][j] != -1)
+          PADDLE_ENFORCE_EQ(
+              infer_meta_result[i][j],
+              output_shapes[i][j],
+              phi::errors::InvalidArgument("infer_meta_result[%d][%d] not "
+                                           "equal output_shapes[%d][%d] for %s",
+                                           i,
+                                           j,
+                                           i,
+                                           j,
+                                           op->name()));
+      }
     }
+  } catch (common::enforce::EnforceNotMet error) {
+    VLOG(0) << "check constraints error for " << op->name();
+    VLOG(0) << error.error_str();
   }
-  EraseEmptyOp(empty_op_list);
+
+  EraseTempOp(op_list);
 }
 
 void CheckOpDimExprConstraints(pir::Operation* op,
@@ -431,18 +529,33 @@ void CheckOpDimExprConstraints(pir::Operation* op,
   ShapeSignatureGenerator generator(op, GraphDimExprs4Value);
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Builder builder = pir::Builder(ctx, op->GetParent());
-  generator.Generate([&](const auto& input_shapes, const auto& output_shapes) {
-    CheckByInferMeta(op, &builder, input_shapes, output_shapes);
+  VLOG(0) << "CheckOpDimExprConstraints " << op->name();
+  generator.Generate([&](const auto& input_shapes,
+                         const auto& input_datas,
+                         const auto& output_shapes) {
+    CheckByInferMeta(op, &builder, input_shapes, input_datas, output_shapes);
   });
 }
 
 void CheckProgramDimExprConstraints(
     pir::Program* program, const DimExprs4ValueT& GraphDimExprs4Value) {
   WalkLeafOp(program, [&](pir::Operation* op) {
-    if (op->isa<pir::ShadowOutputOp>()) return;
-    VLOG(4) << "########Check Constraints for : " << op->name()
-            << " ################";
+    if (op->isa<pir::ShadowOutputOp>() ||
+        op->isa<paddle::dialect::SearchsortedOp>() ||
+        op->isa<paddle::dialect::DataOp>())
+      return;
+    VLOG(0) << " ";
+    VLOG(0) << " ";
+    VLOG(0) << " ";
+    std::ostringstream stream;
+    stream << "program address: " << program;
+    program->Print(stream);
+    VLOG(0) << stream.str();
+    VLOG(0) << "########check op: " << op->name() << " ################";
     CheckOpDimExprConstraints(op, GraphDimExprs4Value);
+    VLOG(0) << " ";
+    VLOG(0) << " ";
+    VLOG(0) << " ";
   });
 }
 

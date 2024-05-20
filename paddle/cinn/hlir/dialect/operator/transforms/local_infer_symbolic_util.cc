@@ -91,6 +91,7 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
 std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
     const pir::Operation* op, const DimExprs4ValueT& GraphDimExprs4Value) {
   auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
+  shape_analysis->Init();
   InitLocalShapeAnalysis(*op, shape_analysis.get(), GraphDimExprs4Value);
 
   pir::Operation* mut_op = const_cast<pir::Operation*>(op);

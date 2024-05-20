@@ -462,6 +462,18 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         ShapeOrData{TensorExprs(out_dims)});
 
+  if (ndims_x <= 2 && ndims_y <= 2) {
+    if (!transpose_x_attr && !transpose_y_attr) {
+      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[0]);
+    } else if (!transpose_x_attr && transpose_y_attr) {
+      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_y - 1]);
+    } else if (transpose_x_attr && !transpose_y_attr) {
+      infer_context->AddEqualCstr(x_dims[0], y_dims[0]);
+    } else {
+      infer_context->AddEqualCstr(x_dims[0], y_dims[ndims_y - 1]);
+    }
+  }
+
   if ((ndims_x == ndims_y) && ndims_x >= 2) {
     if (transpose_x_attr == false && transpose_y_attr == false) {
       infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 2]);

@@ -616,9 +616,13 @@ bool ReshapeOpInferSymbolicShape(
     return product;
   };
 
+  bool flag_has_minus_one = false;
   const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
     if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+      if (dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(-1)) {
+        flag_has_minus_one = true;
+        return false;
+      }
     }
     return true;
   };
@@ -631,8 +635,7 @@ bool ReshapeOpInferSymbolicShape(
   };
 
   const std::vector<symbol::DimExpr> out_dims = [&] {
-    const auto &original_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+    const auto &original_shape = x_dim_expr.shape();
 
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
@@ -652,7 +655,9 @@ bool ReshapeOpInferSymbolicShape(
       out_dim_expr = IsZero(input_dims[i]) ? original_shape[i] : out_dim_expr;
       out_dims.emplace_back(out_dim_expr);
     }
-
+    if (!flag_has_minus_one) {
+      infer_context->AddEqualCstr(numel, product_exclude_minus_one);
+    }
     return out_dims;
   }();
 

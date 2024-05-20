@@ -2416,6 +2416,26 @@ void MatmulInferMeta(const MetaTensor& x,
                         "The Input(y) dims size must be greater than 0,"
                         " but received dims size is 0. "));
 
+  if (ndims_x <= 2 && ndims_y <= 2) {
+    if (!trans_x && !trans_y && dims_x[ndims_x - 1] != -1 && dims_y[0] != -1)
+      PADDLE_ENFORCE_EQ(dims_x[ndims_x - 1],
+                        dims_y[0],
+                        phi::errors::InvalidArgument("shape can not matmul"));
+    else if (!trans_x && trans_y && dims_x[ndims_x - 1] != -1 &&
+             dims_y[ndims_y - 1] != -1)
+      PADDLE_ENFORCE_EQ(dims_x[ndims_x - 1],
+                        dims_y[ndims_y - 1],
+                        phi::errors::InvalidArgument("shape can not matmul"));
+    else if (trans_x && !trans_y && dims_x[0] != -1 && dims_y[0] != -1)
+      PADDLE_ENFORCE_EQ(dims_x[0],
+                        dims_y[0],
+                        phi::errors::InvalidArgument("shape can not matmul"));
+    else if (trans_x && trans_y && dims_x[0] != -1 && dims_y[ndims_y - 1] != -1)
+      PADDLE_ENFORCE_EQ(dims_x[0],
+                        dims_y[ndims_y - 1],
+                        phi::errors::InvalidArgument("shape can not matmul"));
+  }
+
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
     dims_x.insert(dims_x.begin(), 1);
