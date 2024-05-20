@@ -252,6 +252,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH single card and timeout
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
+  py_test_modules(test_proxy_layer MODULES test_proxy_layer)
   py_test_modules(test_while_op_completion MODULES test_while_op_completion)
   py_test_modules(test_while_op_partition MODULES test_while_op_partition)
   py_test_modules(test_tunable_variable MODULES test_tunable_variable)
