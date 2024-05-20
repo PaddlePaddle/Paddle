@@ -444,10 +444,11 @@ class PartialProgramLayerHook:
 
 
 class OperatorIndexPreservePass:
+    OP_NAME_PREFIX = "preserved_index_"
     counter = 0
 
     def __init__(self, index, pass_fn):
-        self.name = f"preserved_index_{OperatorIndexPreservePass.counter}"
+        self.name = f"{OperatorIndexPreservePass.OP_NAME_PREFIX}{OperatorIndexPreservePass.counter}"
         OperatorIndexPreservePass.counter += 1
         self.pass_fn = pass_fn
         self.index = index
@@ -498,6 +499,8 @@ class IndicesPreservePass:
 
 
 class ValuePreservePass:
+    OP_NAME_PREFIX = "preserved_value_"
+
     def __init__(self, values):
         self.values = values
 
@@ -512,14 +515,13 @@ class ValuePreservePass:
                 paddle.utils.flatten(self.values),
             )
         )
-        value2name = ValueDict(
-            {v: f"preserved_value_{idx}" for idx, v in enumerate(all_values)}
-        )
+
         value2name = ValueDict()
         for idx, v in enumerate(all_values):
-            value2name.setdefault(v, [])
-            name = f"preserved_value_{idx}"
-            value2name[v].append(name)
+            name = f"{ValuePreservePass.OP_NAME_PREFIX}{idx}"
+            if v in value2name:
+                continue
+            value2name[v] = name
             paddle.base.libpaddle.pir.append_shadow_output(
                 program,
                 v,
@@ -535,10 +537,12 @@ class ValuePreservePass:
         to_remove_op = []
         for op in program.global_block().ops:
             if op.name() == "builtin.shadow_output":
-                name2new_value[op.attrs()["output_name"]] = op.operand(
-                    0
-                ).source()
-                if "preserved_value_" in op.attrs()["output_name"]:
+                if op.attrs()["output_name"].startswith(
+                    ValuePreservePass.OP_NAME_PREFIX
+                ):
+                    name2new_value[op.attrs()["output_name"]] = op.operand(
+                        0
+                    ).source()
                     to_remove_op.append(op)
 
         # remove old op
@@ -546,11 +550,13 @@ class ValuePreservePass:
             program.global_block().remove_op(op)
 
         # get new values
-        value2new_value = {
-            v: name2new_value.get(name, fake_value())
-            for v, names in value2name.items()
-            for name in names
-        }
+        value2new_value = ValueDict(
+            {
+                v: name2new_value.get(name, fake_value())
+                for v, name in value2name.items()
+            }
+        )
+
         new_args = paddle.utils.map_structure(
             lambda x: (
                 value2new_value[x] if not is_fake_value(x) else fake_value()
