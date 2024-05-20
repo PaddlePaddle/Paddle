@@ -28,6 +28,8 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "cub/cub.cuh"
+#elif defined(PADDLE_WITH_MUSA)
+#include "cub/cub.cuh"
 #else
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;

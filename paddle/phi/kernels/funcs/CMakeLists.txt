@@ -17,6 +17,7 @@ endif()
 
 if(WITH_ROCM)
   list(REMOVE_ITEM func_cu_srcs "weight_only_gemv.cu")
+endif()  
 if(WITH_MUSA)
   list(REMOVE_ITEM func_cu_srcs 
       "softmax.cu")

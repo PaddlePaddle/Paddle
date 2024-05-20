@@ -77,6 +77,8 @@ if(WITH_MUSA)
     "selected_rows/gpu/clip_by_norm_kernel.cu"
     "gpu/softmax_grad_kernel.cu"
     "gpu/softmax_kernel.cu"
+    "gpu/put_along_axis_grad_kernel.cu"
+    "gpu/put_along_axis_kernel.cu"
     )
 endif()
 
