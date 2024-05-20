@@ -110,3 +110,18 @@ PD_REGISTER_KERNEL(dequantize_linear,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+PD_REGISTER_KERNEL(quantize_linear_deprecated,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::QuantizeLinearDeprecatedKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(dequantize_linear_deprecated,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DeQuantizeLinearDeprecatedKernel,
+                   float,
+                   int8_t,
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

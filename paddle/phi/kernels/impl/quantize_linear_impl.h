@@ -89,6 +89,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
+                            const padddle::optional<DenseTensor>& sin_scale,
                             const DenseTensor& scale,
                             const DenseTensor& zero_point,
                             const paddle::optional<DenseTensor>& in_accum,
@@ -102,6 +103,11 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             DenseTensor* out_state,
                             DenseTensor* out_accum,
                             DenseTensor* out_scale) {
+  PADDLE_ENFORCE_NE(in_scale.get_ptr(),
+                    nullptr,
+                    phi::errors::PreconditionNotMet(
+                        "in_scale can't be nullptr in DeQuantizeLinearKernel"));
+  auto scale = in_scale.get();
   switch (scale.dtype()) {
     case phi::DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
@@ -127,7 +133,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const DenseTensor& scale,
+                          const paddle::optional<DenseTensor>& scale,
                           const DenseTensor& zero_point,
                           const paddle::optional<DenseTensor>& in_accum,
                           const paddle::optional<DenseTensor>& in_state,
@@ -140,8 +146,12 @@ void QuantizeLinearKernel(const Context& dev_ctx,
                           DenseTensor* out_state,
                           DenseTensor* out_accum,
                           DenseTensor* out_scale) {
+  PADDLE_ENFORCE_NE(scale.get_ptr(),
+                    nullptr,
+                    phi::errors::PreconditionNotMet(
+                        "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto* in = &x;
-  auto* in_scale = &scale;
+  auto* in_scale = scale.get_ptr();
   dev_ctx.template Alloc<float>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
@@ -201,6 +211,78 @@ void QuantizeLinearKernel(const Context& dev_ctx,
       }
     }
   }
+}
+
+template <typename T, typename Context>
+void QuantizeLinearDeprecatedKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& in_scale,
+    const DenseTensor& zero_point,
+    const paddle::optional<DenseTensor>& in_accum,
+    const paddle::optional<DenseTensor>& in_state,
+    int quant_axis,
+    int bit_length,
+    int round_type,
+    bool is_test,
+    bool only_observer,
+    DenseTensor* out,
+    DenseTensor* out_state,
+    DenseTensor* out_accum,
+    DenseTensor* out_scale) {
+  paddle::optional<phi::DenseTensor> scale =
+      paddle::make_optional<phi::DenseTensor>(in_scale);
+  QuantizeLinearKernel<T, Context>(dev_ctx,
+                                   x,
+                                   scale,
+                                   zero_point,
+                                   in_accum,
+                                   in_state,
+                                   quant_axis,
+                                   bit_length,
+                                   round_type,
+                                   is_test,
+                                   only_observer,
+                                   out,
+                                   out_state,
+                                   out_accum,
+                                   out_scale);
+}
+
+template <typename T, typename Context>
+void DeQuantizeLinearDeprecatedKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& in_scale,
+    const DenseTensor& zero_point,
+    const paddle::optional<DenseTensor>& in_accum,
+    const paddle::optional<DenseTensor>& in_state,
+    int quant_axis,
+    int bit_length,
+    int round_type,
+    bool is_test,
+    bool only_observer,
+    DenseTensor* out,
+    DenseTensor* out_state,
+    DenseTensor* out_accum,
+    DenseTensor* out_scale) {
+  paddle::optional<phi::DenseTensor> scale =
+      paddle::make_optional<phi::DenseTensor>(in_scale);
+  DeQuantizeLinearKernel<T, Context>(dev_ctx,
+                                     x,
+                                     scale,
+                                     zero_point,
+                                     in_accum,
+                                     in_state,
+                                     quant_axis,
+                                     bit_length,
+                                     round_type,
+                                     is_test,
+                                     only_observer,
+                                     out,
+                                     out_state,
+                                     out_accum,
+                                     out_scale);
 }
 
 }  // namespace phi

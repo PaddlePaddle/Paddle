@@ -84,8 +84,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-    QuantizeLinearOp::name(),
-    DequantizeLinearOp::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
