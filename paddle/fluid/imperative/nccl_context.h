@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
@@ -27,10 +27,6 @@
 
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
-#endif
-
-#ifdef PADDLE_WITH_MCCL
-#include "paddle/fluid/platform/dynload/mccl.h"
 #endif
 
 #include "paddle/fluid/imperative/parallel_context.h"
@@ -44,7 +40,7 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLParallelContext : public ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,
@@ -53,7 +49,7 @@ class NCCLParallelContext : public ParallelContext {
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<mcclUniqueId>& nccl_ids,
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
                    int root,  // NOLINT
                    int server_fd);
 

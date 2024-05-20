@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

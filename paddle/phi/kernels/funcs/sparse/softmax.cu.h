@@ -27,8 +27,6 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
                               const IntT dim) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
-#elif defined(__MUSACC__)
-  const auto& policy = thrust::musa::par.on(dev_ctx.stream());
 #else
   const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
 #endif
@@ -89,8 +87,6 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
     const IntT dim) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
-#elif defined(__MUSACC__)
-  const auto& policy = thrust::musa::par.on(dev_ctx.stream());  
 #else
   const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
 #endif

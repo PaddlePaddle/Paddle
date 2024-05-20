@@ -211,35 +211,34 @@ inline int TransToProtoVarType(const DataType& dtype) {
   }
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
-inline mcclDataType_t ToNCCLDataType(DataType type) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+inline ncclDataType_t ToNCCLDataType(DataType type) {
   if (type == DataType::FLOAT32) {
-    return mcclFloat;
+    return ncclFloat;
   } else if (type == DataType::FLOAT64) {
-    return mcclDouble;
+    return ncclDouble;
   } else if (type == DataType::INT32) {
-    return mcclInt;
+    return ncclInt;
   } else if (type == DataType::INT64) {
-    return mcclInt64;
+    return ncclInt64;
   } else if (type == DataType::FLOAT16) {
-    return mcclFloat16;
+    return ncclFloat16;
   } else if (type == DataType::UINT8) {
-    return mcclUint8;
+    return ncclUint8;
   } else if (type == DataType::INT8) {
-    return mcclInt8;
+    return ncclInt8;
   } else if (type == DataType::BOOL) {
-    return mcclUint8;
-  // } else if (type == DataType::BFLOAT16) {
-  //   return ncclBfloat16;
+    return ncclUint8;
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+  } else if (type == DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(
         errors::Unimplemented("This datatype in nccl is not supported."));
   }
 }
 #endif
-
-
-
 #if defined(PADDLE_WITH_XPU_BKCL)
 inline BKCLDataType ToBKCLDataType(DataType type) {
   if (type == DataType::FLOAT32) {

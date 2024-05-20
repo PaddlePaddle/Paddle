@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cfloat>
 #include <string>
 #include <vector>
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

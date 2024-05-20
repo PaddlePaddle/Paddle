@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -29,7 +29,8 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL))
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
 framework::DDim recv_shape_info(const platform::Place &place,
                                 const gpuStream_t &stream,
                                 platform::NCCLComm *comm,
@@ -46,7 +47,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
   }
 
   phi::DataType shape_dtype = phi::DataType::INT32;
-  mcclDataType_t nccl_dtype =
+  ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
 
   // step1: recv the shape size
@@ -59,7 +60,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
     if (comm_ctx) {
       comm_ctx->Recv(&gpu_shape_size_tensor, 1, peer, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           gpu_data, 1, nccl_dtype, peer, comm->comm(), stream));
     }
   }
@@ -89,7 +90,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
     if (comm_ctx) {
       comm_ctx->Recv(&gpu_shape_tensor, shape_size, peer, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           gpu_shape_data, shape_size, nccl_dtype, peer, comm->comm(), stream));
     }
   }
@@ -123,7 +124,8 @@ template <typename T, typename DeviceContext>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL))
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
@@ -214,7 +216,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     int data_type = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(data_type);
-    mcclDataType_t dtype = platform::ToNCCLDataType(type);
+    ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto *out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensorArray>()) {
@@ -233,7 +235,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         if (comm_ctx) {
           comm_ctx->Recv(out, numel, peer, stream);
         } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
               out->data<T>(), numel, dtype, peer, comm->comm(), stream));
           VLOG(3) << "rank " << comm->rank() << " recv "
                   << common::product(out_dims) << " from " << peer;
@@ -272,7 +274,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
                             "be less than comm->nranks (%d).",
                             peer,
                             comm->nranks()));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " recv "
               << common::product(out->dims()) << " from " << peer;
@@ -297,9 +299,9 @@ PD_REGISTER_STRUCT_KERNEL(recv_v2,
                           ops::RecvOpV2CUDAKernel,
                           float,
                           double,
-// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-// #endif
+#endif
                           int,
                           int64_t,
                           int8_t,

@@ -108,10 +108,6 @@ __global__ void VectorizedDropoutBackward(
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = hiprandStatePhilox4_32_10_t;
-#elif defined(PADDLE_WITH_MUSA)
-  murandStatePhilox4_32_10_t state;
-  murand_init(seed, idx + THREAD_ID_X, increment, &state);
-  using SType = murandStatePhilox4_32_10_t;
 #else
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, increment, &state);
@@ -206,7 +202,7 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
                        ? NoMaskBwFunctor<T, float>(1.0f - dropout_rate)
                        : NoMaskBwFunctor<T, float>(1.0f - dropout_rate, 1.0f);
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
     VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
         <<<grid_size, block_size, 0, stream>>>(0,
                                                numel,

@@ -175,7 +175,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   static void GroupEnd();
 
-  mcclComm_t NCCLComm(const Place& place) const;
+  ncclComm_t NCCLComm(const Place& place) const;
 
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,

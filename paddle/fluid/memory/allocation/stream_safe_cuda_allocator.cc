@@ -92,17 +92,6 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(err);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
-    
-#elif defined(PADDLE_WITH_MUSA)
-    gpuError_t err = musaEventQuery(event);
-    if (err == musaErrorNotReady) {
-      VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      // Erase the completded event before "it"
-      outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
-      return false;
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
-    PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event));    
 #else
     gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
@@ -139,9 +128,6 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&new_event, cudaEventDisableTiming));
-#elif defined (PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        musaEventCreateWithFlags(&new_event, musaEventDisableTiming));        
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&new_event, hipEventDisableTiming));
@@ -156,8 +142,6 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(record_event, stream));
-#elif defined (PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(record_event, stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(record_event, stream));
 #endif

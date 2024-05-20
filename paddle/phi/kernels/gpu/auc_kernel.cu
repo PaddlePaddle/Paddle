@@ -214,23 +214,23 @@ void AucKernel(const Context &dev_ctx,
     }
   }
 
-#ifdef PADDLE_WITH_MUSA
+#ifdef PADDLE_WITH_CUDA
   if (stat_pos_in_tensor != stat_pos_out) {
-    musaMemcpyAsync(
+    cudaMemcpyAsync(
         origin_stat_pos,
         pos_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        musaMemcpyDeviceToDevice,
+        cudaMemcpyDeviceToDevice,
         dev_ctx.stream());
   }
   if (stat_neg_in_tensor != stat_neg_out) {
-    musaMemcpyAsync(
+    cudaMemcpyAsync(
         origin_stat_neg,
         neg_in_data,
         ((1 + slide_steps) * (num_thresholds + 1) + (slide_steps > 0 ? 1 : 0)) *
             sizeof(int64_t),
-        musaMemcpyDeviceToDevice,
+        cudaMemcpyDeviceToDevice,
         dev_ctx.stream());
   }
 #else

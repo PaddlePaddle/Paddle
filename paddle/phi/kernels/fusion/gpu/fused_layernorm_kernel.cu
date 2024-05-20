@@ -33,13 +33,12 @@ limitations under the License.
 // https://github.com/Oneflow-Inc/oneflow/blob/master/oneflow/core/cuda/layer_norm.cuh
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
-#include "paddle/phi/core/enforce.h"
 
 #include <assert.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 #include <cub/cub.cuh>
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
@@ -51,7 +50,7 @@ namespace fusion {
 
 namespace {
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 
 constexpr int kWarpSize = 32;
 
@@ -941,8 +940,8 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                           DenseTensor* residual_out,
                           DenseTensor* mean,
                           DenseTensor* variance) {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-        PADDLE_ENFORCE(false, "please compile with cuda!");
+#if defined(PADDLE_WITH_HIP)
+  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else
   using U = phi::funcs::LayerNormParamType<T>;
   const T* x_data = x.data<T>();
@@ -1067,7 +1066,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    GPU,

@@ -246,7 +246,7 @@ void RnnKernel(const Context &dev_ctx,
     WeightToTensor<T>(place, stream, weight_list, &weight_whole);
 #endif
     w_data = weight_whole.data<T>();
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
     // MIOPEN need to permute weight, do not share with weight_grad
     if (is_test) {  // maybe also reset small weights' ptr for training
       int offset = 0;

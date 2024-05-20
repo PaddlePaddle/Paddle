@@ -18,7 +18,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

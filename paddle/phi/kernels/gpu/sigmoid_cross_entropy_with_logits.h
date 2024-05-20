@@ -25,8 +25,7 @@
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
-#if defined(__NVCC__) || defined(__MUSACC__)
-
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

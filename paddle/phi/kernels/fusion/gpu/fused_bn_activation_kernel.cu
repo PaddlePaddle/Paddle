@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 

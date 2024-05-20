@@ -105,8 +105,8 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
 
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
     PADDLE_ENFORCE_EQ(
-        (reduction == "mcclSum" || reduction == "mcclProd" ||
-         reduction == "mcclMin" || reduction == "mcclMax"),
+        (reduction == "ncclSum" || reduction == "ncclProd" ||
+         reduction == "ncclMin" || reduction == "ncclMax"),
         true,
         platform::errors::InvalidArgument("invalid nccl reduction."));
 
@@ -124,9 +124,9 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of AllReduce op");
     AddAttr<std::string>("reduction",
-                         "(string, default 'mcclSum') "
-                         "{'mcclMin', 'mcclMax', 'mcclProd', 'mcclSum'}.")
-        .SetDefault("mcclSum");
+                         "(string, default 'ncclSum') "
+                         "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
+        .SetDefault("ncclSum");
     AddComment(R"DOC(
 NCCLAllReduce Operator.
 
@@ -151,8 +151,8 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
 
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
     PADDLE_ENFORCE_EQ(
-        (reduction == "mcclSum" || reduction == "mcclProd" ||
-         reduction == "mcclMin" || reduction == "mcclMax"),
+        (reduction == "ncclSum" || reduction == "ncclProd" ||
+         reduction == "ncclMin" || reduction == "ncclMax"),
         true,
         platform::errors::InvalidArgument("invalid nccl reduction."));
 
@@ -170,9 +170,9 @@ class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Reduce op");
     AddAttr<std::string>("reduction",
-                         "(string, default 'mcclSum') "
-                         "{'mcclMin', 'mcclMax', 'mcclProd', 'mcclSum'}.")
-        .SetDefault("mcclSum");
+                         "(string, default 'ncclSum') "
+                         "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
+        .SetDefault("ncclSum");
     AddAttr<int>("root",
                  "(int, default kInvalidGPUId) "
                  "Root gpu of the parameter. If not, "
@@ -246,10 +246,10 @@ REGISTER_OPERATOR(
     ops::NCCLInitOpVarTypeInference,
     ops::NCCLInitOpShapeInference);
 
-REGISTER_OP_WITHOUT_GRADIENT(mcclAllReduce,
+REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce,
                              ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(mcclBcast,
+REGISTER_OP_WITHOUT_GRADIENT(ncclBcast,
                              ops::NCCLBcastOp,
                              ops::NCCLBcastOpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(ncclReduce,

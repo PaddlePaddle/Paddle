@@ -292,6 +292,7 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             test_list_pop_in_while_loop,
         ]
 
+    # TODO(zhangbo): Refine BuildOpFrom for op with sub_block
     def train(self, to_static=False):
         with base.dygraph.guard():
             if to_static:

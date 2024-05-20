@@ -587,7 +587,7 @@ void BatchNormGradFunctor(const Context &ctx,
           new_scale.dims()[0]));
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -659,7 +659,7 @@ void BatchNormGradFunctor(const Context &ctx,
     }
 
 // ------------------- cudnn descriptors ---------------------
-#if defined(PADDLE_WITH_HIP) ||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // miopenTensorDescriptor_t data_desc_;
 // miopenTensorDescriptor_t bn_param_desc_;
@@ -685,7 +685,7 @@ void BatchNormGradFunctor(const Context &ctx,
                  << "CUDNN_BN_MIN_EPSILON instead.";
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
 #elif CUDNN_VERSION_MIN(7, 0, 1)
@@ -704,7 +704,7 @@ void BatchNormGradFunctor(const Context &ctx,
     }
 #endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
@@ -748,7 +748,7 @@ void BatchNormGradFunctor(const Context &ctx,
 
     // This branch calls CUDNN APIs
     if (d_x && d_scale && d_bias) {
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
       if (compute_format == DataLayout::kNCHW) {
         BNBackward<T, block, DataLayout::kNCHW>
             <<<grid2, block, 0, ctx.stream()>>>(
@@ -1126,7 +1126,7 @@ void BatchNormGradFunctor(const Context &ctx,
       }
     }
 
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // clean when exit.
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1392,7 +1392,7 @@ void BatchNormDoubleGradKernel(
 
 }  // namespace phi
 
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
 PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
 
@@ -1444,7 +1444,7 @@ PD_REGISTER_KERNEL(batch_norm_grad,
 #endif
 #endif
 
-#if defined(PADDLE_WITH_HIP)||  defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,

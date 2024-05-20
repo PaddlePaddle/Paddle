@@ -1326,6 +1326,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 

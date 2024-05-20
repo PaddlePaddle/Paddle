@@ -47,7 +47,7 @@
     \brief Functor used by mmha kernel.
 */
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 #pragma once
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000

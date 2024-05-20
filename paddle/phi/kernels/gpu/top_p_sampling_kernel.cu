@@ -20,10 +20,6 @@
 #include <hiprand_kernel.h>
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
-#elif defined(PADDLE_WITH_MUSA)
-#include <musa_fp16.h>
-#include <murand_kernel.h>
-#include <cub/cub.cuh>
 #else
 #include <cuda_fp16.h>
 #include <curand_kernel.h>
@@ -137,15 +133,6 @@ __global__ void setup_kernel(hiprandState_t* state,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     hiprand_init(seed, i, 0, &state[i]);
-  }
-}
-#elif defined(PADDLE_WITH_MUSA)
-__global__ void setup_kernel(murandState_t* state,
-                             const uint64_t seed,
-                             const int bs) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
-    murand_init(seed, i, 0, &state[i]);
   }
 }
 #else
@@ -303,7 +290,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       if (*beam >= MaxLength) break;
     } else {
 #ifdef PADDLE_WITH_HIP
-      uint64 mask = 0;
+      unsigned mask = 0u;
       mask = __ballot(true);
       if (tid_max / WARP_SIZE == wid) {
         if (__shfl_down(*beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
@@ -331,8 +318,6 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
                                      int vocab_size,
 #ifdef PADDLE_WITH_HIP
                                      hiprandState_t* state,
-#elif defined(PADDLE_WITH_MUSA)
-                                     murandState_t* state,
 #else
                                      curandState_t* state,
 #endif
@@ -383,8 +368,6 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
     count_iter_begin[bid] = count_iter[bid];
 #ifdef PADDLE_WITH_HIP
     float rand_top_p = hiprand_uniform(state + bid) * top_p_num;
-#elif defined(PADDLE_WITH_MUSA)
-    float rand_top_p = murand_uniform(state + bid) * top_p_num;
 #else
     float rand_top_p = curand_uniform(state + bid) * top_p_num;
 #endif
@@ -583,10 +566,6 @@ __global__ void topp_sampling(T* sorted_probs,
         hiprandStatePhilox4_32_10_t rng;
         hiprand_init(seed, tid, 0, &rng);
         int random_id = hiprand(&rng) % (max_id + 1);
-#elif defined(PADDLE_WITH_MUSA)
-        murandStatePhilox4_32_10_t rng;
-        murand_init(seed, tid, 0, &rng);
-        int random_id = murand(&rng) % (max_id + 1);
 #else
         curandStatePhilox4_32_10_t rng;
         curand_init(seed, tid, 0, &rng);
@@ -620,7 +599,7 @@ __global__ void set_sorted_num(int* need_sorted_num, int bs) {
   *need_sorted_num = bs;
 }
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 template <typename T>
 __global__ void print_kernel(T* input, int size) {
   for (int i = 0; i < size; i++) {
@@ -718,15 +697,6 @@ void TopPSamplingKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   dev_curand_states =
       reinterpret_cast<hiprandState_t*>(curand_states_buf->ptr());
-#elif defined(PADDLE_WITH_MUSA)
-  murandState_t* dev_curand_states;
-  phi::Allocator::AllocationPtr curand_states_buf{nullptr};
-  curand_states_buf = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bs * sizeof(murandState_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  dev_curand_states =
-      reinterpret_cast<murandState_t*>(curand_states_buf->ptr());      
 #else
   curandState_t* dev_curand_states;
   phi::Allocator::AllocationPtr curand_states_buf{nullptr};

@@ -106,8 +106,6 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     // If we use the work to do barrier, we should block cpu
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else  // PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -139,20 +137,18 @@ ProcessGroupNCCL::~ProcessGroupNCCL() {
 }
 
 void ProcessGroupNCCL::GroupStart() {
-  MCCL_CHECK(phi::dynload::mcclGroupStart());
+  NCCL_CHECK(phi::dynload::ncclGroupStart());
   ++s_group_call_counter;
 }
 
 void ProcessGroupNCCL::GroupEnd() {
-  MCCL_CHECK(phi::dynload::mcclGroupEnd());
+  NCCL_CHECK(phi::dynload::ncclGroupEnd());
   --s_group_call_counter;
   // NOTE: This is to sync the calc stream and comm stream for debug using
   // batch_isend_irecv
   if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else  // PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -183,7 +179,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
   }
 }
 
-mcclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
+ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   const std::string& key = GetKeyFromPlace(place);
   const auto& iter = place_to_comm_ctx_.find(key);
   PADDLE_ENFORCE_NE(
@@ -208,7 +204,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
       numel > 0 ? GetPartialTensor(tensor_tmp, offset, numel) : tensor_tmp;
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
-        VLOG(3) << "[mcclAllGather] "
+        VLOG(3) << "[ncclAllGather] "
                 << "sendbuff: " << in_tensor_maybe_partial.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << in_tensor_maybe_partial.numel()
@@ -239,7 +235,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
-        VLOG(3) << "[mcclAllReduce] "
+        VLOG(3) << "[ncclAllReduce] "
                 << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
@@ -708,7 +704,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
           << ", store_key: " << store_key;
 
   for (size_t i = 0; i < s_group_call_counter; ++i) {
-    MCCL_CHECK(phi::dynload::mcclGroupEnd());
+    NCCL_CHECK(phi::dynload::ncclGroupEnd());
   }
 
   bool is_batch_p2p = s_group_call_counter > 0;
@@ -717,13 +713,13 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   int num_ranks = is_p2p_op ? 2 : GetSize();
   int rank = is_p2p_op ? p2p_rank : GetRank();
 
-  MCCL_CHECK(phi::dynload::mcclGroupStart());
+  NCCL_CHECK(phi::dynload::ncclGroupStart());
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
       store_, store_key, rank_, size_, "", &p2p_opts);
 
-  MCCL_CHECK(phi::dynload::mcclGroupEnd());
+  NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
   auto nccl_comm_ctx = this->GetCommContext(&store_key);
   VLOG(3) << "Get nccl comm: " << nccl_comm_ctx->GetNcclComm()
@@ -751,10 +747,10 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
         phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         gpu_global_ranks_size);
 
-    MCCL_CHECK(phi::dynload::mcclAllGather(gpu_global_rank->ptr(),
+    NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank->ptr(),
                                            gpu_global_ranks->ptr(),
                                            1,
-                                           mcclInt,
+                                           ncclInt,
                                            nccl_comm_ctx->GetNcclComm(),
                                            comm_ctx->stream()));
 
@@ -787,7 +783,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
 
   for (size_t i = 0; i < s_group_call_counter; ++i) {
-    MCCL_CHECK(phi::dynload::mcclGroupStart());
+    NCCL_CHECK(phi::dynload::ncclGroupStart());
   }
 }
 
@@ -882,8 +878,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else  // PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -999,8 +993,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   if (!is_batch_p2p && (FLAGS_benchmark || FLAGS_benchmark_nccl)) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else  // PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif

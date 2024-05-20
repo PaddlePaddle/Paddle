@@ -7,7 +7,7 @@ if(NOT APPLE AND NOT WIN32)
   list(APPEND BACKENDS_SRCS device_code.cc)
 endif()
 
-if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
        gpu/gpu_resources.cc)
   if(WITH_GPU)
@@ -16,9 +16,6 @@ if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
   endif()
-  if(WITH_MUSA)
-    list(APPEND BACKENDS_SRCS gpu/musa/musa_info.cc)
-  endif()  
 endif()
 
 if(WITH_XPU)
@@ -52,7 +49,6 @@ list(
 
 if(WITH_GPU
    OR WITH_ROCM
-   OR WITH_MUSA
    OR WITH_CUSTOM_DEVICE)
   list(APPEND BACKENDS_SRCS device_base.cc)
 endif()

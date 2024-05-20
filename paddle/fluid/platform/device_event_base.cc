@@ -53,14 +53,6 @@ unsigned int GenerateDeviceEventFlag(bool enable_timing,
   return flags;
 #endif
 
-#ifdef PADDLE_WITH_MUSA
-  unsigned int flags =
-      (blocking ? musaEventBlockingSync : musaEventDefault) |
-      (enable_timing ? musaEventDefault : musaEventDisableTiming) |
-      (interprocess ? musaEventInterprocess : musaEventDefault);
-  return flags;
-#endif
-
   return 0;
 }
 

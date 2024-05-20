@@ -18,12 +18,6 @@
 #include <cuda.h>
 #include <curand_kernel.h>
 #endif
-
-#ifdef PADDLE_WITH_MUSA
-#include <musa.h>
-#include <murand_kernel.h>
-#endif
-
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
@@ -31,7 +25,7 @@
 
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #define WARP_SIZE 64
@@ -77,7 +71,7 @@ struct MaxOP {
 template <typename T>
 __device__ __forceinline__ T
 warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = MASK) {
-#if CUDA_VERSION >= 9000 || defined(__MUSACC__)
+#if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else
   return __shfl_xor(value, laneMask, width);

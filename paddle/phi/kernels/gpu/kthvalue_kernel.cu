@@ -86,11 +86,11 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                0,
                                                sizeof(T) * 8,
                                                cu_stream);
-#ifdef __MUSACC__
-  if (err != musaSuccess) {
+#ifdef __HIPCC__
+  if (err != hipSuccess) {
     LOG(ERROR) << "KthvalueOP failed as could not launch "
                   "hipcub::DeviceSegmentedRadixSort::SortPairs, status: "
-               << musaGetErrorString(err);
+               << hipGetErrorString(err);
     return false;
   }
 #else
@@ -118,11 +118,11 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                  0,
                                                  sizeof(T) * 8,
                                                  cu_stream);
-#ifdef __MUSACC__
-  if (err != musaSuccess) {
+#ifdef __HIPCC__
+  if (err != hipSuccess) {
     LOG(ERROR) << "KthvalueOP failed as could not launch "
                   "hipcub::DeviceSegmentedRadixSort::SortPairs, "
-               << temp_storage_bytes << ", status: " << musaGetErrorString(err);
+               << temp_storage_bytes << ", status: " << hipGetErrorString(err);
     return false;
   }
 #else

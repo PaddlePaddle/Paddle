@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 #include "paddle/fluid/imperative/all_reduce.h"
 
@@ -25,11 +25,6 @@
 #ifdef PADDLE_WITH_RCCL
 #include <rccl.h>
 #endif
-
-#ifdef PADDLE_WITH_MCCL
-#include <mccl.h>
-#endif
-
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
@@ -74,16 +69,16 @@ static void AllReduce(const phi::DenseTensor &src,
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
   auto nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(src_ptr,
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(src_ptr,
                                                               dst_ptr,
                                                               src.numel(),
                                                               nccl_dtype,
-                                                              mcclSum,
+                                                              ncclSum,
                                                               comm->comm(),
                                                               stream));
 }
 
-// #if NCCL_VERSION_CODE >= 2212
+#if NCCL_VERSION_CODE >= 2212
 static void AllReduce(const phi::SelectedRows &src,
                       phi::SelectedRows *dst,
                       const ParallelStrategy &strategy,
@@ -106,7 +101,7 @@ static void AllReduce(const phi::SelectedRows &src,
   bool use_calc_stream = (dev_ctx->stream() == stream);
   VLOG(4) << "Is use calculate stream: " << use_calc_stream;
 
-  // 1. Gather rows number from all workers. Here use mcclAllGather to do this,
+  // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
   const auto &src_rows = src.rows();
   phi::Vector<int64_t> rows_num_vector(strategy.nranks_);
@@ -119,10 +114,10 @@ static void AllReduce(const phi::SelectedRows &src,
     dev_ctx->Wait();
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::mcclAllGather(gpu_rows_num_ptr + strategy.local_rank_,
+      platform::dynload::ncclAllGather(gpu_rows_num_ptr + strategy.local_rank_,
                                        gpu_rows_num_ptr,
                                        1,
-                                       mcclInt64,
+                                       ncclInt64,
                                        comm->comm(),
                                        stream));
 
@@ -168,14 +163,14 @@ static void AllReduce(const phi::SelectedRows &src,
     // allgather is used to speed up the allreduce by replacing broadcast.
     auto row_sendcount = cpu_rows_num_ptr[0];
     VLOG(3) << "allgather replaces broadcast to speed up in sparse allreduce";
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllGather(src_rows_ptr,
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(src_rows_ptr,
                                                                 dst_rows_ptr,
                                                                 row_sendcount,
-                                                                mcclInt64,
+                                                                ncclInt64,
                                                                 comm->comm(),
                                                                 stream));
     auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllGather(src_tensor_ptr,
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(src_tensor_ptr,
                                                                 dst_tensor_ptr,
                                                                 value_sendcount,
                                                                 nccl_dtype,
@@ -186,10 +181,10 @@ static void AllReduce(const phi::SelectedRows &src,
       if (cpu_rows_num_ptr[i] > 0) {
         // 2. Broadcast the rows of SelectedRows
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::mcclBroadcast(src_rows_ptr,
+            platform::dynload::ncclBroadcast(src_rows_ptr,
                                              dst_rows_ptr + row_offset,
                                              cpu_rows_num_ptr[i],
-                                             mcclInt64,
+                                             ncclInt64,
                                              i,
                                              comm->comm(),
                                              stream));
@@ -197,7 +192,7 @@ static void AllReduce(const phi::SelectedRows &src,
         auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
                                  row_offset * feature_size * sizeof_dtype;
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::mcclBroadcast(src_tensor_ptr,
+            platform::dynload::ncclBroadcast(src_tensor_ptr,
                                              dst_tensor_ptr_i,
                                              cpu_rows_num_ptr[i] * feature_size,
                                              nccl_dtype,
@@ -217,7 +212,7 @@ static void AllReduce(const phi::SelectedRows &src,
   VLOG(3) << "Result SelectedRows rows: "
           << string::join_strings(*dst_rows, ',');
 }
-// #endif
+#endif
 
 void AllReduce(const framework::Variable &src,
                framework::Variable *dst,
@@ -239,7 +234,7 @@ void AllReduce(const framework::Variable &src,
               dst->GetMutable<phi::DenseTensor>(),
               stream,
               comm);
-// #if NCCL_VERSION_CODE >= 2212
+#if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
       if (!dst->IsType<phi::SelectedRows>()) {
@@ -262,7 +257,7 @@ void AllReduce(const framework::Variable &src,
       platform::GpuStreamSync(stream);
       *dst = std::move(tmp_dst);
     }
-// #endif
+#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "

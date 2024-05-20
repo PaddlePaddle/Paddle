@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <stdio.h>
 
 #include <memory>
@@ -29,14 +29,8 @@
 #ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
-#ifdef PADDLE_WITH_MCCL
-#include "paddle/fluid/platform/dynload/mccl.h"
-#endif
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
-#endif
-#ifdef PADDLE_WITH_MCCL
-#include "paddle/fluid/platform/dynload/mccl.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -50,63 +44,63 @@
 namespace paddle {
 namespace platform {
 
-inline mcclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
+inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
-    return mcclFloat;
+    return ncclFloat;
   } else if (type == framework::proto::VarType::FP64) {
-    return mcclFloat;
+    return ncclDouble;
   } else if (type == framework::proto::VarType::INT32) {
-    return mcclInt;
+    return ncclInt;
   } else if (type == framework::proto::VarType::INT64) {
-    return mcclInt64;
+    return ncclInt64;
   } else if (type == framework::proto::VarType::FP16) {
-    return mcclFloat16;
+    return ncclFloat16;
   } else if (type == framework::proto::VarType::INT8) {
-    return mcclInt8;
+    return ncclInt8;
   } else if (type == framework::proto::VarType::UINT8) {
-    return mcclUint8;
+    return ncclUint8;
   } else if (type == framework::proto::VarType::BOOL) {
-    return mcclUint8;
-// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-  // } else if (type == framework::proto::VarType::BF16) {
-  //   return mcclBfloat16;
-// #endif
+    return ncclUint8;
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+  } else if (type == framework::proto::VarType::BF16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
   }
 }
 
-inline mcclDataType_t ToNCCLDataType(phi::DataType type) {
+inline ncclDataType_t ToNCCLDataType(phi::DataType type) {
   if (type == phi::DataType::FLOAT32) {
-    return mcclFloat;
+    return ncclFloat;
   } else if (type == phi::DataType::FLOAT64) {
-    return mcclFloat;
+    return ncclDouble;
   } else if (type == phi::DataType::INT32) {
-    return mcclInt;
+    return ncclInt;
   } else if (type == phi::DataType::INT64) {
-    return mcclInt64;
+    return ncclInt64;
   } else if (type == phi::DataType::FLOAT16) {
-    return mcclFloat16;
+    return ncclFloat16;
   } else if (type == phi::DataType::UINT8) {
-    return mcclUint8;
+    return ncclUint8;
   } else if (type == phi::DataType::INT8) {
-    return mcclInt8;
+    return ncclInt8;
   } else if (type == phi::DataType::BOOL) {
-    return mcclUint8;
-// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-  // } else if (type == phi::DataType::BFLOAT16) {
-  //   return mcclBfloat16;
-// #endif
+    return ncclUint8;
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+  } else if (type == phi::DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
   }
 }
 
-// NOTE(minqiyang): according to the mcclGroupEnd documentations:
+// NOTE(minqiyang): according to the ncclGroupEnd documentations:
 // https://docs.nvidia.com/deeplearning/sdk/nccl-api/ncclapidoc.html,
-// mcclGroupEnd will wait for all communicators to be initialized, which will
+// ncclGroupEnd will wait for all communicators to be initialized, which will
 // cause blocking problem when a runtime_error was thrown, so try only guard
 // NCCL actions when use it.
 class NCCLGroupGuard {
@@ -118,18 +112,18 @@ class NCCLGroupGuard {
 
   inline NCCLGroupGuard() {
     NCCLMutex().lock();
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::mcclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
   }
 
   inline ~NCCLGroupGuard() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::mcclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
 
 struct NCCLContext {
   std::unique_ptr<phi::GPUContext> ctx_;
-  mcclComm_t comm_;
+  ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
     ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
@@ -156,7 +150,7 @@ struct NCCLContext {
   }
 
   gpuStream_t stream() const { return ctx_->stream(); }
-  mcclComm_t comm() const { return comm_; }
+  ncclComm_t comm() const { return comm_; }
 
   int device_id() const { return ctx_->GetPlace().device; }
 };
@@ -166,7 +160,7 @@ struct NCCLContextMap {
   std::vector<int> order_;
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
-                          mcclUniqueId *nccl_id = nullptr,
+                          ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1,
                           size_t trainer_id = 0) {
     PADDLE_ENFORCE_EQ(!places.empty(),
@@ -185,11 +179,11 @@ struct NCCLContextMap {
         platform::errors::Unavailable("NCCL Context Map does not support "
                                       "contain two or more same device."));
 
-    std::unique_ptr<mcclComm_t[]> comms(new mcclComm_t[order_.size()]);
+    std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::mcclCommInitAll(
+      PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(
@@ -209,7 +203,7 @@ struct NCCLContextMap {
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
           SetDeviceId(gpu_id);
-          PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::mcclCommInitRank(
+          PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }
@@ -304,7 +298,7 @@ class NCCLCommunicator {
   }
 
   void InitFlatCtxs(const std::vector<platform::Place> &places,
-                    const std::vector<mcclUniqueId *> &nccl_ids,
+                    const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num,
                     size_t trainer_id) {
     if (nccl_ids.size() == 0) {
@@ -336,8 +330,8 @@ class NCCLCommunicator {
   }
 
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
-                            const std::vector<mcclUniqueId *> &inter_nccl_ids,
-                            const std::vector<mcclUniqueId *> &exter_nccl_ids,
+                            const std::vector<ncclUniqueId *> &inter_nccl_ids,
+                            const std::vector<ncclUniqueId *> &exter_nccl_ids,
                             size_t trainers_num,
                             size_t trainer_id,
                             size_t inter_trainers_num,

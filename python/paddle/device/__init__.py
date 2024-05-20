@@ -24,7 +24,6 @@ from paddle.base.framework import (
     is_compiled_with_cuda,
     is_compiled_with_distribute,
     is_compiled_with_rocm,
-    is_compiled_with_musa
 )
 
 from . import (  # noqa: F401
@@ -43,7 +42,6 @@ __all__ = [
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
-    'is_compiled_with_musa',
     'is_compiled_with_distribute',
     'is_compiled_with_custom_device',
     'get_all_device_type',

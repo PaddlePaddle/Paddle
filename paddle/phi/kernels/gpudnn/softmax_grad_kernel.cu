@@ -41,7 +41,7 @@ void SoftmaxGradGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,

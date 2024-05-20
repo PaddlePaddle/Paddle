@@ -34,7 +34,7 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/core/block_argument.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -105,7 +105,7 @@ platform::DeviceContext* ParseDeviceContext(
       return dev_ctx;
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     // NOTE(Ruibiao): Here supports multi-stream overlap for c_allreduce_sum
     // with use_cal_stream==false by returning a device context getting from the
     // global NCCLCommContext instance. Because when use_calc_stream==false, in
@@ -338,7 +338,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
   // when platform::is_gpu_place(cond.place()) or
   // platform::is_xpu_place(cond.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else

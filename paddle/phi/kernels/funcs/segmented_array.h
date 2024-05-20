@@ -21,7 +21,7 @@
 namespace phi {
 namespace funcs {
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else

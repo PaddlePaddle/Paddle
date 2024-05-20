@@ -31,7 +31,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 void BatchTranspose(T* output,
                     const T* input,

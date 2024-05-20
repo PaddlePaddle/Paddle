@@ -27,9 +27,6 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#ifdef PADDLE_WITH_MUSA
-#include "paddle/fluid/platform/dynload/mccl.h"
-#endif
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/flags.h"
 
@@ -58,8 +55,6 @@ class NCCLOpHandleBase : public OpHandleBase {
     for (auto& ev : inter_events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
@@ -67,8 +62,6 @@ class NCCLOpHandleBase : public OpHandleBase {
     for (auto& ev : exter_events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
@@ -79,7 +72,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     return nccl_ctxs_;
   }
 
-  mcclComm_t GetComm() const {
+  ncclComm_t GetComm() const {
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,
@@ -150,11 +143,6 @@ class NCCLOpHandleBase : public OpHandleBase {
           &inter_events_[dev_id], hipEventDisableTiming));
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &exter_events_[dev_id], hipEventDisableTiming));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(musaEventCreateWithFlags(
-          &inter_events_[dev_id], musaEventDisableTiming));
-      PADDLE_ENFORCE_GPU_SUCCESS(musaEventCreateWithFlags(
-          &exter_events_[dev_id], musaEventDisableTiming));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &inter_events_[dev_id], cudaEventDisableTiming));
@@ -171,8 +159,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                          const void* sendbuff,
                          void* recvbuff,
                          size_t count,
-                         mcclDataType_t datatype,
-                         mcclRedOp_t op) {
+                         ncclDataType_t datatype,
+                         ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
@@ -188,7 +176,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
@@ -196,8 +184,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                      const void* sendbuff,
                      void* recvbuff,
                      size_t count,
-                     mcclDataType_t datatype,
-                     mcclRedOp_t op) {
+                     ncclDataType_t datatype,
+                     ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
@@ -215,8 +203,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                              const void* sendbuff,
                              void* recvbuff,
                              size_t count,
-                             mcclDataType_t datatype,
-                             mcclRedOp_t op) {
+                             ncclDataType_t datatype,
+                             ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
@@ -236,8 +224,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                    const void* sendbuff,
                    void* recvbuff,
                    size_t count,
-                   mcclDataType_t datatype,
-                   mcclRedOp_t op UNUSED) {
+                   ncclDataType_t datatype,
+                   ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
@@ -250,13 +238,11 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclReduce(
-        sendbuff, recvbuff, count, datatype, mcclSum, 0, comm, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
+        sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
 
 #ifdef PADDLE_WITH_HIP
     hipEventRecord(inter_events_.at(dev_id), stream);
-#elif defined(PADDLE_WITH_MUSA)
-    musaEventRecord(inter_events_.at(dev_id), stream);
 #else
     cudaEventRecord(inter_events_.at(dev_id), stream);
 #endif
@@ -270,8 +256,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                       const void* sendbuff,
                       void* recvbuff,
                       size_t count,
-                      mcclDataType_t datatype,
-                      mcclRedOp_t op) {
+                      ncclDataType_t datatype,
+                      ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_,
@@ -290,21 +276,14 @@ class NCCLOpHandleBase : public OpHandleBase {
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
-#elif defined(PADDLE_WITH_MUSA)
-    musaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
-
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
-        sendbuff, recvbuff, count, datatype, op, comm, stream));
-
-    musaEventRecord(exter_events_.at(dev_id), stream);
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     cudaEventRecord(exter_events_.at(dev_id), stream);
@@ -317,8 +296,8 @@ class NCCLOpHandleBase : public OpHandleBase {
   void InterBroadCast(platform::Place place,
                       void* sendbuff,
                       size_t count,
-                      mcclDataType_t datatype,
-                      mcclRedOp_t op UNUSED) {
+                      ncclDataType_t datatype,
+                      ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
@@ -331,12 +310,10 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", stream:" << stream;
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
-#elif defined(PADDLE_WITH_MUSA)
-    musaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         sendbuff, count, datatype, 0, comm, stream));
   }
 

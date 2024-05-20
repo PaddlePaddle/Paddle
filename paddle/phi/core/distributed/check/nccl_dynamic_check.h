@@ -21,8 +21,6 @@
 
 #if defined(PADDLE_WITH_RCCL)
 using gpuStream_t = hipStream_t;
-#elif defined(PADDLE_WITH_MCCL)
-using gpuStream_t = musaStream_t;
 #else
 using gpuStream_t = cudaStream_t;
 #endif
@@ -38,21 +36,21 @@ struct NCCLDynamicCheck {
   static void CheckDataType(const phi::DenseTensor& tensor,
                             int root_rank,
                             int cur_rank,
-                            mcclComm_t comm);
+                            ncclComm_t comm);
 
   static void CheckShape(const phi::DenseTensor& tensor, int64_t shape);
 
   static void CheckShape(const phi::DenseTensor& tensor,
                          int root_rank,
                          int cur_rank,
-                         mcclComm_t comm);
+                         ncclComm_t comm);
 
   static void CheckShape(const phi::DenseTensor& out_tensor,
                          const phi::DenseTensor& in_tensor,
                          const std::vector<int64_t>& in_size_each_rank,
                          int cur_rank,
                          int world_size,
-                         mcclComm_t comm);
+                         ncclComm_t comm);
 
   // can be used to check gather and all gather
   static void CheckGatherShape(const phi::DenseTensor& in_tensor,
@@ -60,7 +58,7 @@ struct NCCLDynamicCheck {
                                int root_rank,
                                int cur_rank,
                                int world_size,
-                               mcclComm_t comm);
+                               ncclComm_t comm);
 
  private:
   // `0` represents default stream for both cuda & hip

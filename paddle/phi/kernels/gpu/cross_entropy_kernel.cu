@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -755,8 +755,6 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#elif defined(PADDLE_WITH_MUSA)
-    mudnnTensorDescriptor_t  descp = desc.descriptor<T>(layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -776,19 +774,6 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
         mode));
-#elif defined(PADDLE_WITH_MUSA)
-    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
-                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
-        handle,
-        MUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
@@ -1202,8 +1187,6 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#elif defined(PADDLE_WITH_MUSA)
-    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);    
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -1223,19 +1206,6 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
         softmax_data,
         MIOPEN_SOFTMAX_LOG,
         mode));
-#elif defined(PADDLE_WITH_MUSA)
-    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
-                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
-        handle,
-        MUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
@@ -1478,7 +1448,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
                    ALL_LAYOUT,

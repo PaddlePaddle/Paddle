@@ -1035,7 +1035,7 @@ static void Interpolate2DCUDABwd(
         (align_mode == 0 && !align_corners) ? 0.5f : 0.f;
     bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
     bool optimize_flag = false;
-#if !defined(__HIPCC__) && !defined(__MUSACC__)
+#ifndef __HIPCC__
     optimize_flag = (in_h < (out_h >> 6) && in_w < (out_w >> 6))
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);

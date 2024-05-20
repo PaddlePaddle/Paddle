@@ -30,13 +30,13 @@
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
 #include "paddle/utils/optional.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #include "math.h"  // NOLINT
 #endif
@@ -74,8 +74,6 @@ static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
   static_assert(!std::is_same<T, void>::value, "T cannot be void.");
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(x, 0, n * sizeof(T), stream));
-#elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaMemsetAsync(x, 0, n * sizeof(T), stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(x, 0, n * sizeof(T), stream));
 #endif
@@ -273,10 +271,6 @@ static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
       &cpu_value, ptr, sizeof(float), hipMemcpyDeviceToHost, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
-#elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(
-      &cpu_value, ptr, sizeof(float), musaMemcpyDeviceToHost, stream));
-  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
       &cpu_value, ptr, sizeof(float), cudaMemcpyDeviceToHost, stream));
@@ -901,14 +895,14 @@ static void MultiTensorUpdateLambParamAndBetaPows(
 #undef PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static bool CreatePreMulScaleOpIfSupported(
-    mcclDataType_t dtype,
-    mcclComm_t comm,
+    ncclDataType_t dtype,
+    ncclComm_t comm,
     const void *scale,
-    mcclRedOp_t *op,
+    ncclRedOp_t *op,
     distributed::NCCLCommContext *comm_ctx = nullptr) {
-// #if NCCL_VERSION_CODE >= 21100
+#if NCCL_VERSION_CODE >= 21100
   if (FLAGS_dynamic_static_unified_comm) {
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx,
@@ -919,32 +913,32 @@ static bool CreatePreMulScaleOpIfSupported(
             "But parameter of comm_ctx should not be nullptr."));
     int ver = comm_ctx->GetNcclVersion();
     if (ver >= 21100) {
-      VLOG(10) << "mcclRedOpCreatePreMulSum is supported.";
+      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
       comm_ctx->RedOpCreatePreMulSum(
-          op, const_cast<void *>(scale), dtype, mcclScalarDevice);
+          op, const_cast<void *>(scale), dtype, ncclScalarDevice);
       return true;
     }
   } else {
     int ver;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclGetVersion(&ver));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
     if (ver >= 21100) {
-      VLOG(10) << "mcclRedOpCreatePreMulSum is supported.";
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclRedOpCreatePreMulSum(
-          op, const_cast<void *>(scale), dtype, mcclScalarDevice, comm));
+      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+          op, const_cast<void *>(scale), dtype, ncclScalarDevice, comm));
       return true;
     }
   }
-// #endif
-  VLOG(10) << "mcclRedOpCreatePreMulSum is not supported.";
+#endif
+  VLOG(10) << "ncclRedOpCreatePreMulSum is not supported.";
   return false;
 }
 
 static void DestoryOpIfSupported(
-    mcclRedOp_t op,
-    mcclComm_t comm,
+    ncclRedOp_t op,
+    ncclComm_t comm,
     distributed::NCCLCommContext *comm_ctx = nullptr) {
-// #if NCCL_VERSION_CODE >= 21100
-  VLOG(10) << "mcclRedOpDestroy starts";
+#if NCCL_VERSION_CODE >= 21100
+  VLOG(10) << "ncclRedOpDestroy starts";
 
   if (FLAGS_dynamic_static_unified_comm) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -956,12 +950,12 @@ static void DestoryOpIfSupported(
             "But parameter of comm_ctx should not be nullptr."));
     comm_ctx->RedOpDestroy(op);
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclRedOpDestroy(op, comm));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, comm));
   }
-  VLOG(10) << "mcclRedOpDestroy ends";
+  VLOG(10) << "ncclRedOpDestroy ends";
 
-// #endif
-  VLOG(10) << "mcclRedOpDestroy is not supported.";
+#endif
+  VLOG(10) << "ncclRedOpDestroy is not supported.";
 }
 
 template <typename T1, typename T2>
@@ -986,11 +980,11 @@ static void LaunchScaleKernel(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, bool UseReduceScatter>
-static void mcclSumWithScaleBase(const T *sendbuff,
+static void NCCLSumWithScaleBase(const T *sendbuff,
                                  T *recvbuff,
                                  size_t recvcount,
                                  size_t nranks,
-                                 mcclComm_t comm,
+                                 ncclComm_t comm,
                                  gpuStream_t stream,
                                  const phi::GPUContext &dev_ctx,
                                  distributed::NCCLCommContext *comm_ctx,
@@ -1022,9 +1016,9 @@ static void mcclSumWithScaleBase(const T *sendbuff,
     return;
   }
 
-  mcclRedOp_t op = mcclSum;
-  mcclDataType_t dtype =
-      std::is_same<T, float>::value ? mcclFloat32 : mcclFloat16;
+  ncclRedOp_t op = ncclSum;
+  ncclDataType_t dtype =
+      std::is_same<T, float>::value ? ncclFloat32 : ncclFloat16;
   bool should_destroy_op = scale && CreatePreMulScaleOpIfSupported(
                                         dtype, comm, scale, &op, comm_ctx);
   memory_utils::Buffer buffer(dev_ctx.GetPlace());
@@ -1040,7 +1034,7 @@ static void mcclSumWithScaleBase(const T *sendbuff,
       // TODO(BeingGod): NCCLCommContext::ReduceScatter only accept DenseTensor,
       // but sendbuff or recvbuff maybe allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclReduceScatter(sendbuff,
+          phi::dynload::ncclReduceScatter(sendbuff,
                                           recvbuff,
                                           recvcount,
                                           dtype,
@@ -1051,7 +1045,7 @@ static void mcclSumWithScaleBase(const T *sendbuff,
       // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
       // but sendbuff or recvbuff maybe allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclAllReduce(sendbuff,
+          phi::dynload::ncclAllReduce(sendbuff,
                                       recvbuff,
                                       recvcount,
                                       dtype,
@@ -1061,10 +1055,10 @@ static void mcclSumWithScaleBase(const T *sendbuff,
     }
   } else {
     if (UseReduceScatter) {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclReduceScatter(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduceScatter(
           sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mcclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
     }
   }
@@ -1075,16 +1069,16 @@ static void mcclSumWithScaleBase(const T *sendbuff,
 }
 
 template <typename T>
-static void mcclReduceScatterWithScale(const T *sendbuff,
+static void NCCLReduceScatterWithScale(const T *sendbuff,
                                        T *recvbuff,
                                        size_t recvcount,
                                        size_t nranks,
-                                       mcclComm_t comm,
+                                       ncclComm_t comm,
                                        gpuStream_t stream,
                                        const phi::GPUContext &dev_ctx,
                                        distributed::NCCLCommContext *comm_ctx,
                                        const T *scale = nullptr) {
-  mcclSumWithScaleBase<T, true>(sendbuff,
+  NCCLSumWithScaleBase<T, true>(sendbuff,
                                 recvbuff,
                                 recvcount,
                                 nranks,
@@ -1096,16 +1090,16 @@ static void mcclReduceScatterWithScale(const T *sendbuff,
 }
 
 template <typename T>
-static void mcclAllReduceWithScale(const T *sendbuff,
+static void NCCLAllReduceWithScale(const T *sendbuff,
                                    T *recvbuff,
                                    size_t recvcount,
                                    size_t nranks,
-                                   mcclComm_t comm,
+                                   ncclComm_t comm,
                                    gpuStream_t stream,
                                    const phi::GPUContext &dev_ctx,
                                    distributed::NCCLCommContext *comm_ctx,
                                    const T *scale = nullptr) {
-  mcclSumWithScaleBase<T, false>(sendbuff,
+  NCCLSumWithScaleBase<T, false>(sendbuff,
                                  recvbuff,
                                  recvcount,
                                  nranks,
@@ -1246,10 +1240,6 @@ static std::string GetMinMaxStr(const T *x, size_t n, const phi::Place &place) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
         &ret_cpu[0], ret, 2 * sizeof(T), hipMemcpyDeviceToHost, stream));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(
-        &ret_cpu[0], ret, 2 * sizeof(T), musaMemcpyDeviceToHost, stream));
-    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(stream));    
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
         &ret_cpu[0], ret, 2 * sizeof(T), cudaMemcpyDeviceToHost, stream));
@@ -1306,12 +1296,6 @@ static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
                                             sizeof(flag),
                                             hipMemcpyDeviceToHost,
                                             dev_ctx.stream()));
-#elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(&flag,
-                                             out.Get<bool>(),
-                                             sizeof(flag),
-                                             musaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));                                            
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&flag,
                                              out.Get<bool>(),
@@ -1474,7 +1458,7 @@ void DistributedFusedLambKernel(
     DenseTensor *acc_step,
     DenseTensor *stop_update,
     DenseTensor *step) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
   found_inf->Resize({1});
@@ -1772,7 +1756,7 @@ void DistributedFusedLambKernel(
 
   // Step 6: allreduce + global norm gradient clip
   int64_t global_rank = 0, local_rank = 0;
-  mcclComm_t global_comm = nullptr, local_comm = nullptr,
+  ncclComm_t global_comm = nullptr, local_comm = nullptr,
              external_comm = nullptr;
   paddle::platform::NCCLComm *nccl_comm_handle = nullptr,
                              *local_nccl_comm_handle = nullptr;
@@ -1884,7 +1868,7 @@ void DistributedFusedLambKernel(
       // (1) ReduceScater first
       if (local_shard) {
         if (use_hierarchical_allreduce) {
-          mcclReduceScatterWithScale(
+          NCCLReduceScatterWithScale(
               fp32_grad_data,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
@@ -1893,7 +1877,7 @@ void DistributedFusedLambKernel(
               stream,
               dev_ctx,
               local_comm_ctx);
-          mcclAllReduceWithScale(
+          NCCLAllReduceWithScale(
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
@@ -1903,7 +1887,7 @@ void DistributedFusedLambKernel(
               dev_ctx,
               external_comm_ctx);
 
-          mcclReduceScatterWithScale(
+          NCCLReduceScatterWithScale(
               fp16_grad_data,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
@@ -1912,7 +1896,7 @@ void DistributedFusedLambKernel(
               stream,
               dev_ctx,
               local_comm_ctx);
-          mcclAllReduceWithScale(
+          NCCLAllReduceWithScale(
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
@@ -1922,7 +1906,7 @@ void DistributedFusedLambKernel(
               dev_ctx,
               external_comm_ctx);
         } else {
-          mcclAllReduceWithScale(fp32_grad_data,
+          NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel,
                                  nranks,
@@ -1930,7 +1914,7 @@ void DistributedFusedLambKernel(
                                  stream,
                                  dev_ctx,
                                  comm_ctx);
-          mcclAllReduceWithScale(fp16_grad_data,
+          NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel,
                                  nranks,
@@ -1942,7 +1926,7 @@ void DistributedFusedLambKernel(
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
-        mcclReduceScatterWithScale(fp32_grad_data,
+        NCCLReduceScatterWithScale(fp32_grad_data,
                                    fp32_sum_grad,
                                    fp32_numel_each_device,
                                    nranks,
@@ -1950,7 +1934,7 @@ void DistributedFusedLambKernel(
                                    stream,
                                    dev_ctx,
                                    comm_ctx);
-        mcclReduceScatterWithScale(fp16_grad_data,
+        NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
                                    fp16_numel_each_device,
                                    nranks,
@@ -1973,11 +1957,11 @@ void DistributedFusedLambKernel(
         // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
         // but fp32_square_grad_norm is allocated by Buffer.
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::mcclAllReduce(fp32_square_grad_norm,
+            phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                         fp32_square_grad_norm,
                                         1,
-                                        mcclFloat32,
-                                        mcclSum,
+                                        ncclFloat32,
+                                        ncclSum,
                                         local_comm,
                                         stream));
       }
@@ -2030,7 +2014,7 @@ void DistributedFusedLambKernel(
               << HasNanInf(dev_ctx, fp16_grad_data, fp16_numel);
       if (local_shard) {
         if (use_hierarchical_allreduce) {
-          mcclReduceScatterWithScale(
+          NCCLReduceScatterWithScale(
               fp32_grad_data,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
@@ -2040,7 +2024,7 @@ void DistributedFusedLambKernel(
               dev_ctx,
               local_comm_ctx,
               fp32_scale);
-          mcclAllReduceWithScale(
+          NCCLAllReduceWithScale(
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
@@ -2049,7 +2033,7 @@ void DistributedFusedLambKernel(
               stream,
               dev_ctx,
               external_comm_ctx);
-          mcclReduceScatterWithScale(
+          NCCLReduceScatterWithScale(
               fp16_grad_data,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
@@ -2059,7 +2043,7 @@ void DistributedFusedLambKernel(
               dev_ctx,
               local_comm_ctx,
               fp16_scale);
-          mcclAllReduceWithScale(
+          NCCLAllReduceWithScale(
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
@@ -2069,7 +2053,7 @@ void DistributedFusedLambKernel(
               dev_ctx,
               external_comm_ctx);
         } else {
-          mcclAllReduceWithScale(fp32_grad_data,
+          NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel,
                                  nranks,
@@ -2078,7 +2062,7 @@ void DistributedFusedLambKernel(
                                  dev_ctx,
                                  comm_ctx,
                                  fp32_scale);
-          mcclAllReduceWithScale(fp16_grad_data,
+          NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel,
                                  nranks,
@@ -2091,7 +2075,7 @@ void DistributedFusedLambKernel(
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
-        mcclReduceScatterWithScale(fp32_grad_data,
+        NCCLReduceScatterWithScale(fp32_grad_data,
                                    fp32_sum_grad,
                                    fp32_numel_each_device,
                                    nranks,
@@ -2100,7 +2084,7 @@ void DistributedFusedLambKernel(
                                    dev_ctx,
                                    comm_ctx,
                                    fp32_scale);
-        mcclReduceScatterWithScale(fp16_grad_data,
+        NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
                                    fp16_numel_each_device,
                                    nranks,
@@ -2125,11 +2109,11 @@ void DistributedFusedLambKernel(
         // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
         // but fp32_square_grad_norm is allocated by Buffer.
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::mcclAllReduce(fp32_square_grad_norm,
+            phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                         fp32_square_grad_norm,
                                         1,
-                                        mcclFloat32,
-                                        mcclSum,
+                                        ncclFloat32,
+                                        ncclSum,
                                         local_comm,
                                         stream));
         VLOG(1) << "Grad square norm after all reduce: "
@@ -2142,7 +2126,7 @@ void DistributedFusedLambKernel(
   } else {
     if (local_shard) {
       if (use_hierarchical_allreduce) {
-        mcclReduceScatterWithScale(
+        NCCLReduceScatterWithScale(
             fp32_grad_data,
             fp32_sum_grad + local_rank * fp32_numel_each_device,
             fp32_numel_each_device,
@@ -2151,7 +2135,7 @@ void DistributedFusedLambKernel(
             stream,
             dev_ctx,
             local_comm_ctx);
-        mcclAllReduceWithScale(
+        NCCLAllReduceWithScale(
             fp32_sum_grad + local_rank * fp32_numel_each_device,
             fp32_sum_grad + local_rank * fp32_numel_each_device,
             fp32_numel_each_device,
@@ -2160,7 +2144,7 @@ void DistributedFusedLambKernel(
             stream,
             dev_ctx,
             external_comm_ctx);
-        mcclReduceScatterWithScale(
+        NCCLReduceScatterWithScale(
             fp16_grad_data,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
             fp16_numel_each_device,
@@ -2169,7 +2153,7 @@ void DistributedFusedLambKernel(
             stream,
             dev_ctx,
             local_comm_ctx);
-        mcclAllReduceWithScale(
+        NCCLAllReduceWithScale(
             fp16_sum_grad + local_rank * fp16_numel_each_device,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
             fp16_numel_each_device,
@@ -2179,7 +2163,7 @@ void DistributedFusedLambKernel(
             dev_ctx,
             external_comm_ctx);
       } else {
-        mcclAllReduceWithScale(fp32_grad_data,
+        NCCLAllReduceWithScale(fp32_grad_data,
                                fp32_sum_grad,
                                fp32_numel,
                                nranks,
@@ -2187,7 +2171,7 @@ void DistributedFusedLambKernel(
                                stream,
                                dev_ctx,
                                comm_ctx);
-        mcclAllReduceWithScale(fp16_grad_data,
+        NCCLAllReduceWithScale(fp16_grad_data,
                                fp16_sum_grad,
                                fp16_numel,
                                nranks,
@@ -2199,7 +2183,7 @@ void DistributedFusedLambKernel(
       fp32_sum_grad += (local_rank * fp32_numel_each_device);
       fp16_sum_grad += (local_rank * fp16_numel_each_device);
     } else {
-      mcclReduceScatterWithScale(fp32_grad_data,
+      NCCLReduceScatterWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel_each_device,
                                  num_devices,
@@ -2207,7 +2191,7 @@ void DistributedFusedLambKernel(
                                  stream,
                                  dev_ctx,
                                  comm_ctx);
-      mcclReduceScatterWithScale(fp16_grad_data,
+      NCCLReduceScatterWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel_each_device,
                                  num_devices,
@@ -2227,11 +2211,11 @@ void DistributedFusedLambKernel(
       // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
       // but fp32_square_grad_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclAllReduce(fp32_square_grad_norm,
+          phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                       fp32_square_grad_norm,
                                       1,
-                                      mcclFloat32,
-                                      mcclSum,
+                                      ncclFloat32,
+                                      ncclSum,
                                       local_comm,
                                       stream));
     }
@@ -2373,26 +2357,26 @@ void DistributedFusedLambKernel(
       // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
       // but param_square_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclAllReduce(param_square_norm + fp32_global_param_num,
+          phi::dynload::ncclAllReduce(param_square_norm + fp32_global_param_num,
                                       param_square_norm + fp32_global_param_num,
                                       2 * param_num - fp32_global_param_num,
-                                      mcclFloat32,
-                                      mcclSum,
+                                      ncclFloat32,
+                                      ncclSum,
                                       local_comm,
                                       stream));
     } else {
       // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
       // but trust_ratio_div_square_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclAllReduce(trust_ratio_div_square_norm,
+          phi::dynload::ncclAllReduce(trust_ratio_div_square_norm,
                                       trust_ratio_div_square_norm,
                                       param_num,
-                                      mcclFloat32,
-                                      mcclSum,
+                                      ncclFloat32,
+                                      ncclSum,
                                       local_comm,
                                       stream));
     }
-    VLOG(10) << "mcclAllReduce done";
+    VLOG(10) << "ncclAllReduce done";
   }
 
   LogParamAndTrustRatioDivSquareNorm<1>(
@@ -2417,7 +2401,7 @@ void DistributedFusedLambKernel(
         beta1,
         beta2);
     if (num_devices > 1) {
-      // mcclAllGather
+      // ncclAllGather
       if (local_comm_ctx) {
         auto send_buf = distributed::GetPartialTensor(
             *fp32_param_out, fp32_offset, fp32_numel_each_device);
@@ -2426,10 +2410,10 @@ void DistributedFusedLambKernel(
         local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::mcclAllGather(fp32_param_data + fp32_offset,
+            phi::dynload::ncclAllGather(fp32_param_data + fp32_offset,
                                         fp32_param_data,
                                         fp32_numel_each_device,
-                                        mcclFloat32,
+                                        ncclFloat32,
                                         local_comm,
                                         stream));
       }
@@ -2455,7 +2439,7 @@ void DistributedFusedLambKernel(
         beta1,
         beta2);
     if (num_devices > 1) {
-      // mcclAllGather
+      // ncclAllGather
       if (local_comm_ctx) {
         auto send_buf = distributed::GetPartialTensor(
             *fp16_param_out, fp16_offset, fp16_numel_each_device);
@@ -2464,10 +2448,10 @@ void DistributedFusedLambKernel(
         local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::mcclAllGather(fp16_param_data + fp16_offset,
+            phi::dynload::ncclAllGather(fp16_param_data + fp16_offset,
                                         fp16_param_data,
                                         fp16_numel_each_device,
-                                        mcclFloat16,
+                                        ncclFloat16,
                                         local_comm,
                                         stream));
       }

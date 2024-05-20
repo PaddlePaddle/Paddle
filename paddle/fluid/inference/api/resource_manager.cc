@@ -44,7 +44,7 @@
 namespace paddle {
 namespace internal {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)|| defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -102,9 +102,6 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          musaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream_));
@@ -135,7 +132,7 @@ void CPUContextResource::InitCPUResource() {
 
 CPUContextResource::CPUContextResource() { InitCPUResource(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
     : place_(place) {
   InitGPUResource(stream);
@@ -161,8 +158,6 @@ void GPUContextResource::DestroyGPUResource() {
   if (owned_stream_) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(stream_));    
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_));
 #endif
@@ -171,8 +166,8 @@ void GPUContextResource::DestroyGPUResource() {
 
   DestroyDnnHandle();
   DestroyBlasHandle();
-  // DestroyBlasLtHandle();
-  // DestroySolverHandle();
+  DestroyBlasLtHandle();
+  DestroySolverHandle();
   DestroySparseHandle();
 }
 
@@ -210,21 +205,21 @@ void GPUContextResource::DestroyBlasHandle() {
   phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
 }
 
-// void GPUContextResource::InitBlasLtHandle() {
-//   phi::InitBlasLtHandle(&blaslt_handle_);
-// }
+void GPUContextResource::InitBlasLtHandle() {
+  phi::InitBlasLtHandle(&blaslt_handle_);
+}
 
-// void GPUContextResource::DestroyBlasLtHandle() {
-//   phi::DestroyBlasLtHandle(blaslt_handle_);
-// }
+void GPUContextResource::DestroyBlasLtHandle() {
+  phi::DestroyBlasLtHandle(blaslt_handle_);
+}
 
-// void GPUContextResource::InitSolverHandle() {
-//   phi::InitSolverHandle(&solver_handle_, stream_);
-// }
+void GPUContextResource::InitSolverHandle() {
+  phi::InitSolverHandle(&solver_handle_, stream_);
+}
 
-// void GPUContextResource::DestroySolverHandle() {
-//   phi::DestroySolverHandle(solver_handle_);
-// }
+void GPUContextResource::DestroySolverHandle() {
+  phi::DestroySolverHandle(solver_handle_);
+}
 
 void GPUContextResource::InitSparseHandle() {
   phi::InitSparseHandle(&sparse_handle_, stream_);
@@ -292,29 +287,29 @@ GPUContextResource::GetBlasTF32TensorCoreHandleCreator() {
   };
 }
 
-// blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
-//   return blaslt_handle_;
-// }
+blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
+  return blaslt_handle_;
+}
 
-// std::function<phi::blasLtHandle_t()>
-// GPUContextResource::GetBlasLtHandleCreator() {
-//   return [&]() {
-//     InitBlasLtHandle();
-//     return blaslt_handle_;
-//   };
-// }
+std::function<phi::blasLtHandle_t()>
+GPUContextResource::GetBlasLtHandleCreator() {
+  return [&]() {
+    InitBlasLtHandle();
+    return blaslt_handle_;
+  };
+}
 
-// phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
-//   return solver_handle_;
-// }
+phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
+  return solver_handle_;
+}
 
-// std::function<phi::solverHandle_t()>
-// GPUContextResource::GetSolverDnHandleCreator() {
-//   return [&]() {
-//     InitSolverHandle();
-//     return solver_handle_;
-//   };
-// }
+std::function<phi::solverHandle_t()>
+GPUContextResource::GetSolverDnHandleCreator() {
+  return [&]() {
+    InitSolverHandle();
+    return solver_handle_;
+  };
+}
 
 phi::sparseHandle_t GPUContextResource::GetSparseHandle() const {
   return sparse_handle_;
@@ -385,7 +380,7 @@ CPUContextResource* ResourceManager::GetCPUResource() const {
   return cpu_resource_.get();
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
   std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
   if (gpu_resources_.count(stream)) {

@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/sync_batch_norm_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
@@ -105,8 +104,8 @@ void SyncBatchNormKernel(const Context& ctx,
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
-    mcclComm_t comm = static_cast<mcclComm_t>(detail::GetCCLComm(x.place(), 0));
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
     if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
@@ -115,11 +114,11 @@ void SyncBatchNormKernel(const Context& ctx,
       int dtype = phi::ToNCCLDataType(mean_out->dtype());
       // In-place operation
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::mcclAllReduce(stats,
+          phi::dynload::ncclAllReduce(stats,
                                       stats,
                                       2 * C + 1,
-                                      static_cast<mcclDataType_t>(dtype),
-                                      mcclSum,
+                                      static_cast<ncclDataType_t>(dtype),
+                                      ncclSum,
                                       comm,
                                       stream));
       VLOG(3) << "Sync result using all reduce";
@@ -237,28 +236,26 @@ void SyncBatchNormCooKernel(const Context& dev_ctx,
                             DenseTensor* saved_mean,
                             DenseTensor* saved_variance,
                             DenseTensor* reserve_space) {
-      PADDLE_ENFORCE(false, "error");
-
-  // EmptyLikeCooKernel<T, Context>(dev_ctx, x, y);
-  // phi::SyncBatchNormKernel<T, Context>(dev_ctx,
-  //                                      x.values(),
-  //                                      mean,
-  //                                      variance,
-  //                                      scale,
-  //                                      bias,
-  //                                      is_test,
-  //                                      momentum,
-  //                                      epsilon,
-  //                                      data_layout,
-  //                                      use_global_stats,
-  //                                      trainable_statistics,
-  //                                      y->mutable_values(),
-  //                                      mean_out,
-  //                                      variance_out,
-  //                                      saved_mean,
-  //                                      saved_variance,
-  //                                      reserve_space);
-  // y->SetIndicesDict(x.GetIndicesDict());
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, y);
+  phi::SyncBatchNormKernel<T, Context>(dev_ctx,
+                                       x.values(),
+                                       mean,
+                                       variance,
+                                       scale,
+                                       bias,
+                                       is_test,
+                                       momentum,
+                                       epsilon,
+                                       data_layout,
+                                       use_global_stats,
+                                       trainable_statistics,
+                                       y->mutable_values(),
+                                       mean_out,
+                                       variance_out,
+                                       saved_mean,
+                                       saved_variance,
+                                       reserve_space);
+  y->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
@@ -280,27 +277,26 @@ void SyncBatchNormCooGradKernel(
     SparseCooTensor* x_grad,
     DenseTensor* scale_grad,
     DenseTensor* bias_grad) {
-      PADDLE_ENFORCE(false, "error");
-  // EmptyLikeCooKernel<T, Context>(dev_ctx, x, x_grad);
-  // *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
-  // *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
-  // phi::SyncBatchNormGradKernel<T, Context>(dev_ctx,
-  //                                          x.values(),
-  //                                          scale,
-  //                                          bias,
-  //                                          saved_mean,
-  //                                          saved_variance,
-  //                                          reserve_space,
-  //                                          y_grad.values(),
-  //                                          momentum,
-  //                                          epsilon,
-  //                                          data_layout,
-  //                                          is_test,
-  //                                          use_global_stats,
-  //                                          trainable_statistics,
-  //                                          x_grad->mutable_values(),
-  //                                          scale_grad,
-  //                                          bias_grad);
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, x_grad);
+  *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
+  *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
+  phi::SyncBatchNormGradKernel<T, Context>(dev_ctx,
+                                           x.values(),
+                                           scale,
+                                           bias,
+                                           saved_mean,
+                                           saved_variance,
+                                           reserve_space,
+                                           y_grad.values(),
+                                           momentum,
+                                           epsilon,
+                                           data_layout,
+                                           is_test,
+                                           use_global_stats,
+                                           trainable_statistics,
+                                           x_grad->mutable_values(),
+                                           scale_grad,
+                                           bias_grad);
 }
 
 }  // namespace sparse

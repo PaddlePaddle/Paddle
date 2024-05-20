@@ -21,9 +21,9 @@ std::shared_ptr<NCCLWrapper> NCCLWrapper::s_instance_ = NULL;
 bool NCCLWrapper::is_initialized_ = false;
 
 void NCCLWrapper::InitNCCL() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::mcclCommInitRank(&(nccl_info_.comm_),
+      platform::dynload::ncclCommInitRank(&(nccl_info_.comm_),
                                           nccl_info_.global_ranks_,
                                           nccl_info_.nccl_id_,
                                           nccl_info_.my_global_rank_));
@@ -32,16 +32,16 @@ void NCCLWrapper::InitNCCL() {
 }
 
 void NCCLWrapper::SetNCCLId(const NCCLInfo& nccl_info) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   nccl_info_.nccl_id_ = nccl_info.nccl_id_;
 #endif
   return;
 }
 
 NCCLInfo NCCLWrapper::GetNCCLId() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::mcclGetUniqueId(&(nccl_info_.nccl_id_)));
+      platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
 #endif
   return nccl_info_;
 }
@@ -49,15 +49,13 @@ NCCLInfo NCCLWrapper::GetNCCLId() {
 void NCCLWrapper::SetRankInfo(const int local_rank,
                               const int global_rank,
                               const int ranks) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
   platform::SetDeviceId(local_rank);
 #ifdef PADDLE_WITH_RCCL
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&(nccl_info_.stream_)));
-#elif defined(PADDLE_WITH_MCCL)
-  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&(nccl_info_.stream_)));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
@@ -68,22 +66,20 @@ void NCCLWrapper::SetRankInfo(const int local_rank,
 void NCCLWrapper::SyncVar(const int root_rank,
                           const Scope& scope,
                           const std::vector<std::string>& var_names) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   for (auto& name : var_names) {
     auto var = scope.FindVar(name);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int32_t total_size = tensor->numel();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclBcast(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         reinterpret_cast<void*>(tensor->data<float>()),
         total_size,
-        mcclFloat,
+        ncclFloat,
         root_rank,
         nccl_info_.comm_,
         nccl_info_.stream_));
 #ifdef PADDLE_WITH_RCCL
     hipStreamSynchronize(nccl_info_.stream_);
-#elif defined(PADDLE_WITH_MCCL)
-    musaStreamSynchronize(nccl_info_.stream_);
 #else
     cudaStreamSynchronize(nccl_info_.stream_);
 #endif

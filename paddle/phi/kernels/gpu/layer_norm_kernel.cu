@@ -482,7 +482,7 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
 
 template class LayerNormDirectCUDAFunctor<float, float>;
 template class LayerNormDirectCUDAFunctor<double, double>;
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)&& !defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class LayerNormDirectCUDAFunctor<half, float>;
 #endif
 

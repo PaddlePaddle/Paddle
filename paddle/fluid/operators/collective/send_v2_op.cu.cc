@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -28,7 +28,8 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL)) 
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
 void send_shape_info(const phi::DenseTensor& x,
                      const platform::Place& place,
                      const gpuStream_t& stream,
@@ -45,7 +46,7 @@ void send_shape_info(const phi::DenseTensor& x,
             "to send the shape info."));
   }
   phi::DataType shape_dtype = phi::DataType::INT32;
-  mcclDataType_t nccl_dtype =
+  ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
   auto dims = x.dims();
   int shape_size = dims.size();
@@ -72,7 +73,7 @@ void send_shape_info(const phi::DenseTensor& x,
       comm_ctx->Send(*gpu_shape_size_tensor, 1, peer, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::mcclSend(gpu_shape_size_tensor->data<int>(),
+          platform::dynload::ncclSend(gpu_shape_size_tensor->data<int>(),
                                       1,
                                       nccl_dtype,
                                       peer,
@@ -105,7 +106,7 @@ void send_shape_info(const phi::DenseTensor& x,
       comm_ctx->Send(*gpu_shape_tensor, shape_size, peer, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::mcclSend(gpu_shape_tensor->data<int>(),
+          platform::dynload::ncclSend(gpu_shape_tensor->data<int>(),
                                       shape_size,
                                       nccl_dtype,
                                       peer,
@@ -121,7 +122,8 @@ template <typename T, typename DeviceContext>
 class SendOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_NCCL))
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
@@ -215,12 +217,12 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto& x = x_array.at(idx);
         int numel = x.numel();
-        mcclDataType_t dtype =
+        ncclDataType_t dtype =
             platform::ToNCCLDataType(framework::TransToProtoVarType(x.dtype()));
         if (comm_ctx) {
           comm_ctx->Send(x, numel, peer, stream);
         } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclSend(
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         }
         VLOG(3) << "rank " << comm->rank() << " send "
@@ -245,9 +247,9 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->Send(*x, numel, peer, stream);
     } else {
-      mcclDataType_t dtype =
+      ncclDataType_t dtype =
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclSend(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
           x->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " send "
               << common::product(x->dims()) << " to " << peer;
@@ -272,9 +274,9 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           ops::SendOpV2CUDAKernel,
                           float,
                           double,
-// #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
-// #endif
+#endif
                           int,
                           int64_t,
                           int8_t,

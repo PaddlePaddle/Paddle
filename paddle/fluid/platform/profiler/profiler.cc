@@ -18,16 +18,10 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
-
-#ifdef PADDLE_WITH_MUSA
-#include <musa.h>
-#include <musa_runtime.h>
-#endif
-
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
@@ -52,9 +46,6 @@ void SynchronizeDevice() {
 #endif
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
-#endif
-#ifdef PADDLE_WITH_MUSA
-  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
@@ -171,7 +162,7 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                            std::string("%s"),
                            kv.second.c_str());
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
   for (auto device_id : device_ids) {

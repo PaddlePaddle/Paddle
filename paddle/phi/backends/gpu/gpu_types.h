@@ -17,15 +17,11 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
-#elif defined(PADDLE_WITH_MUSA)
-#include "paddle/phi/backends/dynload/mublas.h"
-#include "paddle/phi/backends/dynload/mudnn.h"
 #else  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -34,39 +30,18 @@
 namespace phi {
 
 #ifdef PADDLE_WITH_HIP
-#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
-  using GPU_TYPE = ROCM_TYPE;
-
-#elif defined(PADDLE_WITH_MUSA)
-#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
-  using GPU_TYPE = MUSA_TYPE;
-
-#else  // PADDLE_WITH_MUSA
-#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
-  using GPU_TYPE = CUDA_TYPE;
-#endif  // PADDLE_WITH_CUDA
-
-DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
-DECLARE_TYPE_FOR_GPU(gpuMemcpyKind,
-                     cudaMemcpyKind,
-                     hipMemcpyKind,
-                     musaMemcpyKind);
-DECLARE_TYPE_FOR_GPU(gpuDeviceProp,
-                     cudaDeviceProp,
-                     hipDeviceProp_t,
-                     musaDeviceProp);
-#undef DECLARE_TYPE_FOR_GPU
-
-#ifndef PADDLE_WITH_MUSA
-#ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
 
-#else  // PADDLE_WITH_MUSA
+#else  // PADDLE_WITH_CDUA
+
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
-#endif  // PADDLE_WITH_CUDA
+#endif
 
+DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t);
+DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind);
+DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t);
 DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
 DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
@@ -75,45 +50,34 @@ DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
+
 #undef DECLARE_TYPE_FOR_GPU
-#endif
 
 #ifdef PADDLE_WITH_HIP
-#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = ROCM_CV;
-#elif defined(PADDLE_WITH_MUSA)
-#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
-  constexpr auto GPU_CV = MUSA_CV;
 #else  // PADDLE_WITH_CUDA
-#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = CUDA_CV;
 #endif
 
 DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          cudaErrorMemoryAllocation,
-                         hipErrorOutOfMemory,
-                         musaErrorMemoryAllocation);
-DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady,
-                         cudaErrorNotReady,
-                         hipErrorNotReady,
-                         musaErrorNotReady);
-DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess, musaSuccess);
+                         hipErrorOutOfMemory);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,
                          cudaMemcpyKind::cudaMemcpyHostToDevice,
-                         hipMemcpyKind::hipMemcpyHostToDevice,
-                         musaMemcpyKind::musaMemcpyHostToDevice);
+                         hipMemcpyKind::hipMemcpyHostToDevice);
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToHost,
                          cudaMemcpyKind::cudaMemcpyDeviceToHost,
-                         hipMemcpyKind::hipMemcpyDeviceToHost,
-                         musaMemcpyKind::musaMemcpyDeviceToHost);
+                         hipMemcpyKind::hipMemcpyDeviceToHost);
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
                          cudaMemcpyKind::cudaMemcpyDeviceToDevice,
-                         hipMemcpyKind::hipMemcpyDeviceToDevice,
-                         musaMemcpyKind::musaMemcpyDeviceToDevice);
+                         hipMemcpyKind::hipMemcpyDeviceToDevice);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace phi
 
-#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
-        // defined(PADDLE_WITH_MUSA )
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -26,14 +26,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -236,12 +236,12 @@ template <ReduceType red_type, typename T>
 class CReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
-    mcclDataType_t dtype =
+    ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data();
@@ -286,22 +286,22 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    mcclRedOp_t nccl_red_type = mcclSum;
+    ncclRedOp_t nccl_red_type = ncclSum;
     switch (red_type) {
       case kRedSum:
-        nccl_red_type = mcclSum;
+        nccl_red_type = ncclSum;
         break;
 
       case kRedMax:
-        nccl_red_type = mcclMax;
+        nccl_red_type = ncclMax;
         break;
 
       case kRedMin:
-        nccl_red_type = mcclMin;
+        nccl_red_type = ncclMin;
         break;
 
       case kRedProd:
-        nccl_red_type = mcclProd;
+        nccl_red_type = ncclProd;
         break;
 
       default:
@@ -315,7 +315,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::mcclReduce(sendbuff,
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
                                                                recvbuff,
                                                                numel,
                                                                dtype,

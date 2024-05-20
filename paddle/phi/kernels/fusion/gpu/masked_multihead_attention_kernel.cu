@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 
 constexpr unsigned int str2int(const char *str, int h = 0) {
   return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
@@ -1044,7 +1044,7 @@ void MMHAKernel(const Context &dev_ctx,
                 DenseTensor *out,
                 DenseTensor *cache_kv_out,
                 DenseTensor *beam_cache_offset_out) {
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
   if (x.dtype() == phi::DataType::INT32) {
     switch (str2int(compute_dtype.c_str())) {
       case str2int("fp16"):

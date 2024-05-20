@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include <algorithm>
@@ -44,7 +44,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)|| defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
     dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
@@ -53,9 +53,6 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event_, hipEventDisableTiming));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          musaEventCreateWithFlags(&event_, musaEventDisableTiming));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
@@ -78,14 +75,12 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 }
 
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
     auto gpu_place = dev_ctx_->GetPlace();
     platform::CUDADeviceGuard guard(gpu_place.device);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event_));
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event_));
 #endif
@@ -94,7 +89,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 }
 
 void EagerDeletionOpHandle::InitCUDA() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int dev_id = dev_ctxes_.begin()->first.device;
   events_[dev_id] = nullptr;
 #endif
@@ -182,7 +177,7 @@ void EagerDeletionOpHandle::RunImpl() {
 
 void EagerDeletionOpHandle::ClearGarbages(
     std::deque<std::shared_ptr<memory::Allocation>> *garbages) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
     auto compute_stream = dev_ctx_->stream();
     auto callback_stream =
@@ -192,10 +187,6 @@ void EagerDeletionOpHandle::ClearGarbages(
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, compute_stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamWaitEvent(callback_stream, event_, 0));
-#elif defined(PADDLE_WITH_MUSA)
-      PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event_, compute_stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          musaStreamWaitEvent(callback_stream, event_, 0));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, compute_stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -206,7 +197,7 @@ void EagerDeletionOpHandle::ClearGarbages(
   } else {
 #endif
     gc_->Add(std::move(*garbages));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 }

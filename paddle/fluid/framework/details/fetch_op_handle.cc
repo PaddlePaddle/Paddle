@@ -121,7 +121,7 @@ static void TransData(const phi::DenseTensor &src_item,
                       phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {  // NOLINT
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
 #endif
     } else {

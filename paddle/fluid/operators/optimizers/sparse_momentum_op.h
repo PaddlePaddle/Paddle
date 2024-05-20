@@ -25,8 +25,7 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
-#if defined(__NVCC__) || defined(__MUSACC__)
-
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -462,7 +461,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         grad_index.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
       auto sort_value_ptr =
           sort_value.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 

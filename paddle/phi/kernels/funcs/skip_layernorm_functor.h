@@ -14,12 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_MUSA
-#include <musa.h>
-#include <musa_runtime.h>
-#include <cub/cub.cuh>  // NOLINT
-#endif
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>

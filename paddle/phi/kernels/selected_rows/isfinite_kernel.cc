@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/selected_rows/isfinite_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#if defined(PADDLE_WITH_CUDA) ||defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
@@ -51,7 +51,7 @@ PD_REGISTER_KERNEL(isfinite_sr,
                    int,
                    int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) ||defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(isinf_sr,
                    GPU,
                    ALL_LAYOUT,

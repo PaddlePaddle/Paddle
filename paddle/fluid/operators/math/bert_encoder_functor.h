@@ -20,12 +20,6 @@ limitations under the License. */
 
 #include <cub/cub.cuh>  // NOLINT
 #endif
-
-#ifdef PADDLE_WITH_MUSA
-#include <musa.h>
-#include <musa_runtime.h>
-#endif
-
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 
@@ -53,7 +47,7 @@ struct CUDATypeTraits<float> {
   typedef float TYPE;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // This functor involves a fusion calculation in Ernie or Bert.
 // The fusion mode is as follows:
 //

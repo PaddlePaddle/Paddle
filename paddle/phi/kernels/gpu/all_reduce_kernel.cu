@@ -15,10 +15,9 @@
 #include "paddle/phi/kernels/all_reduce_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -29,7 +28,7 @@ void AllReduceKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int reduce_type,
                      DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
 
@@ -44,27 +43,25 @@ void AllReduceKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(stream,
                           errors::NotFound("Should initialize NCCL firstly."));
 
-  mcclRedOp_t red_type = mcclSum;
+  ncclRedOp_t red_type = ncclSum;
   switch (static_cast<ReduceType>(reduce_type)) {
     case ReduceType::kRedSum:
-      red_type = mcclSum;
+      red_type = ncclSum;
       break;
     case ReduceType::kRedMax:
-      red_type = mcclMax;
+      red_type = ncclMax;
       break;
     case ReduceType::kRedMin:
-      red_type = mcclMin;
+      red_type = ncclMin;
       break;
     case ReduceType::kRedProd:
-      red_type = mcclProd;
+      red_type = ncclProd;
       break;
     case ReduceType::kRedAll:
-      // NOTE(zhonghui): There is no reduce_all type of mcclRedOp_t, just use
+      // NOTE(zhonghui): There is no reduce_all type of ncclRedOp_t, just use
       // min to replace
-      red_type = mcclMin;
+      red_type = ncclMin;
       break;
-    default:
-    PADDLE_ENFORCE(false, "unsupported type");
   }
   comm_ctx->AllReduce(out, x, red_type, stream);
 #else

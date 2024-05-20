@@ -23,7 +23,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 #endif
@@ -33,7 +33,7 @@
 namespace phi {
 namespace fusion {
 
-#if !defined(PADDLE_WITH_HIP) &&  !defined(PADDLE_WITH_MUSA) 
+#ifndef PADDLE_WITH_HIP
 template <typename T>
 struct GeluComputeType;
 

@@ -21,10 +21,6 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
-#ifdef __MUSACC__
-#include <murand_kernel.h>
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -32,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/hostdevice.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
@@ -53,7 +49,7 @@ struct exponential_transform {
   explicit exponential_transform(T lambda) : lambda_(lambda) {}
 
   HOSTDEVICE inline T operator()(T val) const {
-#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
     T log = -std::numeric_limits<T>::epsilon() / 2;
     if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
       if (std::is_same<T, double>::value) {
@@ -117,7 +113,7 @@ struct normal_transform {
   T std_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)  || defined(__MUSACC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
 
 namespace kps = phi::kps;
 
@@ -126,19 +122,19 @@ namespace kps = phi::kps;
 template <typename T>
 struct normal_distribution;
 
-#if defined(__MUSACC__)
+#if defined(__NVCC__)
 template <typename T>
 struct uniform_distribution {
-  __device__ inline T operator()(murandStatePhilox4_32_10_t *state) const {
-    return static_cast<T>(murand_uniform(state));
+  __device__ inline T operator()(curandStatePhilox4_32_10_t *state) const {
+    return static_cast<T>(curand_uniform(state));
   }
   static constexpr int kReturnsCount = 1;
 };
 
 template <>
 struct uniform_distribution<float> {
-  __device__ inline float4 operator()(murandStatePhilox4_32_10_t *state) const {
-    return murand_uniform4(state);
+  __device__ inline float4 operator()(curandStatePhilox4_32_10_t *state) const {
+    return curand_uniform4(state);
   }
   static constexpr int kReturnsCount = 4;
 };
@@ -146,16 +142,16 @@ struct uniform_distribution<float> {
 template <>
 struct uniform_distribution<double> {
   __device__ inline double2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
-    return murand_uniform2_double(state);
+      curandStatePhilox4_32_10_t *state) const {
+    return curand_uniform2_double(state);
   }
   static constexpr int kReturnsCount = 2;
 };
 
 template <>
 struct uniform_distribution<uint32_t> {
-  __device__ inline uint4 operator()(murandStatePhilox4_32_10_t *state) const {
-    return murand4(state);
+  __device__ inline uint4 operator()(curandStatePhilox4_32_10_t *state) const {
+    return curand4(state);
   }
   static constexpr int kReturnsCount = 4;
 };
@@ -163,9 +159,9 @@ struct uniform_distribution<uint32_t> {
 template <>
 struct uniform_distribution<uint64_t> {
   __device__ inline ulonglong2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
+      curandStatePhilox4_32_10_t *state) const {
     ulonglong2 result;
-    uint4 rand = murand4(state);
+    uint4 rand = curand4(state);
     result.x = (uint64_t)rand.x << 32 | rand.y;
     result.y = (uint64_t)rand.z << 32 | rand.w;
     return result;
@@ -175,8 +171,8 @@ struct uniform_distribution<uint64_t> {
 
 template <>
 struct normal_distribution<float> {
-  __device__ inline float4 operator()(murandStatePhilox4_32_10_t *state) const {
-    return murand_normal4(state);
+  __device__ inline float4 operator()(curandStatePhilox4_32_10_t *state) const {
+    return curand_normal4(state);
   }
   static constexpr int kReturnsCount = 4;
 };
@@ -184,8 +180,8 @@ struct normal_distribution<float> {
 template <>
 struct normal_distribution<double> {
   __device__ inline double2 operator()(
-      murandStatePhilox4_32_10_t *state) const {
-    return murand_normal2_double(state);
+      curandStatePhilox4_32_10_t *state) const {
+    return curand_normal2_double(state);
   }
   static constexpr int kReturnsCount = 2;
 };
@@ -268,10 +264,10 @@ __global__ void DistributionKernel(size_t size,
                                    size_t stride) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount = DistOp::kReturnsCount;
-#if defined(__MUSACC__)
-  murandStatePhilox4_32_10_t state;
-  murand_init(seed, idx + THREAD_ID_X, offset, &state);
-  using SType = murandStatePhilox4_32_10_t;
+#if defined(__NVCC__)
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx + THREAD_ID_X, offset, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #else
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, offset, &state);

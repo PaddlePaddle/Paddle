@@ -14,14 +14,11 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
-#elif defined(PADDLE_WITH_MUSA)
-#include "paddle/phi/backends/gpu/musa/mudnn_desc.h"
-#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #else  // CUDA
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"

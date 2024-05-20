@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__MUSACC__)
+#ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

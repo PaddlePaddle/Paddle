@@ -25,9 +25,6 @@
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
-#if defined(PADDLE_WITH_MCCL)
-#include "paddle/phi/backends/dynload/mccl.h"
-#endif
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
@@ -46,7 +43,7 @@ class CommTask {
            int gid = 0,
            uint64_t seq = 0,
            int64_t numel = 0,
-           mcclComm_t nccl_comm = nullptr,
+           ncclComm_t nccl_comm = nullptr,
            gpuStream_t nccl_stream = nullptr,
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
@@ -92,7 +89,7 @@ class CommTask {
   std::shared_ptr<Store> GetStore() { return store_; }
   void SetStore(std::shared_ptr<Store> store) { store_ = store; }
 
-  mcclComm_t nccl_comm() { return nccl_comm_; }
+  ncclComm_t nccl_comm() { return nccl_comm_; }
   gpuStream_t nccl_stream() { return nccl_stream_; }
 
   virtual std::string GetTraceMsg() {
@@ -163,7 +160,7 @@ class CommTask {
   int gid_;
   uint64_t seq_{0};
   int64_t numel_;
-  mcclComm_t nccl_comm_;
+  ncclComm_t nccl_comm_;
   gpuStream_t nccl_stream_;
   CommType comm_type_;
   bool start_trace_updated_{false};
