@@ -1,6 +1,7 @@
 set(api_yaml_path "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/ops.parsed.yaml")
 set(legacy_api_yaml_path
-    "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.parsed.yaml")
+    "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.parsed.yaml"
+)
 set(api_compat_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")
 set(api_prim_yaml_path "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml")

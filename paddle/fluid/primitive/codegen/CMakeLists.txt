@@ -1,9 +1,10 @@
 set(parsed_yaml_path ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml)
 set(fwd_path ${parsed_yaml_path}/ops.parsed.yaml)
 set(rev_path ${parsed_yaml_path}/backward.parsed.yaml)
-set(fwd_pd_op_path ${parsed_yaml_path}/new/static_ops.parsed.yaml)
-set(update_fwd_pd_op_path ${parsed_yaml_path}/new/update_ops.parsed.yaml)
-set(rev_pd_op_path ${parsed_yaml_path}/new/static_backward.parsed.yaml)
+set(fwd_pd_op_path ${parsed_yaml_path}/inconsistent/static_ops.parsed.yaml)
+set(update_fwd_pd_op_path
+    ${parsed_yaml_path}/inconsistent/update_ops.parsed.yaml)
+set(rev_pd_op_path ${parsed_yaml_path}/inconsistent/static_backward.parsed.yaml)
 set(fused_op_path ${parsed_yaml_path}/fused_ops.parsed.yaml)
 set(fused_rev_op_path ${parsed_yaml_path}/fused_backward.parsed.yaml)
 

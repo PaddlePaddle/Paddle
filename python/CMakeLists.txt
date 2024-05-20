@@ -77,7 +77,7 @@ add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml")
 
 set(ops_legacy_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml")
 
 set(ops_compat_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")

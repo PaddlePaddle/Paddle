@@ -1,8 +1,8 @@
 set(api_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_ops.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_ops.yaml"
 )
 set(backward_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/dygraph_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_backward.yaml"
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_backward.yaml"
 )
 set(tmp_forwards_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.cc"

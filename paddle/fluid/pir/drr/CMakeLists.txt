@@ -12,9 +12,9 @@ set(op_backward_yaml_file ${parsed_op_dir}/backward.parsed.yaml)
 set(fused_op_forward_yaml_file ${parsed_op_dir}/fused_ops.parsed.yaml)
 set(fused_op_backward_yaml_file ${parsed_op_dir}/fused_backward.parsed.yaml)
 
-set(op_yaml_file_1 ${parsed_op_dir}/new/static_ops.parsed.yaml)
-set(op_yaml_file_2 ${parsed_op_dir}/new/static_backward.parsed.yaml)
-set(op_yaml_file_3 ${parsed_op_dir}/new/update_ops.parsed.yaml)
+set(op_yaml_file_1 ${parsed_op_dir}/inconsistent/static_ops.parsed.yaml)
+set(op_yaml_file_2 ${parsed_op_dir}/inconsistent/static_backward.parsed.yaml)
+set(op_yaml_file_3 ${parsed_op_dir}/inconsistent/update_ops.parsed.yaml)
 
 set(op_yaml_files
     ${op_forward_yaml_file},${op_backward_yaml_file},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file_1},${op_yaml_file_2},${op_yaml_file_3}
@@ -81,9 +81,10 @@ endif()
 
 if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
-  set(pir_op_onednn_yaml ${parsed_op_dir}/new/onednn.parsed.yaml)
+  set(pir_op_onednn_yaml ${parsed_op_dir}/inconsistent/onednn.parsed.yaml)
   set(pd_ops_onednn_extra_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/new/ops_onednn_extra.yaml)
+      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/ops_onednn_extra.yaml
+  )
   set(onednn_op_creator_file
       ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
   )
