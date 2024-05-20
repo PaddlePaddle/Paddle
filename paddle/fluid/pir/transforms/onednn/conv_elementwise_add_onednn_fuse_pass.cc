@@ -278,10 +278,10 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
     });
 
     pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
-      auto fuse_activation = match_ctx.Attr<bool>("fuse_activation");
+      auto fuse_activation = match_ctx.Attr<std::string>("fuse_activation");
       auto fuse_residual_connection =
           match_ctx.Attr<bool>("fuse_residual_connection");
-      if (fuse_activation || fuse_residual_connection) {
+      if (!fuse_activation.empty() || fuse_residual_connection) {
         return false;
       }
       return true;
@@ -399,10 +399,10 @@ class FusedConvBiasElementwiseAddAsYPattern
     });
 
     pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
-      auto fuse_activation = match_ctx.Attr<bool>("fuse_activation");
+      auto fuse_activation = match_ctx.Attr<std::string>("fuse_activation");
       auto fuse_residual_connection =
           match_ctx.Attr<bool>("fuse_residual_connection");
-      if (fuse_activation || fuse_residual_connection) {
+      if (!fuse_activation.empty() || fuse_residual_connection) {
         return false;
       }
       return true;
