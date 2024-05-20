@@ -97,7 +97,6 @@ class TestReshardNdMesh:
         )
 
         new_ops = dist_program.global_block().ops
-        old_ops_name = [op.name() for op in main_program.global_block().ops]
         new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
         rank_id = dist.get_rank()
@@ -150,7 +149,6 @@ class TestReshardNdMesh:
         )
 
         new_ops = dist_program.global_block().ops
-        old_ops_name = [op.name() for op in main_program.global_block().ops]
         new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
         rank_id = dist.get_rank()
@@ -204,7 +202,6 @@ class TestReshardNdMesh:
         )
 
         new_ops = dist_program.global_block().ops
-        old_ops_name = [op.name() for op in main_program.global_block().ops]
         new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
         all_gather_ops = []
@@ -274,11 +271,79 @@ class TestReshardNdMesh:
         tgt_out_value = (self._mesh.process_ids, [1, 0, -1], {})
         self.validate(op, tgt_operand, tgt_result, tgt_in_value, tgt_out_value)
 
+    def run_ps_to_ps_case(self):
+        # [Partial(), Shard(0)] --> [Replicate(), Shard(1)]
+        # c_allreduce_sum + all_gather + slice
+        main_program, dist_program = self.create_program(
+            [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Shard(0)],
+            [dist.Replicate(), dist.Shard(1)],
+        )
+
+        ops = dist_program.global_block().ops
+        op_names = [op.name() for op in ops]
+        assert "pd_op.c_allreduce_sum_" in op_names
+        assert "pd_op.c_allgather" in op_names
+        assert "pd_op.slice" in op_names
+
+        allreduce_sum_op = ops[op_names.index("pd_op.c_allreduce_sum_")]
+        allgather_op = ops[op_names.index("pd_op.c_allgather")]
+        slice_op = ops[op_names.index("pd_op.slice")]
+
+        # check the allreduce_sum
+        rank_id = dist.get_rank()
+        if rank_id in [0, 2]:
+            process_ids = [0, 2]
+        elif rank_id in [1, 3]:
+            process_ids = [1, 3]
+        tgt_operand = (process_ids, [-1, -1, -1], {0: dist.ReduceType.kRedSum})
+        tgt_result = (process_ids, [-1, -1, -1], {})
+        tgt_in_value = (
+            self._mesh.process_ids,
+            [1, -1, -1],
+            {0: dist.ReduceType.kRedSum},
+        )
+        tgt_out_value = (self._mesh.process_ids, [1, -1, -1], {})
+        self.validate(
+            allreduce_sum_op,
+            tgt_operand,
+            tgt_result,
+            tgt_in_value,
+            tgt_out_value,
+        )
+
+        # check the allgather
+        if rank_id in [0, 1]:
+            process_ids = [0, 1]
+        elif rank_id in [2, 3]:
+            process_ids = [2, 3]
+        tgt_operand = (process_ids, [0, -1, -1], {})
+        tgt_result = (process_ids, [-1, -1, -1], {})
+        tgt_in_value = (self._mesh.process_ids, [1, -1, -1], {})
+        tgt_out_value = (self._mesh.process_ids, [-1, -1, -1], {})
+        self.validate(
+            allgather_op, tgt_operand, tgt_result, tgt_in_value, tgt_out_value
+        )
+
+        # check the slice
+        if rank_id in [0, 1]:
+            process_ids = [0, 1]
+        elif rank_id in [2, 3]:
+            process_ids = [2, 3]
+        tgt_operand = (process_ids, [-1, -1, -1], {})
+        tgt_result = (process_ids, [-1, 0, -1], {})
+        tgt_in_value = (self._mesh.process_ids, [-1, -1, -1], {})
+        tgt_out_value = (self._mesh.process_ids, [-1, 1, -1], {})
+        self.validate(
+            slice_op, tgt_operand, tgt_result, tgt_in_value, tgt_out_value
+        )
+
     def run_test_cases(self):
         self.run_pp_to_rr_case()
         self.run_pr_to_rs_case()
         self.run_pr_to_ss_case()
         self.run_ss_to_ss_case()
+        self.run_ps_to_ps_case()
 
 
 if __name__ == '__main__':

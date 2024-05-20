@@ -46,10 +46,13 @@ class AutoBroadcastPass : public ProgramPass {
       if (axis == -1) {
         axis = output_shape.size() - input_shape.size();
       }
-      CHECK_LE(axis + input_shape.size(), output_shape.size())
-          << "Cannot Broadcast from shape=["
-          << cinn::utils::Join(input_shape, ", ") << "] to shape=["
-          << cinn::utils::Join(output_shape, ", ") << "] with axis=" << axis;
+      PADDLE_ENFORCE_LE(
+          axis + input_shape.size(),
+          output_shape.size(),
+          phi::errors::InvalidArgument(
+              "The size of  axis + input shape and output shape is incorrect."
+              "Expected axis + input shape size <= output shape size, "
+              "but receive axis + input shape size > output shape size."));
       for (int idx = 0; idx < input_shape.size(); ++idx) {
         broadcast_axes.push_back(axis++);
       }
@@ -77,8 +80,11 @@ class AutoBroadcastPass : public ProgramPass {
     }
 
     const auto& outputs = instr.GetOutputs();
-    CHECK_EQ(outputs.size(), 1)
-        << "The broadcast operator should has and only has one output";
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The broadcast operator should has and only has one output."));
     const auto& output = outputs.front();
 
     int axis = -1;

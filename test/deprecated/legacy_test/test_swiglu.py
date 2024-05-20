@@ -179,7 +179,9 @@ class TestSwigluOp(OpTest):
     def setUp(self):
         self.config()
         self.op_type = "swiglu"
+        self.prim_op_type = "comp"
         self.python_api = fused_swiglu_impl
+        self.public_python_api = fused_swiglu_impl
         x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
         y = np.random.uniform(-1, 1, self.x_shape).astype("float64")
         out_grad = np.random.uniform(-1, 1, self.x_shape).astype("float64")
@@ -193,7 +195,7 @@ class TestSwigluOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -201,7 +203,30 @@ class TestSwigluOp(OpTest):
             'out',
             check_auto_parallel=self.check_auto_parallel,
             check_dygraph=1,
+            check_prim_pir=True,
         )
+
+
+class TestSwigluOp2(TestSwigluOp):
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.prim_op_type = "comp"
+        self.python_api = fused_swiglu_impl
+        self.public_python_api = fused_swiglu_impl
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        tmp_inputs = np.split(x, 2, axis=-1)
+        x = tmp_inputs[0]
+        y = tmp_inputs[1]
+        out_grad = np.random.uniform(-1, 1, x.shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+        self.placements = {
+            'x': [dist.Shard(1)],
+            'y': [dist.Shard(1)],
+            'out': [dist.Shard(1)],
+        }
 
 
 @unittest.skipIf(
