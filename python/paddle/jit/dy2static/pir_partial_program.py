@@ -561,11 +561,8 @@ class ValuePreservePass:
         return program
 
 
-class RemoveUnusedParameters(ValuePreservePass):
+class FusedBnAddActPass(ValuePreservePass):
     def apply(self, program):
-        # program = paddle.base.libpaddle.pir.remove_no_need_shadow_output(
-        #     program
-        # )
         program = paddle.base.libpaddle.pir.apply_bn_add_act_pass(program)
         return program
 
@@ -776,8 +773,6 @@ class PartialProgramLayer:
                 apply_cse(forward_program)
                 apply_cse(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
-                    # print("forward program", forward_program)
-                    # print("backward program", backward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 else:
@@ -1035,12 +1030,12 @@ class PartialProgramLayer:
         )
 
         # construct a runnable program.
-        remove_unused_pass = RemoveUnusedParameters(
+        fused_bn_add_act_pass = FusedBnAddActPass(
             [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value]
         )
         forward_index_pass = IndicesPreservePass(
             [forward_end_idx, backward_start_op_index, backward_end_op_index],
-            remove_unused_pass,
+            fused_bn_add_act_pass,
         )
         program = forward_index_pass(program)
         (
@@ -1050,7 +1045,7 @@ class PartialProgramLayer:
             x_grad_value,
             p_grad_value,
             o_grad_value,
-        ) = remove_unused_pass.values
+        ) = fused_bn_add_act_pass.values
         (
             forward_end_idx,
             backward_start_op_index,
