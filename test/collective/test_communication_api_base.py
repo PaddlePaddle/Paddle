@@ -22,9 +22,14 @@ import sys
 import tempfile
 import unittest
 
+import paddle
+
 
 class CommunicationTestDistBase(unittest.TestCase):
     def setUp(self, save_log_dir=None, num_of_devices=2, timeout=120, nnode=1):
+        if num_of_devices > paddle.device.cuda.device_count():
+            self.skipTest("number of GPUs is not enough")
+
         self._python_interp = sys.executable
         self._save_log_dir = save_log_dir
         self._log_dir = tempfile.TemporaryDirectory()
@@ -56,9 +61,9 @@ class CommunicationTestDistBase(unittest.TestCase):
             runtime_envs.update(user_defined_envs)
         runtime_envs["CUDA_VISIBLE_DEVICES"] = self._devices
         if self._nnode > 1:
-            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir ./log --devices {self._devices} {script_file}"
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
         else:
-            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir ./log --devices {self._devices} {script_file}"
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
         start_command_list = start_command.strip().split()
 
         if self._nnode > 1:

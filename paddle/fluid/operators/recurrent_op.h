@@ -163,8 +163,7 @@ class RecurrentBase : public framework::OperatorBase {
   }
 
   // (seq_len, shape) -> return [seq_len] + list(shape)
-  static framework::DDim PrependDims(size_t seq_len,
-                                     const framework::DDim &src);
+  static phi::DDim PrependDims(size_t seq_len, const phi::DDim &src);
 
  private:
   template <typename Callback>
@@ -224,7 +223,7 @@ class RecurrentOp : public RecurrentBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override;
+               const phi::Place &place) const override;
 
  private:
   StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
@@ -241,7 +240,7 @@ class RecurrentGradOp : public RecurrentBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override;
+               const phi::Place &place) const override;
 
   StepScopes CreateStepScopes(const platform::DeviceContext &dev_ctx,
                               const framework::Scope &scope,

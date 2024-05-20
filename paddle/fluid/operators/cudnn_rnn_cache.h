@@ -17,7 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -73,7 +73,7 @@ class CudnnRNNCache {
   int seed_;
 
   void init(cudnnHandle_t handle,
-            const platform::Place &place,
+            const phi::Place &place,
             size_t seq_len,
             int batch_size,
             int input_size,

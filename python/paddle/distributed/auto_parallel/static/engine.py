@@ -53,6 +53,7 @@ from .dist_loader import (
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
+from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
 from .pir_pass import apply_partition_pass, apply_reshard_pass
 from .planner_v2 import Planner
@@ -211,6 +212,8 @@ class Engine:
         self._fwd_main_progs = {}
         self._pir_dist_main_progs = {}
         self._pir_dense_main_progs = {}
+        self._pir_fetch_values = []
+        self._pir_user_defined_fetch_names = []
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -632,10 +635,8 @@ class Engine:
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_program = mix_fw_program.clone()
+        apply_mix2dist_pass(dist_program)
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -673,12 +674,12 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        dist_program = apply_partition_pass(dist_program)
+        apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        dist_program = apply_reshard_pass(dist_program)
+        apply_reshard_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -1024,15 +1025,21 @@ class Engine:
                     process_group.instantiate()
 
     def _init_lr(self):
-        buffer_tensor = global_scope().var("learning_rate_0").get_tensor()
-        if not isinstance(self._optimizer._learning_rate, float):
-            raise TypeError(
-                "learning rate should be float, got %s here"
-                % type(self._optimizer._learning_rate)
+        # hack to find learning_rate op
+        lr_name = None
+        for op in self.main_program.global_block().ops:
+            if (
+                op.name() == "pd_op.data"
+                and 'learning_rate' in op.attrs()["name"]
+            ):
+                lr_name = op.attrs()["name"]
+                break
+
+        if lr_name is not None:
+            buffer_tensor = global_scope().var(lr_name).get_tensor()
+            buffer_tensor.set(
+                np.float32(self._optimizer._learning_rate), self._place
             )
-        buffer_tensor.set(
-            np.float32(self._optimizer._learning_rate), self._place
-        )
 
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
@@ -1804,6 +1811,7 @@ class Engine:
                 fetch_names = []
             else:
                 fetch_names = [loss_value]
+            fetch_names += self._pir_fetch_values
 
         outs = self._executor.run(
             self.main_program,
@@ -1816,8 +1824,12 @@ class Engine:
         if self._in_pir_mode:
             if no_fetch:
                 logs = {"outputs": None, "loss": None}
+                start_idx = 0
             else:
                 logs = {"outputs": outs[0], "loss": outs[0]}
+                start_idx = 1
+            for i, name in enumerate(self._pir_user_defined_fetch_names):
+                logs[name] = outs[start_idx + i]
             return logs
 
         logs = self._prepare_logger(

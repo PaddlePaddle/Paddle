@@ -31,6 +31,7 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
         for envs in envs_list:
+            # self._log_dir.name = "./log"
             ckpt_path_tmp = tempfile.TemporaryDirectory()
             envs["ckpt_path"] = ckpt_path_tmp.name
             self.run_test_case(

@@ -244,8 +244,8 @@ std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh) {
     std::vector<int64_t> sub_process_ids(process_ids.begin() + start_position,
                                          process_ids.begin() + end_position);
 
-    sub_process_meshes.emplace_back(ProcessMesh(
-        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names));
+    sub_process_meshes.emplace_back(
+        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names);
   }
   return sub_process_meshes;
 }

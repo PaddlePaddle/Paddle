@@ -111,8 +111,6 @@ ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
 ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
                                       const ir::Expr& new_compute_body);
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
-
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 template <class DownStreamOp>
@@ -161,6 +159,10 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op,
                                ReduceOp reduce_op,
                                std::vector<size_t> fake_reduce_iter_idx);
 
+std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr);
+
+std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
+
 }  // namespace trivial_fusion_detail
 
 struct FusionGroupInfo {
@@ -180,7 +182,8 @@ FusionGroupInfo GetFusionGroupInfo(
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies);
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs);
 
 }  // namespace pir
 }  // namespace framework

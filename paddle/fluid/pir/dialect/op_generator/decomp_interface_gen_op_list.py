@@ -23,14 +23,17 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -39,6 +42,8 @@ decomp_interface_declare_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "meshgrid",
+    "one_hot",
     "p_norm",
     "pow",
     "reciprocal",
@@ -56,15 +61,19 @@ decomp_interface_declare_gen_op_list = [
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
+    "any",
     "add_n",
+    "bce_loss",
     "bmm",
     "dropout",
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -73,6 +82,7 @@ decomp_interface_implementation_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "meshgrid",
     "p_norm",
     "pow",
     "reciprocal",
@@ -87,6 +97,11 @@ decomp_interface_implementation_gen_op_list = [
     "unsqueeze",
 ]
 
-
 # xshape output will no longer used after decomp, but return none to keep output num the same as origin op
 decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]
+
+decomp_vjp_interface_declare_gen_op_list = [
+    "add_grad",
+    "matmul_grad",
+    "relu_grad",
+]

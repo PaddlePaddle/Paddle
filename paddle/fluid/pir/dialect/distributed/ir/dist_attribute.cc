@@ -78,47 +78,27 @@ TensorDistAttribute TensorDistAttribute::get(
 ProcessMeshAttribute OperationDistAttribute::process_mesh_attr() const {
   return storage()->mesh_attr;
 }
-const std::vector<pir::Attribute>& OperationDistAttribute::operand_attrs()
-    const {
-  return storage()->operand_attrs;
-}
-TensorDistAttribute OperationDistAttribute::operand_dist_attr(
-    uint32_t index) const {
-  return operand_attrs().at(index).dyn_cast<TensorDistAttribute>();
-}
-
-pir::ArrayAttribute OperationDistAttribute::operand_array_attr(
-    uint32_t index) const {
-  return operand_attrs().at(index).dyn_cast<pir::ArrayAttribute>();
+const std::vector<pir::Attribute>& OperationDistAttribute::operands() const {
+  return storage()->operands;
 }
 
 uint32_t OperationDistAttribute::num_operands() const {
-  return operand_attrs().size();
+  return operands().size();
 }
 
-const std::vector<pir::Attribute>& OperationDistAttribute::result_attrs()
-    const {
-  return storage()->result_attrs;
-}
-TensorDistAttribute OperationDistAttribute::result_dist_attr(
-    uint32_t index) const {
-  return result_attrs().at(index).dyn_cast<TensorDistAttribute>();
-}
-
-pir::ArrayAttribute OperationDistAttribute::result_array_attr(
-    uint32_t index) const {
-  return result_attrs().at(index).dyn_cast<pir::ArrayAttribute>();
+const std::vector<pir::Attribute>& OperationDistAttribute::results() const {
+  return storage()->results;
 }
 
 uint32_t OperationDistAttribute::num_results() const {
-  return result_attrs().size();
+  return results().size();
 }
 
 OperationDistAttribute OperationDistAttribute::get(
     pir::IrContext* ctx,
     ProcessMeshAttribute mesh,
-    const std::vector<pir::Attribute>& operand_attrs,
-    const std::vector<pir::Attribute>& result_attrs) {
+    const std::vector<pir::Attribute>& operands,
+    const std::vector<pir::Attribute>& results) {
   auto check_dist_attr = [=](pir::Attribute attr) {
     auto dist_attr = attr.dyn_cast<TensorDistAttribute>();
     auto ids = mesh.process_ids();
@@ -132,8 +112,7 @@ OperationDistAttribute OperationDistAttribute::get(
                             mesh));
     }
   };
-
-  for (auto attr : operand_attrs) {
+  for (auto attr : operands) {
     // NOTE: The operand dist attr maybe empty while the corresponding input is
     // optional.
     if (!attr) continue;
@@ -145,7 +124,7 @@ OperationDistAttribute OperationDistAttribute::get(
       check_dist_attr(attr);
     }
   }
-  return Base::get(ctx, mesh, operand_attrs, result_attrs);
+  return Base::get(ctx, mesh, operands, results);
 }
 
 }  // namespace dialect

@@ -22,8 +22,8 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -44,13 +44,13 @@ class BufferedReader : public framework::DecoratedReader {
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place,
+                 const phi::Place& place,
                  size_t buffer_size,
                  bool pin_memory = false);
 
   ~BufferedReader() override;
 
-  platform::Place GetPlace() const { return place_; }
+  phi::Place GetPlace() const { return place_; }
 
  private:
   void ReadTillBufferFullAsync();
@@ -64,7 +64,7 @@ class BufferedReader : public framework::DecoratedReader {
 
  private:
   ThreadPool thread_pool_;
-  platform::Place place_;
+  phi::Place place_;
   const size_t buffer_size_;
   bool pin_memory_;
 

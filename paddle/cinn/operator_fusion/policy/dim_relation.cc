@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/operator_fusion/policy/dim_relation.h"
 
+#include "paddle/common/enforce.h"
+
 namespace cinn::fusion {
 
 const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
@@ -30,7 +32,7 @@ const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
 
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
   ValueUsage valud_dim;
-  size_t rank = GetRank(v);
+  size_t rank = GetCompitableRank(v);
   for (size_t i = 0; i < rank; ++i) {
     valud_dim.emplace_back(v, i, usage_idx);
   }
@@ -88,7 +90,11 @@ static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
 
   for (auto in_value_dim : input_value_dims) {
     for (auto out_value_dim : output_value_dims) {
-      CHECK_EQ(in_value_dim.size(), out_value_dim.size());
+      PADDLE_ENFORCE_EQ(
+          in_value_dim.size(),
+          out_value_dim.size(),
+          ::common::errors::PreconditionNotMet(
+              "Required in_value_dim and out_value_dim have same size."));
       for (int i = 0; i < in_value_dim.size(); ++i) {
         res[in_value_dim[i]][out_value_dim[i]] = true;
       }
@@ -104,12 +110,18 @@ static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
       &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  CHECK(broad_cast_value.has_value());
-
+  PADDLE_ENFORCE_EQ(broad_cast_value.has_value(),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Required broad_cast_value is not empty."));
   const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetRank(input_value);
-  const int output_rank = GetRank(output_value);
-  CHECK_GE(output_rank, input_rank);
+  const int input_rank = GetCompitableRank(input_value);
+  const int output_rank = GetCompitableRank(output_value);
+  PADDLE_ENFORCE_GE(
+      output_rank,
+      input_rank,
+      ::common::errors::PreconditionNotMet(
+          "Required output rank shall be greater than or equal input rank."));
 
   // Compare axis one by one, from back to front.
   // The rule of broadcasting:
@@ -144,7 +156,7 @@ static DimUsageRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
 static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   const auto& reduce_axis_idx = GetReduceAxisIdx(op);
   DimUsageRelation res;
-  const size_t input_rank = GetRank(op->operand_source(0));
+  const size_t input_rank = GetCompitableRank(op->operand_source(0));
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
   for (int i = 0; i < input_rank; i++) {

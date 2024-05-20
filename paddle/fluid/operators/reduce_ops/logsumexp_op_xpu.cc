@@ -15,8 +15,8 @@
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -74,7 +74,6 @@ namespace ops = paddle::operators;
 // phi::LogsumexpKernel rather than XPULogsumexpKernel here. And if register
 // xpu logsumexp kernel in phi, op logsumexp will run XPULogsumexpKernel here
 // and raise error.
-REGISTER_OP_XPU_KERNEL(
-    logsumexp,
-    ops::XPULogsumexpKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(logsumexp,
+                       ops::XPULogsumexpKernel<phi::XPUContext, float>);
 #endif

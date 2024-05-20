@@ -79,7 +79,7 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   reduce_current_axis_ =
       IsInnerThreadSpatialLoopGT(context_->config, 1) ? 2 : 1;
   if (context_->config.base_info->is_reduce_all) {
-    reduce_current_axis_ = 1;
+    reduce_current_axis_ = 0;
   }
   // reduce axis have be re-order to last
   vec_flatten_axis_.clear();

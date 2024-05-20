@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
@@ -52,11 +53,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     if (pending_count.find(&op) == pending_count.end()) {
       pending_count[&op] = 0;
     }
-    for (auto operand : op.operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
       } else {
@@ -78,11 +79,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     queue.pop();
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
-    for (auto& operand : op->operands()) {
-      if (!operand || !(operand.source())) {
+    for (auto operand : GetUsedExternalValue(*op)) {
+      if (!operand || !operand.defining_op()) {
         continue;
       }
-      auto* defined_op = operand.source().defining_op();
+      auto* defined_op = operand.defining_op();
       --pending_count[defined_op];
       if (defined_op && pending_count[defined_op] == 0 &&
           defined_op->GetParent() == block) {
@@ -108,11 +109,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
   std::unordered_set<pir::Operation*> producers;
 
   std::vector<pir::Operation*> vec_res;
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && !producers.count(source_op) &&
         source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
@@ -135,11 +136,11 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
-  for (auto& operand : op->operands()) {
-    if (!operand || !(operand.source())) {
+  for (auto operand : GetUsedExternalValue(*op)) {
+    if (!operand || !operand.defining_op()) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
+    auto* source_op = operand.defining_op();
     if (source_op && source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
     }
@@ -147,12 +148,21 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   return producers;
 }
 
-std::unordered_set<pir::Operation*> GetConsumerOps(pir::Operation* op) {
+std::unordered_set<pir::Operation*> GetConsumerOps(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
   std::unordered_set<pir::Operation*> consumers;
 
   for (auto& result : op->results()) {
     for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      consumers.insert(it->owner());
+      auto parent_op = it->owner();
+      while (parent_op) {
+        if (op2id.count(parent_op)) {
+          consumers.insert(parent_op);
+          break;
+        }
+        parent_op = parent_op->GetParentOp();
+      }
     }
   }
   return consumers;
@@ -241,7 +251,7 @@ void SubgraphDetector::DoOpFusion() {
       }
 
       bool can_fused = true;
-      auto consumers = GetConsumerOps(producer);
+      auto consumers = GetConsumerOps(producer, op2id_);
       for (auto consumer : consumers) {
         if (!subgraph->op_set.count(consumer)) {
           can_fused = false;
@@ -484,28 +494,6 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
-std::vector<pir::Value> AnalysisExternalInputs(const Operation* op) {  // NOLINT
-  if (!op->isa<cinn::dialect::GroupOp>()) {
-    return op->operands_source();
-  }
-  auto group_op =
-      const_cast<Operation*>(op)->dyn_cast<cinn::dialect::GroupOp>();
-  auto group_ops = std::unordered_set<pir::Operation*>(
-      group_op.GetOperators().begin(), group_op.GetOperators().end());
-  std::unordered_set<::pir::Value> group_inputs;
-  // count all op's input Value
-  for (auto item : group_ops) {
-    for (auto& value : item->operands_source()) {
-      if (!value || !value.type() ||
-          group_ops.find(value.defining_op()) != group_ops.end())
-        continue;
-      // if the input value owner op is not in OpSet, it's the group's input
-      group_inputs.insert(value);
-    }
-  }
-  return std::vector<pir::Value>(group_inputs.begin(), group_inputs.end());
-}
-
 namespace {
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
@@ -522,7 +510,7 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 
   const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
     if (group_ops_set.find(op) != group_ops_set.end()) return false;
-    for (auto& value : op->operands_source()) {
+    for (auto& value : GetUsedExternalValue(*op)) {
       if (outputs_set.find(value) != outputs_set.end()) {
         return true;
       }
@@ -566,11 +554,11 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   const auto& IsInBlock = [](const pir::Operation* src_op,
                              const pir::Block* block) {
     for (auto& item : *block) {
-      if (src_op == &item) return true;
+      if (src_op->id() == item.id()) return true;
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = AnalysisExternalInputs(op);
+  std::vector<pir::Value> op_inputs = GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
     pir::Operation* defining_op = value.defining_op();

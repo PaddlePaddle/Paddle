@@ -17,6 +17,13 @@ set(fused_op_path
 set(fused_rev_op_path
     ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
+
+set(sparse_op_path
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_ops.parsed.yaml
+)
+set(sparse_rev_op_path
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_backward.parsed.yaml
+)
 set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
@@ -32,7 +39,8 @@ execute_process(
     ${rev_path} --fwd_pd_op_path ${fwd_pd_op_path} --update_fwd_pd_op_path
     ${update_fwd_pd_op_path} --rev_pd_op_path ${rev_pd_op_path} --prim_path
     ${prim_path} --fused_op_path ${fused_op_path} --fused_rev_op_path
-    ${fused_rev_op_path} --templates_dir ${templates_dir} --compat_path
+    ${fused_rev_op_path} --sparse_op_path ${sparse_op_path} --sparse_rev_op_path
+    ${sparse_rev_op_path} --templates_dir ${templates_dir} --compat_path
     ${compat_path} --destination_dir ${destination_dir}
   RESULT_VARIABLE _result)
 if(${_result})
@@ -41,7 +49,6 @@ if(${_result})
       "Automatic code generation for paddle/fluid/primitive failed, exiting.")
 endif()
 message("Automatic code generation for paddle/fluid/primitive succeed.")
-
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/primitive/codegen
   COMMAND
