@@ -48,10 +48,10 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 void ReshapeGradOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
   auto get_input_var = [&op_desc, &ctx](const std::string& op_name) {
-    PADDLE_ENFORCE_EQ(op_desc.Input(op_name).size(),
-                      1UL,
-                      phi::errors::InvalidArgument(
-                          "The input of ReshapeGrad op must be 1."))`;
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input(op_name).size(),
+        1UL,
+        phi::errors::InvalidArgument("The input of ReshapeGrad op must be 1."));
     auto var_name = op_desc.Input(op_name).front();
     return ctx.GetVar(var_name);
   };
