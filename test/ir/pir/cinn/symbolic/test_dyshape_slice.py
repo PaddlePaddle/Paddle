@@ -23,24 +23,26 @@ from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
+
 import utils
 
 
-class GatherLayer(nn.Layer):
+class CastLayer(nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
-        return paddle.slice(x, axes=[0], starts=[0], ends=[2])
+        end = x.shape[1] - 1
+        return x[:, :end, :]
 
 
-class TestGatherSymbolic(unittest.TestCase):
+class TestCast(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [4, 5, 6]
+        self.shape = [1024, 32, 1024, 17]
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = True
 
@@ -49,9 +51,9 @@ class TestGatherSymbolic(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = GatherLayer()
+        net = CastLayer()
         input_spec = [
-            InputSpec(shape=[None, None, 6], dtype='float32'),
+            InputSpec(shape=[None, None, 1024, None], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
