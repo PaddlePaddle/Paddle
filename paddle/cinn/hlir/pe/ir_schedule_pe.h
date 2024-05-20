@@ -44,11 +44,11 @@ void IRScheduleInjectiveCPU(ir::IRSchedule &ir_sch,  // NOLINT
                             const cinn::common::Target &target,
                             bool vectorizable = true);
 
-void IRCudaScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
-                             const std::vector<int> &output_shape,
-                             const cinn::common::Target &target);
+void IRGpuScheduleInjective(ir::IRSchedule &ir_sch,  // NOLINT
+                            const std::vector<int> &output_shape,
+                            const cinn::common::Target &target);
 
-std::vector<cinn::common::CINNValue> IRCudaScheduleMatMul(
+std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
     const cinn::common::CINNValuePack &arg_pack,
     const std::vector<int> &output_shape,
     const cinn::common::Target &target);
@@ -66,34 +66,34 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                          int axis,
                          const cinn::common::Target &target);
 
-void IRCudaScheduleReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                          ir::Tensor out,
-                          int last_dimension_num,
-                          const cinn::common::Target &target);
+void IRGpuScheduleReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                         ir::Tensor out,
+                         int last_dimension_num,
+                         const cinn::common::Target &target);
 
-void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                               ir::Tensor reduce_tmp_out,
-                               ir::Tensor tmp_out,
-                               ir::Tensor out,
-                               const cinn::common::Target &target);
+void IRGpuScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                              ir::Tensor reduce_tmp_out,
+                              ir::Tensor tmp_out,
+                              ir::Tensor out,
+                              const cinn::common::Target &target);
 
-void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
-                                       ir::Tensor tmp_out,
-                                       ir::Tensor out,
-                                       const cinn::common::Target &target);
-
-void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
-                                      ir::Tensor reshape,
-                                      ir::Tensor internal,
+void IRGpuScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
+                                      ir::Tensor tmp_out,
                                       ir::Tensor out,
                                       const cinn::common::Target &target);
 
-void IRCudaTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
-                                 ir::Tensor reshape,
-                                 ir::Tensor internal,
-                                 ir::Tensor tmp_out,
-                                 ir::Tensor out,
-                                 const cinn::common::Target &target);
+void IRGpuScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
+                                     ir::Tensor reshape,
+                                     ir::Tensor internal,
+                                     ir::Tensor out,
+                                     const cinn::common::Target &target);
+
+void IRGpuTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
+                                ir::Tensor reshape,
+                                ir::Tensor internal,
+                                ir::Tensor tmp_out,
+                                ir::Tensor out,
+                                const cinn::common::Target &target);
 
 void IRSoftmaxScheduleCPU(ir::IRSchedule &ir_sch, int axis = -1);  // NOLINT
 

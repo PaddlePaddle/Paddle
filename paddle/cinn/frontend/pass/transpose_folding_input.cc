@@ -68,8 +68,12 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
       const In2InstrType& in2instr,
       const std::unordered_set<std::string>& fetch_ids,
       absl::flat_hash_set<Instruction*>* remove_instrs) const override {
-    CHECK_EQ((*dot)->inputs.size(), 2UL)
-        << "The matmul should only have two inputs.";
+    PADDLE_ENFORCE_EQ(
+        (*dot)->inputs.size(),
+        2UL,
+        phi::errors::InvalidArgument("The size of *dot's inputs is incorrect."
+                                     "Expected size is 2, but receive %d.",
+                                     (*dot)->inputs.size()));
 
     auto debug_info = [](const std::vector<Instruction*>& instrs) {
       std::stringstream ss;

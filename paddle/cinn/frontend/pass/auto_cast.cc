@@ -120,10 +120,12 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
        }
 
        // Except input [X], BatchNormTrain's Input should all be fp32
-       CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for "
-              "op "
-           << instr->op_type;
+       PADDLE_ENFORCE_EQ(
+           instr->inputs.size(),
+           5UL,
+           phi::errors::InvalidArgument("The size of instr inputs is incorrect."
+                                        "Expected size is 5, but receive %d.",
+                                        instr->inputs.size()));
        CHECK(instr->inputs[1]->type.is_float(32))
            << instr->op_type << "'s input [scale] should be float32, but here "
            << instr->inputs[1]->type;
@@ -161,10 +163,12 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
        }
 
        // Except input [X], BatchNormTrain's Input should all be fp32
-       CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for "
-              "op "
-           << instr->op_type;
+       PADDLE_ENFORCE_EQ(
+           instr->inputs.size(),
+           5UL,
+           phi::errors::InvalidArgument("The size of instr inputs is incorrect."
+                                        "Expected size is 5, but receive %d.",
+                                        instr->inputs.size()));
        CHECK(instr->inputs[1]->type.is_float(32))
            << instr->op_type << "'s input [scale] should be float32, but here "
            << instr->inputs[1]->type;
@@ -206,13 +210,17 @@ static std::unordered_map<std::string, CastImplFunc> need_cast_list = {
        }
 
        // Except input [X], BatchNormTrain's Input should all be fp32
-       CHECK_EQ(instr->inputs.size(), 5UL)
-           << "The number of the given inputs is not equal to the required for "
-              "op "
-           << instr->op_type;
-       CHECK_EQ(instr->inputs[0]->type, instr->inputs[1]->type)
-           << instr->op_type
-           << "'s input [Y@GRAD] and input [X] 's type should be the same";
+       PADDLE_ENFORCE_EQ(
+           instr->inputs.size(),
+           5UL,
+           phi::errors::InvalidArgument("The size of instr inputs is incorrect."
+                                        "Expected size is 5, but receive %d.",
+                                        instr->inputs.size()));
+       PADDLE_ENFORCE_EQ(instr->inputs[0]->type,
+                         instr->inputs[1]->type,
+                         phi::errors::InvalidArgument(
+                             "instr op type's input [Y@GRAD] and input [X] 's "
+                             "type should be the same."));
        CHECK(instr->inputs[2]->type.is_float(32))
            << instr->op_type << "'s input [scale] should be float32, but here "
            << instr->inputs[1]->type;

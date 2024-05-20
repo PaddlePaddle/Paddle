@@ -21,15 +21,30 @@ from paddle.autograd import ir_backward
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.base.core import (
     call_decomp,
+    call_decomp_vjp,
     decomp_ops_contain_unused_output,
     has_decomp,
+    has_decomp_vjp,
 )
 from paddle.base.libpaddle.pir import Block, Operation
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import core
 
 from . import register
 
 logger = logging.getLogger(__name__)
+
+
+@signature_safe_contextmanager
+def prim_guard():
+    prim_state = core._is_all_prim_enabled()
+    try:
+        if not prim_state:
+            core._set_prim_all_enabled(True)
+        yield
+    finally:
+        if not prim_state:
+            core._set_prim_all_enabled(False)
 
 
 def _build_tensor_tuple(xs):
@@ -179,6 +194,8 @@ def decompose(
     src_vars,
     blacklist=frozenset(),
     whitelist=frozenset(),
+    start_index=0,
+    end_index=-1,
 ):
     """
     Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
@@ -197,12 +214,18 @@ def decompose(
         src_vars (list[Value]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
+        start_index (int): The start index of decomposed operator in global block, default 0;
+        end_index (int): The end index of decomposed operator in global block, default -1 means all ops will be composed. start_index and end_index follow the principle of left closed and right open, that is [start_index, end_index).
 
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
     blacklist = core.prim_config["forward_blacklist"] | blacklist
-    return core.sinking_decomp(program, src_vars, blacklist, whitelist)
+    assert isinstance(start_index, int)
+    assert isinstance(end_index, int)
+    return core.sinking_decomp(
+        program, src_vars, blacklist, whitelist, start_index, end_index
+    )
 
 
 def _check_combine_inputs(input1, input2):
@@ -817,6 +840,28 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     logger.debug(
         f'Following forward ops can not be decomposed: {undecomposed_fwd_ops}'
     )
+
+
+def decompose_dist_program(pir_program):
+    '''
+    Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
+    '''
+    # decomp forward composite ops
+    decompose(pir_program, [])
+
+    # decomp backward ops
+    block = pir_program.global_block()
+    with paddle.pir.core.program_guard(pir_program):
+        ops = pir_program.global_block().ops
+        for op in ops:
+            bwd_op_name = op.name()
+            if has_decomp_vjp(op):
+                pir.set_insertion_point(op)
+                orig_outs = op.results()
+                decomp_outs = call_decomp_vjp(op)
+                new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
+                op.replace_all_uses_with(new_outs)
+                block.remove_op(op)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

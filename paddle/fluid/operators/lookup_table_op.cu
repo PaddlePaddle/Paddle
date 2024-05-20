@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
@@ -175,12 +176,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       // TODO(yuyang18): Strange code here.
       phi::MixVector<int64_t> mixv_new_rows(&new_rows);
-      memory::Copy(gpu_place,
-                   mixv_new_rows.CUDAMutableData(context.GetPlace()),
-                   gpu_place,
-                   ids_data,
-                   ids_num * sizeof(int64_t),
-                   stream);
+      phi::memory_utils::Copy(gpu_place,
+                              mixv_new_rows.CUDAMutableData(context.GetPlace()),
+                              gpu_place,
+                              ids_data,
+                              ids_num * sizeof(int64_t),
+                              stream);
       mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
@@ -202,12 +203,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
                             "output@Grad's shape = [%s].",
                             d_table_value->dims(),
                             d_output_dims_2d));
-      memory::Copy(gpu_place,
-                   d_table_data,
-                   gpu_place,
-                   d_output_data,
-                   d_output->numel() * sizeof(T),
-                   stream);
+      phi::memory_utils::Copy(gpu_place,
+                              d_table_data,
+                              gpu_place,
+                              d_output_data,
+                              d_output->numel() * sizeof(T),
+                              stream);
 
     } else {
       auto ids_t = context.Input<phi::DenseTensor>("Ids");
@@ -248,7 +249,6 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table,
                         ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,

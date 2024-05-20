@@ -45,11 +45,9 @@ class AddYieldStoreInFusionOpPattern
       auto orignal_base = op->operand_source(i);
       op->operand(i).set_source(store_op.result(0));
 
-      if (shape_analysis.HasShapeOrDataForValue(orignal_base)) {
-        shape_analysis.SetShapeOrDataForValue(
-            store_op.result(0),
-            shape_analysis.GetShapeOrDataForValue(orignal_base));
-      }
+      shape_analysis.SetShapeOrDataForValue(
+          store_op.result(0),
+          shape_analysis.GetShapeOrDataForValue(orignal_base));
     }
 
     return true;
