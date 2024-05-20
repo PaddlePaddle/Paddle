@@ -89,7 +89,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const padddle::optional<DenseTensor>& sin_scale,
+                            const paddle::optional<DenseTensor>& sin_scale,
                             const DenseTensor& scale,
                             const DenseTensor& zero_point,
                             const paddle::optional<DenseTensor>& in_accum,
