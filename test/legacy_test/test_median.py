@@ -29,9 +29,11 @@ def np_medain_min(data, keepdims=False):
     data_flat = data.flatten()
     data_cnt = len(data_flat)
 
-    data_flat[np.isnan(data_flat)] = np.inf
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_flat[np.isnan(data_flat)] = np.inf
     data_sort = np.sort(data_flat)
-    data_sort[np.isinf(data_sort)] = np.nan
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_sort[np.isinf(data_sort)] = np.nan
 
     if data_cnt % 2:
         is_odd = False
@@ -75,9 +77,11 @@ def np_medain_min_axis(data, axis=None, keepdims=False):
         shape=data_flat.shape[:-1], fill_value=data_flat.shape[-1]
     )
 
-    data_flat[np.isnan(data_flat)] = np.inf
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_flat[np.isnan(data_flat)] = np.inf
     data_sort = np.sort(data_flat, axis=-1)
-    data_sort[np.isinf(data_sort)] = np.nan
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_sort[np.isinf(data_sort)] = np.nan
 
     is_odd = data_cnt % 2
 
@@ -108,8 +112,17 @@ def np_medain_min_axis(data, axis=None, keepdims=False):
 class TestMedianAvg(unittest.TestCase):
     def check_numpy_res(self, np1, np2):
         self.assertEqual(np1.shape, np2.shape)
+        np1_isnan = np.isnan(np1)
+        np2_isnan = np.isnan(np2)
+        nan_mismatch = np.sum(
+            (np1_isnan.astype('int32') - np2_isnan.astype('int32'))
+            * (np1_isnan.astype('int32') - np2_isnan.astype('int32'))
+        )
+        self.assertEqual(nan_mismatch, 0)
+        np1[np.isnan(np1)] = 0.0
+        np2[np.isnan(np2)] = 0.0
         mismatch = np.sum((np1 - np2) * (np1 - np2))
-        self.assertAlmostEqual(mismatch, 0, DELTA)
+        self.assertAlmostEqual(mismatch, 0, delta=DELTA)
 
     def static_single_test_median(self, lis_test):
         paddle.enable_static()
@@ -224,9 +237,14 @@ class TestMedianMin(unittest.TestCase):
     def dygraph_single_test_median(self, lis_test):
         x, axis, keepdims = lis_test
         res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
-        res_pd, _ = paddle.median(
-            paddle.to_tensor(x), axis, keepdims, mode='min'
-        )
+        if axis is None:
+            res_pd = paddle.median(
+                paddle.to_tensor(x), axis, keepdims, mode='min'
+            )
+        else:
+            res_pd, _ = paddle.median(
+                paddle.to_tensor(x), axis, keepdims, mode='min'
+            )
         np.testing.assert_allclose(res_pd.numpy(False), res_np)
 
     @test_with_pir_api
