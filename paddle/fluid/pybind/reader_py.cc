@@ -34,7 +34,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "pybind11/stl.h"
 
-    COMMON_DECLARE_bool(reader_queue_speed_test_mode);
+COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
