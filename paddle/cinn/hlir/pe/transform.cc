@@ -1129,9 +1129,9 @@ ir::Tensor Slice(const ir::Tensor& A,
 }
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<int>& starts,
+                         const std::vector<Expr>& starts,
                          const std::vector<int>& const_axes,
-                         const std::vector<int>& strides,
+                         const std::vector<Expr>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
                          const std::string& output_name) {
@@ -1140,11 +1140,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<Expr> new_starts;
-  std::transform(starts.begin(),
-                 starts.end(),
-                 std::back_inserter(new_starts),
-                 [](const int start) { return ir::Expr(start); });
+  std::vector<Expr> new_starts = starts;
   std::vector<int> axes;
   std::transform(const_axes.begin(),
                  const_axes.end(),
@@ -1190,65 +1186,6 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
             temp.emplace_back(indice[indice_i]);
             indice_i++;
           }
-        }
-        for (int i = 0; i < axes.size(); i++) {
-          temp[axes[i]] =
-              temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
-        }
-        return A(temp);
-      },
-      output_name);
-}
-
-ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<Expr>& starts,
-                         const std::vector<int>& axes,
-                         const std::vector<Expr>& strides,
-                         const std::vector<Expr>& output_shape,
-                         const std::string& output_name) {
-  std::vector<Expr> input_shape;
-  for (const auto& shape : A->shape) {
-    input_shape.emplace_back(shape);
-  }
-
-  std::vector<Expr> new_starts = starts;
-  // std::transform(starts.begin(),
-  //                starts.end(),
-  //                std::back_inserter(new_starts),
-  //                [](const int start) { return ir::Expr(start); });
-
-  for (int i = 0; i < axes.size(); i++) {
-    if (input_shape[axes[i]].is_constant()) {
-      if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
-        new_starts[i] = ir::Expr(0);
-      } else if (new_starts[i].as_int64() < 0) {
-        new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
-      } else if (new_starts[i].as_int64() > input_shape[axes[i]].as_int64()) {
-        new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
-      }
-    } else {
-      if (new_starts[i].as_int64() < 0) {
-        new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
-      }
-    }
-  }
-
-  // output = input[starts:ends:strides]
-  // Note that when strides < 0, the output reverse:
-  // data=[[1,2,3,4],[5,6,7,8],]
-  // axes=[0,1]
-  // starts=[1,3]
-  // ends=[2,0]
-  // strides=[1,-1]
-  // ==> result=[[8,7,6],]
-  return Compute(
-      output_shape,
-      [=](const std::vector<Expr>& indice) {
-        std::vector<Expr> temp;
-        int indice_i = 0;
-        for (int i = 0; i < input_shape.size(); ++i) {
-          temp.emplace_back(indice[indice_i]);
-          indice_i++;
         }
         for (int i = 0; i < axes.size(); i++) {
           temp[axes[i]] =

@@ -1790,6 +1790,21 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
   return strategy;
 }
 
+template <typename T = int>
+std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
+  if (absl::holds_alternative<std::vector<int64_t>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int64_t>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<std::vector<int>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<bool>(attr)) {
+    return std::vector<T>{};
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("attribute's vector type is invalid!"));
+  }
+}
 std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1803,10 +1818,10 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
       return value.value();
     }
     if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-      return ToCinnExprs(
-          absl::get<std::vector<int>>(attrs.attr_store.at("starts")));
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("starts")));
     } else {
-      PADDLE_THROW("The Slice op doesn't find [starts] attribute!");
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [starts] attribute!"));
     }
   }();
   const std::vector<Expr> ends_expr = [&] {
@@ -1816,24 +1831,16 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
       return value.value();
     }
     if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-      return ToCinnExprs(
-          absl::get<std::vector<int>>(attrs.attr_store.at("ends")));
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("ends")));
     } else {
-      PADDLE_THROW("The Slice op doesn't find [ends] attribute!");
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [ends] attribute!"));
     }
   }();
   const std::vector<int> axes = [&] {
     std::vector<int> axes;
     if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-      if (absl::holds_alternative<std::vector<int64_t>>(
-              attrs.attr_store.at("axes"))) {
-        const auto &axes_attr =
-            absl::get<std::vector<int64_t>>(attrs.attr_store.at("axes"));
-        axes = std::vector<int>(axes_attr.begin(), axes_attr.end());
-      } else if (absl::holds_alternative<std::vector<int>>(
-                     attrs.attr_store.at("axes"))) {
-        axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
-      }
+      axes = GetIntVectorFromAttr(attrs.attr_store.at("axes"));
     }
     if (axes.empty()) {
       for (int i = 0; i < starts_expr.size(); i++) {
@@ -1842,17 +1849,23 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
     }
     return axes;
   }();
-  const std::vector<int> strides = [&] {
+  const std::vector<Expr> strides_expr = [&] {
     std::vector<int> strides;
     if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-      strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
+      strides = GetIntVectorFromAttr(attrs.attr_store.at("strides"));
     }
     if (strides.empty()) {
       for (int i = 0; i < starts_expr.size(); i++) {
         strides.push_back(1);
       }
     }
-    return strides;
+    return ToCinnExprs(strides);
+  }();
+  const std::vector<int> decrease_axis = [&] {
+    if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
+      return GetIntVectorFromAttr(attrs.attr_store.at("decrease_axis"));
+    }
+    return std::vector<int>{};
   }();
 
   CHECK(!starts_expr.empty())
@@ -1865,7 +1878,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
       << "The size of [starts] and [ends] must be identical! Please check.";
   CHECK_EQ(starts_expr.size(), axes.size())
       << "The size of [starts] and [axes] must be identical! Please check.";
-  CHECK_EQ(starts_expr.size(), strides.size())
+  CHECK_EQ(starts_expr.size(), strides_expr.size())
       << "The size of [starts] and [strides] must be identical! Please "
          "check.";
 
@@ -1886,19 +1899,25 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
 
-        VLOG(0) << "arg_pack.size(): " << arg_pack.size();
         const std::string tensor_name = [&] {
           if (arg_pack.size() == 2 || arg_pack.size() == 4) {
             CHECK(arg_pack.back().is_string());
             return arg_pack.back().operator std::string();
           }
-          PADDLE_THROW("The slice op doesn't find output tensor name!");
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "The slice op doesn't find output tensor name! The size of "
+              "arg_pack is %d.",
+              arg_pack.size()));
         }();
 
-        auto strides_expr = ToCinnExprs(strides);
-        auto out = pe::SliceSymbolic(
-            A, starts_expr, axes, strides_expr, output_shape, tensor_name);
-        LOG(INFO) << "out: " << out;
+        auto out = pe::SliceSymbolic(A,
+                                     starts_expr,
+                                     axes,
+                                     strides_expr,
+                                     decrease_axis,
+                                     output_shape,
+                                     tensor_name);
+        VLOG(4) << "out: " << out;
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
       });

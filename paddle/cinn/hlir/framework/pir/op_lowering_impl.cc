@@ -883,7 +883,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
-    VLOG(4) << "start lowering op:" << op->name();
+    VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
 
     VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
