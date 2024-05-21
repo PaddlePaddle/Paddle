@@ -1052,6 +1052,14 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
+set(PIR_ONLY_TEST_FILES test_pir_translated_layer)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
+  endif()
+endforeach()
+
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_sync_batch_norm_op_static_build

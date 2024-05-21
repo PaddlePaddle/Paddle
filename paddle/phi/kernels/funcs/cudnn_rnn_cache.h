@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-
-namespace paddle {
-namespace operators {
+#include "paddle/phi/core/dense_tensor.h"
+namespace phi {
+namespace funcs {
 
 class CudnnRNNCache {
  public:
@@ -194,12 +194,12 @@ class CudnnRNNCache {
         phi::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
 
     size_t state_size;
+    auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     if (!initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state_->Resize({static_cast<int64_t>(state_size)});
-      uint8_t *dropout_state_data =
-          dropout_state_->mutable_data<uint8_t>(place);
+      uint8_t *dropout_state_data = dev_ctx->Alloc<uint8_t>(dropout_state_);
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnSetDropoutDescriptor(dropout_desc_,
                                                   handle,
@@ -293,7 +293,7 @@ class CudnnRNNCache {
         handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
 #endif
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
-    workspace_data_.mutable_data<uint8_t>(place);
+    dev_ctx->Alloc<uint8_t>(&workspace_data_);
   }
 
   void release() {
@@ -343,5 +343,5 @@ class CudnnRNNCache {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

@@ -28,7 +28,7 @@ from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
 from paddle.framework import (
     IrGraph,
-    _current_expected_place as _get_device,
+    _current_expected_place_ as _get_device,
     core,
     in_dynamic_mode,
 )
@@ -714,6 +714,10 @@ class Engine:
         # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
             self._parallel_pir(mode)
+            # Init comm
+            self._init_comm()
+            # startup program
+            self._initialize(mode, init_parameters)
             self._has_prepared[mode] = True
             return
         # Do the planning process
@@ -1024,22 +1028,35 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _init_lr(self):
+    def _init_lr(self, main_program):
         # hack to find learning_rate op
         lr_name = None
-        for op in self.main_program.global_block().ops:
+        for op in main_program.global_block().ops:
             if (
                 op.name() == "pd_op.data"
                 and 'learning_rate' in op.attrs()["name"]
             ):
                 lr_name = op.attrs()["name"]
                 break
+            if (
+                op.name() == "builtin.parameter"
+                and 'learning_rate' in op.attrs()["parameter_name"]
+            ):
+                lr_name = op.attrs()["parameter_name"]
+                break
 
         if lr_name is not None:
             buffer_tensor = global_scope().var(lr_name).get_tensor()
-            buffer_tensor.set(
-                np.float32(self._optimizer._learning_rate), self._place
-            )
+            from paddle.optimizer.lr import LRScheduler
+
+            if isinstance(self._optimizer._learning_rate, float):
+                buffer_tensor.set(
+                    np.float32(self._optimizer._learning_rate), self._place
+                )
+            elif isinstance(self._optimizer._learning_rate, LRScheduler):
+                buffer_tensor.set(
+                    np.float32(self._optimizer._learning_rate()), self._place
+                )
 
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
@@ -1058,10 +1075,12 @@ class Engine:
             # 6. vpp init adaption
 
             self.program_helper.init_pir(
-                self._pir_dense_main_progs[mode], self._place
+                self._pir_dist_main_progs[mode], self._place
             )
 
-            self._init_lr()
+            self._init_lr(self._pir_dense_main_progs[mode])
+            if self._executor is None:
+                self._executor = paddle.static.Executor(self._place)
             return
 
         if self._strategy.seed:
