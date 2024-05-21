@@ -20,6 +20,7 @@
 #include "gemm_scale_bias_gelu.h"  // NOLINT
 #include "gemm_scale_bias_relu.h"  // NOLINT
 #include "gemm_scale_gelu.h"       // NOLINT
+#include "gemm_scale_relu.h"       // NOLINT
 
 namespace phi {
 namespace fusion {
@@ -36,6 +37,7 @@ std::map<std::string, int> config_map{
     {"e5m2_bf16_gelu", 14},          {"e5m2_fp16_identity", 15},
     {"e5m2_fp16_bias_identity", 16}, {"e5m2_fp16_bias_relu", 17},
     {"e5m2_fp16_bias_gelu", 18},     {"e5m2_fp16_gelu", 19},
+    {"e4m3_fp16_relu", 20},          {"e4m3_bf16_relu", 21},
 };
 
 bool fp8_fp8_gemm_scale_bias_act(GemmEpilogueAllParams params) {
@@ -121,6 +123,14 @@ bool fp8_fp8_gemm_scale_bias_act(GemmEpilogueAllParams params) {
       break;
     case 19:
       dispatch_gemm_scale_gelu<phi::dtype::float8_e5m2, phi::dtype::float16>(
+          params);
+      break;
+    case 20:
+      dispatch_gemm_scale_relu<phi::dtype::float8_e4m3fn, phi::dtype::float16>(
+          params);
+      break;
+    case 21:
+      dispatch_gemm_scale_relu<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(
           params);
       break;
     default:
