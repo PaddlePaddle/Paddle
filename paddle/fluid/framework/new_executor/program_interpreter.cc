@@ -152,7 +152,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes, switch_stream);
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -164,11 +164,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (switch_stream) {
-      Convert(&op_func_nodes);
-    }
-#endif
     RunImpl();
   }
 
@@ -254,7 +249,7 @@ FetchList ProgramInterpreter::Run(
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build, switch_stream);
 
-  if (is_build) {
+  if (is_build && !switch_stream) {
     RunImpl();
   }
 

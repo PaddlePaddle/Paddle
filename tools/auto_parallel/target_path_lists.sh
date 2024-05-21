@@ -21,8 +21,8 @@ target_lists_for_semi_auto_ci=(
     "paddle/fluid/pybind/auto_parallel_py.h"
     "paddle/phi/infermeta/spmd_rules"
     "paddle/phi/core/distributed"
-    "paddle/phi/api/yaml/generator/dist_api_gen.py"
-    "paddle/phi/api/yaml/generator/dist_bw_api_gen.py"
+    "paddle/phi/api/generator/dist_api_gen.py"
+    "paddle/phi/api/generator/dist_bw_api_gen.py"
     "tools/auto_parallel/target_path_lists.sh"
     "test/auto_parallel"
 )

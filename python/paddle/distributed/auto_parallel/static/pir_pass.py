@@ -56,7 +56,7 @@ def reshard_combine_value(op, operand, attr):
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
         reshard_vars.append(reshard_single_value(op, inner_operand, inner_attr))
-    paddle.pir.set_insertion_point(combine_op)
+    paddle.pir.set_insertion_point(op)
     return paddle._C_ops.builtin_combine(reshard_vars)
 
 
@@ -132,6 +132,10 @@ def apply_reshard_pass(program):
                 not var.initialized() or var.dist_attr() == src_dist_attr
             ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
 
+            if src_dist_attr == dst_dist_attr:
+                op.result(0).replace_all_uses_with(var)
+                op.erase()
+                continue
             reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
             assert (
                 reshard_func is not None
