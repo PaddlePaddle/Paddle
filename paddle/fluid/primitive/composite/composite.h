@@ -209,6 +209,25 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
+                                             const Tensor& label,
+                                             float delta) {
+  Tensor delta_full;
+  if (has_dynamic_shape(input.shape())) {
+    delta_full =
+        backend::full_with_tensor<T>(shape<T>(input), delta, input.dtype());
+  } else {
+    delta_full = full<T>(input.shape(), delta, input.dtype());
+  }
+  auto val = label - input;
+  auto abs_val = abs<T>(val);
+  auto ans = where<T>(abs_val <= delta_full,
+                      0.5 * val * val,
+                      delta_full * (abs_val - 0.5 * delta_full));
+  return std::make_tuple(ans, val);
+}
+
+template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto num_classes_tensor =
       backend::full_with_tensor<T>(num_classes, 0, x.dtype());
@@ -1189,7 +1208,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = squeeze<T>(res, {0});
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
       auto x_t_shape = shape<T>(x);
@@ -1212,7 +1231,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = std::get<0>(squeeze_decomp<T>(res, {0}));
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
 

@@ -1088,7 +1088,7 @@ struct IncrementOpTranscriber : public OpTranscriber {
 };
 
 // The `assign_value` in static_ops.yaml is different from the one in
-// `legacy_ops.yaml`. For this op we simulate the logic in
+// `dygraph_ops.yaml`. For this op we simulate the logic in
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
@@ -2976,12 +2976,12 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
 struct ShareBufferOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
-    std::string target_op_name = dialect::ShareDataOp::name();
+    std::string target_op_name = dialect::ShareData_Op::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Op share_buffer should have corresponding OpInfo "
-          "pd_op.share_data"));
+          "pd_op.share_data_"));
     }
 
     return op_info;
