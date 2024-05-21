@@ -364,6 +364,41 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config) {
+  const auto& input_box_dims = input.dims();
+  const auto& im_info_dims = im_info.dims();
+
+  if (config.is_runtime) {
+    auto input_box_size = input_box_dims.size();
+    PADDLE_ENFORCE_EQ(
+        input_box_dims[input_box_size - 1],
+        4,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(Input) in BoxClipOp must be 4. "
+            "But received last dimension = %d",
+            input_box_dims[input_box_size - 1]));
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(Input) in BoxClipOp must be 2."
+                          " But received rank = %d",
+                          im_info_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        im_info_dims[1],
+        3,
+        phi::errors::InvalidArgument(
+            "The last dimension of Input(ImInfo) of BoxClipOp must be 3. "
+            "But received last dimension = %d",
+            im_info_dims[1]));
+  }
+  output->set_dims(input.dims());
+  output->set_dtype(input.dtype());
+  output->share_lod(input);
+}
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
