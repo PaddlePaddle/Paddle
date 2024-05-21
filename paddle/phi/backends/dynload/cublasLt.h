@@ -52,8 +52,7 @@ extern void *cublasLt_dso_handle;
   };                                                                        \
   extern DynLoad__##__name __name
 
-// APIs available after CUDA 10.1
-// #if CUDA_VERSION >= 10100
+// APIs available after CUDA 11.1
 #if CUDA_VERSION >= 11010
 #define CUBLASLT_BLAS_ROUTINE_EACH(__macro)         \
   __macro(cublasLtCreate);                          \
