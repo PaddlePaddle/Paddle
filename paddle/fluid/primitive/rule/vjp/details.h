@@ -1013,6 +1013,7 @@ void masked_select_grad(const Tensor& x,
       promoted_x = cast<T>(x, DataType::FLOAT32);
       promoted_out_grad = cast<T>(out_grad, DataType::FLOAT32);
     }
+
     auto x_num = 1;
     for (size_t i = 0; i < promoted_x.shape().size(); i++) {
       x_num *= promoted_x.shape()[i];
