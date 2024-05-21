@@ -360,7 +360,7 @@ struct Expression {
   }
 
   bool CheckValueEqual(const pir::Value& lhs, const pir::Value& rhs) const {
-    if (IsTerminateValue(lhs) ^ IsTerminateValue(rhs)) {
+    if (IsTerminateValue(lhs) != IsTerminateValue(rhs)) {
       VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate type";
       return false;
     }
