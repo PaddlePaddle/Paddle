@@ -468,7 +468,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             >>> x = paddle.to_tensor(np.array([[1,2,3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]])
 
             >>> y6 = paddle.median(x, axis=-1, keepdim=True)
-            >>> print(76)
+            >>> print(y6)
             Tensor(shape=[3, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[nan       ],
              [2.50000000],
