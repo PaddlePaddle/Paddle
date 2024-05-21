@@ -498,7 +498,7 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   if (dx) {
     dx->share_meta(x);
   }
-  if (dy) {
+  if (dy && y) {
     dy->share_meta(y);
   }
   if (dz) {
