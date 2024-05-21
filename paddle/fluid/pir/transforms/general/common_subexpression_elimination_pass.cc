@@ -157,6 +157,9 @@ struct Expression {
   size_t hash() const { return GetOperationHash(op_); }
 
   bool equal_to(const Expression& other) const {
+    if (hash() != other.hash()) {
+      VLOG(0) << "~~~~~~~~~~~~~~~ Hash not equal! Why call equal_to?";
+    }
     bool is_equal = CheckOperationEqual(op_, other.op());
     // TODO(SigureMo): clean this check before merge
     if (!is_equal) {
@@ -409,6 +412,9 @@ struct ExpressionHash {
 
 struct ExpressionEqual {
   bool operator()(const Expression& lhs, const Expression& rhs) const {
+    if (lhs.hash() != rhs.hash()) {
+      VLOG(0) << "!!!!!!!!!!!!!!!! Hash not equal! Why call equal_to?";
+    }
     return lhs.equal_to(rhs);
   }
 };
@@ -438,10 +444,10 @@ struct ExpressionTable {
   std::optional<Expression> Lookup(Expression expr) {
     VLOG(7) << "[Lookup] op [" << expr.op() << "] " << expr.op()->name()
             << " start";
-    if (!common_exprs_.count(expr)) {
+    auto found_expr_iter = common_exprs_.find(expr);
+    if (found_expr_iter == common_exprs_.end()) {
       return std::nullopt;
     }
-    auto found_expr_iter = common_exprs_.find(expr);
     VLOG(7) << "[Lookup] op [" << expr.op() << "] " << expr.op()->name()
             << " found common subexpression: " << found_expr_iter->op()->name();
     return *found_expr_iter;
