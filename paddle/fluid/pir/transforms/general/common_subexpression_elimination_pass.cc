@@ -313,20 +313,20 @@ struct Expression {
       return true;
     }
     if (lhs->name() != rhs->name()) {
-      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+      VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
       return false;
     }
     for (auto attr_name : lhs->info().GetAttributesName()) {
       if (lhs->attribute(attr_name) != rhs->attribute(attr_name)) {
-        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+        VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
                 << " vs rhs [" << rhs << "] " << rhs->name()
                 << " attribute not equal: " << attr_name;
         return false;
       }
     }
     if (lhs->num_operands() != rhs->num_operands()) {
-      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+      VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name()
               << " num_operands not equal";
       return false;
@@ -348,7 +348,7 @@ struct Expression {
     }
     for (size_t i = 0; i < lhs_operands.size(); ++i) {
       if (!CheckValueEqual(lhs_operands[i], rhs_operands[i])) {
-        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+        VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
                 << " vs rhs [" << rhs << "] " << rhs->name() << " operand " << i
                 << " not equal";
         return false;
@@ -361,13 +361,13 @@ struct Expression {
 
   bool CheckValueEqual(const pir::Value& lhs, const pir::Value& rhs) const {
     if (IsTerminateValue(lhs) != IsTerminateValue(rhs)) {
-      VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate type";
+      VLOG(0) << "[CheckValueEqual] lhs and rhs has different terminate type";
       return false;
     }
     // Compare two terminate values
     if (IsTerminateValue(lhs) && IsTerminateValue(rhs)) {
       if (lhs != rhs) {
-        VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate "
+        VLOG(0) << "[CheckValueEqual] lhs and rhs has different terminate "
                    "value";
         return false;
       }
@@ -375,15 +375,15 @@ struct Expression {
     }
     // Compare two non-terminate values
     if (!CheckOperationEqual(lhs.defining_op(), rhs.defining_op())) {
-      VLOG(7) << "[CheckValueEqual] lhs and rhs has different defining op";
+      VLOG(0) << "[CheckValueEqual] lhs and rhs has different defining op";
       return false;
     }
     if (lhs.type() != rhs.type()) {
-      VLOG(7) << "[CheckValueEqual] lhs and rhs has different type";
+      VLOG(0) << "[CheckValueEqual] lhs and rhs has different type";
       return false;
     }
     if (GetOpResultId(lhs) != GetOpResultId(rhs)) {
-      VLOG(7) << "[CheckValueEqual] lhs and rhs has different result id";
+      VLOG(0) << "[CheckValueEqual] lhs and rhs has different result id";
       return false;
     }
     return true;
