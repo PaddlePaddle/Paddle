@@ -338,7 +338,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   else if (platform::is_cpu_place(src_place) &&    // NOLINT
            platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }                                                // NOLINT
+  }                                                 // NOLINT
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_custom_place(
                dst_place)) { /* custom_device -> custom_device*/
