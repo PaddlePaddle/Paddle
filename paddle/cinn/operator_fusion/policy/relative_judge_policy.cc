@@ -44,112 +44,52 @@ RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
   return {};
 }
 
-SplitDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+std::pair<std::vector<DimUsage>, std::vector<DimUsage>> SplitReduceDims(
     const ShardableAxesSignature& signature, pir::Operation* op) {
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
   std::set<std::string> output_names_set(output_names.begin(),
                                          output_names.end());
-  auto result = SplitDims();
+
+  std::vector<DimUsage> reduce_dims;
+  std::vector<DimUsage> non_reduce_dims;
+  auto usage_idx = GetUsageIdx(v, op);
+
   int idx = 0;
   for (const auto& in : input_names) {
     if (output_names_set.count(in) == 0) {
-      result.non_related.emplace_back(v, idx);
+      reduce_dims.emplace_back(v, idx, usage_idx);
     } else {
-      result.related.emplace_back(v, idx);
+      non_reduce_dims.emplace_back(v, idx, usage_idx);
     }
     idx += 1;
   }
-  return result;
-}
 
-SplitDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-    const ShardableAxesSignature& signature, const pir::Operation* op) {
-  const auto& v = op->result(0);
-  const auto& input_names = signature.inputs[0].axis_names;
-  const auto& output_names = signature.outputs[0].axis_names;
-  std::set<std::string> input_names_set(input_names.begin(), input_names.end());
-  auto result = SplitDims();
-  int idx = 0;
-  for (const auto& name : output_names) {
-    if (input_names_set.count(name) == 0) {
-      result.non_related.emplace_back(v, idx);
-    } else {
-      result.related.emplace_back(v, idx);
+  if (VLOG_IS_ON(4)) {
+    std::stringstream ss;
+    ss << "SplitReduceDims:\nreduce_dims:\n";
+    for (const auto& dim : reduce_dims) {
+      ss << dim.DebugStr() << "\n";
     }
-    idx += 1;
-  }
-  return result;
-}
-
-template <typename T>
-bool RelativeJudgePolicy<T>::IsBroadcastEdge(
-    const std::vector<ValueDim>& upstream_out_dims,
-    const std::vector<ValueDim>& downstream_reduce_dims) {
-  VLOG(4) << "IsBroadcastEdge: upstream_out_dims.size()"
-          << upstream_out_dims.size();
-  VLOG(4) << "IsBroadcastEdge: downstream_reduce_dims.size()"
-          << downstream_reduce_dims.size();
-
-  for (const auto& downstream_reduce_dim : downstream_reduce_dims) {
-    for (const auto& upstream_out_dim : upstream_out_dims) {
-      VLOG(4) << "upstream_out_dim: " << upstream_out_dim.DebugStr()
-              << " downstream_reduce_dim: " << downstream_reduce_dim.DebugStr();
-      if (IsRelated(upstream_out_dim, downstream_reduce_dim)) {
-        return false;
-      }
+    ss << "non_reduce_dims:\n";
+    for (const auto& dim : non_reduce_dims) {
+      ss << dim.DebugStr() << "\n";
     }
+    VLOG(4) << ss.str();
   }
 
-  VLOG(4) << "IsBroadcastEdge";
-  return true;
+  return {reduce_dims, non_reduce_dims};
 }
 
 template <typename T>
-bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& upstream_tree =
-      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern());
-  VLOG(4) << "upstream->stmt_pattern():"
-          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
-  const auto& downstream_tree =
-      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern());
-  VLOG(4) << "downstream->stmt_pattern()"
-          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
-  const auto& maybe_downstream_op = GetDownstreamFromCandidate(
-      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
-  int idx = 0;
-  for (const auto& r_pattern : downstream_tree.childs()) {
-    idx += 1;
-    VLOG(4) << "downstream_tree.reduce_patterns_"
-            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
-  }
-  if (!maybe_downstream_op.has_value()) {
-    VLOG(4) << "can't find candidate from patterns. can fuse return false.";
-    return false;
-  }
-  const pir::Value& reduce_out_value =
-      upstream_tree.GetRootPattern().GetReduceOp()->result(0);
-  pir::Operation* downstream_reduce_op =
-      maybe_downstream_op.value().GetReduceOp();
-  const auto& split_reduce_dim_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
-  VLOG(4) << split_reduce_dim_result.DebugStr();
-  const auto& upstream_output_dims = GetAllValueDimFromValue(reduce_out_value);
-  auto res = IsBroadcastEdge(upstream_output_dims,
-                             split_reduce_dim_result.non_related);
-  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
-  return res;
-}
+std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
+RelativeJudgePolicy<T>::SplitFirstIfRelatedBySecond(
+    const std::vector<DimUsage>& targets,
+    const std::vector<DimUsage>& related_with) {
+  std::vector<DimUsage> related_dims;
+  std::vector<DimUsage> non_related_dims;
 
-template <typename T>
-SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
-    const std::vector<ValueDim>& targets,
-    const std::vector<ValueDim>& related_with) {
-  VLOG(4) << "SplitDimsWithRelationship";
-  auto result = SplitDims();
   bool is_related = false;
   for (auto& target_dim : targets) {
     is_related = false;
@@ -157,18 +97,31 @@ SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
       if (IsRelated(related_dim, target_dim)) is_related = true;
     }
     if (is_related) {
-      result.related.push_back(target_dim);
+      related_dims.push_back(target_dim);
     } else {
-      result.non_related.push_back(target_dim);
+      non_related_dims.push_back(target_dim);
     }
   }
 
-  return result;
+  if (VLOG_IS_ON(4)) {
+    std::stringstream ss;
+    ss << "SplitFirstIfRelatedBySecond:\nrelated_dims:\n";
+    for (const auto& dim : related_dims) {
+      ss << dim.DebugStr() << "\n";
+    }
+    ss << "non_related_dims:\n";
+    for (const auto& dim : non_related_dims) {
+      ss << dim.DebugStr() << "\n";
+    }
+    VLOG(4) << ss.str();
+  }
+
+  return {related_dims, non_related_dims};
 }
 
-bool DimsEqual(const std::vector<ValueDim>& first,
-               const std::vector<ValueDim>& second) {
-  const auto GetDimInfo = [](const std::vector<ValueDim>& dims)
+bool ElementwiseEqual(const std::vector<DimUsage>& first,
+                      const std::vector<DimUsage>& second) {
+  const auto GetDimInfo = [](const std::vector<DimUsage>& dims)
       -> std::unordered_map<symbol::DimExpr, int> {
     std::unordered_map<symbol::DimExpr, int> result;
     for (const auto& dim : dims) {
@@ -183,12 +136,12 @@ bool DimsEqual(const std::vector<ValueDim>& first,
     }
     return result;
   };
-  VLOG(4) << "GetDimInfo";
+
   const std::unordered_map<symbol::DimExpr, int>& first_dims =
       GetDimInfo(first);
-  VLOG(4) << "GetDimInfo";
   const std::unordered_map<symbol::DimExpr, int>& second_dims =
       GetDimInfo(second);
+
   if (first_dims.size() != second_dims.size()) return false;
   for (const auto& [dim_value, count] : first_dims) {
     if (second_dims.find(dim_value) == second_dims.end() ||
@@ -198,62 +151,8 @@ bool DimsEqual(const std::vector<ValueDim>& first,
   return true;
 }
 
-template <typename T>
-std::vector<ValueDim> RelativeJudgePolicy<T>::getUpstreamReduceDims(
-    const PatternNodePtr<T>& upstream,
-    ShardableAxesInfoManager& axes_info) {  // NOLINT
-  const auto& split_reduce_input_dims_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info.GetSignature(upstream->sink_op()), upstream->sink_op());
-  return split_reduce_input_dims_result.non_related;
-}
-
-template <typename T>
-std::vector<ValueDim> RelativeJudgePolicy<T>::getDownstreamUnrelatedDims(
-    const PatternNodePtr<T>& upstream,
-    const PatternNodePtr<T>& downstream,
-    ShardableAxesInfoManager& axes_info) {  // NOLINT
-  const auto& split_reduce_output_dims_result =
-      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-          axes_info.GetSignature(upstream->sink_op()), upstream->sink_op());
-  const auto& upstream_non_reduce_dims =
-      split_reduce_output_dims_result.related;
-  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
-      GetAllValueDimFromValue(downstream->sink_op()->result(0)),
-      upstream_non_reduce_dims);
-  VLOG(4) << split_trivial_dims_result.DebugStr();
-  return split_trivial_dims_result.non_related;
-}
-
-template <typename T>
-bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  VLOG(4) << "RT can fuse";
-  const auto& upstream_reduce_dims =
-      getUpstreamReduceDims(upstream, axes_info_);
-  const auto& downstream_non_related_dims =
-      getDownstreamUnrelatedDims(upstream, downstream, axes_info_);
-  auto res = DimsEqual(downstream_non_related_dims, upstream_reduce_dims);
-  res = res || IsFlattenDimSmaller(upstream, downstream);
-  VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
-  return res;
-}
-
-namespace {
-
-std::vector<ValueDim> GatherDimsExcept(const std::vector<ValueDim>& dims,
-                                       const std::vector<size_t>& except) {
-  std::vector<ValueDim> result;
-  for (size_t i = 0; i < dims.size(); i++) {
-    if (std::find(except.begin(), except.end(), i) == except.end()) {
-      result.emplace_back(dims[i]);
-    }
-  }
-  return result;
-}
-
 symbol::DimExpr GetProductDimExprForValueDims(
-    const std::vector<ValueDim>& dims) {
+    const std::vector<DimUsage>& dims) {
   if (dims.empty()) {
     return 0;
   }
@@ -264,8 +163,8 @@ symbol::DimExpr GetProductDimExprForValueDims(
   return dims[0].shape_analysis().GetProductDimExpr(dims[0].v_, dim_idx);
 }
 
-bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
-                             const std::vector<ValueDim>& second) {
+bool IsProductSmallerOrEqual(const std::vector<DimUsage>& first,
+                             const std::vector<DimUsage>& second) {
   if (first.empty()) return true;
   const auto& first_product = GetProductDimExprForValueDims(first);
   const auto& second_product = GetProductDimExprForValueDims(second);
@@ -280,20 +179,91 @@ bool IsProductSmallerOrEqual(const std::vector<ValueDim>& first,
   return shape_analysis.IsEqual(first_product, second_product);
 }
 
-}  // namespace
+pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
+                           const pir::Value& value) {
+  std::vector<pir::Operation*> results;
+  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
+       ++consumer_it) {
+    pir::Operation* user_op = consumer_it.owner();
+    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
+    if (iter != candidates.end()) {
+      results.emplace_back(*iter);
+    }
+  }
+  CHECK(results.size() == 1) << "Zero Or Multi User Op Found In Candidates!";
+  return results.front();
+}
 
 template <typename T>
-bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
+bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  const auto& fakes = GetFakeReduceIterIdx(upstream, downstream);
-  VLOG(4) << "IsFlattenDimSmaller: fake is " << utils::Join(fakes, ",");
-  const auto& downstream_free_dims = GatherDimsExcept(
-      GetAllValueDimFromValue(downstream->sink_op()->result(0)), fakes);
-  const auto& upstream_free_dims =
-      GetAllValueDimFromValue(upstream->sink_op()->result(0));
+  const auto& upstream_tree =
+      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern());
+  const auto& downstream_tree =
+      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern());
 
-  bool res = IsProductSmallerOrEqual(downstream_free_dims, upstream_free_dims);
-  VLOG(4) << "IsFlattenDimSmaller: " << res;
+  VLOG(4) << "upstream->stmt_pattern():"
+          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
+  VLOG(4) << "downstream->stmt_pattern()"
+          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
+
+  const auto& maybe_downstream_op = GetDownstreamFromCandidate(
+      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
+  int idx = 0;
+  for (const auto& r_pattern : downstream_tree.childs()) {
+    idx += 1;
+    VLOG(4) << "downstream_tree.reduce_patterns_"
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
+  }
+  if (!maybe_downstream_op.has_value()) {
+    VLOG(4) << "can't find candidate from patterns. can fuse return false.";
+    return false;
+  }
+  const pir::Value& reduce_out_value =
+      upstream_tree.GetRootPattern().GetReduceOp()->result(0);
+  auto downstream_connect_op =
+      FindUserOp(downstream_tree.ops(), reduce_out_value);
+  pir::Operation* downstream_reduce_op =
+      maybe_downstream_op.value().GetReduceOp();
+
+  const auto& [downstream_reduce_dims, downstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
+                      downstream_reduce_op);
+
+  const auto& upstream_output_dims = GetValueUsage(
+      reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
+  const auto& [related, _UNUSED] =
+      SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
+  auto res = (related.size() == 0);
+  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
+  return res;
+}
+
+template <typename T>
+bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  VLOG(4) << "RT can fuse";
+
+  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
+                      upstream->sink_op());
+
+  // usage_idx is not important, for this is downstream output value
+  // downstream output value must have been used for there is yield op, so
+  // usage_idx==0 exists
+  const auto& [_UNUSED, non_related_dims] = SplitFirstIfRelatedBySecond(
+      GetValueUsage(downstream->sink_op()->result(0), 0),
+      upstream_non_reduce_dims);
+
+  const auto& fakes = GetFakeReduceIterIdx(upstream, downstream);
+  const auto& downstream_free_dims = GatherVectorExcept(
+      GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
+
+  auto res =
+      ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+      IsProductSmallerOrEqual(downstream_free_dims, upstream_non_reduce_dims);
+
+  VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
 }
 
@@ -320,38 +290,17 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
-  // TODO(xiongkun): replace after fix bug in relation that if has multi path in
-  // graph const auto& split_reduce_dims_result =
-  // SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-  // axes_info_.GetSignature(upstream->sink_op()), upstream->sink_op());
+  const auto& [upstream_reduce_dims, upstream_non_reduce_dims] =
+      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op()),
+                      upstream->sink_op());
 
-  // const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  // const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
-  //
-
-  const auto& split_reduce_input_dims_result =
-      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op()), upstream->sink_op());
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
-  const auto& split_reduce_output_dims_result =
-      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-          axes_info_.GetSignature(upstream->sink_op()), upstream->sink_op());
-  VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_non_reduce_dims =
-      split_reduce_output_dims_result.related;
-
-  // =======================
-
-  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
-      GetAllValueDimFromValue(downstream->sink_op()->result(0)),
+  const auto& [_UNUSED, trivial_reorder_dims] = SplitFirstIfRelatedBySecond(
+      GetValueUsage(downstream->sink_op()->result(0), 0),
       upstream_non_reduce_dims);
-
-  const auto& trivial_reorder_dims = split_trivial_dims_result.non_related;
 
   // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
   // trivial_reorder_dims.size() == 0);
-  std::unordered_set<ValueDim, ValueDimHash> visited_dims;
+  std::unordered_set<DimUsage, DimUsageHash> visited_dims;
   std::vector<size_t> result;
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {

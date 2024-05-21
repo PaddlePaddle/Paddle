@@ -252,7 +252,7 @@ class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
 class ScaleMatmulFusePass : public pir::PatternRewritePass {
  public:
   ScaleMatmulFusePass()
-      : pir::PatternRewritePass("reshape_transpose_matmul_fuse_pass", 3) {}
+      : pir::PatternRewritePass("scale_matmul_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -286,9 +286,8 @@ class ScaleMatmulFusePass : public pir::PatternRewritePass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateScaleMatmulFusePass() {
-  // pd_op.reshape + pd_op.transpose + pd_op.matmul -> onednn_op.fused_matmul
-  // pd_op.reshape + pd_op.transpose + pd_op.fused_matmul ->
-  // onednn_op.fused_matmul
+  // pd_op.scale + pd_op.matmul -> onednn_op.fused_matmul
+  // pd_op.scale + onednn_op.fused_matmul -> onednn_op.fused_matmul
   return std::make_unique<ScaleMatmulFusePass>();
 }
 }  // namespace pir

@@ -64,8 +64,11 @@ class DistDenseTensorType
   DistDenseTensorType CopyWithNewMesh(ProcessMeshAttribute mesh) {
     return get(ir_context(),
                dense_tensor_type(),
-               tensor_dist_attr().CopyWithNewMesh(mesh),
-               local_ddim());
+               tensor_dist_attr().CopyWithNewMesh(mesh));
+  }
+
+  DistDenseTensorType CopyWithNewDistAttr(TensorDistAttribute dist_attr) {
+    return get(ir_context(), dense_tensor_type(), dist_attr);
   }
 
   static DistDenseTensorType get(pir::IrContext* ctx,

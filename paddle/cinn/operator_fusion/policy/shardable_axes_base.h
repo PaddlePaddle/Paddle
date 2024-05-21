@@ -36,6 +36,7 @@ struct ShardableAxesInfoManager {
   ShardableAxesInfoManager(const std::vector<pir::Operation*>& ops,
                            pir::ShapeConstraintIRAnalysis* shape_analysis);
   ShardableAxesSignature GetSignature(pir::Operation* op);
+  ShardableAxesSignature GetModifiedSignature(pir::Operation* op);
   ShardableAxes GetAxes(pir::Value value);
   ShardableAxesSignature CreateShardableSignature(pir::Operation* op);
   ShardableAxes ReplaceShardableAxesWithRootName(const ShardableAxes& axes);

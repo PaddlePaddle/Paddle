@@ -1,3 +1,7 @@
+#pragma once
+
+#ifdef PADDLE_WITH_CUDA
+
 #include <cuda_fp16.h>
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_memory_utils.cuh"
@@ -1271,3 +1275,5 @@ void conv_forward_implicit_gemm_cuda(
     }
   }
 }
+
+#endif //PADDLE_WITH_CUDA

@@ -64,7 +64,7 @@ std::vector<pir::Value> GetBlockArgs(pir::Block* block) {
 }
 
 // Returns `out` of GenerateShapeOp
-pir::Value InsertGenerateShapeOpToRunFirst(
+std::optional<pir::Value> InsertGenerateShapeOpToRunFirst(
     pir::Builder* builder,
     const std::vector<pir::Value>& block_args,
     pir::Value value,
@@ -73,17 +73,21 @@ pir::Value InsertGenerateShapeOpToRunFirst(
   std::vector<pir::Value> minimal_inputs{};
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
-  MakeGenerateShapeOpAttribute(builder->ir_context(),
-                               dim_exprs_accessor.GetShapeOrDataDimExprs,
-                               out_dim_exprs,
-                               block_args,
-                               &minimal_inputs,
-                               &output_dim_expr_attrs,
-                               &symbol_bindings);
-  return builder
-      ->Build<cinn::dialect::GenerateShapeOp>(
-          minimal_inputs, output_dim_expr_attrs, symbol_bindings)
-      .out();
+  bool success =
+      MakeGenerateShapeOpAttribute(builder->ir_context(),
+                                   dim_exprs_accessor.GetShapeOrDataDimExprs,
+                                   out_dim_exprs,
+                                   block_args,
+                                   &minimal_inputs,
+                                   &output_dim_expr_attrs,
+                                   &symbol_bindings);
+  if (success) {
+    return builder
+        ->Build<cinn::dialect::GenerateShapeOp>(
+            minimal_inputs, output_dim_expr_attrs, symbol_bindings)
+        .out();
+  }
+  return std::nullopt;
 }
 
 void CloneDimExprInfo(pir::Value from,
@@ -112,10 +116,11 @@ bool RewriteOneGenerateShapeOpToRunFirst(
     if (RunningFirst(op, block_args)) continue;
     pir::Builder builder(ir_context, block);
     builder.set_insertion_point(op);
-    pir::Value new_shape = InsertGenerateShapeOpToRunFirst(
+    std::optional<pir::Value> new_shape = InsertGenerateShapeOpToRunFirst(
         &builder, block_args, op.out(), dim_exprs_accessor);
-    CloneDimExprInfo(op.out(), new_shape, dim_exprs_accessor);
-    ReplaceAllUses(op.out(), new_shape);
+    if (!new_shape.has_value()) continue;
+    CloneDimExprInfo(op.out(), new_shape.value(), dim_exprs_accessor);
+    ReplaceAllUses(op.out(), new_shape.value());
     EraseGenerateShapeOp(op_iter, block);
     return true;
   }

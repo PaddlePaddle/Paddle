@@ -19,7 +19,7 @@ import numpy as np
 from paddle import pir
 
 from ..pir import Value
-from ..pir.core import ParameterMeta
+from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
 from . import core
 from .framework import (
     Variable,
@@ -60,21 +60,6 @@ _NUMPY_DTYPE_2_PADDLE_DTYPE = {
     'uint8': core.VarDesc.VarType.UINT8,
     'complex64': core.VarDesc.VarType.COMPLEX64,
     'complex128': core.VarDesc.VarType.COMPLEX128,
-}
-
-_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
-    core.DataType.BOOL: 'bool',
-    core.DataType.FLOAT16: 'float16',
-    core.DataType.BFLOAT16: 'uint16',
-    core.DataType.FLOAT32: 'float32',
-    core.DataType.FLOAT64: 'float64',
-    core.DataType.INT8: 'int8',
-    core.DataType.INT16: 'int16',
-    core.DataType.INT32: 'int32',
-    core.DataType.INT64: 'int64',
-    core.DataType.UINT8: 'uint8',
-    core.DataType.COMPLEX64: 'complex64',
-    core.DataType.COMPLEX128: 'complex128',
 }
 
 

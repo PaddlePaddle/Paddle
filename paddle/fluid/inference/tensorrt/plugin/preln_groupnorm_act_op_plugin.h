@@ -28,7 +28,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-using phi::GroupNormNHWCParams;
+using phi::GroupNormNDHWCParams;
 class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
  public:
   PrelnGroupnormActPluginDynamic(const float* scale,
@@ -174,7 +174,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> bias_;
   std::shared_ptr<void> scale_gpu_;
   std::shared_ptr<void> bias_gpu_;
-  GroupNormNHWCParams<__half> params_;
+  GroupNormNDHWCParams<__half> params_;
   int groups_;
   float eps_;
   bool with_silu_;

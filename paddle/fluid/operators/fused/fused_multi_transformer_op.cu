@@ -125,7 +125,8 @@ void FusedMultiTransformerKernel(
   auto *padding_offset_data =
       encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
 
-  auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
+  auto ln_compute =
+      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
   phi::DenseTensor ln_mean, ln_var;
   ln_mean.Resize({token_num});
   auto *ln_mean_data =
@@ -800,7 +801,8 @@ void FusedMultiTransformerKernel(
 
   // 1. layer norm
 
-  auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
+  auto ln_compute =
+      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
   phi::DenseTensor ln_mean, ln_var;
   ln_mean.Resize({token_num});
   auto *ln_mean_data =

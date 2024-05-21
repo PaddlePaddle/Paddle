@@ -144,4 +144,20 @@ TEST(Simplify, NestSymbolicMulAddUnit) {
   ASSERT_TRUE((simplified_dim_expr.Has<std::string>()));
   ASSERT_TRUE((simplified_dim_expr == sym));
 }
+
+TEST(Simplify, ConstantMaxMin) {
+  List<DimExpr> max_lists{DimExpr(4), DimExpr(6)};
+  DimExpr dim_expr1{Max<DimExpr>{max_lists}};
+
+  DimExpr simplified_dim_expr1 = SimplifyDimExpr(dim_expr1);
+  ASSERT_TRUE((simplified_dim_expr1.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr1.Get<std::int64_t>()), 6);
+
+  List<DimExpr> min_lists{DimExpr(2), DimExpr(3)};
+  DimExpr dim_expr2{Min<DimExpr>{min_lists}};
+
+  DimExpr simplified_dim_expr2 = SimplifyDimExpr(dim_expr2);
+  ASSERT_TRUE((simplified_dim_expr2.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr2.Get<std::int64_t>()), 2);
+}
 }  // namespace symbol::test
