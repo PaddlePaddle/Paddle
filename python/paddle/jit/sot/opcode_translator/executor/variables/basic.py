@@ -599,7 +599,7 @@ class TensorVariable(VariableBase):
         return None
 
 
-class SymbolicIntVariable(VariableBase):
+class SymbolicVariable(VariableBase):
     """
     TODO
     """
@@ -684,7 +684,7 @@ class SymbolicIntVariable(VariableBase):
                 symbolic_input.setdefault(value, 0)
                 symbolic_input[value] += 1
                 # TODO(zrr1999): determine frequency
-                return SymbolicIntVariable(value, graph, tracker)
+                return SymbolicVariable(value, graph, tracker)
         return None
 
 
