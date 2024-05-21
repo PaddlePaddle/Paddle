@@ -187,11 +187,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
     } else {
       vars[i]->is_reduce_axis = vars[i - 1]->is_reduce_axis;
     }
-  }
-
-  // sequencely unsqueeze the ir::Expr.
   ir::Expr result = expr;
-  for (int i : padding_vec) {
     if (i > 0) {
       result = UnsqueezeForTransformer((ChildFors * IsForIterVar(vars[i - 1])),
                                        vars[i])(result);

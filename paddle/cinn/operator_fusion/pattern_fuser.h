@@ -310,11 +310,7 @@ StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
   const auto& [f, s] =
       GetPaddingVector(GetLoopFramework(StmtPattern<T>(first)),
                        GetLoopFramework(StmtPattern<T>(second)));
-  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_first = {first,
-                                                                       f};
-  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_second = {second,
                                                                         s};
-  return HorizontalFusionPattern<T>({pad_first, pad_second});
 }
 
 template <typename T>

@@ -48,6 +48,7 @@ int SequenceDispatcher::Next() const {
 void parallel_run(const WorkerFuncType& fn,
                   JobDispatcher&& dispatcher,
                   int num_threads) {
+  num_threads = 1;
   if (num_threads == -1 || num_threads > std::thread::hardware_concurrency()) {
     num_threads = std::thread::hardware_concurrency();
   }

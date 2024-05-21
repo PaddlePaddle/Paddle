@@ -54,7 +54,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.min", "reduce_min"},
     {"pd_op.prod", "reduce_prod"},
     {"pd_op.add", "elementwise_add"},
-    {"pd_op.elementwise_pow", "pow"},
+    {"pd_op.elementwise_pow", "pow"},    
     {"pd_op.multiply", "elementwise_mul"},
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
