@@ -118,39 +118,8 @@ DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Abs)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Sin)
-template <typename T, typename Context>
-void AbsCooKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  SparseCooTensor* out) {
-  *(out->mutable_indices()) = x.indices();
-
-  DenseTensor* out_values = out->mutable_values();
-  const DenseTensor& x_values = x.values();
-  out_values->Resize(x_values.dims());
-  dev_ctx.template Alloc<T>(out_values);
-
-  phi::AbsKernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-
-  out->SetIndicesDict(x.GetIndicesDict());
-}
-
-template <typename T, typename Context>
-void AbsCsrKernel(const Context& dev_ctx,
-                  const SparseCsrTensor& x,
-                  SparseCsrTensor* out) {
-  *(out->mutable_crows()) = x.crows();
-  *(out->mutable_cols()) = x.cols();
-
-  DenseTensor* out_values = out->mutable_values();
-  const DenseTensor& x_values = x.values();
-  out_values->Resize(x_values.dims());
-  dev_ctx.template Alloc<T>(out_values);
-
-  phi::AbsKernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-}
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
