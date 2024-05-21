@@ -407,6 +407,7 @@ const std::string &Store::name() const {
 }
 
 Type Store::type() const { return value.type(); }
+
 std::vector<Expr *> Store::expr_fields() {
   std::vector<Expr *> exprs({&tensor, &value});
   for (auto &idx : indices) exprs.push_back(&idx);
@@ -776,6 +777,9 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
   n->set_type(body.type());
   return Expr(n);
 }
+
+Type Reduce::type() const { return body.type().ElementOf(); }
+
 std::vector<Expr *> Reduce::expr_fields() {
   std::vector<Expr *> res;
   if (init.defined()) {
@@ -800,6 +804,12 @@ void Reduce::Verify() const {
   CHECK(body.defined());
   CHECK(!reduce_axis.empty()) << "At least one reduce axis is needed";
   CHECK_EQ(init.type(), body.type());
+}
+
+Type Select::type() const {
+  PADDLE_ENFORCE_EQ(
+      true_value.type(), false_value.type(), "Type of Select must be same");
+  return type_;
 }
 
 void Select::Verify() const {
@@ -862,11 +872,15 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
   }
 }
 
+Type Product::type() const { return operands().front().type(); }
+
 void Product::Verify() const {
   CHECK_GT(operands().size(), 1UL)
       << "Product node should have more than 1 operands";
   MultiOperandVerify(operands());
 }
+
+Type Sum::type() const { return operands().front().type(); }
 
 void Sum::Verify() const {
   CHECK_GT(operands().size(), 1UL)

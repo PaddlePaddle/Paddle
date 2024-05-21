@@ -98,8 +98,10 @@ class GemmRewriterPass : public ProgramPass {
   bool DoGemmFusion(NetBuilder* builder,
                     const Instruction& instr,
                     const std::unordered_set<std::string>& fetch_ids) {
-    CHECK_EQ(instr->inputs.size(), 2)
-        << "elementwise should have only two inputs";
+    PADDLE_ENFORCE_EQ(instr->inputs.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "elementwise should have only two inputs."));
     std::vector<Variable> inputs;
     bool trans_a = false;
     bool trans_b = false;
@@ -111,10 +113,13 @@ class GemmRewriterPass : public ProgramPass {
       if (it != output2instr_.end() && dot_instrs.count(it->second->op_type)) {
         // If the output var of matmul is consumed by more than one instruction
         // or a fetch var, just skip to fuse it.
-        CHECK_GT(var_used_count_.count(var.get()), 0)
-            << "The input(" << var->id << ")"
-            << "should be included in var_used_count_. Please check the "
-               "CollectInfo method.";
+        PADDLE_ENFORCE_GT(
+            var_used_count_.count(var.get()),
+            0,
+            phi::errors::InvalidArgument(
+                "The value of var used count's var get() is incorrect."
+                "Expected value is larger than 0, but receive %d.",
+                var_used_count_.count(var.get())));
         if ((var_used_count_.at(var.get()) > 1) || fetch_ids.count(var->id)) {
           continue;
         }
@@ -176,7 +181,10 @@ class GemmRewriterPass : public ProgramPass {
       return true;
     }
 
-    CHECK_EQ(inputs.size(), 0) << "The gemm should only have three inputs.";
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The gemm should only have three inputs."));
     return false;
   }
 

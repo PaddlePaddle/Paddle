@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_infer_spmd_func_gen import gen_op_infer_spmd_func
 from op_infermeta_func_gen import gen_op_infermeta_func
 from op_member_access_func_gen import gen_op_member_access_func
 from op_vjp_interface_func_gen import gen_op_vjp_interface_func
 
 all_gen_op_func_list = [
-    gen_op_infer_spmd_func,
     gen_op_infermeta_func,
     gen_op_member_access_func,
     gen_op_vjp_interface_func,

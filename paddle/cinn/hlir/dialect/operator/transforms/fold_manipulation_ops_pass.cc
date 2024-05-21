@@ -37,7 +37,9 @@ namespace dialect {
 namespace ir {
 using paddle::dialect::details::GetExprVecFromShape;
 
-bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
+bool RemoveOp(pir::Operation* op,
+              pir::PatternRewriter* rewriter,
+              bool check_dtype = false) {
   const auto& IsDynamicShape = [](const pir::Value& value) -> bool {
     return value.type().dyn_cast<pir::ShapedTypeInterface>().IsDynamicShape();
   };
@@ -53,20 +55,42 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
     if (has_dynamic_shape) {
       auto& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-      if (shape_analysis.HasShapeOrDataForValue(input) &&
-          shape_analysis.HasShapeOrDataForValue(output)) {
-        auto input_sym_shape =
-            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(input));
-        auto output_sym_shape =
-            GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(output));
-        return input_sym_shape == output_sym_shape;
-      }
-      return false;
+      auto input_sym_shape =
+          GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(input));
+      auto output_sym_shape =
+          GetExprVecFromShape(shape_analysis.GetShapeOrDataForValue(output));
+      return input_sym_shape == output_sym_shape;
     }
     return GetDims(input) == GetDims(output);
   };
+  const auto& UsedByShadowOutput = [&](const pir::Value& value) -> bool {
+    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+      if (it->owner()->isa<pir::ShadowOutputOp>()) {
+        return true;
+      }
+    }
+    return false;
+  };
 
-  if (IsSameShape()) {
+  const auto& IsSameDataType = [&]() -> bool {
+    return paddle::dialect::TransToPhiDataType(
+               input.type()
+                   .dyn_cast<paddle::dialect::DenseTensorType>()
+                   .dtype()) ==
+           paddle::dialect::TransToPhiDataType(
+               output.type()
+                   .dyn_cast<paddle::dialect::DenseTensorType>()
+                   .dtype());
+  };
+
+  const auto CanRemove = [&]() -> bool {
+    if (!IsSameShape()) return false;
+    if (check_dtype && !IsSameDataType()) return false;
+    if (UsedByShadowOutput(input) && UsedByShadowOutput(output)) return false;
+    return true;
+  };
+
+  if (CanRemove()) {
     rewriter->ReplaceAllUsesWith(output, input);
     rewriter->EraseOp(op);
     return true;
@@ -75,14 +99,14 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   return false;
 }
 
-template <typename OPTYPE>
+template <typename OPTYPE, bool check_dtype = false>
 class RemoveUnchangedOpPattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
   bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    return RemoveOp(op, &rewriter);
+    return RemoveOp(op, &rewriter, check_dtype);
   }
 };
 
@@ -95,6 +119,50 @@ class MergeRedundantOpPattern : public pir::OpRewritePattern<OPTYPE> {
                        pir::PatternRewriter& rewriter) const override {
     if (auto pre_op = (op->operand_source(0).defining_op())
                           ->template dyn_cast<OPTYPE>()) {
+      op->operand(0).set_source(pre_op->operand_source(0));
+      if (pre_op->use_empty()) {
+        rewriter.EraseOp(pre_op);
+      }
+      return true;
+    }
+
+    return false;
+  }
+};
+
+class MergeCastOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::CastOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::CastOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    const auto& IsFloatType = [&]() -> bool {
+      auto in_type = paddle::dialect::TransToPhiDataType(
+          op->operand_source(0)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype());
+      auto out_type = paddle::dialect::TransToPhiDataType(
+          op->result(0)
+              .type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype());
+
+      return (in_type == phi::DataType::FLOAT16 ||
+              in_type == phi::DataType::FLOAT32 ||
+              out_type == phi::DataType::FLOAT64) &&
+             (out_type == phi::DataType::FLOAT16 ||
+              out_type == phi::DataType::FLOAT32 ||
+              out_type == phi::DataType::FLOAT64);
+    };
+
+    if (!IsFloatType()) {
+      return false;
+    }
+
+    if (auto pre_op = (op->operand_source(0).defining_op())
+                          ->template dyn_cast<paddle::dialect::CastOp>()) {
       op->operand(0).set_source(pre_op->operand_source(0));
       if (pre_op->use_empty()) {
         rewriter.EraseOp(pre_op);
@@ -121,11 +189,14 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ExpandOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ConcatOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::CastOp, true>>(context);
+
     // merge redundant ops
     ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<cinn::dialect::BroadcastOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ExpandOp>>(context);
+    ps.Add<MergeCastOpPattern>(context);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
