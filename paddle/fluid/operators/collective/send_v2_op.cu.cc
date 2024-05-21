@@ -31,7 +31,7 @@ namespace operators {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
 void send_shape_info(const phi::DenseTensor& x,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      const gpuStream_t& stream,
                      platform::NCCLComm* comm,
                      phi::distributed::NCCLCommContext* comm_ctx,
@@ -54,7 +54,7 @@ void send_shape_info(const phi::DenseTensor& x,
   // step1: send the shape size
   phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
-  cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dtype);
+  cpu_shape_size_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
@@ -86,7 +86,7 @@ void send_shape_info(const phi::DenseTensor& x,
   // step2: send the shape
   phi::DenseTensor cpu_shape_tensor(shape_dtype);
   cpu_shape_tensor.Resize({shape_size});
-  cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dtype);
+  cpu_shape_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
   for (int i = 0; i < shape_size; ++i) {
     cpu_shape_data[i] = dims[i];

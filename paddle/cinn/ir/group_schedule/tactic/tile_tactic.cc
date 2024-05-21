@@ -46,7 +46,7 @@ void TileTactic::Init(ScheduleContext* context) {
   };
   auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
     const int64_t max_num_threads =
-        common::DefaultNVGPUTarget().max_num_threads();
+        cinn::common::DefaultDeviceTarget().max_num_threads();
     int64_t nums_thread_per_block = max_num_threads;
     if (total_rb_extent.is_constant()) {
       int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());

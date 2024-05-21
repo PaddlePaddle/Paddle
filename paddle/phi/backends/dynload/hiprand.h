@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <hiprand.h>
+#include <hiprand/hiprand.h>
 
 #include <mutex>  // NOLINT
 

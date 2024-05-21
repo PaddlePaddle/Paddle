@@ -74,6 +74,21 @@ np_type_to_paddle_type = {
     np.complex128: DataType.COMPLEX128,
 }
 
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+    DataType.BOOL: 'bool',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'uint16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.UINT8: 'uint8',
+    DataType.COMPLEX64: 'complex64',
+    DataType.COMPLEX128: 'complex128',
+}
+
 
 def convert_np_dtype_to_dtype_(np_dtype):
     """

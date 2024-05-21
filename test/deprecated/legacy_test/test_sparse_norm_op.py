@@ -16,6 +16,7 @@ import copy
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base, sparse
@@ -168,54 +169,64 @@ class TestSyncBatchNorm(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
+    @compare_legacy_with_pt
     def test(self):
         paddle.enable_static()
-        indices = paddle.static.data(
-            name='indices', shape=[4, 4], dtype='int32'
-        )
-        values = paddle.static.data(
-            name='values', shape=[4, 1], dtype='float32'
-        )
-        channels = 1
-        dense_shape = [1, 1, 3, 4, channels]
-        sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            indices = paddle.static.data(
+                name='indices', shape=[4, 4], dtype='int32'
+            )
+            values = paddle.static.data(
+                name='values', shape=[4, 1], dtype='float32'
+            )
+            channels = 1
+            dense_shape = [1, 1, 3, 4, channels]
+            sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
 
-        sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
-        sp_y = sparse_batch_norm(sp_x)
-        out = sp_y.to_dense()
+            sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
+            sp_y = sparse_batch_norm(sp_x)
+            out = sp_y.to_dense()
 
-        exe = paddle.static.Executor()
-        indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-        values_data = np.array([[1.0], [2.0], [3.0], [4.0]]).astype('float32')
-        bias_data = np.array([1.0]).astype('float32')
-        weight_data = np.array([2.0]).astype('float32')
-        mean_data = np.array([1.0]).astype('float32')
-        variance_data = np.array([2.0]).astype('float32')
+            exe = paddle.static.Executor()
+            indices_data = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 1, 2],
+                [1, 3, 2, 3],
+            ]
+            values_data = np.array([[1.0], [2.0], [3.0], [4.0]]).astype(
+                'float32'
+            )
+            bias_data = np.array([1.0]).astype('float32')
+            weight_data = np.array([2.0]).astype('float32')
+            mean_data = np.array([1.0]).astype('float32')
+            variance_data = np.array([2.0]).astype('float32')
 
-        fetch = exe.run(
-            feed={
-                'indices': indices_data,
-                'values': values_data,
-                'batch_norm_0.b_0': bias_data,
-                'batch_norm_0.w_0': weight_data,
-                'batch_norm_0.w_1': mean_data,
-                'batch_norm_0.w_2': variance_data,
-            },
-            fetch_list=[out],
-            return_numpy=True,
-        )
-        correct_out = np.array(
-            [
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data,
+                    'values': values_data,
+                    sparse_batch_norm.bias.name: bias_data,
+                    sparse_batch_norm.weight.name: weight_data,
+                    sparse_batch_norm._mean.name: mean_data,
+                    sparse_batch_norm._variance.name: variance_data,
+                },
+                fetch_list=[out],
+                return_numpy=True,
+            )
+            correct_out = np.array(
                 [
                     [
-                        [[0.0], [-1.6832708], [0.0], [0.1055764]],
-                        [[0.0], [0.0], [1.8944236], [0.0]],
-                        [[0.0], [0.0], [0.0], [3.683271]],
+                        [
+                            [[0.0], [-1.6832708], [0.0], [0.1055764]],
+                            [[0.0], [0.0], [1.8944236], [0.0]],
+                            [[0.0], [0.0], [0.0], [3.683271]],
+                        ]
                     ]
                 ]
-            ]
-        ).astype('float32')
-        np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
+            ).astype('float32')
+            np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
         paddle.disable_static()
 
 

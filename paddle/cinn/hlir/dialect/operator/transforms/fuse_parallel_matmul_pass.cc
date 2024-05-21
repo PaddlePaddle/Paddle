@@ -21,6 +21,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -59,8 +60,13 @@ class MergeParallelMatmulPattern
              std::vector<std::int64_t>(b.begin(), b.end() - 1);
     };
 
+    auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
+      return std::any_of(
+          dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
+    };
+
     auto input_x = matmul_op.operand_source(0);
-    const std::vector<pir::Operation*> merge_ops = [&]() {
+    std::vector<pir::Operation*> merge_ops = [&]() {
       std::vector<pir::Operation*> ret;
       std::optional<std::vector<std::int64_t>> pre_dim;
       std::vector<std::int64_t> cur_dim;
@@ -82,6 +88,9 @@ class MergeParallelMatmulPattern
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
                 .dims());
+        if (IsDynamicShape(cur_dim)) {
+          continue;
+        }
         if (VectorPrefixEqual(pre_dim.value(), cur_dim)) {
           ret.push_back(it->owner());
         }
@@ -91,6 +100,16 @@ class MergeParallelMatmulPattern
     if (merge_ops.size() <= 1) {
       return false;
     }
+    std::sort(
+        merge_ops.begin(),
+        merge_ops.end(),
+        [&](pir::Operation* a, pir::Operation* b) {
+          int a_distance = std::distance(a->GetParent()->begin(),
+                                         a->operator pir::Block::Iterator());
+          int b_distance = std::distance(b->GetParent()->begin(),
+                                         b->operator pir::Block::Iterator());
+          return a_distance < b_distance;
+        });
 
     const std::vector<pir::Value> combine_ins = [&]() {
       std::vector<pir::Value> ret;
@@ -110,6 +129,18 @@ class MergeParallelMatmulPattern
       }
       return ret;
     }();
+    const std::vector<pir::Value> outputs = [&]() {
+      std::vector<pir::Value> ret;
+      for (pir::Operation* matmul_op : merge_ops) {
+        ret.push_back(matmul_op->result(0));
+      }
+      return ret;
+    }();
+
+    auto* insert_point = FindInsertPoint(merge_ops, outputs);
+    MoveUpstreamOpBeforeGroup(
+        merge_ops, merge_ops.back()->GetParent(), insert_point);
+    rewriter.set_insertion_point(insert_point);
 
     auto combine_out = rewriter.Build<pir::CombineOp>(combine_ins).result(0);
     auto concat_out =

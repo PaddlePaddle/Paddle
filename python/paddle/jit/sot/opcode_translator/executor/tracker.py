@@ -21,7 +21,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ...utils import InnerError, NameGenerator
-from .guard import StringifyExpression, union_free_vars
+from .guard import StringifyExpression, stringify_pyobject, union_free_vars
 
 if TYPE_CHECKING:
     from typing import Sequence
@@ -66,6 +66,12 @@ class Tracker:
 
         Returns:
             The value of the tracked variables.
+        """
+        raise NotImplementedError()
+
+    def match_expr(self, expr: str) -> bool:
+        """
+        TODO(zrr1999)
         """
         raise NotImplementedError()
 
@@ -165,6 +171,9 @@ class LocalTracker(Tracker):
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
 
+    def match_expr(self, expr: str) -> bool:
+        return expr == f"frame.f_locals['{self.name}']"
+
     def __repr__(self) -> str:
         return f"LocalTracker(name={self.name})"
 
@@ -242,7 +251,10 @@ class ConstTracker(Tracker):
         codegen.gen_load_const(self.value)
 
     def trace_value_from_frame(self):
-        return StringifyExpression(f"{self.value!r}", [], {})
+        value_str, value_free_vars = stringify_pyobject(self.value)
+        return StringifyExpression(
+            f"{value_str}", [], union_free_vars(value_free_vars)
+        )
 
     def __repr__(self) -> str:
         return f"ConstTracker(value={self.value})"
@@ -365,10 +377,11 @@ class GetItemTracker(Tracker):
 
     def trace_value_from_frame(self):
         container_tracer = self.container.tracker.trace_value_from_frame()
+        key_string, key_free_vars = stringify_pyobject(self.key)
         return StringifyExpression(
-            f"{{}}[{self.key!r}]",
+            f"{{}}[{key_string}]",
             [container_tracer],
-            union_free_vars(container_tracer.free_vars),
+            union_free_vars(container_tracer.free_vars, key_free_vars),
         )
 
     def __repr__(self) -> str:

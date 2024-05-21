@@ -409,8 +409,13 @@ void* GetCUDNNDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
 #ifdef WITH_PIP_CUDA_LIBRARIES
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+  if (CUDA_VERSION >= 12030) {
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cudnn_dir, "libcudnn.so.9", false, {cuda_lib_path});
+  } else {
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+  }
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
@@ -695,7 +700,7 @@ void* GetCUFFTDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(

@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
@@ -33,6 +34,8 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+
+#include "paddle/fluid/pybind/python_callable_registry.h"
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
@@ -50,6 +53,7 @@ using pir::Operation;
 using pir::Program;
 using pir::Region;
 using pir::StackCreateOp;
+using pir::TuplePopOp;
 using pir::TuplePushOp;
 using pir::Type;
 using pir::Value;
@@ -88,10 +92,8 @@ void BindIfOp(py::module* m) {
 
 void BindPyLayerOp(py::module* m) {
   m->def("build_pylayer_op", [](const std::vector<Value>& inputs) {
-    auto inputs_combine_op =
-        ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
     return ApiBuilder::Instance().GetBuilder()->Build<PyLayerOp>(
-        inputs_combine_op.out(), std::vector<Type>{});
+        inputs, std::vector<Type>{}, -1);
   });
   py::class_<PyLayerOp> pylayer_op(*m, "PyLayerOp", R"DOC(
     TODO(MarioLulab): Add some docs for pd_op.pylayer
@@ -103,12 +105,24 @@ void BindPyLayerOp(py::module* m) {
       .def("update_output", &PyLayerOp::UpdateOutput)
       .def(
           "as_operation", &PyLayerOp::operation, return_value_policy::reference)
-      .def("results", [](PyLayerOp& self) -> py::list {
-        py::list op_list;
-        for (uint32_t i = 0; i < self->num_results(); i++) {
-          op_list.append(self.result(i));
-        }
-        return op_list;
+      .def("id",
+           [](PyLayerOp& self) -> uint64_t { return self.operation()->id(); })
+      .def("results",
+           [](PyLayerOp& self) -> py::list {
+             py::list op_list;
+             for (uint32_t i = 0; i < self->num_results(); i++) {
+               op_list.append(self.result(i));
+             }
+             return op_list;
+           })
+      .def("register_backward_function", [](PyLayerOp& self, py::object func) {
+        uint64_t unique_id = self.operation()->id();
+        VLOG(2) << "register backward function for op id: " << unique_id;
+        paddle::pybind::PythonCallableRegistrar::GetInstance().Register(
+            unique_id, func);
+        self.operation()->set_attribute(
+            "backward_function_id",
+            pir::Int32Attribute::get(pir::IrContext::Instance(), unique_id));
       });
 }
 
@@ -146,6 +160,54 @@ void BindAssertOp(py::module* m) {
   )DOC");
   assert_op.def(
       "as_operation", &AssertOp::operation, return_value_policy::reference);
+}
+
+void BindTuplePopOp(py::module* m) {
+  py::class_<TuplePopOp> tuple_pop_op(*m, "TuplePopOp", R"DOC(
+    TuplePopOp in python api.
+  )DOC");
+  tuple_pop_op
+      .def("as_operation",
+           &TuplePopOp::operation,
+           return_value_policy::reference)
+      .def("pop_all_values",
+           [](TuplePopOp& self) -> py::list {
+             py::list res;
+             for (size_t i = 0; i < self.num_results(); ++i) {
+               res.append(self.result(i));
+             }
+             return res;
+           })
+      .def(
+          "tuple_size", &TuplePopOp::tuple_size, return_value_policy::reference)
+      .def("outlet_element",
+           &TuplePopOp::outlet_element,
+           return_value_policy::reference);
+}
+
+void BuildPipeForPyLayer(Block* block, const std::vector<pir::Value>& values) {
+  PADDLE_ENFORCE_NOT_NULL(
+      block,
+      common::errors::InvalidArgument(
+          "The block used to hook local value can't be nullptr"));
+  auto& builder = *(ApiBuilder::Instance().GetBuilder());
+  Program* program = block->parent_program();
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      common::errors::InvalidArgument(
+          "The block used to hook local value must belong to a program"));
+
+  auto original_position = builder.insertion_point();
+
+  builder.SetInsertionPointToStart(program->block());
+  auto inlet = builder.Build<StackCreateOp>().inlet();
+  auto iter = block->end();
+  if (!block->empty() && block->back().isa<YieldOp>()) {
+    --iter;
+  }
+  builder.set_insertion_point(block, iter);
+  builder.Build<TuplePushOp>(inlet, values);
+  builder.set_insertion_point(original_position);
 }
 
 Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
@@ -304,6 +366,7 @@ void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value",
          [](const Block& block) { return pir::GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("build_pipe_for_pylayer", BuildPipeForPyLayer);
   m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
     std::vector<Value> input_values;
@@ -316,6 +379,7 @@ void BindControlFlowApi(py::module* m) {
   BindWhileOp(m);
   BindAssertOp(m);
   BindPyLayerOp(m);
+  BindTuplePopOp(m);
 }
 
 }  // namespace pybind
