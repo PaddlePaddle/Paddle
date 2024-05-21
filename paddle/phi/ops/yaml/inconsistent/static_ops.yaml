@@ -1,7 +1,7 @@
 # The operators included in this file are:
 # 1) Operators defined only in PIR, dynamic graphs do not exist;
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
-# After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
+# After the definition is clearly defined, migrate to paddle/phi/ops/yaml/inconsistent/update_ops.yaml or paddle/phi/ops/yaml/ops.yaml
 
 - op : add
   args : (Tensor x, Tensor y)
@@ -455,16 +455,16 @@
   backward : depthwise_conv2d_transpose_grad
 
 - op : dequantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false, float moving_rate=0.9f)
-  output : Tensor(y), Tensor(out_scale), Tensor(out_accum), Tensor(out_state)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
-    param : [x, scale, in_accum, in_state, quant_axis]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer, moving_rate]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
     data_type : x
-  optional : in_accum, in_state, out_scale, out_accum, out_state
+  optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
 - op : dequantize_log
@@ -1349,19 +1349,21 @@
     data_type : out_grad_in
   inplace: (out_grad_in -> out_grad_out)
 
+# Note: dequantize_linear and quantize_linear are supported using one op maker in fluid, the out_scale can't be used in dequantize_linear
+# so ,the out_scale is optional. Currently, we can't modify the op definition of dequantize_linear/quantize_linear and it can cause incompatibility problem
+# We need modify dequantize_linear/quantize_linear yaml and make it more reasonable when we abandon Fluid op.
 - op : quantize_linear
-  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false, float moving_rate=0.9f)
-  output : Tensor(y), Tensor(out_scale), Tensor(out_accum), Tensor(out_state)
+  args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
+  output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
   infer_meta :
     func : QuantizeLinearInferMeta
-    param : [x, scale, in_accum, in_state, quant_axis]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
   kernel :
     func : quantize_linear
-    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer, moving_rate]
+    param : [x, scale, zero_point, in_accum, in_state, quant_axis, bit_length, round_type, is_test, only_observer]
     data_type : x
-  optional : in_accum, in_state, out_scale, out_accum, out_state
+  optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)

@@ -197,8 +197,8 @@ int GetSharedSize(::pir::Operation* op) {
       lane = inshape[idx];
     }
     // int max_num_threads =
-    // cinn::common::DefaultNVGPUTarget().max_num_threads(); todo(phlrain): get
-    // gpu max threads
+    // cinn::common::DefaultDeviceTarget().max_num_threads();
+    // todo(phlrain): get gpu max threads
     int max_num_threads = 2048;
     if (lane > max_num_threads / 2) {
       return 0;

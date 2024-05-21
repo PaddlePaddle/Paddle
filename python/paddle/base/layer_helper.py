@@ -172,8 +172,9 @@ class LayerHelper(LayerHelperBase):
                 attrs = ()
                 if use_cudnn:
                     attrs = ('use_cudnn', use_cudnn)
-
                 act_op = getattr(_C_ops, act)
+                if act == 'softmax':
+                    return act_op(input, -1)
                 return act_op(input, *attrs)
 
             return _append_activation_in_pir(input_var, act_type, use_cudnn)
