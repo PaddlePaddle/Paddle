@@ -72,6 +72,30 @@ TEST(transfer_layout_pass, pass_test) {
   std::cout << *program << std::endl;
 
   pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+
+  // Note(lyk) To avoid windows compiler error:
+  // paddle::kPirGpuPasses has already been declared as
+  // PD_INFER_DECL, but we still got LINK ERROR. The
+  // reason is still unclear, skip it now.
+  const std::vector<std::string> kCopiedPirGpuPasses{
+      // Functional pass
+      "map_op_to_another_pass",
+      "identity_op_clean_pass",
+      // Operator fusion pass
+      "silu_fuse_pass",
+      "conv2d_bn_fuse_pass",
+      "conv2d_add_act_fuse_pass",
+      "conv2d_add_fuse_pass",
+      "embedding_eltwise_layernorm_fuse_pass",
+      "fused_flash_attn_pass",
+      "multihead_matmul_fuse_pass",
+      "matmul_add_act_fuse_pass",
+      "fc_elementwise_layernorm_fuse_pass",
+      "matmul_scale_fuse_pass",
+      "matmul_transpose_fuse_pass",
+      "transpose_flatten_concat_fuse_pass",
+      "remove_redundant_transpose_pass"};
+
   for (const auto& gpu_pass : paddle::kPirGpuPasses) {
     pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
   }

@@ -99,20 +99,42 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
         data_format_attr));
   }
 
-  auto concrete_op = op->dyn_cast<FusedConv2dAddActOp>();
+  auto original_layout = common::StringToDataLayout(data_format_attr.AsString())
+
+      auto concrete_op = op->dyn_cast<FusedConv2dAddActOp>();
   if (auto in = concrete_op.input()) {
     if (auto in_type = in.type()) {
       if (in_type.isa<paddle::dialect::DenseTensorType>()) {
         if (auto tensor_type =
                 in_type.dyn_cast<paddle::dialect::DenseTensorType>()) {
-          if (tensor_type.dtype().isa<pir::Float16Type>()) {
-            return common::DataLayout::NHWC;
+          if (!tensor_type.dtype().isa<pir::Float16Type>()) {
+            return original_layout;
           }
         }
       }
     }
   }
-  return common::StringToDataLayout(data_format_attr.AsString());
+
+  constexpr int CUDNN_ALIGNMENT = 8;
+
+  if (auto filter = concrete_op.filter()) {
+    if (auto filter_type = filter.type()) {
+      std::cout << "The filter type is: " << filter_type << std::endl;
+      if (filter_type.isa<DenseTensorType>()) {
+        if (auto tensor_type = filter_type.dyn_cast<DenseTensorType>()) {
+          if (tensor_type.dtype().isa<pir::Float16Type>()) {
+            auto dims = tensor_type.dims();
+            if (dims.size() == 4 && (dims[0] % CUDNN_ALIGNMENT == 0) &&
+                (dims[1] % CUDNN_ALIGNMENT == 0)) {
+              return common::DataLayout::NHWC;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return original_layout;
 }
 
 template <>
