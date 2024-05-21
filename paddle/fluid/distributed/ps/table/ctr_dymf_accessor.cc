@@ -60,6 +60,7 @@ int CtrDymfAccessor::Initialize() {
           << " embedx_dim:" << common_feature_value.embedx_dim
           << "  embedx_sgd_dim:" << common_feature_value.embedx_sgd_dim;
   InitAccessorInfo();
+  SetTimeDecayRates();
   return 0;
 }
 
@@ -75,6 +76,16 @@ void CtrDymfAccessor::InitAccessorInfo() {
   _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
   _accessor_info.mf_size =
       (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
+}
+
+void CtrDymfAccessor::SetTimeDecayRates() {
+  // 根据unseen_days的天数来初始化_time_decay_rates大小和对应的衰减率
+  auto delete_after_unseen_days =
+      _config.ctr_accessor_param().delete_after_unseen_days();
+  _time_decay_rates.assign(delete_after_unseen_days + 2, 0.0);
+  for (int i = 0; i <= delete_after_unseen_days + 1; ++i) {
+    _time_decay_rates[i] = pow(_show_click_decay_rate, i);
+  }
 }
 
 bool CtrDymfAccessor::Shrink(float* value) {
@@ -110,7 +121,19 @@ bool CtrDymfAccessor::SaveCache(float* value,
 }
 
 bool CtrDymfAccessor::SaveSSD(float* value) {
-  if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
+  if (_day_id == 0) {
+    return true;
+  }
+  auto unseen_days = common_feature_value.UnseenDays(value);
+  if (unseen_days == 0) {
+    return true;
+  }
+  // for the origin load (eg. unseen_days = 0-15)
+  if (unseen_days < _config.ctr_accessor_param().delta_keep_days()) {
+    unseen_days = _day_id - unseen_days;
+  }
+  int16_t day_diff = _day_id - unseen_days;
+  if (day_diff > _ssd_unseenday_threshold) {
     return true;
   }
   return false;
@@ -207,8 +230,12 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
+#ifdef PADDLE_WITH_PSLIB
     common_feature_value.UnseenDays(value) = 0;
     common_feature_value.PassId(value) = 0;
+#else
+    value[common_feature_value.UnseenDaysIndex()] = 0;
+#endif
     value[common_feature_value.DeltaScoreIndex()] = 0;
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
@@ -217,7 +244,12 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     _embed_sgd_rule->InitValue(
         value + common_feature_value.EmbedWIndex(),
         value + common_feature_value.EmbedG2SumIndex(),
-        false);  // adam embed init not zero, adagrad embed init zero
+#ifdef PADDLE_WITH_GPU_GRAPH
+        false);  // adam embed init not zero, adagrad embed init zero; gpubox
+                 // set true for adam
+#else
+        true);  //  gpups use adagrad thus set false
+#endif
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -323,8 +355,12 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
+#ifdef PADDLE_WITH_PSLIB
   os << common_feature_value.UnseenDays(const_cast<float*>(v)) << " " << v[1]
      << " " << v[2] << " " << v[3] << " " << v[4];
+#else
+  os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
+#endif
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
        i < common_feature_value.EmbedxG2SumIndex();
@@ -349,13 +385,55 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
+#ifdef PADDLE_WITH_PSLIB
   float unseen_day = value[common_feature_value.UnseenDaysIndex()];
   common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
   common_feature_value.PassId(value) = 0;
+#endif
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
 }
 
+void CtrDymfAccessor::SetDayId(int day_id) { _day_id = day_id; }
+
+void CtrDymfAccessor::UpdateTimeDecay(float* value, bool is_update_seen_day) {
+  // 根据day_id 来进行show click 衰减和unseen_day 更新;unseen_day
+  // 为上次出现的dayid
+  if (_day_id == 0) {
+    return;
+  }
+  auto unseen_days = common_feature_value.UnseenDays(value);
+  if (unseen_days == 0) {
+    common_feature_value.UnseenDays(value) = _day_id;
+    return;
+  }
+  // for the origin load (unseenday = 0 -15)
+  if (unseen_days < _config.ctr_accessor_param().delete_after_unseen_days()) {
+    // pull
+    if (is_update_seen_day) {
+      common_feature_value.UnseenDays(value) = _day_id;
+      return;
+      // save 舍弃原始的unseenday,都变为上一天出现,保证show/click不被重复decay
+    } else {
+      common_feature_value.UnseenDays(value) = _day_id - 1;
+    }
+  }
+  int16_t day_diff = _day_id - unseen_days;
+  if (day_diff < 0) {
+    common_feature_value.UnseenDays(value) = _day_id;
+    return;
+  }
+  if (day_diff >= _config.ctr_accessor_param().delete_after_unseen_days()) {
+    return;
+  }
+  common_feature_value.Show(value) *= _time_decay_rates[day_diff];
+  common_feature_value.Click(value) *= _time_decay_rates[day_diff];
+  if (is_update_seen_day) {
+    common_feature_value.UnseenDays(value) = _day_id;
+  }
+}
+
+#ifdef PADDLE_WITH_PSLIB
 bool CtrDymfAccessor::SaveMemCache(float* value,
                                    int param,
                                    double global_cache_threshold,
@@ -367,6 +445,7 @@ bool CtrDymfAccessor::SaveMemCache(float* value,
 void CtrDymfAccessor::UpdatePassId(float* value, uint16_t pass_id) {
   common_feature_value.PassId(value) = pass_id;
 }
+#endif
 
 }  // namespace distributed
 }  // namespace paddle

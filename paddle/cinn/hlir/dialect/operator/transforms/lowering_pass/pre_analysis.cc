@@ -56,7 +56,7 @@ void FusionOpAnalysis::PreCompileGroup() {
   }
   // Build and trigger compilaion cache.
   VLOG(4) << "Parallel Pre-Compile for Group with size: " << groups.size();
-  PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
+  PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
   pir_compiler.Build(groups);
 }
 }  // namespace cinn::dialect::ir::details

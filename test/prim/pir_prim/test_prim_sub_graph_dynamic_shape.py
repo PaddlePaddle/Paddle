@@ -74,6 +74,10 @@ def index_sample_net(x, index):
     return paddle.index_sample(x, index)
 
 
+def huber_loss_net(x, label):
+    return paddle._C_ops.huber_loss(x, label, 1.0)
+
+
 def bce_loss_net(x, label):
     return paddle._C_ops.bce_loss(x, label)
 
@@ -322,6 +326,23 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.tol = 1e-6
 
 
+class TestPrimHuberLoss(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [100, 1]
+        self.y_shape = [100, 1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(0, 1.0, self.x_shape).astype(self.dtype_x)
+        self.y = np.random.uniform(0, 1.0, self.y_shape).astype(self.dtype_y)
+        self.net = huber_loss_net
+        self.necessary_ops = "pd_op.huber_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimBceLoss(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
@@ -380,32 +401,6 @@ class TestPrimLayernorm(TestPrimBase):
         self.necessary_ops = "pd_op.layer_norm"
         self.enable_cinn = False
         self.tol = 5e-6
-
-
-class TestPrimFlatten1(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [3, 100, 100, 4]
-        self.init_x_shape = [3, None, None, 4]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = flatten_net
-        self.necessary_ops = "pd_op.flatten"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimFlatten2(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [3, 100, 100, 640]
-        self.init_x_shape = [None, None, None, 640]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = flatten_net
-        self.necessary_ops = "pd_op.flatten"
-        self.enable_cinn = False
-        self.tol = 1e-6
 
 
 class TestPrimGroupNorm1(TestPrimBase):

@@ -34,7 +34,7 @@ const char PyLayerOp::kSkipEagerDeletionVars[] =
 const char PyLayerOp::kBlocks[] = "blocks";  // NOLINT
 
 void PyLayerOp::CreateInterpreter(
-    const platform::Place &dev_place,
+    const phi::Place &dev_place,
     const framework::BlockDesc &block,
     framework::Scope *cur_scope,
     const std::vector<std::string> &skip_vars) const {
@@ -91,7 +91,7 @@ class PyLayerForwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const {
+               const phi::Place &dev_place) const {
     auto *scope_var = scope.FindVar(Output(kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
@@ -175,7 +175,7 @@ class PyLayerBackwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     const auto &inputs = Inputs(PyLayerOp::kInputs);
     const auto &outside_grads =
         Outputs(framework::GradVarName(PyLayerOp::kInputs));

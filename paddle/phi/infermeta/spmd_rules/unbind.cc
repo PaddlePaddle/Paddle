@@ -127,7 +127,7 @@ SpmdInfo UnbindInferSpmdReverse(const DistMetaTensor& x,
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   for (int i = 0; i < nouts; i++) {
     std::vector<int64_t> out_dims_mapping = outs[i]->dist_attr().dims_mapping();
-    axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+    axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
   }
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);

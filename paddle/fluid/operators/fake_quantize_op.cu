@@ -24,12 +24,6 @@ PD_REGISTER_STRUCT_KERNEL(fake_quantize_dequantize_abs_max,
                           ops::FakeQuantizeDequantizeAbsMaxKernel,
                           float,
                           float16) {}
-PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_abs_max,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FakeChannelWiseQuantizeAbsMaxKernel,
-                          float,
-                          float16) {}
 PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
                           GPU,
                           ALL_LAYOUT,
@@ -48,8 +42,3 @@ PD_REGISTER_STRUCT_KERNEL(straight_through_estimator_grad,
                           ops::StraightThroughEstimatorGradKernel,
                           float,
                           float16) {}
-PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel,
-                          float) {}

@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -174,6 +175,10 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
     LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";
     return false;
 #endif
+    if (!phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f)) {
+      return false;
+    }
+
     return op->num_regions() > 0;
   }
 };
