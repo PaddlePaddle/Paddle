@@ -34,14 +34,14 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
                         "But received %d, and it's shape is [%s].",
                         mask.numel(),
                         mask.dims()));
-  if (platform::is_cpu_place(mask.place())) {
+  if (mask.place().GetType() == phi::AllocationType::CPU) {
     return mask.data<int>()[0];
   }
-  // when platform::is_gpu_place(mask.place()) is true
+  // when mask.place().GetType() == phi::AllocationType::GPU is true
   std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
-  framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
+  framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU, "

@@ -62,7 +62,7 @@ def custom_relu_static(func, device, dtype, np_x, use_func=True):
             out_v = exe.run(
                 static.default_main_program(),
                 feed={"X": np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()

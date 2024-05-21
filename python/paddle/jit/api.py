@@ -534,7 +534,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
     output_spec_is_not_value_error = (
         "tensor `%s` is not support in pir mode, "
         "because pir value has no name sometimes, especially as ouptut,"
-        " so we can't check tensor's name with output var name"
+        "so we can't check tensor's name with output var name, please"
+        "change as pir.value(to_static layer's output)"
+        "or int(the position of to_static layer's output)"
     )
     if output_spec and with_hook:
         raise RuntimeError(
@@ -549,31 +551,43 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
                 result_list.append(var)
 
         if output_spec is not None:
-            if len(output_spec) == len(result_list):
+            output_size = len(result_list)
+            if len(output_spec) == output_size:
                 for var in output_spec:
-                    if not isinstance(var, paddle.pir.Value):
+                    if not isinstance(var, paddle.pir.Value, int):
                         warnings.warn(output_spec_is_not_value_error % var.name)
                     else:
                         if var not in ValueSet(result_list):
                             warnings.warn(name_no_exists_error % var.name)
             else:
                 result_set = ValueSet(result_list)
-                result_list = []
+                part_result_list = []
                 for var in output_spec:
-                    if not isinstance(var, paddle.pir.Value):
-                        raise ValueError(
-                            output_spec_is_not_value_error % var.name
-                        )
-                    else:
+                    if isinstance(var, paddle.pir.Value):
                         if var not in result_set:
                             raise ValueError(name_no_exists_error % var.name)
                         else:
-                            result_list.append(var)
+                            part_result_list.append(var)
+                    elif isinstance(var, int):
+                        if var >= output_size:
+                            raise ValueError(
+                                "position %d should smaller than output's size % d",
+                                var,
+                                output_size,
+                            )
+                        else:
+                            part_result_list.append(result_list[var])
 
+                    else:
+                        raise ValueError(
+                            output_spec_is_not_value_error % var.name
+                        )
+
+                return part_result_list
     else:
         output_vars_dict = OrderedDict()
         for var in paddle.utils.flatten(outputs):
-            if isinstance(var, Variable):
+            if isinstance(var, (Variable)):
                 output_vars_dict[var.name] = var
         if output_spec is None:
             result_list = list(output_vars_dict.values())
@@ -821,10 +835,14 @@ def save(layer, path, input_spec=None, **configs):
             recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
+            (1) output_spec (list[Tensor|Value|int]): Selects the output targets of the saved model,
             By default, all return variables of original Layer's forward method are kept as the
             output of the saved model. If the provided ``output_spec`` list is not all output variables,
             the saved model will be pruned according to the given ``output_spec`` list.
+            in pir mode, Tensor is not supported, because value has no name in most cases,
+            which can't be used to judge which tensor corresponds to which value; the value can't be found
+            if the saved program is not the same as the program that includes output_spec, so we need to
+            use the position of the output.
 
     Returns:
         None
@@ -1197,6 +1215,10 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
+        # NOTE(Ruting): in pir mode, Tensor is not supported, because value has no name in most cases,
+        # which can't be used to judge which tensor corresponds to which value; the value can't be found
+        # if the saved program is not the same as the program that includes output_spec, so we need to
+        # use the position of the output.
 
         output_vars = _get_output_vars(
             concrete_program.outputs, configs.output_spec, with_hook

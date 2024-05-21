@@ -67,6 +67,19 @@ bool CanBeDeleted(pir::Value value) {
   return !(persist_attr && persist_attr.data());
 }
 
+bool IsLastUser(const pir::Value& value,
+                const std::unordered_map<pir::Value, size_t>& use_count_map,
+                const std::unordered_map<pir::Value, pir::Value>& inplace_map) {
+  auto current_value = value;
+  while (use_count_map.at(current_value) == 0) {
+    if (inplace_map.count(current_value) == 0) {
+      return false;
+    }
+    current_value = inplace_map.at(current_value);
+  }
+  return true;
+}
+
 bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   pir::Value input,
                   pir::Value output,
@@ -295,15 +308,25 @@ GetEagerDeletionValues(const pir::Block& block) {
 std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     const pir::Block& block) {
   const auto eager_dels = GetEagerDeletionValues(block);
+  auto use_count_map = [](const pir::Block& block) {
+    std::unordered_map<pir::Value, size_t> use_count_map;
+    for (auto& op : block) {
+      for (auto value : op.results()) {
+        use_count_map[value] = value.use_count();
+      }
+    }
+    return use_count_map;
+  }(block);
+  std::unordered_map<pir::Value, pir::Value> inplace_map;
+
   std::unordered_map<pir::Operation*, std::string> inplace_ops;
 
   std::unordered_set<pir::Value> visited_values;
-  std::unordered_set<pir::Value> reused_input_values;
-  std::unordered_set<pir::Value> reused_output_values;
 
   for (auto& op : block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
       visited_values.insert(op.operand_source(i));
+      use_count_map[op.operand_source(i)]--;
     }
 
     if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
@@ -339,11 +362,18 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     if (upper_op_attrs.count("is_inplace") != 0 &&
         upper_op_attrs.at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
-      for (size_t i = 0; i < op.num_operands(); ++i) {
-        reused_input_values.insert(op.operand_source(i));
+      auto op_info =
+          pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name);
+      auto op_yaml_interface =
+          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+      paddle::dialect::OpYamlInfoParser op_info_parser(
+          op_yaml_interface->get_op_info_(upper_op_name));
+      for (auto [out_slot, in_slot] : op_info_parser.GetInplaceIdMap()) {
+        auto out_value = op.result(out_slot);
+        auto in_value = op.operand_source(in_slot);
+        inplace_map[out_value] = in_value;
       }
       for (auto& result : op.results()) {
-        reused_output_values.insert(result);
         visited_values.insert(result);
       }
       continue;
@@ -409,8 +439,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
                          upper_op_name)) ||
           (visited_values.count(op.result(out_slot)) > 0) ||
           (!CanBeDeleted(op.result(out_slot))) ||
-          (reused_input_values.count(op.operand_source(in_slot)) > 0) ||
-          (reused_output_values.count(op.result(out_slot)) > 0) ||
+          IsLastUser(op.operand_source(in_slot), use_count_map, inplace_map) ||
           (std::find(used_external_values.begin(),
                      used_external_values.end(),
                      op.operand_source(in_slot)) !=
@@ -435,19 +464,16 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << " -- result " << out_slot
             << " visited: " << (visited_values.count(op.result(out_slot)) > 0);
         VLOG_IF(8, in_slot < op.num_operands())
-            << " -- operand " << in_slot << " has been reused: "
-            << (reused_input_values.count(op.operand_source(in_slot)) > 0);
-        VLOG_IF(8, out_slot < op.num_results())
-            << " -- result " << out_slot << " has been reused: "
-            << (reused_output_values.count(op.result(out_slot)) > 0);
+            << " -- operand " << in_slot << " has not user: "
+            << IsLastUser(
+                   op.operand_source(in_slot), use_count_map, inplace_map);
         break;
       }
     }
     if (can_do_inplace) {
       inplace_ops[&op] = upper_op_name + "_";
       for (auto& kv : inplace_out_2_in) {
-        reused_input_values.insert(op.operand_source(kv.second));
-        reused_output_values.insert(op.result(kv.first));
+        inplace_map[op.result(kv.first)] = op.operand_source(kv.second);
       }
       VLOG(6) << upper_op_name
               << " will change to inplace version op: " << upper_op_name + "_";

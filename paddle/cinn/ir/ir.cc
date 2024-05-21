@@ -809,7 +809,7 @@ void Reduce::Verify() const {
 Type Select::type() const {
   PADDLE_ENFORCE_EQ(
       true_value.type(), false_value.type(), "Type of Select must be same");
-  return true_value.type();
+  return type_;
 }
 
 void Select::Verify() const {

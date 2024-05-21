@@ -502,6 +502,7 @@ struct Select : public ExprNode<Select> {
         false_value(false_value) {
     CHECK_EQ(true_value.type(), false_value.type());
     CHECK(condition.type().is_bool());
+    type_ = true_value.type();
   }
 
   static Expr Make(Expr condition, Expr true_value, Expr false_value) {

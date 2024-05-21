@@ -104,6 +104,58 @@ def bernoulli(x, name=None):
         return out
 
 
+@dygraph_only
+def bernoulli_(x, p=0.5, name=None):
+    """
+    This is the inplace version of api ``bernoulli``, which returns a Tensor filled
+    with random values sampled from a bernoulli distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_bernoulli`.
+
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        p (float|Tensor, optional): The success probability parameter of the output Tensor's bernoulli distribution.
+            If ``p`` is float, all elements of the output Tensor shared the same success probability.
+            If ``p`` is a Tensor, it has per-element success probabilities, and the shape should be broadcastable to ``x``.
+            Default is 0.5
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.bernoulli_()
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 0., 1., 0.],
+             [0., 1., 1., 0.],
+             [0., 1., 1., 1.]])
+
+            >>> x = paddle.randn([3, 4])
+            >>> p = paddle.randn([3, 1])
+            >>> x.bernoulli_(p)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 0., 0., 1.],
+             [1., 0., 1., 0.],
+             [1., 0., 0., 0.]])
+
+    """
+    x.uniform_(0.0, 1.0)
+    ones_mask = x > p
+    zeros_mask = x < p
+    x.masked_fill_(ones_mask, 1.0)
+    x.masked_fill_(zeros_mask, 0.0)
+    return x
+
+
 def binomial(count, prob, name=None):
     r"""
     Returns a tensor filled with random number from the Binomial Distribution, which supports Tensor shape
@@ -483,7 +535,11 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        elif in_pir_mode() and paddle.utils._contain_var(shape):
+            shape = paddle.utils.get_int_tensor_list(shape)
+
         place = _current_expected_place()
         return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place

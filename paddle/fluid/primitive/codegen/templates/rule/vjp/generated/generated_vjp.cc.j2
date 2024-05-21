@@ -22,6 +22,26 @@ namespace primitive {
 std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs, attrs is exist_mutable_attribute)}}, const std::vector<std::vector<bool>>& stop_gradients)
 {%- endmacro -%}
 
+{% macro join_need_skip(attrs, api_name) %}
+  {% for i in attrs %}
+    {%- if i is mutable_attribute -%}
+      {% if i.typename is scalar %}
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
+if({{i.name}}_define_op->name() != "pd_op.full") {
+  need_skip = true;
+  VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
+}
+      {% elif i.typename is intarray %}
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
+if({{i.name}}_define_op->name() != "pd_op.full_int_array") {
+  need_skip = true;
+  VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
+}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
 {% macro body(api) %}
 std::vector<std::vector<paddle::Tensor>> vjp_res;
 for (auto arg: stop_gradients) {
@@ -30,6 +50,7 @@ for (auto arg: stop_gradients) {
   {% if api.name in vjp_comp_white_list %}
 std::string op_name = "{{api.name}}";
 auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(op_name);
+{{join_need_skip(api.attrs, api.name)}}
 if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() && !need_skip) {
 {% filter indent(2, True) %}{{body_prim(api)}}{% endfilter %}
 } else {
@@ -44,20 +65,9 @@ return vjp_res;
 {% macro get_mutable_attribute(attrs, api_name) %}
   {% for i in attrs %}
     {%- if i is mutable_attribute -%}
-auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
       {% if i.typename is scalar %}
-if({{i.name}}_define_op->name() != "pd_op.full") {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite "
-      "for now. "));
-}
 auto {{i.name}} = {{i.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::ScalarAttribute>().data();
       {% elif i.typename is intarray %}
-if({{i.name}}_define_op->name() != "pd_op.full_int_array"){
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite "
-      "for now. "));
-}
 auto {{i.name}} = phi::IntArray(paddle::dialect::GetInt64Vector({{i.name}}_define_op->attribute("value")));
       {% endif %}
     {% endif %}
