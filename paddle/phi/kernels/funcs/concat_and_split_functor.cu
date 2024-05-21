@@ -655,7 +655,7 @@ __global__ void SplitTensorWithSameShape(const T* input_data,
   CUDA_KERNEL_LOOP_TYPE(tid_x, cumulative_col, IndexT) {
     IndexT split = tid_x / fixed_out_col;
     IndexT in_offset = tid_x - split * fixed_out_col;
-    T* output_ptr = data_array.data[split];
+    T* output_ptr = data_array[split];
     if (output_ptr != nullptr) {
       IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < out_row; tid_y += blockDim.y * gridDim.y)
@@ -672,18 +672,18 @@ __global__ void SplitTensorWithDifferentShape(const T* input_data,
                                               DataArrayT data_array,
                                               ValArrayT col_array) {
   IndexT curr_segment = 0;
-  IndexT curr_offset = col_array.data[0];
+  IndexT curr_offset = col_array[0];
   CUDA_KERNEL_LOOP_TYPE(tid_x, cumulative_col, IndexT) {
-    IndexT curr_col_offset = col_array.data[curr_segment + 1];
+    IndexT curr_col_offset = col_array[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
-      curr_col_offset = col_array.data[curr_segment + 1];
+      curr_col_offset = col_array[curr_segment + 1];
     }
 
     IndexT local_col = tid_x - curr_offset;
     IndexT segment_width = curr_col_offset - curr_offset;
-    T* output_ptr = data_array.data[curr_segment];
+    T* output_ptr = data_array[curr_segment];
     if (output_ptr != nullptr) {
       IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < out_row; tid_y += blockDim.y * gridDim.y)
@@ -711,9 +711,25 @@ void SplitFunctionDispatchWithSameShape(const phi::GPUContext& ctx,
       /*need_alloc=*/false,
       /*use_cuda_graph=*/true,
       pre_alloc_host_buf);
-  SplitTensorWithSameShape<T, IndexT, decltype(setter.array)>
+  auto device_array_ptr = memory_utils::Alloc(
+      ctx.GetPlace(),
+      outs->size() * sizeof(char*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+
+  memory_utils::Copy(ctx.GetPlace(),
+                     device_array_ptr->ptr(),
+                     phi::CPUPlace(),
+                     setter.array.data,
+                     outs->size() * sizeof(char*),
+                     ctx.stream());
+
+  SplitTensorWithSameShape<T, IndexT, decltype(setter.array.data)>
       <<<grid_dims, block_dims, 0, ctx.stream()>>>(
-          input_data, out_row, cumulative_col, out_col, setter.array);
+          input_data,
+          out_row,
+          cumulative_col,
+          out_col,
+          reinterpret_cast<T**>(device_array_ptr->ptr()));
 }
 
 template <typename T, typename IndexT, funcs::SegmentedArraySize Size>
@@ -732,12 +748,40 @@ void SplitFunctionDispatchWithDifferentShape(
   PointerAndColArray<T, IndexT, Size> setter(
       ctx, out_col_num, output_cols, outs, pre_alloc_host_buf);
 
+  auto device_array_ptr = memory_utils::Alloc(
+      ctx.GetPlace(),
+      outs->size() * sizeof(char*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+
+  memory_utils::Copy(ctx.GetPlace(),
+                     device_array_ptr->ptr(),
+                     phi::CPUPlace(),
+                     setter.array.data,
+                     outs->size() * sizeof(char*),
+                     ctx.stream());
+
+  auto device_val_array_ptr = memory_utils::Alloc(
+      ctx.GetPlace(),
+      static_cast<int>(Size) * sizeof(T),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+
+  memory_utils::Copy(ctx.GetPlace(),
+                     device_val_array_ptr->ptr(),
+                     phi::CPUPlace(),
+                     setter.val_array.data,
+                     static_cast<int>(Size) * sizeof(T),
+                     ctx.stream());
+
   SplitTensorWithDifferentShape<T,
                                 IndexT,
-                                decltype(setter.array),
-                                decltype(setter.val_array)>
+                                decltype(setter.array.data),
+                                decltype(setter.val_array.data)>
       <<<grid_dims, block_dims, 0, ctx.stream()>>>(
-          input_data, out_row, cumulative_col, setter.array, setter.val_array);
+          input_data,
+          out_row,
+          cumulative_col,
+          reinterpret_cast<T**>(device_array_ptr->ptr()),
+          reinterpret_cast<IndexT*>(device_val_array_ptr->ptr()));
 }
 
 template <typename T, typename IndexT>
@@ -767,7 +811,8 @@ void SplitFunctorDispatchWithIndexType(
   for (int i = 0; i < out_num; ++i) {
     IndexT t_col = ref_ins.at(i)->numel() / out_row;
     if (has_same_shape) {
-      has_same_shape &= (t_col == cumulative_col);
+      has_same_shape &= (t_col == out_col);
+      // has_same_shape &= (t_col == cumulative_col);
     }
     cumulative_col += t_col;
     outs_cols[i + 1] = cumulative_col;

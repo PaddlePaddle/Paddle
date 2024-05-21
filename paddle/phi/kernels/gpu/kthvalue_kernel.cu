@@ -184,7 +184,7 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t& input_height =
         common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000 && 0
     const T* input_data = x.data<T>();
     funcs::LaunchGatherKthValue<T>(dev_ctx,
                                    input_data,
@@ -247,7 +247,7 @@ void KthvalueKernel(const Context& dev_ctx,
         common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000 && 0
     funcs::LaunchGatherKthValue<T>(dev_ctx,
                                    tran_input_data,
                                    input_width,
