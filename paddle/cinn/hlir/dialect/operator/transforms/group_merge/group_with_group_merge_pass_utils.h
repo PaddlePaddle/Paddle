@@ -140,7 +140,7 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
       lane = inshape[idx];
     }
     // int max_num_threads =
-    // cinn::common::DefaultNVGPUTarget().max_num_threads();
+    // cinn::common::DefaultDeviceTarget().max_num_threads();
     int max_num_threads = 1000;
     if (lane > max_num_threads / 2) {
       return 0;

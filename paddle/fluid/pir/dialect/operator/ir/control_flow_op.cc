@@ -712,11 +712,22 @@ bool WhileOp::InferSymbolicShape(
                                     input_arg_shape[j]);
         continue;
       }
-      if (original_input_shape.size() == yield_value_shape.size() &&
-          original_input_shape[j] == yield_value_shape[j]) {
-        infer_context->AddEqualCstr(original_input_shape[j],
-                                    input_arg_shape[j]);
-        continue;
+      if (original_input_shape.size() == yield_value_shape.size()) {
+        if (original_input_shape[j] == yield_value_shape[j]) {
+          infer_context->AddEqualCstr(original_input_shape[j],
+                                      input_arg_shape[j]);
+          continue;
+        }
+        symbol::DimExprBuilder builder;
+        if (yield_value_shape[j] ==
+                builder.Broadcast(input_arg_shape[j],
+                                  original_input_shape[j]) ||
+            yield_value_shape[j] == builder.Broadcast(original_input_shape[j],
+                                                      input_arg_shape[j])) {
+          infer_context->AddEqualCstr(original_input_shape[j],
+                                      input_arg_shape[j]);
+          continue;
+        }
       }
     }
   }
