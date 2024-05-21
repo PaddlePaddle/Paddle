@@ -27,8 +27,13 @@
 
 namespace pir {
 
+void InferSymExprForAllValues(ModuleOp module_op);
+
 class IR_API InferSymbolicShapeContext {
  public:
+  InferSymbolicShapeContext() = default;
+  InferSymbolicShapeContext(const InferSymbolicShapeContext&) = delete;
+  InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
   void Init();
 
   const std::string GetNextSymName();
@@ -134,17 +139,17 @@ class IR_API ShapeConstraintIRAnalysis final
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
 
-  // TODO(hongqing-work): make it a private component only for infer friend
-  // class
-  InferSymbolicShapeContext* GetInferSymbolicShapeContext() {
-    return &context_;
-  }
-
   const symbol::ConstraintsManager& constraints_manager() const {
     return context_.constraints_manager();
   }
 
  private:
+  InferSymbolicShapeContext* MutInferSymbolicShapeContext() {
+    return &context_;
+  }
+
+  friend void InferSymExprForAllValues(ModuleOp module_op);
+
   void SetStaticShapeForValue(Value val);
 
   void InferShapeOrDataForValue(Value val);

@@ -154,8 +154,7 @@ class FallbackWrapper:
             return outputs
 
 
-@Singleton
-class CompileSIRCache(Cache):
+class CompileSIRCache(Cache, metaclass=Singleton):
     """
     Cache the compiled function of SIR
     """

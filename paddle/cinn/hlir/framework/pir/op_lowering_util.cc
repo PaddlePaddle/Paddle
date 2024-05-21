@@ -577,7 +577,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultDeviceTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {

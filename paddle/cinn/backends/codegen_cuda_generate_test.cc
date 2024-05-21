@@ -21,7 +21,7 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"

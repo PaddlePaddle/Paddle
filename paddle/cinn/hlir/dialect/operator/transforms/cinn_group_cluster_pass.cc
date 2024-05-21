@@ -246,7 +246,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   std::function<cinn::fusion::FrontendContent(pir::Operation*)> func =
       [](pir::Operation* op) { return cinn::fusion::FrontendContent(op); };
   const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
-  auto cluster_result = cinn::fusion::ClusterOps(contents);
+  auto cluster_result = cinn::fusion::ClusterOps(contents, {});
   std::vector<std::vector<pir::Operation*>> result;
   std::transform(
       cluster_result.begin(),
@@ -390,6 +390,9 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (op->isa<cinn::dialect::FusionOp>()) {
+      return false;
+    }
     return op->num_regions() > 0;
   }
 };

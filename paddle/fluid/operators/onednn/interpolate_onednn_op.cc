@@ -28,7 +28,7 @@ class InterpolateOneDNNHandler
  public:
   InterpolateOneDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
-                           platform::Place cpu_place,
+                           phi::Place cpu_place,
                            const phi::DenseTensor* x,
                            phi::DenseTensor* out)
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
