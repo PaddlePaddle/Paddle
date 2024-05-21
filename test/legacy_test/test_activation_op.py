@@ -2593,13 +2593,16 @@ class TestRound(TestActivation):
         self.python_api = paddle.round
         self.init_dtype()
         self.init_shape()
-        self.decimals
+        self.init_decimals()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.round(x, decimals)
+        out = np.round(x, self.decimals)
 
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x), 'decimals': decimals}
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(x),
+            'decimals': self.decimals,
+        }
         self.outputs = {'Out': out}
         self.convert_input_output()
 
@@ -2617,13 +2620,16 @@ class TestRound(TestActivation):
     def test_check_grad(self):
         pass
 
+
 class TestRoundPositive(TestRound):
     def init_decimals(self):
         self.decimals = 2
 
+
 class TestRoundNegitive(TestRound):
     def init_decimals(self):
         self.decimals = -2
+
 
 class TestRound_ZeroDim(TestRound):
     def init_shape(self):

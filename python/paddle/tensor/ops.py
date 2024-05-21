@@ -56,7 +56,7 @@ __all__ = []
 #   paddle.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
-
+globals()['_round'] = generate_layer_fn('round')
 for _OP in set(__inplace_unary_func__):
     func = generate_inplace_fn(_OP)
     func.__module__ = __name__
@@ -717,7 +717,7 @@ def round(x, decimals=0, name=None):
         >>> import paddle
 
         >>> x = paddle.to_tensor([-0.543, -0.256, 0.678, 1.456])
-        
+
         # decimal 0
         >>> out = paddle.round(x, decimal=0)
         >>> print(out)
@@ -740,7 +740,12 @@ def round(x, decimals=0, name=None):
         )
         helper = LayerHelper('round', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, attrs={"decimals":decimals}, outputs={"Out": out})
+        helper.append_op(
+            type='round',
+            inputs={"X": x},
+            attrs={"decimals": decimals},
+            outputs={"Out": out},
+        )
         return out
 
 
