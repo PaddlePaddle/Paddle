@@ -484,7 +484,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[3],
              [1],
-             [0]]))
+             [0]])
     """
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
