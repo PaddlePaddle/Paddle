@@ -18,6 +18,11 @@ import numpy as np
 import parameterize
 import scipy.stats
 from distribution import config
+from parameterize import (
+    TEST_CASE_NAME,
+    parameterize_cls,
+    parameterize_func,
+)
 
 import paddle
 from paddle.distribution.student_t import StudentT
@@ -247,6 +252,29 @@ class TestStudentTProbs(unittest.TestCase):
             rtol=config.RTOL.get(str(target_dtype)),
             atol=config.ATOL.get(str(target_dtype)),
         )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize_cls([TEST_CASE_NAME], ['StudentTTestError'])
+class StudentTTestError(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static(self.place)
+
+    @parameterize_func(
+        [
+            (-5.0, 0.0, 1.0, ValueError),  # negative df
+            (5.0, 0.0, -1.0, ValueError),  # negative scale
+        ]
+    )
+    def test_bad_parameter(self, df, loc, scale, error):
+        with paddle.base.dygraph.guard(self.place):
+            self.assertRaises(error, StudentT, df, loc, scale)
+
+    @parameterize_func([(10)])  # not sequence object sample shape
+    def test_bad_sample_shape(self, shape):
+        with paddle.base.dygraph.guard(self.place):
+            t = StudentT(5, 0.0, 1.0)
+            self.assertRaises(TypeError, t.sample, shape)
 
 
 if __name__ == '__main__':

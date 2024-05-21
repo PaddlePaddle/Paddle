@@ -54,10 +54,32 @@ class StudentT(distribution.Distribution):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.distribution import Poisson
+            >>> from paddle.distribution import StudentT
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
-            >>> rv = Poisson(paddle.to_tensor(30.0))
+            >>> dist = StudentT(df=10.0, loc=0.0, scale=1.0)
+            >>> dist.sample([3])
+            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-2.07709980],
+             [ 0.27981189],
+             [ 0.00881413]])
+
+            >>> dist2 = StudentT(df=paddle.to_tensor([10.0, 5.0]), loc=paddle.to_tensor([0.0, 0.0]), scale=paddle.to_tensor([1.0, 2.0]))
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> lp = dist2.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.28509235, -1.75626254])
+
+            >>> p = dist2.prob(value_tensor)
+            >>> print(p)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.27662504, 0.17268908])
+
+            >>> entropy = dist2.entropy()
+            >>> print(entropy)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.52126312, 2.32064891])
 
     """
 
@@ -107,10 +129,6 @@ class StudentT(distribution.Distribution):
             self.dtype = convert_dtype(df.dtype)
         else:
             self.df, self.loc, self.scale = self._to_tensor(df, loc, scale)
-            if self.dtype != convert_dtype(self.df.dtype):
-                self.df = paddle.cast(self.df, dtype=self.dtype)
-                self.loc = paddle.cast(self.loc, dtype=self.dtype)
-                self.scale = paddle.cast(self.scale, dtype=self.dtype)
 
         if not self._check_nonnegative(self.df):
             raise ValueError(
