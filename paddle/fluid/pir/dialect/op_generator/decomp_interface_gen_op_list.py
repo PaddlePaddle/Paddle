@@ -105,3 +105,8 @@ decomp_vjp_interface_declare_gen_op_list = [
     "matmul_grad",
     "relu_grad",
 ]
+
+decomp_vjp_interface_implementation_gen_op_list = [
+    "add_grad",
+    "relu_grad",
+]

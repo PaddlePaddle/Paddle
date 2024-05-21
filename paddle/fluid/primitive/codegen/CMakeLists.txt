@@ -29,6 +29,9 @@ set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
 set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
 set(destination_dir "${PADDLE_BINARY_DIR}/paddle/fluid/primitive/")
+set(decomp_vjp_destination_dir
+    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp_vjp.cc"
+)
 set(scripts "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py")
 
 message("Automatic code generation for paddle/fluid/primitive")
@@ -42,6 +45,7 @@ execute_process(
     ${fused_rev_op_path} --sparse_op_path ${sparse_op_path} --sparse_rev_op_path
     ${sparse_rev_op_path} --templates_dir ${templates_dir} --compat_path
     ${compat_path} --destination_dir ${destination_dir}
+    --decomp_vjp_destination_dir ${decomp_vjp_destination_dir}
   RESULT_VARIABLE _result)
 if(${_result})
   message(
