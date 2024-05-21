@@ -129,8 +129,8 @@ class SearchSortedFunctor {
     DenseTensor* sorted_sequence_mt = new DenseTensor();
     sorted_sequence_mt->Resize(seq_dims);
     MT1* sorted_sequence_mt_data =
-        context.template Alloc<MT1>(sorted_sequence_mt);
-    for (int i = 0; i < sequence_data.numel(); ++i) {
+        context_.template Alloc<MT1>(sorted_sequence_mt);
+    for (int i = 0; i < sorted_sequence_->numel(); ++i) {
       sorted_sequence_mt_data[i] = static_cast<MT1>(sequence_data[i]);
     }
 
