@@ -37,7 +37,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #ifdef PADDLE_WITH_RCCL
-#include <rccl.h>
+#include <rccl/rccl.h>
 #endif
 #endif
 
@@ -54,6 +54,9 @@ class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
 class SparseCsrTensor;
+namespace funcs {
+class CudnnRNNCache;
+}
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -80,8 +83,6 @@ class Scope;
 }  // namespace framework
 
 namespace operators {
-
-class CudnnRNNCache;
 
 class CUDAGraphWithInOuts;
 
@@ -196,7 +197,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     platform::Communicator,
     platform::NCCLCommunicator,
 #endif
-    operators::CudnnRNNCache,
+    phi::funcs::CudnnRNNCache,
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,

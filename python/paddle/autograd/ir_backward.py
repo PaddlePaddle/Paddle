@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
@@ -36,6 +37,7 @@ from paddle.autograd.backward_utils import (
     is_builtin_op,
     is_control_flow,
     is_inplace_net,
+    op_has_vjp,
     parent_total_ops,
     remove_op,
     remove_useless_full_like_ops,
@@ -166,8 +168,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     % (i, str(grad.shape), i, str(output.shape))
                 )
             if output.dtype != grad.dtype:
-                raise ValueError(
-                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                warnings.warn(
+                    "The dtype of grad_output[%d] %s is not same as the dtype of output[%d] %s"
                     % (i, str(grad.dtype), i, str(output.dtype))
                 )
             feedop = grad.get_defining_op()
@@ -611,7 +613,7 @@ def append_backward_ops(
     with bwd_block:
         while_tuple_ops = []
         for op in clear_effective_forward_ops:
-            if paddle.framework.core.has_vjp(op):
+            if op_has_vjp(op):
                 # prepare output_grad
                 zero_flag, outputs, output_grads = make_output_with_output_grad(
                     op
@@ -796,6 +798,35 @@ def append_backward_ops(
                         )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
+                    elif op.name() == "pd_op.pylayer":
+                        # create grad_op
+                        before_ops_num = len(bwd_block.ops)
+
+                        # TODO(MarioLulab): `PyLayer.backward` has not supported return `None` yet. Will be supported soon.
+                        if any(zero_flag):
+                            raise ValueError(
+                                "pylayer_op.backward have not supported return `None` yet. Will be supported soon."
+                            )
+
+                        with dynamic_shape_prim_vjp_guard(op, inputs):
+                            input_grads = paddle.framework.core.call_vjp(
+                                op,
+                                inputs,
+                                outputs,
+                                output_grads,
+                                input_grad_stopgradients,
+                            )
+                        after_ops_num = len(bwd_block.ops)
+
+                        # update grad_op structure
+                        bwd_ops = [
+                            bwd_block.ops[i]
+                            for i in range(before_ops_num, after_ops_num)
+                        ]
+                        # update input_grad map
+                        update_input_grad_map(
+                            op, input_grads, get_real_op_inputs(op)
+                        )
                     else:
                         # create grad_op
 

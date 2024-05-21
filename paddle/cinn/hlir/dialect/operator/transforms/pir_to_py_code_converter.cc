@@ -34,8 +34,10 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_string(logging_pir_py_code_dir);
+COMMON_DECLARE_bool(logging_trunc_pir_py_code);
 
 namespace cinn::dialect::ir {
 
@@ -91,13 +93,20 @@ int64_t GetAutoIncrementalId() {
   return seq_no++;
 }
 
+using ShapeAnalysisGetterT =
+    std::function<std::optional<pir::ShapeConstraintIRAnalysis*>(
+        const pir::Program*)>;
+
 }  // namespace
 
 struct PirToPyCodeConverterHelper {
-  explicit PirToPyCodeConverterHelper(const pir::Program* program)
+  explicit PirToPyCodeConverterHelper(
+      const pir::Program* program,
+      const ShapeAnalysisGetterT& ShapeAnalysisGetter)
       : program_(program),
         indent_size_(kDefaultIndentSize),
-        seq_no_(GetAutoIncrementalId()) {}
+        seq_no_(GetAutoIncrementalId()),
+        ShapeAnalysisGetter_(ShapeAnalysisGetter) {}
 
   std::string Convert() { return Convert(*program_); }
 
@@ -105,6 +114,7 @@ struct PirToPyCodeConverterHelper {
   const pir::Program* program_;
   const int indent_size_;
   int64_t seq_no_;
+  ShapeAnalysisGetterT ShapeAnalysisGetter_;
 
   std::string Convert(const pir::Program& program) {
     auto istrings = ConvertMethodsToPyClass(program.module_op(), [&]() {
@@ -119,12 +129,91 @@ struct PirToPyCodeConverterHelper {
   IStrings DefineInit(const pir::ModuleOp& module) {
     IStrings def_init;
     def_init.push_back(IString("def __init__(self):"));
+    VisitEachConstraintBuildStmt(
+        [&](const std::string& stmt) { def_init.push_back(Indent(stmt)); });
     const auto* module_op = static_cast<const pir::Operation*>(module);
     auto* mut_module = const_cast<pir::Operation*>(module_op);
     mut_module->Walk(
         [&](pir::Operation* op) { def_init.push_back(Indent(DefineOp(op))); });
     def_init.push_back(Indent(""));
     return def_init;
+  }
+
+  template <typename DoEachConstraintBuildStmtT>
+  void VisitEachConstraintBuildStmt(
+      const DoEachConstraintBuildStmtT& DoEachConstraintBuildStmt) {
+    VisitEachEQCstr([&](const auto& lhs, const auto& rhs) {
+      DoEachConstraintBuildStmt(ConvertEQCstrBuildStmt(lhs, rhs));
+    });
+    VisitEachGtOneCstr([&](const auto& dim_expr) {
+      DoEachConstraintBuildStmt(ConvertGtOneCstrBuildStmt(dim_expr));
+    });
+    VisitEachBroadcastableCstr([&](const auto& lhs, const auto& rhs) {
+      DoEachConstraintBuildStmt(ConvertBroadcastableCstrBuildStmt(lhs, rhs));
+    });
+  }
+
+  template <typename DoEachEQCstrT>
+  void VisitEachEQCstr(const DoEachEQCstrT& DoEachEQCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    if (!constraints_mgr.has_value()) return;
+    for (const auto& [lhs, rhs] : constraints_mgr.value()->equals().GetMap()) {
+      if (lhs == rhs) continue;
+      DoEachEQCstr(lhs, rhs);
+    }
+  }
+
+  std::string ConvertEQCstrBuildStmt(const symbol::DimExpr& lhs,
+                                     const symbol::DimExpr& rhs) {
+    const std::string& lhs_str = ConvertDimExpr(lhs);
+    const std::string& rhs_str = ConvertDimExpr(rhs);
+    std::ostringstream ss;
+    ss << "self.add_eq_cstr(" << lhs_str << ", " << rhs_str << ")";
+    return ss.str();
+  }
+
+  template <typename DoEachGtOneCstrT>
+  void VisitEachGtOneCstr(const DoEachGtOneCstrT& DoEachGtOneCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    if (!constraints_mgr.has_value()) return;
+    for (const auto& dim_expr : constraints_mgr.value()->gtones()) {
+      DoEachGtOneCstr(dim_expr);
+    }
+  }
+
+  std::string ConvertGtOneCstrBuildStmt(const symbol::DimExpr& dim_expr) {
+    const std::string& dim_expr_str = ConvertDimExpr(dim_expr);
+    std::ostringstream ss;
+    ss << "self.add_gt_one_cstr(" << dim_expr_str << ")";
+    return ss.str();
+  }
+
+  template <typename DoEachBroadcastableCstrT>
+  void VisitEachBroadcastableCstr(
+      const DoEachBroadcastableCstrT& DoEachBroadcastableCstr) {
+    const auto& constraints_mgr = GetConstraintsMgr();
+    if (!constraints_mgr.has_value()) return;
+    const auto& broadcastables = constraints_mgr.value()->broadcastables();
+    for (const auto& broadcastable : broadcastables) {
+      const auto& [lhs, rhs] = *broadcastable;
+      if (lhs == rhs) continue;
+      DoEachBroadcastableCstr(lhs, rhs);
+    }
+  }
+
+  std::string ConvertBroadcastableCstrBuildStmt(const symbol::DimExpr& lhs,
+                                                const symbol::DimExpr& rhs) {
+    const std::string& lhs_str = ConvertDimExpr(lhs);
+    const std::string& rhs_str = ConvertDimExpr(rhs);
+    std::ostringstream ss;
+    ss << "self.add_broadcastable_cstr(" << lhs_str << ", " << rhs_str << ")";
+    return ss.str();
+  }
+
+  std::optional<const symbol::ConstraintsManager*> GetConstraintsMgr() {
+    const auto& shape_analysis = ShapeAnalysisGetter_(program_);
+    if (!shape_analysis.has_value()) return std::nullopt;
+    return &shape_analysis.value()->constraints_manager();
   }
 
   IStrings ConvertModuleOp(const pir::ModuleOp& module) {
@@ -326,12 +415,202 @@ struct PirToPyCodeConverterHelper {
       }
       ss << attr_name << "=" << ConvertAttr(attr);
     });
+    VisitSymbolicAttrs(op, [&](const auto& attr_name, const auto& attrs) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << attr_name << "=" << ConvertSymbolicAttrs(attrs);
+    });
     return ss.str();
   }
 
   static std::string ConvertAttr(const pir::Attribute& attr) {
     auto adt_type_id = GetAttrAdtTypeId(attr);
     return std::visit(AttrConverter{attr}, adt_type_id.variant());
+  }
+
+  static std::string ConvertSymbolicAttrs(
+      const std::vector<std::optional<pir::Attribute>>& attrs) {
+    std::ostringstream ss;
+    ss << "self.a_array(";
+    int i = 0;
+    for (const auto& attr : attrs) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      if (!attr.has_value()) {
+        ss << "self.a_symbol(self.s_null())";
+      } else {
+        ss << ConvertAttr(attr.value());
+      }
+    }
+    ss << ")";
+    return ss.str();
+  }
+
+  static std::string ConvertShapeOrData(
+      const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    return shape_or_data.Match(
+        [](const symbol::TensorShapeOrDataDimExprs& impl) {
+          return ConvertTensorShapeOrData(impl);
+        },
+        [](const symbol::TensorListShapeOrDataDimExprs& impl) {
+          return ConvertTensorListShapeOrData(impl);
+        });
+  }
+
+  static std::string ConvertTensorListShapeOrData(
+      const symbol::TensorListShapeOrDataDimExprs& tensor_list_shape_or_data) {
+    std::ostringstream ss;
+    ss << "self.s_tensor_list_shape_or_data(";
+    int i = 0;
+    for (const auto& shape_or_data : tensor_list_shape_or_data) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << ConvertTensorShapeOrData(shape_or_data);
+    }
+    ss << ")";
+    return ss.str();
+  }
+
+  static std::string ConvertTensorShapeOrData(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    std::string shape = ConvertSymbolShape(shape_or_data);
+    std::string data = ConvertSymbolData(shape_or_data);
+    std::ostringstream ss;
+    ss << "self.s_tensor_shape_or_data(" << shape << ", " << data << ")";
+    return ss.str();
+  }
+
+  static std::string ConvertSymbolShape(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    return ConvertDimExprs(shape_or_data.shape());
+  }
+
+  static std::string ConvertSymbolData(
+      const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+    const auto& data = shape_or_data.data();
+    if (!data.has_value()) {
+      return "None";
+    } else {
+      return ConvertDimExprs(data.value());
+    }
+  }
+
+  static std::string ConvertDimExprs(
+      const std::vector<symbol::DimExpr>& dim_exprs) {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& dim_expr : dim_exprs) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << ConvertDimExpr(dim_expr);
+    }
+    ss << "]";
+    return ss.str();
+  }
+
+  static std::string ConvertDimExpr(const symbol::DimExpr& dim_expr) {
+    return dim_expr.Match(
+        [](int64_t constant) {
+          std::ostringstream ss;
+          ss << "self.s_int64(" << constant << ")";
+          return ss.str();
+        },
+        [](const std::string& symbol) {
+          std::ostringstream ss;
+          ss << "self.s_str(" << std::quoted(symbol) << ")";
+          return ss.str();
+        },
+        [](const symbol::Negative<symbol::DimExpr>& negative) {
+          std::ostringstream ss;
+          const auto& [operand] = *negative;
+          ss << "self.s_negative(";
+          ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Reciprocal<symbol::DimExpr>& reciprocal) {
+          std::ostringstream ss;
+          const auto& [operand] = *reciprocal;
+          ss << "self.s_reciprocal(";
+          ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Add<symbol::DimExpr>& add) {
+          std::ostringstream ss;
+          ss << "self.s_add(";
+          const auto& operands = add.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Mul<symbol::DimExpr>& mul) {
+          std::ostringstream ss;
+          ss << "self.s_mul(";
+          const auto& operands = mul.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Max<symbol::DimExpr>& max) {
+          std::ostringstream ss;
+          ss << "self.s_max(";
+          const auto& operands = max.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Min<symbol::DimExpr>& min) {
+          std::ostringstream ss;
+          ss << "self.s_min(";
+          const auto& operands = min.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        },
+        [](const symbol::Broadcast<symbol::DimExpr>& broadcast) {
+          std::ostringstream ss;
+          ss << "self.s_broadcast(";
+          const auto& operands = broadcast.operands;
+          int i = 0;
+          for (const auto& operand : *operands) {
+            if (i++ > 0) {
+              ss << ", ";
+            }
+            ss << PirToPyCodeConverterHelper::ConvertDimExpr(operand);
+          }
+          ss << ")";
+          return ss.str();
+        });
   }
 
   struct AttrConverter {
@@ -446,7 +725,10 @@ struct PirToPyCodeConverterHelper {
     }
     std::string operator()(TypeId<pir::shape::SymbolAttribute>) {
       const auto& name = pir::shape::SymbolAttribute::name();
-      return "self." + name + "()";
+      const auto& data = attr_.dyn_cast<pir::shape::SymbolAttribute>().data();
+      const std::string& shape_or_data =
+          PirToPyCodeConverterHelper::ConvertShapeOrData(data);
+      return "self." + name + "(" + shape_or_data + ")";
     }
     std::string operator()(TypeId<paddle::dialect::KernelAttribute>) {
       const auto& name = paddle::dialect::KernelAttribute::name();
@@ -539,6 +821,53 @@ struct PirToPyCodeConverterHelper {
     }
   }
 
+  template <typename DoEachAttrT>
+  void VisitSymbolicAttrs(const pir::Operation* op,
+                          const DoEachAttrT& DoEachAttr) {
+    DoEachAttr("__operands_symbols_signature__",
+               GetOpOperandsSymbolDimsAttributes(op));
+    DoEachAttr("__results_symbols_signature__",
+               GetOpResultsSymbolDimsAttributes(op));
+  }
+
+  std::vector<std::optional<pir::Attribute>> GetOpOperandsSymbolDimsAttributes(
+      const pir::Operation* op) {
+    std::vector<std::optional<pir::Attribute>> attrs;
+    attrs.reserve(op->num_operands());
+    for (int i = 0; i < op->num_operands(); ++i) {
+      attrs.push_back(GetValueSymbolDimsAttribute(op->operand_source(i)));
+    }
+    return attrs;
+  }
+
+  std::vector<std::optional<pir::Attribute>> GetOpResultsSymbolDimsAttributes(
+      const pir::Operation* op) {
+    std::vector<std::optional<pir::Attribute>> attrs;
+    attrs.reserve(op->num_results());
+    for (int i = 0; i < op->num_results(); ++i) {
+      attrs.push_back(GetValueSymbolDimsAttribute(op->result(i)));
+    }
+    return attrs;
+  }
+
+  std::optional<pir::Attribute> GetValueSymbolDimsAttribute(pir::Value value) {
+    auto* ctx = pir::IrContext::Instance();
+    using SymbolAttr = pir::shape::SymbolAttribute;
+    if (!value) {
+      return std::nullopt;
+    }
+    const auto& shape_or_data = GetShapeOrDataDimExprs(value);
+    if (!shape_or_data.has_value()) return std::nullopt;
+    return SymbolAttr::get(ctx, *shape_or_data.value());
+  }
+
+  std::optional<const symbol::ShapeOrDataDimExprs*> GetShapeOrDataDimExprs(
+      pir::Value value) {
+    const auto& shape_analysis = ShapeAnalysisGetter_(program_);
+    if (!shape_analysis.has_value()) return std::nullopt;
+    return &shape_analysis.value()->GetShapeOrDataForValue(value);
+  }
+
   std::string ConvertInputTypes(const pir::Operation* op) {
     std::stringstream ss;
     ss << "[";
@@ -575,6 +904,10 @@ struct PirToPyCodeConverterHelper {
 
     template <typename T>
     using AdtTypeId = ::common::AdtTypeId<T>;
+
+    std::string operator()(AdtTypeId<cinn::dialect::ir::NullType>) {
+      return "self.t_null";
+    }
 
     std::string operator()(AdtTypeId<::pir::VectorType>) {
       std::stringstream ss;
@@ -837,22 +1170,39 @@ struct PirToPyCodeConverterHelper {
   }
 };
 
+std::optional<pir::ShapeConstraintIRAnalysis*> GetShapeAnalysisFromManager(
+    const pir::Program* program) {
+  return &pir::ShapeAnalysisManager::Instance().Get(program);
+}
+
+std::optional<pir::ShapeConstraintIRAnalysis*> GetNullShapeAnalysis(
+    const pir::Program* program) {
+  return std::nullopt;
+}
+
 }  // namespace
 
-void PirToPyCodeConverter::SaveIfFlagEnabled(
-    const std::string& tag, const pir::Program& program) const {
+void PirToPyCodeConverter::SaveIfFlagEnabled() const {
+  if (program_ == nullptr) return;
+  if (file_name_.empty()) return;
   if (FLAGS_logging_pir_py_code_dir == "") return;
   const std::string file_path =
-      FLAGS_logging_pir_py_code_dir + "/" + tag + ".py";
-  const std::string content = PirToPyCodeConverterHelper(&program).Convert();
+      FLAGS_logging_pir_py_code_dir + "/" + file_name_;
+  ShapeAnalysisGetterT ShapeAnalysisGetter =
+      (dump_symbolic_shape_ ? GetShapeAnalysisFromManager
+                            : GetNullShapeAnalysis);
+  PirToPyCodeConverterHelper converter_helper(program_, ShapeAnalysisGetter);
+  const std::string content = converter_helper.Convert();
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  static std::unordered_map<std::string, std::once_flag> once_flags;
-  std::call_once(once_flags[file_path], [&] {
-    std::ofstream ofs;
-    ofs.open(file_path.c_str(), std::ios::out | std::ios::trunc);
-    ofs.close();
-  });
+  if (FLAGS_logging_trunc_pir_py_code) {
+    static std::unordered_map<std::string, std::once_flag> once_flags;
+    std::call_once(once_flags[file_path], [&] {
+      std::ofstream ofs;
+      ofs.open(file_path.c_str(), std::ios::out | std::ios::trunc);
+      ofs.close();
+    });
+  }
   std::ofstream ofs;
   ofs.open(file_path.c_str(), std::ios::out | std::ios::app);
   if (!ofs.is_open()) return;

@@ -91,6 +91,7 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'all_used_ops',
         'append',
         'first_use',
+        'index',
         'get_defining_op',
         'has_one_use',
         'has_name',
