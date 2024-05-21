@@ -306,7 +306,6 @@ def save_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -330,9 +329,6 @@ def save_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list contains all variables to be saved.
                                         Default: None
-        predicate(function, optional): The function selects the variables that make
-                                       `predicate(variable) == True`.
-                                       Default: None
         filename(str, optional): If you prefer to save all variables in a single file,
                                  use `filename` to specify it. Otherwise, let `filename` be None.
                                  Default: None
@@ -354,7 +350,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=list(filter(predicate, vars_list)),
+            vars=[var for var in vars_list if var.persistable],
             filename=filename,
         )
     else:
@@ -407,7 +403,6 @@ def load_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -434,9 +429,6 @@ def load_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list that contains all variables to be loaded.
                                    Default: None
-        predicate(function, optional): The function selects variables that make
-                                        `predicate(variable) == True`.
-                                        Default: None
         filename(str, optional): The file which saved all required variables. If variables
                                 were saved in separate files, set it to be None.
                                 Default: None
@@ -472,7 +464,7 @@ def load_vars_pir(
             executor,
             dirname=dirname,
             main_program=main_program,
-            vars=list(filter(predicate, vars)),
+            vars=[var for var in vars if var.persistable],
             filename=filename,
         )
     else:
@@ -745,7 +737,6 @@ def save_pir_inference_model(
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,
-        predicate=is_persistable,
         filename=params_filename,
     )
 
@@ -847,7 +838,6 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 executor,
                 dirname=None,
                 main_program=program,
-                predicate=is_persistable,
                 filename=params_filename,
             )
     # load from file
@@ -895,7 +885,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         # load parameters
         params, opts = get_pir_parameters(program)
         vars = params + opts
-        vars = list(filter(is_persistable, program.list_vars()))
+        vars = [var for var in program.list_vars() if var.persistable]
         if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
@@ -904,7 +894,6 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 executor,
                 dirname=load_dirname,
                 main_program=program,
-                predicate=is_persistable,
                 filename=params_filename,
             )
 

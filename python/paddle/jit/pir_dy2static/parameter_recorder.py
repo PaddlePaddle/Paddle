@@ -48,7 +48,6 @@ class ParametersRecorder:
                 name=tensor.name,
                 initializer=non_used_initializer,
                 trainable=(not tensor.stop_gradient),
-                persistable=tensor.persistable,
             )
 
             if tensor.placements is not None:  # import for shard tensor api
