@@ -83,6 +83,8 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     ir::IRMutator<>::Visit(op, expr);
   }
 
+  void Visit(const ir::Select *op, Expr *expr) override {}
+
   void replaceBlock(ir::Block *op, int old_let_size, int old_stmts_size) {
     std::vector<Expr> new_stmts;
 
@@ -114,7 +116,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   VisitImpl(For);
   VisitImpl(Cast);
   VisitImpl(PolyFor);
-  VisitImpl(Select);
+  // VisitImpl(Select);
   VisitImpl(Call);
   VisitImpl(_Module_);
   VisitImpl(_Var_);
