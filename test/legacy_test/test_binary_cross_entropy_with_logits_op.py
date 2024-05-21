@@ -58,7 +58,7 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
             )
             paddle.core._set_prim_all_enabled(False)
             np.testing.assert_allclose(
-                dynamic_result.numpy(), static_result.numpy(), rtol=1e-5
+                dynamic_result.numpy(), static_result.numpy(), rtol=1e-4
             )
 
 

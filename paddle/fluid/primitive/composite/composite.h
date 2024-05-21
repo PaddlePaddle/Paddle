@@ -1200,16 +1200,27 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
 
 template <typename T>
 Tensor mean_all_decomp(const Tensor& x) {
-  auto numel = x.numel();
   auto org_dtype = x.dtype();
   auto x_cast = x;
-
+  auto x_shape = x.shape();
   bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  auto ans = sum<T>(x) / numel;
+  Tensor ans;
+  if (has_dynamic_shape(x_shape)) {
+    Tensor x_shape_tensor = shape<T>(x_cast);
+    Tensor value = get_slice<T>(x_shape_tensor, 0);
+    for (size_t i = 1; i < x_shape.size(); i++) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
+    value = reshape<T>(value, {});
+    ans = sum<T>(x_cast) / cast<T>(value, DataType::FLOAT32);
+  } else {
+    ans = sum<T>(x_cast) / x_cast.numel();
+  }
+
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {
