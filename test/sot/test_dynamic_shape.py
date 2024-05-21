@@ -48,22 +48,11 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_int_input_func1, paddle.randn([3, 4, 5]), 1
             )
             self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                dynamic_int_input_func1, paddle.randn([3, 4, 5]), 2
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func1, paddle.randn([3, 4, 5]), 3
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func1, paddle.randn([3, 4, 5]), 4
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func1, paddle.randn([3, 4, 5]), 5
-            )
-            self.assertEqual(ctx.translate_count, 2)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_int_input_func1, paddle.randn([3, 4, 5]), i
+                )
+                self.assertEqual(ctx.translate_count, 2)
 
     def test_dynamic_int_input_cache_hit_case2(self):
         with with_allow_dynamic_shape_guard(
@@ -73,22 +62,11 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: 1}
             )
             self.assertEqual(ctx.translate_count, 1)
-            self.assert_results(
-                dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: 2}
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: 3}
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: 4}
-            )
-            self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(
-                dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: 5}
-            )
-            self.assertEqual(ctx.translate_count, 2)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: i}
+                )
+                self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == '__main__':
