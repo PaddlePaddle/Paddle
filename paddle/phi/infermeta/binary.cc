@@ -624,10 +624,9 @@ void ConvInferMeta(const MetaTensor& input,
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
-  const auto filter_channels =
-      channel_last && filter.layout() == DataLayout::NHWC
-          ? filter_dims[filter_dims.size() - 1]
-          : filter_dims[1];
+  const auto filter_channels = channel_last && FLAGS_manually_trans_conv_filter
+                                   ? filter_dims[filter_dims.size() - 1]
+                                   : filter_dims[1];
 
   PADDLE_ENFORCE_EQ(
       input_channels,
