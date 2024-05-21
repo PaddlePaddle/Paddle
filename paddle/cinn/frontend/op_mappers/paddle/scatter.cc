@@ -15,20 +15,32 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void ScatterOpMapper(const paddle::cpp::OpDesc& op_desc,
                      const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Scatter op must be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Ids").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Ids").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Scatter op must be 1."));
   auto ids_name = op_desc.Input("Ids").front();
-  CHECK_EQ(op_desc.Input("Updates").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Updates").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Scatter op must be 1."));
   auto updates_name = op_desc.Input("Updates").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Scatter op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   bool overwrite = utils::GetAttrOrDefault<bool>(op_desc, "overwrite", true);
@@ -38,8 +50,10 @@ void ScatterOpMapper(const paddle::cpp::OpDesc& op_desc,
   const auto& input = ctx.GetVar(x_name);
   auto indices = ctx.GetVar(ids_name);
   const auto& updates = ctx.GetVar(updates_name);
-  CHECK(input->type == updates->type)
-      << "checks whether the type of the input and the updates are the same.";
+  PADDLE_ENFORCE_EQ(input->type == updates->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of input and updates should be the same."));
   CHECK(indices->type == cinn::common::Int(32) ||
         indices->type == cinn::common::Int(64))
       << "checks whether the data type of the indices is either int32 or int64";
@@ -47,7 +61,10 @@ void ScatterOpMapper(const paddle::cpp::OpDesc& op_desc,
     indices = ctx.Builder()->Cast(
         indices, cinn::common::Type2Str(cinn::common::Int(32)));
   }
-  CHECK_LE(indices->shape.size(), 2) << "Ids should be 0, 1 or 2 in scatter_op";
+  PADDLE_ENFORCE_LE(indices->shape.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The rank of indices should be less than 2."));
   if (indices->shape.size() == 0) {
     indices = ctx.Builder()->Reshape(indices, {1});
   }
