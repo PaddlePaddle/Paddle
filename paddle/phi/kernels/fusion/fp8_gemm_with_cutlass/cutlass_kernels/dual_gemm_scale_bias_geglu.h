@@ -19,14 +19,14 @@
 #include "cutlass/gemm/device/gemm_universal.h"
 
 #include "dual_gemm/device/dual_gemm.h"
-#include "dual_gemm/thread/left_silu_and_mul.h"
+#include "dual_gemm/thread/left_gelu_and_mul.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
 template <typename InputType, typename OutType>
-bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
+bool dispatch_dual_gemm_scale_bias_geglu(DualGemmEpilogueAllParams params) {
   using ElementInputA = typename std::conditional_t<
       std::is_same_v<InputType, phi::dtype::float8_e4m3fn>,
       cutlass::float_e4m3_t,
@@ -86,7 +86,7 @@ bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
           NoBetaScaling>;  // <- data type for alpha/beta in linear
                            // combination function
 
-  using EpilogueOp1 = cutlass::epilogue::thread::LeftSiLUAndMul<
+  using EpilogueOp1 = cutlass::epilogue::thread::LeftGELUAndMul<
       ElementOutput,
       128 / cutlass::sizeof_bits<ElementOutput>::value,
       ElementOutput,

@@ -241,6 +241,31 @@ class TestFP8DualMatmulOp(unittest.TestCase):
                     act="swiglu",
                 )
 
+                output_fp8_geglu = paddle.linalg.fp8_fp8_fp8_dual_gemm_fused(
+                    input1,
+                    input2,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale0=0.1,
+                    scale1=0.1,
+                    act="geglu",
+                )
+
+                output_fp8_swiglu_scale_out = (
+                    paddle.linalg.fp8_fp8_fp8_dual_gemm_fused(
+                        input1,
+                        input2,
+                        input2,
+                        transpose_x=False,
+                        transpose_y=True,
+                        scale0=0.1,
+                        scale1=0.1,
+                        scale_out=2.0,
+                        act="swiglu",
+                    )
+                )
+
                 output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
                     input1,
                     input2,
@@ -266,6 +291,22 @@ class TestFP8DualMatmulOp(unittest.TestCase):
                     )
                 )
 
+                output_fp8_bias_swiglu_scale_out = (
+                    paddle.linalg.fp8_fp8_fp8_dual_gemm_fused(
+                        input1,
+                        input2,
+                        input2,
+                        transpose_x=False,
+                        transpose_y=True,
+                        bias0=bias,
+                        bias1=bias,
+                        scale0=0.1,
+                        scale1=0.1,
+                        scale_out=2.0,
+                        act="swiglu",
+                    )
+                )
+
                 output_fp16_bias = paddle.linalg.fp8_fp8_fp16_gemm_fused(
                     input1,
                     input2,
@@ -280,12 +321,20 @@ class TestFP8DualMatmulOp(unittest.TestCase):
                 )
 
                 # print(output_fp16)
-                print(output_fp8_swiglu)
-                print(output_fp16_swiglu)
+                print("output_fp8_geglu", output_fp8_geglu)
+                print("output_fp8_swiglu", output_fp8_swiglu)
+                print(
+                    "output_fp8_swiglu_scale_out", output_fp8_swiglu_scale_out
+                )
+                print("output_fp16_swiglu", output_fp16_swiglu)
 
                 # print(output_fp16_bias)
-                print(output_fp8_bias_swiglu)
-                print(output_fp16_bias_swiglu)
+                print("output_fp8_bias_swiglu", output_fp8_bias_swiglu)
+                print(
+                    "output_fp8_bias_swiglu_scale_out",
+                    output_fp8_bias_swiglu_scale_out,
+                )
+                print("output_fp16_bias_swiglu", output_fp16_bias_swiglu)
 
                 # if self.device == "gpu":
                 #     self.assertTrue(

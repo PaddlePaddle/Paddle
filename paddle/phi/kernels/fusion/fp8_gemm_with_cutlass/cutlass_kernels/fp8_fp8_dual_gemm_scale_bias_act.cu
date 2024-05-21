@@ -13,7 +13,9 @@
 // limitations under the License.
 #include <map>
 
+#include "dual_gemm_scale_bias_geglu.h"        // NOLINT
 #include "dual_gemm_scale_bias_swiglu.h"       // NOLINT
+#include "dual_gemm_scale_geglu.h"             // NOLINT
 #include "dual_gemm_scale_swiglu.h"            // NOLINT
 #include "fp8_fp8_dual_gemm_scale_bias_act.h"  // NOLINT
 
@@ -42,29 +44,14 @@ bool fp8_fp8_dual_gemm_scale_bias_act(DualGemmEpilogueAllParams params) {
       dispatch_dual_gemm_scale_bias_swiglu<phi::dtype::float8_e4m3fn,
                                            phi::dtype::float8_e4m3fn>(params);
       break;
-    // case 2:
-    //   dispatch_dual_gemm_scale_bias_swiglu<phi::dtype::float8_e4m3fn,
-    //                                 phi::dtype::float8_e4m3fn>(params);
-    //   break;
-    // case 3:
-    //   dispatch_dual_gemm_scale_geglu<phi::dtype::float8_e4m3fn,
-    //   phi::dtype::float8_e4m3fn>(
-    //       params);
-    //   break;
-    // case 5:
-    //   dispatch_dual_gemm_scale_geglu<phi::dtype::float8_e4m3fn,
-    //   phi::dtype::float8_e4m3fn>(
-    //       params);
-    //   break;
-    // case 6:
-    //   dispatch_dual_gemm_scale_bias_geglu<phi::dtype::float8_e4m3fn,
-    //   phi::dtype::float8_e4m3fn>(
-    //       params);
-    //   break;
-    // case 7:
-    //   dispatch_dual_gemm_scale_bias_geglu<phi::dtype::float8_e4m3fn,
-    //                                 phi::dtype::float8_e4m3fn>(params);
-    //   break;
+    case 2:
+      dispatch_dual_gemm_scale_geglu<phi::dtype::float8_e4m3fn,
+                                     phi::dtype::float8_e4m3fn>(params);
+      break;
+    case 3:
+      dispatch_dual_gemm_scale_bias_geglu<phi::dtype::float8_e4m3fn,
+                                          phi::dtype::float8_e4m3fn>(params);
+      break;
     default:
       throw std::runtime_error("fp8_fp8_fp8_gemm_fused Config is invalid.");
       break;

@@ -65,7 +65,7 @@ template <
     typename ElementCompute_ =
         ElementOutput_,  ///< Data type used to compute linear combination
     FloatRoundStyle Round = FloatRoundStyle::round_to_nearest>
-class LeftSiLUAndMul {
+class LeftGELUAndMul {
  public:
   using ElementOutput = ElementOutput_;
   using ElementAccumulator = ElementAccumulator_;
@@ -100,7 +100,7 @@ class LeftSiLUAndMul {
   /// Constructs the function object, possibly loading from pointers in host
   /// memory
   CUTLASS_HOST_DEVICE
-  LeftSiLUAndMul(Params const &params) { alpha_ = params.alpha; }  // NOLINT
+  LeftGELUAndMul(Params const &params) { alpha_ = params.alpha; }  // NOLINT
 
   /// Returns true if source is needed
   CUTLASS_HOST_DEVICE
@@ -127,11 +127,11 @@ class LeftSiLUAndMul {
     ComputeFragment converted_lhs = accumulator_to_compute(lhs);
     ComputeFragment converted_rhs = accumulator_to_compute(rhs);
 
-    cutlass::epilogue::thread::SiLu<ComputeFragment> silu;
+    cutlass::epilogue::thread::GELU_taylor<ComputeFragment> gelu;
     cutlass::multiplies<ComputeFragment> mul;
-    auto silu_lhs = silu(converted_lhs);
-    // return compute_to_output(mul(silu_lhs, converted_rhs));
-    auto tmp = mul(silu_lhs, converted_rhs);
+    auto gelu_lhs = gelu(converted_lhs);
+    // return compute_to_output(mul(gelu_lhs, converted_rhs));
+    auto tmp = mul(gelu_lhs, converted_rhs);
     return compute_to_output(mul(alpha_, tmp));
   }
 
@@ -140,11 +140,11 @@ class LeftSiLUAndMul {
                            ElementAccumulator const &rhs) const {
     ElementCompute convert_lhs(lhs);
     ElementCompute convert_rhs(rhs);
-    cutlass::epilogue::thread::SiLu<ElementCompute> silu;
+    cutlass::epilogue::thread::GELU_taylor<ElementCompute> gelu;
     cutlass::multiplies<ElementCompute> mul;
-    auto silu_lhs = silu(convert_lhs);
-    // return ElementOutput(mul(silu_lhs, convert_rhs));
-    auto tmp = mul(silu_lhs, convert_rhs);
+    auto gelu_lhs = gelu(convert_lhs);
+    // return ElementOutput(mul(gelu_lhs, convert_rhs));
+    auto tmp = mul(gelu_lhs, convert_rhs);
     return compute_to_output(mul(alpha_, tmp));
   }
 };

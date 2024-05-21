@@ -149,7 +149,7 @@ bool dispatch_dual_gemm_scale_swiglu(DualGemmEpilogueAllParams params) {
        params.ldd},
       {params.scale0},
       {params.scale1},
-      {},
+      {params.scale_out},
       split_k_slices,  // split_k_slices
       params.batch_count,
       params.lda * params.M,

@@ -62,7 +62,7 @@
 
 #include "cutlass/epilogue/threadblock/epilogue_base.h"
 #include "cutlass/epilogue/threadblock/predicated_tile_iterator.h"
-#include "cutlass/numeric_types.h".  // NOLINT
+#include "cutlass/numeric_types.h"  // NOLINT
 
 ////////////////////////////////////////////////////////////////////////////////
 

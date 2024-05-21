@@ -19,14 +19,14 @@
 #include "cutlass/gemm/device/gemm_universal.h"
 
 #include "dual_gemm/device/dual_gemm.h"
-#include "dual_gemm/thread/left_silu_and_mul.h"
+#include "dual_gemm/thread/left_gelu_and_mul.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
 template <typename InputType, typename OutType>
-bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
+bool dispatch_dual_gemm_scale_geglu(DualGemmEpilogueAllParams params) {
   using ElementInputA = typename std::conditional_t<
       std::is_same_v<InputType, phi::dtype::float8_e4m3fn>,
       cutlass::float_e4m3_t,
@@ -83,10 +83,10 @@ bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
       ElementAccumulator,  // <- data type of accumulator
       ElementComputeEpilogue,
       cutlass::epilogue::thread::ScaleType::
-          NoBetaScaling>;  // <- data type for alpha/beta in linear
-                           // combination function
+          OnlyAlphaScaling>;  // <- data type for alpha/beta in linear
+                              // combination function
 
-  using EpilogueOp1 = cutlass::epilogue::thread::LeftSiLUAndMul<
+  using EpilogueOp1 = cutlass::epilogue::thread::LeftGELUAndMul<
       ElementOutput,
       128 / cutlass::sizeof_bits<ElementOutput>::value,
       ElementOutput,
@@ -132,13 +132,6 @@ bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
       nullptr_ref{};
   int split_k_slices = Gemm::kSplitKSerial ? 2 : 1;
 
-  if (params.bias0) {
-    printf("bias0\n");
-  }
-  if (params.bias1) {
-    printf("bias1\n");
-  }
-
   typename Gemm::Arguments arguments{
       mode,
       problem_size,
@@ -146,11 +139,11 @@ bool dispatch_dual_gemm_scale_bias_swiglu(DualGemmEpilogueAllParams params) {
        params.lda},
       {reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B0)),
        params.ldb},
-      {reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias0)), 0},
+      nullptr_ref,
       nullptr_ref,
       {reinterpret_cast<ElementInputB*>(const_cast<void*>(params.B1)),
        params.ldb},
-      {reinterpret_cast<ElementOutput*>(const_cast<void*>(params.bias1)), 0},
+      nullptr_ref,
       nullptr_ref,
       {reinterpret_cast<ElementOutput*>(const_cast<void*>(params.D)),
        params.ldd},
