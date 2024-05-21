@@ -58,13 +58,6 @@ _logger = get_logger(
 )
 
 
-def is_persistable(var):
-    """
-    Check whether the variable is persitable.
-    """
-    return var.persistable
-
-
 def get_pir_parameters(program):
     """
     Get parameters and optimizer variables from program.
@@ -831,7 +824,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
 
         params, opts = get_pir_parameters(program)
         vars = params + opts
-        vars = list(filter(is_persistable, program.list_vars()))
+        vars = [var for var in program.list_vars() if var.persistable]
         if len(vars) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
