@@ -120,10 +120,10 @@ using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
 Pattern2Placement ConstructCstrLhsEqRhsReplacement(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
   auto [lhs, rhs] = *broadcastable_condition;
-  if (SubstituteDimExpr(rhs, {lhs, rhs}) != rhs) {
+  if (SubstituteDimExpr(rhs, Pattern2Placement{{rhs, lhs}}) != rhs) {
     return Pattern2Placement{{rhs, lhs}};
   }
-  if (SubstituteDimExpr(lhs, {rhs, lhs}) != lhs) {
+  if (SubstituteDimExpr(lhs, Pattern2Placement{{rhs, lhs}}) != lhs) {
     return Pattern2Placement{{lhs, rhs}};
   }
   if (rhs.isa<std::string>()) return Pattern2Placement{{rhs, lhs}};
