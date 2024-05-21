@@ -38,7 +38,7 @@ TEST(layout_transformation_interface_test, operator) {
   };
 
   auto fused_conv = builder.Build<paddle::dialect::FusedConv2dAddActOp>(
-      build_input_value(std::vector<int64_t>{8, 8, 2, 2}).out(),
+      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).out(),
       build_input_value(std::vector<int64_t>{2, 2, 2, 2}).out(),
       build_input_value().out(),
       build_input_value().out());
@@ -48,7 +48,7 @@ TEST(layout_transformation_interface_test, operator) {
   EXPECT_TRUE(layout_transformation_iface);
 
   EXPECT_EQ(layout_transformation_iface.PreferLayout(fused_conv),
-            common::DataLayout::NHWC);
+            common::DataLayout::NCHW);
   EXPECT_NO_THROW(layout_transformation_iface.RewriteByLayout(
       fused_conv, common::DataLayout::NHWC));
   EXPECT_EQ(layout_transformation_iface.RelevantInputs(fused_conv).size(),
