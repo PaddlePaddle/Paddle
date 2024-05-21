@@ -373,11 +373,15 @@ void ConvCudnnKernel(const Context& ctx,
     transformed_input_channel.ShareDataWith(input);
     transformed_output.ShareDataWith(*output);
   }
-  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
-    VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
+  VLOG(-1) << "DEBUG Conv2d kernel filter.dims = " << filter.dims()
+           << ", data_format = " << data_format;
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC &&
+      filter.layout() != phi::DataLayout::NHWC) {
+    VLOG(-1) << "DEBUG match if Transform filter tensor NCHW.";
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
   } else {
+    VLOG(-1) << "DEBUG match if Transform filter tensor NHWC.";
     transformed_filter_channel.ShareDataWith(filter);
   }
 
@@ -394,6 +398,8 @@ void ConvCudnnKernel(const Context& ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
+  VLOG(-1) << "DEBUG Conv2d kernel sliced filter_data_dims = "
+           << filter_data_dims;
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(

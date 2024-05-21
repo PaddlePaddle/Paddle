@@ -5064,6 +5064,13 @@ void TransposeInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
+  VLOG(-1) << "DEBUG Transpose Infermeta x.layout() = " << x.layout()
+           << ", x_rank = " << x_rank;
+  if (x.layout() == DataLayout::NCHW && x_rank == 4 &&
+      formatted_axis == std::vector<int>{0, 2, 3, 1}) {
+    VLOG(-1) << "DEBUG Transpose change data layout success";
+    out->set_layout(DataLayout::NHWC);
+  }
 }
 
 void UnbindInferMeta(const MetaTensor& x,
