@@ -563,6 +563,8 @@ void FlashAttnGradBaseKernel(
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
+  std::cerr << "q dims " << dims << std::endl;
+
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
@@ -749,6 +751,7 @@ void FlashAttnGradKernel(const Context& ctx,
   if (dv) {
     ctx.template Alloc<T>(dv);
   }
+  std::cerr << "flash attn grad\n";
   FlashAttnGradBaseKernel<T, Context>(ctx,
                                       q,
                                       k,
