@@ -22,6 +22,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import _C_ops, nn, pir
 from paddle.amp.grad_scaler import OptimizerState
+from paddle.autograd import PyLayer
 from paddle.base import unique_name
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import (
@@ -261,6 +262,238 @@ def shard_tensor(
         # TODO(zhiqiu): we need to refine the static shard_tensor
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
         return shard_tensor_static(tensor, mesh, sharding_specs)
+
+
+class _dtensor_from_local_list(PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        local_tensor_list,
+        local_mesh_list,
+        idx,
+        global_dims,
+        mesh,
+        placements,
+    ):
+        local_tensor = local_tensor_list[idx]
+        if local_tensor.is_dist():
+            local_mesh = local_tensor.process_mesh
+            local_val = local_tensor._local_value()
+            local_placement = local_tensor.placements[0]
+        else:
+            local_val = local_tensor
+            local_mesh = None
+            local_placement = dist.Replicate()
+
+        ctx.global_mesh = copy.deepcopy(mesh)
+        ctx.placements = placements
+        ctx.local_dims = local_tensor.shape
+        ctx.local_mesh_list = copy.deepcopy(local_mesh_list)
+        ctx.local_placement = local_placement
+
+        place = paddle.framework._current_expected_place()
+        place = paddle.framework._get_paddle_place(place)
+
+        global_tensor = paddle.Tensor(
+            local_val,
+            dims=global_dims,
+            process_mesh=mesh,
+            placements=placements,
+            place=place,
+        )
+        global_tensor.stop_gradient = False
+        return global_tensor
+
+    @staticmethod
+    def backward(ctx, grad_tensor):
+        if ctx.local_mesh_list is None:
+            return grad_tensor._local_value()
+        else:
+            place = paddle.framework._current_expected_place()
+            place = paddle.framework._get_paddle_place(place)
+            out = []
+            for i, local_mesh in enumerate(ctx.local_mesh_list):
+                out.append(
+                    paddle.Tensor(
+                        grad_tensor._local_value(),
+                        dims=ctx.local_dims,
+                        process_mesh=local_mesh,
+                        placements=[ctx.local_placement],
+                        place=place,
+                    )
+                )
+                out[-1].get_tensor()._unsafe_set_skip_check_mesh(True)
+            return out
+
+
+def dtensor_from_local_list(
+    local_tensor_list, mesh, placements, local_mesh_dim=-1
+):
+    # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
+    local_tensor_idx = mesh.process_ids.index(dist.get_rank())
+    local_tensor = local_tensor_list[local_tensor_idx]
+    global_dims = list(local_tensor.shape)
+    local_mesh = None
+    if paddle.in_dynamic_mode():
+        if local_tensor.is_dist():
+            local_mesh = local_tensor.process_mesh
+            local_val = local_tensor._local_value()
+        else:
+            local_val = local_tensor
+
+    if local_mesh is not None:
+        assert (
+            len(local_mesh.shape) == 1
+        ), "dtensor_from_local only support 1D local mesh now when the input ``local_tensor`` is a dist_tensor."
+        local_process_ids = local_mesh.process_ids
+
+        if len(local_process_ids) > 1:
+            diff = local_process_ids[1] - local_process_ids[0]
+            global_mesh_shape = mesh.shape
+            for i in range(len(global_mesh_shape) - 1, -1, -1):
+                diff = diff // global_mesh_shape[i]
+                if diff == 0:
+                    local_mesh_dim = i
+                    break
+            assert (
+                local_mesh_dim == len(global_mesh_shape) - 1
+            ), "Only support the local mesh to be the last dimension of global mesh now."
+        local_placement = local_tensor.placements[0]
+
+    for idx, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = placement.get_dim()
+            local_dim_size = global_dims[shard_dim]
+            global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
+
+    if paddle.in_dynamic_mode():
+        local_mesh_list = []
+        for tensor in local_tensor_list:
+            local_mesh_list.append(copy.deepcopy(tensor.process_mesh))
+            tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
+
+        return _dtensor_from_local_list.apply(
+            local_tensor_list,
+            local_mesh_list,
+            local_tensor_idx,
+            global_dims,
+            mesh,
+            placements,
+        )
+    else:
+        raise NotImplementedError(
+            "dtensor_from_local_list() are only supported in dynamic mode."
+        )
+
+
+class _local_tensors_from_dist(PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        dist_tensor,
+        local_mesh_list=None,
+        local_placements=None,
+        global_mesh=None,
+        global_placements=None,
+    ):
+        ctx.local_mesh_list = copy.deepcopy(local_mesh_list)
+        ctx.local_placements = local_placements
+        ctx.global_mesh = copy.deepcopy(global_mesh)
+        ctx.global_placements = global_placements
+        ctx.global_shape = dist_tensor.shape
+
+        if global_mesh is None and global_placements is None:
+            return dist_tensor._local_value()
+        else:
+            if global_mesh is None or global_placements is None:
+                raise ValueError(
+                    "the args global_mesh and global_placements should be set together"
+                )
+            ori_mesh = dist_tensor.process_mesh
+            if global_mesh != dist_tensor.process_mesh:
+                raise ValueError(
+                    "the global_mesh should be the same as dist_tensor's process_mesh."
+                )
+            assert check_placements_equal(
+                global_placements, dist_tensor.placements
+            ), "the global_placements should be the same as dist_tensor's placements."
+            local_shape = dist_tensor._local_value().shape
+            for idx, placement in enumerate(local_placements):
+                if placement.is_shard():
+                    shard_dim = placement.get_dim()
+                    local_dim_size = local_shape[shard_dim]
+                    local_shape[shard_dim] = (
+                        local_dim_size * local_mesh_list[0].shape[idx]
+                    )
+
+            place = paddle.framework._current_expected_place()
+            place = paddle.framework._get_paddle_place(place)
+            local_tensor_list = []
+            for i, local_mesh in enumerate(local_mesh_list):
+                local_tensor = paddle.Tensor(
+                    dist_tensor._local_value(),
+                    dims=local_shape,
+                    process_mesh=local_mesh,
+                    placements=local_placements,
+                    place=place,
+                )
+                local_tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
+                local_tensor.stop_gradient = False
+                local_tensor_list.append(local_tensor)
+            return local_tensor_list
+
+    @staticmethod
+    def backward(ctx, *grad_tensor):
+        place = paddle.framework._current_expected_place()
+        place = paddle.framework._get_paddle_place(place)
+        idx = ctx.global_mesh.process_ids.index(dist.get_rank())
+        local_grad = grad_tensor[idx]
+        global_tensor = paddle.Tensor(
+            local_grad._local_value(),
+            dims=ctx.global_shape,
+            process_mesh=ctx.global_mesh,
+            placements=ctx.global_placements,
+            place=place,
+        )
+        return global_tensor
+
+
+def local_tensor_list_from_dtensor(
+    dist_tensor, global_mesh=None, local_mesh_dim=None, global_placements=None
+):
+    """
+    Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
+    """
+    if (
+        global_mesh is not None
+        and local_mesh_dim is not None
+        and global_placements is not None
+    ):
+        mesh_shape = global_mesh.shape
+        process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
+        splitted_process_ids = np.split(
+            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
+        )
+        local_mesh_list = []
+        for process_ids in splitted_process_ids:
+            local_mesh_list.append(dist.ProcessMesh(process_ids))
+        local_placements = list(global_placements)
+        local_placements.pop(local_mesh_dim)
+        if local_placements == []:
+            local_placements.append(dist.Replicate())
+
+    if paddle.framework.in_dynamic_mode():
+        return _local_tensors_from_dist.apply(
+            dist_tensor,
+            local_mesh_list,
+            local_placements,
+            global_mesh,
+            global_placements,
+        )
+    else:
+        raise NotImplementedError(
+            "local_tensor_from_dist is only supported in dynamic mode."
+        )
 
 
 def dtensor_from_local(local_tensor, mesh, placements):
@@ -1974,17 +2207,33 @@ class DistModel:
 
         feeds = self._make_feeds(feed_list)
         outs = self._engine.run(feeds)
+        self.outs = outs
 
         if self._mode == "predict":
-            if "outputs" in outs:
-                return outs["outputs"]
+            if "outputs" in self.outs:
+                return self.outs["outputs"]
             else:
                 return None
         else:
-            if "loss" in outs:
-                return outs["loss"]
+            if "loss" in self.outs:
+                return self.outs["loss"]
             else:
                 return None
+
+    def _fetch_value(self, value, name=None):
+        """
+        Get the value of the variable with the given name.
+
+        Args:
+            value (pir.Value): The pir Value to fetch.
+            name (str|None, optional): The user-defined name of
+                the fetched result. If None, the order of the Value
+                in the fetch list will be used. Default: None.
+        """
+        self._engine._pir_fetch_values.append(value)
+        if name is None:
+            name = len(self._engine._pir_fetch_values) - 1
+        self._engine._pir_user_defined_fetch_names.append(name)
 
     def state_dict(self, mode="all"):
         """

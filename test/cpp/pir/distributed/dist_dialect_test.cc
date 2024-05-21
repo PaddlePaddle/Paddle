@@ -19,7 +19,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -589,29 +588,4 @@ TEST(mix_to_dist_pass_test, base) {
   EXPECT_EQ(y_shard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .num_results(),
             (uint32_t)1);
-
-  // Apply Pass
-  std::shared_ptr<pir::Program> new_program =
-      paddle::dialect::MixToDistPass(&program);
-  pir::Block* new_block = new_program->block();
-  EXPECT_EQ(2, static_cast<int>(new_block->num_ops()));
-  std::vector<pir::Operation*> ops;
-  for (auto& op : *new_block) {
-    ops.push_back(&op);
-  }
-
-  EXPECT_EQ(true, ops[0]->result(0).type().isa<DistDenseTensorType>());
-  EXPECT_EQ(
-      phi::make_ddim(x_shape),
-      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
-  EXPECT_EQ(
-      phi::make_ddim(x_local_shape),
-      ops[0]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
-  EXPECT_EQ(true, ops[1]->result(0).type().isa<DistDenseTensorType>());
-  EXPECT_EQ(
-      phi::make_ddim(y_shape),
-      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().global_ddim());
-  EXPECT_EQ(
-      phi::make_ddim(y_local_shape),
-      ops[1]->result(0).type().dyn_cast<DistDenseTensorType>().local_ddim());
 }

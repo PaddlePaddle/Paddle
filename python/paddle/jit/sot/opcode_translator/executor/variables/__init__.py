@@ -31,6 +31,7 @@ from .basic import (  # noqa: F401
     ObjectVariable,
     ParameterVariable,
     SliceVariable,
+    SymbolicIntVariable,
     TensorVariable,
 )
 from .callable import (  # noqa: F401
