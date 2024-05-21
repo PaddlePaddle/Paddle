@@ -306,7 +306,8 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
     std::vector<std::string> input_types;
     for (const auto& pair : inputs) {
-      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice") {
+      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice" ||
+          op_desc.Type() == "sparse_reshape") {
         if (pair.first != "x") {
           continue;
         }
