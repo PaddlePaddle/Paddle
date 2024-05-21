@@ -64,7 +64,7 @@ from .side_effects import (
     SideEffectRestorer,
     SideEffects,
 )
-from .tracker import BuiltinTracker, DummyTracker
+from .tracker import BuiltinTracker, DummyTracker, SymbolicTracker
 from .variables import (
     ConstantVariable,
     DictVariable,
@@ -649,9 +649,13 @@ class FunctionGraph:
                     stmt_stacks,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
-            return VariableFactory.from_value(
-                outputs, self, DummyTracker(list(args) + list(kwargs.values()))
-            )
+
+            if is_symbolic_int:
+                tracker = SymbolicTracker(list(args) + list(kwargs.values()))
+            else:
+                tracker = DummyTracker(list(args) + list(kwargs.values()))
+
+            return VariableFactory.from_value(outputs, self, tracker)
         else:
             return ConstantVariable.wrap_literal(None, self)
 
