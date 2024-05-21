@@ -21,8 +21,10 @@ from paddle.autograd import ir_backward
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.base.core import (
     call_decomp,
+    call_decomp_vjp,
     decomp_ops_contain_unused_output,
     has_decomp,
+    has_decomp_vjp,
 )
 from paddle.base.libpaddle.pir import Block, Operation
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -844,8 +846,22 @@ def decompose_dist_program(pir_program):
     '''
     Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
     '''
-    # Todo(CZ): Decompose backward ops.
+    # decomp forward composite ops
     decompose(pir_program, [])
+
+    # decomp backward ops
+    block = pir_program.global_block()
+    with paddle.pir.core.program_guard(pir_program):
+        ops = pir_program.global_block().ops
+        for op in ops:
+            bwd_op_name = op.name()
+            if has_decomp_vjp(op):
+                pir.set_insertion_point(op)
+                orig_outs = op.results()
+                decomp_outs = call_decomp_vjp(op)
+                new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
+                op.replace_all_uses_with(new_outs)
+                block.remove_op(op)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
