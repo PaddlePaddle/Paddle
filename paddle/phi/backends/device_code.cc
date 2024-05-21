@@ -220,7 +220,8 @@ static std::string FindCUDAIncludePath() {
 
 GPUDeviceCode::GPUDeviceCode(const Place& place,
                              const std::string& name,
-                             const std::string& kernel) {
+                             const std::string& kernel)
+    : module_(nullptr), function_(nullptr) {
   if (place.GetType() != phi::AllocationType::GPU) {
     PADDLE_THROW(phi::errors::PermissionDenied(
         "GPUDeviceCode can only launch on GPU place."));

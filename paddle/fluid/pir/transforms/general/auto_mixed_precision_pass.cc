@@ -571,8 +571,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
       return;
     }
 
-    // Rewrite ShareDataOp
-    if (op->isa<paddle::dialect::ShareDataOp>() && OpRunLowPrecision(op)) {
+    // Rewrite ShareData_Op
+    if (op->isa<paddle::dialect::ShareData_Op>() && OpRunLowPrecision(op)) {
       SetResultDataType(op->result(0), precision_mode_, builder.ir_context());
       return;
     }

@@ -155,6 +155,53 @@ void sum_grad(const Tensor& x,
 }
 
 template <typename T>
+void mean_grad(const Tensor& x,
+               const Tensor& out_grad,
+               const IntArray& axis,
+               bool keepdim,
+               bool reduce_all,
+               Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  Tensor x_grad_tmp;
+  sum_grad<T>(x, out_grad, axis, keepdim, reduce_all, &x_grad_tmp);
+
+  Tensor div_factor = [&] {
+    Tensor factor_tensor;
+    auto axis_data = axis.GetData();
+    const std::vector<int64_t> x_dim = x.shape();
+    if (axis.size() == 0) {
+      for (size_t i = 0; i < x_dim.size(); ++i) {
+        axis_data.push_back(i);
+      }
+    }
+    if (has_dynamic_shape(x_dim, axis_data)) {
+      auto x_shape = shape<T>(x);
+      factor_tensor =
+          slice<T>(x_shape, {0}, {axis_data[0]}, {axis_data[0] + 1}, {1}, {0});
+      for (size_t i = 1; i < axis_data.size(); ++i) {
+        factor_tensor =
+            factor_tensor *
+            slice<T>(
+                x_shape, {0}, {axis_data[i]}, {axis_data[i] + 1}, {1}, {0});
+      }
+      factor_tensor = cast<T>(factor_tensor, x.dtype());
+    } else {
+      int64_t factor = 1;
+      for (int64_t idx : axis_data) {
+        if (idx < 0) idx += x_dim.size();
+        factor *= x_dim[idx];
+      }
+      factor_tensor = full<T>(std::vector<int64_t>{}, factor, x.dtype());
+    }
+    return factor_tensor;
+  }();
+
+  set_output<T>(x_grad_tmp / div_factor, x_grad);
+}
+
+template <typename T>
 void gelu_grad(const Tensor& x,
                const Tensor& out_grad,
                bool approximate,
@@ -225,6 +272,50 @@ void gelu_grad(const Tensor& x,
       set_output<T>(out_grad * (cdf + x * pdf), x_grad);
     }
   }
+}
+
+template <typename T>
+void reduce_as_grad(const Tensor& x,
+                    const Tensor& target,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> axis = common::vectorize<int64_t>(
+      get_reduce_dims_from_out(x.dims(), target.dims()));
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  bool reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+    }
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
 }
 
 template <typename T>
@@ -519,6 +610,63 @@ void elementwise_pow_grad(const Tensor& x,
 }
 
 template <typename T>
+void pow_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const Scalar& y,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto y_value = y.to<float>();
+    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void scale_grad(const Tensor& out_grad, const Scalar& scale, Tensor* x_grad) {
+  if (x_grad) {
+    auto dx_res = primitive::scale<T>(
+        out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
+void stack_grad(const std::vector<Tensor>& x,
+                const Tensor& out_grad,
+                int axis,
+                std::vector<Tensor*> x_grad) {
+  // use rank of **stacked** tensor as len of axes
+  int out_rank = out_grad.dims().size();  // len(x[0].shape)
+
+  // ensure axis >= 0
+  if (axis < 0) {
+    axis = ((axis % out_rank) + out_rank) % out_rank;
+  }
+
+  // split out_grad to grads for each input tensor
+  int x_num = x.size();
+  std::vector<int> sections(x_num, 1);
+  std::vector<Tensor> x_grad_tmp =
+      split<T>(out_grad, phi::IntArray(sections), axis);
+
+  // compose shape for each input tensor
+  std::vector<int64_t> grad_shape;
+  auto out_dim = out_grad.dims().size();
+  for (int i = 0; i < out_dim; ++i) {
+    if (i != axis) {
+      grad_shape.push_back(out_grad.dims()[i]);
+    }
+  }
+
+  // assign to each input tensor if need grad(stop_gradient=False)
+  for (int i = 0; i < x_num; ++i) {
+    if (x_grad[i]) {
+      set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+    }
+  }
+}
+
+template <typename T>
 void layer_norm_grad(const Tensor& x,
                      const paddle::optional<Tensor>& scale,
                      const paddle::optional<Tensor>& bias,
@@ -773,6 +921,51 @@ void softmax_grad(const Tensor& out,
     } else {
       set_output<T>(out_grad * 0.0, x_grad);
     }
+  }
+}
+
+template <typename T>
+void squeeze_grad(const Tensor& xshape,
+                  const Tensor& out_grad,
+                  const IntArray& axis,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    auto x_grad_out = unsqueeze<T>(out_grad, axis);
+    set_output<T>(x_grad_out, x_grad);
+  }
+}
+
+template <typename T>
+void unsqueeze_grad(const Tensor& xshape,
+                    const Tensor& out_grad,
+                    const IntArray& axis,
+                    Tensor* x_grad) {
+  // for xshape = [10, 2, 5], axis = [3, 1, 1], out_grad.shape = [10, 1, 1, 2,
+  // 5, 1], it outputs squeeze axis = [5, 2, 1]
+  const auto& IncreaseAxis = [](std::vector<int64_t>* axis_data,
+                                int64_t pivot) {
+    for (size_t i = 0; i < axis_data->size(); ++i) {
+      if ((*axis_data)[i] >= pivot) (*axis_data)[i] += 1;
+    }
+  };
+  const auto& GetRealAxis = [&](const IntArray& axis) -> decltype(auto) {
+    // for axis = [0, 3, 3], it outputs [0, 3, 3+1], because unsqueeze support
+    // duplicated axis.
+    std::vector<int64_t> output_axis;
+    const int64_t x_rank = xshape.dims().size() - 1;
+    const std::vector<int64_t> axis_data = axis.GetData();
+    for (size_t i = 0; i < axis_data.size(); ++i) {
+      int64_t value = axis_data[i];
+      if (value < 0) value += (x_rank + i + 1);
+      IncreaseAxis(&output_axis, value);
+      output_axis.push_back(value);
+    }
+    return output_axis;
+  };
+
+  if (x_grad) {
+    auto x_grad_out = squeeze<T>(out_grad, GetRealAxis(axis));
+    set_output<T>(x_grad_out, x_grad);
   }
 }
 
@@ -1744,6 +1937,35 @@ void group_norm_grad(const Tensor& x,
       set_output<T>(bias_grad_tmp, bias_grad);
     }
   }
+}
+
+template <typename T>
+void swiglu_grad(const Tensor& x,
+                 const paddle::optional<Tensor>& y,
+                 const Tensor& dz,
+                 Tensor* dx,
+                 Tensor* dy) {
+  const auto& x_shape = x.shape();
+  auto one_tensor = full<T>(x_shape, 1.0, x.dtype());
+  Tensor x_grad;
+  if (y) {
+    const auto& y_tensor = y.get();
+    Tensor sig = sigmoid<T>(x);
+    Tensor tmp = sig * x;
+    x_grad = dz * y_tensor * sig * (one_tensor + x - tmp);
+    Tensor y_grad = dz * tmp;
+    set_output<T>(y_grad, dy);
+  } else {
+    int axis = x.shape().size() - 1;
+    int num = 2;
+    std::vector<Tensor> xs = backend::split_with_num<T>(x, num, axis);
+    Tensor sig = sigmoid<T>(xs[0]);
+    Tensor tmp = sig * xs[0];
+    Tensor x0_grad = dz * xs[1] * sig * (one_tensor + xs[0] - tmp);
+    Tensor x1_grad = dz * tmp;
+    x_grad = concat<T>({x0_grad, x1_grad}, x_shape.size() - 1);
+  }
+  set_output<T>(x_grad, dx);
 }
 
 }  // namespace details

@@ -31,17 +31,17 @@ class InferSymbolicShapeInterface
   /// Defined these methods with the interface.
   struct Concept {
     explicit Concept(bool (*infer_symbolic_shapes)(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis))
+        pir::Operation *op, pir::InferSymbolicShapeContext *infer_context))
         : infer_symbolic_shapes(infer_symbolic_shapes) {}
     bool (*infer_symbolic_shapes)(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+        pir::Operation *op, pir::InferSymbolicShapeContext *infer_context);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
     static inline bool InferSymbolicShape(
-        pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(shape_analysis);
+        pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(infer_context);
     }
 
     Model() : Concept(InferSymbolicShape) {}
@@ -51,7 +51,7 @@ class InferSymbolicShapeInterface
   InferSymbolicShapeInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferSymbolicShapeInterface>(op), impl_(impl) {}
 
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
  private:
   Concept *impl_;

@@ -70,7 +70,7 @@ std::pair<DimExpr, DimExpr> EliminateCommonFactor(const OpT<DimExpr>& lhs,
 
 std::pair<DimExpr, DimExpr> SimplifyEqCstr(const DimExpr& lhs,
                                            const DimExpr& rhs) {
-  auto DoSimplify = Overloaded{
+  auto DoSimplify = common::Overloaded{
       [](const Add<DimExpr>& lhs,
          const Add<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
         return EliminateCommonFactor<Add>(lhs, rhs);
@@ -175,20 +175,20 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
   };
 
   auto IsGTOnePredicater =
-      Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
-                 [&](const Add<DimExpr>& dim_expr) {
-                   if (AllOperandGTOne(dim_expr.operands)) return true;
-                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
-                     return true;
-                   return false;
-                 },
-                 [&](const Mul<DimExpr>& dim_expr) {
-                   if (AllOperandGTOne(dim_expr.operands)) return true;
-                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
-                     return true;
-                   return false;
-                 },
-                 [&](const auto& dim_expr) { return false; }};
+      common::Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
+                         [&](const Add<DimExpr>& dim_expr) {
+                           if (AllOperandGTOne(dim_expr.operands)) return true;
+                           if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                             return true;
+                           return false;
+                         },
+                         [&](const Mul<DimExpr>& dim_expr) {
+                           if (AllOperandGTOne(dim_expr.operands)) return true;
+                           if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                             return true;
+                           return false;
+                         },
+                         [&](const auto& dim_expr) { return false; }};
 
   return std::visit(IsGTOnePredicater, dim_expr.variant());
 }
@@ -201,7 +201,7 @@ bool ConstraintsManager::IsGTOne(const DimExpr& dim_expr) const {
 
 void ConstraintsManager::AddBroadcastableCstr(const DimExpr& lhs,
                                               const DimExpr& rhs) {
-  broadcastables_.push_back(Broadcastable<DimExpr>(lhs, rhs));
+  broadcastables_.insert(Broadcastable<DimExpr>(lhs, rhs));
 
   bool lhs_gtone = IsGTOne(lhs);
   bool rhs_gtone = IsGTOne(rhs);
@@ -236,11 +236,10 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
   substitution_pattern[origin] = substituted;
 
   EqualConstraints substituted_equals;
-  auto substituted_equals_map = substituted_equals.GetMap();
   EqualConstraintsVisitor([&](auto it) {
     DimExpr key = SubstituteDimExpr(it->first, substitution_pattern);
     DimExpr value = SubstituteDimExpr(it->second, substitution_pattern);
-    (*substituted_equals_map)[key] = value;
+    substituted_equals.Union(key, value);
   });
   equals_ = substituted_equals;
 
@@ -256,15 +255,17 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
         SubstituteDimExpr(it->data->lhs, substitution_pattern);
     const DimExpr& substituted_rhs =
         SubstituteDimExpr(it->data->rhs, substitution_pattern);
-    substituted_broadcastables.emplace_back(
-        Broadcastable<DimExpr>(substituted_lhs, substituted_rhs));
+    if (substituted_lhs != substituted_rhs) {
+      substituted_broadcastables.insert(
+          Broadcastable<DimExpr>(substituted_lhs, substituted_rhs));
+    }
   });
   broadcastables_ = substituted_broadcastables;
 }
 
 template <typename DoEachT>
 void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
-  auto equals_parents = equals_.GetMap();
+  auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }
@@ -278,6 +279,13 @@ void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
 }
 
 template <typename DoEachT>
+void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) const {
+  for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
+    DoEach(it);
+  }
+}
+
+template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
     const DoEachT& DoEach) {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
@@ -285,16 +293,33 @@ void ConstraintsManager::BroadcastableConstraintsVisitor(
   }
 }
 
+template <typename DoEachT>
+void ConstraintsManager::BroadcastableConstraintsVisitor(
+    const DoEachT& DoEach) const {
+  for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
+    DoEach(it);
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConstraintsManager& constraints_manager) {
+  stream << "ConstraintsManager:" << std::endl;
   stream << "Equal Constraints Clusters:" << std::endl;
   constraints_manager.VisitEqualClusters([&](const auto& cluster) {
-    stream << "{" << std::endl;
+    stream << "  {" << std::endl;
     for (const auto& dim_expr : cluster) {
-      stream << dim_expr << std::endl;
+      stream << "  " << dim_expr << std::endl;
     }
-    stream << "}" << std::endl;
+    stream << "  }" << std::endl;
   });
+  stream << "Broadcastable Constraints:" << std::endl;
+  constraints_manager.BroadcastableConstraintsVisitor([&](const auto& it) {
+    stream << "  Broadcastable[ " << it->data->lhs << "," << it->data->rhs
+           << " ]" << std::endl;
+  });
+  stream << "GreatThanOne Constraints:" << std::endl;
+  constraints_manager.GTOneConstraintsVisitor(
+      [&](const auto& it) { stream << "  " << *it << std::endl; });
   return stream;
 }
 

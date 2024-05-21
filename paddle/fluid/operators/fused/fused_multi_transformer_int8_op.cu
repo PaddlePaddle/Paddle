@@ -61,8 +61,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
     auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
-    auto ln_compute =
-        AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
+    auto ln_compute = phi::fusion::AttnLayerNorm<T, T, int8_t>(
+        dev_ctx, epsilon, bsz_seq, dim_embed);
     phi::DenseTensor ln_mean, ln_var;
     ln_mean.Resize({{bsz_seq}});
     auto *ln_mean_data =
@@ -93,10 +93,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
     // 3. fmha
-    AttnDropoutParam attn_param(
+    phi::fusion::AttnDropoutParam attn_param(
         true, "upscale_in_train", 0.0, true, true, 0, nullptr);
-    auto fmha_compute =
-        FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+    auto fmha_compute = phi::fusion::FMHARef<T>(
+        dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
@@ -105,7 +105,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto out_seq_len = seq_len;
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
-                        platform::CPUPlace(),
+                        phi::CPUPlace(),
                         phi::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len

@@ -119,7 +119,8 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),
-      default_stream_(default_stream) {
+      default_stream_(default_stream),
+      memory_stream_(nullptr) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       gpuStreamCreateWithPriority(&memory_stream_, gpuStreamNonBlocking, 0));
 }
