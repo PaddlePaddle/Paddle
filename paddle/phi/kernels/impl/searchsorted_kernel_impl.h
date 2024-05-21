@@ -119,7 +119,7 @@ class SearchSortedFunctor {
 
   template <typename T2>
   void apply() {
-    T1* sequence_data = sorted_sequence_->data<T1>();
+    const T1* sequence_data = sorted_sequence_->data<T1>();
     const T2* value_data = value_->data<T2>();
     const phi::DDim& seq_dims = sorted_sequence_->dims();
     const phi::DDim& val_dims = value_->dims();
