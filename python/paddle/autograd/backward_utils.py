@@ -92,7 +92,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.all",
     "pd_op.any",
     "pd_op.prior_box",
-    "pd_op.share_data",
+    "pd_op.share_data_",
     "pd_op.floor_divide",
 ]
 
