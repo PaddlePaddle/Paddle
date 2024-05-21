@@ -307,6 +307,11 @@ struct Expression {
   bool CheckOperationEqual(pir::Operation* lhs, pir::Operation* rhs) const {
     VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
             << " vs rhs [" << rhs << "] " << rhs->name();
+    if (lhs == rhs) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
+      return true;
+    }
     if (lhs->name() != rhs->name()) {
       VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
@@ -349,6 +354,8 @@ struct Expression {
         return false;
       }
     }
+    VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+            << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
     return true;
   }
 
@@ -357,6 +364,7 @@ struct Expression {
       VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate type";
       return false;
     }
+    // Compare two terminate values
     if (IsTerminateValue(lhs) && IsTerminateValue(rhs)) {
       if (lhs != rhs) {
         VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate "
@@ -365,6 +373,7 @@ struct Expression {
       }
       return true;
     }
+    // Compare two non-terminate values
     if (!CheckOperationEqual(lhs.defining_op(), rhs.defining_op())) {
       VLOG(7) << "[CheckValueEqual] lhs and rhs has different defining op";
       return false;
@@ -382,8 +391,8 @@ struct Expression {
 
  private:
   pir::Operation* op_;
-  std::unordered_map<void*, std::pair<size_t, bool>>* op_info_registry_;
-  std::unordered_map<std::pair<void*, void*>, bool>* comparation_cache_;
+  std::unordered_map<void*, std::pair<size_t, bool>>*
+      op_info_registry_;  // owned by ExpressionTable
 };
 
 struct ExpressionHash {
