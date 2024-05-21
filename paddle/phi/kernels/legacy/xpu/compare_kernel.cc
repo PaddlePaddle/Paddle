@@ -83,6 +83,18 @@ DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterEqual,
 
 }  // namespace phi
 
+PD_REGISTER_KERNEL(less_than_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LessThanRawKernel,
+                   int,
+                   int64_t,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
 #define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
   PD_REGISTER_KERNEL(name##_raw,                          \
                      XPU,                                 \
@@ -97,7 +109,6 @@ DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterEqual,
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 
-PD_REGISTER_COMPARE_RAW_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
