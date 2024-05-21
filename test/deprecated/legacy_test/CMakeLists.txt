@@ -700,7 +700,6 @@ set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
