@@ -48,6 +48,7 @@ from .variables import (
     NumpyVariable,
     RangeVariable,
     SliceVariable,
+    SymbolicIntVariable,
     TupleVariable,
     VariableBase,
     VariableFactory,
@@ -215,7 +216,10 @@ def dispatch_dict(var: ListVariable | TupleVariable):
 
 
 @Dispatcher.register_decorator(dict.fromkeys)
-def dispatch_dict_fromkeys(seq: ListVariable | TupleVariable, default: VariableBase = None):  # type: ignore
+def dispatch_dict_fromkeys(
+    seq: ListVariable | TupleVariable,
+    default: VariableBase = None,  # type: ignore
+):
     if default is None:
         default = ConstantVariable.wrap_literal(None, seq.graph)
     res_dict = {}
@@ -602,7 +606,12 @@ Dispatcher.register(
 
 
 @Dispatcher.register_decorator(str.startswith)
-def str_startswith(var: ConstantVariable, substr: ConstantVariable, beg: ConstantVariable = None, end: ConstantVariable = None):  # type: ignore
+def str_startswith(
+    var: ConstantVariable,
+    substr: ConstantVariable,
+    beg: ConstantVariable = None,  # type: ignore
+    end: ConstantVariable = None,  # type: ignore
+):
     value = var.get_py_value()
     if end is None:
         end = ConstantVariable(len(value), var.graph, DanglingTracker())
@@ -618,7 +627,12 @@ def str_startswith(var: ConstantVariable, substr: ConstantVariable, beg: Constan
 
 
 @Dispatcher.register_decorator(str.endswith)
-def str_endswith(var: ConstantVariable, substr: ConstantVariable, beg: ConstantVariable = None, end: ConstantVariable = None):  # type: ignore
+def str_endswith(
+    var: ConstantVariable,
+    substr: ConstantVariable,
+    beg: ConstantVariable = None,  # type: ignore
+    end: ConstantVariable = None,  # type: ignore
+):
     value = var.get_py_value()
     if end is None:
         end = ConstantVariable(len(value), var.graph, DanglingTracker())
@@ -872,7 +886,7 @@ for unary_fn in UNARY_OPS:
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable",),
+            ("TensorVariable | SymbolicIntVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -896,6 +910,16 @@ for unary_fn in UNARY_OPS:
                 magic_method.name,
             ),
         )
+        Dispatcher.register(
+            unary_fn,
+            ("SymbolicIntVariable",),
+            partial(
+                lambda magic_name, var: var.graph.call_symbolic_method(
+                    magic_name, var
+                ),
+                magic_method.name,
+            ),
+        )
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         # skip all inplace magic method name, we will dispatch it to non-inplace
@@ -908,10 +932,23 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 (
                     "TensorVariable",
-                    "TensorVariable | ConstantVariable | NumpyVariable",
+                    "TensorVariable | SymbolicIntVariable | ConstantVariable | NumpyVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_tensor_method(
+                        magic_name, var, other
+                    ),
+                    magic_method.name,
+                ),
+            )
+            Dispatcher.register(
+                binary_fn,
+                (
+                    "SymbolicIntVariable",
+                    "ConstantVariable | SymbolicIntVariable",
+                ),
+                partial(
+                    lambda magic_name, var, other: var.graph.call_symbolic_method(
                         magic_name, var, other
                     ),
                     magic_method.name,
@@ -923,7 +960,8 @@ for binary_fn in BINARY_OPS:
 
                 @Dispatcher.register_decorator(operator.mod)
                 def tensor_mod_dispatcher(
-                    var: ConstantVariable, other: TensorVariable
+                    var: ConstantVariable | SymbolicIntVariable,
+                    other: TensorVariable,
                 ):
                     if var.get_py_type() is str:
                         raise BreakGraphError(
@@ -935,12 +973,23 @@ for binary_fn in BINARY_OPS:
                 Dispatcher.register(
                     binary_fn,
                     (
-                        "ConstantVariable | NumpyVariable",
+                        "SymbolicIntVariable | ConstantVariable | NumpyVariable",
                         "TensorVariable",
                     ),
                     partial(
                         lambda reverse_magic_name, var, other: other.graph.call_tensor_method(
                             reverse_magic_name, other, var
+                        ),
+                        magic_method.name,
+                    ),
+                )
+
+                Dispatcher.register(
+                    binary_fn,
+                    ("ConstantVariable", "SymbolicIntVariable"),
+                    partial(
+                        lambda magic_name, var, other: var.graph.call_symbolic_method(
+                            magic_name, var, other
                         ),
                         magic_method.name,
                     ),
@@ -1047,7 +1096,11 @@ Dispatcher.register(
 # pow
 # base ** exp % mod
 @Dispatcher.register_decorator(pow)
-def dispatch_pow(base: VariableBase, exp: VariableBase, mod: VariableBase = None):  # type: ignore
+def dispatch_pow(
+    base: VariableBase,
+    exp: VariableBase,
+    mod: VariableBase = None,  # type: ignore
+):
     graph = base.graph
     result = BuiltinVariable(operator.pow, graph, DanglingTracker())(base, exp)
     if exp is not None:
@@ -1069,7 +1122,10 @@ Dispatcher.register(
 
 
 @Dispatcher.register_decorator(sum)
-def dispatch_sum(var: ContainerVariable | TensorVariable, start: VariableBase = None):  # type: ignore
+def dispatch_sum(
+    var: ContainerVariable | TensorVariable,
+    start: VariableBase = None,  # type: ignore
+):
     if start is None:
         start = ConstantVariable.wrap_literal(0, var.graph)
     elements = [

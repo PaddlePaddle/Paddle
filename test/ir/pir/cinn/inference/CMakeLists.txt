@@ -24,17 +24,4 @@ if(WITH_GPU)
   set_tests_properties(test_llama_forward PROPERTIES TIMEOUT 300)
   set_tests_properties(test_llama_postprocess PROPERTIES TIMEOUT 300)
 
-  add_test(
-    NAME test_llama_postprocess_cinn
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_prim_enable_dynamic=True FLAGS_prim_all=True FLAGS_enable_pir_api=1
-      FLAGS_cinn_bucket_compile=True FLAGS_group_schedule_tiling_first=1
-      FLAGS_pd_unittest_use_cinn=1 FLAGS_pir_apply_shape_optimization_pass=1
-      ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_postprocess.py
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties(test_llama_postprocess_cinn
-                       PROPERTIES LABELS "RUN_TYPE=CINN" TIMEOUT 300)
-
 endif()

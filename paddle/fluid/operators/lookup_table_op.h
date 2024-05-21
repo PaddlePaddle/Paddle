@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
@@ -90,8 +90,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-      auto input_data_type =
-          framework::TransToProtoVarType(table_t.value().dtype());
+      auto input_data_type = table_t.value().dtype();
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -107,9 +106,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
             auto id_index = table_t.GetIndexFromId(ids[i]);
 
             if (id_index != -1) {
-              if (input_data_type == framework::proto::VarType::INT8 ||
-                  input_data_type == framework::proto::VarType::INT16 ||
-                  input_data_type == framework::proto::VarType::BF16) {
+              if (input_data_type == phi::DataType::INT8 ||
+                  input_data_type == phi::DataType::INT16 ||
+                  input_data_type == phi::DataType::BFLOAT16) {
                 memcpy(output + i * row_width,
                        table + id_index * row_width,
                        row_width * sizeof(T));
@@ -140,9 +139,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
                     "the input key should be exists. But received %d.",
                     id_index));
 
-            if (input_data_type == framework::proto::VarType::INT8 ||
-                input_data_type == framework::proto::VarType::INT16 ||
-                input_data_type == framework::proto::VarType::BF16) {
+            if (input_data_type == phi::DataType::INT8 ||
+                input_data_type == phi::DataType::INT16 ||
+                input_data_type == phi::DataType::BFLOAT16) {
               memcpy(output + i * row_width,
                      table + id_index * row_width,
                      row_width * sizeof(T));

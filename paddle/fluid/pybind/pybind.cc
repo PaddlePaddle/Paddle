@@ -36,6 +36,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/compiled_program.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -128,6 +129,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/python_callable_registry.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -143,6 +145,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/pybind/compiled_program.h"
 #include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/fluid/pybind/protobuf.h"
@@ -204,7 +207,10 @@ limitations under the License. */
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -217,6 +223,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
@@ -369,6 +377,14 @@ bool IsRunWithCINN() {
 
 bool IsCompiledWithHETERPS() {
 #ifndef PADDLE_WITH_HETERPS
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithGPUGRAPH() {
+#ifndef PADDLE_WITH_GPU_GRAPH
   return false;
 #else
   return true;
@@ -718,6 +734,133 @@ static int GetNCCLVersion() {
 }
 #endif
 
+// NOTE: Use to manage the context of pylayer op constructing block
+class PyLayerBlockContextManager {
+ public:
+  explicit PyLayerBlockContextManager(pir::Block *block) {
+    dialect::ApiBuilder::Instance().PushInsertionPoint();
+    dialect::ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
+  }
+
+  ~PyLayerBlockContextManager() {
+    dialect::ApiBuilder::Instance().LoadInsertionPoint();
+  }
+
+  PyLayerBlockContextManager(const PyLayerBlockContextManager &) = delete;
+  PyLayerBlockContextManager &operator=(const PyLayerBlockContextManager &) =
+      delete;
+
+ private:
+  // disable default constructor
+  PyLayerBlockContextManager() = default;
+};
+
+static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
+    pir::Operation *op,
+    const std::vector<std::vector<pir::Value>> &inputs_,
+    const std::vector<std::vector<pir::Value>> &outputs,
+    const std::vector<std::vector<pir::Value>> &out_grads,
+    const std::vector<std::vector<bool>> &stop_gradients) {
+  PADDLE_ENFORCE(
+      op->isa<paddle::dialect::PyLayerOp>(),
+      common::errors::InvalidArgument(
+          "GenerateBackwardBlockForPyLayerOp only support PyLayerOp"));
+
+  // 1. construct pylayer grad op
+  VLOG(6) << "Prepare Outputs for pylayer_grad";
+  std::vector<pir::Type> output_types;
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    if (!stop_gradients[i][0]) {
+      output_types.push_back(inputs_[i][0].type());
+    }
+  }
+
+  VLOG(6) << "Prepare Inputs for pylayer_grad";
+  std::vector<pir::Value> output_grads;
+  for (size_t i = 0; i < out_grads.size(); ++i) {
+    output_grads.push_back(out_grads[i][0]);
+  }
+
+  std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
+  auto pylayer_grad = dialect::ApiBuilder::Instance()
+                          .GetBuilder()
+                          ->Build<paddle::dialect::PyLayerOp>(
+                              output_grads, std::move(output_types), -1);
+
+  VLOG(6) << "Construct pylayer_grad finished";
+
+  // 2.1 Get registered backward function from
+  // `PythonCallableRegistrar::python_callable_registry_`.
+  int backward_function_id =
+      op->attributes()
+          .at(paddle::dialect::PyLayerOp::kBackwardFunctionIdAttrName)
+          .dyn_cast<pir::Int32Attribute>()
+          .data();
+  PADDLE_ENFORCE_GE(
+      backward_function_id,
+      0,
+      common::errors::InvalidArgument("The backward function id of pylayer op "
+                                      "should be non-negative, but got %d",
+                                      backward_function_id));
+  VLOG(6) << "pylayer op unique_id is " << op->id();
+  VLOG(6) << "pylayer op backward_function_id is " << backward_function_id;
+  auto py_callable = paddle::pybind::PythonCallableRegistrar::GetInstance().Get(
+      static_cast<uint64_t>(backward_function_id));
+
+  // 2.2 Get TuplePushOp from forward block if exists
+  auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
+  std::vector<pir::Operation *> tuple_push_op_list;
+  for (auto &op : pylayer_op.forward_block()) {
+    if (op.isa<pir::TuplePushOp>()) {
+      tuple_push_op_list.push_back(&op);
+    }
+  }
+  PADDLE_ENFORCE_LE(tuple_push_op_list.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The number of tuple_push op in pylayer forward block "
+                        "is either unique or does not exist."));
+
+  {
+    // enter block of pylayer_grad
+    PyLayerBlockContextManager pylayer_block_context_manager(
+        &(pylayer_grad.forward_block()));
+
+    // create tuple_pop op if needed
+    if (tuple_push_op_list.size() > 0) {
+      VLOG(6) << "Start creating tuple_pop op in the front of backward block "
+                 "of pylayer.";
+      auto tuple_push_op = tuple_push_op_list[0]->dyn_cast<pir::TuplePushOp>();
+      dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::TuplePopOp>(
+          tuple_push_op.outlet());
+      VLOG(6) << "Finish creating tuple_pop op.";
+    }
+
+    VLOG(6) << "call pylayer op backward function";
+    PirCallPythonFunc(py_callable, output_grads, &pylayer_grad_inputs);
+
+    // append yield op for outputs value
+    dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::YieldOp>(
+        pylayer_grad_inputs);
+    // exit block of pylayer_grad
+  }
+  VLOG(6) << "Construct pylayer backward block finished";
+
+  // 3. Update pylayer_grad op's attributes of outputs
+  pylayer_grad.UpdateOutput();
+  VLOG(6) << "Update pylayer_grad op finished";
+
+  std::vector<std::vector<pir::Value>> res{inputs_.size()};
+  int grad_op_result_index = 0;
+  for (size_t i = 0; i < res.size(); ++i) {
+    res[i].resize(1);
+    res[i][0] = !stop_gradients[i][0]
+                    ? pylayer_grad->result(grad_op_result_index++)
+                    : pir::Value();
+  }
+  return res;
+}
+
 void BindVjp(pybind11::module *m) {
   m->def(
       "call_vjp",
@@ -727,30 +870,51 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
-        paddle::dialect::VjpInterface vjp_interface =
-            fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
-        PADDLE_ENFORCE(
-            vjp_interface,
-            common::errors::InvalidArgument(
-                "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
-            &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        std::vector<std::vector<pir::Value>> vjp_res;
+
+        if (fwd_op.isa<paddle::dialect::PyLayerOp>()) {
+          // NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+          // not have a vjp interface, we still need to generate the backward
+          // block based on its registered backward function.
+          vjp_res = GenerateBackwardBlockForPyLayerOp(
+              &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        } else {
+          paddle::dialect::VjpInterface vjp_interface =
+              fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+          PADDLE_ENFORCE(vjp_interface,
+                         common::errors::InvalidArgument(
+                             "The vjp function is not registered in %s op ",
+                             fwd_op.name()));
+          vjp_res = vjp_interface.Vjp(
+              &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        }
+
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
             common::errors::InvalidArgument(
                 "The size of  %s stop_gradients should be the same as vjp_res "
-                "size.",
-                fwd_op.name()));
+                "size."
+                "But the size of stop_gradients: %d, vjp_res size: %d",
+                fwd_op.name(),
+                stop_gradients.size(),
+                vjp_res.size()));
 
         for (size_t i = 0; i < vjp_res.size(); ++i) {
           PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
                             vjp_res[i].size(),
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The size of stop_gradients[%d] should be the "
-                                "same as vjp_res[%d] size.",
+                                "same as vjp_res[%d] "
+                                "size."
+                                "But the size of stop_gradients[%d]: %d, "
+                                "vjp_res[%d] size: %d",
                                 i,
-                                i));
+                                i,
+                                i,
+                                stop_gradients[i].size(),
+                                i,
+                                vjp_res[i].size()));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
             if (!vjp_res[i][j]) {
@@ -825,10 +989,13 @@ void BindDecomp(pybind11::module *m) {
          [](pir::Program *program,
             std::vector<pir::Value> &src_vars,
             std::set<std::string> &blacklist,
-            std::set<std::string> &whitelist) {
+            std::set<std::string> &whitelist,
+            int start_index,
+            int end_index) {
            VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
-           DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
+           DecompProgram decomp_object(
+               program, src_vars, blacklist, whitelist, start_index, end_index);
            decomp_object.decomp_program();
            std::vector<pir::Value> tar_vars = decomp_object.get_dst_vars();
            for (size_t i = 0; i < tar_vars.size(); ++i) {
@@ -861,6 +1028,42 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("has_decomp", [](pir::Operation &fwd_op) {
     return paddle::has_decomp_rule(fwd_op);
+  });
+}
+
+void BindDecompVjp(pybind11::module *m) {
+  m->def("call_decomp_vjp", [](pir::Operation &vjp_op) {
+    py::list res;
+    paddle::dialect::DecompVjpInterface decomp_vjp_interface =
+        vjp_op.dyn_cast<paddle::dialect::DecompVjpInterface>();
+    PADDLE_ENFORCE(
+        decomp_vjp_interface,
+        phi::errors::InvalidArgument(
+            "[Prim] The decomp_vjp function is not registered in %s vjp_op ",
+            vjp_op.name()));
+    std::vector<std::vector<pir::Value>> decomp_res =
+        decomp_vjp_interface.DecompVjp(&vjp_op);
+
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp_vjp", [](pir::Operation &vjp_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo vjp_op_info = ctx->GetRegisteredOpInfo(vjp_op.name());
+    auto decomp_vjp_interface_impl =
+        vjp_op_info.GetInterfaceImpl<paddle::dialect::DecompVjpInterface>();
+    return decomp_vjp_interface_impl != nullptr;
   });
 }
 
@@ -2001,6 +2204,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
            &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
@@ -2186,6 +2390,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
@@ -2993,7 +3198,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
   BindFleetWrapper(&m);
   BindIO(&m);
-  BindParallelExecutor(m);
+  BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
 
@@ -3096,6 +3301,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+  BindDecompVjp(&m);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif

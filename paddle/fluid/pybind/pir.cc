@@ -39,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -46,6 +47,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -63,6 +65,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
@@ -88,6 +91,7 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+using pir::TuplePopOp;
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -652,17 +656,23 @@ void BindOperation(py::module *m) {
       .def("operands", &Operation::operands)
       .def("results",
            [](Operation &self) -> py::list {
-             py::list op_list;
+             py::list value_list;
              for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(static_cast<pir::Value>(self.result(i)));
+               value_list.append(static_cast<pir::Value>(self.result(i)));
              }
-             return op_list;
+             return value_list;
            })
       .def(
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
       .def("has_attr", &Operation::HasAttribute)
+      .def("set_bool_attr",
+           [](Operation &self, std::string &attr_name, bool flag) {
+             self.set_attribute(
+                 attr_name,
+                 pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -678,6 +688,12 @@ void BindOperation(py::module *m) {
                }
              }
              return attrs_dict;
+           })
+      .def("set_execution_stream",
+           [](Operation &self, const std::string &exe_stream) {
+             self.set_attribute("execution_stream",
+                                pir::StrAttribute::get(
+                                    pir::IrContext::Instance(), exe_stream));
            })
       .def("set_scheduling_priority",
            [](Operation &self, int64_t priority) {
@@ -746,6 +762,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "Currently, we can only get input grad semantics of "
+                   "Operation that "
+                   "has OpYamlInfoInterface"));
+             }
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -765,13 +788,23 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> PyLayerOp {
              auto pylayer_op = self.dyn_cast<PyLayerOp>();
              if (!pylayer_op) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Can't cast non-pylayer_op type Operation to PyLayerOp."));
              }
              return pylayer_op;
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def(
+          "as_tuple_pop_op",
+          [](Operation &self) -> TuplePopOp {
+            auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
+            if (!tuple_pop_op) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
+            }
+            return tuple_pop_op;
+          })
       .def("__repr__",
 
            [](Operation &self) {
@@ -840,12 +873,12 @@ void BindOperation(py::module *m) {
           })
       .def_property(
           "dist_attr",
-          [](Operation &self) {
+          [](Operation &self) -> py::object {
             if (self.HasAttribute(kAttrOpDistAttr)) {
-              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+              return py::cast(
+                  self.attribute<OperationDistAttribute>(kAttrOpDistAttr));
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dist_attr is only for dist op."));
+              return py::cast<py::none>(Py_None);
             }
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
@@ -1088,6 +1121,14 @@ void BindValue(py::module *m) {
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
+      .def("index",
+           [](Value self) -> uint32_t {
+             if (auto op_result = self.dyn_cast<OpResult>()) {
+               return op_result.index();
+             }
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "only support accesss index from op_result."));
+           })
       .def("is_dense_tensor_type",
            [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
@@ -1124,7 +1165,7 @@ void BindValue(py::module *m) {
              auto share_data_op =
                  ApiBuilder::Instance()
                      .GetBuilder()
-                     ->Build<paddle::dialect::ShareDataOp>(self);
+                     ->Build<paddle::dialect::ShareData_Op>(self);
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
@@ -1136,15 +1177,16 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      .def(
-          "dist_attr",
-          [](Value &self) {
-            if (!self.type().isa<DistTypeInterface>()) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "dist_attr is only for dist type tensor."));
-            }
-            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
-          })
+      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
+      .def("dist_attr",
+           [](Value self) -> py::object {
+             auto type = self.type();
+             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
@@ -1193,6 +1235,28 @@ void BindType(py::module *m) {
           [](Type self, phi::DataType dtype) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
+          })
+      .def("dist_attr",
+           [](Type self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def_property(
+          "_local_shape",
+          [](Type self) {
+            if (!self.isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "_local_shape is only for distdense tensor."));
+            }
+            return phi::vectorize(
+                self.dyn_cast<DistDenseTensorType>().local_ddim());
+          },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set _local_shape when building static graph"));
           })
       .def("__str__", [](Type &self) {
         std::ostringstream print_stream;
@@ -1263,7 +1327,6 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
-
   ir_insertion_point
       .def(
           "next",
@@ -1299,6 +1362,10 @@ void BindInsertionPoint(pybind11::module *m) {
             }
             return *(self.value.second);
           },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](PyInsertionPoint &self) { return self.value.first; },
           return_value_policy::reference);
 }
 
@@ -2250,10 +2317,18 @@ void InferSymbolicShapePass(
   }
 }
 
+void CommonSubexpressionEliminationPass(
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program) {                          // NOLINT
+  pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
+  m->def("common_subexpression_elimination_pass",
+         CommonSubexpressionEliminationPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

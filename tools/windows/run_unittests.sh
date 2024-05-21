@@ -21,7 +21,7 @@ disable_wingpu_test="^test_model$|\
 ^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_static_build$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
 ^test_program_prune_backward$|\
@@ -83,7 +83,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_switch_autotune$|\
 ^test_elementwise_div_op$|\
 ^test_elementwise_mul_op$|\
-^test_conv2d_api$|\
+^test_conv2d_api_deprecated$|\
 ^test_fused_gemm_epilogue_pass$|\
 ^test_cuda_graphed_layer$|\
 ^test_quant_linear_op$|\
@@ -220,7 +220,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_matmul_op$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_decoupled_py_reader$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_py_reader_combination$|\
 ^test_reader_reset$|\
 ^test_sync_batch_norm_op$|\
@@ -338,7 +338,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_stack_op$|\
 ^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$|\
-^test_var_base$|\
+^test_eager_tensor$|\
 ^test_einsum_v2$|\
 ^test_tensor_scalar_type_promotion_static$|\
 ^test_matrix_power_op$|\
@@ -400,7 +400,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_static_build$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_py_reader_using_executor$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
