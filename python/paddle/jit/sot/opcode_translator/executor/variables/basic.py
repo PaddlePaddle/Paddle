@@ -618,8 +618,11 @@ class SymbolicVariable(VariableBase):
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
             )
+        self.need_guard_value = False
 
     def get_py_value(self, allow_tensor=False):
+        self.need_guard_value = True
+        # TODO(zrr1999): use eval
         return self.value
 
     def get_py_type(self):
