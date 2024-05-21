@@ -36,8 +36,8 @@ if(WITH_GPU)
       test_sub_graph_avg_pool2d
       test_sub_graph_chunk
       test_sub_graph_max_pool2d
-      test_sub_graph_mul_reshape
-      test_sub_graph_mul_swish
+      test_sub_graph_reshape
+      test_sub_graph_swish
       test_sub_graph_swish
       test_sub_graph_mul_method
       test_sub_graph_adaptive_avg_pool2d
