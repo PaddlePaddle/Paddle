@@ -98,7 +98,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
     }
   }
 
-  auto out_grad_dims = out_grad.dims();
+  const auto& out_grad_dims = out_grad.dims();
   const int64_t numel = indices[0]->numel();
   auto out_grad_stride = common::stride(out_grad_dims);
 

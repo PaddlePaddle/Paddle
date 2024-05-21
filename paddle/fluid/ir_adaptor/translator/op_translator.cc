@@ -1089,7 +1089,7 @@ struct IncrementOpTranscriber : public OpTranscriber {
 };
 
 // The `assign_value` in static_ops.yaml is different from the one in
-// `legacy_ops.yaml`. For this op we simulate the logic in
+// `dygraph_ops.yaml`. For this op we simulate the logic in
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
