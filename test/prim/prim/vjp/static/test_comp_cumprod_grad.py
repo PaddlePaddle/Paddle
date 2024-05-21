@@ -157,19 +157,6 @@ class TestCumprodGradComp0D(unittest.TestCase):
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
         cls.cotangent = cls.cotangent.astype(cls.dtype)
-        cls.zero_nums = [0, 1, 10, int(np.prod(cls.primal.shape))]
-
-    def train(self, use_prim, use_cinn):
-        paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.x.stop_gradient = False
-        net = PrimeNet()
-        core._set_prim_backward_enabled(use_prim)
-        net = apply_to_static(net, use_cinn)
-        out = net(self.x)
-        res = paddle.autograd.grad(out, [self.x])
-
-        return res
 
     def test_cumprod_grad_comp_0d(self):
         paddle.enable_static()
