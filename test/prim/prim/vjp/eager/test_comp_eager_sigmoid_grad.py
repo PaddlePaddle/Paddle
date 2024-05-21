@@ -28,7 +28,7 @@ from paddle.base import core
         (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
     ],
 )
-class TestExpGradComp(unittest.TestCase):
+class TestSigmoidGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         core.set_prim_eager_enabled(True)
@@ -67,6 +67,50 @@ class TestExpGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
+
+
+@param.parameterized_class(
+    ('primal', 'cotangent', 'dtype'),
+    [
+        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+    ],
+)
+class TestSigmoidDoubleGradComp(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.primal = cls.primal.astype(cls.dtype)
+        if cls.cotangent is not None:
+            cls.cotangent = cls.cotangent.astype(cls.dtype)
+
+    def test_sigmoid_double_grad_comp_dygraph(self):
+        def actual(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(True)
+            core._set_prim_backward_blacklist("sigmoid_grad")
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = F.sigmoid(x)
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
+
+        def desired(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(False)
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = F.sigmoid(x)
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal),
+            desired=desired(self.primal),
+            rtol=1e-6,
+            atol=0,
+        )
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':
