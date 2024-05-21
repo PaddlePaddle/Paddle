@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 from paddle.base import core
 
 # define the e4m3/e5m2 constants
@@ -69,10 +70,19 @@ class TestFP8MatmulOp(unittest.TestCase):
                 input8 = paddle.ones([4, 64, 32], dtype="float16")
 
                 output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
-                    paddle.cast(input7, "float8_e4m3fn"),
+                    input1,
                     input2,
                     transpose_x=False,
                     transpose_y=True,
+                )
+
+                output_relu_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=-1.0,
+                    act="relu",
                 )
 
                 output_gelu_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
@@ -129,6 +139,15 @@ class TestFP8MatmulOp(unittest.TestCase):
                     act="gelu",
                 )
 
+                output_relu_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=-1.0,
+                    act="relu",
+                )
+
                 output_bias_bf16 = paddle.linalg.fp8_fp8_bf16_gemm_fused(
                     input1,
                     input2,
@@ -160,21 +179,19 @@ class TestFP8MatmulOp(unittest.TestCase):
 
                 expect_result = np.matmul(input5, input6)
 
-                # paddle.set_printoptions(4, 1000, 50)
+                paddle.set_printoptions(4, 1000, 50)
 
-                print("output_fp16: ", output_fp16)
-                print("output_gelu_fp16: ", output_gelu_fp16)
-                print("output_bias_fp16: ", output_bias_fp16)
-                print("output_bias_gelu_fp16: ", output_bias_gelu_fp16)
-                print("output_bias_relu_fp16: ", output_bias_relu_fp16)
+                # print("output_fp16: ", output_fp16)
+                # print("output_gelu_fp16: ", output_gelu_fp16)
+                # print("output_bias_fp16: ", output_bias_fp16)
+                # print("output_bias_gelu_fp16: ", output_bias_gelu_fp16)
+                # print("output_bias_relu_fp16: ", output_bias_relu_fp16)
 
-                print("output_bf16: ", output_bf16)
-                print("output_gelu_bf16: ", output_gelu_bf16)
-                print("output_bias_bf16: ", output_bias_bf16)
-                print("output_bias_gelu_bf16: ", output_bias_gelu_bf16)
-                print("output_bias_relu_bf16: ", output_bias_relu_bf16)
-
-                print("output_bf16: ", output_bf16)
+                # print("output_bf16: ", output_bf16)
+                # print("output_gelu_bf16: ", output_gelu_bf16)
+                # print("output_bias_bf16: ", output_bias_bf16)
+                # print("output_bias_gelu_bf16: ", output_bias_gelu_bf16)
+                # print("output_bias_relu_bf16: ", output_bias_relu_bf16)
 
                 if self.device == "gpu":
                     self.assertTrue(
@@ -184,6 +201,99 @@ class TestFP8MatmulOp(unittest.TestCase):
                             paddle.to_tensor(expect_result),
                         )
                     )
+
+
+class TestFP8DualMatmulOp(unittest.TestCase):
+    def setUp(self):
+        paddle.device.set_device("gpu")
+        self.dtype_dict = {
+            "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+            "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+        }
+
+    def test_matmul(self):
+        for self.device in ["gpu"]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([4, 16, 32], dtype=self.dtype)
+                input2 = paddle.ones([4, 64, 32], dtype=self.dtype)
+                input3 = paddle.ones([4, 16, 32], dtype=self.dtype)
+                input4 = paddle.ones([4, 64, 32], dtype=self.dtype)
+
+                bias = paddle.ones([64], dtype=self.dtype)
+                bias_fp16 = paddle.ones([64], dtype="float16")
+                bias_bf16 = paddle.ones([64], dtype="bfloat16")
+
+                input5 = np.ones((16, 32)).astype("float32")
+                input6 = np.ones((32, 64)).astype("float32")
+
+                input7 = paddle.ones([4, 16, 32], dtype="float16")
+                input8 = paddle.ones([4, 64, 32], dtype="float16")
+
+                output_fp8_swiglu = paddle.linalg.fp8_fp8_fp8_dual_gemm_fused(
+                    input1,
+                    input2,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale0=0.1,
+                    scale1=0.1,
+                    act="swiglu",
+                )
+
+                output_fp16 = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=0.1,
+                )
+
+                output_fp16_swiglu = F.silu(output_fp16) * output_fp16
+
+                output_fp8_bias_swiglu = (
+                    paddle.linalg.fp8_fp8_fp8_dual_gemm_fused(
+                        input1,
+                        input2,
+                        input2,
+                        transpose_x=False,
+                        transpose_y=True,
+                        bias0=bias,
+                        bias1=bias,
+                        scale0=0.1,
+                        scale1=0.1,
+                        act="swiglu",
+                    )
+                )
+
+                output_fp16_bias = paddle.linalg.fp8_fp8_fp16_gemm_fused(
+                    input1,
+                    input2,
+                    transpose_x=False,
+                    transpose_y=True,
+                    scale=0.1,
+                    bias=bias_fp16,
+                )
+
+                output_fp16_bias_swiglu = (
+                    F.silu(output_fp16_bias) * output_fp16_bias
+                )
+
+                # print(output_fp16)
+                print(output_fp8_swiglu)
+                print(output_fp16_swiglu)
+
+                # print(output_fp16_bias)
+                print(output_fp8_bias_swiglu)
+                print(output_fp16_bias_swiglu)
+
+                # if self.device == "gpu":
+                #     self.assertTrue(
+                #         paddle.equal_all(
+                #             paddle.cast(output_fp8_swiglu, "float32"),
+                #             paddle.cast(output_fp16_swiglu, "float32"),
+                #         )
+                #     )
 
 
 if __name__ == "__main__":
