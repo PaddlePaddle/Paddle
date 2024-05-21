@@ -98,10 +98,29 @@ template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
 }  // namespace phi
 
+PD_REGISTER_KERNEL(
+    quantize_linear, CPU, ALL_LAYOUT, phi::QuantizeLinearKernel, float) {}
+
 PD_REGISTER_KERNEL(dequantize_linear,
                    CPU,
                    ALL_LAYOUT,
                    phi::DeQuantizeLinearKernel,
+                   float,
+                   int8_t,
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(quantize_linear_deprecated,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::QuantizeLinearDeprecatedKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(dequantize_linear_deprecated,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DeQuantizeLinearDeprecatedKernel,
                    float,
                    int8_t,
                    double) {
