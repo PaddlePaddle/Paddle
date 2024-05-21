@@ -63,6 +63,9 @@ WeightedSampler::WeightedSampler() {
   left = nullptr;
   right = nullptr;
   edges = nullptr;
+  weight = 0;
+  count = 0;
+  idx = 0;
 }
 
 WeightedSampler::~WeightedSampler() {
