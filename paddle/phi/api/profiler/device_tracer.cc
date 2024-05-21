@@ -73,9 +73,9 @@ uint64_t kAlignSize = 8;
 std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
     driver_cbid_str;
 
-#define ALIGN_BUFFER(buffer, align)                                 \
-  (((uintptr_t)(buffer) & ((align)-1))                              \
-       ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align)-1))) \
+#define ALIGN_BUFFER(buffer, align)                                   \
+  (((uintptr_t)(buffer) & ((align) - 1))                              \
+       ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align) - 1))) \
        : (buffer))
 
 #define CUPTI_CALL(call)                                           \
@@ -317,8 +317,7 @@ void initCuptiCbidStr();
 
 class DeviceTracerImpl : public DeviceTracer {
  public:
-  DeviceTracerImpl()
-      : enabled_(false), start_ns_(0), end_ns_(0) {
+  DeviceTracerImpl() : enabled_(false), start_ns_(0), end_ns_(0) {
 #ifdef PADDLE_WITH_CUPTI
     initCuptiCbidStr();
 #endif
@@ -518,18 +517,18 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    const std::vector<int> runtime_cbids {
-      CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaMemset_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaMemsetAsync_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
+    const std::vector<int> runtime_cbids{
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemset_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaMemsetAsync_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #if CUDA_VERSION >= 9000
-          ,
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
+        ,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
+        CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
 #endif
     };
     const std::vector<int> driver_cbids{CUPTI_DRIVER_TRACE_CBID_cuLaunch,
