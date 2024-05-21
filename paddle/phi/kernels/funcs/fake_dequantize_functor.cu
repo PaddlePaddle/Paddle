@@ -51,6 +51,7 @@ void DequantizeFunctor<Context, T>::operator()(const Context& dev_ctx,
 
 template class DequantizeFunctor<GPUContext, float>;
 template class DequantizeFunctor<GPUContext, double>;
+template class DequantizeFunctor<GPUContext, float16>;
 
 }  // namespace funcs
 }  // namespace phi
