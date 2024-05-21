@@ -19,6 +19,7 @@ from base import *  # noqa: F403
 
 from paddle.static import InputSpec
 
+
 class LayerCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
