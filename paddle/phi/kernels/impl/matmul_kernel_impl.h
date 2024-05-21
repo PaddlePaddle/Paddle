@@ -1486,7 +1486,6 @@ DispatchMatmulFP8Kernel(const Context& ctx,
   ctx.template Alloc<int8_t>(&workspace);
   ctx.template Alloc<phi::dtype::float16>(out);
 
-std::cout<< "test::::DispatchMatmulFP8Kernel " << y_dims[0]<<std::endl;
   CublasLtMatmulFP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
 }
 #endif

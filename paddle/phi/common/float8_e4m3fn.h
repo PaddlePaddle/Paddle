@@ -55,7 +55,7 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
   float8_e4m3fn& operator=(float8_e4m3fn&& o) = default;
   ~float8_e4m3fn() = default;
 
-  HOSTDEVICE inline explicit float8_e4m3fn(float val) {
+  HOSTDEVICE inline float8_e4m3fn(float val) {
 #if defined(PADDLE_CUDA_FP8)
     __nv_fp8_e4m3 tmp = __nv_fp8_e4m3(val);
     x = *reinterpret_cast<uint8_t*>(&tmp);
@@ -439,6 +439,10 @@ struct numeric_limits<phi::dtype::float8_e4m3fn> {
   }
   HOSTDEVICE static phi::dtype::float8_e4m3fn round_error() {
     return phi::dtype::raw_uint8_to_float8_e4m3fn(0x30);
+  }
+
+  HOSTDEVICE static phi::dtype::float8_e4m3fn infinity() {
+    return phi::dtype::raw_uint8_to_float8_e4m3fn(0x7F);
   }
   HOSTDEVICE static phi::dtype::float8_e4m3fn quiet_NaN() {
     return phi::dtype::raw_uint8_to_float8_e4m3fn(0x7F);

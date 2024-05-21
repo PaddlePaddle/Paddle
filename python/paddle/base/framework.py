@@ -244,6 +244,8 @@ paddle_type_to_proto_type = {
     DataType.UINT8: core.VarDesc.VarType.UINT8,
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+    DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
+    DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
 
 

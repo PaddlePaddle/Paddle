@@ -177,6 +177,7 @@ template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
   template struct Transpose<phi::GPUContext, float, RANK>;         \
   template struct Transpose<phi::GPUContext, double, RANK>;        \
   template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>; \
+  template struct Transpose<phi::GPUContext, float8_e5m2, RANK>;   \
   template struct Transpose<phi::GPUContext, float16, RANK>;       \
   template struct Transpose<phi::GPUContext, bfloat16, RANK>;      \
   template struct Transpose<phi::GPUContext, int8_t, RANK>;        \
@@ -343,6 +344,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
 #if CUDA_VERSION >= 11800
 DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
 #endif
 
 DEFINE_GPU_TRANS_NORMAL(float16);

@@ -57,7 +57,7 @@ struct PADDLE_ALIGN(1) float8_e5m2 {
   float8_e5m2& operator=(float8_e5m2&& o) = default;
   ~float8_e5m2() = default;
 
-  HOSTDEVICE inline explicit float8_e5m2(float val) {
+  HOSTDEVICE inline float8_e5m2(float val) {
 #if defined(PADDLE_CUDA_FP8)
     __nv_fp8_e5m2 tmp = __nv_fp8_e5m2(val);
     x = *reinterpret_cast<uint8_t*>(&tmp);

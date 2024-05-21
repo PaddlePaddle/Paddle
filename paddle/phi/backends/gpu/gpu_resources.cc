@@ -231,10 +231,8 @@ void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
   phi::dynload::rocblas_create_handle(blas_handle);
   phi::dynload::rocblas_set_stream(*blas_handle, stream);
-#else   // PADDLE_WITH_CUDA
-std::cout<<"22222222: " << blas_handle<<std::endl;
+#else  // PADDLE_WITH_CUDA
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(blas_handle));
-std::cout<<"33333333: " << blas_handle<<std::endl;
   PADDLE_RETRY_CUDA_SUCCESS(
       phi::dynload::cublasSetStream(*blas_handle, stream));
 

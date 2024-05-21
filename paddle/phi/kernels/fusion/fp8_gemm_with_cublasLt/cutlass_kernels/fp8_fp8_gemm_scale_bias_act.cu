@@ -39,6 +39,10 @@ std::map<std::string, int> config_map{
 };
 
 bool fp8_fp8_gemm_scale_bias_act(GemmEpilogueAllParams params) {
+  std::cout << "params.gemm_config:" << params.gemm_config << std::endl;
+  std::cout << "config_map[&params.gemm_config()] :"
+            << config_map[params.gemm_config] << std::endl;
+
   switch (config_map[params.gemm_config]) {
     case 0:
       dispatch_gemm_scale<phi::dtype::float8_e4m3fn, phi::dtype::bfloat16>(
