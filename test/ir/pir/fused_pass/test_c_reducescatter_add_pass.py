@@ -15,10 +15,11 @@
 import unittest
 
 import paddle
+
 paddle.pir.register_paddle_dialect()
-from paddle.base.libpaddle.pir import translate_to_pir
 
 paddle.enable_static()
+
 
 def remove_shadow_output_and_fuse_c_reducescatter_assign_add(program):
     block = program.global_block()
@@ -26,11 +27,18 @@ def remove_shadow_output_and_fuse_c_reducescatter_assign_add(program):
     need_remove_ops = []
     op_num = len(ops)
     for idx in range(op_num - 2):
-        if ops[idx].name() == 'pd_op.c_reducescatter' and ops[idx+1].name() == "pd_op.assign" and ops[idx+2].name() == "pd_op.add":
+        if (
+            ops[idx].name() == 'pd_op.c_reducescatter'
+            and ops[idx + 1].name() == "pd_op.assign"
+            and ops[idx + 2].name() == "pd_op.add"
+        ):
             assign_output = ops[idx + 1].result(0)
             for op in ops:
-                if op.name() == 'builtin.shadow_output' and op in assign_output.all_used_ops():
-                   need_remove_ops.append(op)
+                if (
+                    op.name() == 'builtin.shadow_output'
+                    and op in assign_output.all_used_ops()
+                ):
+                    need_remove_ops.append(op)
 
     for op in need_remove_ops:
         block.remove_op(op)
@@ -38,6 +46,7 @@ def remove_shadow_output_and_fuse_c_reducescatter_assign_add(program):
     pm.add_pass('fuse_c_reducescatter_add_pass', {})
     pm.run(program)
     return program
+
 
 class TestFusedCReducescatterAssignAddPass(unittest.TestCase):
     def test_c_reducescatter_assign_add_pass(self):
@@ -52,13 +61,12 @@ class TestFusedCReducescatterAssignAddPass(unittest.TestCase):
          }
         '''
         pir_program = paddle.pir.parse_program(serialized_pir_program)
-        
+
         remove_shadow_output_and_fuse_c_reducescatter_assign_add(pir_program)
-       
+
         assert "pd_op.c_reducescatter\"" not in str(pir_program)
         assert "pd_op.c_reducescatter_add" in str(pir_program)
 
+
 if __name__ == "__main__":
     unittest.main()
-
-

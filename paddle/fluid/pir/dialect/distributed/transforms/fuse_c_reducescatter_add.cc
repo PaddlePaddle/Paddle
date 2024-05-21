@@ -54,37 +54,39 @@ class FusedCReducescatterAddPattern : public paddle::drr::DrrPatternBase {
 
 class FusedCReducescatterAssignAddPattern : public paddle::drr::DrrPatternBase {
  public:
-  std::string name() const override { return "FusedCReducescatterAssignAddPattern"; }
+  std::string name() const override {
+    return "FusedCReducescatterAssignAddPattern";
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    
+
     const auto &c_reducescatter =
         pat.Op(paddle::dialect::CReducescatterOp::name(),
                {{"ring_id", pat.Attr("ring_id")},
                 {"nranks", pat.Attr("num")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
-   
+
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
-  
+
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-   
+
     pat.Tensor("out") = c_reducescatter(pat.Tensor("x"));
-  
+
     pat.Tensor("out_tmp") = assign(pat.Tensor("out"));
-  
+
     pat.Tensor("add_out") = add(pat.Tensor("bias"), pat.Tensor("out_tmp"));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
- 
+
     const auto &c_reducescatter_add =
         res.Op(paddle::dialect::CReducescatterAddOp::name(),
                {{"ring_id", pat.Attr("ring_id")},
                 {"nranks", pat.Attr("num")},
                 {"use_calc_stream", pat.Attr("use_calc_stream")}});
 
-    c_reducescatter_add({&res.Tensor("x"), &res.Tensor("bias")}, {&res.Tensor("add_out")});
-  
+    c_reducescatter_add({&res.Tensor("x"), &res.Tensor("bias")},
+                        {&res.Tensor("add_out")});
   }
 };
 
@@ -112,4 +114,3 @@ std::unique_ptr<Pass> CreateFuseCReducescatterAddPass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(fuse_c_reducescatter_add_pass, FuseCReducescatterAddPass);
-

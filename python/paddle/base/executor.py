@@ -1086,7 +1086,7 @@ class _ExecutorCache:
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
-        
+
         if (
             new_program._pass_opt
             and "pass_list" in new_program._pass_opt
@@ -1105,16 +1105,16 @@ class _ExecutorCache:
                         ir_program = plan.ir_program(job_type)
                         eliminate_transpose_by_reshape(ir_program)
 
-                else if p == 'fuse_c_reducescatter_add_pass':
+                elif p == 'fuse_c_reducescatter_add_pass':
                     remove_shadow_output(ir_program)
-                    pm.add_pass(p,{})
+                    pm.add_pass(p, {})
                 else:
                     pm.add_pass(p, {})
 
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
-        
+
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
