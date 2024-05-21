@@ -26,9 +26,7 @@ from paddle.base import core
     ('primal', 'dtype'),
     [
         (
-            np.random.rand(
-                100,
-            ),
+            np.random.uniform(1, 5, (50,)),
             np.float32,
         ),
         (

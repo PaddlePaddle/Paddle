@@ -49,12 +49,8 @@ class PrimeNet(paddle.nn.Layer):
     ('primal', 'cotangent', 'dtype'),
     [
         (
-            np.random.rand(
-                100,
-            ),
-            np.random.rand(
-                100,
-            ),
+            np.random.uniform(1, 5, (50,)),
+            np.random.uniform(1, 5, (50,)),
             np.float32,
         ),
         (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
