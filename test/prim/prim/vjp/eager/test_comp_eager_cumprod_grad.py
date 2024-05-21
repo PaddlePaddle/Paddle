@@ -97,5 +97,51 @@ class TestCumprodGradComp(unittest.TestCase):
         core.set_prim_eager_enabled(False)
 
 
+@param.parameterized_class(
+    ('primal', 'dtype'),
+    [
+        (
+            np.random.uniform(1, 5, ()),
+            np.float32,
+        ),
+    ],
+)
+class TestCumprodGradComp0D(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.primal = cls.primal.astype(cls.dtype)
+
+    def test_cumprod_grad_comp_0d(self):
+        def actual(primal, dim):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(True)
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.cumprod(x, dim=dim)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=True, retain_graph=True
+            )
+            return x_cotangent[0]
+
+        def desired(primal, dim):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(False)
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.cumprod(x, dim=dim)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=False, retain_graph=True
+            )
+            return x_cotangent[0]
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal, 0),
+            desired=desired(self.primal, 0),
+            rtol=1e-6,
+            atol=0,
+        )
+        core.set_prim_eager_enabled(False)
+
+
 if __name__ == '__main__':
     unittest.main()

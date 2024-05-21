@@ -34,7 +34,8 @@ void CumprodKernel(const Context& dev_ctx,
   auto* x_data = x->data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   DDim shape = x->dims();
-
+  std::cout << "x_data addr: " << x_data << "\n";
+  std::cout << "out_data addr: " << out_data << "\n";
   size_t outer_dim = 1;
   size_t mid_dim = 1;
   size_t inner_dim = 1;

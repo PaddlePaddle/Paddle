@@ -83,7 +83,7 @@ class TestCumprodGradComp(unittest.TestCase):
 
         return res
 
-    def test_tanh_grad_comp(self):
+    def test_cumprod_grad_comp(self):
         paddle.enable_static()
 
         def actual(primal, cotangent, dim):
@@ -138,6 +138,86 @@ class TestCumprodGradComp(unittest.TestCase):
                     rtol=1e-6,
                     atol=0,
                 )
+        core._set_prim_backward_enabled(False)
+        paddle.disable_static()
+
+
+@param.parameterized_class(
+    ('primal', 'cotangent', 'dtype'),
+    [
+        (
+            np.random.uniform(1, 5, ()),
+            np.random.uniform(1, 5, ()),
+            np.float32,
+        )
+    ],
+)
+class TestCumprodGradComp0D(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.primal = cls.primal.astype(cls.dtype)
+        cls.cotangent = cls.cotangent.astype(cls.dtype)
+        cls.zero_nums = [0, 1, 10, int(np.prod(cls.primal.shape))]
+
+    def train(self, use_prim, use_cinn):
+        paddle.seed(2022)
+        self.x = paddle.randn([2, 4])
+        self.x.stop_gradient = False
+        net = PrimeNet()
+        core._set_prim_backward_enabled(use_prim)
+        net = apply_to_static(net, use_cinn)
+        out = net(self.x)
+        res = paddle.autograd.grad(out, [self.x])
+
+        return res
+
+    def test_cumprod_grad_comp_0d(self):
+        paddle.enable_static()
+
+        def actual(primal, cotangent, dim):
+            core._set_prim_backward_enabled(True)
+            mp, sp = paddle.static.Program(), paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                x = paddle.static.data('primal', primal.shape, primal.dtype)
+                x.stop_gradient = False
+                v = paddle.static.data(
+                    'cotangent', cotangent.shape, cotangent.dtype
+                )
+                y = paddle.cumprod(x, dim)
+                x_cotangent = paddle.static.gradients(y, x, v)
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            return exe.run(
+                program=mp,
+                feed={'primal': primal, 'cotangent': cotangent},
+                fetch_list=[x_cotangent[0]],
+            )[0]
+
+        def desired(primal, cotangent, dim):
+            core._set_prim_backward_enabled(False)
+            mp, sp = paddle.static.Program(), paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                x = paddle.static.data('primal', primal.shape, primal.dtype)
+                x.stop_gradient = False
+                v = paddle.static.data(
+                    'cotangent', cotangent.shape, cotangent.dtype
+                )
+                y = paddle.cumprod(x, dim)
+                x_cotangent = paddle.static.gradients(y, x, v)
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            return exe.run(
+                program=mp,
+                feed={'primal': primal, 'cotangent': cotangent},
+                fetch_list=[x_cotangent[0]],
+            )[0]
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal, self.cotangent, 0),
+            desired=desired(self.primal, self.cotangent, 0),
+            rtol=1e-6,
+            atol=0,
+        )
         core._set_prim_backward_enabled(False)
         paddle.disable_static()
 
