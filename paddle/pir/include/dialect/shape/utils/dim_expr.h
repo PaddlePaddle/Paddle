@@ -19,7 +19,6 @@
 #include <optional>
 #include <ostream>
 #include <string>
-#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -223,8 +222,6 @@ class IR_API DimExpr : public DimExprBase {
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 IR_API std::string ToString(const DimExpr& dim_expr);
-
-IR_API std::unordered_set<std::string> GetSymbolSet(const DimExpr& dim_expr);
 
 IR_API std::ostream& operator<<(std::ostream&, const DimExpr& dim_expr);
 

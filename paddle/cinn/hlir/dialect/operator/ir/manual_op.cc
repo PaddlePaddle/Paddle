@@ -207,11 +207,6 @@ bool FusionOp::InferSymbolicShape(
         infer_context->GetShapeOrDataForValue(inner_yield_value);
     infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
   }
-
-  if (VLOG_IS_ON(4)) {
-    ::std::cerr << ">>>>>>>>>>>>>>>>>>>> cinn_op.fusion(op_id: op_"
-                << block()->back().id() << ") END." << ::std::endl;
-  }
   return true;
 }
 
