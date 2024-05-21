@@ -242,7 +242,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
                             const DistMetaTensor& position_ids,
                             bool use_neox_rotary_style,
                             bool time_major,
-                            float rotary_emb_base) {
+                            float rotary_emb_base,
+                            int64_t actual_num_heads) {
   check_q(q);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>>
@@ -551,7 +552,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& out_v_grad,
                                 bool use_neox_rotary_style,
                                 bool time_major,
-                                float rotary_emb_base) {
+                                float rotary_emb_base,
+                                int64_t actual_num_heads) {
   // NOTE(zhonghui): The forward and backward kernels of fuse rope are same, so
   // the spmd rules can be shared.
   SpmdInfo spmd_info = FusedRopeInferSpmd(out_q_grad,
@@ -561,7 +563,9 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                           cos,
                                           position_ids,
                                           use_neox_rotary_style,
-                                          time_major);
+                                          time_major,
+                                          rotary_emb_base,
+                                          actual_num_heads);
   std::vector<ArgDistAttr> dist_attrs;
   std::vector<int> order = {3, 4, 5, 0, 1, 2};
   for (int ind : order) {

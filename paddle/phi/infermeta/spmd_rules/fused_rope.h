@@ -31,7 +31,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
                             const DistMetaTensor& position_ids,
                             bool use_neox_rotary_style = true,
                             bool time_major = false,
-                            float rotary_emb_base = 10000.f);
+                            float rotary_emb_base = 10000.f,
+                            int64_t actual_num_heads = -1);
 
 SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                                    const DistMetaTensor& k,
@@ -54,7 +55,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& out_v_grad,
                                 bool use_neox_rotary_style = true,
                                 bool time_major = false,
-                                float rotary_emb_base = 10000.f);
+                                float rotary_emb_base = 10000.f,
+                                int64_t actual_num_heads = -1);
 
 }  // namespace distributed
 }  // namespace phi
