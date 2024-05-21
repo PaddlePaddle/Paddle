@@ -364,6 +364,7 @@ class AllocatorFacadePrivate {
                           "No allocator found for the place, %s", place));
     VLOG(6) << "[GetAllocator]"
             << " place = " << place << " size = " << size
+            << " Allocator = " << iter->second;
     return iter->second;
   }
 
