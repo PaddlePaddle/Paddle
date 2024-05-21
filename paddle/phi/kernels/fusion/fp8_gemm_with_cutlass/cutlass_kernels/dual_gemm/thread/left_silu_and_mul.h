@@ -122,7 +122,7 @@ class LeftSiLUAndMul {
     cutlass::epilogue::thread::SiLu<ComputeFragment> silu;
     cutlass::multiplies<ComputeFragment> mul;
     auto silu_lhs = silu(converted_lhs);
-    return compute_to_output(mul(converted_lhs, converted_rhs));
+    return compute_to_output(mul(silu_lhs, converted_rhs));
   }
 
   CUTLASS_HOST_DEVICE
@@ -133,7 +133,7 @@ class LeftSiLUAndMul {
     cutlass::epilogue::thread::SiLu<ElementCompute> silu;
     cutlass::multiplies<ElementCompute> mul;
     auto silu_lhs = silu(convert_lhs);
-    return ElementOutput(mul(convert_lhs, convert_rhs));
+    return ElementOutput(mul(silu_lhs, convert_rhs));
   }
 };
 
