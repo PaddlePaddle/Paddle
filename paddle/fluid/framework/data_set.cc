@@ -62,7 +62,7 @@ DatasetImpl<T>::DatasetImpl()
       pull_sparse_to_local_thread_num_(0),
       filelist_(),
       preload_threads_(),
-      current_phase_(0),
+      current_phase_(),
       consume_task_pool_(),
       input_records_(),
       use_slots_(),

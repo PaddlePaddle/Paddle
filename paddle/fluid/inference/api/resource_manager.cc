@@ -130,7 +130,9 @@ void CPUContextResource::InitCPUResource() {
   cpu_eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
-CPUContextResource::CPUContextResource() { InitCPUResource(); }
+CPUContextResource::CPUContextResource() : cpu_eigen_device_(nullptr) {
+  InitCPUResource();
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
