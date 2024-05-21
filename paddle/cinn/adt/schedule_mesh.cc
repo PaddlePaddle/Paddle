@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/adt/schedule_mesh.h"
 #include "paddle/cinn/adt/print.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 namespace {
@@ -63,7 +63,13 @@ std::size_t GetOutputRankImpl(
 std::size_t GetOutputRankImpl(
     const ScheduleMeshTranspose<ScheduleMesh>& sched_transpose) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
-  CHECK_EQ(GetOutputRank(sched_mesh), perm.value()->size());
+  PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == perm.value()->size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The size of perm should be equal to the output rank, "
+                        "but got perm size = %d, output rank = %d.",
+                        perm.value()->size(),
+                        GetOutputRank(sched_mesh)));
   return perm.value()->size();
 }
 
@@ -398,7 +404,10 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   List<LoopSize> reshape_to{};
   for (const auto& dim : shape) {
     if (dim < 0) {
-      CHECK_EQ(origin_numel % numel, 0);
+      PADDLE_ENFORCE_EQ(origin_numel % numel == 0UL,
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The origin_numel should be divisible by numel"));
       reshape_to->emplace_back(origin_numel / numel);
     } else {
       reshape_to->emplace_back(dim);
@@ -417,12 +426,22 @@ ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
   const auto& ret = ScheduleMeshPadding<ScheduleMesh>(sched_mesh, padding_to);
   const auto& input_dims = GetOutputDimValues(sched_mesh);
   const auto& output_dims = GetOutputDimValues(ret);
-  CHECK_EQ(input_dims->size(), output_dims->size());
+  PADDLE_ENFORCE_EQ(
+      input_dims->size(),
+      output_dims->size(),
+      phi::errors::InvalidArgument(
+          "The size of input_dims and output_dims should be equal, "
+          "but got input_dims size = %d, output_dims size = %d.",
+          input_dims->size(),
+          output_dims->size()));
   for (std::size_t i = 0; i < input_dims->size(); ++i) {
     if (input_dims->at(i).Has<std::int64_t>() &&
         output_dims->at(i).Has<std::int64_t>()) {
-      CHECK_LE(input_dims->at(i).Get<std::int64_t>(),
-               output_dims->at(i).Get<std::int64_t>());
+      PADDLE_ENFORCE_LE(input_dims->at(i).Get<std::int64_t>(),
+                        output_dims->at(i).Get<std::int64_t>(),
+                        phi::errors::InvalidArgument(
+                            "The input_dims should be equal to output_dims, "
+                            "but got input_dims not equal to output_dims = "));
     }
   }
   return ret;
@@ -432,7 +451,13 @@ ScheduleMesh MeshPaddingRoundUp(
     const ScheduleMesh& sched_mesh,
     const std::vector<std::optional<std::int64_t>>& align_sizes) {
   const auto& shape = GetOutputDimValues(sched_mesh);
-  CHECK_EQ(shape->size(), align_sizes.size());
+  PADDLE_ENFORCE_EQ(shape->size(),
+                    align_sizes.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of shape and align_sizes should be equal, "
+                        "but got shape size = %d, align_sizes size = %d.",
+                        shape->size(),
+                        align_sizes.size()));
   List<LoopSize> padding_to{};
   bool create_new_sched_mesh = false;
   for (std::size_t i = 0; i < shape->size(); ++i) {

@@ -41,7 +41,7 @@ class SendOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const phi::Place& place) const override {
     auto ins = Inputs("X");
     auto is_sparse = Attr<int>("is_sparse");
     auto table_id = Attr<int>("table_id");

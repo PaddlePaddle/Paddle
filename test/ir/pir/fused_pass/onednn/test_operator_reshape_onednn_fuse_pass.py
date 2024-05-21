@@ -137,7 +137,7 @@ class TestFcReshapeFusePass(PassTest):
                             )
                             out = paddle.assign(out)
                             self.pass_attr_list = [
-                                {'fc_fuse_pass': {}},
+                                {'matmul_add_act_fuse_pass': {}},
                                 {"fc_onednn_enable_pass": {}},
                                 {"operator_reshape_onednn_fuse_pass": {}},
                             ]

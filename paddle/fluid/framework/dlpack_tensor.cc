@@ -124,6 +124,7 @@ struct DLDeviceVisitor {
 struct PaddleDLMTensor {
   phi::DenseTensor handle;
   DLManagedTensor tensor;
+  PaddleDLMTensor() : tensor() {}
 };
 
 void deleter(DLManagedTensor *arg) {

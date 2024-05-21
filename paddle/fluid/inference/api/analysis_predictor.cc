@@ -118,6 +118,7 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -931,7 +932,11 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
+            if (pass->name() == "matmul_add_act_fuse_pass") {
+              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+            }
+            pass_pm.AddPass(std::move(pass));
           }
         }
 
@@ -1010,6 +1015,9 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+      auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+      remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+      lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
       if (FLAGS_pir_apply_inplace_pass) {
         lowered_pm.AddPass(::pir::CreateInplacePass());
       }
@@ -1476,6 +1484,8 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2401,6 +2411,8 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
 #endif
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2522,8 +2534,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
-    auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    pool.SyncDeviceContext(place_);
     switch_stream = true;
   }
   return ZeroCopyRun(switch_stream);

@@ -658,7 +658,7 @@ class MultiGRUHandler {
 
   const OneDNNContext& dev_ctx_;
   const dnnl::engine engine_;
-  const platform::Place place_;
+  const phi::Place place_;
   const bool origin_mode_;
   const int layers_;
 

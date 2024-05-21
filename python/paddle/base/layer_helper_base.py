@@ -26,6 +26,7 @@ from .framework import (
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 from .initializer import _global_bias_initializer, _global_weight_initializer
@@ -377,7 +378,7 @@ class LayerHelperBase:
                 else default_initializer
             )
         if attr.name is None:
-            if in_dygraph_mode():
+            if in_dynamic_or_pir_mode():
                 attr.name = unique_name.generate(".".join([self.name, suffix]))
             else:
                 attr.name = self.main_program._name_generator.generate(
