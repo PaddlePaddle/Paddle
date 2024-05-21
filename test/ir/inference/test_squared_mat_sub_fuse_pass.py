@@ -155,7 +155,7 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
             },
             outputs=["mul_out"],
         )
-
+        print("zyt===program_config=", program_config)
         return program_config
 
     def sample_predictor_configs(self, program_config):

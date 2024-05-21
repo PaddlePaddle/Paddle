@@ -264,7 +264,7 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 x1 = paddle.rand(shape=[3, 3], dtype="float32")
                 x1.stop_gradient = False
                 weight = paddle.full(
-                    shape=[3, 3], fill_value="0.5", dtype="float32"
+                    shape=[3, 3], fill_value=0.5, dtype="float32"
                 )
                 y = paddle.nn.functional.linear(x1, weight)
                 y.stop_gradient = True

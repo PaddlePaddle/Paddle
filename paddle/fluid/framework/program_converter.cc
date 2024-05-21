@@ -32,7 +32,7 @@ using paddle::experimental::ExtractPlainVector;
 using paddle::experimental::WrapAsScalars;
 
 static std::unordered_set<std::string> needConvertedOperators = {
-    "assign_value", "set_value", "set_value_grad"};
+    "assign_value", "set_value", "set_value_grad", "fill_constant"};
 
 std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
     ProgramDesc* program) {
@@ -246,6 +246,29 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("values", values);
 }
 
+void ConvertFillConstantOp(OpDesc* op) {
+  VLOG(3) << "convert old fillconstant op to new";
+  paddle::experimental::Scalar value;
+  /**
+   * 1.当测试
+   *set_value的时候，fill_constant就默认是new_program，为什么是new_program?
+   *   因为测试test_convert_program的时候，使用了ones调用了fill_constant
+   *   因此传递过来的已经是 new_program
+   * 2.当推理的时候，传递过来的是 old_program,因此 需要old_program
+   *转换为new_program
+   **/
+  VLOG(3) << "op->Type = " << op->Type();
+  VLOG(3) << "op->getAttrType = " << op->GetAttrType("value", false);
+  if (op->GetAttrType("value", false) == proto::AttrType::SCALAR) {
+    // is already new_program
+    return;
+  }
+  if (op->HasAttr("value")) {
+    float fp32_values = PADDLE_GET_CONST(float, op->GetAttr("value", false));
+    value = paddle::experimental::Scalar(fp32_values);
+  }
+  op->SetAttr("value", value);
+}
 void ConvertAssignValueOp(OpDesc* op) {
   VLOG(3) << "convert old assign value op to new";
   std::vector<paddle::experimental::Scalar> values;
@@ -316,6 +339,9 @@ void ConvertProgram(ProgramDesc* program) {
     }
     if (op_type == "assign_value") {
       ConvertAssignValueOp(pair.second);
+    }
+    if (op_type == "fill_constant") {
+      ConvertFillConstantOp(pair.second);
     }
   }
 }

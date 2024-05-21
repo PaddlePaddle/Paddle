@@ -175,11 +175,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       if (PyObject_CheckIRValue(value_obj)) {
         value = CastPyArg2Value(value_obj, "full", 1);
       } else {
-        float value_tmp = CastPyArg2Float(value_obj, "full", 1);
-        value = paddle::dialect::full(std::vector<int64_t>{1},
-                                      value_tmp,
-                                      phi::DataType::FLOAT32,
-                                      phi::CPUPlace());
+        auto value_tmp = CastPyArg2Scalar(value_obj, "full", 1);
+
+        value = paddle::dialect::full(
+            std::vector<int64_t>{1}, value_tmp, dtype, phi::CPUPlace());
       }
 
       CallStackRecorder callstack_recoder("full_with_tensor");

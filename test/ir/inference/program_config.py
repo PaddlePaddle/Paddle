@@ -404,6 +404,8 @@ def create_fake_model(program_config):
     for op_config in program_config.ops:
         op_desc = main_block_desc.append_op()
         op_desc.set_type(op_config.type)
+        if op_config.type == "fill_constant":
+            print(f"before===framework.canonicalize_attrs:,{op_config.attrs}")
         # canonicalize scalar attrs
         if OpProtoHolder.instance().has_op_proto(op_config.type):
             proto = OpProtoHolder.instance().get_op_proto(op_config.type)
@@ -412,7 +414,10 @@ def create_fake_model(program_config):
             )
         else:
             canonicalized_attrs = op_config.attrs
-
+        if op_config.type == "fill_constant":
+            print(
+                f"after===framework.canonicalize_attrs:={canonicalized_attrs}"
+            )
         for name, values in op_config.inputs.items():
             op_desc.set_input(name, values)
         for name, values in canonicalized_attrs.items():
@@ -451,7 +456,7 @@ def create_fake_model(program_config):
                     )
         if op_config.type not in _OP_WITHOUT_KERNEL_SET:
             op_desc.infer_var_type(main_block_desc)
-            op_desc.infer_shape(main_block_desc)
+            op_desc.infer_shape(main_block_desc)  # here
         op_desc.check_attrs()
 
     for index, name in enumerate(program_config.outputs):
@@ -465,7 +470,6 @@ def create_fake_model(program_config):
         op_desc._set_attr("col", index)
 
     model = main_program_desc.serialize_to_string()
-
     util_program._sync_with_cpp()
     place = base.CPUPlace()
     executor = base.Executor(place)
@@ -473,7 +477,7 @@ def create_fake_model(program_config):
     with base.scope_guard(scope):
         executor.run(util_program)
         params = scope.find_var("out_var_0").get_bytes()
-
+    print("-------------end")
     return model, params
 
 

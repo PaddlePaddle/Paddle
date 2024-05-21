@@ -140,7 +140,9 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
              "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
-    AddAttr<float>("value", "(float, default 0.0f) The value to be filled")
+
+    AddAttr<paddle::experimental::Scalar>("value",
+                                          "(Scalar) The value to be filled")
         .SetDefault(0.0f);
     AddAttr<std::string>(
         "str_value",
@@ -199,4 +201,10 @@ REGISTER_OP_VERSION(fill_constant)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "place_type",
             "In order to support tensor in CUDAPinnedPlace and XPUPlace",
-            -1));
+            -1))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, change the type of attribute [value] to Scalar
+      to support generic type)ROC",
+        paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+            "value", "generic value", 0.0));

@@ -30,8 +30,10 @@ class FillConstantOpConverter : public OpConverter {
     std::string str_value =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     if (str_value.empty()) {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      str_value = std::to_string(value);
+      // float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                    op_desc.GetAttr("value"));
+      str_value = std::to_string(value.to<float>());
     }
     nvinfer1::ILayer* layer = nullptr;
     if ((op_desc.HasInput("ShapeTensor") &&

@@ -990,7 +990,7 @@ class PipelineOptimizer:
                     f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
-                loss_scale = float(op.attr('value'))
+                loss_scale = float(op.attr('value').value())
                 loss_scale = loss_scale / self._num_microbatches
                 op._set_attr('value', loss_scale)
                 break

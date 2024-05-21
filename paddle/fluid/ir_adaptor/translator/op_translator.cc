@@ -2079,11 +2079,14 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       const OpDesc& op_desc) override {
     auto& attribute_translator = AttributeTranslator::instance();
     paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
-    float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+    // auto value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+    auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                  op_desc.GetAttr("value"));
+
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
-    auto attr_value = pir::FloatAttribute::get(ctx, value);
-
+    auto attr_value = paddle::dialect::ScalarAttribute::get(ctx, value);
+    // auto attr_value = pir::FloatAttribute::get(ctx, value);
     pir::AttributeMap attribute_map = {
         {"shape",
          attribute_translator("paddle::dialect::IntArrayAttribute",
@@ -2159,8 +2162,14 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
       auto defining_info = (*param_map)[value_tensor_vars[0]];
       op_inputs.push_back(defining_info.value);
     } else {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      pir::Attribute new_attr = pir::FloatAttribute::get(ctx, value);
+      // float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      // pir::Attribute new_attr = pir::FloatAttribute::get(ctx, value);
+      auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                    op_desc.GetAttr("value"));
+      // pir::Attribute new_attr = pir::FloatAttribute::get(ctx,
+      // value.to<float>());
+      pir::Attribute new_attr =
+          paddle::dialect::ScalarAttribute::get(ctx, value);
       auto defining_op =
           InsertFullOperationForAttributeInput(ctx, block, new_attr);
       op_inputs.push_back(defining_op->result(0));

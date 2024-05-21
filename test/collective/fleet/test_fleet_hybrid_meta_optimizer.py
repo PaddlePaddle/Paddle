@@ -966,7 +966,9 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                     * strategy.sharding_configs['dp_degree']
                 )
                 loss_scale = 1.0 / scale
-                self.assertAlmostEqual(float(op.attr('value')), loss_scale)
+                self.assertAlmostEqual(
+                    float(op.attr('value').value()), loss_scale
+                )
 
         # global, sharding, pp_send, pp_recv
         self.assertEqual(

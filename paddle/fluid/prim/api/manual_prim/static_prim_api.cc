@@ -54,7 +54,7 @@ Tensor full<DescTensor>(const IntArray& shape,
       op->SetAttr("str_value", std::to_string(value.to<float>()));
       break;
     case phi::DataType::FLOAT32:
-      op->SetAttr("value", value.to<float>());
+      op->SetAttr("value", value);
       break;
     case phi::DataType::FLOAT64: {
       std::stringstream ss;
