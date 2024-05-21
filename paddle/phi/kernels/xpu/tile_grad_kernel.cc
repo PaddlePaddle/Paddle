@@ -83,8 +83,8 @@ void TileGradKernel(const Context& dev_ctx,
     using XPUType = typename XPUTypeTrait<T>::Type;
     // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
     // xshape, const std::vector<int>& rdims)
-    const auto* out_data = out_grad.data<XPUType>();
-    auto* x_grad_data = x_grad->data<XPUType>();
+    const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
+    auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
     int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                      out_data,
                                      x_grad_data,
@@ -96,4 +96,9 @@ void TileGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(tile_grad, XPU, ALL_LAYOUT, phi::TileGradKernel, float) {}
+PD_REGISTER_KERNEL(tile_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TileGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}

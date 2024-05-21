@@ -110,9 +110,9 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> out_shape;
   std::vector<int64_t> axis_copy(axis);
 
-  for (int64_t i = 0; i < static_cast<int64_t>(axis_copy.size()); i++) {
-    if (axis_copy[i] < 0) {
-      axis_copy[i] += x_ndim + 1;
+  for (auto& i : axis_copy) {
+    if (i < 0) {
+      i += x_ndim + 1;
     }
   }
 
@@ -183,9 +183,9 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
 
   std::vector<int64_t> axis_copy(axis);
 
-  for (int64_t i = 0; i < static_cast<int64_t>(axis_copy.size()); i++) {
-    if (axis_copy[i] < 0) {
-      axis_copy[i] += x_ndim + 1;
+  for (auto& i : axis_copy) {
+    if (i < 0) {
+      i += x_ndim + 1;
     }
   }
 

@@ -39,6 +39,21 @@ void AngleGradInferMeta(const MetaTensor& x,
   UnchangedInferMeta(x, x_grad);
 }
 
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* input_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad) {
+  input_grad->set_dims(input.dims());
+  input_grad->set_dtype(input.dtype());
+  w_grad->set_dims(w.dims());
+  w_grad->set_dtype(w.dtype());
+  bias_grad->set_dims(bias.dims());
+  bias_grad->set_dtype(bias.dtype());
+}
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,
@@ -229,6 +244,12 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
+  if (dqkv) {
+    dqkv->share_meta(qkv);
+  }
+}
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
@@ -303,6 +324,29 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
 
   logits_grad->set_dims(softmax.dims());
   logits_grad->set_dtype(softmax.dtype());
+}
+
+void CudnnLSTMGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    MetaTensor* x_grad,
+    MetaTensor* init_h_grad,
+    MetaTensor* init_c_grad,
+    std::vector<MetaTensor*> weight_list_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (init_h_grad) {
+    init_h_grad->share_meta(init_h);
+  }
+  if (init_c_grad) {
+    init_c_grad->share_meta(init_c);
+  }
+  if (!weight_list_grad.empty()) {
+    UnchangedMultiInferMeta(weight_list.get(), weight_list_grad);
+  }
 }
 
 void DeformableConvGradInferMeta(const MetaTensor& x,
@@ -843,10 +887,21 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
                             bool keep_dim,
+                            const std::string& mode,
                             MetaTensor* x_grad) {
   auto x_dims = x.dims();
   x_grad->set_dims(x_dims);
   x_grad->set_dtype(x.dtype());
+}
+
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
+  }
 }
 
 void NceGradInferMeta(const MetaTensor& input,
@@ -873,6 +928,16 @@ void NceGradInferMeta(const MetaTensor& input,
   if (bias_grad) {
     bias_grad->set_dims(bias_dims);
     bias_grad->set_dtype(bias.dtype());
+  }
+}
+
+void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                             std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
   }
 }
 
@@ -1006,6 +1071,19 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             float spatial_scale,
                             MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void RankAttentionGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& rank_offset,
+                                const MetaTensor& rank_param,
+                                const MetaTensor& input_help,
+                                const MetaTensor& ins_rank,
+                                const MetaTensor& out_grad,
+                                int max_rank,
+                                int max_size,
+                                MetaTensor* rank_param_grad) {
+  rank_param_grad->set_dims(rank_param.dims());
+  rank_param_grad->set_dtype(rank_param.dtype());
 }
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
@@ -1356,6 +1434,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
                             bool time_major,
+                            float rotary_emb_base,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {

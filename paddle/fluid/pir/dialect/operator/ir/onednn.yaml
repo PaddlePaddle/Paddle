@@ -1,13 +1,3 @@
-- op : add_n_onednn
-  args : (Tensor[] inputs)
-  output : Tensor(out)
-  infer_meta:
-    func: AddNInferMeta
-    param: [inputs]
-  kernel:
-    func: add_n
-    param: [inputs]
-
 - op : dequantize
   args : (Tensor input, float scale=1.0, float shift=0.0)
   output : Tensor(output)

@@ -27,6 +27,7 @@
     spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : add_grad
+    data_type: out_grad
   no_need_buffer : x, y
   composite : add_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : add_double_grad
@@ -80,6 +81,17 @@
   kernel :
     func : assign
   inplace : (out_grad -> x_grad)
+
+- backward_op : batch_fc_grad
+  forward : batch_fc (Tensor input, Tensor w, Tensor bias) -> Tensor(out)
+  args : (Tensor input, Tensor w, Tensor bias, Tensor out_grad)
+  output : Tensor(input_grad), Tensor(w_grad), Tensor(bias_grad)
+  infer_meta :
+    func : BatchFCGradInferMeta
+  kernel :
+    func : batch_fc_grad
+    data_type : out_grad
+  no_need_buffer : bias
 
 - backward_op : batch_norm_double_grad
   forward : batch_norm_grad (Tensor x, Tensor scale, Tensor bias, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor grad_out, float momentum, float epsilon, str data_format, bool is_test, bool use_global_stats, bool trainable_statistics) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
@@ -190,15 +202,15 @@
 
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
-  args : (Tensor y, Tensor out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
   output : Tensor(y_grad), Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
-    param : [y, grad_x, grad_x]
+    param : [y, out, out]
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad
@@ -410,6 +422,7 @@
     spmd_rule : MatmulGradInferSpmd
   kernel :
     func : matmul_grad
+  composite: matmul_grad(x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad)
   backward : matmul_double_grad
 
 - backward_op : matmul_with_flatten_grad
@@ -626,6 +639,28 @@
     func : prod_grad
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
+- backward_op : push_box_sparse
+  forward : pull_box_sparse (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1) -> Tensor[](out){ids.size()}
+  args : (Tensor[] ids, Tensor[] out_grad_in, bool is_sparse = false, bool is_distributed = false, int size = 1)
+  output : Tensor[](out_grad_out){out_grad_in.size()}
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [out_grad_in]
+  kernel :
+    func : push_box_sparse
+    data_type : out_grad_in
+  inplace : (out_grad_in -> out_grad_out)
+
+- backward_op : rank_attention_grad
+  forward : rank_attention (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0) -> Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, Tensor input_help, Tensor ins_rank, Tensor out_grad, int max_rank = 3, int max_size = 0)
+  output : Tensor(rank_param_grad)
+  infer_meta :
+    func : RankAttentionGradInferMeta
+  kernel :
+    func : rank_attention_grad
+    data_type : out_grad
+
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int repeats, int axis)
@@ -666,6 +701,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param : [xshape, out_grad]
+    spmd_rule: StaticReshapeGradInferSpmd
   kernel :
     func : reshape_grad
     param : [out_grad]
@@ -729,6 +765,16 @@
   kernel:
     func: set_value_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+
+- backward_op : shuffle_channel_grad
+  forward : shuffle_channel (Tensor x, int group = 1) -> Tensor(out)
+  args : (Tensor out_grad, int group = 1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : shuffle_channel_grad
 
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)

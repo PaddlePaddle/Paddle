@@ -147,10 +147,12 @@ std::map<int, int64_t> GetSplitAxisWithDimsMapping(
 }
 
 std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces) {
-  std::vector<int64_t> result(num_of_pieces, total_nums / num_of_pieces);
-  int64_t remain_nums = total_nums % num_of_pieces;
-  for (int64_t i = 0; i < remain_nums; ++i) {
-    result[i] += 1;
+  bool has_remainder = (total_nums % num_of_pieces != 0);
+  std::vector<int64_t> result(num_of_pieces,
+                              (total_nums + num_of_pieces - 1) / num_of_pieces);
+  if (has_remainder) {
+    int64_t& last_value = result.back();
+    last_value = last_value - (last_value * num_of_pieces - total_nums);
   }
   return result;
 }
@@ -242,8 +244,8 @@ std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh) {
     std::vector<int64_t> sub_process_ids(process_ids.begin() + start_position,
                                          process_ids.begin() + end_position);
 
-    sub_process_meshes.emplace_back(ProcessMesh(
-        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names));
+    sub_process_meshes.emplace_back(
+        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names);
   }
   return sub_process_meshes;
 }

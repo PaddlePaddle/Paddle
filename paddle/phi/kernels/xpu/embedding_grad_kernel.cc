@@ -36,6 +36,10 @@ void EmbeddingGradKernel(const Context& ctx,
   auto d_output_t = &out_grad;
   auto d_table_t = weight_grad;
 
+  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+    ctx.Wait();
+  }
+
   int64_t ids_numel = ids_t->numel();
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),

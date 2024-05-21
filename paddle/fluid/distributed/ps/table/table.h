@@ -32,7 +32,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -162,6 +162,8 @@ class Table {
   // for patch model
   virtual void Revert() {}
   virtual void CheckSavePrePatchDone() {}
+
+  virtual void SetDayId(int day_id) {}
 
  protected:
   virtual int32_t Initialize() = 0;

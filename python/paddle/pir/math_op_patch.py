@@ -141,6 +141,7 @@ def monkey_patch_value():
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
+    @property
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
@@ -590,7 +591,7 @@ def monkey_patch_value():
             )
 
     def value_hash(self):
-        raise NotImplementedError('In python Value can not hash!')
+        return hash(id(self))
 
     import paddle
 

@@ -37,7 +37,6 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._build_strategy.async_mode, True)
-        self.assertEqual(strategy._execute_strategy.num_threads, 2)
 
         # test set_program_config using DistributeTranspilerConfig()
         program_config_class = DistributeTranspilerConfig()
@@ -158,30 +157,6 @@ class TestStrategyFactor(unittest.TestCase):
             Exception,
             strategy.set_trainer_runtime_config,
             trainer_runtime_config_illegal,
-        )
-
-        # test set_execute_strategy using base.ExecutionStrategy
-        exec_strategy_class = base.ExecutionStrategy()
-        exec_strategy_class.num_threads = 4
-        strategy.set_execute_strategy(exec_strategy_class)
-        exec_strategy = strategy.get_execute_strategy()
-        self.assertEqual(exec_strategy.num_threads, 4)
-
-        # test set_execute_strategy using dict
-        exec_strategy_dict = {}
-        exec_strategy_dict['num_threads'] = 8
-        strategy.set_execute_strategy(exec_strategy_dict)
-        exec_strategy = strategy.get_execute_strategy()
-        self.assertEqual(exec_strategy.num_threads, 8)
-
-        # test set_execute_strategy exception
-        exec_strategy_dict['unknown'] = None
-        self.assertRaises(
-            Exception, strategy.set_execute_strategy, exec_strategy_dict
-        )
-        exec_strategy_illegal = None
-        self.assertRaises(
-            Exception, strategy.set_execute_strategy, exec_strategy_illegal
         )
 
     def test_half_async_strategy(self):

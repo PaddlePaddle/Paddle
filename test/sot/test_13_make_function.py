@@ -30,7 +30,7 @@ def make_fn(x: paddle.Tensor):
     return fn(1) + fn(2, c=5) + x
 
 
-class TestExecutor(TestCaseBase):
+class TestMakeFunction(TestCaseBase):
     def test_simple(self):
         self.assert_results(make_fn, paddle.to_tensor(1))
 

@@ -173,9 +173,7 @@ def minimize_bfgs(
             )
         else:
             raise NotImplementedError(
-                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".format(
-                    line_search_fn
-                )
+                f"Currently only support line_search_fn = 'strong_wolfe', but the specified is '{line_search_fn}'"
             )
         num_func_calls += ls_func_calls
 

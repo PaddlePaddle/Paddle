@@ -21,7 +21,7 @@
 #include <iostream>
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 using namespace std;  // NOLINT
 

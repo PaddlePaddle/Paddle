@@ -30,7 +30,8 @@ void CalcMedianFunc(const Context& dev_ctx,
                     int64_t stride,
                     int64_t pre_dim,
                     T* o_ptr,
-                    int64_t* m_ptr) {
+                    int64_t* m_ptr,
+                    const std::string& mode) {
   DenseTensor sort_out;
   DenseTensor sort_indices;
   auto sort_dim = x.dims();
@@ -51,12 +52,16 @@ void CalcMedianFunc(const Context& dev_ctx,
   int64_t offset = 0;
   int64_t i = 0;
   bool is_ori_odd = stride & 1;
-  if (ignore_nan) {
+  if (ignore_nan) {  // ignore_nan - has nan value; sort_k = max_valid_num
     for (i = 0; i < pre_dim; i++) {
       offset = i * sort_k;
       if (nan_counts[i] == stride) {
-        m_ptr[i * 2] = -1;
-        m_ptr[i * 2 + 1] = -1;
+        if (mode == "avg") {
+          m_ptr[i * 2] = -1;
+          m_ptr[i * 2 + 1] = -1;  // index is -1
+        } else {
+          m_ptr[i] = -1;
+        }
         o_ptr[i] = sort_out_ptr[offset];
       } else {
         int64_t nan_k = nan_counts[i] > 0
@@ -65,39 +70,64 @@ void CalcMedianFunc(const Context& dev_ctx,
         int64_t row_pos = static_cast<int64_t>(nan_k >> 1);
         int64_t pos = offset + row_pos;
         if (nan_k & 1) {
-          m_ptr[2 * i] = sort_indices_ptr[pos];
-          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          if (mode == "avg") {
+            m_ptr[2 * i] = sort_indices_ptr[pos];
+            m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          } else {
+            m_ptr[i] = sort_indices_ptr[pos];
+          }
           o_ptr[i] = sort_out_ptr[pos];
         } else {
-          m_ptr[2 * i] =
-              row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          // nan_k is even
           T m_val_left =
               row_pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
           T m_val_right = sort_out_ptr[pos];
-          o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+          if (mode == "avg") {
+            m_ptr[2 * i] =
+                row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+            m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+            o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+          } else {
+            // mode == "min": output median value should be the left val since
+            // the sort_out is in ascending order
+            m_ptr[i] =
+                row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+            o_ptr[i] = m_val_left;
+          }
         }
       }
     }
-  } else {
+  } else {  // not ignore_nan - no nan value; sort_k = stride/2 + 1
     if (is_ori_odd) {
       for (i = 0; i < pre_dim; i++) {
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
         o_ptr[i] = sort_out_ptr[pos];
-        m_ptr[2 * i] = sort_indices_ptr[pos];
-        m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+        if (mode == "avg") {
+          m_ptr[2 * i] = sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+        } else {
+          m_ptr[i] = sort_indices_ptr[pos];
+        }
       }
     } else {
       for (i = 0; i < pre_dim; i++) {
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
-        m_ptr[2 * i] =
-            sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
-        m_ptr[2 * i + 1] = sort_indices_ptr[pos];
         T m_val_left = sort_k > 1 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
         T m_val_right = sort_out_ptr[pos];
-        o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+        if (mode == "avg") {
+          m_ptr[2 * i] =
+              sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          o_ptr[i] = (m_val_left + m_val_right) / div_factor;
+        } else {
+          // mode == "min": output median value should be the left val since the
+          // sort_out is in ascending order
+          m_ptr[i] =
+              sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+          o_ptr[i] = m_val_left;
+        }
       }
     }
   }
@@ -106,6 +136,7 @@ void CalcMedianFunc(const Context& dev_ctx,
 template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
+                         const std::string& mode,
                          DenseTensor* out,
                          DenseTensor* median_index) {
   const T* x_data = x.data<T>();
@@ -154,8 +185,12 @@ void ProcessMedianKernel(const Context& dev_ctx,
     if (total_nan_num == numel) {
       for (i = 0; i < pre_dim; i++) {
         out_data[i] = std::numeric_limits<T>::quiet_NaN();
-        m_data[2 * i] = -1;
-        m_data[2 * i + 1] = -1;
+        if (mode == "avg") {
+          m_data[2 * i] = -1;
+          m_data[2 * i + 1] = -1;  // indices are all -1
+        } else {
+          m_data[i] = -1;
+        }
       }
       return;
     }
@@ -171,7 +206,8 @@ void ProcessMedianKernel(const Context& dev_ctx,
                              stride,
                              pre_dim,
                              out_data,
-                             m_data);
+                             m_data,
+                             mode);
 }
 
 template <typename T, typename Context>
@@ -179,18 +215,23 @@ void NanmedianKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
                      bool keepdim UNUSED,
+                     const std::string& mode,
                      DenseTensor* out,
                      DenseTensor* median_index) {
   DenseTensor tmp_x;
   auto rank = x.dims().size();
   if ((axes.size() == 0) || rank <= 1) {
     tmp_x = x;
-    tmp_x.Resize({x.numel()});
+    tmp_x.Resize({x.numel()});  // flatten
   } else {
-    funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
+    funcs::PreprocessMedianKernel<T, Context>(
+        dev_ctx,
+        x,
+        axes,
+        &tmp_x);  // resize to 2D so as to compute median on last axis
   }
 
-  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, out, median_index);
+  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, mode, out, median_index);
 }
 
 }  // namespace phi

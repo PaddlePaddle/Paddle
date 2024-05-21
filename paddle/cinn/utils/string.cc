@@ -20,6 +20,7 @@
 #include <iomanip>
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace utils {
@@ -174,7 +175,8 @@ std::string Attribute2String(const utils::Attribute &attr) {
     }
     ss << "[" + cinn::utils::Join(attrs, ", ") + "]";
   } else {
-    LOG(FATAL) << "Unkown attribute data type! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unkown attribute data type! Please check."));
   }
   return ss.str();
 }

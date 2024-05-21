@@ -94,6 +94,8 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
     phi::DataType dtype =
         attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     return dtype;
+  } else if (attr_type_name == "paddle::dialect::ScalarAttribute") {
+    return attr.dyn_cast<dialect::ScalarAttribute>().data();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",

@@ -27,7 +27,7 @@ struct CacheAllocator {
     place_ = place;
   }
 
-  ~CacheAllocator() { VLOG(2) << "destory allocator"; }
+  ~CacheAllocator() { VLOG(2) << "destroy allocator"; }
 
   char* allocate(std::ptrdiff_t num_bytes) {
     VLOG(2) << "allocate " << num_bytes << " bytes";

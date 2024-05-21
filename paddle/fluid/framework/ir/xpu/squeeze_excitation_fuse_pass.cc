@@ -310,9 +310,10 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     if (mul_1_w_dims[0] != mul_2_w_dims[1] ||
         mul_1_w_dims[1] != mul_2_w_dims[0] ||
         mul_1_w_len != mul_1_w_dims[0] * mul_1_w_dims[1]) {
-      LOG(FATAL) << "Error: Dims of excitation mul1 weight is: " << mul_1_w_dims
-                 << ", but get dims of excitation mul2 weight is: "
-                 << mul_2_w_dims;
+      std::stringstream ss;
+      ss << "Error: Dims of excitation mul1 weight is: " << mul_1_w_dims
+         << ", but get dims of excitation mul2 weight is: " << mul_2_w_dims;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     std::vector<int16_t> encode_filter_int16;
     encode_filter_int16.resize(mul_1_w_len + mul_2_w_len);

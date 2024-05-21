@@ -117,8 +117,8 @@ namespace phi {
       static_assert(out_idx == 0,                                            \
                     "Kernel's Input should appear before Outputs.");         \
       const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);          \
-      std::vector<const tensor_type*> arg = std::move(                       \
-          ctx->InputsBetween<tensor_type>(range.first, range.second));       \
+      std::vector<const tensor_type*> arg =                                  \
+          ctx->InputsBetween<tensor_type>(range.first, range.second);        \
       KernelCallHelper<Tail...>::                                            \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
@@ -202,22 +202,22 @@ namespace phi {
     }                                                                    \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)          \
-  template <typename... Tail>                                                 \
-  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {               \
-    template <int dev_ctx_idx,                                                \
-              int in_idx,                                                     \
-              int attr_idx,                                                   \
-              int out_idx,                                                    \
-              typename... PreviousArgs>                                       \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
-      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);         \
-      std::vector<tensor_type*> arg = std::move(                              \
-          ctx->MutableOutputBetween<tensor_type>(range.first, range.second)); \
-      KernelCallHelper<Tail...>::                                             \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(       \
-              ctx, pargs..., arg);                                            \
-    }                                                                         \
+#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)         \
+  template <typename... Tail>                                                \
+  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {              \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {        \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);        \
+      std::vector<tensor_type*> arg =                                        \
+          ctx->MutableOutputBetween<tensor_type>(range.first, range.second); \
+      KernelCallHelper<Tail...>::                                            \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
+              ctx, pargs..., arg);                                           \
+    }                                                                        \
   }
 
 #define PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_SCALAR(attr_type)       \

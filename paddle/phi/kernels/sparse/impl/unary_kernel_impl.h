@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -38,6 +37,7 @@ namespace sparse {
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
     out->SetIndicesDict(x.GetIndicesDict());                               \
+    out->SetKmaps(x.GetKmaps());                                           \
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -95,30 +95,33 @@ template <typename T, typename Context>
 void AbsCooKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   SparseCooTensor* out) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  *(out->mutable_indices()) = x.indices();
+
+  DenseTensor* out_values = out->mutable_values();
+  const DenseTensor& x_values = x.values();
+  out_values->Resize(x_values.dims());
+  dev_ctx.template Alloc<T>(out_values);
+
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
+
   out->SetIndicesDict(x.GetIndicesDict());
-  if (out->dtype() == DataType::COMPLEX64 ||
-      out->dtype() == DataType::COMPLEX128) {
-    DenseTensor* out_values = out->mutable_non_zero_elements();
-    out->set_type(out_values->dtype());
-  }
 }
 
 template <typename T, typename Context>
 void AbsCsrKernel(const Context& dev_ctx,
                   const SparseCsrTensor& x,
                   SparseCsrTensor* out) {
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
+
+  DenseTensor* out_values = out->mutable_values();
+  const DenseTensor& x_values = x.values();
+  out_values->Resize(x_values.dims());
+  dev_ctx.template Alloc<T>(out_values);
+
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-
-  if (out->dtype() == DataType::COMPLEX64 ||
-      out->dtype() == DataType::COMPLEX128) {
-    DenseTensor* out_values = out->mutable_non_zero_elements();
-    out->set_type(out_values->dtype());
-  }
 }
 
 template <typename T, typename Context>
@@ -136,6 +139,7 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -186,6 +190,7 @@ void CastCooKernel(const Context& dev_ctx,
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -247,6 +252,7 @@ void IsnanCooKernel(const Context& dev_ctx,
   phi::IsnanKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

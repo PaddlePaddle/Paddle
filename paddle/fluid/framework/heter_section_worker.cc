@@ -128,7 +128,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
 
   if (is_first_stage) {  // NOLINT
     for (auto& op_desc : program_->Block(0).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       auto op_type = op->Type();
       if (listen_op_ == nullptr && op_type == "heter_listen_and_serv") {
         listen_op_ = std::move(op);
@@ -142,11 +142,11 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else if (is_last_stage) {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       int op_role = op->Attr<int>(std::string("op_role"));
       bool is_forward_op = (op_role == static_cast<int>(OpRole::kForward)) ||
                            (op_role == (static_cast<int>(OpRole::kForward) |
@@ -161,7 +161,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {

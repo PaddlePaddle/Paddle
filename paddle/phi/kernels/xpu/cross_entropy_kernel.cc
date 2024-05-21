@@ -32,139 +32,114 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(
-      logits.place().GetType() == phi::AllocationType::XPU,
-      true,
-      errors::PreconditionNotMet("This kernel only runs on XPU."));
-
   const int rank = logits.dims().size();
   const int axis = phi::funcs::CanonicalAxis(axis_in, rank);
   dev_ctx.template Alloc<T>(softmax);
   dev_ctx.template Alloc<T>(loss);
-  const int n = phi::funcs::SizeToAxis(axis, logits.dims());
-  const int d = phi::funcs::SizeFromAxis(axis, logits.dims());
-  std::vector<int> logits_dims = common::vectorize<int>(logits.dims());
-
-  int t = logits_dims[axis];
+  const int64_t n = phi::funcs::SizeToAxis(axis, logits.dims());
+  const int64_t d = phi::funcs::SizeOutAxis(axis, logits.dims());
+  const int64_t t = logits.dims()[axis];
+  int64_t len = logits.numel();
 
   auto logits_data = reinterpret_cast<const XPUType*>(logits.data<T>());
   auto softmax_data = reinterpret_cast<XPUType*>(softmax->data<T>());
   auto loss_data = reinterpret_cast<XPUType*>(loss->data<T>());
-  // softmax
+
   int r = XPU_SUCCESS;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
-          phi::backends::xpu::XPUVersion::XPU2 &&
-      soft_label && axis == rank - 1) {
-    auto labels_data = reinterpret_cast<const XPUType*>(labels.data<T>());
-    r = xpu::soft_softmax_with_cross_entropy<XPUType>(dev_ctx.x_context(),
-                                                      logits_data,
-                                                      labels_data,
-                                                      softmax_data,
-                                                      loss_data,
-                                                      n,
-                                                      d);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy");
-    return;
-  }
-
-  int len = logits.numel();
-  T* clip_logits = RAII_GUARD.alloc_l3_or_gm<T>(len);
-  PADDLE_ENFORCE_XDNN_NOT_NULL(clip_logits);
-  XPUType* clip_logits_data = reinterpret_cast<XPUType*>(clip_logits);
-
-  float max_val = 1e20;
-  float min_val = -1e20;
-  if (std::is_same<T, dtype::float16>::value) {
-    max_val = 65504;
-    min_val = -65504;
-  }
-
-  r = xpu::clip_v2<XPUType>(dev_ctx.x_context(),
-                            logits_data,
-                            clip_logits_data,
-                            len,
-                            static_cast<XPUType>(min_val),
-                            static_cast<XPUType>(max_val));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
-
-  if (use_softmax) {
-    r = xpu::softmax<XPUType>(
-        dev_ctx.x_context(), clip_logits_data, softmax_data, logits_dims, axis);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
-  } else {
-    r = xpu::copy<XPUType>(
-        dev_ctx.x_context(), clip_logits_data, softmax_data, softmax->numel());
+  if (!use_softmax) {
+    // For cross entropy only cases, logits are outputs of softmax
+    // so we just copy input logits to the softmax output.
+    r = xpu::copy<XPUType>(dev_ctx.x_context(), logits_data, softmax_data, len);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  } else if (d != 1) {
+    // Because we transpose inputs when axis != logits.dims().size() - 1, we
+    // need a temp buffer to save the transposed softmax.
+    softmax_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
   }
-  // cross_entropy
-  if (axis != rank - 1) {
-    XPUType* trans_softmax = RAII_GUARD.alloc_l3_or_gm<XPUType>(n * d);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_softmax);
-
-    r = xpu::transpose(dev_ctx.x_context(),
-                       softmax_data,
-                       trans_softmax,
-                       {n, t, d / t},
-                       {0, 2, 1});
+  if (d != 1) {
+    // The XPU transpose API supports softmax with axis. However, we do the
+    // transpose before softmax due to the following two reasons:
+    // 1. the XPU cross_entropy APIs supports cross entropy on the last dim
+    // only, so the transpose here is unavoidable for them.
+    // 2. the XPU softmax api would do the transpose internaly if axis is not
+    // the last dim and we can eliminate a transpose call if we explicitly
+    // transpose the inputs before the softmax calculation.
+    XPUType* logits_trans = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+    r = xpu::transpose<XPUType>(
+        dev_ctx.x_context(), logits_data, logits_trans, {n, t, d}, {0, 2, 1});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
-    softmax_data = trans_softmax;
+    logits_data = logits_trans;
   }
 
   if (soft_label) {
     auto labels_data = reinterpret_cast<const XPUType*>(labels.data<T>());
-    if (axis != rank - 1) {
-      XPUType* trans_label = RAII_GUARD.alloc_l3_or_gm<XPUType>(n * d);
-      PADDLE_ENFORCE_XDNN_NOT_NULL(trans_label);
-      r = xpu::transpose(dev_ctx.x_context(),
-                         labels_data,
-                         trans_label,
-                         {n, t, d / t},
-                         {0, 2, 1});
+    if (d != 1) {
+      XPUType* labels_trans =
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(labels.numel());
+      r = xpu::transpose<XPUType>(
+          dev_ctx.x_context(), labels_data, labels_trans, {n, t, d}, {0, 2, 1});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
-      labels_data = trans_label;
     }
-    r = xpu::soft_cross_entropy<XPUType>(dev_ctx.x_context(),
-                                         softmax_data,
-                                         labels_data,
-                                         loss_data,
-                                         axis == rank - 1 ? n : n * d / t,
-                                         axis == rank - 1 ? d : t);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
-  } else {
-    const int* labels_int_ptr = nullptr;
-    if (labels.dtype() == DataType::INT32) {
-      labels_int_ptr = labels.data<int32_t>();
-    } else if (labels.dtype() == DataType::INT64) {
-      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-      int* labels_int_ptr_l3 =
-          RAII_GUARD.alloc_l3_or_gm<int32_t>(labels.numel());
-      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
-
-      r = xpu::cast<int64_t, int32_t>(dev_ctx.x_context(),
-                                      labels.data<int64_t>(),
-                                      labels_int_ptr_l3,
-                                      labels.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      labels_int_ptr = labels_int_ptr_l3;
+    if (use_softmax) {
+      // 1. softmax + soft_cross_entropy
+      r = xpu::soft_softmax_with_cross_entropy<XPUType>(dev_ctx.x_context(),
+                                                        logits_data,
+                                                        labels_data,
+                                                        softmax_data,
+                                                        loss_data,
+                                                        n * d,
+                                                        t);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy");
     } else {
-      // TODO(lilujia): other data types should be handled
-      errors::Unimplemented(
-          ("cross_entropy does not support data types other than int32 and "
-           "int64"));
+      r = xpu::soft_cross_entropy<XPUType>(
+          dev_ctx.x_context(), logits_data, labels_data, loss_data, n * d, t);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
     }
-
-    r = xpu::hard_cross_entropy<XPUType, int32_t>(
-        dev_ctx.x_context(),
-        softmax_data,
-        labels_int_ptr,
-        loss_data,
-        nullptr,
-        axis == rank - 1 ? n : n * d / t,
-        axis == rank - 1 ? d : t,
-        ignore_index);
+  } else {
+    // 2. soft_cross_entropy only
+    const int* labels_data = nullptr;
+    if (labels.dtype() == phi::DataType::INT32) {
+      labels_data = labels.data<int>();
+    } else if (labels.dtype() == phi::DataType::INT64) {
+      int* labels_tmp = RAII_GUARD.alloc_l3_or_gm<int>(labels.numel());
+      r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
+                                  labels.data<int64_t>(),
+                                  labels_tmp,
+                                  labels.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      labels_data = labels_tmp;
+    } else {
+      errors::Unimplemented(
+          "Unsupported dtype for labels in hard cross entropy, only int32 and "
+          "int64 are supported.");
+    }
+    if (use_softmax) {
+      // 3. softmax+hard_cross_entropy
+      // do not use the fusion api for performance reason now.
+      r = xpu::softmax<XPUType>(
+          dev_ctx.x_context(), logits_data, softmax_data, {n * d, t}, 1);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
+    }
+    // 4. hard_cross_entropy only
+    r = xpu::hard_cross_entropy<XPUType, int>(dev_ctx.x_context(),
+                                              softmax_data,
+                                              labels_data,
+                                              loss_data,
+                                              nullptr,
+                                              n * d,
+                                              t,
+                                              -100);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
+  }
+
+  if (use_softmax && d != 1) {
+    r = xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                softmax_data,
+                                reinterpret_cast<XPUType*>(softmax->data<T>()),
+                                {n, d, t},
+                                {0, 2, 1});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
   }
 }
 
@@ -175,4 +150,5 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    ALL_LAYOUT,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

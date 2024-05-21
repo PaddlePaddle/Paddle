@@ -264,7 +264,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::FloatImm *op) {
   } else if (op->type().is_float16()) {
     return llvm::ConstantFP::get(b_->getHalfTy(), op->value);
   } else {
-    LOG(FATAL) << "illegal float type.";
+    PADDLE_THROW(phi::errors::InvalidArgument("illegal float type."));
   }
   return nullptr;
 }
@@ -1366,32 +1366,40 @@ llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
       vec, undef, llvm::ConstantVector::get(indices));
 }
 
+int GetNaiveVecAlignmentImpl(common::UnknownArch, const Target &target) {
+  PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
+}
+
+int GetNaiveVecAlignmentImpl(common::X86Arch, const Target &target) {
+  if (target.bits == Target::Bit::k32) {
+    return 256;
+  } else if (target.bits == Target::Bit::k64) {
+    return 512;
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument("get unknown bits"));
+}
+
+int GetNaiveVecAlignmentImpl(common::ARMArch, const Target &target) {
+  return 128;
+}
+
+int GetNaiveVecAlignmentImpl(common::NVGPUArch, const Target &target) {
+  return 128;
+}
+
+int GetNaiveVecAlignment(const Target &target) {
+  return std::visit(
+      [&](const auto &impl) { return GetNaiveVecAlignmentImpl(impl, target); },
+      target.arch.variant());
+}
+
 void CodeGenLLVM::InitTarget(const Target &target) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
-  switch (target.arch) {
-    case Target::Arch::X86:
-      if (target.bits == Target::Bit::k32) {
-        naive_vec_alignment_ = 256;
-      } else if (target.bits == Target::Bit::k64) {
-        naive_vec_alignment_ = 512;
-      } else {
-        LOG(FATAL) << "get unknown bits";
-      }
-      break;
-    case Target::Arch::ARM:
-      naive_vec_alignment_ = 128;
-      break;
-    case Target::Arch::NVGPU:
-      naive_vec_alignment_ = 128;
-      break;
-    case Target::Arch::Unk:
-      LOG(FATAL) << "unknown Arch found";
-      break;
-  }
+  naive_vec_alignment_ = GetNaiveVecAlignment(target);
 }
 
 bool LLVM_WillVarLowerAsPointer(const std::string &var_name) {
@@ -1669,7 +1677,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::PodValueToX *op) {
   } else if (to_type == type_of<cinn_buffer_t *>()) {
     callee = m_->getFunction(runtime::intrinsic::pod_value_to_buffer_p);
   } else {
-    LOG(FATAL) << "Not supported type: " << to_type;
+    std::stringstream ss;
+    ss << "Not supported type: " << to_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   CHECK(callee);

@@ -27,6 +27,15 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 
+bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
+  // TODO(@gexiao): replace this function with api implemented at custom repo
+  if (device_type == "npu") {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {
   FLAGS_tensor_operants_mode = "eager";
@@ -61,7 +70,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
@@ -160,7 +169,11 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     }
     // SetAttributes if needed
     grad_node->SetAttribute_axis(-1);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (check_if_support_elementwise_mul_mem_opt(x.place().GetDeviceType())) {
+#else
     if (paddle::platform::is_gpu_place(x.place())) {
+#endif
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapper_x(x);
@@ -234,6 +247,22 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   VLOG(5)
       << " No AMP for multiply__ad_func because it is a inplace or cast api. ";
+
+  // Type promotion Logic
+  if (phi::NeedTypePromotion("multiply_", x.dtype(), y.dtype())) {
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1)
+        << "got different data type, run type promotion "
+           "automatically, this may cause data type been changed.";
+    auto op_name = phi::TransToFluidOpName("multiply_");
+    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+
+    x = egr::PromoteCastInplace("x", x, promotion_type);
+    auto new_y = egr::PromoteCast("y", y, promotion_type);
+
+    return multiply__ad_func(x, new_y);
+  }
+
   // Layout autotune
 
   if (egr::Controller::Instance().UseLayoutAutoTune()) {
@@ -411,7 +440,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "

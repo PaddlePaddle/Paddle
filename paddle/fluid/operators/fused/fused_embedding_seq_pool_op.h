@@ -18,18 +18,18 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
@@ -95,7 +95,7 @@ struct EmbeddingVSumFunctor {
 
     PADDLE_ENFORCE_LE(table_width * idx_width,
                       out_width,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "table_width * idx_width should be less than or "
                           "equal to out_width. But received "
                           "table_width * idx_width = %s, out_width = %d.",
@@ -103,7 +103,7 @@ struct EmbeddingVSumFunctor {
                           out_width));
     PADDLE_ENFORCE_GT(ids_lod.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The tensor ids's LoD[0] should be greater than 1. "
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
@@ -117,7 +117,7 @@ struct EmbeddingVSumFunctor {
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
       auto emb_seqpool = phi::jit::KernelFuncs<phi::jit::EmbSeqPoolTuple<T>,
-                                               platform::CPUPlace>::Cache()
+                                               phi::CPUPlace>::Cache()
                              .At(attr);
       emb_seqpool(
           table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
@@ -126,8 +126,8 @@ struct EmbeddingVSumFunctor {
 };
 #endif
 
-inline int FusedEmbeddingSeqPoolLastDim(const framework::DDim &table_dims,
-                                        const framework::DDim &ids_dims) {
+inline int FusedEmbeddingSeqPoolLastDim(const phi::DDim &table_dims,
+                                        const phi::DDim &ids_dims) {
   int64_t last_dim = table_dims[1];
   for (int i = 1; i != ids_dims.size(); ++i) {
     last_dim *= ids_dims[i];
@@ -152,7 +152,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     // in run time, the LoD of ids must be 1
     PADDLE_ENFORCE_EQ(ids_lod.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The LoD level of Input(Ids) should be 1. But "
                           "received Ids's LoD level = %d.",
                           ids_lod.size()));
@@ -236,7 +236,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "The parameter W of a LookupTable "
           "must be either phi::DenseTensor or SelectedRows."));
     }
@@ -268,7 +268,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       const T *d_output_data = d_output->data<T>();
 
       auto vbroadcast = phi::jit::KernelFuncs<phi::jit::VBroadcastTuple<T>,
-                                              platform::CPUPlace>::Cache()
+                                              phi::CPUPlace>::Cache()
                             .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
@@ -293,7 +293,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       const auto &ids_lod = ids->lod();
       PADDLE_ENFORCE_EQ(ids_lod.size(),
                         1UL,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The LoD level of Input(Ids) should be 1. But "
                             "received Ids's LoD level = %d.",
                             ids_lod.size()));

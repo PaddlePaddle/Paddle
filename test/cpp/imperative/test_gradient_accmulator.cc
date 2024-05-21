@@ -77,7 +77,7 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
 }
 
 template <typename Place1, typename Place2, typename T>
-int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
+int TensorAddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
   framework::Variable var2;
   std::vector<T> src_data(10, t1);
@@ -150,53 +150,53 @@ TEST(test_add_functor, add_functor) {
   int cpu_res = 1;
 
   // float32
-  cpu_res = TensorddTest(
+  cpu_res = TensorAddTest(
       cpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(cpu_res, 0);
   // float16
-  cpu_res = TensorddTest(cpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  cpu_res = TensorAddTest(cpu_place,
+                          cpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
   // double
-  cpu_res = TensorddTest(
+  cpu_res = TensorAddTest(
       cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
-  gpu_res = TensorddTest(gpu_place, gpu_place, 1.0, 0.0);
+  gpu_res = TensorAddTest(gpu_place, gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, gpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
 
   // normal
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place,
-                         gpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(gpu_place,
+                          gpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
   // different places
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       cpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(cpu_place,
-                         gpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(cpu_place,
+                          gpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(gpu_place,
+                          cpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif
 
@@ -204,56 +204,56 @@ TEST(test_add_functor, add_functor) {
   platform::XPUPlace xpu_place(0);
   int xpu_res = 1;
   // normal
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(xpu_place,
-                         xpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(xpu_place,
+                          xpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
   // different places
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(cpu_place,
-                         xpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(cpu_place,
+                          xpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(xpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(xpu_place,
+                          cpu_place,
+                          static_cast<platform::float16>(1.0),
+                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       cpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
 #endif
 }
 
-TEST(test_add_functor, execption) {
+TEST(test_add_functor, exception) {
   platform::CUDAPinnedPlace cuda_pinned_place;
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;
 
-  ASSERT_ANY_THROW(TensorddTest(cpu_place, cpu_place, 1, 0));
+  ASSERT_ANY_THROW(TensorAddTest(cpu_place, cpu_place, 1, 0));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ASSERT_ANY_THROW(
-      TensorddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
-  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
-                                cuda_pinned_place,
-                                static_cast<platform::float16>(1.0),
-                                static_cast<platform::float16>(2.0)));
+      TensorAddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
+  ASSERT_ANY_THROW(TensorAddTest(cuda_pinned_place,
+                                 cuda_pinned_place,
+                                 static_cast<platform::float16>(1.0),
+                                 static_cast<platform::float16>(2.0)));
 #endif
 }
 

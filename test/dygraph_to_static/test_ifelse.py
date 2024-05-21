@@ -22,6 +22,7 @@ from dygraph_to_static_utils import (
     disable_test_case,
     enable_to_static_guard,
     test_ast_only,
+    test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
     test_pir_only,
 )
@@ -554,6 +555,7 @@ class IfElseNet(paddle.nn.Layer):
         a = paddle.matmul(a, self.param)
         a = paddle.reshape(a, (2, 4))
         cond = paddle.to_tensor([10])
+        b = b.broadcast_to(self.param.shape)
         if paddle.equal(cond, 10):
             a_argmax = a.argmax(axis=-1)
             b = b + self.param
@@ -563,8 +565,7 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pir
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False

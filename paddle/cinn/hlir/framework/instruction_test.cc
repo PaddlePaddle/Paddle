@@ -267,7 +267,7 @@ class TestInstruction : public Instruction {
                                                             args_[18],
                                                             stream_);
     } else {
-      LOG(FATAL) << "Unkown Conv Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unkown Conv Type!"));
     }
     CUDA_CALL(cudaStreamSynchronize(stream_));
   }

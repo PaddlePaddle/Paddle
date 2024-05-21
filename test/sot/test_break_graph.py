@@ -44,7 +44,7 @@ def multi_output(x: paddle.Tensor):
         return 2 * m
 
 
-class TestExecutor(TestCaseBase):
+class TestBreakgraph(TestCaseBase):
     def test_simple(self):
         x = paddle.to_tensor(2)
         self.assert_results(multi_output, x)

@@ -239,7 +239,7 @@ bool OpValueType<ValueType>::Find(const Operator* op) const {
   static ::cinn::hlir::framework::Operator& __make_##HlirOp##_##OpName
 
 /**
- * @def CINNR_REGISTER_OP
+ * @def CINN_REGISTER_OP
  * \brief Register a new operator, or set attribute of the corresponding op.
  *
  * @param OpName The name of registry

@@ -42,5 +42,6 @@ void TransposeGradStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    transpose_grad, STRIDED, phi::TransposeGradStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose_grad,
+                                         STRIDED,
+                                         phi::TransposeGradStridedKernel) {}

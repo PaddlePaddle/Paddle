@@ -130,7 +130,9 @@ void CPUContextResource::InitCPUResource() {
   cpu_eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
-CPUContextResource::CPUContextResource() { InitCPUResource(); }
+CPUContextResource::CPUContextResource() : cpu_eigen_device_(nullptr) {
+  InitCPUResource();
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
@@ -355,7 +357,7 @@ int GPUContextResource::GetGpuMaxThreadsPerBlock() const {
   return max_threads_per_block_;
 }
 
-std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
+std::array<unsigned int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 

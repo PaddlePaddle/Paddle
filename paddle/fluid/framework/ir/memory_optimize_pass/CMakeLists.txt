@@ -36,13 +36,6 @@ set(EAGER_DELETETION_PASS_DEPS
     while_op_eager_deletion_pass
     recurrent_op_eager_deletion_pass
     reference_count_pass_helper)
-if(WITH_CINN)
-  cc_library(
-    share_varinfo_into_cinn_pass
-    SRCS share_varinfo_into_cinn_pass.cc
-    DEPS pass enforce common graph_helper)
-  list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
-endif()
 
 cc_library(
   eager_deletion_pass

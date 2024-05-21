@@ -42,7 +42,9 @@ struct BatchNormHelper {
       reduce_dim = {0, 1, 2};
       element_count = x_shape[0] * x_shape[1] * x_shape[2];
     } else {
-      LOG(FATAL) << data_layout << " setting is not support!";
+      std::stringstream ss;
+      ss << data_layout << " setting is not support!";
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
 
     num_instructions = builder->size();

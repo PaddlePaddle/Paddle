@@ -48,9 +48,7 @@ class FusionTest(PassTest):
         self.assertEqual(
             real_group_size,
             group_size,
-            msg="The model should be fused into {} groups, but actually fused {} groups".format(
-                group_size, real_group_size
-            ),
+            msg=f"The model should be fused into {group_size} groups, but actually fused {real_group_size} groups",
         )
 
         cinn_no_fusion_outputs = self.get_pass_outputs(base_passes)

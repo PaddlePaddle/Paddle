@@ -13,11 +13,12 @@ gather_srcs(
   extern_func_protos.cc
   extern_func_jit_register.cc
   modular.cc
-  compiler.cc)
+  compiler.cc
+  codegen_device_util.cc)
 
 if(WITH_CUDA)
   add_subdirectory(nvrtc)
-  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc codegen_cuda_util.cc)
+  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc)
 endif()
 
 if(WITH_OPENMP)
@@ -59,14 +60,10 @@ if(WITH_CUDA)
   cinn_nv_test(test_codegen_debug SRCS codegen_debug_test.cc DEPS cinncore)
 
   if(WITH_TESTING)
-    if(CINN_ONLY)
-      cinn_nv_test(generated1_cuda SRCS generated1.cu DEPS cinncore)
-    else()
-      nv_test(
-        generated1_cuda
-        SRCS generated1.cu
-        DEPS cinncore)
-    endif()
+    nv_test(
+      generated1_cuda
+      SRCS generated1.cu
+      DEPS cinncore)
     add_run_test_dependency(generated1_cuda test_codegen_cuda_generate)
   endif()
 

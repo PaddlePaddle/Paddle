@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -55,16 +56,45 @@ pir::Value parameter(const std::string& name) {
 }
 
 void set_parameter(const pir::Value& parameter, const std::string& name) {
-  std::unique_ptr<pir::Parameter> param(
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  if (param) {
+    PADDLE_ENFORCE_EQ(param->type(),
+                      parameter.type(),
+                      phi::errors::InvalidArgument(
+                          "Duplicate parameter %s with different type.", name));
+  } else {
+    std::unique_ptr<pir::Parameter> param_new(
+        new pir::Parameter(nullptr, 0, parameter.type()));
+    ApiBuilder::Instance().SetParameter(name, std::move(param_new));
+    ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
+                                                                    name);
+  }
+}
+
+void updata_parameter(const pir::Value& parameter, const std::string& name) {
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  PADDLE_ENFORCE_NOT_NULL(param,
+                          phi::errors::InvalidArgument(
+                              "Parameter %s not exist, can not updata.", name));
+  std::unique_ptr<pir::Parameter> param_new(
       new pir::Parameter(nullptr, 0, parameter.type()));
-  ApiBuilder::Instance().SetParameter(name, std::move(param));
+  ApiBuilder::Instance().SetParameter(name, std::move(param_new));
   ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
 
 void shadow_output(const pir::Value& persist_value, const std::string& name) {
-  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
-                                                                  name);
+  auto& builder = ApiBuilder::Instance().GetBuilder();
+  auto op = builder->Build<pir::ShadowOutputOp>(persist_value, name);
+  if (auto dist_interface =
+          persist_value.type().dyn_cast<DistTypeInterface>()) {
+    op->set_attribute(
+        kAttrOpDistAttr,
+        OperationDistAttribute::get(builder->ir_context(),
+                                    dist_interface.process_mesh_attr(),
+                                    {dist_interface.tensor_dist_attr()},
+                                    {}));
+  }
 }
 
 pir::Value embedding_grad(const pir::Value& x,

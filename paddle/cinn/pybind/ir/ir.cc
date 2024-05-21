@@ -33,7 +33,14 @@ void TensorStore(Expr tensor, Expr value, const std::vector<Expr>& indices) {
 std::vector<Expr> AxisMap(const std::string& kinds,
                           const std::vector<Expr>& iter_expression) {
   std::vector<Expr> rets;
-  CHECK_EQ(kinds.size(), iter_expression.size());
+  PADDLE_ENFORCE_EQ(
+      kinds.size(),
+      iter_expression.size(),
+      phi::errors::InvalidArgument(
+          "The size of kinds and iter expression in AxisMap is not equal,"
+          "where kinds size:%d but iter expression size:%d.",
+          kinds.size(),
+          iter_expression.size()));
   int n = iter_expression.size();
   rets.reserve(n);
   for (int i = 0; i < n; i++) {
@@ -47,8 +54,8 @@ std::vector<Expr> AxisMap(const std::string& kinds,
     } else if (c == 'R') {
       iter_var->is_reduce_axis = true;
     } else {
-      LOG(FATAL)
-          << "kind of axis setting error, must be R(Reduce) or S(Spatial)";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "kind of axis setting error, must be R(Reduce) or S(Spatial)"));
     }
     rets.push_back(SetScheduleBlockIterVar(iter_var, iter_expression[i]));
   }

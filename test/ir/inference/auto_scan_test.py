@@ -76,8 +76,8 @@ class IgnoreReasons(enum.Enum):
     TRT_NOT_SUPPORT = 1
     # Accuracy is abnormal after enabling pass.
     PASS_ACCURACY_ERROR = 2
-    # Accuracy is abnormal after enabling mkldnn.
-    MKLDNN_ACCURACY_ERROR = 3
+    # Accuracy is abnormal after enabling onednn.
+    ONEDNN_ACCURACY_ERROR = 3
     # Accuracy is abnormal after enabling cutlass.
     CUTLASS_ACCURACY_ERROR = 3
 
@@ -293,10 +293,10 @@ class MkldnnAutoScanTest(AutoScanTest):
                         ignore_flag = True
                         if (
                             ignore_info[1]
-                            == IgnoreReasons.MKLDNN_ACCURACY_ERROR
+                            == IgnoreReasons.ONEDNN_ACCURACY_ERROR
                         ):
                             self.ignore_log(
-                                f"[MKLDNN_ACCURACY_ERROR] {ignore_info[2]} vs {self.inference_config_str(pred_config)}"
+                                f"[ONEDNN_ACCURACY_ERROR] {ignore_info[2]} vs {self.inference_config_str(pred_config)}"
                             )
                         else:
                             raise NotImplementedError

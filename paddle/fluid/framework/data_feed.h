@@ -41,7 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -401,6 +401,8 @@ class CustomParser {
   virtual ~CustomParser() {}
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
+  virtual bool PreLoad(const std::vector<AllSlotInfo>& slots) { return true; }
+  virtual void Reset() {}
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
   virtual int ParseInstance(int len UNUSED,
                             const char* str UNUSED,

@@ -29,7 +29,7 @@ class TestSemiAutoParallelLlama3DVPP(test_base.CommunicationTestDistBase):
             "pp": "2",
             "FLAGS_embedding_deterministic": "1",
             "FLAGS_cudnn_deterministic": "1",
-            "acc_step": "2",
+            "acc_step": "4",
             "only_static": "true",
         }
         self._changeable_envs = {

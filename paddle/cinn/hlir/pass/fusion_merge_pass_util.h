@@ -330,7 +330,7 @@ inline bool horizontal_relation(
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](const Node* node) {
+  auto check_dependency = [&](const Node* node) {
     std::queue<const Node*> candidates;
     std::unordered_set<const Node*> visited_set;
     candidates.push(node);
@@ -360,7 +360,7 @@ inline bool horizontal_relation(
   };
 
   for (auto node : selected_nodes) {
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }

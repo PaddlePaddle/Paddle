@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol {
 
@@ -21,7 +22,8 @@ DimExpr DimExpr::operator+(const DimExpr& other) const {
   if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
     return this->dyn_cast<std::int64_t>() + other.dyn_cast<std::int64_t>();
   }
-  return Add<DimExpr>{List<DimExpr>{*this, other}};
+  DimExpr add_expr = Add<DimExpr>{List<DimExpr>{*this, other}};
+  return SimplifyDimExpr(add_expr);
 }
 
 DimExpr DimExpr::operator-(const DimExpr& other) const {
@@ -29,14 +31,16 @@ DimExpr DimExpr::operator-(const DimExpr& other) const {
     return this->dyn_cast<std::int64_t>() - other.dyn_cast<std::int64_t>();
   }
   const DimExpr& neg = Negative<DimExpr>(other);
-  return Add<DimExpr>{List<DimExpr>{*this, neg}};
+  DimExpr sub_expr = Add<DimExpr>{List<DimExpr>{*this, neg}};
+  return SimplifyDimExpr(sub_expr);
 }
 
 DimExpr DimExpr::operator*(const DimExpr& other) const {
   if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
     return this->dyn_cast<std::int64_t>() * other.dyn_cast<std::int64_t>();
   }
-  return Mul<DimExpr>{List<DimExpr>{*this, other}};
+  DimExpr mul_expr = Mul<DimExpr>{List<DimExpr>{*this, other}};
+  return SimplifyDimExpr(mul_expr);
 }
 
 DimExpr DimExpr::operator/(const DimExpr& other) const {
@@ -48,7 +52,8 @@ DimExpr DimExpr::operator/(const DimExpr& other) const {
     }
   }
   const DimExpr& reciprocal = Reciprocal<DimExpr>(other);
-  return Mul<DimExpr>{List<DimExpr>{*this, reciprocal}};
+  DimExpr div_expr = Mul<DimExpr>{List<DimExpr>{*this, reciprocal}};
+  return SimplifyDimExpr(div_expr);
 }
 
 namespace {
@@ -140,7 +145,7 @@ std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
 }  // namespace
 
 std::string ToString(const DimExpr& dim_expr) {
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [](std::int64_t dim_expr) { return std::to_string(dim_expr); },
       [](const std::string& dim_expr) { return dim_expr; },
       [](const Negative<DimExpr>& dim_expr) {

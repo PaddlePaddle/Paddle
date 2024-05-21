@@ -34,12 +34,14 @@ from .tensor.linalg import (
     matrix_rank,
     multi_dot,
     norm,
+    ormqr,
     pca_lowrank,
     pinv,
     qr,
     slogdet,
     solve,
     svd,
+    svd_lowrank,
     triangular_solve,
     vector_norm,
 )
@@ -61,6 +63,7 @@ __all__ = [
     'qr',
     'householder_product',
     'pca_lowrank',
+    'svd_lowrank',
     'lu',
     'lu_unpack',
     'matrix_exp',
@@ -74,4 +77,5 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'ormqr',
 ]

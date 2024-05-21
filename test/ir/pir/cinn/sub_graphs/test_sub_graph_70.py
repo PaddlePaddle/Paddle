@@ -70,8 +70,6 @@ class TestLayer(unittest.TestCase):
 
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
-        # TODO(Aurelius84): disable gather op in CINN
-        paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
         cinn_out = self.train(
             self.net, to_static=True, with_prim=True, with_cinn=True
         )
@@ -81,5 +79,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -33,6 +33,9 @@ namespace phi {
  *                      algorithm how to sort the input data.
  *                      If descending is true, will sort by descending order,
  *                      else if false, sort by ascending order
+ * @param  stable       Indicate whether to use stable sorting algorithm, which
+ *                      guarantees that the order of equivalent elements is
+ *                      preserved.
  * @param  out          The sorted tensor of Argsort op, with the same shape as
  *                      x
  * @param  indices      The indices of a tensor giving the sorted order, with
@@ -43,6 +46,7 @@ void ArgsortKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int axis,
                    bool descending,
+                   bool stable,
                    DenseTensor* output,
                    DenseTensor* indices);
 

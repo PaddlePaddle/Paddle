@@ -35,7 +35,7 @@ from paddle.base import core
 
 
 def create_test_class(
-    test_case, callback, attrs, dtype=np.float32, grad_chek=True
+    test_case, callback, attrs, dtype=np.float32, grad_check=True
 ):
     class TestFusedElementwiseActivationOp_base(OpTest):
         def setUp(self):
@@ -89,7 +89,7 @@ def create_test_class(
 
         # FIXME(zcd): the intermediate_out_grad is not checked.
         def test_check_grad_normal(self):
-            if not grad_chek:
+            if not grad_check:
                 return
             if self.attrs["save_intermediate_out"]:
                 self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
@@ -97,7 +97,7 @@ def create_test_class(
                 self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
 
         def test_check_grad_ignore_x(self):
-            if not grad_chek:
+            if not grad_check:
                 return
             if self.attrs["save_intermediate_out"]:
                 self.check_grad(
@@ -117,7 +117,7 @@ def create_test_class(
                 )
 
         def test_check_grad_ignore_y(self):
-            if not grad_chek:
+            if not grad_check:
                 return
             if self.attrs["save_intermediate_out"]:
                 self.check_grad(
@@ -448,7 +448,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
             create_test_class(
                 'add_scale_fp16' + suffix,
@@ -459,7 +459,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
 
             create_test_class(
@@ -470,7 +470,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
             create_test_class(
                 'relu_add_fp16' + suffix,
@@ -480,7 +480,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
             create_test_class(
                 'mul_scale_fp16' + suffix,
@@ -491,7 +491,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
             create_test_class(
                 'gelu_add_fp16' + suffix,
@@ -501,7 +501,7 @@ for mode in {0, 1}:
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False,
+                grad_check=False,
             )
 
 if __name__ == '__main__':

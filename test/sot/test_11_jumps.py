@@ -81,7 +81,7 @@ true_tensor = paddle.to_tensor(True)
 false_tensor = paddle.to_tensor(False)
 
 
-class TestExecutor(TestCaseBase):
+class TestJump(TestCaseBase):
     def test_simple(self):
         self.assert_results(jump_absolute, 5, a)
 

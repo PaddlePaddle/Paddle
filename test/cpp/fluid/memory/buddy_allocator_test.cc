@@ -175,7 +175,7 @@ TEST(BuddyAllocator, FractionRefillPool) {
 
   size_t alloc = platform::GpuAvailableMemToAlloc() *
                  FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  // Exceed pool trigger refilling size of fraction of available gpu, and should
   // be able to alloc 60% of the remaining GPU
   int* p1 = TestBuddyAllocator(&buddy_allocator,
                                alloc,
@@ -186,7 +186,7 @@ TEST(BuddyAllocator, FractionRefillPool) {
 
   alloc = platform::GpuAvailableMemToAlloc() *
           FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  // Exceed pool trigger refilling size of fraction of available gpu, and should
   // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator,
                      alloc,

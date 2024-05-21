@@ -90,7 +90,9 @@ std::string Type2StrForReduce(cinn::common::Type type) {
   } else if (type.is_bool()) {
     return "";
   }
-  LOG(FATAL) << "Reduce Not Support " << type;
+  std::stringstream ss;
+  ss << "Reduce Not Support " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -128,6 +130,13 @@ void GetOutputShape(const std::vector<int>& real_axes,
   }
   if (output_shape->empty()) {
     output_shape->push_back(cinn::common::make_one());
+  }
+
+  CHECK(!tensor->shape.empty());
+  if (tensor->shape[0]->type() == Int(64)) {
+    for (auto& shape_item : *output_shape) {
+      shape_item->convert_int32_to_int64();
+    }
   }
 }
 
@@ -832,7 +841,7 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultDeviceTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < A->shape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -842,9 +851,9 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   int warp_reduce_need_sm_count =
       ceil((need_reduce_last_count * 32) /
            static_cast<float>(
-               cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm()));
+               cinn::common::DefaultDeviceTarget().get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
-  if (cinn::common::DefaultNVGPUTarget().get_multi_processor_count() <
+  if (cinn::common::DefaultDeviceTarget().get_multi_processor_count() <
       warp_reduce_need_sm_count) {
     max_num_threads = 32;
   }
@@ -1089,9 +1098,15 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor) {
   CHECK_NOTNULL(tensor.as_tensor());
   if (op.As<ir::Add>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_any_internal_shm";
+    }
     return "cinn_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
+    if (tensor.as_tensor()->type().is_bool()) {
+      return "cinn_block_reduce_all_internal_shm";
+    }
     return "cinn_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {
@@ -1105,7 +1120,9 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   } else if (op.As<ir::Or>()) {
     return "cinn_block_reduce_any_internal_shm";
   } else {
-    LOG(FATAL) << "Reduce type: " << op << " Not supported yet!";
+    std::stringstream ss;
+    ss << "Reduce type: " << op << " Not supported yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return "";
 }

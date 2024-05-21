@@ -101,7 +101,7 @@ def find_related_local_opcodes(instrs: list[Instruction], code_options):
             if len(stack) > 0 and stack[-1] is not None:
                 opcode_pairs.append((stack[-1], instr))
             stack.pop()
-        elif "ROT" in instr.opname:
+        elif "ROT" in instr.opname or "DUP" in instr.opname:
             return []
         else:
             try:

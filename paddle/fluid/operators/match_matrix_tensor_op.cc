@@ -20,11 +20,10 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/operators/search_compute.h"
+#include "paddle/phi/kernels/funcs/search_compute.h"
 
 namespace paddle {
 namespace operators {
-using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "match_matrix_tensor");
@@ -36,7 +35,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimensions of Input(X) should be equal to 2, "
                         "but received %d.",
                         x_dims.size()));
@@ -44,7 +43,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(y_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimensions of Input(Y) should be equal to 2, "
                         "but received %d.",
                         y_dims.size()));
@@ -52,7 +51,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("W");
   PADDLE_ENFORCE_EQ(w_dims.size(),
                     3,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimensions of Input(W) should be equal to 3, "
                         "but received %d.",
                         w_dims.size()));
@@ -61,7 +60,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims[0],
       x_dims[1],
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The first dimension of Input(W) should be equal to the second "
           "dimension of Input(X). But received the first dimension of Input(W) "
           "is %d, the second dimension of Input(X) is %d.",
@@ -70,7 +69,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims[1],
       dim_t,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The second dimension of Input(W) should be equal to 'dim_t', but "
           "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
           w_dims[1],
@@ -78,7 +77,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims[2],
       y_dims[1],
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The last dimension of Input(W) should be equal to "
           "the second dimension of Input(Y). But received the last dimension "
           "of Input(W) is %d, the second dimension of Input(Y) is %d.",
@@ -93,19 +92,19 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(X) should hold LoD information, but "
                           "received Input(X).lod() is empty."));
     const auto& x_lod_0 = x_lod[0];
     PADDLE_ENFORCE_GE(x_lod_0.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(X)'s LoD data should be "
                           "equal to 2, but received %d.",
                           x_lod_0.size()));
     PADDLE_ENFORCE_EQ(x_dims[0],
                       static_cast<int64_t>(x_lod_0.back()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The last element of Input(X)'s LoD data should be "
                           "equal to the first dimension of Input(X). "
                           "But received the last element of Input(X)'s LoD "
@@ -118,19 +117,19 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(Y) should hold LoD information, but "
                           "received Input(Y).lod() is empty."));
     const auto& y_lod_0 = y_lod[0];
     PADDLE_ENFORCE_GE(y_lod_0.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(Y)'s LoD data should be "
                           "equal to 2, but received %d.",
                           y_lod_0.size()));
     PADDLE_ENFORCE_EQ(y_dims[0],
                       static_cast<int64_t>(y_lod_0.back()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The last element of Input(Y)'s LoD data should be "
                           "equal to the first dimension of Input(Y). "
                           "But received the last element of Input(Y)'s LoD "
@@ -140,7 +139,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
     PADDLE_ENFORCE_EQ(x_lod_0.size(),
                       y_lod_0.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(X)'s and Input(Y)'s LoD "
                           "data should be equal. "
                           "But received the dimensions of Input(X)'s LoD is "
@@ -164,17 +163,17 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_GE(
         x_desc->GetLoDLevel(),
         1,
-        platform::errors::InvalidArgument("The LoD level of Input(X) should be "
-                                          "greater than 1, but received %d.",
-                                          x_desc->GetLoDLevel()));
+        phi::errors::InvalidArgument("The LoD level of Input(X) should be "
+                                     "greater than 1, but received %d.",
+                                     x_desc->GetLoDLevel()));
     framework::VarDesc* y_desc =
         PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(
         y_desc->GetLoDLevel(),
         1,
-        platform::errors::InvalidArgument("The LoD level of Input(Y) should be "
-                                          "greater than 1, but received %d.",
-                                          y_desc->GetLoDLevel()));
+        phi::errors::InvalidArgument("The LoD level of Input(Y) should be "
+                                     "greater than 1, but received %d.",
+                                     y_desc->GetLoDLevel()));
     ctx->ShareLoD("X", "Out");
   }
 
@@ -255,20 +254,20 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     const auto& x_lod = x->lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(X) should hold LoD information, but "
                           "received Input(X).lod() is empty."));
     const auto& x_lod_0 = x_lod[0];
     PADDLE_ENFORCE_GE(x_lod_0.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(X)'s LoD data should be "
                           "equal to 2, but received %d.",
                           x_lod_0.size()));
     auto x_dims = x->dims();
     PADDLE_ENFORCE_EQ(x_dims[0],
                       static_cast<int64_t>(x_lod_0.back()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The last element of Input(X)'s LoD data should be "
                           "equal to the first dimension of Input(X). "
                           "But received the last element of Input(X)'s LoD "
@@ -278,20 +277,20 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     const auto& y_lod = y->lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(Y) should hold LoD information, but "
                           "received Input(Y).lod() is empty."));
     const auto& y_lod_0 = y_lod[0];
     PADDLE_ENFORCE_GE(y_lod_0.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(Y)'s LoD data should be "
                           "equal to 2, but received %d.",
                           y_lod_0.size()));
     auto y_dims = y->dims();
     PADDLE_ENFORCE_EQ(y_dims[0],
                       static_cast<int64_t>(y_lod_0.back()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The last element of Input(Y)'s LoD data should be "
                           "equal to the first dimension of Input(Y). "
                           "But received the last element of Input(Y)'s LoD "
@@ -301,7 +300,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(x_lod_0.size(),
                       y_lod_0.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(X)'s and Input(Y)'s LoD "
                           "data should be equal. "
                           "But received the dimensions of Input(X)'s LoD is "
@@ -365,17 +364,17 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
-    call_gemm(blas,
-              CblasNoTrans,
-              CblasNoTrans,
-              x->dims()[0],
-              dim_t * dim_in,
-              dim_in,
-              1.0f,
-              bottom_l_data,
-              t_data,
-              0.0f,
-              bottom_l_trans_data);
+    phi::funcs::call_gemm(blas,
+                          CblasNoTrans,
+                          CblasNoTrans,
+                          x->dims()[0],
+                          dim_t * dim_in,
+                          dim_in,
+                          1.0f,
+                          bottom_l_data,
+                          t_data,
+                          0.0f,
+                          bottom_l_trans_data);
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
@@ -386,22 +385,22 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
         auto blas_2 = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
-        call_gemm_with_lda(blas_2,
-                           CblasNoTrans,
-                           CblasTrans,
-                           len_l,
-                           len_r,
-                           dim_in,
-                           1.0f,
-                           l_t_data,
-                           r_data,
-                           0.0f,
-                           top_data,
-                           dim_t * dim_in);
+        phi::funcs::call_gemm_with_lda(blas_2,
+                                       CblasNoTrans,
+                                       CblasTrans,
+                                       len_l,
+                                       len_r,
+                                       dim_in,
+                                       1.0f,
+                                       l_t_data,
+                                       r_data,
+                                       0.0f,
+                                       top_data,
+                                       dim_t * dim_in);
       }
     }
 
-    framework::LoD out_lod;
+    phi::LoD out_lod;
     out_lod.push_back(top_offset);
 
     out->set_lod(out_lod);
@@ -470,8 +469,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
             auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
             auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
             if (diff != 0.0) {
-              axpy(r_data, l_trans_diff, dim_in, diff);
-              axpy(l_trans_data, r_diff, dim_in, diff);
+              phi::funcs::axpy(r_data, l_trans_diff, dim_in, diff);
+              phi::funcs::axpy(l_trans_data, r_diff, dim_in, diff);
             }
           }
         }
@@ -486,30 +485,30 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff
-    call_gemm(blas,
-              CblasNoTrans,
-              CblasTrans,
-              x->dims()[0],
-              dim_in,
-              dim_t * dim_in,
-              1.0f,
-              bottom_l_trans_diff,
-              t_data,
-              1.0f,
-              bottom_l_diff);
+    phi::funcs::call_gemm(blas,
+                          CblasNoTrans,
+                          CblasTrans,
+                          x->dims()[0],
+                          dim_in,
+                          dim_t * dim_in,
+                          1.0f,
+                          bottom_l_trans_diff,
+                          t_data,
+                          1.0f,
+                          bottom_l_diff);
 
     // t_diff
-    call_gemm(blas,
-              CblasTrans,
-              CblasNoTrans,
-              dim_in,
-              dim_t * dim_in,
-              x->dims()[0],
-              1.0f,
-              bottom_l_data,
-              bottom_l_trans_diff,
-              1.0f,
-              t_diff);
+    phi::funcs::call_gemm(blas,
+                          CblasTrans,
+                          CblasNoTrans,
+                          dim_in,
+                          dim_t * dim_in,
+                          x->dims()[0],
+                          1.0f,
+                          bottom_l_data,
+                          bottom_l_trans_diff,
+                          1.0f,
+                          t_diff);
   }
 };
 

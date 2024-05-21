@@ -86,6 +86,9 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
+    flash_attention_with_sparse_mask,
+    flash_attn_qkvpacked,
+    flash_attn_varlen_qkvpacked,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
@@ -122,6 +125,7 @@ from .loss import (
 )
 from .norm import (
     batch_norm,
+    group_norm,
     instance_norm,
     layer_norm,
     local_response_norm,
@@ -276,4 +280,8 @@ __all__ = [
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
+    'flash_attention_with_sparse_mask',
+    'flash_attn_qkvpacked',
+    'flash_attn_varlen_qkvpacked',
+    'group_norm',
 ]

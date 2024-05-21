@@ -32,36 +32,22 @@ class AddYieldStoreInFusionOpPattern
 
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
-      if (op->operand_source(i)
-              .defining_op()
-              ->isa<cinn::dialect::ReshapeOp>()) {
-        auto pre_name = op->operand_source(i).defining_op()->name();
-
-        if (op->operand_source(i).use_count() > 1) {
-          continue;
-        }
-
-        if ((pre_name != "cinn_op.reduce_sum") &&
-            (pre_name != "cinn_op.reduce_max")) {
-          auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
-              op->operand_source(i).defining_op()->operand_source(0),
-              op->operand_source(i).type());
-
-          op->operand(i).set_source(new_full.result(0));
-
-          continue;
-        }
-      }
-
       if (op->operand_source(i).use_count() == 1) {
         continue;
       }
 
-      auto new_full = rewriter.Build<cinn::dialect::YieldStoreOp>(
+      rewriter.SetInsertionPointAfter(op->operand_source(i).defining_op());
+      auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
+      auto orignal_base = op->operand_source(i);
+      op->operand(i).set_source(store_op.result(0));
 
-      op->operand(i).set_source(new_full.result(0));
+      shape_analysis.SetShapeOrDataForValue(
+          store_op.result(0),
+          shape_analysis.GetShapeOrDataForValue(orignal_base));
     }
 
     return true;

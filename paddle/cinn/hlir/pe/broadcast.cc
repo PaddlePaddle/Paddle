@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/common/errors.h"
 PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
@@ -145,9 +146,11 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
         broadcast_flag1->emplace_back(true);
         broadcast_flag2->emplace_back(false);
       } else {
-        LOG(FATAL) << "Incompatible broadcast dims " << shape1_new[size1 - i]
-                   << " and " << shape2_new[size2 - i] << " in: " << shape1_new
-                   << " and " << shape2_new << std::endl;
+        std::stringstream ss;
+        ss << "Incompatible broadcast dims " << shape1_new[size1 - i] << " and "
+           << shape2_new[size2 - i] << " in: " << shape1_new << " and "
+           << shape2_new << std::endl;
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     }
   }
@@ -363,8 +366,10 @@ Tensor BroadcastTo(const Tensor& A,
           } else if (a_shape_i == out_shape[axes[idx]]) {
             broadcast_indice.push_back(indice[axes[idx]]);
           } else {
-            LOG(FATAL) << "fail to broad cast input shape " << a_shape_i
-                       << " to output shape " << out_shape[axes[idx]];
+            std::stringstream ss;
+            ss << "fail to broad cast input shape " << a_shape_i
+               << " to output shape " << out_shape[axes[idx]];
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
         }
         return A(broadcast_indice);
@@ -374,88 +379,33 @@ Tensor BroadcastTo(const Tensor& A,
 
 Tensor BroadcastTo(const Tensor& A,
                    const std::vector<ir::Expr>& out_shape,
-                   const std::vector<int>& broadcast_axes,
                    const std::string& out_name) {
   auto A_shape = A->shape;
-  CHECK_EQ(A_shape.size(), broadcast_axes.size())
-      << "broadcast_axes's size should be same with the input shape's size";
-  CHECK_GE(out_shape.size(), broadcast_axes.size())
-      << "broadcast_axes's size should be no more than out_shape's size";
-  auto axes = broadcast_axes;
-  for (auto& axis : axes) {
-    // if axis < 0, plus out_shape.size
-    if (axis < 0) {
-      axis = out_shape.size() + axis;
-    }
-    CHECK_LT(axis, out_shape.size());
-  }
-  std::sort(axes.begin(), axes.end());
+  PADDLE_ENFORCE_GE(
+      out_shape.size(),
+      A_shape.size(),
+      ::common::errors::InvalidArgument(
+          "broadcast_to's out_shape's size should be GreaterEqual "
+          "with the input shape's size"));
 
   return Compute(
       ToCinnExprs(out_shape),
       [=](const std::vector<Expr>& indice) {
         std::vector<Expr> broadcast_indice;
-        for (int idx = 0; idx < axes.size(); ++idx) {
-          ir::Expr a_shape_i = A_shape[idx];
+        int out_A_offset = out_shape.size() - A_shape.size();
+        for (int idx = out_A_offset; idx < out_shape.size(); ++idx) {
+          ir::Expr a_shape_i = A_shape[idx - out_A_offset];
           if (MathEqual(a_shape_i, ir::Expr(1))) {
             broadcast_indice.push_back(ir::Expr(0));
-          } else if (MathEqual(a_shape_i, out_shape[axes[idx]])) {
-            broadcast_indice.push_back(indice[axes[idx]]);
+          } else if (MathEqual(a_shape_i, out_shape[idx])) {
+            broadcast_indice.push_back(indice[idx]);
           } else {
-            LOG(FATAL) << "fail to broad cast input shape " << a_shape_i
-                       << " to output shape " << out_shape[axes[idx]];
+            broadcast_indice.push_back(indice[idx] % a_shape_i);
           }
         }
         return A(broadcast_indice);
       },
       out_name);
-}
-
-ir::Tensor IsClose(const ir::Tensor& x,
-                   const ir::Tensor& y,
-                   int axis,
-                   float rtol,
-                   float atol,
-                   bool equal_nan,
-                   const std::string& out_name) {
-  // For each a=x[i], b=y[i]:
-  // ```
-  // if (isnan(a) || isnan(b)) {
-  //   out = equal_nan && isnan(a) == isnan(b);
-  // } else {
-  //   T left = (a > b ? a - b : b - a);
-  //   T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-  //   T diff = (left > right ? left - right : right - left);
-  //   out = a == b || left <= right || diff <= 1e-15;
-  // }
-  // ```
-  auto fn = [&](const Expr& a, const Expr& b) {
-    // check whether x or y is nan
-    auto check_x_nan = lang::IsNan(a);
-    auto check_y_nan = lang::IsNan(b);
-
-    // out = equal_nan && isnan(a) == isnan(b);
-    auto check_nan_same =
-        Expr(equal_nan) && ir::EQ::Make(check_x_nan, check_y_nan);
-
-    // check whether x and y are close
-    // T left = (a > b ? a - b : b - a);
-    auto left = ir::Select::Make(a > b, a - b, b - a);
-    // T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-    auto right = ir::Cast::Make(x->type(), atol) +
-                 ir::Select::Make(b > ir::Zero(b->type()),
-                                  ir::Cast::Make(x->type(), rtol) * b,
-                                  ir::Cast::Make(x->type(), -rtol) * b);
-    // T diff = (left > right ? left - right : right - left);
-    auto diff = ir::Select::Make(left > right, left - right, right - left);
-    // out = a == b || left <= right || diff <= 1e-15;
-    auto check_diff = (ir::EQ::Make(a, b) || (left <= right)) ||
-                      (diff <= lang::Epsilon(diff->type()));
-
-    return ir::Select::Make(
-        check_x_nan || check_y_nan, check_nan_same, check_diff);
-  };
-  return Broadcast(fn, x, y, out_name, Expr(axis));
 }
 
 }  // namespace pe

@@ -34,12 +34,13 @@ from .batch import batch
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_math_tensor, monkey_patch_variable
-from .pir import monkey_patch_program, monkey_patch_value
+from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
+monkey_patch_dtype()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -73,7 +74,7 @@ Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet
 import paddle.text
-import paddle.vision  # noqa: F401
+import paddle.vision
 from paddle import (  # noqa: F401
     amp,
     audio,
@@ -104,6 +105,7 @@ from paddle import (  # noqa: F401
 # high-level api
 from . import (  # noqa: F401
     _pir_ops,
+    _typing as _typing,
     callbacks,
     fft,
     hub,
@@ -278,6 +280,7 @@ from .tensor.manipulation import (
     expand,
     expand_as,
     flatten,
+    flatten_,
     flip,
     flip as reverse,
     gather,
@@ -426,6 +429,9 @@ from .tensor.math import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    isneginf,
+    isposinf,
+    isreal,
     kron,
     lcm,
     lcm_,
@@ -474,6 +480,7 @@ from .tensor.math import (  # noqa: F401
     prod,
     rad2deg,
     reciprocal,
+    reduce_as,
     remainder,
     remainder_,
     renorm,
@@ -486,6 +493,8 @@ from .tensor.math import (  # noqa: F401
     signbit,
     sin,
     sin_,
+    sinc,
+    sinc_,
     sinh,
     sinh_,
     sqrt,
@@ -565,7 +574,11 @@ if is_compiled_with_cuda():
     import os
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if (
+        platform.system() == 'Linux'
+        and platform.machine() == 'x86_64'
+        and paddle.version.with_pip_cuda_libraries == 'ON'
+    ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
@@ -711,6 +724,9 @@ __all__ = [
     'to_tensor',
     'gather_nd',
     'isinf',
+    'isneginf',
+    'isposinf',
+    'isreal',
     'uniform',
     'floor_divide',
     'floor_divide_',
@@ -797,6 +813,8 @@ __all__ = [
     'standard_gamma',
     'sinh',
     'sinh_',
+    'sinc',
+    'sinc_',
     'round',
     'DataParallel',
     'argmin',
@@ -842,6 +860,7 @@ __all__ = [
     'ones',
     'not_equal',
     'sum',
+    'reduce_as',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -877,6 +896,7 @@ __all__ = [
     'set_printoptions',
     'std',
     'flatten',
+    'flatten_',
     'asin',
     'multiply',
     'multiply_',

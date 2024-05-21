@@ -12,32 +12,130 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
+from ..base import framework
 from ..base.core import (
+    DataType,
     VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
 )
 from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
-dtype = VarDesc.VarType
-dtype.__qualname__ = "dtype"
-dtype.__module__ = "paddle"
 
-uint8 = VarDesc.VarType.UINT8
-int8 = VarDesc.VarType.INT8
-int16 = VarDesc.VarType.INT16
-int32 = VarDesc.VarType.INT32
-int64 = VarDesc.VarType.INT64
+def bind_vartype():
+    global dtype
+    global uint8
+    global int8
+    global int16
+    global int32
+    global int64
+    global float32
+    global float64
+    global float16
+    global bfloat16
+    global complex64
+    global complex128
+    global bool
 
-float32 = VarDesc.VarType.FP32
-float64 = VarDesc.VarType.FP64
-float16 = VarDesc.VarType.FP16
-bfloat16 = VarDesc.VarType.BF16
+    dtype = VarDesc.VarType
+    dtype.__qualname__ = "dtype"
+    dtype.__module__ = "paddle"
 
-complex64 = VarDesc.VarType.COMPLEX64
-complex128 = VarDesc.VarType.COMPLEX128
+    uint8 = VarDesc.VarType.UINT8
+    int8 = VarDesc.VarType.INT8
+    int16 = VarDesc.VarType.INT16
+    int32 = VarDesc.VarType.INT32
+    int64 = VarDesc.VarType.INT64
 
-bool = VarDesc.VarType.BOOL
+    float32 = VarDesc.VarType.FP32
+    float64 = VarDesc.VarType.FP64
+    float16 = VarDesc.VarType.FP16
+    bfloat16 = VarDesc.VarType.BF16
+
+    complex64 = VarDesc.VarType.COMPLEX64
+    complex128 = VarDesc.VarType.COMPLEX128
+
+    bool = VarDesc.VarType.BOOL
+
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
+
+
+def bind_datatype():
+    global dtype
+    global uint8
+    global int8
+    global int16
+    global int32
+    global int64
+    global float32
+    global float64
+    global float16
+    global bfloat16
+    global complex64
+    global complex128
+    global bool
+
+    dtype = DataType
+    dtype.__qualname__ = "dtype"
+    dtype.__module__ = "paddle"
+
+    uint8 = DataType.UINT8
+    int8 = DataType.INT8
+    int16 = DataType.INT16
+    int32 = DataType.INT32
+    int64 = DataType.INT64
+
+    float32 = DataType.FLOAT32
+    float64 = DataType.FLOAT64
+    float16 = DataType.FLOAT16
+    bfloat16 = DataType.BFLOAT16
+
+    complex64 = DataType.COMPLEX64
+    complex128 = DataType.COMPLEX128
+
+    bool = DataType.BOOL
+
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
+
+
+enable_pir_api = framework.get_flags("FLAGS_enable_pir_api")[
+    "FLAGS_enable_pir_api"
+]
+
+if enable_pir_api:
+    bind_datatype()
+else:
+    bind_vartype()
 
 
 def iinfo(dtype):
@@ -130,9 +228,7 @@ def finfo(dtype):
     """
     import paddle
 
-    if paddle.base.framework.in_pir_mode() and isinstance(
-        dtype, paddle.pir.core.DataType
-    ):
+    if isinstance(dtype, paddle.pir.core.DataType):
         dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
     elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
         dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]

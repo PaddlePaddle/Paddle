@@ -33,12 +33,6 @@ class DynamicExpandOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ExpandOp op,
                        pir::PatternRewriter& rewriter) const override {
-    if (!op->operand_source(1)
-             .defining_op()
-             ->isa<cinn::dialect::GenerateShapeOp>()) {
-      return false;
-    }
-
     const ::pir::Operation* broadcast = [&] {
       int x_rank = op->operand_source(0)
                        .type()
@@ -56,23 +50,20 @@ class DynamicExpandOpPattern
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      const auto& UpdateOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
+      const auto& GetOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
         std::vector<int64_t> out_shape(out_rank, -1);
-        if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-          VLOG(3) << "found shape dialect";
-          auto shape_info =
-              shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+        auto shape_info =
+            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
 
-          for (size_t i = 0; i < shape_info.size(); ++i) {
-            if (shape_info[i].isa<int64_t>()) {
-              out_shape[i] = shape_info[i].Get<int64_t>();
-            }
+        for (size_t i = 0; i < shape_info.size(); ++i) {
+          if (shape_info[i].isa<int64_t>()) {
+            out_shape[i] = shape_info[i].Get<int64_t>();
           }
         }
         return out_shape;
       };
 
-      auto out_shape = UpdateOutputShapeByDimExpr();
+      auto out_shape = GetOutputShapeByDimExpr();
 
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);
@@ -80,11 +71,23 @@ class DynamicExpandOpPattern
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    CHECK(shape_analysis.HasShapeOrDataForValue(op.result(0)))
-        << "Can't find DimExpr for output of reshape in shape_analysis.";
     shape_analysis.SetShapeOrDataForValue(
         broadcast->result(0),
         shape_analysis.GetShapeOrDataForValue(op.result(0)));
+
+    if (auto pre_full = broadcast->operand_source(0)
+                            .defining_op()
+                            ->dyn_cast<paddle::dialect::FullOp>()) {
+      auto input_dim = pre_full.result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims();
+      if (input_dim.size() == 1 && input_dim[0] == 1) {
+        shape_analysis.SetShapeOrDataForValue(
+            pre_full->result(0),
+            shape_analysis.GetShapeOrDataForValue(op.result(0)));
+      }
+    }
 
     rewriter.ReplaceAllUsesWith(op->result(0), broadcast->result(0));
     rewriter.EraseOp(op);

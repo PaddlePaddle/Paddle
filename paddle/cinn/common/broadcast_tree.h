@@ -33,4 +33,7 @@ BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves);
 
 std::string ToTxtString(const BroadcastTree&);
 
+std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
+    const BroadcastLeaf& leaves);
+
 }  // namespace cinn::common

@@ -19,8 +19,9 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -209,7 +210,7 @@ TEST(GroupOp, CINNLowering) {
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::PassManager pass_manager(ctx);
-  pass_manager.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
   pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager.Run(program.get());
 

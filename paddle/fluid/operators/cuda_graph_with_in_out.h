@@ -16,21 +16,21 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
 namespace paddle {
 namespace operators {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CUDAGraphWithInOuts {
  public:
   template <typename Callable>
   CUDAGraphWithInOuts(Callable &&callable,
-                      platform::CUDAPlace place,
+                      phi::GPUPlace place,
                       const std::vector<const phi::DenseTensor *> &in_ptrs,
-                      cudaStreamCaptureMode mode,
+                      gpuStreamCaptureMode mode,
                       int64_t pool_id) {
     in_indices_.resize(in_ptrs.size());
     ins_.reserve(in_ptrs.size());
@@ -102,7 +102,7 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
     const framework::ExecutionContext &ctx,
     const std::vector<std::string> &input_names,
     const std::vector<std::string> &output_names,
-    cudaStreamCaptureMode mode,
+    gpuStreamCaptureMode mode,
     int64_t pool_id) {
   std::vector<const phi::DenseTensor *> inputs;
   for (const auto &name : input_names) {

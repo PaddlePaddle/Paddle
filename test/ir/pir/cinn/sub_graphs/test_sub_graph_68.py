@@ -28,21 +28,36 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [1, 3, 168, 256], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [1, 3, 84, 128], dtype: paddle.float32, stop_gradient: False)
-        var_2,  # (shape: [1, 3, 42, 64], dtype: paddle.float32, stop_gradient: False)
-        var_3,  # (shape: [1, 3, 21, 32], dtype: paddle.float32, stop_gradient: False)
-        var_4,  # (shape: [1, 3, 11, 16], dtype: paddle.float32, stop_gradient: False)
-        var_5,  # (shape: [1, 12, 168, 256], dtype: paddle.float32, stop_gradient: False)
-        var_6,  # (shape: [1, 12, 84, 128], dtype: paddle.float32, stop_gradient: False)
-        var_7,  # (shape: [1, 12, 42, 64], dtype: paddle.float32, stop_gradient: False)
-        var_8,  # (shape: [1, 12, 21, 32], dtype: paddle.float32, stop_gradient: False)
-        var_9,  # (shape: [1, 12, 11, 16], dtype: paddle.float32, stop_gradient: False)
-        var_10,  # (shape: [129024, 4], dtype: paddle.float32, stop_gradient: True)
-        var_11,  # (shape: [32256, 4], dtype: paddle.float32, stop_gradient: True)
-        var_12,  # (shape: [8064, 4], dtype: paddle.float32, stop_gradient: True)
-        var_13,  # (shape: [2016, 4], dtype: paddle.float32, stop_gradient: True)
-        var_14,  # (shape: [528, 4], dtype: paddle.float32, stop_gradient: True)
+        # (shape: [1, 3, 168, 256], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [1, 3, 84, 128], dtype: paddle.float32, stop_gradient: False)
+        var_1,
+        # (shape: [1, 3, 42, 64], dtype: paddle.float32, stop_gradient: False)
+        var_2,
+        # (shape: [1, 3, 21, 32], dtype: paddle.float32, stop_gradient: False)
+        var_3,
+        # (shape: [1, 3, 11, 16], dtype: paddle.float32, stop_gradient: False)
+        var_4,
+        # (shape: [1, 12, 168, 256], dtype: paddle.float32, stop_gradient: False)
+        var_5,
+        # (shape: [1, 12, 84, 128], dtype: paddle.float32, stop_gradient: False)
+        var_6,
+        # (shape: [1, 12, 42, 64], dtype: paddle.float32, stop_gradient: False)
+        var_7,
+        # (shape: [1, 12, 21, 32], dtype: paddle.float32, stop_gradient: False)
+        var_8,
+        # (shape: [1, 12, 11, 16], dtype: paddle.float32, stop_gradient: False)
+        var_9,
+        # (shape: [129024, 4], dtype: paddle.float32, stop_gradient: True)
+        var_10,
+        # (shape: [32256, 4], dtype: paddle.float32, stop_gradient: True)
+        var_11,
+        # (shape: [8064, 4], dtype: paddle.float32, stop_gradient: True)
+        var_12,
+        # (shape: [2016, 4], dtype: paddle.float32, stop_gradient: True)
+        var_13,
+        # (shape: [528, 4], dtype: paddle.float32, stop_gradient: True)
+        var_14,
     ):
         var_15 = paddle.tensor.manipulation.reshape(var_10, shape=(-1, 4))
         var_16 = paddle.tensor.manipulation.reshape(var_11, shape=(-1, 4))
@@ -128,5 +143,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -48,7 +48,7 @@ int RegisterFileReader(const std::string& filetype) {
   return 0;
 }
 
-extern std::vector<framework::DDim> RestoreShapes(
+extern std::vector<phi::DDim> RestoreShapes(
     const std::vector<int>& shape_concat, const std::vector<int>& ranks);
 
 class FileReaderMakerBase : public framework::OpProtoAndCheckerMaker {

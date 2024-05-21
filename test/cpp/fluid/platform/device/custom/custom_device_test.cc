@@ -85,17 +85,17 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
   auto p1_holder = src_tensor.Holder();
   EXPECT_NE(p1, nullptr);
   // set src_tensor a new dim with large size
-  // momery is supposed to be re-allocated
+  // memory is supposed to be re-allocated
   p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 1024}), place);
   auto p2_holder = src_tensor.Holder();
   EXPECT_NE(p2, nullptr);
   EXPECT_NE(p1_holder.get(), p2_holder.get());
   // set src_tensor a new dim with same size
-  // momery block is supposed to be unchanged
+  // memory block is supposed to be unchanged
   p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}), place);
   EXPECT_EQ(p1, p2);
   // set src_tensor a new dim with smaller size
-  // momery block is supposed to be unchanged
+  // memory block is supposed to be unchanged
   p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}), place);
   EXPECT_EQ(p1, p2);
 }
@@ -183,18 +183,13 @@ void TestCustomCCL(const paddle::platform::Place& place) {
   phi::DeviceManager::CCLDestroyComm(dev_type, nullptr);
   phi::DeviceManager::CCLGetUniqueId(dev_type, &root_id);
   phi::DeviceManager::CCLCommInitRank(dev_type, 0, &root_id, 0, nullptr);
-  phi::DeviceManager::CCLBroadcast(dev_type,
-                                   nullptr,
-                                   0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                                   0,
-                                   comm,
-                                   stream);
+  phi::DeviceManager::CCLBroadcast(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
   phi::DeviceManager::CCLAllReduce(dev_type,
                                    nullptr,
                                    nullptr,
                                    0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   phi::DataType::FLOAT32,
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm,
                                    stream);
@@ -202,43 +197,27 @@ void TestCustomCCL(const paddle::platform::Place& place) {
                                 nullptr,
                                 nullptr,
                                 0,
-                                phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                phi::DataType::FLOAT32,
                                 phi::ccl::CCLReduceOp::SUM,
                                 0,
                                 comm,
                                 stream);
-  phi::DeviceManager::CCLAllGather(dev_type,
-                                   nullptr,
-                                   nullptr,
-                                   0,
-                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                                   comm,
-                                   stream);
-  phi::DeviceManager::CCLReduceScatter(
-      dev_type,
-      nullptr,
-      nullptr,
-      0,
-      phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-      phi::ccl::CCLReduceOp::SUM,
-      comm,
-      stream);
+  phi::DeviceManager::CCLAllGather(
+      dev_type, nullptr, nullptr, 0, phi::DataType::FLOAT32, comm, stream);
+  phi::DeviceManager::CCLReduceScatter(dev_type,
+                                       nullptr,
+                                       nullptr,
+                                       0,
+                                       phi::DataType::FLOAT32,
+                                       phi::ccl::CCLReduceOp::SUM,
+                                       comm,
+                                       stream);
   phi::DeviceManager::CCLGroupStart(dev_type);
   phi::DeviceManager::CCLGroupEnd(dev_type);
-  phi::DeviceManager::CCLSend(dev_type,
-                              nullptr,
-                              0,
-                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                              0,
-                              comm,
-                              stream);
-  phi::DeviceManager::CCLRecv(dev_type,
-                              nullptr,
-                              0,
-                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
-                              0,
-                              comm,
-                              stream);
+  phi::DeviceManager::CCLSend(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
+  phi::DeviceManager::CCLRecv(
+      dev_type, nullptr, 0, phi::DataType::FLOAT32, 0, comm, stream);
 }
 
 TEST(CustomDevice, Tensor) {

@@ -28,7 +28,8 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [22, 16, 384], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [22, 16, 384], dtype: paddle.float32, stop_gradient: False)
+        var_0,
     ):
         var_1 = var_0.mean(1)
         var_2 = paddle.tensor.manipulation.reshape(var_1, [-1, 384])
@@ -67,5 +68,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -16,7 +16,7 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/platform/init_phi.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 REGISTER_FILE_SYMBOLS(op_compatible_info);
 
@@ -68,42 +68,47 @@ inline bool CompareVersion(const std::string& str_first,
 }
 
 void OpCompatibleMap::InitOpCompatibleMap() {
-  op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["sequence_pad"] = {"1.6.0",
+                                        OpCompatibleType::definite_not};
+  op_compatible_map_["sequence_unpad"] = {"1.6.0",
+                                          OpCompatibleType::definite_not};
 
   op_compatible_map_["coalesce_tensor"] = {"1.6.0",
-                                           OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["crop_tensor"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                           OpCompatibleType::definite_not};
+  op_compatible_map_["crop_tensor"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["deformable_conv"] = {"1.6.0",
-                                           OpCompatibleType::DEFIN_NOT};
+                                           OpCompatibleType::definite_not};
   op_compatible_map_["deformable_conv_v1"] = {"1.6.0",
-                                              OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["dpsgd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["eye"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["fill_any_like"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["hard_swish"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["gather_nd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["instance_norm"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                              OpCompatibleType::definite_not};
+  op_compatible_map_["dpsgd"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["eye"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["fill_any_like"] = {"1.6.0",
+                                         OpCompatibleType::definite_not};
+  op_compatible_map_["hard_swish"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["gather_nd"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["instance_norm"] = {"1.6.0",
+                                         OpCompatibleType::definite_not};
   op_compatible_map_["lookup_table_v2"] = {"1.6.0",
-                                           OpCompatibleType::DEFIN_NOT};
+                                           OpCompatibleType::definite_not};
   op_compatible_map_["match_matrix_tensor"] = {"1.6.0",
-                                               OpCompatibleType::DEFIN_NOT};
+                                               OpCompatibleType::definite_not};
   op_compatible_map_["multiclass_nms2"] = {"1.6.0",
-                                           OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                           OpCompatibleType::definite_not};
+  op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["pull_box_sparse"] = {"1.6.0",
-                                           OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["scatter_nd_add"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["shard_index"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["size"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["strided_slice"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                           OpCompatibleType::definite_not};
+  op_compatible_map_["scatter_nd_add"] = {"1.6.0",
+                                          OpCompatibleType::definite_not};
+  op_compatible_map_["shard_index"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["size"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["strided_slice"] = {"1.6.0",
+                                         OpCompatibleType::definite_not};
   op_compatible_map_["trilinear_interp"] = {"1.6.0",
-                                            OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["unfold"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["unique"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                            OpCompatibleType::definite_not};
+  op_compatible_map_["unfold"] = {"1.6.0", OpCompatibleType::definite_not};
+  op_compatible_map_["unique"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["unique_with_counts"] = {"1.6.0",
-                                              OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["var_conv_2d"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+                                              OpCompatibleType::definite_not};
 
   op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["slice"] = {"1.6.0", OpCompatibleType::possible};
@@ -156,7 +161,7 @@ CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) const {
   if (it != op_compatible_map_.end()) {
     return it->second;
   } else {
-    return {default_required_version_, OpCompatibleType::DEFIN_NOT};
+    return {default_required_version_, OpCompatibleType::definite_not};
   }
 }
 
@@ -174,7 +179,7 @@ OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
     if (CompareVersion(str_current_version, default_required_version_)) {
       return OpCompatibleType::compatible;
     } else {
-      return OpCompatibleType::DEFIN_NOT;
+      return OpCompatibleType::definite_not;
     }
   }
 }

@@ -29,7 +29,7 @@ using framework::OpPatternKind;
 struct VerticalFuseUtil {
   using KindKeyT = std::pair<OpPatternKind, OpPatternKind>;
 
-  static bool DetectFusabilityByKind(LightwareFusePassCtx* ctx,
+  static bool DetectFusibilityByKind(LightwareFusePassCtx* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
     const KindKeyT kind_pair(src.kind(), dst.kind());

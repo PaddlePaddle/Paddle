@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 COMMON_DECLARE_bool(cache_inference_while_scope);
@@ -498,7 +498,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       const framework::VariableNameMap& output_var_names = item->Outputs();
       for (auto& ipt : input_var_names) {
         for (const std::string& var_name : ipt.second) {
-          if (operators::StrInVaraiableNameMap(var_name, output_var_names)) {
+          if (operators::StrInVariableNameMap(var_name, output_var_names)) {
             no_copy_var_names.insert(var_name);
           }
         }
@@ -875,6 +875,8 @@ void FakeInitializeOutputsForFunctionKernel(
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
           } else if (op_type == "dequantize_linear") {
+            dtype = GetInputDType(runtime_ctx, "Scale");
+          } else if (op_type == "quantize_linear") {
             dtype = GetInputDType(runtime_ctx, "Scale");
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");

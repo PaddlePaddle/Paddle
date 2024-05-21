@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <glog/logging.h>
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_printer.h"
@@ -46,28 +47,42 @@ void TuplePushOp::Build(Builder &builder,             // NOLINT
 void TuplePushOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: TuplePushOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() >= 1u, "The size of inputs must no less than 1.");
-  IR_ENFORCE(operand_source(0).type().isa<InletType>(),
-             "The first input of cf.tuple_push must be inlet_type.");
+  PADDLE_ENFORCE_GE(
+      num_operands(),
+      1u,
+      phi::errors::InvalidArgument("The size of inputs must no less than 1."));
+  PADDLE_ENFORCE_EQ(
+      operand_source(0).type().isa<InletType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first input of cf.tuple_push must be inlet_type."));
 
   // No attributes should be verify.
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(
+      num_results(),
+      0u,
+      phi::errors::InvalidArgument("The size of outputs must be equal to 0."));
   VLOG(4) << "End Verifying for TuplePushOp.";
 }
 
 void TuplePushOp::VerifyRegion() {
   // Note(winter-wang):Constraints on the number of uses can only can be placed
   // in VerifyRegion, Otherwise cloning would fail.
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The inlet value of cf.tuple_push can only be used once.");
+  PADDLE_ENFORCE_EQ(
+      operand_source(0).HasOneUse(),
+      true,
+      phi::errors::InvalidArgument(
+          "The inlet value of cf.tuple_push can only be used once."));
 }
 
 size_t TuplePushOp::tuple_size() {
   auto operands_size = num_operands();
-  IR_ENFORCE(operands_size >= 1u,
-             "The operands of push op must no less than 1.");
+  PADDLE_ENFORCE_GE(operands_size,
+                    1u,
+                    phi::errors::InvalidArgument(
+                        "The operands of push op must no less than 1."));
   return operands_size - 1u;
 }
 
@@ -93,9 +108,15 @@ void TuplePopOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes  and stack validity for: "
              "TuplePopOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
-  IR_ENFORCE(operand_source(0).type().isa<OutletType>(),
-             "The first input of cf.tuple_pop must be outlet_type.");
+  PADDLE_ENFORCE_EQ(
+      num_operands(),
+      1u,
+      phi::errors::InvalidArgument("The size of inputs must equal to 1."));
+  PADDLE_ENFORCE_EQ(
+      operand_source(0).type().isa<OutletType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first input of cf.tuple_pop must be outlet_type."));
 
   // No attributes should be verify.
 
@@ -103,23 +124,36 @@ void TuplePopOp::VerifySig() {
 }
 
 void TuplePopOp::VerifyRegion() {
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The outlet value of cf.tuple_pop can only be used once.");
+  PADDLE_ENFORCE_EQ(
+      operand_source(0).HasOneUse(),
+      true,
+      phi::errors::InvalidArgument(
+          "The outlet value of cf.tuple_pop can only be used once."));
 
   // Verify stack validity:
-  auto pop_op = container_interface().tuple_pop_op();
-  IR_ENFORCE(*this == pop_op,
-             "The pop_op of tuple_pop_op must be this tuple_pop_op self.");
+  if (has_container()) {
+    // can be verified only if TuplePopOp and TuplePushOp are in the same
+    // sub_program
+    auto pop_op = container_interface().tuple_pop_op();
+    PADDLE_ENFORCE(
+        *this == pop_op,
+        phi::errors::InvalidArgument(
+            "The pop_op of tuple_pop_op must be this tuple_pop_op self."));
 
-  auto inlet_size = tuple_push_op().tuple_size();
-  IR_ENFORCE(inlet_size == tuple_size(),
-             "The pop elements size must equal to push elements size.");
-  for (size_t index = 0; index < inlet_size; ++index) {
-    IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type (%s) isn't equal to pop type (%s)",
-               index,
-               outlet_element(index).type(),
-               inlet_element(index).type());
+    auto inlet_size = tuple_push_op().tuple_size();
+    PADDLE_ENFORCE(
+        inlet_size == tuple_size(),
+        phi::errors::InvalidArgument(
+            "The pop elements size must equal to push elements size."));
+    for (size_t index = 0; index < inlet_size; ++index) {
+      PADDLE_ENFORCE(
+          outlet_element(index).type() == inlet_element(index).type(),
+          phi::errors::InvalidArgument(
+              "The %d element's push type (%s) isn't equal to pop type (%s)",
+              index,
+              outlet_element(index).type(),
+              inlet_element(index).type()));
+    }
   }
   VLOG(4) << "End Verifying for TuplePopOp.";
 }
@@ -134,19 +168,34 @@ void StackCreateOp::Build(Builder &builder, OperationArgument &argument) {
 void StackCreateOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: StackCreateOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(
+      num_operands(),
+      0u,
+      phi::errors::InvalidArgument("The size of inputs must be equal to 0."));
 
   // No attributes should be verify.
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 3u, "The size of outputs must be equal to 3.");
+  PADDLE_ENFORCE_EQ(
+      num_results(),
+      3u,
+      phi::errors::InvalidArgument("The size of outputs must be equal to 3."));
 
-  IR_ENFORCE(result(0).type().isa<StackType>(),
-             "The first outputs of cf.stack_create must be stack_type.");
-  IR_ENFORCE(result(1).type().isa<InletType>(),
-             "The first outputs of cf.stack_create must be inlet_type.");
-  IR_ENFORCE(result(2).type().isa<OutletType>(),
-             "The first outputs of cf.stack_create must be outlet_type.");
+  PADDLE_ENFORCE_EQ(
+      result(0).type().isa<StackType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first outputs of cf.stack_create must be stack_type."));
+  PADDLE_ENFORCE_EQ(
+      result(1).type().isa<InletType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first outputs of cf.stack_create must be inlet_type."));
+  PADDLE_ENFORCE_EQ(
+      result(2).type().isa<OutletType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first outputs of cf.stack_create must be outlet_type."));
 
   VLOG(4) << "End Verifying for StackCreateOp.";
 }
@@ -163,13 +212,19 @@ Value StackCreateOp::outlet_element(size_t index) {
 
 TuplePushOp StackCreateOp::tuple_push_op() {
   auto inlet_value = inlet();
-  IR_ENFORCE(inlet_value.HasOneUse(), "The inlet value must has one use.");
+  PADDLE_ENFORCE_EQ(
+      inlet_value.HasOneUse(),
+      true,
+      phi::errors::InvalidArgument("The inlet value must has one use."));
   return inlet_value.first_use().owner()->dyn_cast<TuplePushOp>();
 }
 
 TuplePopOp StackCreateOp::tuple_pop_op() {
   auto outlet_value = outlet();
-  IR_ENFORCE(outlet_value.HasOneUse(), "The outlet value must has one use.");
+  PADDLE_ENFORCE_EQ(
+      outlet_value.HasOneUse(),
+      true,
+      phi::errors::InvalidArgument("The outlet value must has one use."));
   return outlet_value.first_use().owner()->dyn_cast<TuplePopOp>();
 }
 

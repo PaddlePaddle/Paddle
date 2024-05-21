@@ -23,7 +23,7 @@ from paddle.decomposition import decomp
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
-    def not_in_blacklist(self):
+    def not_in_blacklist(self, op_name):
         inputs = np.random.random([2, 3, 4]).astype("float32")
         paddle.enable_static()
         core._set_prim_forward_enabled(True)
@@ -34,24 +34,25 @@ class TestPrimBlacklistFlags(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             y = F.gelu(x)
+            z = F.silu(y)
 
             fwd_ops = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh in original block
-            self.assertTrue('pd_op.gelu' in fwd_ops)
+            self.assertTrue(op_name in fwd_ops)
 
-            [y] = decomp.decompose(main_program, [y])
+            z = decomp.decompose(main_program, [z])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
-            self.assertTrue('pd_op.gelu' not in fwd_ops_new)
+            self.assertTrue(op_name not in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
-        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
 
-    def in_blacklist(self):
+    def in_blacklist(self, op_name):
         inputs = np.random.random([2, 3, 4]).astype("float32")
         paddle.enable_static()
         core._set_prim_forward_enabled(True)
@@ -62,27 +63,33 @@ class TestPrimBlacklistFlags(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             y = F.gelu(x)
+            z = F.silu(y)
 
             fwd_ops = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh in original block
-            self.assertTrue('pd_op.gelu' in fwd_ops)
+            self.assertTrue(op_name in fwd_ops)
 
-            _ = decomp.decompose(main_program, [y])
+            z = decomp.decompose(main_program, [z])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
-            self.assertTrue('pd_op.gelu' in fwd_ops_new)
+            self.assertTrue(op_name in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
-        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
 
     def test_prim_forward_blacklist(self):
-        self.not_in_blacklist()
+        self.not_in_blacklist("pd_op.gelu")
         core._set_prim_forward_blacklist("pd_op.gelu")
-        self.in_blacklist()
+        self.in_blacklist("pd_op.gelu")
+
+    def test_prim_forward_blacklist_flag(self):
+        self.not_in_blacklist("pd_op.silu")
+        paddle.set_flags({"FLAGS_prim_forward_blacklist": "pd_op.silu"})
+        self.in_blacklist("pd_op.silu")
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -111,7 +118,7 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
     def check_prim(self, net):
         program = net.forward.program_cache.last()[-1][-1].train_program
         if isinstance(
-            program, paddle.jit.dy2static.pir_partial_program.RunableProgram
+            program, paddle.jit.dy2static.pir_partial_program.RunnableProgram
         ):
             program = program.program
         block = program.global_block()

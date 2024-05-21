@@ -14,12 +14,21 @@
 
 #pragma once
 
+#include <limits.h>
+
 namespace phi {
 
 enum class Mode {
   bilinear,
   nearest,
 };
+
+template <typename T>
+__forceinline__ __device__ T SafeDownGradeToIntRange(T x) {
+  bool unsafe_cond =
+      x > INT_MAX - 1 || x < INT_MIN || !::isfinite(static_cast<double>(x));
+  return unsafe_cond ? static_cast<T>(-100.0) : x;
+}
 
 enum class PaddingMode { zeros, border, reflect };
 

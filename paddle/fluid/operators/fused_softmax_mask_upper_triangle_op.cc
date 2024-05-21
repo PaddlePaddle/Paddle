@@ -30,9 +30,9 @@ class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
-        platform::errors::InvalidArgument("Input x must be in 4D dimension but "
-                                          "received the dimension of X is %d",
-                                          x_dims.size()));
+        phi::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                     "received the dimension of X is %d",
+                                     x_dims.size()));
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");

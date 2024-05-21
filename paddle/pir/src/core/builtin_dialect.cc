@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #include "paddle/pir/include/core/builtin_dialect.h"
+
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
 
 namespace pir {
-BuiltinDialect::BuiltinDialect(IrContext *context)
+BuiltinDialect::BuiltinDialect(IrContext* context)
     : Dialect(name(), context, TypeId::get<BuiltinDialect>()) {
   initialize();
 }
@@ -38,7 +42,8 @@ void BuiltinDialect::initialize() {
                 BoolType,
                 Complex64Type,
                 Complex128Type,
-                VectorType>();
+                VectorType,
+                DenseTensorType>();
 
   RegisterAttributes<StrAttribute,
                      BoolAttribute,
@@ -62,6 +67,49 @@ void BuiltinDialect::initialize() {
               SliceOp,
               SplitOp,
               ConstantOp>();
+}
+
+pir::Type BuiltinDialect::ParseType(pir::IrParser& parser) {  // NOLINT
+  parser.ConsumeAToken("builtin.tensor");
+  parser.ConsumeAToken("<");
+  std::vector<int> dim{};
+  Token dim_token = parser.PeekToken();
+  while (dim_token.token_type_ == DIGIT) {
+    dim_token = parser.ConsumeToken();
+    dim.push_back(atoi(dim_token.val_.c_str()));
+    std::string peek_token_val = parser.PeekToken().val_;
+    if (peek_token_val[0] != 'x') {
+      break;
+    }
+    parser.ConsumeToken();
+    parser.lexer->Unget(static_cast<int>(peek_token_val.size() - 1));
+    if (parser.PeekToken().token_type_ != DIGIT) {
+      break;
+    }
+  }
+  pir::DDim ddim = common::make_ddim(dim);
+  pir::Type dtype = parser.ParseType();
+  std::vector<std::vector<size_t>> lod;
+  std::vector<size_t> lodv;
+  lodv.push_back(0);
+  lod.push_back(lodv);
+  parser.ConsumeAToken(">");
+  return DenseTensorType::get(
+      parser.ctx, dtype, ddim, pir::DataLayout::UNDEFINED, lod, 0);
+}
+
+void BuiltinDialect::PrintType(pir::Type type, std::ostream& os) const {
+  os << type.dialect().name();
+  os << '.';
+  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
+    os << "tensor<";
+    for (auto d : common::vectorize(tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    tensor_type.dtype().Print(os);
+    os << ">";
+  }
 }
 
 }  // namespace pir

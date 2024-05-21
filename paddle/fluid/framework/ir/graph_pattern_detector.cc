@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -169,7 +169,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 
 struct HitGroup {
   std::map<PDNode *, Node *> roles;
-
+  HitGroup() : roles(), nodes_() {}
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
       if (roles.count(pat) && roles[pat] == node) return true;
@@ -781,8 +781,7 @@ void GraphSafeRemoveNodes(
   for (auto *node : nodes) {
     if (saved_nodes != nullptr) {
       // prevent unique_ptr node from being released
-      saved_nodes->insert(
-          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+      saved_nodes->insert(graph->RemoveNode(const_cast<Node *>(node)));
     } else {
       graph->RemoveNode(const_cast<Node *>(node));
     }
@@ -5449,6 +5448,23 @@ PDNode *patterns::BNAddActConvGrad::operator()(
         .LinksTo({d_bn2_x_var, d_bn2_scale_var, d_bn2_bias_var});
   }
   return bn1_grad;
+}
+
+void patterns::SparseConvOptimPartern::operator()() {
+  auto sp_conv3d_x = pattern->NewNode(sp_conv3d_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("sparse_conv3d", "x");
+  auto sp_conv3d_kernel = pattern->NewNode(sp_conv3d_kernel_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("sparse_conv3d", "kernel");
+  auto sp_conv3d_op =
+      pattern->NewNode(sp_conv3d_op_repr())->assert_is_op("sparse_conv3d");
+  auto sp_conv3d_out = pattern->NewNode(sp_conv3d_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("sparse_conv3d", "out");
+
+  sp_conv3d_op->LinksFrom({sp_conv3d_x, sp_conv3d_kernel})
+      .LinksTo({sp_conv3d_out});
 }
 
 }  // namespace ir

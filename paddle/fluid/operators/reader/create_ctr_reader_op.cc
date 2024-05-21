@@ -26,7 +26,7 @@ class CreateCTRReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) return;
@@ -35,7 +35,7 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "No LoDTensorBlockingQueueHolder variable with name %s found",
             queue_name));
     auto* queue_holder =

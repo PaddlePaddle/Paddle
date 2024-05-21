@@ -14,7 +14,7 @@
 
 #include <atomic>
 #include "gtest/gtest.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol::test {
 
@@ -55,6 +55,15 @@ TEST(Simplify, UnitReciprocal) {
   DimExpr unit{Reciprocal<DimExpr>{DimExpr{1}}};
 
   DimExpr simplified_dim_expr = SimplifyDimExpr(unit);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, DoubleNegative) {
+  DimExpr inner_expr{Negative<DimExpr>(DimExpr{1})};
+  DimExpr expr{Negative<DimExpr>(inner_expr)};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(expr);
   ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
 }
@@ -134,5 +143,21 @@ TEST(Simplify, NestSymbolicMulAddUnit) {
   DimExpr simplified_dim_expr = SimplifyDimExpr(dim_expr);
   ASSERT_TRUE((simplified_dim_expr.Has<std::string>()));
   ASSERT_TRUE((simplified_dim_expr == sym));
+}
+
+TEST(Simplify, ConstantMaxMin) {
+  List<DimExpr> max_lists{DimExpr(4), DimExpr(6)};
+  DimExpr dim_expr1{Max<DimExpr>{max_lists}};
+
+  DimExpr simplified_dim_expr1 = SimplifyDimExpr(dim_expr1);
+  ASSERT_TRUE((simplified_dim_expr1.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr1.Get<std::int64_t>()), 6);
+
+  List<DimExpr> min_lists{DimExpr(2), DimExpr(3)};
+  DimExpr dim_expr2{Min<DimExpr>{min_lists}};
+
+  DimExpr simplified_dim_expr2 = SimplifyDimExpr(dim_expr2);
+  ASSERT_TRUE((simplified_dim_expr2.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr2.Get<std::int64_t>()), 2);
 }
 }  // namespace symbol::test

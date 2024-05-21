@@ -157,7 +157,7 @@ class TestConvBnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # for mkldnn
+        # for onednn
         if program_config.ops[0].attrs['use_mkldnn']:
             config = self.create_inference_config(use_mkldnn=True)
             yield config, ['fused_conv2d'], (1e-5, 1e-5)

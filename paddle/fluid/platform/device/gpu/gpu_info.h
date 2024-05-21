@@ -56,7 +56,7 @@ int GetGPUMaxThreadsPerBlock(int id);
 TEST_API int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
-std::array<int, 3> GetGpuMaxGridDimSize(int);
+std::array<unsigned int, 3> GetGpuMaxGridDimSize(int);
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();

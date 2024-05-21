@@ -279,7 +279,7 @@ void AnchorGeneratorPlugin::configurePlugin(
     const bool* input_is_broadcast,
     const bool* output_is_broadcast,
     nvinfer1::PluginFormat float_format,
-    int max_batct_size) TRT_NOEXCEPT {}
+    int max_batch_size) TRT_NOEXCEPT {}
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPlugin::clone() const TRT_NOEXCEPT {
   auto plugin = new AnchorGeneratorPlugin(data_type_,

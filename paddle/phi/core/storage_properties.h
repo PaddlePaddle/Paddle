@@ -63,7 +63,7 @@ struct XPUStorageProperties
 };
 #endif
 
-// Add OneDNNStorageProperties firstly for unittest covergae
+// Add OneDNNStorageProperties firstly for unittest coverage
 #ifdef PADDLE_WITH_DNNL
 struct OneDNNStorageProperties
     : public StorageProperties,

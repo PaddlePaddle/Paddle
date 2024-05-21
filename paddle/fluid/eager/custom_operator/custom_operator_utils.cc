@@ -163,12 +163,11 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   for (size_t i = 0; i < ctx.InputRange().size(); ++i) {
     const auto& input_pair = ctx.InputRangeAt(i);
     if (input_pair.first == input_pair.second - 1) {
-      input_shapes.emplace_back(
-          std::move(ctx.InputAt(input_pair.first).shape()));
+      input_shapes.emplace_back(ctx.InputAt(input_pair.first).shape());
     } else {
       std::vector<std::vector<int64_t>> shapes;
       for (size_t j = input_pair.first; j < input_pair.second; j++) {
-        shapes.push_back(std::move(ctx.InputAt(j).shape()));
+        shapes.push_back(ctx.InputAt(j).shape());
       }
       vec_input_shapes.emplace_back(std::move(shapes));
     }
@@ -800,8 +799,8 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
              ->meta()
              .is_contiguous()) {
       tensor.set_impl(std::make_shared<phi::DenseTensor>(
-          std::move(paddle::experimental::Trans2Contiguous(
-              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+          paddle::experimental::Trans2Contiguous(
+              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
     }
   }
 

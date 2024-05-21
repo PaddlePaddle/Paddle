@@ -335,11 +335,7 @@ class TestDistRunnerBase:
 
         self.lr = args.lr
 
-        exec_strategy = base.ExecutionStrategy()
-        exec_strategy.num_threads = 1
-
         dist_strategy = DistributedStrategy()
-        dist_strategy.exec_strategy = exec_strategy
         dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
         if args.use_local_sgd:
@@ -618,9 +614,6 @@ class TestDistRunnerBase:
         exe = base.Executor(place)
         exe.run(base.default_startup_program())
         print_to_err(type(self).__name__, "run worker startup program done.")
-
-        exec_strategy = base.ExecutionStrategy()
-        exec_strategy.num_threads = 1
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(
@@ -1025,14 +1018,10 @@ class TestDistBase(unittest.TestCase):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
         if DIST_UT_PORT == 0:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
+            self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         else:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT,
-                DIST_UT_PORT + 1,
+            self._ps_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT},127.0.0.1:{DIST_UT_PORT + 1}"
             )
             DIST_UT_PORT += 2
             self._dist_port = DIST_UT_PORT

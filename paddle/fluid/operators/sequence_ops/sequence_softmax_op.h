@@ -97,7 +97,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     auto dims = x->dims();
     PADDLE_ENFORCE_EQ(lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) phi::DenseTensor of SequenceSoftmax "
                           "operator does not contain "
                           "LoD information."));
@@ -106,7 +106,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         dims[0],
         static_cast<int64_t>(lod[level].back()),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of Input(X) should be equal to the sum of all "
             "sequences' lengths. But the first dimension of Input(X) is %d, "
             "the sum of all sequences' lengths is %d.",
@@ -115,7 +115,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         dims[0],
         x->numel(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The width of each timestep in Input(X) of SequenceSoftmax "
             "operator should be 1. But the first dimension of Input(X) is %d, "
             "the number of elements is %d.",

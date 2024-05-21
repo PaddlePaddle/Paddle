@@ -54,7 +54,7 @@ add_custom_command(
 
 set(DRR_SRCS ${DRR_SRCS} ${pd_op_creator_file})
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(cinn_op_yaml_file
       ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
@@ -87,7 +87,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
   set(DRR_SRCS ${DRR_SRCS} ${CINN_SOURCE_FILE})
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
   set(pir_op_onednn_yaml
       ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml
@@ -128,4 +128,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS}
-  DEPS op_dialect_vjp ${CINN_DEPS} pir)
+  DEPS op_dialect_vjp ${CINN_DEPS} pir pir_general_functions)

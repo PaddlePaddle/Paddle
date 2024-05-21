@@ -321,7 +321,9 @@ const OpInfoMap &IrContext::registered_op_info_map() {
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   AbstractType *abstract_type = ctx->impl().GetAbstractType(type_id);
-  IR_ENFORCE(abstract_type, "Abstract type not found in IrContext.");
+  PADDLE_ENFORCE_NOT_NULL(
+      abstract_type,
+      phi::errors::InvalidArgument("Abstract type not found in IrContext."));
   return *abstract_type;
 }
 
@@ -329,7 +331,9 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
                                                    IrContext *ctx) {
   AbstractAttribute *abstract_attribute =
       ctx->impl().GetAbstractAttribute(type_id);
-  IR_ENFORCE(abstract_attribute, "Abstract attribute not found in IrContext.");
+  PADDLE_ENFORCE_NOT_NULL(abstract_attribute,
+                          phi::errors::InvalidArgument(
+                              "Abstract attribute not found in IrContext."));
   return *abstract_attribute;
 }
 

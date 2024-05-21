@@ -46,7 +46,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     std::vector<OpGroupPtr> candidates;
     for (int i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!VerticalFuseUtil::DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!VerticalFuseUtil::DetectFusibilityByKind(ctx, producer, consumer)) {
         break;
       }
       candidates.push_back(consumer);
@@ -58,7 +58,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
 
     for (int i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!VerticalFuseUtil::DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!VerticalFuseUtil::DetectFusibilityByKind(ctx, producer, consumer)) {
         continue;
       }
       if (ctx->fuse_helper().DetectCycleIfFuse(producer, consumer)) {

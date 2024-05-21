@@ -32,7 +32,7 @@ namespace experimental {
 
 Tensor scale_kernel_context(const Tensor& x,
                             const Scalar& scale,
-                            float bias,
+                            const Scalar& bias,
                             bool bias_after_scale) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
@@ -70,7 +70,7 @@ Tensor scale_kernel_context(const Tensor& x,
   auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x.get());
 
-  kernel_context.EmplaceBackAttr(phi::Scalar(scale));
+  kernel_context.EmplaceBackAttr(scale);
   kernel_context.EmplaceBackAttr(bias);
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
@@ -90,48 +90,48 @@ static void ScaleCPU(DataType kernel_dtype,
                      const phi::CPUContext& dev_ctx,
                      const phi::DenseTensor& x,
                      const Scalar& scale,
-                     float bias,
+                     const Scalar& bias,
                      bool bias_after_scale,
                      phi::DenseTensor* dense_out) {
   switch (kernel_dtype) {
     case phi::DataType::FLOAT64: {
       phi::ScaleKernel<double>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::FLOAT32: {
       phi::ScaleKernel<float>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::BFLOAT16: {
       phi::ScaleKernel<phi::dtype::bfloat16>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT64: {
       phi::ScaleKernel<int64_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT32: {
       phi::ScaleKernel<int32_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT16: {
       phi::ScaleKernel<int16_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT8: {
       phi::ScaleKernel<int8_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::UINT8: {
       phi::ScaleKernel<uint8_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     default: {
@@ -149,48 +149,48 @@ static void ScaleGPU(DataType kernel_dtype,
                      const phi::GPUContext& dev_ctx,
                      const phi::DenseTensor& x,
                      const Scalar& scale,
-                     float bias,
+                     const Scalar& bias,
                      bool bias_after_scale,
                      phi::DenseTensor* dense_out) {
   switch (kernel_dtype) {
     case phi::DataType::FLOAT64: {
       phi::ScaleKernel<double>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::FLOAT32: {
       phi::ScaleKernel<float>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::FLOAT16: {
       phi::ScaleKernel<phi::dtype::float16>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT64: {
       phi::ScaleKernel<int64_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT32: {
       phi::ScaleKernel<int32_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT16: {
       phi::ScaleKernel<int16_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::INT8: {
       phi::ScaleKernel<int8_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     case phi::DataType::UINT8: {
       phi::ScaleKernel<uint8_t>(
-          dev_ctx, x, phi::Scalar(scale), bias, bias_after_scale, dense_out);
+          dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
     default: {
@@ -207,7 +207,7 @@ static void ScaleGPU(DataType kernel_dtype,
 
 Tensor scale_switch_case(const Tensor& x,
                          const Scalar& scale,
-                         float bias,
+                         const Scalar& bias,
                          bool bias_after_scale) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;

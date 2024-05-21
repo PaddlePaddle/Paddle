@@ -1234,15 +1234,11 @@ def dropout(
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError(
-                    "axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} ".format(
-                        len(input_shape), max(drop_axes)
-                    )
+                    f"axis value should be greater than or equal to 0 and less than dimensions of x:{len(input_shape)}, but get axis value:{max(drop_axes)} "
                 )
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".format(
-                        len(input_shape), len(drop_axes)
-                    )
+                    f"length of axis should not be greater than dimensions of x:{len(input_shape)}, but get length of axis: {len(drop_axes)}"
                 )
             mask_shape = [1] * len(input_shape)
             if not in_dynamic_mode():
@@ -1745,9 +1741,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     }
     assert (
         data_format in supported_format_map[x_dim]
-    ), "input tensor dimension is {}, it's data format should be in {} but got {}".format(
-        x_dim, supported_format_map[x_dim], data_format
-    )
+    ), f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
 
     unsqueezed_dim = []
 
@@ -2210,10 +2204,8 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     """
     if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
-            'Expected group is False, None or instance of paddle.distributed.collective.Group \
-             (got group: {})'.format(
-                group
-            )
+            f'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {group})'
         )
         return
 
@@ -2236,9 +2228,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
 
     if num_samples > num_classes:
         raise ValueError(
-            'Expected num_samples less than or equal to {}, got num_samples {}'.format(
-                num_classes, num_samples
-            )
+            f'Expected num_samples less than or equal to {num_classes}, got num_samples {num_samples}'
         )
 
     label_size = 1

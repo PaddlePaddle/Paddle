@@ -59,6 +59,12 @@ KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op);
 
 KernelKeyTuple SaveCombineOpParseKernelKey(pir::Operation *op);
 
+KernelKeyTuple NopOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple Nop_OpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple PullGpupsSparseKernelKey(pir::Operation *op);
+
 }  // namespace dialect
 }  // namespace paddle
 
