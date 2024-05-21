@@ -2521,7 +2521,7 @@ Examples:
         >>> coo.is_sparse()
         True
 
-)DOC");  // NOLINT
+)DOC");                                // NOLINT
 
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
@@ -2559,7 +2559,7 @@ Examples:
         >>> coo.is_sparse_coo()
         True
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
                                              PyObject* args,
@@ -2597,7 +2597,7 @@ Examples:
         >>> csr.is_sparse_csr()
         True
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2640,7 +2640,7 @@ Examples:
         cols=[1, 2, 0],
         values=[1., 2., 3.])
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2687,7 +2687,7 @@ Examples:
         >>> x.is_same_shape(z)
         False
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
@@ -2990,7 +2990,7 @@ Examples:
         >>> # doctest: +SKIP('return the address')
         93220864
         >>> # doctest: -SKIP
-)DOC");  // NOLINT
+)DOC");                               // NOLINT
 
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
@@ -3052,7 +3052,7 @@ Examples:
         >>> y = x[1]
         >>> print(y.get_strides())
         []
-)DOC");  // NOLINT
+)DOC");                                  // NOLINT
 
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
@@ -3094,7 +3094,7 @@ Examples:
         >>> y = y.contiguous()
         >>> print(y)
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
-)DOC");  // NOLINT
+)DOC");                                 // NOLINT
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -3143,7 +3143,7 @@ Examples:
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
         >>> print(y.is_contiguous())
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,

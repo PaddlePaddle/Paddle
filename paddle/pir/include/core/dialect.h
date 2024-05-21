@@ -103,7 +103,7 @@ class IR_API Dialect {
                                  ConcreteOp::interface_set(),
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
-                                 &CreateArrayLikeOp::attributes_name[0],
+                                 &ConcreteOp::attributes_name[0],
                                  ConcreteOp::VerifySigInvariants,
                                  ConcreteOp::VerifyRegionInvariants);
   }

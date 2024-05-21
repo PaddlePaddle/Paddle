@@ -51,9 +51,9 @@ void Communicator::InitGFlag(const std::string &gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  std::vector<char*> flags_ptr(flags.size());
+  std::vector<char *> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = const_cast<char*>(flags[i].c_str());  // NOLINT
+    flags_ptr[i] = const_cast<char *>(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
   char **params_ptr = flags_ptr.data();
@@ -207,8 +207,8 @@ void Communicator::RpcSendDense(const CommContext &ctx,
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << count << "] size[" << dense_data->size() << "]";
+        << "invalid dense size, cur pos[" << pos << "]" << " data_num[" << count
+        << "] size[" << dense_data->size() << "]";
     memcpy(data + pos, g, count * sizeof(float));
     pos += count;
   }
