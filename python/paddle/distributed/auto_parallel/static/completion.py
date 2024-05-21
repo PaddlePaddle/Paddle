@@ -1282,15 +1282,13 @@ class Completer:
             _logger.info("Using Auto VPP")
 
         # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
-        # [0 1 2 3 0 1 2 3]
         seg_pp_stages = []
         seg_pp_stage = list(range(pp_degree))
         for _ in range(vpp_degree):
             seg_pp_stages.extend(seg_pp_stage)
             if schedule_mode == "ZBVPP":
                 seg_pp_stage = seg_pp_stage[::-1]
-        # seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
-        # [0 0 0 0 1 1 1 1]
+
         seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
         part_size = len(seg_op_deps) // num_chunks
         segment_struct_names = []
@@ -2464,11 +2462,3 @@ class Completer:
                             break
                         else:
                             dist_op.dist_attr = backup_op_dist_attr
-
-
-"""
-forward0_0 forward0_1 forward0_2 forward0_3 forward0_4 forward0_5 forward1_0 forward2_0 backward_b2_0 backward_w2_0 forward1_1 backward_b1_0 backward_w1_0 forward2_1 backward_b2_1 backward_w2_1 forward1_2 backward_b1_1 backward_w1_1 forward2_2 backward_b2_2 backward_w2_2 forward1_3 backward_b0_0 backward_w0_0 forward2_3 backward_b1_2 backward_w1_2 forward1_4 backward_b2_3 backward_w2_3 forward2_4 backward_b0_1 backward_w0_1 forward0_6 backward_b1_3 backward_w1_3 forward1_5 backward_b2_4 backward_w2_4 forward2_5 backward_b0_2 backward_w0_2 forward0_7 backward_b1_4 backward_b2_5 backward_w1_4 backward_w2_5 backward_b0_3 forward1_6 backward_b1_5 forward2_6 backward_b2_6 backward_w0_3 backward_w1_5 backward_b0_4 forward1_7 backward_b1_6 forward2_7 backward_b2_7 backward_w2_6 backward_w0_4 backward_b0_5 backward_b1_7 backward_w1_6 backward_w2_7 backward_w0_5 backward_w1_7 backward_b0_6 backward_w0_6 backward_b0_7 backward_w0_7
-           forward0_0 forward0_1 forward0_2 forward0_3 forward0_4 forward1_0 forward0_5 forward2_0 backward_b2_0 backward_w2_0 forward1_1 backward_b2_1 backward_w2_1 forward1_2 backward_b1_0 backward_w1_0 forward2_1 backward_b2_2 backward_w2_2 forward1_3 backward_b1_1 backward_w1_1 forward2_2 backward_b0_0 backward_w0_0 forward1_4 backward_b2_3 backward_w2_3 forward2_3 backward_b1_2 backward_w1_2 backward_b0_1 backward_w0_1 forward2_4 backward_b2_4 forward1_5 backward_w2_4 backward_b1_3 forward0_6 backward_b0_2 backward_w1_3 forward2_5 backward_b2_5 backward_w0_2 forward0_7 backward_b1_4 backward_w2_5 backward_b0_3 forward1_6 backward_b2_6 backward_w1_4 backward_b1_5 forward2_6 backward_b0_4 forward1_7 backward_b2_7 backward_w0_3 backward_w2_6 backward_b1_6 forward2_7 backward_b0_5 backward_w1_5 backward_w0_4 backward_w2_7 backward_b1_7 backward_b0_6 backward_w1_6 backward_w0_5 backward_w1_7 backward_w0_6 backward_b0_7 backward_w0_7
-                      forward0_0 forward0_1 forward0_2 forward1_0 forward0_3 forward1_1 forward0_4 forward2_0 backward_b2_0 backward_w2_0 forward1_2 backward_b2_1 backward_w2_1 forward1_3 backward_b2_2 backward_w2_2 forward1_4 backward_b1_0 backward_w1_0 forward2_1 backward_b2_3 backward_w2_3 forward0_5 backward_b0_0 backward_w0_0 forward2_2 backward_b1_1 backward_b2_4 backward_w1_1 backward_w2_4 forward2_3 backward_b0_1 forward1_5 backward_b1_2 backward_w0_1 forward2_4 backward_b2_5 backward_w1_2 backward_b0_2 forward0_6 backward_b1_3 backward_w2_5 forward2_5 backward_b2_6 backward_w0_2 forward0_7 backward_b0_3 forward1_6 backward_b1_4 backward_b2_7 backward_w1_3 forward1_7 backward_b0_4 forward2_6 backward_b1_5 backward_w2_6 backward_w0_3 backward_b0_5 backward_w1_4 forward2_7 backward_b1_6 backward_w2_7 backward_w0_4 backward_b0_6 backward_b1_7 backward_w1_5 backward_w0_5 backward_w1_6 backward_b0_7 backward_w0_6 backward_w1_7 backward_w0_7
-                                 forward0_0 forward1_0 forward0_1 forward1_1 forward0_2 forward1_2 forward0_3 forward2_0 backward_b2_0 backward_w2_0 forward1_3 backward_b2_1 backward_w2_1 forward0_4 backward_b2_2 backward_w2_2 forward1_4 backward_b2_3 backward_w2_3 backward_b1_0 forward2_1 backward_b0_0 backward_w1_0 forward0_5 backward_b2_4 backward_w0_0 forward2_2 backward_b1_1 forward1_5 backward_b0_1 backward_w2_4 forward2_3 backward_b2_5 backward_w1_1 backward_b1_2 backward_w0_1 forward2_4 backward_b0_2 backward_b2_6 backward_w2_5 backward_w1_2 forward0_6 backward_b1_3 backward_w0_2 forward2_5 backward_b0_3 forward1_6 backward_b2_7 forward0_7 backward_w2_6 backward_b1_4 forward1_7 backward_b0_4 backward_w1_3 backward_w0_3 forward2_6 backward_b1_5 backward_b0_5 backward_w2_7 backward_w1_4 backward_w0_4 backward_w1_5 forward2_7 backward_b1_6 backward_b0_6 backward_w0_5 backward_w1_6 backward_b1_7 backward_b0_7 backward_w0_6 backward_w1_7 backward_w0_7
-"""

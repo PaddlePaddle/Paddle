@@ -159,6 +159,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             "forward": 50,
             "backward_b": 55,
             "backward_w": 45,
+            "loss": 10,
             "communication": 5,
         }
 
@@ -288,6 +289,9 @@ class VScheduleCreator:
         self.max_memory = max_memory
         if max_memory is None:
             self.max_memory = float("inf")
+        self.calculate_loss_stage = (
+            0 if num_model_chunks % 2 == 0 else num_stage - 1
+        )
 
     def init_schedule(self):
         job_counter = {}
@@ -728,6 +732,12 @@ class VScheduleCreator:
         task_end_time = (
             self._stage_current_time[stage_id] + self.program_runtime[job_type]
         )
+        if stage_id == self.calculate_loss_stage:
+            if (
+                job_type in ["forward", "backward_b"]
+                and chunk_id == self.num_model_chunks - 1
+            ):
+                task_end_time += self.program_runtime["loss"]
 
         micro_batch_id = self._job_counters[stage_id][f"{job_type}{chunk_id}"]
         if micro_batch_id >= self.num_micro_batch:
