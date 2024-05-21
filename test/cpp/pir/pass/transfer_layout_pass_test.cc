@@ -96,7 +96,7 @@ TEST(transfer_layout_pass, pass_test) {
       "transpose_flatten_concat_fuse_pass",
       "remove_redundant_transpose_pass"};
 
-  for (const auto& gpu_pass : paddle::kPirGpuPasses) {
+  for (const auto& gpu_pass : kCopiedPirGpuPasses) {
     pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
   }
   pass_pm.Run(program.get());
