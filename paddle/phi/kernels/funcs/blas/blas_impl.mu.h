@@ -369,6 +369,19 @@ struct CUBlas<phi::dtype::float16> {
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    
+    //TODO@mt-ai:https://stackoverflow.com/questions/64870367/cublasgemmex-result-is-always-zero
+    //mublasGemmEx is not released so it has a lot of bug, the following code section is just a workaround.
+    float* alpha_float_p = reinterpret_cast<float *>(const_cast<void *>(alpha));
+    float* beta_float_p = reinterpret_cast<float *>(const_cast<void *>(beta));
+    (void)alpha_float_p;
+    (void)beta_float_p;
+    #if defined (__MUSACC__)
+      half h_alpha = __float2half(*alpha_float_p);
+      half h_beta = __float2half(*beta_float_p);
+      alpha = &h_alpha;
+      beta=&h_beta;
+    #endif
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](mublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mublasGemmEx(handle,

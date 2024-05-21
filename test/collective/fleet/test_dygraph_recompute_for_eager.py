@@ -189,7 +189,7 @@ def run_model(
         x = paddle.to_tensor(x_data)
         x.stop_gradient = False
         level = 'O2' if pure_fp16 else 'O1'
-        with paddle.amp.auto_cast(False, level=level):
+        with paddle.amp.auto_cast(True, level=level):
             y_pred = model(x)
             loss = y_pred.mean()
         if enable_autocast:
@@ -306,8 +306,8 @@ class TestRecompute(unittest.TestCase):
     def test_fc_net_with_amp(self):
         self.test_base_case(enable_autocast=True)
 
-    # def test_fc_net_with_fp16(self):
-    #     self.test_base_case(enable_autocast=True, pure_fp16=True)
+    def test_fc_net_with_fp16(self):
+        self.test_base_case(enable_autocast=True, pure_fp16=True)
 
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
