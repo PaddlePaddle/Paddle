@@ -15,7 +15,6 @@
 #include <iostream>
 
 #include "paddle/phi/kernels/fusion/fp8_gemm_with_cublasLt/cublaslt_gemm.h"
-#include "paddle/phi/kernels/fusion/fp8_gemm_with_cublasLt/fp8_common.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"

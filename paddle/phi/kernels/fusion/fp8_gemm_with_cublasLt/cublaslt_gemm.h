@@ -27,6 +27,11 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
+
 namespace dyl = phi::dynload;
 
 namespace phi {
@@ -698,15 +703,19 @@ inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
 
 template <typename T>
 void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
+                       const int batch_count,
+                       const int m,
+                       const int n,
+                       const int k,
                        const phi::DenseTensor& mat_a,
                        const phi::DenseTensor& mat_b,
                        const float scale,
                        const paddle::optional<DenseTensor>& bias,
                        const std::string& activation_type,
                        phi::DenseTensor* out) {
-  int m = mat_a.dims()[0];
-  int k = mat_a.dims()[1];
-  int n = mat_b.dims()[1];
+  // int m = mat_a.dims()[0];
+  // int k = mat_a.dims()[1];
+  // int n = mat_b.dims()[1];
 
   // init data structure
   cublasStatus_t status;
@@ -782,6 +791,41 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   status = dyl::cublasLtMatrixLayoutCreate(&B_desc_, B_type, k, n, k);
   status = dyl::cublasLtMatrixLayoutCreate(&A_desc_, A_type, k, m, k);
   status = dyl::cublasLtMatrixLayoutCreate(&C_desc_, C_type, n, m, n);
+  if (batch_count > 1) {
+    int64_t strideb = n * k;
+    int64_t stridea = m * k;
+    int64_t stridec = m * n;
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        B_desc_,
+        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+        &batch_count,
+        sizeof(batch_count));
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        B_desc_,
+        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+        &strideb,
+        sizeof(strideb));
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        A_desc_,
+        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+        &batch_count,
+        sizeof(batch_count));
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        A_desc_,
+        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+        &stridea,
+        sizeof(stridea));
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        C_desc_,
+        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+        &batch_count,
+        sizeof(batch_count));
+    status = dyl::cublasLtMatrixLayoutSetAttribute(
+        C_desc_,
+        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+        &stridec,
+        sizeof(stridec));
+  }
 
   // size_t work_space_size = workspace->numel();
 
@@ -860,23 +904,38 @@ void cublaslt_fp8_fp8_fp16_gemm(
     const float scale,  // only support per-tensor quantization
     const std::string& activation_type,
     DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
-  PADDLE_ENFORCE_EQ(
-      y.dims().size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
-  PADDLE_ENFORCE_EQ(
-      x.dims()[1], y.dims()[0], "x_dims[1] needs to equal to y_dims[0]");
+  PADDLE_ENFORCE_EQ(x.dims().size(),
+                    y.dims().size(),
+                    "x_dims.size needs to equal to y_dims.size");
+
+  int rank = x.dims().size();
+  int m = x.dims()[rank - 2];
+  int n = y.dims()[rank - 1];
+  int k = x.dims()[rank - 1];
+
+  PADDLE_ENFORCE_EQ(x.dims()[rank - 1],
+                    y.dims()[rank - 2],
+                    "x_dims[rank-1] needs to equal to y_dims[rank-2]");
+
   if (bias) {
     PADDLE_ENFORCE_EQ(bias->dims()[0],
-                      y.dims()[1],
-                      "bias_vecotr_dim needs to equal to y_dims[1]");
+                      y.dims()[rank - 1],
+                      "bias_vecotr_dim needs to equal to y_dims[rank-1]");
   }
-  PADDLE_ENFORCE_EQ(x.dims()[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
-  PADDLE_ENFORCE_EQ(y.dims()[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+
+  PADDLE_ENFORCE_EQ(
+      x.dims()[rank - 1] % 16, 0, "fp8 matmul need x_dims[rank-1] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(
+      y.dims()[rank - 2] % 16, 0, "fp8 matmul need y_dims[rank-2] % 16 = 0.");
 
   ctx.template Alloc<phi::dtype::float16>(out);
+  int batch_count = 1;
+  for (size_t i = 0; i < rank - 2; ++i) {
+    batch_count *= x.dims()[i];
+  }
+  LOG(INFO) << "batch_count: " << batch_count;
   CublasLtMatmulFP8<phi::dtype::float16>(
-      ctx, x, y, scale, bias, activation_type, out);
+      ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
 
 template <typename Context>
@@ -890,23 +949,39 @@ void cublaslt_fp8_fp8_bf16_gemm(
     const float scale,  // only support per-tensor quantization
     const std::string& activation_type,
     DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
-  PADDLE_ENFORCE_EQ(
-      y.dims().size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
-  PADDLE_ENFORCE_EQ(
-      x.dims()[1], y.dims()[0], "x_dims[1] needs to equal to y_dims[0]");
+  PADDLE_ENFORCE_EQ(x.dims().size(),
+                    y.dims().size(),
+                    "x_dims.size needs to equal to y_dims.size");
+
+  int rank = x.dims().size();
+  int m = x.dims()[rank - 2];
+  int n = y.dims()[rank - 1];
+  int k = x.dims()[rank - 1];
+
+  PADDLE_ENFORCE_EQ(x.dims()[rank - 1],
+                    y.dims()[rank - 2],
+                    "x_dims[rank-1] needs to equal to y_dims[rank-2]");
+
   if (bias) {
     PADDLE_ENFORCE_EQ(bias->dims()[0],
-                      y.dims()[1],
-                      "bias_vecotr_dim needs to equal to y_dims[1]");
+                      y.dims()[rank - 1],
+                      "bias_vecotr_dim needs to equal to y_dims[rank-1]");
   }
-  PADDLE_ENFORCE_EQ(x.dims()[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
-  PADDLE_ENFORCE_EQ(y.dims()[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+
+  PADDLE_ENFORCE_EQ(
+      x.dims()[rank - 1] % 16, 0, "fp8 matmul need x_dims[rank-1] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(
+      y.dims()[rank - 2] % 16, 0, "fp8 matmul need y_dims[rank-2] % 16 = 0.");
 
   ctx.template Alloc<phi::dtype::bfloat16>(out);
+  int batch_count = 1;
+  for (size_t i = 0; i < rank - 2; ++i) {
+    batch_count *= x.dims()[i];
+  }
+  LOG(INFO) << "batch_count: " << batch_count;
+
   CublasLtMatmulFP8<phi::dtype::bfloat16>(
-      ctx, x, y, scale, bias, activation_type, out);
+      ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
 
 }  // namespace cutlass_internal
