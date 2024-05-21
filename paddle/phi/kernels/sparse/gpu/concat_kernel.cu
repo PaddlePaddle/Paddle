@@ -63,7 +63,8 @@ struct PointerToPointer {
 
   PointerToPointer() = default;
   PointerToPointer(const phi::GPUContext& ctx,
-                   size_t in_num const T** pre_alloced_host_ptr) {
+                   size_t in_num,
+                   const T** pre_alloced_host_ptr) {
     auto* dev_ins_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         in_num * sizeof(T*),
@@ -131,30 +132,50 @@ __global__ void ConcatCooSetIndicesKernel(const IndexT out_nnz,
 }
 
 template <typename IndexT, typename PointerWrapperT, typename DarrayWrapperT>
-__global__ void ConcatCsr2D0ASetCrowsKernel(const IndexT total_crows_length,
-                                            PointerWrapperT in_crows_data,
-                                            DarrayWrapperT crows_length,
-                                            IndexT* out_crows_data) {
-  IndexT curr_segment = 0;
+__global__ void ConcatCsr2D1AGetHelpArrayKernel(
 
-  CUDA_KERNEL_LOOP_TYPE(tid_x, total_crows_length, IndexT) {
+    const size_t in_num,
+    PointerWrapperT in_crows_data,
+    DarrayWrapperT crows_offsets,  // rows_numel表示每一个的列数
+    IndexT* out_crows_offsets,//out_crows中各个index下对应的序列 的叠加值
+   
+  ) {
+ 
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_num, IndexT) {
+    out_crows_offsets[tid_x] = in_crows_data[tid_x][crows_offsets[tid_x]];
+    
+  }
+ 
+ 
+}
+
+template <typename IndexT, typename PointerWrapperT, typename DarrayWrapperT>
+__global__ void ConcatCsr2D0ASetCrowsKernel(const IndexT total_crows_offsets,
+                                            PointerWrapperT in_crows_data,
+                                            DarrayWrapperT crows_offsets,
+                                            IndexT* out_crows_offsets
+                                            IndexT* out_crows_data) {
+  // 当前的in_num的位置                                            
+  IndexT index = 0;
+
+  CUDA_KERNEL_LOOP_TYPE(tid_x, total_crows_offsets, IndexT) {
     if (tid_x == 0) {
       out_crows_data[0] = 0;
     }
     // 优化
-    IndexT curr_col_offset = crows_length[curr_segment + 1];
-    IndexT curr_offset = crows_length[curr_segment];
+    IndexT curr_col_offset = crows_offsets[index + 1];
+    IndexT curr_offset = crows_offsets[index];
     // curr_offset 初始化到最接近tid的对一轮
     // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
-      ++curr_segment;
-      curr_col_offset = crows_length[curr_segment + 1];
+      ++index;
+      curr_col_offset = crows_offsets[index + 1];
     }
     IndexT local_col = tid_x - curr_offset;
     // 注意这里tid_x对应的起始位置不包含crows的第0位,同理,在in_crows中也是如此
     output[tid_x + 1] =
-        in_crows_data[curr_segment][local_col + 1] + crows_length[curr_segment];
+        in_crows_data[index][local_col + 1] + out_crows_offsets[index];
   }
 }
 
@@ -251,12 +272,12 @@ __global__ void ConcatCsr3D1AGetHelpArrayKernel(
          // 在上一个数组的基础上会再一次进行impluse sum ,这是需要再 out_crows中各个index和batch下对应的序列 的叠加值
          //[0, 4, 8, 12, 15...] 假设in_num=3 , batch=2 这里15表示batch=1下index=0的在out_crow的偏移
          out_crows_offset[tid_x *(in_num + 1) + tid_y] = in_crows_data[tid_y][pos];
-         // out_values数组的偏移值 之后 out_values_index_offset会进行sum
-         out_values_index_offset[tid_x *(in_num + 1) + tid_y] = in_crows_data[tid_y][pos];
+         // out_values数组的偏移值 之后 values_index_offset会进行sum
+         values_index_offset[tid_x *(in_num + 1) + tid_y] = in_crows_data[tid_y][pos];
 
 
-          // batch_crows 也就是对应batch和index下的nnz数组 但是因为需要,需要以index为一维 batch为二维
-         // 对应的二维数组batch_crows[i][b + 1] 表示i下batch下的对应的nnz数组 为batch_crows[b][0]是为了方便后面计算其他的答案
+          // batch_nnz 也就是对应batch和index下的nnz数组 但是因为需要,需要以index为一维 batch为二维
+         // 对应的二维数组batch_nnz[i][b + 1] 表示i下batch下的对应的nnz数组 为batch_nnz[b][0]是为了方便后面计算其他的答案
          batch_nnz[tid_y *(batch + 1) + tid_x] = in_crows_data[tid_y][pos];
     }
     
@@ -305,15 +326,17 @@ __global__ void ConcatCsr3D1ASetCrowsKernel(
  
 }
 
-template <typename IndexT, typename PointerWrapperT>
+template <typename T, typename IndexT, typename DarrayWrapperT, typename PointerWrapperT, typename PointerWrapperIndexT>
 __global__ void ConcatCsr3D1ASetValuesColsKernel(
-    const IndexT total_nnz,
     const size_t in_num,
     const IndexT batch,
     PointerWrapperT in_values_data,
+    PointerWrapperIndexT in_cols_data,
+    DarrayWrapperT in_nnz,
     T * values_index_offset,  // 每个matrix(也就是每轮batch)中nnz的累加值
     T * batch_nnz, //每一batch的nnz数目
-    IndexT* out_values) {
+    T* out_values,
+    IndexT* out_cols) {
   //tib_y == i tib_x = i下对应的位置,包括各轮batch 
   
   tid_x *(in_num + 1) + tid_z
@@ -337,7 +360,7 @@ __global__ void ConcatCsr3D1ASetValuesColsKernel(
       IndexT local_col = tid_x - curr_offset;
       IndexT pos = values_index_offset[tid_y *(in_num + 1) + b];
       pos += local_col;
-      out_values[pos] = in_values[tid_y][tid_x];
+      out_values[pos] = in_values_data[tid_y][tid_x];
       out_cols[pos] = in_values[tid_y][tid_x];
     }
   
@@ -401,7 +424,6 @@ __global__ void ConcatCsr3D2AGetHelpArrayKernel(
             in_index_batch_nnz[tib_z * in_num + tib_y] = in_crows_data[i][now];
           }
         }
-         
       }
 
       // TODO 优化
@@ -415,6 +437,7 @@ __global__ void ConcatCsr3D2AGetHelpArrayKernel(
        
 
     }
+
 
 template <typename T, typename IndexT, typename PointerWrapperT, typename PointerWrapperIndexT>
 __global__ void ConcatCsr3D2ASetvaluesKernel(
@@ -630,15 +653,18 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
   // 到这里为止所有的代码可以合并到前文去,这里留在这里只是为了未来方便调试
 
   // 除了第一个0 之外,按照row的次数叠加
-  int64_t out_crows_size = 0;
-  std::vector<int64_t> nnz_vec(in_num, 0);
-  std::vector<int64_t> crows_length(in_num + 1, 0);
-  for (size_t i = 0; i < in_num; i++) {
+  int64_t out_crows_size = 1;
+  std::vector<int64_t> nnz_vec;
+  std::vector<int64_t> crows_offsets;
+  crows_offsets.push(out_crows_size);                      
+  for (auto t : x) {
+    int64_t rows = static_cast<int>(t->dims()[0]);
+    crows_offsets.push_back(rows + 1);
+    out_crows_size += rows;
     nnz_vec.push_back(t->nnz());
-    int64_t crows_num = static_cast<int64_t>(x[i]->dims()[0]) + 1;
-    out_crows_size += crows_num;
-    crows_length[i + 1] = out_crows_size;
+   
   }
+  
   out_crows_size++;
   DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
   int64_t* out_crows_data = out_crows.data<int64_t>();
@@ -668,7 +694,7 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
 
   PointerToPointer<int64_t> crows_ptr_array(
       dev_ctx, in_num, crows_data_vec_data);
-  DArray<int64_t> d_crows_length(dev_ctx, crows_length);
+  DArray<int64_t> d_crows_offsets(dev_ctx, crows_offsets);
 
   // 这里由于每一轮需要的只处理crow中0之后的部分 out_crows_size -1
   auto config =
@@ -676,12 +702,12 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
 
   ConcatCsr2D0ASetCrowsKernel<int64_t,
                               decltype(crows_ptr_array),
-                              decltype(d_crows_length)>
+                              decltype(d_crows_offsets)>
       <<<config.block_per_grid.x,
          config.thread_per_block.x,
          0,
          dev_ctx.stream()>>>(
-          out_crows_size - 1, crows_ptr_array, d_crows_length, out_crows_data);
+          out_crows_size - 1, crows_ptr_array, d_crows_offsets, out_crows_data);
 
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
@@ -724,7 +750,8 @@ void ConcatCsrGPU2D1A<T, IntT, Context>(
          0,
          dev_ctx.stream()>>>(
           total_rows, rows, crows_ptr_array, d_in_rows_nnzs_data);
-
+  
+  const int64_t** crows_data_vec_data = crows_data_vec.data();
   PointerToPointer<T> values_ptr_array(dev_ctx, in_num, values_data_vec);
   PointerToPointer<IntT> cols_ptr_array(dev_ctx, in_num, cols_data_vec);
   DArray<IntT> d_col_offsets(dev_ctx, col_offsets);
@@ -817,7 +844,11 @@ void ConcatCsrGPU3D1A(
   out_crows_size = batch;
   std::vector<IntT> rows_nums;
   std::vector<IntT> rows_offsets;// 每一个index下的rows的叠加值 
-  int rows_offset = 0;
+  std::vector<int64_t> in_nnz;
+  int64_t max_nnz;
+  int64_t rows_offset = 0;
+  int64_t  max_rows = 0;
+  int64_t max_nnz;
   rows_offsets.push_back(rows_offset);
   for (size_t i = 0; i < in_num; i++) {
     int64_t rows = static_cast<int64_t>(x[i]->dims()[1]);
@@ -825,27 +856,50 @@ void ConcatCsrGPU3D1A(
     out_crows_size += batch * rows;
     rows_offset += rows;
     rows_offsets.push_back(rows_offset);
+    max_rows = max_rows > rows ? max_rows : rows;
+    int64_t nnz = static_cast<int64_t>(x[i]->nnz());
+    rows_offsets.push_back(nnz);
+    in_nnz = max_nnz > nnz ? max_nnz : nnz;
   }
   DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
   int64_t* out_crows_data = out_crows.data<int64_t>();
 
-  PointerToPointer<IntT> crows_ptr_array(dev_ctx, in_num, crows_data_vec_data);
+  PointerToPointer<IntT> crows_ptr_array(dev_ctx, in_num, crows_data_vec);
+  PointerToPointer<IntT> values_ptr_array(dev_ctx, in_num, values_data_vec);
+  PointerToPointer<IntT> cols_ptr_array(dev_ctx, in_num, cols_data_vec);
   DArray<IntT> d_rows_nums(dev_ctx, rows_nums);
 
-  DenseTensor matrix_crows_offset_tensor = phi::Empty<IntT>(dev_ctx, {batch*(in_num + 1)});
-  // 辅助准二维数组,表示每一个index下batch的nnz的值的叠加值 index 一维 batch二维
-  //p = batch *(in_num + 1) + index
-  IntT* d_matrix_crows_offset = matrix_crows_offset_tensor.data<IntT>();
-  config = phi::backends::gpu::GetGpuLaunchConfig3D(dev_ctx, batch, in_num);
-  ConcatCsr3D1AGetHelpArrayKernel<IntT, decltype(crows_ptr_array), decltype(d_rows_nums)>(in_num, batch,in_crows_data,in_rows,d_matrix_crows_offset);
+  DenseTensor out_crows_offset_tensor = phi::Empty<IntT>(dev_ctx, {batch*(in_num + 1)});
+  IntT* d_out_crows_offset = out_crows_offset_tensor.data<IntT>();
+
+  DenseTensor values_index_offset_tensor = phi::Empty<IntT>(dev_ctx, {batch*(in_num + 1)});
+  IntT* d_values_index_offset = values_index_offset_tensor.data<IntT>();
+
+  DenseTensor batch_nnz_tensor = phi::Empty<IntT>(dev_ctx, {in_num*(batch + 1)});
+  IntT* d_batch_nnz = batch_nnz_tensor.data<IntT>();
+
+  config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, batch, in_num);
+
+
+  ConcatCsr3D1AGetHelpArrayKernel<IntT, decltype(crows_ptr_array), decltype(d_rows_nums)>(in_num, batch, in_crows_data,d_rows_nums,d_out_crows_offset, d_values_index_offset, d_batch_nnz);
+
+  thrust::inclusive_scan(
+    thrust::device_pointer_cast(d_batch_nnz) ,
+    thrust::device_pointer_cast(d_batch_nnz) + in_num*(batch + 1),
+    d_batch_nnz);  
 
   DArray<IntT> d_rows_offsets(dev_ctx, rows_offsets);
   
+  config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, max_rows, batch);
   ConcatCsr3D1ASetCrowsKernel<IntT, decltype(crows_ptr_array), decltype(d_rows_offsets)>(in_num, batch,in_crows_data, d_rows_nums, d_rows_offsets,d_matrix_crows_offset,out_crows);
 
-  ConcatCsr3D1ASetValuesColsKernel
+  DArray<int64_t> d_in_nnz(dev_ctx, in_nnz);
+  config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, in_num, max_nnz);
+  ConcatCsr3D1ASetValuesColsKernel<T, IntT, decltype(d_in_nnz),decltype(values_ptr_array), decltype(cols_ptr_array)>(in_num, batch, d_in_nnz,values_ptr_array, cols_ptr_array, d_values_index_offset, d_batch_nnz,out_values,out_cols);
 
   out->SetMember(out_crows, out_cols, out_values, out_dims);
+
+
 }
 
 template <typename T, typename IntT, typename Context>
@@ -918,6 +972,7 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
   size_t in_num = x.size();
 
   int64_t axis = axis_scalar.to<int64_t>();
+  // 检查axis
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
   // 删掉
   std::vector<phi::DDim> x_dims;
@@ -972,8 +1027,34 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
     }
 
   } else if (x_dims.size() == 3) {
-    // ConcatCsrGPU3D<T, IntT, Context>(
-    //   dev_ctx, x,  axis_scalar, out);
+    if (axis == 0) {
+      ConcatCsrGPU3D0A<T, IntT, Context>(dev_ctx,
+                                         x,
+                                         out_dims,
+                                         in_num,
+                                         out_values_data,
+                                         out_cols_data,
+                                         crows_data_vec,
+                                         out);
+    }  else if(axis == 1)  {
+      ConcatCsrGPU2D1A<T, IntT, Context>(dev_ctx,
+                                         x,
+                                         out_dims,
+                                         in_num,
+                                         out_values_data,
+                                         out_cols_data,
+                                         crows_data_vec,
+                                         out);
+    } else {
+      ConcatCsrGPU3D2A<T, IntT, Context>(dev_ctx,
+        x,
+        out_dims,
+        in_num,
+        out_values_data,
+        out_cols_data,
+        crows_data_vec,
+        out);
+    }
   } else {
     // throw exception
     phi::errors::InvalidArgument(
