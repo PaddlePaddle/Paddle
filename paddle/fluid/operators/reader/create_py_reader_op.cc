@@ -26,7 +26,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) return;
@@ -63,7 +63,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto& shape_concat = Attr<std::vector<int>>("shape_concat");
     auto& ranks = Attr<std::vector<int>>("ranks");
     int shape_start_index = 0;
-    std::vector<framework::DDim> dims;
+    std::vector<phi::DDim> dims;
     for (auto rank : ranks) {
       int shape_end_index = shape_start_index + rank;
       auto shape = std::vector<int>(shape_concat.begin() + shape_start_index,

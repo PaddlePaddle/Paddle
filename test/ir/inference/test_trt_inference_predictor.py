@@ -132,9 +132,9 @@ class BackendPaddle:
                     max_batch_size=max_batch_size,
                     min_subgraph_size=self.args.subgraph_size,
                     use_static=False,
-                    use_calib_mode=False
-                    if self.args.precision == 'int8'
-                    else False,
+                    use_calib_mode=(
+                        False if self.args.precision == 'int8' else False
+                    ),
                 )
                 if self.args.enable_dynamic_shape:
                     if os.path.exists(shape_range_file):
@@ -387,7 +387,9 @@ class TestInferencePredictor(unittest.TestCase):
             )
         ]
 
-        static_model = paddle.jit.to_static(net, input_spec=input_spec)
+        static_model = paddle.jit.to_static(
+            net, input_spec=input_spec, full_graph=True
+        )
         paddle.jit.save(static_model, self.path)
 
     def testInferencePredictor(self):

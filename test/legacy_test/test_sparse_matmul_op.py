@@ -43,7 +43,9 @@ class TestMatmulSparseDense(unittest.TestCase):
             mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
         else:
             mask = paddle.randint(0, 2, x_shape)
-        origin_x = paddle.rand(x_shape) * mask
+        origin_x = paddle.rand(x_shape) * mask.astype(
+            paddle.get_default_dtype()
+        )
         origin_y = paddle.rand(y_shape)
 
         dense_x = origin_x.detach()
@@ -69,7 +71,7 @@ class TestMatmulSparseDense(unittest.TestCase):
             sp_out.backward()
             np.testing.assert_allclose(
                 sp_x.grad.to_dense().numpy(),
-                (dense_x.grad * mask).numpy(),
+                (dense_x.grad * mask.astype(dense_x.dtype)).numpy(),
                 rtol=1e-05,
             )
             np.testing.assert_allclose(
@@ -275,7 +277,7 @@ class TestMaskedMatmul(unittest.TestCase):
         paddle.set_default_dtype('float32')
         origin_x = paddle.rand([16, 16, 12])
         mask = paddle.randint(0, 2, [16, 12])
-        origin_x = origin_x * mask
+        origin_x = origin_x * mask.astype('float32')
         origin_y = paddle.rand([16, 12, 10])
 
         dense_x = origin_x.detach()
@@ -297,7 +299,7 @@ class TestMaskedMatmul(unittest.TestCase):
         )
         np.testing.assert_allclose(
             sp_x.grad.to_dense().numpy(),
-            (dense_x.grad * mask).numpy(),
+            (dense_x.grad * mask.astype('float32')).numpy(),
             rtol=1e-05,
         )
         np.testing.assert_allclose(

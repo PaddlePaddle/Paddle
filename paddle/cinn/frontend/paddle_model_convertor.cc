@@ -26,6 +26,7 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 
@@ -144,8 +145,10 @@ Program PaddleModelConvertor::LoadModel(
                         false,
                         target_);
   }
-  CHECK_EQ(program_desc.BlocksSize(), 1)
-      << "CINN can only support the model with a single block";
+  PADDLE_ENFORCE_EQ(program_desc.BlocksSize(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "CINN can only support the model with a single block"));
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);
 
   // Set feeds shape

@@ -145,32 +145,10 @@ struct FusionOp2Expr {
 std::vector<ir::Expr> GetExprFromPattern(
     const StmtPattern<BackendStage>& pattern);
 
-static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildFors;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ChildScheduleBlockRealizes;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      FindFather;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      IsFor;
-  using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsNotInit;
-  const auto& all_father_fors =
-      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsNotInit *
-       FindFather(expr) * IsFor)(expr);
-  std::vector<ir::Var> vars;
-  for (const auto& for_expr : all_father_fors) {
-    vars.push_back(for_expr.As<ir::For>()->loop_var);
-  }
-  VLOG(4) << "GetAllForIters : " << expr
-          << "\n var is : " << utils::Join(vars, ",");
-  return vars;
-}
-
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
                        const std::vector<int> padding_vec) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
+  using cinn::hlir::framework::pir::trivial_fusion_detail::GetAllForIters;
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
       ChildFors;
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
@@ -188,7 +166,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
   // get the all vars.
   int counter = 0;
-  auto gen_next_name = [&counter]() {
+  auto GenNextName = [&counter]() {
     counter += 1;
     return "expand_var_" + std::to_string(counter);
   };
@@ -197,7 +175,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   for (int i = 0; i < vars_in_expr.size() + padding_vec.size(); i++) {
     if (std::find(padding_vec.begin(), padding_vec.end(), i) !=
         padding_vec.end()) {
-      vars.emplace_back(Expr(0), Expr(1), gen_next_name());
+      vars.emplace_back(Expr(0), Expr(1), GenNextName());
     } else {
       vars.push_back(vars_in_expr[pointer++]);
     }

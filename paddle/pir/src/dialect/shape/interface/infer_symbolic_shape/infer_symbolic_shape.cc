@@ -26,8 +26,8 @@
 namespace pir {
 
 bool InferSymbolicShapeInterface::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return impl_->infer_symbolic_shapes(operation(), shape_analysis);
+    pir::InferSymbolicShapeContext *infer_context) {
+  return impl_->infer_symbolic_shapes(operation(), infer_context);
 }
 
 }  // namespace pir

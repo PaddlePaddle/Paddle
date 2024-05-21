@@ -206,7 +206,7 @@ struct ValueDim {
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
     // Just get a related op to get the shape analysis. It can be value's
     // upstream op (defining op) or downstream op (user op).
-    const auto get_related_op_from_value =
+    const auto GetRelatedOpFromValue =
         [](const pir::Value& v) -> pir::Operation* {
       if (v.defining_op() != nullptr) {
         return v.defining_op();
@@ -220,7 +220,7 @@ struct ValueDim {
       return v.first_use().owner();
     };
     shape_analysis_ = pir::ShapeAnalysisManager::Instance()
-                          .Get(get_related_op_from_value(v)->GetParentProgram())
+                          .Get(GetRelatedOpFromValue(v)->GetParentProgram())
                           .shared_from_this();
   }
   ValueDim() = default;
@@ -230,6 +230,7 @@ struct ValueDim {
   }
 
   symbol::DimExpr GetSymbolicDim() const {
+    PADDLE_ENFORCE_NOT_NULL(v_.impl(), "Empty value is not expected.");
     return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
 
@@ -250,14 +251,14 @@ struct ValueDim {
     auto shape_analysis_ptr = shape_analysis_.lock();
     PADDLE_ENFORCE_NOT_NULL(
         shape_analysis_ptr,
-        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
+        ::common::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
     return *shape_analysis_ptr;
   }
 };
 
 static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
   std::vector<ValueDim> value_dims;
-  size_t rank = GetRank(v);
+  size_t rank = GetCompitableRank(v);
   for (size_t i = 0; i < rank; ++i) {
     value_dims.emplace_back(v, i);
   }

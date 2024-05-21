@@ -182,11 +182,9 @@ std::vector<pir::Type> BuildOutType(
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
     for (size_t i = 0; i < op->num_results(); ++i) {
-      if (shape_analysis.HasShapeOrDataForValue(op->result(i))) {
-        shape_analysis.SetShapeOrDataForValue(
-            new_op->result(i),
-            shape_analysis.GetShapeOrDataForValue(op->result(i)));
-      }
+      shape_analysis.SetShapeOrDataForValue(
+          new_op->result(i),
+          shape_analysis.GetShapeOrDataForValue(op->result(i)));
     }
 
     vec_new_op_list.push_back(new_op);
@@ -357,11 +355,9 @@ class CinnGroupClusterPattern
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
-        if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
-          shape_analysis.SetShapeOrDataForValue(
-              new_group_op->result(i),
-              shape_analysis.GetShapeOrDataForValue(output_values[i]));
-        }
+        shape_analysis.SetShapeOrDataForValue(
+            new_group_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(output_values[i]));
       }
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);

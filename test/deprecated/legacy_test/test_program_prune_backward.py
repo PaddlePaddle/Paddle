@@ -399,10 +399,10 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe.run(base.default_startup_program())
 
             (loss_data_prune,) = exe.run(
-                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_prune, feed=feed_dict, fetch_list=[loss]
             )
             (loss_data_orig,) = exe.run(
-                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_orig, feed=feed_dict, fetch_list=[loss]
             )
             self.assertEqual(loss_data_orig, loss_data_prune)
 
@@ -517,7 +517,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
             (loss_data_orig,) = exe.run(
-                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_orig, feed=feed_dict, fetch_list=[loss]
             )
 
         with self.program_scope_guard():
@@ -529,7 +529,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
             (loss_data_prune,) = exe.run(
-                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_prune, feed=feed_dict, fetch_list=[loss]
             )
 
         self.program_compare(test_prog_orig, test_prog_prune)
@@ -547,7 +547,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
             (loss_data_orig,) = exe.run(
-                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_orig, feed=feed_dict, fetch_list=[loss]
             )
 
         with self.program_scope_guard():
@@ -559,7 +559,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
             (loss_data_prune,) = exe.run(
-                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+                test_prog_prune, feed=feed_dict, fetch_list=[loss]
             )
 
         self.program_compare(test_prog_orig, test_prog_prune)

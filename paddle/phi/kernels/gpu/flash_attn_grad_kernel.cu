@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
+#include <cstddef>
 #include "glog/logging.h"  // For VLOG()
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
@@ -31,26 +35,205 @@ int get_num_split() {
   return FLAGS_cudnn_deterministic ? 1 : 0;
 }
 
+template <typename T, uint64_t HeaddimDiv32>
+static __global__ void SumStridedKV(const T* src,
+                                    T* dst,
+                                    const uint64_t sRowDim1,
+                                    const uint64_t sRowDim2,
+                                    const uint64_t sRowDim3,
+                                    const uint64_t sColDim,
+                                    const uint64_t sRowStride1,
+                                    const uint64_t sRowStride2,
+                                    const uint64_t sColStride,
+                                    const uint64_t dRowStride1,
+                                    const uint64_t dRowStride2) {
+  // SrcShape [seqlen, num_heads_k, num_heads/num_heads_k, headdim]
+  // AxisName [row1  , row2       , col                  , row3   ]
+  // LoopMap  [blockx, thready    , serialreduce         , threadx]
+  // Ensure blockDim.x == 32 && blockDim.z == 1
+  // Ensure sRowStride3 == dRowStride3 == 1 (headdim dim is contiguous)
+  using IndexType = uint64_t;
+  constexpr IndexType BlockDimX = 32;
+  const IndexType SRow1Begin = blockIdx.x * sRowStride1;
+  const IndexType SRow1End = sRowDim1 * sRowStride1;
+  const IndexType SRow1Stride = gridDim.x * sRowStride1;
+
+  const IndexType SRow2Begin = threadIdx.y * sRowStride2;
+  const IndexType SRow2End = sRowDim2 * sRowStride2;
+  const IndexType SRow2Stride = blockDim.y * sRowStride2;
+
+  // const IndexType SRow3Begin = threadIdx.x * sRowStride3;
+  // const IndexType SRow3End = sRowDim3 * sRowStride3;
+  // const IndexType SRow3Stride = BlockDimX * sRowStride3;
+
+  constexpr IndexType SColBegin = 0;
+  const IndexType SColEnd = sColDim * sColStride;
+  const IndexType SColStride = sColStride;
+
+  const IndexType DRow1Begin = blockIdx.x * dRowStride1;
+  const IndexType DRow1Stride = gridDim.x * dRowStride1;
+
+  const IndexType DRow2Begin = threadIdx.y * dRowStride2;
+  const IndexType DRow2Stride = dRowStride2;
+
+  // const IndexType DRow3Begin = threadIdx.x * dRowStride3;
+  // const IndexType DRow3Stride = blockDim.x * dRowStride3;
+
+  for (auto row1 = SRow1Begin, drow1 = DRow1Begin; row1 < SRow1End;
+       row1 += SRow1Stride, drow1 += DRow1Stride) {
+    for (auto row2 = SRow2Begin, drow2 = DRow2Begin; row2 < SRow2End;
+         row2 += SRow2Stride, drow2 += DRow2Stride) {
+      const auto i1 = row1 + row2 + threadIdx.x;
+      const auto di1 = drow1 + drow2 + threadIdx.x;
+      T v[HeaddimDiv32];
+#pragma unroll
+      for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+        v[i] = T{0};
+      }
+      for (auto col = SColBegin; col < SColEnd; col += SColStride) {
+        const auto i2 = i1 + col;
+#pragma unroll
+        for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+          v[i] += src[i2 + i * BlockDimX];
+        }
+      }
+#pragma unroll
+      for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+        dst[di1 + i * BlockDimX] = v[i];
+      }
+    }
+  }
+}
+
+template <typename T>
+static auto selectSumkernel(int64_t headdim) {
+  PADDLE_ENFORCE_LE(headdim,
+                    256,
+                    phi::errors::InvalidArgument(
+                        "FlashAttention only support headdim <= 256"));
+  PADDLE_ENFORCE_EQ(headdim % 32,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "FlashAttention only support headdim %% 32 == 0"));
+  PADDLE_ENFORCE_NE(
+      headdim, 0, phi::errors::InvalidArgument("Headdim can't be zero"));
+#define CASEN(n) \
+  case n:        \
+    return SumStridedKV<T, n>;
+  switch (headdim / 32) {
+    CASEN(1);
+    CASEN(2);
+    CASEN(3);
+    CASEN(4);
+    CASEN(5);
+    CASEN(6);
+    CASEN(7);
+    CASEN(8);
+  }
+  PADDLE_FATAL("Unreachable in selectSumKernel");
+#undef CASEN
+}
+
 template <typename T, typename Context>
-void FlashAttnUnpaddedGradKernel(const Context& ctx,
-                                 const DenseTensor& q,
-                                 const DenseTensor& k,
-                                 const DenseTensor& v,
-                                 const DenseTensor& cu_seqlens_q,
-                                 const DenseTensor& cu_seqlens_k,
-                                 const DenseTensor& out,
-                                 const DenseTensor& softmax_lse,
-                                 const DenseTensor& seed_offset,
-                                 const paddle::optional<DenseTensor>& attn_mask,
-                                 const DenseTensor& dout,
-                                 int64_t max_seqlen_q,
-                                 int64_t max_seqlen_k,
-                                 float scale,
-                                 float dropout,
-                                 bool causal,
-                                 DenseTensor* dq,
-                                 DenseTensor* dk,
-                                 DenseTensor* dv) {
+static void kvReduceForGQA(const Context& ctx,
+                           const DenseTensor& dk_tmp,
+                           DenseTensor* dk) {
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[2],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[3],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+  const int64_t reduceDimSize = dk_tmp.dims()[2];
+  const size_t blockNum =
+      std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
+               static_cast<int64_t>(1024l));
+  const dim3 threadNum{32, 4, 1};
+  auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[3]);
+  sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
+      reinterpret_cast<const T*>(dk_tmp.data()),
+      reinterpret_cast<T*>(dk->data()),
+      dk_tmp.dims()[0],
+      dk_tmp.dims()[1],
+      dk_tmp.dims()[3],
+      dk_tmp.dims()[2],
+      dk_tmp.strides()[0],
+      dk_tmp.strides()[1],
+      // dk_tmp.strides()[3],
+      dk_tmp.strides()[2],
+      dk->strides()[0],
+      dk->strides()[1]
+      // dk->strides()[2]
+  );
+}
+template <typename T, typename Context>
+static void kvReduceBatchedForGQA(const Context& ctx,
+                                  const DenseTensor& dk_tmp,
+                                  DenseTensor* dk) {
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[3],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[4],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[0],
+      dk->strides()[1] * dk->dims()[1],
+      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[0],
+      dk_tmp.strides()[1] * dk_tmp.dims()[1],
+      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
+  const int64_t reduceDimSize = dk_tmp.dims()[3];
+  const size_t blockNum = std::min(
+      (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),
+      static_cast<int64_t>(1024l));
+  const dim3 threadNum{32, 4, 1};
+  auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[4]);
+  // here implicitly flat [batch,seqlen], and require batch dim to be contiguous
+  sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
+      reinterpret_cast<const T*>(dk_tmp.data()),
+      reinterpret_cast<T*>(dk->data()),
+      dk_tmp.dims()[0] * dk_tmp.dims()[1],
+      dk_tmp.dims()[2],
+      dk_tmp.dims()[4],
+      dk_tmp.dims()[3],
+      dk_tmp.strides()[1],
+      dk_tmp.strides()[2],
+      // dk_tmp.strides()[4],
+      dk_tmp.strides()[3],
+      dk->strides()[1],
+      dk->strides()[2]
+      // dk->strides()[3]
+  );
+}
+
+template <typename T, typename Context>
+void FlashAttnUnpaddedGradBaseKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const DenseTensor& dout,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    DenseTensor* dq,
+    DenseTensor* dk,
+    DenseTensor* dv,
+    bool varlen_padded) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
@@ -64,37 +247,30 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 
   bool is_mha = (num_heads == num_heads_k);
 
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
-
+  DenseTensor* kdq = dq;
   DenseTensor dq_tmp;
-  if (dq) {
-    dq_ptr = ctx.template Alloc<T>(dq);
-  } else {
+  if (!dq) {
     dq_tmp.Resize(dims);
-    dq_ptr = ctx.template Alloc<T>(&dq_tmp);
+    ctx.template Alloc<T>(&dq_tmp);
+    kdq = &dq_tmp;
   }
 
   std::initializer_list<int64_t> dk_dv_shape = {
       total_k, num_heads_k, num_heads / num_heads_k, head_size};
 
+  DenseTensor *kdk = dk, *kdv = dv;
   DenseTensor dk_tmp;
-  if (dk && is_mha) {
-    ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
-  } else {
+  if (!dk || !is_mha) {
     dk_tmp.Resize(dk_dv_shape);
-    dk_ptr = ctx.template Alloc<T>(&dk_tmp);
+    ctx.template Alloc<T>(&dk_tmp);
+    kdk = &dk_tmp;
   }
 
   DenseTensor dv_tmp;
-  if (dv && is_mha) {
-    ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
-  } else {
+  if (!dv || !is_mha) {
     dv_tmp.Resize(dk_dv_shape);
-    dv_ptr = ctx.template Alloc<T>(&dv_tmp);
+    ctx.template Alloc<T>(&dv_tmp);
+    kdv = &dv_tmp;
   }
 
   const cudaStream_t stream = ctx.stream();
@@ -139,9 +315,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       cu_seqlens_q.data<int32_t>(),
       cu_seqlens_k.data<int32_t>(),
       params.rng_state.data(),
-      dq_ptr,
-      dk_ptr,
-      dv_ptr,
+      kdq->data(),
+      kdk->data(),
+      kdv->data(),
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -162,16 +338,205 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr,
+      q.strides()[0],
+      k.strides()[0],
+      v.strides()[0],
+      q.strides()[1],
+      k.strides()[1],
+      v.strides()[1],
+      out.strides()[0],
+      out.strides()[1],
+      max_seqlen_q * q.strides()[0],
+      max_seqlen_k * k.strides()[0],
+      max_seqlen_k * v.strides()[0],
+      max_seqlen_q * out.strides()[0],
+      kdq->strides()[0],
+      kdk->strides()[0],
+      kdv->strides()[0],
+      kdq->strides()[1],
+      kdk->strides()[kdk->strides().size() - 2],
+      kdv->strides()[kdv->strides().size() - 2],
+      dout.strides()[0],
+      dout.strides()[1],
+      max_seqlen_q * kdq->strides()[0],
+      max_seqlen_k * kdk->strides()[0],
+      max_seqlen_k * kdv->strides()[0],
+      max_seqlen_q * dout.strides()[0],
+      varlen_padded);
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
-      phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
+      if (dk->meta().is_contiguous())
+        phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
+      else
+        kvReduceForGQA<T, Context>(ctx, dk_tmp, dk);
     }
     if (dv) {
-      phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
+      if (dv->meta().is_contiguous())
+        phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
+      else
+        kvReduceForGQA<T, Context>(ctx, dv_tmp, dv);
     }
   }
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
+void FlashAttnUnpaddedGradKernel(const Context& ctx,
+                                 const DenseTensor& q,
+                                 const DenseTensor& k,
+                                 const DenseTensor& v,
+                                 const DenseTensor& cu_seqlens_q,
+                                 const DenseTensor& cu_seqlens_k,
+                                 const DenseTensor& out,
+                                 const DenseTensor& softmax_lse,
+                                 const DenseTensor& seed_offset,
+                                 const paddle::optional<DenseTensor>& attn_mask,
+                                 const DenseTensor& dout,
+                                 int64_t max_seqlen_q,
+                                 int64_t max_seqlen_k,
+                                 float scale,
+                                 float dropout,
+                                 bool causal,
+                                 DenseTensor* dq,
+                                 DenseTensor* dk,
+                                 DenseTensor* dv) {
+#ifdef PADDLE_WITH_FLASHATTN
+  if (dq) {
+    ctx.template Alloc<T>(dq);
+  }
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+  }
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+  }
+  FlashAttnUnpaddedGradBaseKernel<T>(ctx,
+                                     q,
+                                     k,
+                                     v,
+                                     cu_seqlens_q,
+                                     cu_seqlens_k,
+                                     out,
+                                     softmax_lse,
+                                     seed_offset,
+                                     attn_mask,
+                                     dout,
+                                     max_seqlen_q,
+                                     max_seqlen_k,
+                                     scale,
+                                     dropout,
+                                     causal,
+                                     dq,
+                                     dk,
+                                     dv,
+                                     false /*varlen_padded*/);
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+static void sliceFlattenView(const DenseTensor& in,
+                             DenseTensor* out,
+                             int axis,
+                             int64_t offset,
+                             int64_t sliceLength) {
+  PADDLE_ENFORCE_LT(
+      axis,
+      in.dims().size(),
+      phi::errors::InvalidArgument("sliceView receive axis out of bound"));
+  std::array<int64_t, DDim::kMaxRank> dimArr;
+  std::array<int64_t, DDim::kMaxRank> strideArr;
+  auto id = dimArr.begin(), is = strideArr.begin();
+  for (int i = 0; i < in.dims().size(); i++) {
+    if (i == axis) continue;
+    if (i == axis + 1)
+      *id = in.dims()[i] * sliceLength;
+    else
+      *id = in.dims()[i];
+    *is = in.strides()[i];
+    id++;
+    is++;
+  }
+  *out = DenseTensor{
+      in.Holder(),
+      DenseTensorMeta{in.dtype(),
+                      DDim{dimArr.data(), in.dims().size() - 1},
+                      DDim(strideArr.data(), in.dims().size() - 1)}};
+  out->set_offset(in.offset() +
+                  offset * in.strides()[axis] * SizeOf(out->dtype()));
+}
+template <typename OutT>
+struct ZeroFunctor {
+  __device__ __forceinline__ OutT operator()() const {
+    return static_cast<OutT>(0);
+  }
+};
+template <typename T, typename Context>
+void FlashAttnVarlenQKVPackedGradKernel(
+    const Context& ctx,
+    const DenseTensor& qkv,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const DenseTensor& dout,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    bool varlen_padded,
+    DenseTensor* dqkv) {
+#ifdef PADDLE_WITH_FLASHATTN
+  // q,k,v [total_*, num_heads, head_dim]
+  const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
+  DenseTensor q, k, v;
+  sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 1, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 1, head_groupnum - 1, 1);
+  // DenseTensor dqkv_tmp;
+  if (!dqkv) {
+    return;
+    // dqkv is the only output. No need to compute if no dqkv
+    // dqkv_tmp.Resize(qkv.dims());
+    // dqkv = &dqkv_tmp;
+  }
+  ctx.template Alloc<T>(dqkv);
+  {
+    std::vector<const DenseTensor*> inputs{};
+    std::vector<DenseTensor*> outputs{dqkv};
+    phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
+  }
+  DenseTensor dq, dk, dv;
+  sliceFlattenView(*dqkv, &dq, 1, 0, head_groupnum - 2);
+  sliceFlattenView(*dqkv, &dk, 1, head_groupnum - 2, 1);
+  sliceFlattenView(*dqkv, &dv, 1, head_groupnum - 1, 1);
+  FlashAttnUnpaddedGradBaseKernel<T>(ctx,
+                                     q,
+                                     k,
+                                     v,
+                                     cu_seqlens_q,
+                                     cu_seqlens_k,
+                                     out,
+                                     softmax_lse,
+                                     seed_offset,
+                                     attn_mask,
+                                     dout,
+                                     max_seqlen_q,
+                                     max_seqlen_k,
+                                     scale,
+                                     dropout,
+                                     causal,
+                                     &dq,
+                                     &dk,
+                                     &dv,
+                                     varlen_padded);
 #else
   RaiseNotSupportedError();
 #endif
@@ -208,36 +573,29 @@ void FlashAttnGradBaseKernel(
 
   bool is_mha = (num_heads == num_heads_k);
 
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
-
-  DenseTensor dq_tmp;
-  if (dq) {
-    dq_ptr = ctx.template Alloc<T>(dq);
-  } else {
-    dq_tmp.Resize(dims);
-    dq_ptr = ctx.template Alloc<T>(&dq_tmp);
-  }
-
-  DenseTensor dk_tmp;
   std::initializer_list<int64_t> dk_dv_shape = {
       batch_size, seqlen_k, num_heads_k, num_heads / num_heads_k, head_size};
-  if (dk && is_mha) {
-    ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
-  } else {
+  DenseTensor* kdq = dq;
+  DenseTensor dq_tmp;
+  if (!dq) {
+    dq_tmp.Resize(dims);
+    ctx.template Alloc<T>(&dq_tmp);
+    kdq = &dq_tmp;
+  }
+
+  DenseTensor *kdk = dk, *kdv = dv;
+  DenseTensor dk_tmp;
+  if (!dk || !is_mha) {
     dk_tmp.Resize(dk_dv_shape);
-    dk_ptr = ctx.template Alloc<T>(&dk_tmp);
+    ctx.template Alloc<T>(&dk_tmp);
+    kdk = &dk_tmp;
   }
 
   DenseTensor dv_tmp;
-  if (dv && is_mha) {
-    ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
-  } else {
+  if (!dv || !is_mha) {
     dv_tmp.Resize(dk_dv_shape);
-    dv_ptr = ctx.template Alloc<T>(&dv_tmp);
+    ctx.template Alloc<T>(&dv_tmp);
+    kdv = &dv_tmp;
   }
 
   const cudaStream_t stream = ctx.stream();
@@ -291,9 +649,9 @@ void FlashAttnGradBaseKernel(
       params.softmax_d.data(),
       softmax_lse.data(),
       params.rng_state.data(),
-      dq_ptr,
-      dk_ptr,
-      dv_ptr,
+      kdq->data(),
+      kdk->data(),
+      kdv->data(),
       params.dq_accum.data(),
       params.batch_size,
       params.max_seqlen_q,
@@ -321,14 +679,45 @@ void FlashAttnGradBaseKernel(
       params.attn_mask_start_row_indices_tensor
           ? params.attn_mask_start_row_indices_dims.data()
           : nullptr,
-      params.attn_mask_start_row);
+      params.attn_mask_start_row,
+      q.strides()[1],
+      k.strides()[1],
+      v.strides()[1],
+      q.strides()[2],
+      k.strides()[2],
+      v.strides()[2],
+      out.strides()[1],
+      out.strides()[2],
+      q.strides()[0],
+      k.strides()[0],
+      v.strides()[0],
+      out.strides()[0],
+      kdq->strides()[1],
+      kdk->strides()[1],
+      kdv->strides()[1],
+      kdq->strides()[2],
+      kdk->strides()[kdk->strides().size() - 2],
+      kdv->strides()[kdv->strides().size() - 2],
+      dout.strides()[1],
+      dout.strides()[2],
+      kdq->strides()[0],
+      kdk->strides()[0],
+      kdv->strides()[0],
+      dout.strides()[0]);
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
-      phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
+      if (dk->meta().is_contiguous())
+        phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
+      else
+        kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
     }
+
     if (dv) {
-      phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
+      if (dv->meta().is_contiguous())
+        phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
+      else
+        kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);
     }
   }
 #else
@@ -351,6 +740,15 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
+  if (dq) {
+    ctx.template Alloc<T>(dq);
+  }
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+  }
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+  }
   FlashAttnGradBaseKernel<T, Context>(ctx,
                                       q,
                                       k,
@@ -370,6 +768,58 @@ void FlashAttnGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
+void FlashAttnQKVPackedGradKernel(
+    const Context& ctx,
+    const DenseTensor& qkv,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const DenseTensor& dout,
+    float dropout,
+    bool causal,
+    DenseTensor* dqkv) {
+#ifdef PADDLE_WITH_FLASHATTN
+  // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, head_dim]
+  const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
+  DenseTensor q, k, v;
+  sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 2, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 2, head_groupnum - 1, 1);
+  // DenseTensor dqkv_tmp;
+  if (!dqkv) {
+    return;
+    // dqkv is the only output. No need to compute if no dqkv
+    // dqkv_tmp.Resize(qkv.dims());
+    // dqkv = &dqkv_tmp;
+  }
+  ctx.template Alloc<T>(dqkv);
+  DenseTensor dq, dk, dv;
+  sliceFlattenView(*dqkv, &dq, 2, 0, head_groupnum - 2);
+  sliceFlattenView(*dqkv, &dk, 2, head_groupnum - 2, 1);
+  sliceFlattenView(*dqkv, &dv, 2, head_groupnum - 1, 1);
+  FlashAttnGradBaseKernel<T, Context>(ctx,
+                                      q,
+                                      k,
+                                      v,
+                                      out,
+                                      softmax_lse,
+                                      seed_offset,
+                                      attn_mask,
+                                      paddle::none,
+                                      dout,
+                                      dropout,
+                                      causal,
+                                      0,
+                                      &dq,
+                                      &dk,
+                                      &dv);
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
 void FlashAttnWithSparseGradKernel(
     const Context& ctx,
     const DenseTensor& q,
@@ -386,6 +836,15 @@ void FlashAttnWithSparseGradKernel(
     DenseTensor* dq,
     DenseTensor* dk,
     DenseTensor* dv) {
+  if (dq) {
+    ctx.template Alloc<T>(dq);
+  }
+  if (dk) {
+    ctx.template Alloc<T>(dk);
+  }
+  if (dv) {
+    ctx.template Alloc<T>(dv);
+  }
   FlashAttnGradBaseKernel<T, Context>(ctx,
                                       q,
                                       k,
@@ -414,6 +873,15 @@ PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
 
+PD_REGISTER_KERNEL(flash_attn_varlen_qkvpacked_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnVarlenQKVPackedGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+}
+
 PD_REGISTER_KERNEL(flash_attn_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -421,6 +889,15 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+}
+
+PD_REGISTER_KERNEL(flash_attn_qkvpacked_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnQKVPackedGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
 
 PD_REGISTER_KERNEL(flash_attn_with_sparse_mask_grad,

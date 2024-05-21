@@ -91,7 +91,7 @@ function(bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
-function(set_pit_tests_properties)
+function(set_pir_tests_properties)
   file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
        PIR_OP_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_TESTS})
@@ -164,4 +164,4 @@ if(WITH_TESTING)
 
 endif()
 
-set_pit_tests_properties()
+set_pir_tests_properties()
