@@ -3592,6 +3592,89 @@ void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
   out->set_dtype(ins[0]->dtype());
 }
 
+void NAdamInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& momentum_decay_pow,
+                    const MetaTensor& beta2_pow,
+                    const MetaTensor& mu_product,
+                    const MetaTensor& moment1,
+                    const MetaTensor& moment2,
+                    const MetaTensor& master_param,
+                    float beta1,
+                    float beta2,
+                    float epsilon,
+                    float momentum_decay,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* momentum_decay_pow_out,
+                    MetaTensor* beta2_pow_out,
+                    MetaTensor* mu_product_out,
+                    MetaTensor* moment1_out,
+                    MetaTensor* moment2_out,
+                    MetaTensor* master_param_out) {
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment1.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of NAdamOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment1 [%s]",
+                        param_dim,
+                        moment1.dims()));
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment2.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of NAdamOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment2 [%s]",
+                        param_dim,
+                        moment2.dims()));
+
+  auto lr_dim = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning Rate of NAdamOp should be a scalar. But "
+                        "received LearningRate's dim [%s]",
+                        common::product(lr_dim)));
+
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(param_dim,
+                      master_param.dims(),
+                      errors::InvalidArgument(
+                          "Param and MasterParam input of NAdamOp should "
+                          "have same dimension. But "
+                          "received Param dims: [%s], MasterParam dims: [%s].",
+                          param_dim,
+                          master_param.dims()));
+  }
+
+  param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
+
+  momentum_decay_pow_out->set_dims(momentum_decay_pow.dims());
+  momentum_decay_pow_out->set_dtype(momentum_decay_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow.dims());
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  mu_product_out->set_dims(mu_product.dims());
+  mu_product_out->set_dtype(mu_product.dtype());
+
+  moment1_out->set_dims(param_dim);
+  moment1_out->set_dtype(moment1.dtype());
+  moment2_out->set_dims(param_dim);
+  moment2_out->set_dtype(moment2.dtype());
+
+  if (multi_precision && master_param.initialized()) {
+    auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                   param.dtype() == phi::DataType::BFLOAT16)
+                      ? phi::DataType::FLOAT32
+                      : param.dtype();
+    master_param_out->set_dims(param_dim);
+    master_param_out->set_dtype(MPType);
+  }
+}
+
 void NceInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& weight,
@@ -3782,6 +3865,88 @@ void QuantizeLinearInferMeta(const MetaTensor& x,
   }
   if (out_state) {
     out_state->set_dims(in_state.dims());
+  }
+}
+
+void RAdamInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& beta1_pow,
+                    const MetaTensor& beta2_pow,
+                    const MetaTensor& rho,
+                    const MetaTensor& moment1,
+                    const MetaTensor& moment2,
+                    const MetaTensor& master_param,
+                    float beta1,
+                    float beta2,
+                    float epsilon,
+                    bool multi_precision,
+                    MetaTensor* param_out,
+                    MetaTensor* beta1_pow_out,
+                    MetaTensor* beta2_pow_out,
+                    MetaTensor* rho_out,
+                    MetaTensor* moment1_out,
+                    MetaTensor* moment2_out,
+                    MetaTensor* master_param_out) {
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment1.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of RAdamOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment1 [%s]",
+                        param_dim,
+                        moment1.dims()));
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment2.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Momentum input of RAdamOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment2 [%s]",
+                        param_dim,
+                        moment2.dims()));
+
+  auto lr_dim = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning Rate of RAdamOp should be a scalar. But "
+                        "received LearningRate's dim [%s]",
+                        common::product(lr_dim)));
+
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(param_dim,
+                      master_param.dims(),
+                      errors::InvalidArgument(
+                          "Param and MasterParam input of RAdamOp should "
+                          "have same dimension. But "
+                          "received Param dims: [%s], MasterParam dims: [%s].",
+                          param_dim,
+                          master_param.dims()));
+  }
+
+  param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
+
+  beta1_pow_out->set_dims(beta1_pow.dims());
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow.dims());
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  rho_out->set_dims(rho.dims());
+  rho_out->set_dtype(rho.dtype());
+
+  moment1_out->set_dims(param_dim);
+  moment1_out->set_dtype(moment1.dtype());
+  moment2_out->set_dims(param_dim);
+  moment2_out->set_dtype(moment2.dtype());
+
+  if (multi_precision && master_param.initialized()) {
+    auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                   param.dtype() == phi::DataType::BFLOAT16)
+                      ? phi::DataType::FLOAT32
+                      : param.dtype();
+    master_param_out->set_dims(param_dim);
+    master_param_out->set_dtype(MPType);
   }
 }
 
@@ -4952,86 +5117,6 @@ void FusedRopeInferMeta(const MetaTensor& q,
       out_v->set_dtype(q.dtype());
     }
   }
-}
-
-void FusedTokenPruneInferMeta(const MetaTensor& attn,
-                              const MetaTensor& x,
-                              const MetaTensor& mask,
-                              const MetaTensor& new_mask,
-                              bool keep_first_token,
-                              bool keep_order,
-                              MetaTensor* slimmed_x,
-                              MetaTensor* cls_inds) {
-  auto mask_dim = mask.dims();
-  auto attn_dim = attn.dims();
-  auto x_dim = x.dims();
-  auto new_mask_dim = new_mask.dims();
-
-  PADDLE_ENFORCE_EQ(
-      mask_dim.size(),
-      4,
-      phi::errors::InvalidArgument("The input mask must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(
-      attn_dim.size(),
-      4,
-      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(
-      x_dim.size(),
-      3,
-      phi::errors::InvalidArgument("The input x must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(
-      new_mask_dim.size(),
-      4,
-      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
-  PADDLE_ENFORCE_EQ(mask_dim[0],
-                    attn_dim[0],
-                    phi::errors::InvalidArgument(
-                        "The first dim of mask and attn should be the same"
-                        "which is batch size"));
-  PADDLE_ENFORCE_EQ(mask_dim[1],
-                    attn_dim[1],
-                    phi::errors::InvalidArgument(
-                        "The second dim of mask and attn should be the same"
-                        "which is nb_head"));
-  PADDLE_ENFORCE_EQ(mask_dim[0],
-                    x_dim[0],
-                    phi::errors::InvalidArgument(
-                        "The first dim of mask and x should be the same"
-                        "which is batch size"));
-  PADDLE_ENFORCE_EQ(
-      mask_dim[2],
-      mask_dim[3],
-      phi::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
-          "which is max seq len"));
-  PADDLE_ENFORCE_EQ(
-      attn_dim[2],
-      attn_dim[3],
-      phi::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
-          "which is max seq len"));
-  PADDLE_ENFORCE_EQ(attn_dim[2],
-                    mask_dim[2],
-                    phi::errors::InvalidArgument(
-                        "The third dim of mask and attn should be the same"
-                        "which is max seq len"));
-  PADDLE_ENFORCE_EQ(attn_dim[2],
-                    x_dim[1],
-                    phi::errors::InvalidArgument(
-                        "The third dim of mask and the second dim of attn"
-                        "should be the same which is max seq len"));
-
-  auto bsz = mask_dim[0];
-  auto c = x_dim[2];
-  auto slim_seq_len = new_mask_dim[2];
-
-  std::vector<int64_t> slimmed_x_dims({bsz, slim_seq_len, c});
-  slimmed_x->set_dims(common::make_ddim(slimmed_x_dims));
-  slimmed_x->set_dtype(x.dtype());
-
-  std::vector<int64_t> cls_inds_dims({bsz, slim_seq_len});
-  cls_inds->set_dims(common::make_ddim(cls_inds_dims));
-  cls_inds->set_dtype(phi::DataType::INT64);
 }
 
 void MoeInferMeta(const MetaTensor& x,

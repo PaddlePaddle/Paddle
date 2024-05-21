@@ -203,6 +203,7 @@ TYPE_TO_FUNC_MAP = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
+    "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
     "phi::DataType": "CastPyArg2DataTypeDirectly",
 }

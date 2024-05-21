@@ -477,6 +477,28 @@
     func : p_recv_array
     param : [peer, dtype, out_shape]
 
+- op : p_send
+  args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
+  output :
+  infer_meta :
+    func : PSendInferMeta
+    param : [x, peer]
+  kernel :
+    func : p_send
+    param : [x, peer, dynamic_shape]
+    data_type : x
+
+- op : p_send_array
+  args : (Tensor x, int ring_id = 0, int peer = 0, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta :
+    func : PSendArrayInferMeta
+    param : [x, peer]
+  kernel :
+    func : p_send_array
+    param : [x, peer, dynamic_shape]
+    data_type : x
+
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
   output : Tensor(out)
@@ -677,14 +699,14 @@
     data_type : dtype
 
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype=DataType::FLOAT32)
+  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, float a = -2.0f, float b = 2.0f, DataType dtype=DataType::FLOAT32)
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
   kernel :
     func : truncated_gaussian_random
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
     data_type : dtype
 
 - op : uniform

@@ -15,19 +15,22 @@
 #pragma once
 
 #include <memory>
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/dll_decl.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
 namespace pir {
 
 class Pass;
 
+class InferSymbolicShapeContext;
+
 IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
 
 void InferSymExprForBlock(const Block &block,
                           InferSymbolicShapeContext *infer_context);
 
+void InferSymExprForAllValues(ModuleOp module_op);
 }  // namespace pir
 
 namespace pir::shape {

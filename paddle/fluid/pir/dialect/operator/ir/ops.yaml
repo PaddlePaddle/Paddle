@@ -3,17 +3,6 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
-- op : adadelta_
-  args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
-  output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
-  infer_meta :
-    func : AdadeltaInferMeta
-  kernel :
-    func : adadelta
-    data_type : param
-  optional : master_param, master_param_out
-  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
-
 - op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -43,6 +32,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
 
@@ -494,16 +484,6 @@
     param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
   optional: param
 
-- op : dgc_momentum
-  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
-  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
-  infer_meta :
-    func : DGCMomentumInferMeta
-  kernel :
-    func : dgc_momentum
-    data_type : param
-  optional : master_param, master_param_out
-
 - op : disable_check_model_nan_inf
   args: (Tensor x, int flag = 0)
   output: Tensor(out)
@@ -532,19 +512,9 @@
   kernel :
     func : distributed_fused_lamb
     data_type : DataType::FLOAT32
-    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
+    param : [param, grad, fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, moment1, moment2, beta1pow, beta2pow, fused_param_offsets, fp32_shard_fused_param_offsets, fp16_shard_fused_param_offsets, param_info, param_order, learning_rate, global_scale, acc_steps, beta1, beta2, epsilon, max_global_grad_norm, weight_decay, clip_after_allreduce, use_master_param_norm, use_master_acc_grad, is_grad_scaled_by_nranks, use_hierarchical_allreduce, nranks, ring_ids]
   optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad, fp32_fused_param_out, fp16_fused_param_out, fp32_acc_fused_grad, fp16_acc_fused_grad, acc_step, stop_update
   inplace : (fp32_fused_param -> fp32_fused_param_out), (fp16_fused_param -> fp16_fused_param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1pow -> beta1pow_out), (beta2pow -> beta2pow_out), (param -> param_out)
-
-- op : distributed_fused_lamb_init
-  args : (Tensor[] param, Tensor[] grad, float beta1, float beta2, int[] apply_weight_decay, int alignment, int rank, int nranks)
-  output : Tensor(fp32_fused_param), Tensor(fp32_fused_grad), Tensor(fp16_fused_param), Tensor(fp16_fused_grad), Tensor(moment1), Tensor(moment2), Tensor(beta1_pow), Tensor(beta2_pow), Tensor(fused_param_offsets), Tensor(fp32_shard_fused_param_offsets), Tensor(fp16_shard_fused_param_offsets), Tensor(param_info), Tensor(param_order), Tensor[](param_out){param.size()}, Tensor[](master_param_out){param.size()}, Tensor[](grad_out){grad.size()}, Tensor(global_scale), Tensor(step)
-  infer_meta :
-    func : DistributedFusedLambInitInferMeta
-  kernel :
-    func : distributed_fused_lamb_init
-  optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
-  inplace: (param -> param_out), (grad -> grad_out)
 
 - op : distributed_lookup_table
   args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
@@ -621,6 +591,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
+    spmd_rule: EmbeddingInferSpmdUnsupportVocabParallel
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -867,14 +838,6 @@
   kernel:
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
-
-- op : fused_token_prune
-  args : (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token = true, bool keep_order = false)
-  output : Tensor(slimmed_x), Tensor(cls_inds)
-  infer_meta :
-    func : FusedTokenPruneInferMeta
-  kernel:
-    func : fused_token_prune
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -1322,6 +1285,7 @@
     func : print_kernel
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : prod
   args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
@@ -1418,6 +1382,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : randperm
   args : (int n, DataType dtype, Place place={})
@@ -1430,6 +1395,7 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+  traits : pir::SideEffectTrait
 
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
@@ -1503,6 +1469,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1683,6 +1650,7 @@
   output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : softmax
   inplace : (x -> out)
@@ -1783,6 +1751,7 @@
   output : Tensor(out)
   infer_meta :
     func : TileInferMeta
+    spmd_rule : TileInferSpmdDynamic
   kernel :
     func : tile
   backward : tile_grad
@@ -1860,16 +1829,17 @@
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
   kernel :
     func : truncated_gaussian_random
-    param : [shape, mean, std, seed, dtype]
+    param : [shape, mean, std, seed, a, b, dtype]
     backend : place
     data_type : dtype
+  traits : pir::SideEffectTrait
 
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
@@ -1883,6 +1853,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : uniform_random_batch_size_like
   args : (Tensor input, int[] shape, int input_dim_idx=0, int output_dim_idx=0, float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0,  int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
@@ -1893,6 +1864,7 @@
   kernel :
     func : uniform_random_batch_size_like
     data_type : dtype
+  traits : pir::SideEffectTrait
 
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)

@@ -2210,15 +2210,30 @@ class DistModel:
         self.outs = outs
 
         if self._mode == "predict":
-            if "outputs" in outs:
-                return outs["outputs"]
+            if "outputs" in self.outs:
+                return self.outs["outputs"]
             else:
                 return None
         else:
-            if "loss" in outs:
-                return outs["loss"]
+            if "loss" in self.outs:
+                return self.outs["loss"]
             else:
                 return None
+
+    def _fetch_value(self, value, name=None):
+        """
+        Get the value of the variable with the given name.
+
+        Args:
+            value (pir.Value): The pir Value to fetch.
+            name (str|None, optional): The user-defined name of
+                the fetched result. If None, the order of the Value
+                in the fetch list will be used. Default: None.
+        """
+        self._engine._pir_fetch_values.append(value)
+        if name is None:
+            name = len(self._engine._pir_fetch_values) - 1
+        self._engine._pir_user_defined_fetch_names.append(name)
 
     def state_dict(self, mode="all"):
         """

@@ -22,6 +22,10 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
+#if CUDA_VERSION >= 11000 && (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+#define CUDA_BFLOAT16_AVALIABLE
+#endif
+
 namespace phi {
 namespace fusion {
 
@@ -49,7 +53,7 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
   return __hmul(__hadd(a, b), c);
 }
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
@@ -400,6 +404,10 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
+      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
+      // q,k,v,out all in 3-D [token_num, num_head, dim_head].
+      auto fmha_shape = fmha_buf.dims();
+      fmha_buf.Resize({token_num, num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -420,6 +428,8 @@ void DispatchWithDtype(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
+      // Reshape fmha_buf back (to 2-D), to not affect following codes.
+      fmha_buf.Resize(fmha_shape);
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -688,7 +698,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (compute_dtype == "bf16") {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -771,7 +781,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -818,7 +828,7 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
