@@ -75,7 +75,8 @@ class GpuAndCpuSearchSortedCompute {
         seq_size_(seq_size),
         out_data_(out_data) {}
   HOSTDEVICE void operator()(int64_t idx) {
-    const T2* value_ptr = value_data_ + idx;
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
+    const MT2* value_ptr = static_cast<MT2>(value_data_ + idx);
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
@@ -83,10 +84,10 @@ class GpuAndCpuSearchSortedCompute {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::UpperBound<T1, T2>(
+        out_data_[idx] = static_cast<OutType>(phi::funcs::UpperBound<T1, MT2>(
             sequence_ptr, seq_size_, *value_ptr));
       } else {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::LowerBound<T1, T2>(
+        out_data_[idx] = static_cast<OutType>(phi::funcs::LowerBound<T1, MT2>(
             sequence_ptr, seq_size_, *value_ptr));
       }
     }
@@ -118,12 +119,19 @@ class SearchSortedFunctor {
 
   template <typename T2>
   void apply() {
-    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
-    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
-    const MT1* sequence_data = sorted_sequence_->data<MT1>();
-    const MT2* value_data = value_->data<MT2>();
+    T1* sequence_data = sorted_sequence_->data<T1>();
+    const T2* value_data = value_->data<T2>();
     const phi::DDim& seq_dims = sorted_sequence_->dims();
     const phi::DDim& val_dims = value_->dims();
+
+    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
+    DenseTensor* sorted_sequence_mt = new DenseTensor();
+    sorted_sequence_mt->Resize(seq_dims);
+    MT1* sorted_sequence_mt_data =
+        context.template Alloc<MT1>(sorted_sequence_mt);
+    for (int i = 0; i < sequence_data.numel(); ++i) {
+      sorted_sequence_mt_data[i] = static_cast<MT1>(sequence_data[i]);
+    }
 
     bool is_1d_boundaries = seq_dims.size() == 1;
     int64_t val_size = 0;
@@ -140,8 +148,8 @@ class SearchSortedFunctor {
     }
 
     funcs::ForRange<Context> for_range(context_, value_->numel());
-    GpuAndCpuSearchSortedCompute<MT1, MT2, OutType>
-        gpu_and_cpu_search_sorted_compute(sequence_data,
+    GpuAndCpuSearchSortedCompute<MT1, T2, OutType>
+        gpu_and_cpu_search_sorted_compute(sorted_sequence_mt_data,
                                           value_data,
                                           right_,
                                           is_1d_boundaries,
