@@ -231,7 +231,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_generate_mask_labels_op',
     'test_generate_proposal_labels_op',
     'test_generate_proposals_op',
-    'test_generator_dataloader',
+    'test_generator_dataloader_deprecated',
     'test_get_places_op',
     'test_get_tensor_from_selected_rows_op',
     'test_gradient_clip',

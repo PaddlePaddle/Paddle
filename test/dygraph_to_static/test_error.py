@@ -65,22 +65,6 @@ def func_decorated_by_other_2():
     return 1
 
 
-class LayerErrorInCompiletime(paddle.nn.Layer):
-    def __init__(self, fc_size=20):
-        super().__init__()
-        self._linear = paddle.nn.Linear(fc_size, fc_size)
-
-    @paddle.jit.to_static(
-        input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')],
-        full_graph=True,
-    )
-    def forward(self, x):
-        y = self._linear(x)
-        z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
-        out = paddle.mean(y[z])
-        return out
-
-
 class LayerErrorInCompiletime2(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -346,39 +330,6 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
             '<--- HERE',
             'return x',
         ]
-
-
-class TestJitSaveInCompiletime(TestErrorBase):
-    def setUp(self):
-        self.reset_flags_to_default()
-        self.set_func_call()
-        self.filepath = inspect.getfile(inspect.unwrap(self.func_call))
-        self.set_exception_type()
-        self.set_message()
-
-    def set_exception_type(self):
-        self.exception_type = TypeError
-
-    def set_message(self):
-        self.expected_message = [
-            'def forward(self, x):',
-            'y = self._linear(x)',
-            'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
-            '<--- HERE',
-            'out = paddle.mean(y[z])',
-            'return out',
-        ]
-
-    def set_func_call(self):
-        layer = LayerErrorInCompiletime()
-        self.func_call = lambda: paddle.jit.save(
-            layer, path="./test_dy2stat_error/model"
-        )
-
-    def test_error(self):
-        # TODO(pir-save-load): Open this test after we support PIR save load
-        ...
-        # self._test_raise_new_exception()
 
 
 @paddle.jit.to_static(full_graph=True)
