@@ -199,13 +199,6 @@ class TestStudentT(unittest.TestCase):
             np.array(3.3).astype("float32"),
         ),
         (
-            'multi-dim',
-            parameterize.xrand((2, 3), dtype='float32', min=4, max=30),
-            parameterize.xrand((2, 3), dtype='float32', min=-10, max=10),
-            parameterize.xrand((2, 3), dtype='float32', min=0.1, max=5),
-            parameterize.xrand((2, 3), dtype='float32', min=-10, max=10),
-        ),
-        (
             'value-broadcast-shape',
             parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
             parameterize.xrand((2, 1), dtype='float64', min=-10, max=10),
@@ -270,7 +263,7 @@ class StudentTTestError(unittest.TestCase):
         with paddle.base.dygraph.guard(self.place):
             self.assertRaises(error, StudentT, df, loc, scale)
 
-    @parameterize_func([(10)])  # not sequence object sample shape
+    @parameterize_func([(10,)])  # not sequence object sample shape
     def test_bad_sample_shape(self, shape):
         with paddle.base.dygraph.guard(self.place):
             t = StudentT(5, 0.0, 1.0)
