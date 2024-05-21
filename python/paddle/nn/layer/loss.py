@@ -2231,7 +2231,7 @@ class GaussianNLLLoss(Layer):
 class AdaptiveLogSoftmaxWithLoss(Layer):
     r"""Adaptive softmax is an approximate strategy for training models with large output spaces. It is most effective when
     the label distribution is highly imbalanced, for example in natural language modelling, where the word frequency
-    distribution approximately follows the ``Zipf's law``.
+    distribution approximately follows the `Zipf's law <https://en.wikipedia.org/wiki/Zipf%27s_law>`_.
 
     Adaptive softmax partitions the labels into several clusters, according to their frequency. These clusters may contain
     different number of targets each. Additionally, clusters containing less frequent labels assign lower dimensional
@@ -2265,12 +2265,12 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         weight_attr (ParamAttr, optional): The attribute for the learnable
             weight of this layer. The default value is None. If the Initializer of the
             param_attr is not set, the parameter is initialized with Xavier.
-            For detailed information, please refer to paddle.ParamAttr.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
-            to paddle.ParamAttr. The default value is None and the bias will be
+            to :ref:`api_paddle_ParamAttr`. The default value is None and the bias will be
             initialized to zero.
         div_value (float, optional): value used as an exponent to compute sizes of the clusters. Default: 4.0.
         head_bias (bool, optional): If ``True``, adds a bias term to the 'head' of the adaptive softmax. Default: ``False``.
@@ -2280,12 +2280,12 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         - input (Tensor): The input tensor. The shapes is [N, in_features]. N is batch size.
         - label (Tensor): target. The shapes is `[N]`
         - output1 (Tensor): The shape is `[N]`
-        - output2 (Scalar):
+        - output2 (Scalar).
 
     Returns:
         A callable object of AdaptiveLogSoftmaxWithLoss.
 
-     Examples::
+     Examples:
         .. code-block:: python
 
             >>> import paddle
