@@ -35,6 +35,10 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 namespace detail {
 
@@ -668,16 +672,11 @@ void ConvInferMeta(const MetaTensor& input,
   }
 
   DDim filter_data_dims;
-  VLOG(-1) << "DEBUG InferMeta data_format = " << data_format
-           << ", filter_dims = " << filter_dims
-           << ", layout = " << filter.layout();
-  if (channel_last && filter.layout() == DataLayout::NHWC) {
+  if (channel_last && FLAGS_manually_trans_conv_filter) {
     filter_data_dims =
         common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-    VLOG(-1) << "DEBUG Conv2d InferMeta NHWC" << filter_data_dims;
   } else {
     filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
-    VLOG(-1) << "DEBUG Conv2d InferMeta NCHW" << filter_data_dims;
   }
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);

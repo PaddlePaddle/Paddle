@@ -14,12 +14,15 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
 
 namespace cinn::dialect::ir {
 
@@ -30,12 +33,10 @@ class Conv2dTransposeFilter
   bool Match(paddle::dialect::Conv2dOp op) const override {
     const std::string& data_format =
         op->attribute("data_format").dyn_cast<pir::StrAttribute>().AsString();
-    const auto& filter_layout =
-        op.filter()
-            .type()
-            .dyn_cast<paddle::dialect::DenseTensorType>()
-            .data_layout();
-    return data_format == "NHWC" && filter_layout == pir::DataLayout::NCHW;
+    bool already_transposed =
+        op.filter().defining_op()->isa<paddle::dialect::TransposeOp>();
+    return FLAGS_manually_trans_conv_filter && data_format == "NHWC" &&
+           !already_transposed;
   }
 
   void Rewrite(paddle::dialect::Conv2dOp op,
@@ -46,6 +47,7 @@ class Conv2dTransposeFilter
     auto new_conv_op = rewriter.Build<paddle::dialect::Conv2dOp>(
         op.input(), transpose_op.result(0), op->attributes());
     rewriter.ReplaceAllUsesWith(op.out(), new_conv_op.out());
+    rewriter.EraseOp(op);
   }
 };
 

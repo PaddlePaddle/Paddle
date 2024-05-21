@@ -43,6 +43,10 @@
 // clang-format on
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -373,15 +377,11 @@ void ConvCudnnKernel(const Context& ctx,
     transformed_input_channel.ShareDataWith(input);
     transformed_output.ShareDataWith(*output);
   }
-  VLOG(-1) << "DEBUG Conv2d kernel filter.dims = " << filter.dims()
-           << ", data_format = " << data_format;
   if (compute_format == phi::backends::gpu::DataLayout::kNHWC &&
-      filter.layout() != phi::DataLayout::NHWC) {
-    VLOG(-1) << "DEBUG match if Transform filter tensor NCHW.";
+      !manually_trans_conv_filter) {
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
   } else {
-    VLOG(-1) << "DEBUG match if Transform filter tensor NHWC.";
     transformed_filter_channel.ShareDataWith(filter);
   }
 
@@ -398,8 +398,6 @@ void ConvCudnnKernel(const Context& ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  VLOG(-1) << "DEBUG Conv2d kernel sliced filter_data_dims = "
-           << filter_data_dims;
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
