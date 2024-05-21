@@ -344,7 +344,10 @@ def generate_inplace_fn(inplace_op_type):
         if in_dynamic_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)
-                return op(x)
+                if origin_op_type == 'round':
+                    return op(x, 0)
+                else:
+                    return op(x)
             else:
                 op = getattr(_legacy_C_ops, inplace_op_type)
                 return op(x)

@@ -2951,11 +2951,12 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   std::vector<std::pair<const char*, int*>> GetAttrs() {
     return {{"deciamls", &decimals}};
   }
-  
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    float ten_pow_deciamls = std::pow(10,decimals);
-    out.device(d) = (x * static_cast<T>(ten_pow_deciamls)).round() * static_cast<T>(1.0 / ten_pow_deciamls);
+    float ten_pow_deciamls = std::pow(10, decimals);
+    out.device(d) = (x * static_cast<T>(ten_pow_deciamls)).round() *
+                    static_cast<T>(1.0 / ten_pow_deciamls);
   }
 };
 
@@ -5172,8 +5173,9 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   // round(x) = round(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    float ten_pow_deciamls = std::pow(10,decimals);
-    return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls))) * static_cast<T>(1.0 / ten_pow_deciamls);
+    float ten_pow_deciamls = std::pow(10, decimals);
+    return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls))) *
+           static_cast<T>(1.0 / ten_pow_deciamls);
   }
 };
 

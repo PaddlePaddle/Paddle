@@ -841,7 +841,7 @@ def round(x, decimals=0, name=None):
             [-1., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.round(x,decimals)
+        return _C_ops.round(x, decimals)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
@@ -851,7 +851,9 @@ def round(x, decimals=0, name=None):
             'decimals': int(decimals),
         }
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs)
+        helper.append_op(
+            type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
+        )
         return out
 
 

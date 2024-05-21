@@ -2423,7 +2423,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : round
-  args : (Tensor x, int decimals = 0)
+  args : (Tensor x, int decimals = 0 )
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

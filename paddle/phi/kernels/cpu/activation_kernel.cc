@@ -93,7 +93,6 @@ DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
-// DEFINE_CPU_ACTIVATION_KERNEL(Round, RoundFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
@@ -308,12 +307,7 @@ PD_REGISTER_KERNEL(log1p,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
-PD_REGISTER_KERNEL(round,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RoundKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(round, CPU, ALL_LAYOUT, phi::RoundKernel, float, double) {}
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_KERNEL(negative,

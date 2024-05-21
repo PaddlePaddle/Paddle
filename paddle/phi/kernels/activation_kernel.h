@@ -99,9 +99,9 @@ void Relu6Kernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void RoundKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const int decimals,
-               DenseTensor* out);
+                 const DenseTensor& x,
+                 const int decimals,
+                 DenseTensor* out);
 
 template <typename T, typename Context>
 void SwishKernel(const Context& dev_ctx,
