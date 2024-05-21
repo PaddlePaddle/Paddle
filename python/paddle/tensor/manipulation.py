@@ -6401,6 +6401,24 @@ def view(x, shape_or_dtype, name=None):
             >>> print(out.shape)
             [2, 4, 24]
 
+            >>> import paddle
+            >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
+            >>> x = paddle.rand([2, 4, 6], dtype="float32")
+
+            >>> out = paddle.view(x, [8, -1])
+            >>> print(out.shape)
+            [8, 6]
+
+            >>> import paddle
+            >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
+            >>> x = paddle.rand([2, 4, 6], dtype="float32")
+
+            >>> out = paddle.view(x, paddle.uint8)
+            >>> print(out.shape)
+            [2, 4, 24]
+
     """
     if isinstance(shape_or_dtype, (list, tuple)):
         return _C_ops.view_shape(x, shape_or_dtype)

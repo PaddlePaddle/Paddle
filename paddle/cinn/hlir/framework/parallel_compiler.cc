@@ -20,7 +20,7 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
@@ -238,7 +238,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
   auto ir_module = builder.Build();
   if (context->target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitCudaAndHostModule(ir_module);
+    auto splited_module = backends::SplitDeviceAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);
     auto dmodule = std::get<1>(splited_module);
 
