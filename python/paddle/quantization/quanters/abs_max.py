@@ -174,10 +174,12 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             1,
         )
         _C_ops.assign_out_(out1, quant_out)
-        if self._scale._is_initialized():
+        if out2._is_initialized():
             _C_ops.assign_out_(out2, self._scale)
-        _C_ops.assign_out_(out3, state)
-        _C_ops.assign_out_(out4, accum)
+        if state:
+            _C_ops.assign_out_(out3, state)
+        if accum:
+            _C_ops.assign_out_(out4, accum)
         return quant_out
 
     def static_forward(self, input):
