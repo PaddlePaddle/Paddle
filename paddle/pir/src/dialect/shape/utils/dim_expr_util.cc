@@ -949,6 +949,74 @@ struct FoldRedundantBroadcast {
     return std::nullopt;
   }
 };
+
+/*
+ * Simplify Example:
+ * Broadcast(dim_expr0, Mul(dim_expr0, dim_expr1)) => Mul(dim_expr0, dim_expr1)
+ */
+struct FoldBroadcast {
+  using dim_expr_type = Broadcast<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    const auto& [operands] = expr.Get<Broadcast<DimExpr>>();
+    List<DimExpr> ret_operands = operands;
+    while (ret_operands->size() > 1) {
+      int smaller = SearchInversedPair(ret_operands);
+      if (smaller < 1) break;
+      ret_operands->erase(ret_operands->begin() + smaller);
+    }
+
+    if (ret_operands->size() == 1) {
+      return ret_operands->at(0);
+    } else {
+      return Broadcast<DimExpr>{ret_operands};
+    }
+  }
+
+  // 1  if lhs > rhs
+  // 0  if lhs = rhs or uncertain
+  // -1 if lhs < rhs
+  int Compare(DimExpr lhs, DimExpr rhs) {
+    DimExpr dim_expr_to_compare;
+
+    auto Comparer =
+        common::Overloaded{[&](const Mul<DimExpr>& mul) {
+                             for (const auto& expr : *mul.operands) {
+                               if (expr == dim_expr_to_compare) return true;
+                             }
+                             return false;
+                           },
+                           [&](const Add<DimExpr>& add) {
+                             for (const auto& expr : *add.operands) {
+                               if (expr.isa<Negative<DimExpr>>()) return false;
+                               if (expr == dim_expr_to_compare) return true;
+                             }
+                             return false;
+                           },
+                           [&](const auto& lhs) { return false; }};
+
+    dim_expr_to_compare = rhs;
+    if (std::visit(Comparer, lhs.variant())) return 1;
+    dim_expr_to_compare = lhs;
+    if (std::visit(Comparer, rhs.variant())) return -1;
+    return 0;
+  }
+
+  int SearchInversedPair(const List<DimExpr>& operands) {
+    for (std::size_t i = 0; i < operands->size() - 1; ++i) {
+      for (std::size_t j = i + 1; j < operands->size(); ++j) {
+        int compare_result = Compare(operands->at(i), operands->at(j));
+        if (compare_result > 0) {
+          return j;
+        } else if (compare_result < 0) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+};
+
 template <typename PassT>
 void DoPass(bool* rewrited, DimExpr* expr) {
   const auto old_expr = *expr;
@@ -986,6 +1054,7 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
     DoPass<FoldRedundantBroadcast>(&keep_rewrite, &ret);
     DoPass<FoldRedundantSymbolicBroadcast>(&keep_rewrite, &ret);
+    DoPass<FoldBroadcast>(&keep_rewrite, &ret);
   }
   return ret;
 }

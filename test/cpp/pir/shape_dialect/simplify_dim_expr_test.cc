@@ -160,4 +160,31 @@ TEST(Simplify, ConstantMaxMin) {
   ASSERT_TRUE((simplified_dim_expr2.Has<std::int64_t>()));
   ASSERT_EQ((simplified_dim_expr2.Get<std::int64_t>()), 2);
 }
+
+TEST(Simplify, FoldBroadcast) {
+  DimExpr sym0{"S0"};
+  DimExpr sym1{"S1"};
+  DimExpr mul{Mul<DimExpr>{{sym0, sym1}}};
+  DimExpr broadcast0{Broadcast<DimExpr>{{mul, sym0}}};
+  DimExpr broadcast1{Broadcast<DimExpr>{{sym1, mul}}};
+  DimExpr simplify_broadcast0 = SimplifyDimExpr(broadcast0);
+  DimExpr simplify_broadcast1 = SimplifyDimExpr(broadcast1);
+
+  DimExpr add{Add<DimExpr>{{sym0, sym1}}};
+  DimExpr broadcast2{Broadcast<DimExpr>{{add, sym0}}};
+  DimExpr broadcast3{Broadcast<DimExpr>{{sym1, add}}};
+  DimExpr simplify_broadcast2 = SimplifyDimExpr(broadcast2);
+  DimExpr simplify_broadcast3 = SimplifyDimExpr(broadcast3);
+
+  VLOG(0) << "broadcast2: " << broadcast2;
+  VLOG(0) << "broadcast3: " << broadcast3;
+  VLOG(0) << "simplify_broadcast2: " << simplify_broadcast2;
+  VLOG(0) << "simplify_broadcast3: " << simplify_broadcast3;
+
+  ASSERT_TRUE(simplify_broadcast0 == mul);
+  ASSERT_TRUE(simplify_broadcast1 == mul);
+  ASSERT_TRUE(simplify_broadcast2 == add);
+  ASSERT_TRUE(simplify_broadcast3 == add);
+}
+
 }  // namespace symbol::test
