@@ -21,7 +21,7 @@ import paddle
 
 
 def api_wrapper(x, axis=1):
-    return paddle._C_ops.flatten2(x, axis)
+    return paddle._legacy_C_ops.flatten2(x, "axis", axis)
 
 
 class TestFlattenOp(OpTest):
