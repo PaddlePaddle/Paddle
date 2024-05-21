@@ -73,9 +73,19 @@ def np_medain_min_axis(data, axis=None, keepdims=False):
         shape=data_flat.shape[:-1], fill_value=data_flat.shape[-1]
     )
 
-    data_flat[np.isnan(data_flat)] = np.inf
-    data_sort = np.sort(data_flat, axis=-1)
-    data_sort[np.isinf(data_sort)] = np.nan
+    if data_flat.dtype in [
+        bool,
+        np.uint8,
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+    ]:
+        data_sort = np.sort(data_flat, axis=-1)
+    else:
+        data_flat[np.isnan(data_flat)] = np.inf
+        data_sort = np.sort(data_flat, axis=-1)
+        data_sort[np.isinf(data_sort)] = np.nan
 
     is_odd = data_cnt % 2
 
@@ -193,9 +203,10 @@ class TestMedianMin(unittest.TestCase):
         h = 3
         w = 4
         l = 2
-        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        data_x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [
             [x, axis, keepdims]
+            for x in [data_x.astype("int64"), data_x.astype("float32")]
             for axis in [-1, 0, 1, 2]
             for keepdims in [False, True]
         ]
@@ -207,9 +218,10 @@ class TestMedianMin(unittest.TestCase):
         h = 3
         w = 4
         l = 2
-        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        data_x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [
             [x, axis, keepdims]
+            for x in [data_x.astype("int64"), data_x.astype("float32")]
             for axis in [-1, 0, 1, 2]
             for keepdims in [False, True]
         ]
@@ -218,17 +230,19 @@ class TestMedianMin(unittest.TestCase):
 
     def test_index_even_case(self):
         paddle.disable_static()
-        x = paddle.arange(2 * 100).reshape((2, 100)).astype(paddle.float32)
-        out, index = paddle.median(x, axis=1, mode='min')
-        np.testing.assert_allclose(out.numpy(), [49.0, 149.0])
-        np.testing.assert_equal(index.numpy(), [49, 49])
+        for _dtype in [paddle.int64, paddle.float32]:
+            x = paddle.arange(2 * 100).reshape((2, 100)).astype(_dtype)
+            out, index = paddle.median(x, axis=1, mode='min')
+            np.testing.assert_allclose(out.numpy(), [49.0, 149.0])
+            np.testing.assert_equal(index.numpy(), [49, 49])
 
     def test_index_odd_case(self):
         paddle.disable_static()
-        x = paddle.arange(30).reshape((3, 10)).astype(paddle.float32)
-        out, index = paddle.median(x, axis=1, mode='min')
-        np.testing.assert_allclose(out.numpy(), [4.0, 14.0, 24.0])
-        np.testing.assert_equal(index.numpy(), [4, 4, 4])
+        for _dtype in [paddle.int64, paddle.float32]:
+            x = paddle.arange(30).reshape((3, 10)).astype(_dtype)
+            out, index = paddle.median(x, axis=1, mode='min')
+            np.testing.assert_allclose(out.numpy(), [4.0, 14.0, 24.0])
+            np.testing.assert_equal(index.numpy(), [4, 4, 4])
 
 
 if __name__ == '__main__':

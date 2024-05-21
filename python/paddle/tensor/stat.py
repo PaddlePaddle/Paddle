@@ -538,12 +538,21 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 out_idx = paddle.slice(
                     idx, axes=[axis], starts=[kth], ends=[kth + 1]
                 )
-
-    out_tensor = out_tensor + paddle.sum(
-        paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
-        axis=axis,
-        keepdim=True,
-    )
+    if out_tensor.dtype in [
+        paddle.bool,
+        paddle.uint8,
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+    ]:
+        pass
+    else:
+        out_tensor = out_tensor + paddle.sum(
+            paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
+            axis=axis,
+            keepdim=True,
+        )
     if is_flatten:
         if keepdim:
             out_tensor = out_tensor.reshape([1] * dims)
