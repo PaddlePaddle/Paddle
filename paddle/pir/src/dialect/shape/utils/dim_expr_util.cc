@@ -959,13 +959,12 @@ struct FoldBroadcast {
 
   DimExpr Rewrite(const DimExpr& expr) {
     const auto& [operands] = expr.Get<Broadcast<DimExpr>>();
-    List<DimExpr> ret_operands = operands;
+    List<DimExpr> ret_operands;
     while (ret_operands->size() > 1) {
       int smaller = SearchInversedPair(ret_operands);
       if (smaller < 1) break;
       ret_operands->erase(ret_operands->begin() + smaller);
     }
-
     if (ret_operands->size() == 1) {
       return ret_operands->at(0);
     } else {
@@ -978,7 +977,6 @@ struct FoldBroadcast {
   // -1 if lhs < rhs
   int Compare(DimExpr lhs, DimExpr rhs) {
     DimExpr dim_expr_to_compare;
-
     auto Comparer =
         common::Overloaded{[&](const Mul<DimExpr>& mul) {
                              for (const auto& expr : *mul.operands) {

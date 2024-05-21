@@ -176,11 +176,6 @@ TEST(Simplify, FoldBroadcast) {
   DimExpr simplify_broadcast2 = SimplifyDimExpr(broadcast2);
   DimExpr simplify_broadcast3 = SimplifyDimExpr(broadcast3);
 
-  VLOG(0) << "broadcast2: " << broadcast2;
-  VLOG(0) << "broadcast3: " << broadcast3;
-  VLOG(0) << "simplify_broadcast2: " << simplify_broadcast2;
-  VLOG(0) << "simplify_broadcast3: " << simplify_broadcast3;
-
   ASSERT_TRUE(simplify_broadcast0 == mul);
   ASSERT_TRUE(simplify_broadcast1 == mul);
   ASSERT_TRUE(simplify_broadcast2 == add);
