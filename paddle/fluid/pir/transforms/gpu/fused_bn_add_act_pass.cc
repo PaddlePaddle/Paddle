@@ -146,6 +146,11 @@ class FusedBnAddActPattern : public paddle::drr::DrrPatternBase {
                 << "false";
         return false;
       }
+      auto data_format = match_ctx.Attr<std::string>("data_format");
+      VLOG(1) << "data_format: " << data_format;
+      if (data_format != "NHWC") {
+        return false;
+      }
       VLOG(1) << "FusedBnAddActPattern !x.isa<pir::Float16Type>(): "
               << "true";
       return true;
@@ -256,6 +261,11 @@ class FusedBnAddActGradPattern : public paddle::drr::DrrPatternBase {
       if (!x.isa<pir::Float16Type>()) {
         VLOG(1) << "FusedBnAddActGradPattern !x.isa<pir::Float16Type>(): "
                 << "false";
+        return false;
+      }
+      auto data_format = match_ctx.Attr<std::string>("data_format");
+      VLOG(1) << "data_format: " << data_format;
+      if (data_format != "NHWC") {
         return false;
       }
       VLOG(1) << "FusedBnAddActGradPattern !x.isa<pir::Float16Type>(): "
