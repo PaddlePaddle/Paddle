@@ -99,9 +99,10 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
         data_format_attr));
   }
 
-  auto original_layout = common::StringToDataLayout(data_format_attr.AsString())
+  auto original_layout =
+      common::StringToDataLayout(data_format_attr.AsString());
 
-      auto concrete_op = op->dyn_cast<FusedConv2dAddActOp>();
+  auto concrete_op = op->dyn_cast<FusedConv2dAddActOp>();
   if (auto in = concrete_op.input()) {
     if (auto in_type = in.type()) {
       if (in_type.isa<paddle::dialect::DenseTensorType>()) {
