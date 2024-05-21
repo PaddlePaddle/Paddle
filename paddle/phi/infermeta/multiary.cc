@@ -1101,6 +1101,11 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void ConcatTensorInferMeta(const std::vector<const MetaTensor*>& x,
+                           MetaTensor* concated_out) {
+  ConcatInferMeta(x, -1, concated_out);
+}
+
 void ChunkEvalInferMeta(const MetaTensor& inference,
                         const MetaTensor& label,
                         const MetaTensor& seq_length,

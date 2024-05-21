@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/concat_tensor_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 /**
@@ -455,6 +456,89 @@ void ConcatCase4(DeviceContext* context) {
   }
 }
 
+/**
+ * case 5:
+ *   ConcatTensorTest
+ */
+template <typename DeviceContext, typename Place>
+void ConcatCase5(DeviceContext* context) {
+  phi::DenseTensor input_a;
+  phi::DenseTensor input_b;
+  phi::DenseTensor out1;
+
+  auto dim_a = common::make_ddim({2, 2});
+  auto dim_b = common::make_ddim({2, 2});
+  auto dim_out = common::make_ddim({2, 4});
+
+  input_a.mutable_data<int>(dim_a, Place());
+  input_b.mutable_data<int>(dim_b, Place());
+  out1.mutable_data<int>(dim_out, Place());
+
+  int* a_ptr = input_a.data<int>();
+  int* b_ptr = input_b.data<int>();
+
+  for (int i = 0; i < 4; ++i) {
+    a_ptr[i] = i + 1;
+    b_ptr[i] = i + 1 + 4;
+  }
+
+  std::vector<const phi::DenseTensor*> input;
+  input.push_back(&input_a);
+  input.push_back(&input_b);
+
+  phi::ConcatTensorKernel<int, DeviceContext>(*context, input, &out1);
+
+  /**
+   * out1 = [splited_out[0],splited_out[1]]
+   *  out1 =
+   *  [[1,2,5,6],
+   *   [3,4,7,8]]
+   **/
+
+  out1.Resize(common::make_ddim({4, 2}));
+  auto splited_out = out1.Split(1, 0);
+  splited_out[0].Resize(dim_a);
+  splited_out[1].Resize(dim_b);
+
+  /** splited_out[0].shape [2,2]
+   * splited_out[0] =
+   *     [[1,2],
+   *      [3,4]]
+   * splited_out[1].shape [2,2]
+   * splited_out[1] =
+   *     [[5,6],
+   *      [7,8]]
+   * splited_out[0] and splited_out[1] do not hold contiguous memory because out
+   *is stored in column-major order.
+   **/
+  PADDLE_ENFORCE_EQ(splited_out[1].data<int>(),
+                    splited_out[0].data<int>() + 2,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "splited_out[0] and splited_out[1] should logically be "
+                        "stored side by side."));
+
+  std::vector<const phi::DenseTensor*> input2;
+  input2.push_back(&splited_out[0]);
+  input2.push_back(&splited_out[1]);
+
+  phi::DenseTensor out2;
+
+  phi::ConcatTensorKernel<int, DeviceContext>(*context, input2, &out2);
+
+  PADDLE_ENFORCE_EQ(out2.data<int>(),
+                    splited_out[0].data<int>(),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "If the input tensors are already stored side by side "
+                        "in memory, then the ConcatTensorKernel will not "
+                        "reallocate memory for the concatenation."));
+
+  PADDLE_ENFORCE_EQ(out2.dims(),
+                    common::make_ddim({2, 4}),
+                    paddle::platform::errors::PreconditionNotMet(
+                        "For the same inputs, multiple executions of the "
+                        "ConcatTensorKernel should produce the same results."));
+}
+
 template <typename DeviceContext, typename Place>
 void TestConcatMain() {
   DeviceContext* context = new DeviceContext(Place());
@@ -465,6 +549,14 @@ void TestConcatMain() {
   ConcatCase4<DeviceContext, Place>(context);
 
   delete context;
+
+  paddle::platform::CPUPlace cpu_place;
+  phi::CPUContext ctx(cpu_place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(cpu_place)
+                       .get());
+
+  ConcatCase5<phi::CPUContext, paddle::platform::CPUPlace>(&ctx);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
