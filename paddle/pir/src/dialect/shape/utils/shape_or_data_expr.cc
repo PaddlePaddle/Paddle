@@ -53,7 +53,8 @@ ShapeOrDataDimExprs SubstituteShapeOrData(
       },
       [&](const TensorListShapeOrDataDimExprs& tensor_list) {
         TensorListShapeOrDataDimExprs substituted_tensor_list;
-        for (TensorShapeOrDataDimExprs tensor_shape_or_data : tensor_list) {
+        for (const TensorShapeOrDataDimExprs& tensor_shape_or_data :
+             tensor_list) {
           substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
               tensor_shape_or_data, substitution_pattern));
         }

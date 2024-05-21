@@ -60,8 +60,8 @@ std::set<std::string> StringSplit(const std::string& str) {
   std::string token;
 
   while (std::getline(iss, token, ';')) {
-    size_t startpos = token.find_first_not_of(" ");
-    size_t endpos = token.find_last_not_of(" ");
+    size_t startpos = token.find_first_not_of(' ');
+    size_t endpos = token.find_last_not_of(' ');
     if ((startpos != std::string::npos) && (endpos != std::string::npos)) {
       token = token.substr(startpos, endpos - startpos + 1);
     } else if (startpos != std::string::npos) {
