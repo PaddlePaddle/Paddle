@@ -51,7 +51,6 @@ PyLayerInstruction::PyLayerInstruction(
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place),
       output_vars_(),
-      fwd_outputs_(),
       fwd_skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
                  phi::errors::PreconditionNotMet(

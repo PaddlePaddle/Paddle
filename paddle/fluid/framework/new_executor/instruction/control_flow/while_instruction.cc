@@ -55,7 +55,6 @@ WhileInstruction::WhileInstruction(
       inputs_(),
       outputs_(),
       body_inter_(nullptr),
-      body_outputs_(),
       external_input_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
                  phi::errors::PreconditionNotMet(
