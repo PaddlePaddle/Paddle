@@ -2679,7 +2679,7 @@ static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
 
 inline static PyObject* static_op_arg_pre_cast_hook_get() {
   void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
-  if (result == NULL) {
+  if (result == nullptr) {
     return Py_None;
   } else {
     return reinterpret_cast<PyObject*>(result);
@@ -2714,7 +2714,7 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
 
   Py_INCREF(Py_None);
   static_op_arg_pre_cast_hook_set(Py_None);
-  return NULL;
+  return nullptr;
 }
 
 /* ------------------ for auto parallel ----------------------- */
