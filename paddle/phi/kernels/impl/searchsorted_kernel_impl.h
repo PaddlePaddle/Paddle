@@ -76,19 +76,20 @@ class GpuAndCpuSearchSortedCompute {
         out_data_(out_data) {}
   HOSTDEVICE void operator()(int64_t idx) {
     using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
-    const MT2* value_ptr = static_cast<MT2>(value_data_ + idx);
+    const T2* value_ptr = value_data_ + idx;
+    const MT2 value = static_cast<MT2>(*value_ptr);
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
-    if (IsInf(*value_ptr) || IsNan(*value_ptr)) {
+    if (IsInf(value) || IsNan(value)) {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::UpperBound<T1, MT2>(
-            sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(
+            phi::funcs::UpperBound<T1, MT2>(sequence_ptr, seq_size_, value));
       } else {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::LowerBound<T1, MT2>(
-            sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(
+            phi::funcs::LowerBound<T1, MT2>(sequence_ptr, seq_size_, value));
       }
     }
   }
