@@ -169,7 +169,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 
 struct HitGroup {
   std::map<PDNode *, Node *> roles;
-
+  HitGroup() : roles(), nodes_() {}
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
       if (roles.count(pat) && roles[pat] == node) return true;

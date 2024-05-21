@@ -20,11 +20,17 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle.base import core
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Unsupported on XPU3",
+)
 class TestCompareOpBase(XPUOpTest):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
@@ -36,11 +42,20 @@ class TestCompareOpBase(XPUOpTest):
     def set_case(self):
         self.x = np.random.uniform(
             self.lbound, self.hbound, self.x_shape
-        ).astype(self.dtype)
+        ).astype('float32')
         self.y = np.random.uniform(
             self.lbound, self.hbound, self.y_shape
-        ).astype(self.dtype)
-        self.result = self.compute(self.x, self.y)
+        ).astype('float32')
+        if self.dtype == np.uint16:
+            self.x = convert_float_to_uint16(self.x)
+            self.y = convert_float_to_uint16(self.y)
+            x_fp32 = convert_uint16_to_float(self.x)
+            y_fp32 = convert_uint16_to_float(self.y)
+            self.result = convert_float_to_uint16(self.compute(x_fp32, y_fp32))
+        else:
+            self.x = self.x.astype(self.dtype)
+            self.y = self.y.astype(self.dtype)
+            self.result = self.compute(self.x, self.y)
 
     def config(self):
         self.dtype = np.float32

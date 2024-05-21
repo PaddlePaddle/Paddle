@@ -1484,6 +1484,8 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2409,6 +2411,8 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
 #endif
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2530,8 +2534,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
-    auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    pool.SyncDeviceContext(place_);
     switch_stream = true;
   }
   return ZeroCopyRun(switch_stream);
