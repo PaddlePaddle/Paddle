@@ -2069,6 +2069,8 @@ void HuberLossInferMeta(const MetaTensor& input,
   auto out_dims = label_dims;
   residual->set_dims(out_dims);
   out->set_dims(out_dims);
+  out->set_dtype(input.dtype());
+  residual->set_dtype(input.dtype());
   out->share_lod(input);
 }
 
