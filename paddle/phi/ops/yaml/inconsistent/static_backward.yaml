@@ -1,7 +1,7 @@
 # The operators included in this file are:
 # 1) Operators defined only in PIR, dynamic graphs do not exist;
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
-# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
+# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/ops/yaml/ops.yaml
 
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)

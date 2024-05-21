@@ -1,7 +1,7 @@
 # The operators contained in this file are:
 # Operators that are inconsistent with the dynamic graph definition currently,
 # but the final definition scheme of the static graph has been determined, after
-# the dynamic graph is simultaneously upgraded, the operators in this file will be migrated to paddle/phi/api/yaml/ops.yaml.
+# the dynamic graph is simultaneously upgraded, the operators in this file will be migrated to paddle/phi/ops/yaml/ops.yaml.
 
 - op : arange
   args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
