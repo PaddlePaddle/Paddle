@@ -1713,3 +1713,7 @@ PHI_DEFINE_EXPORTED_string(cusolver_dir,  // NOLINT
 PHI_DEFINE_EXPORTED_string(cusparse_dir,  // NOLINT
                            "",
                            "Specify path for loading libcusparse.so.*.");
+PHI_DEFINE_EXPORTED_string(
+    win_cuda_bin_dir,  // NOLINT
+    "",
+    "Specify path for loading *.dll about cuda on windows");
