@@ -168,6 +168,20 @@ std::unordered_set<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
+std::unordered_set<pir::Operation*> GetConsumerOpsSimple(
+    pir::Operation* op) {
+  std::unordered_set<pir::Operation*> consumers;
+
+  for (auto& result : op->results()) {
+    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+      auto parent_op = it->owner();
+      consumers.insert(parent_op);
+    }
+  }
+  return consumers;
+}
+
+
 struct SubGraph {
   // construct function
   SubGraph() = default;
@@ -312,7 +326,7 @@ static OperatorSet UpstreamSet(const OperatorSet& unioned_set) {
 
 static OperatorSet DownstreamSet(const OperatorSet& unioned_set) {
   OperatorSet downstream;
-  auto GetConsumerOpsRecursive = RecursiveOpGetter(GetConsumerOps);
+  auto GetConsumerOpsRecursive = RecursiveOpGetter(GetConsumerOpsSimple);
   for (auto& op : unioned_set) {
     auto producers = GetConsumerOpsRecursive(op);
     downstream.insert(producers.begin(), producers.end());
