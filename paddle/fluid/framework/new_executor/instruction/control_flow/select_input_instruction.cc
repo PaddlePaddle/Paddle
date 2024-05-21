@@ -25,7 +25,10 @@ SelectInputInstruction::SelectInputInstruction(
     const platform::Place &place,
     ::pir::Operation *op,
     ValueExecutionInfo *value_exe_info)
-    : InstructionBase(id, place), op_(op) {
+    : InstructionBase(id, place),
+      op_(op),
+      type_(OpFuncType::kCpuSync),
+      inputs_() {
   VLOG(6) << "construct select_input instruction";
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;

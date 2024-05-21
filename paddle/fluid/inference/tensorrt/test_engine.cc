@@ -69,8 +69,8 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   phi::DenseTensor input_;
   phi::DenseTensor output_;
-  std::unique_ptr<TensorRTEngine> engine_;
-  phi::GPUContext *ctx_;
+  std::unique_ptr<TensorRTEngine> engine_ = nullptr;
+  phi::GPUContext *ctx_ = nullptr;
 };
 
 TEST_F(TensorRTEngineTest, add_layer) {
