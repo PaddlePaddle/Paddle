@@ -573,12 +573,18 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         ).astype(x.dtype)
         if need_idx:
             # replace index using the first nan value's index on axis for out_idx
-            x_isnan = paddle.isnan(x)
-            contain_nan, nan_index = paddle.topk(
-                x_isnan.astype("int64"), k=1, axis=axis
+            # topk is not stable on cpu device, use argsort instead
+            x_isnan = paddle.isnan(x).astype("int64")
+            x_all_zero = paddle.zeros_like(x_isnan)
+            index_along_axis = paddle.argsort(
+                x_all_zero, axis=axis, stable=True
             )
+            nan_index = paddle.sum(
+                index_along_axis * x_isnan, axis=axis, keepdim=True
+            )
+            nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
             out_idx = (
-                out_idx * (~contain_nan.astype("bool")).astype("int64")
+                out_idx * (~nan_index_mask.astype("bool")).astype("int64")
                 + nan_index
             )
 
