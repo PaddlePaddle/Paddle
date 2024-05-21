@@ -3453,6 +3453,17 @@ void QrInferMeta(const MetaTensor& x,
   r->set_dtype(x.dtype());
 }
 
+void QuantizeInferMeta(const MetaTensor& input,
+                       const std::string& is_negative_input,
+                       float scale,
+                       float shift,
+                       const std::string& output_format,
+                       bool bfloat16,
+                       MetaTensor* output) {
+  output->set_dims(input.dims());
+  output->share_lod(input);
+}
+
 DDim ReduceInferDim(const MetaTensor& x,
                     const std::vector<int64_t>& axis,
                     bool keep_dim,
