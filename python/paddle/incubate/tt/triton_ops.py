@@ -486,20 +486,6 @@ triton_adaptive_layer_norm_template = (
     paddle_custom_op_head_part
     + """
 
-int nextPowerOfTwo(int n) {
-    if (n == 0) {
-        return 1; // 0的下一个2的幂定义为1
-    }
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n++;
-    return n;
-}
-
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor &x,
     const paddle::Tensor &scale,
@@ -510,9 +496,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int M = x.dims()[0] * x.dims()[1];
   int N = x.dims()[2];
   int seq_size = x.dims()[1];
-  int N_nextPowerOfTwo = nextPowerOfTwo(N);
-  int BLOCK_SIZE = N_nextPowerOfTwo < 1024 ? N_nextPowerOfTwo : 1024;
-  auto y = paddle::full({x.dims()[0], x.dims()[1], x.dims()[2]}, 0, x.dtype(), x.place());
+  auto y = paddle::full(x.shape(), 0, x.dtype(), x.place());
 
   auto dev_x = get_tensor_ptr(x);
   auto dev_y = get_tensor_ptr(y);
@@ -550,12 +534,8 @@ std::vector<paddle::Tensor> ${op_name}_func(
 }
 
 std::vector<std::vector<int64_t>> ${op_name}_InferShape(
-        const std::vector<int64_t>& a_shape,
-        const std::vector<int64_t>& b_shape,
-        const std::vector<int64_t>& c_shape,
-        const std::vector<int64_t>& d_shape,
-        float epsilon) {
-  return {{a_shape[0], a_shape[1], a_shape[2]}};
+        const std::vector<int64_t>& A_shape) {
+  return {A_shape};
 }
 
 std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
@@ -645,10 +625,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     py_script_file = f"{generated_dir}/triton_kernels.py"
     extract_triton_kernel(adaptive_layer_norm_kernel, py_script_file)
 
-    op_dict = {"op_name": op_name, "reset_zero_when_tune": " "}
-    op_dict[
-        "reset_zero_when_tune"
-    ] = "cudaMemset((void*)dev_y, 0, sizeof(x.dtype()) * M * N);"
+    op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
     paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
     so_path = find_so_path(generated_dir, python_package_name)
 
