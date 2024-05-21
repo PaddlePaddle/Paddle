@@ -122,6 +122,22 @@ void VerifyDenseBlock(pir::Block* block) {
   }
 }
 
+void RemoveUnusefulCallgatherOp(pir::Block* block) {
+  std::vector<pir::Operation*> del_ops;
+  for (auto& op : *block) {
+    if (op.isa<CAllgatherOp>()) {
+      auto nrank = op.attribute<pir::Int32Attribute>("nranks").data();
+      if (nrank == 1) {
+        op.result(0).ReplaceAllUsesWith(op.operand_source(0));
+        del_ops.emplace_back(&op);
+      }
+    }
+  }
+  for (auto op : del_ops) {
+    op->Erase();
+  }
+}
+
 std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
   if (FLAGS_print_ir) {
     VLOG(0) << "IR before DistToDense Pass = " << *prog;
@@ -135,6 +151,7 @@ std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
   ctx->GetOrRegisterDialect<DistDialect>();
 
   ProcessDistBlock(new_prog->block());
+  RemoveUnusefulCallgatherOp(new_prog->block());
   VLOG(6) << "IR before VerifyDenseBlock Pass = " << *new_prog;
   VerifyDenseBlock(new_prog->block());
 
