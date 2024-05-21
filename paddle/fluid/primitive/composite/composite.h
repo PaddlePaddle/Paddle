@@ -600,6 +600,9 @@ std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
   if (axis < 0) {
     axis = x.shape().size() + axis;
   }
+  if (x.shape()[axis] == -1) {
+    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+  }
   size_t num = x.shape()[axis];
   std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
   for (size_t i = 0; i < tmp.size(); i++) {
