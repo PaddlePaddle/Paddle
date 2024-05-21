@@ -159,6 +159,12 @@ struct Expression {
   bool equal_to(const Expression& other) const {
     bool is_equal = CheckOperationEqual(op_, other.op());
     // TODO(SigureMo): clean this check before merge
+    if (!is_equal) {
+      VLOG(0) << "Hash collision detected. lhs: " << op_->name() << " [" << op_
+              << "] hash: " << GetOperationHash(op_)
+              << " vs rhs: " << other.op()->name() << " [" << other.op()
+              << "] hash: " << GetOperationHash(other.op());
+    }
     PADDLE_ENFORCE_EQ(
         is_equal,
         true,
@@ -315,6 +321,8 @@ struct Expression {
     if (lhs->name() != rhs->name()) {
       VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
+      VLOG(0) << "lhs hash is " << GetOperationHash(lhs) << ", rhs hash is "
+              << GetOperationHash(rhs);
       return false;
     }
     for (auto attr_name : lhs->info().GetAttributesName()) {
