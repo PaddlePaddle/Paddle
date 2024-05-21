@@ -2783,9 +2783,7 @@
   outputs :
     output : Output
   attrs :
-    {scale : Scale, shift : Shift, is_negative_input: is_negative_input, include_self: Include_self}
-  extra :
-    attrs : [float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false]
+    {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
   inputs :
