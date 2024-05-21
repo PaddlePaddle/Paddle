@@ -407,7 +407,9 @@ class VScheduleCreator:
             end_point_job_start_time = (
                 end_point_job_start_time
                 + self.program_runtime["communication"]
-                + self.program_runtime[end_point_job_type]
+                + self._get_program_runtime(
+                    end_point_job_type, stage_id, end_point_chunk_id
+                )
             )
 
             self._fill_bubble_with_forward(
@@ -463,12 +465,16 @@ class VScheduleCreator:
                                 ],
                             )
                         )
-                        while (
-                            len(self._pending_w[stage_id])
-                            and dependency_job_end_time
-                            + self.program_runtime["communication"]
-                            >= self._stage_current_time[stage_id]
-                            + self.program_runtime["backward_w"]
+                        while len(
+                            self._pending_w[stage_id]
+                        ) and dependency_job_end_time + self.program_runtime[
+                            "communication"
+                        ] >= self._stage_current_time[
+                            stage_id
+                        ] + self._get_program_runtime(
+                            "backward_w",
+                            stage_id,
+                            self._pending_w[stage_id][0][0],
                         ):
                             self._put_w_job_into_schedule(stage_id)
 
@@ -522,12 +528,16 @@ class VScheduleCreator:
                                 ],
                             )
                         )
-                        while (
-                            len(self._pending_w[stage_id])
-                            and dependency_job_end_time
-                            + self.program_runtime["communication"]
-                            >= self._stage_current_time[stage_id]
-                            + self.program_runtime["backward_w"]
+                        while len(
+                            self._pending_w[stage_id]
+                        ) and dependency_job_end_time + self.program_runtime[
+                            "communication"
+                        ] >= self._stage_current_time[
+                            stage_id
+                        ] + self._get_program_runtime(
+                            "backward_w",
+                            stage_id,
+                            self._pending_w[stage_id][0][0],
                         ):
                             self._put_w_job_into_schedule(stage_id)
 
@@ -624,6 +634,7 @@ class VScheduleCreator:
                 f"backward_b{chunk_id}"
             ]
 
+            # Check whether we can insert all chunk_id forward jobs
             for i in range(1, self.num_model_chunks):
                 if self._job_counters[stage_id][f"forward{i}"] == 0:
                     available_memory -= self.program_max_mem_usages[stage_id][
@@ -675,14 +686,19 @@ class VScheduleCreator:
         for chunk_id in chunk_ids:
             for i in stage_order:
                 if self._can_schedule_f_task(i, chunk_id):
+                    stage_forward_number = self._get_stage_forward_number(
+                        i, chunk_ids
+                    )
+                    if stage_forward_number >= less_forward_number:
+                        if not self._time_check(
+                            "forward", chunk_id, i, next_job_start_time
+                        ):
+                            continue
                     can_insert = True
                     break
 
         return (
             self._memory_check("forward", chunk_id, stage_id)
-            and self._time_check(
-                "forward", chunk_id, stage_id, next_job_start_time
-            )
             and micro_batch_id_check
             and can_insert
         )
@@ -703,13 +719,10 @@ class VScheduleCreator:
             stage_id,
             self._job_counters[stage_id][f"{job_type}{chunk_id}"],
         )
-        job_end_time = (
-            max(
-                self._stage_current_time[stage_id],
-                dependency_job_end_time + self.program_runtime["communication"],
-            )
-            + self.program_runtime[job_type]
-        )
+        job_end_time = max(
+            self._stage_current_time[stage_id],
+            dependency_job_end_time + self.program_runtime["communication"],
+        ) + self._get_program_runtime(job_type, stage_id, chunk_id)
 
         if job_end_time > next_job_start_time:
             return False
@@ -729,15 +742,10 @@ class VScheduleCreator:
         chunk_id,
         stage_id,
     ):
-        task_end_time = (
-            self._stage_current_time[stage_id] + self.program_runtime[job_type]
+        program_runtime = self._get_program_runtime(
+            job_type, stage_id, chunk_id
         )
-        if stage_id == self.calculate_loss_stage:
-            if (
-                job_type in ["forward", "backward_b"]
-                and chunk_id == self.num_model_chunks - 1
-            ):
-                task_end_time += self.program_runtime["loss"]
+        task_end_time = self._stage_current_time[stage_id] + program_runtime
 
         micro_batch_id = self._job_counters[stage_id][f"{job_type}{chunk_id}"]
         if micro_batch_id >= self.num_micro_batch:
@@ -773,7 +781,7 @@ class VScheduleCreator:
                 task_end_time,
                 dependency_job_end_time
                 + self.program_runtime["communication"]
-                + self.program_runtime[job_type],
+                + program_runtime,
             )
 
         job_id = self._get_job_id(job_type, chunk_id, stage_id, micro_batch_id)
@@ -781,7 +789,7 @@ class VScheduleCreator:
             self._stage_bubbles[stage_id] += (
                 task_end_time
                 - self._stage_current_time[stage_id]
-                - self.program_runtime[job_type]
+                - program_runtime
             )
 
         self._job_end_times[job_id] = task_end_time
@@ -914,3 +922,16 @@ class VScheduleCreator:
         for chunk_id in chunk_ids:
             job_number += self._job_counters[stage][f"backward_b{chunk_id}"]
         return job_number
+
+    def _get_program_runtime(self, job_type, stage_id, chunk_id):
+        program_runtime = self.program_runtime[job_type]
+
+        if job_type == "communication":
+            return program_runtime
+
+        if (
+            stage_id == self.calculate_loss_stage
+            and chunk_id == self.num_model_chunks - 1
+        ):
+            program_runtime += self.program_runtime["loss"]
+        return program_runtime
