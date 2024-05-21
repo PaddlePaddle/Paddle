@@ -271,7 +271,7 @@ class Accuracy(Metric):
         elif label.shape[-1] != 1:
             # one-hot label
             label = paddle.argmax(label, axis=-1, keepdim=True)
-        correct = pred == label
+        correct = pred == label.astype(pred.dtype)
         return paddle.cast(correct, dtype='float32')
 
     def update(self, correct, *args):

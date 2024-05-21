@@ -1206,7 +1206,9 @@ def load_vars(
 
     """
     if in_pir_mode():
-        return load_vars_pir(dirname, main_program, vars, predicate, filename)
+        return load_vars_pir(
+            executor, dirname, main_program, vars, predicate, filename
+        )
 
     vars_from_memory = False
     if dirname is not None:

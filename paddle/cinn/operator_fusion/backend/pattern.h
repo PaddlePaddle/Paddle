@@ -39,12 +39,15 @@ using FusionOp = std::variant<ReduceOp, TrivialOp>;
 template <>
 struct TrivialPattern<BackendStage> {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
+                          pir::Operation* sink_op,
                           const TrivialOp& op)
-      : ops_(ops), trivial_op(op) {}
+      : ops_(ops), sink_op(sink_op), trivial_op(op) {}
   std::vector<pir::Operation*> ops_;
+  pir::Operation* sink_op;
   TrivialOp trivial_op;
   static std::string name() { return "Trivial"; }
   std::vector<pir::Operation*> ops() const { return ops_; }
+  pir::Operation* sink() const { return sink_op; }
 };
 
 template <>
@@ -66,23 +69,6 @@ struct UnsupportPattern<BackendStage> {
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   static std::string name() { return "Unsupport"; }
-};
-
-template <>
-struct HorizontalFusionPattern<BackendStage> {
-  explicit HorizontalFusionPattern(
-      const std::vector<StmtPattern<BackendStage>>& patterns)
-      : patterns_(patterns) {}
-  std::vector<StmtPattern<BackendStage>> patterns_;
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& pattern : patterns_) {
-      auto ops = GetOpsInPattern(pattern);
-      ExtendVector(&result, ops);
-    }
-    return result;
-  }
-  static std::string name() { return "HorizontalFusionPattern"; }
 };
 
 }  // namespace cinn::fusion

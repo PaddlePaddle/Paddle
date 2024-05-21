@@ -486,7 +486,7 @@ class TestParametersWithStopGradient(unittest.TestCase):
 
         net = Net()
         if to_static:
-            net = paddle.jit.to_static(net)
+            net = paddle.jit.to_static(net, full_graph=True)
         sgd = paddle.optimizer.SGD(0.01, parameters=net.parameters())
 
         for i in range(self.iter):
