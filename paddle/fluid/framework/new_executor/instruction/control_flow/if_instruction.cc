@@ -56,8 +56,6 @@ IfInstruction::IfInstruction(size_t id,
       output_vars_(),
       true_branch_inter_(nullptr),
       false_branch_inter_(nullptr),
-      true_branch_outputs_(),
-      false_branch_outputs_(),
       true_skip_gc_names_(),
       false_skip_gc_names_() {
   PADDLE_ENFORCE(
