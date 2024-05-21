@@ -1086,7 +1086,7 @@ class _ExecutorCache:
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
-
+        
         if (
             new_program._pass_opt
             and "pass_list" in new_program._pass_opt
@@ -1098,18 +1098,23 @@ class _ExecutorCache:
                 if p == 'eliminate_transpose':
                     from paddle.distributed.auto_parallel.static.pir_pass import (
                         eliminate_transpose_by_reshape,
+                        remove_shadow_output,
                     )
 
                     for job_type in plan.job_types():
                         ir_program = plan.ir_program(job_type)
                         eliminate_transpose_by_reshape(ir_program)
+
+                else if p == 'fuse_c_reducescatter_add_pass':
+                    remove_shadow_output(ir_program)
+                    pm.add_pass(p,{})
                 else:
                     pm.add_pass(p, {})
 
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
-
+        
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
@@ -2538,8 +2543,8 @@ class Executor:
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", False)
-            and program._fleet_opt.get("dump_fields_path", "") == ""
         )
+
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset

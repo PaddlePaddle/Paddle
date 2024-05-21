@@ -24,3 +24,4 @@ class Pass;
 IR_API std::unique_ptr<Pass> CreateFuseCReduceScatterAddPass();
 
 }  // namespace pir
+
