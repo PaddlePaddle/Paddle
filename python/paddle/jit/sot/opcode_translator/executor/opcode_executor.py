@@ -38,6 +38,7 @@ from ...utils import (
     InnerError,
     SotUndefinedVar,
     get_static_function,
+    is_comprehensive_name,
     log,
     log_do,
 )
@@ -1714,6 +1715,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
             self.stack.push(iterator)
+            if is_comprehensive_name(self._code.co_name):
+                # NOTE(SigureMo): The loop body of comprehensive will access the
+                # value out of the loop, so we simply fallback it now.
+                raise FallbackError(
+                    "Comprehensive for loop break graph is not supported."
+                )
             self._break_graph_when_for_loop(iterator, instr)
             return Stop(state="BreakGraph")
 

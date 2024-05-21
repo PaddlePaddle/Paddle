@@ -15,7 +15,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_dynamic_mode
@@ -48,11 +47,12 @@ def _to_dtype(t, dtype):
     if not paddle.is_floating_point(t):
         return t
 
-    if type(dtype) is not VarDesc.VarType:
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if t.place.is_gpu_place():
-        size_dtype = core.size_of_dtype(dtype)
+        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        size_dtype = core.size_of_dtype(proto_dtype)
         waiting_alloc_memory = (
             ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
         )

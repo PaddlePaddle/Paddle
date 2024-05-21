@@ -128,12 +128,15 @@ class SSDSparseTable : public MemorySparseTable {
 
   int32_t CacheTable(uint16_t pass_id) override;
 
+  void SetDayId(int day_id) override;
+
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
   std::vector<paddle::framework::Channel<std::string>> _fs_channel;
   std::mutex _table_mutex;
+  int _day_id = 0;
 };
 
 }  // namespace distributed

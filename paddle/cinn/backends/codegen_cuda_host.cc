@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/extern_func_emitter_builtin.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
