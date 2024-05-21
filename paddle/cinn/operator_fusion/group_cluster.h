@@ -57,7 +57,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
         return content.op->name() != "cf.yield";
       });
 
-  pir::Program* program = ops.at(0)->GetParentProgram();
+  pir::Program* program = origin_ops.at(0)->GetParentProgram();
 
   auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
 

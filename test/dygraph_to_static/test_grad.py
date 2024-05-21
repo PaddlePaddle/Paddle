@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.framework import use_pir_api
 
 
 class GradLayer(paddle.nn.Layer):
@@ -101,9 +100,6 @@ class TestGradLinear(TestGrad):
 
     @test_legacy_and_pt_and_pir
     def test_save_infer_program(self):
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if use_pir_api():
-            return
         static_fn = paddle.jit.to_static(self.func)
         input_spec = [
             paddle.static.InputSpec(shape=[10, 2, 5], dtype='float32')
@@ -132,9 +128,6 @@ class TestGradLinear(TestGrad):
 
             static_fn.clear_gradients()
 
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if use_pir_api():
-            return
         paddle.jit.save(static_fn, self.train_model_path)
         load_func = paddle.jit.load(self.train_model_path)
 
