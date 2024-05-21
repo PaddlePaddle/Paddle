@@ -55,6 +55,8 @@ inline bool IsInterpretercoreFastGCEnabled() {
   // cuda graph.
   PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
                                 .IsStreamSafeCUDAAllocatorUsed() == false &&
+                        memory::allocation::AllocatorFacade::Instance()
+                                .IsCUDAMallocAsyncAllocatorUsed() == false &&
                         FLAGS_new_executor_use_cuda_graph,
                     false,
                     platform::errors::InvalidArgument(
