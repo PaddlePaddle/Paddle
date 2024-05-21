@@ -1216,7 +1216,7 @@ Tensor mean_all_decomp(const Tensor& x) {
       value = value * get_slice<T>(x_shape_tensor, i);
     }
     value = reshape<T>(value, {});
-    ans = sum<T>(x_cast) / cast<T>(value, DataType::FLOAT32);
+    ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
   } else {
     ans = sum<T>(x_cast) / x_cast.numel();
   }
