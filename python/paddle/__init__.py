@@ -697,6 +697,8 @@ if is_compiled_with_cuda():
                     dlls.extend(
                         glob.glob(os.path.join(site_cuda_path, '*.dll'))
                     )
+            # Not load 32 bit dlls in 64 bit python.
+            dlls = [dll for dll in dlls if '32_' not in dll]
             path_patched = False
             for dll in dlls:
                 is_loaded = False
