@@ -36,8 +36,7 @@ class Breakpoint:
         return hash((self.file, self.line, self.co_name, self.offset))
 
 
-@Singleton
-class BreakpointManager:
+class BreakpointManager(metaclass=Singleton):
     def __init__(self):
         self.breakpoints = set()
         self.executors = OpcodeExecutorBase.call_stack

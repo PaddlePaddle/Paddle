@@ -136,7 +136,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
             b_dims));
   }
 
-  framework::DDim out_dims({x_dims[0], frame_size});
+  phi::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("X", "Hidden");
@@ -336,10 +336,10 @@ class FusionLSTMKernel : public framework::OpKernel<T> {
   one_step.wp = wp_data;                                                      \
   one_step.checked = checked_cell_data;                                       \
   auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>,        \
-                                           platform::CPUPlace>::Cache()       \
+                                           phi::CPUPlace>::Cache()            \
                          .At(attr);                                           \
   auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>,        \
-                                           platform::CPUPlace>::Cache()       \
+                                           phi::CPUPlace>::Cache()            \
                          .At(attr)
 
 // Wh GEMM

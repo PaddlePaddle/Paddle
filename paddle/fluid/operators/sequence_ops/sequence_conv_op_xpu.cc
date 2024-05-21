@@ -68,8 +68,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     auto xpu_context =
         context.template device_context<DeviceContext>().x_context();
     auto sequence_width = static_cast<int64_t>(in->dims()[1]);
-    framework::DDim col_shape = {in->dims()[0],
-                                 context_length * sequence_width};
+    phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
     xpu::ctx_guard RAII_GUARD(xpu_context);
     int col_numel = col_shape[0] * col_shape[1];
     T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);
@@ -218,8 +217,7 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     auto xpu_context =
         context.template device_context<DeviceContext>().x_context();
     auto sequence_width = static_cast<int64_t>(in->dims()[1]);
-    framework::DDim col_shape = {in->dims()[0],
-                                 context_length * sequence_width};
+    phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
     xpu::ctx_guard RAII_GUARD(xpu_context);
     int col_numel = col_shape[0] * col_shape[1];
     T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);

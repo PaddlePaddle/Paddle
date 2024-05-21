@@ -75,6 +75,11 @@ void BinomialInferMeta(const MetaTensor& count,
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config = MetaConfig());
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -145,6 +150,16 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
+void CorrelationInferMeta(const MetaTensor& input1,
+                          const MetaTensor& input2,
+                          int pad_size,
+                          int kernel_size,
+                          int max_displacement,
+                          int stride1,
+                          int stride2,
+                          int corr_type_multiply,
+                          MetaTensor* out);
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -170,6 +185,14 @@ void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
                                        MetaTensor* softmax,
                                        MetaTensor* loss,
                                        MetaConfig config = MetaConfig());
+
+void CtcAlignInferMeta(const MetaTensor& input,
+                       const MetaTensor& input_length,
+                       int blank,
+                       bool merge_repeated,
+                       int padding_value,
+                       MetaTensor* output,
+                       MetaTensor* output_length);
 
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
@@ -479,6 +502,13 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void PullBoxSparseInferMeta(const MetaTensor& w,
+                            const std::vector<const MetaTensor*>& ids,
+                            bool is_sparse,
+                            bool is_distributed,
+                            int size,
+                            std::vector<MetaTensor*> out);
+
 void PullGpupsSparseInferMeta(const MetaTensor& w,
                               const std::vector<const MetaTensor*>& ids,
                               const std::vector<int>& size,
@@ -572,6 +602,14 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
 
+void StftInferMeta(const MetaTensor& x,
+                   const MetaTensor& window,
+                   int n_fft,
+                   int hop_length,
+                   bool normalized,
+                   bool onesided,
+                   MetaTensor* out);
+
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,
@@ -613,6 +651,12 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaTensor* boxes,
                       MetaTensor* scores,
                       MetaConfig config = MetaConfig());
+
+void YoloBoxHeadInferMeta(const MetaTensor& x,
+                          const std::vector<int>& anchors,
+                          int class_num,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,

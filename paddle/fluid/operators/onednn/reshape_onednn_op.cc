@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/flatten_op.h"
-#include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace {
@@ -27,6 +26,70 @@ enum class ReshapeKernelOpName {
 
 namespace paddle {
 namespace operators {
+
+phi::DDim GetOutputShape(const std::vector<int> squeeze_dims,
+                         const phi::DDim& in_dims,
+                         bool is_runtime) {
+  size_t num_squeeze_dims = squeeze_dims.size();
+  std::vector<bool> should_squeeze(in_dims.size(), false);
+
+  // Mark dimensions need to be squeezed.
+  if (num_squeeze_dims == 0) {
+    for (int i = 0; i < in_dims.size(); ++i) {
+      if (in_dims[i] == 1) {
+        should_squeeze[i] = true;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < num_squeeze_dims; ++i) {
+      int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
+                                        : squeeze_dims[i];
+
+      PADDLE_ENFORCE_GE(
+          current,
+          0,
+          phi::errors::InvalidArgument(
+              "Each axis in Attr(axes) should be in the range of [%d, %d]"
+              "But current axis is:%d, input tensor's shape = [%s].",
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
+      PADDLE_ENFORCE_LT(
+          current,
+          in_dims.size(),
+          phi::errors::InvalidArgument(
+              "Each axis in Attr(axes) should be in the range of [%d, %d]"
+              "But current axis is:%d, input tensor's shape = [%s].",
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
+
+      if (!should_squeeze[current]) {
+        if (is_runtime) {
+          // At run time, dim of 1 is allowed to squeeze
+          if (in_dims[current] == 1) {
+            should_squeeze[current] = true;
+          }
+        } else {
+          // At compile time, dim of -1 or 1 is allowed to squeeze
+          if (in_dims[current] == 1 || in_dims[current] == -1) {
+            should_squeeze[current] = true;
+          }
+        }
+      }
+    }
+  }
+  // Make output dimensions
+  std::vector<int64_t> output_shape;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    if (!should_squeeze[i]) {
+      output_shape.push_back(in_dims[i]);
+    }
+  }
+  return common::make_ddim(output_shape);
+}
 
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
@@ -63,7 +126,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
 
-    framework::DDim x_dims, out_dims;
+    phi::DDim x_dims, out_dims;
     InferInOutShape(ctx, x_dims, out_dims);
 
     auto x_vec_dims = common::vectorize(x_dims);
@@ -93,8 +156,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
-                       framework::DDim& x_dims,            // NOLINT
-                       framework::DDim& out_dims) const {  // NOLINT
+                       phi::DDim& x_dims,            // NOLINT
+                       phi::DDim& out_dims) const {  // NOLINT
     switch (op_name) {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeOp(ctx, x_dims, out_dims);
@@ -110,8 +173,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeReshapeOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,            // NOLINT
-                           framework::DDim& out_dims) const {  // NOLINT
+                           phi::DDim& x_dims,            // NOLINT
+                           phi::DDim& out_dims) const {  // NOLINT
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     x_dims = x->dims();
@@ -121,10 +184,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
   // in reshape1/2 ops  "ShapeTensor" has highest priority and "Shape" has
   // second highest priority
-  void ChangeReshapeOutDimsIfNeeded(
-      const framework::ExecutionContext& ctx,
-      framework::DDim& x_dims,            // NOLINT
-      framework::DDim& out_dims) const {  // NOLINT
+  void ChangeReshapeOutDimsIfNeeded(const framework::ExecutionContext& ctx,
+                                    phi::DDim& x_dims,            // NOLINT
+                                    phi::DDim& out_dims) const {  // NOLINT
     auto list_new_shape_tensor =
         ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (!list_new_shape_tensor.empty()) {
@@ -141,8 +203,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,            // NOLINT
-                           framework::DDim& out_dims) const {  // NOLINT
+                           phi::DDim& x_dims,            // NOLINT
+                           phi::DDim& out_dims) const {  // NOLINT
     auto* x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     const auto& axes = ctx.Attr<std::vector<int>>("axes");
@@ -150,8 +212,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
-                           framework::DDim& x_dims,            // NOLINT
-                           framework::DDim& out_dims) const {  // NOLINT
+                           phi::DDim& x_dims,            // NOLINT
+                           phi::DDim& out_dims) const {  // NOLINT
     auto x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
@@ -160,8 +222,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static framework::DDim ValidateShape(const std::vector<int>& shape,
-                                       const framework::DDim& in_dims) {
+  static phi::DDim ValidateShape(const std::vector<int>& shape,
+                                 const phi::DDim& in_dims) {
     const int64_t in_size = common::product(in_dims);
     auto in_dims_vec = common::vectorize(in_dims);
     bool all_positive = std::all_of(in_dims_vec.cbegin(),
@@ -276,7 +338,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
-    framework::DDim dx_dims;
+    phi::DDim dx_dims;
     InferOutputShapeInGrad(ctx, dx_dims);
 
     auto dout_vec_dims = dout->dims().size() != 0
@@ -307,7 +369,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,
-                              framework::DDim& x_dims) const {  // NOLINT
+                              phi::DDim& x_dims) const {  // NOLINT
     switch (op_name) {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
@@ -324,15 +386,14 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     }
   }
 
-  void InferShapeReshapeSqueezeGradOp(
-      const framework::ExecutionContext& ctx,
-      framework::DDim& dx_dims) const {  // NOLINT
+  void InferShapeReshapeSqueezeGradOp(const framework::ExecutionContext& ctx,
+                                      phi::DDim& dx_dims) const {  // NOLINT
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx_dims = dx->dims();
   }
 
   void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,
-                               framework::DDim& dx_dims) const {  // NOLINT
+                               phi::DDim& dx_dims) const {  // NOLINT
     dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
   }
 };

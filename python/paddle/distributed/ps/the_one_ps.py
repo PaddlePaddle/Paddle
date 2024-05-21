@@ -1735,6 +1735,12 @@ class TheOnePSRuntime(RuntimeBase):
             self._ps_inference_load_inference_model(path, mode)
         fleet.util.barrier()
 
+    def _set_date(self, table_id, day_id):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.set_date(table_id, day_id)
+        fleet.util.barrier()
+
     def _shrink(self, threshold=None):
         if threshold is not None:
             warnings.warn(

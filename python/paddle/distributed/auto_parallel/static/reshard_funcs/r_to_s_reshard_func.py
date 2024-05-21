@@ -15,6 +15,7 @@
 import paddle
 
 from .base_reshard_func import ReshardFunction, is_replicated, is_shard
+from .same_status_reshard_func import SameStatusReshardFunction
 
 
 class RToSReshardFunction(ReshardFunction):
@@ -36,9 +37,7 @@ class RToSReshardFunction(ReshardFunction):
             return False
         return True
 
-    def reshard(
-        self, program, op, src_dist_attr, dst_dist_attr, remove_op=True
-    ):
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         split_axis = -1
         mesh_axis = -1
         for idx, v in enumerate(dst_dist_attr.dims_mapping):
@@ -49,7 +48,7 @@ class RToSReshardFunction(ReshardFunction):
         mesh = src_dist_attr.process_mesh
         curr_global_rank = paddle.distributed.get_rank()
         if curr_global_rank in mesh.process_ids:
-            total_nums = op.operand_source(0).shape[split_axis]
+            total_nums = src_value.shape[split_axis]
             num_of_pieces = mesh.shape[mesh_axis]
             piece_len = (total_nums + num_of_pieces - 1) // num_of_pieces
             rank_relative = mesh.process_ids.index(curr_global_rank)
@@ -58,9 +57,66 @@ class RToSReshardFunction(ReshardFunction):
             if curr_global_rank == mesh.process_ids[-1]:
                 end = total_nums
 
-            paddle.pir.set_insertion_point(op)
-            out_value = paddle.slice(
-                op.operand_source(0), [split_axis], [start], [end]
+            out_value = paddle.slice(src_value, [split_axis], [start], [end])
+
+            out_value.set_type(src_value.type())
+            out_value.update_dist_attr(dst_dist_attr)
+            out_value.get_defining_op().dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    mesh, [src_dist_attr], [dst_dist_attr]
+                )
             )
-            op.result(0).replace_all_uses_with(out_value)
-            op.get_parent_block().remove_op(op)
+            return out_value
+        return None
+
+
+class RToSReshardFunctionCrossMesh(ReshardFunction):
+    def is_suitable(self, src_dist_attr, dst_dist_attr):
+        if not is_replicated(src_dist_attr):
+            return False
+
+        if not is_shard(dst_dist_attr):
+            return False
+
+        in_mesh = src_dist_attr.process_mesh
+        out_mesh = dst_dist_attr.process_mesh
+
+        if (
+            in_mesh.ndim != 1
+            or out_mesh.ndim != 1
+            or in_mesh.shape != out_mesh.shape
+        ):
+            return False
+
+        if in_mesh == out_mesh:
+            return False
+
+        return True
+
+    def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
+        same_status_func = SameStatusReshardFunction()
+        tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            dst_dist_attr.process_mesh,
+            src_dist_attr.dims_mapping,
+            src_dist_attr.partial_status,
+        )
+        tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            src_value.type(), tmp_dist_attr
+        )
+        out_value = same_status_func.reshard(
+            src_dist_attr, tmp_dist_attr, src_value, tmp_dst_type
+        )
+
+        if out_value is None:
+            return None
+
+        curr_global_rank = paddle.distributed.get_rank()
+        if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
+            r_to_s_func = RToSReshardFunction()
+            assert r_to_s_func.is_suitable(
+                tmp_dist_attr, dst_dist_attr
+            ), f"Invoke the r to s reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+            return r_to_s_func.reshard(
+                tmp_dist_attr, dst_dist_attr, out_value, dst_type
+            )
+        return None

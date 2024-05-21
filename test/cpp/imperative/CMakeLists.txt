@@ -44,8 +44,9 @@ cc_test(
        op_info
        split_op
        layer
-       concat_and_split
        activation_op
+       phi
+       common
        place)
 cc_test(
   test_tracer
@@ -81,5 +82,5 @@ if(WITH_NCCL
   cc_test(
     test_group
     SRCS test_group.cc
-    DEPS reducer concat_and_split)
+    DEPS reducer phi common)
 endif()
