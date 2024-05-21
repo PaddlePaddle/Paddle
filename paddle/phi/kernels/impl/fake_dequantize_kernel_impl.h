@@ -27,7 +27,7 @@ void FakeDequantizeMaxAbsKernel(const Context& dev_ctx,
                                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  DequantizeFunctor<Context, T>()(
+  phi::funcs::DequantizeFunctor<Context, T>()(
       dev_ctx, &x, &scale, static_cast<T>(max_range), out);
 }
 
