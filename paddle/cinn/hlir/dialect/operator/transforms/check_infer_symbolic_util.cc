@@ -357,7 +357,7 @@ struct ShapeSignatureGenerator {
     const auto& cstr_manager = op_shape_analysis->constraints_manager();
 
     VLOG(0) << "constraints:" << cstr_manager;
-    cstr_manager->VisitEqualClusters([&](auto clusters) {
+    cstr_manager.VisitEqualClusters([&](auto clusters) {
       CstrEqSymbolNames equals;
       for (const symbol::DimExpr& dim_expr : clusters) {
         if (dim_expr.isa<std::string>())
@@ -366,7 +366,7 @@ struct ShapeSignatureGenerator {
       if (!equals.symbol_names.empty()) cstr_list.emplace_back(equals);
     });
 
-    cstr_manager->BroadcastableConstraintsVisitor([&](auto it) {
+    cstr_manager.BroadcastableConstraintsVisitor([&](auto it) {
       VLOG(0) << "bcable:" << it->data->lhs << "  " << it->data->rhs;
       if (it->data->lhs.template isa<std::string>() &&
           it->data->rhs.template isa<std::string>()) {
