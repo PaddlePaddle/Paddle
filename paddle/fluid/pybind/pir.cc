@@ -1121,6 +1121,14 @@ void BindValue(py::module *m) {
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
+      .def("index",
+           [](Value self) -> uint32_t {
+             if (auto op_result = self.dyn_cast<OpResult>()) {
+               return op_result.index();
+             }
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "only support accesss index from op_result."));
+           })
       .def("is_dense_tensor_type",
            [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",

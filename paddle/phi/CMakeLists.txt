@@ -32,6 +32,14 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
+if(WIN32)
+  file(GLOB_RECURSE YAML_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ops/yaml/*.yaml")
+  set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS ${YAML_FILE})
+endif()
+
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
