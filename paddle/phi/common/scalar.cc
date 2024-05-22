@@ -25,7 +25,7 @@ namespace experimental {
 // The Tensor must have one dim
 template <>
 ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
-    : dtype_(tensor_in.dtype()), data_ {  // NOLINT
+    : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
                     phi::errors::InvalidArgument(
