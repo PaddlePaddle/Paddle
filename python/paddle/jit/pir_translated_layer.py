@@ -29,6 +29,7 @@ PIR_INFER_MODEL_SUFFIX = ".json"
 
 from .translated_layer import (
     BUFFER_NAME_PREFIX,
+    INFER_PARAMS_SUFFIX,
     PARAMETER_NAME_PREFIX,
 )
 
@@ -47,15 +48,28 @@ def _generate_unique_var_name(prefix):
     return unique_name.generate_with_ignorable_key(prefix)
 
 
+@switch_to_static_graph
+def _generate_unique_var_name(prefix):
+    return unique_name.generate(prefix)
+
+
 def _get_pir_persistable_var_names(program):
     persistable_vars = []
     persistable_names = []
+    rename_new_old_dict = {}
     for block in program.blocks:
         for var in block.all_parameters():
             if var.persistable:
                 persistable_vars.append(var)
+                origin_name = var.name
+                var.name = _generate_unique_var_name(var.name)
+                rename_new_old_dict[var.name] = origin_name
                 persistable_names.append(var.name)
-    return persistable_vars, persistable_names
+    return (
+        persistable_vars,
+        persistable_names,
+        rename_new_old_dict,
+    )
 
 
 class _PirProgramHolder:
@@ -69,6 +83,8 @@ class _PirProgramHolder:
         self._persistable_names = []
 
         self.support_train = trainable
+        # append suffix var name dict
+        self._suffix_varname_dict = None
         self._infer_program = program
 
         self._preprocess()
@@ -77,6 +93,7 @@ class _PirProgramHolder:
         (
             self._persistable_vars,
             self._persistable_names,
+            self._suffix_varname_dict,
         ) = _get_pir_persistable_var_names(self._infer_program)
 
         block = self._infer_program.global_block()
@@ -163,16 +180,30 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
     load_densetensor_list = []
     persistable_var = program_holder.persistable_vars
     persistable_var_name = program_holder.persistable_names
-    for name, var in sorted(zip(persistable_var_name, persistable_var)):
-        new_var = core.eager.Tensor(
-            dtype=datatype_to_vartype[var.dtype],
-            dims=var.shape,
-            name=var.name,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            place=framework._current_expected_place(),
-            persistable=False,
-        )
+    origin_persistable_var_name = [
+        program_holder._suffix_varname_dict[var_name]
+        for var_name in persistable_var_name
+    ]
+    for name, var in sorted(zip(origin_persistable_var_name, persistable_var)):
+        if var.persistable:
+            # use default shape and dtype
+            new_var = framework.EagerParamBase(
+                shape=var.shape,  # only to pass check, this shape is not meaningful
+                dtype=core.VarDesc.VarType.FP32,
+                name=var.name,
+                persistable=True,
+            )
+        else:
+            new_var = core.eager.Tensor(
+                dtype=datatype_to_vartype[var.dtype],
+                dims=var.shape,
+                name=var.name,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                place=framework._current_expected_place(),
+                persistable=False,
+            )
 
+        new_var.stop_gradient = var.stop_gradient
         load_var_dict[name] = new_var
         load_var_list.append(new_var)
         load_densetensor_list.append(new_var.get_tensor())
@@ -187,6 +218,7 @@ def _load_pir_persistable_vars(model_path, program_holder, params_filename):
             list(load_var_dict.keys()),
             load_densetensor_list,
             False,
+            framework._current_expected_place(),
         )
     else:
         raise ValueError(
@@ -246,9 +278,7 @@ def _construct_program_holders(model_path, model_filename=None):
     return program_holder_dict
 
 
-def _construct_params_and_buffers(
-    model_path, programs, params_filename=None, append_suffix=True
-):
+def _construct_params_and_buffers(model_path, programs, params_filename=None):
     params_path = os.path.join(model_path, str(params_filename))
 
     if params_filename is not None and not os.path.exists(params_path):
@@ -258,6 +288,28 @@ def _construct_params_and_buffers(
         var_dict = _load_pir_persistable_vars(
             model_path, programs['forward'], params_filename
         )
+        model_name = params_filename[: -len(INFER_PARAMS_SUFFIX)]
+        # Load every file that meets the requirements in the directory model_path.
+        for file_name in os.listdir(model_path):
+            if file_name.startswith(model_name) and file_name.endswith(
+                INFER_PARAMS_SUFFIX
+            ):
+                parsing_names = file_name[
+                    len(model_name) : -len(INFER_PARAMS_SUFFIX) + 1
+                ].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                else:
+                    continue
+            else:
+                continue
+
+            var_dict.update(
+                _load_pir_persistable_vars(
+                    model_path, programs[func_name], file_name
+                )
+            )
+
         return var_dict
 
 
@@ -290,7 +342,11 @@ def _run_dygraph(instance, input, program_holder):
         input_tensors.append(tensor)
 
     persistable_tensors = []
-    for var_name in program_holder.persistable_names:
+    origin_persistable_var_name = [
+        program_holder._suffix_varname_dict[var_name]
+        for var_name in program_holder.persistable_names
+    ]
+    for var_name in origin_persistable_var_name:
         dy_var_name = instance._persistable_var_name_dict[var_name]
         if dy_var_name in instance._parameters:
             persistable_tensors.append(instance._parameters[dy_var_name])
@@ -558,3 +614,47 @@ class PirTranslatedLayer(layers.Layer):
     def eval(self):
         self._is_test = True
         self.training = False
+
+    def _get_program_holder(self, method_name='forward'):
+        program_holder = self._program_holder_dict.get(method_name, None)
+        if program_holder is None:
+            raise ValueError(
+                "The method `%s` does not exist in loaded PirTranslatedLayer."
+                % method_name
+            )
+        return program_holder
+
+    def _input_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build input spec by input desc
+        input_spec = []
+        for var in program_holder.input_vars:
+            spec = paddle.static.InputSpec(
+                shape=var.shape,
+                dtype=var.dtype,
+                name=var.name,
+            )
+            input_spec.append(spec)
+
+        return input_spec
+
+    def _output_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build output spec by output desc
+        output_spec = []
+        for var in program_holder.output_vars:
+            # NOTE(chenweihang): InputSpec describes a tensor, not just input.
+            # Maybe the name is not good enough. Here we use InputSpec to
+            # construct the description of Output tensor
+            spec = paddle.static.InputSpec(
+                shape=var.shape,
+                dtype=var.dtype,
+                name=var.name,
+            )
+            output_spec.append(spec)
+
+        return output_spec

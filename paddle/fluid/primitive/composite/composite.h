@@ -85,12 +85,14 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
   if (switch_dynamic) {
-    // dynamic shape branch
-    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
-    Tensor idx =
-        reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
-    auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
-    value = prod<T>(axis_dims, {0}, false, false);
+    auto x_shape = shape<T>(x);
+    value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
+    for (size_t i = 1; i < axis_.size(); ++i) {
+      value =
+          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
+    }
+
+    value = cast<T>(value, x_tmp.dtype());
   } else {
     int64_t value_ = 1;
     for (size_t i = 0; i < axis_.size(); i++) {
@@ -204,6 +206,25 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   } else {
     return ans;
   }
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
+                                             const Tensor& label,
+                                             float delta) {
+  Tensor delta_full;
+  if (has_dynamic_shape(input.shape())) {
+    delta_full =
+        backend::full_with_tensor<T>(shape<T>(input), delta, input.dtype());
+  } else {
+    delta_full = full<T>(input.shape(), delta, input.dtype());
+  }
+  auto val = label - input;
+  auto abs_val = abs<T>(val);
+  auto ans = where<T>(abs_val <= delta_full,
+                      0.5 * val * val,
+                      delta_full * (abs_val - 0.5 * delta_full));
+  return std::make_tuple(ans, val);
 }
 
 template <typename T>
@@ -730,6 +751,14 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor floor_divide_decomp(const Tensor& x, const Tensor& y) {
+  auto x_cast = cast<T>(x, DataType::INT64);
+  auto y_cast = cast<T>(y, DataType::INT64);
+  auto res = x_cast / y_cast;
+  return cast<T>(res, x.dtype());
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -819,6 +848,16 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto res = x * half * erf_out;
     return res;
   }
+}
+
+template <typename T>
+Tensor hardsigmoid_decomp(const Tensor& x, float slope, float offset) {
+  const double MAX_VALUE = 1.0;
+  const double MIN_VALUE = 0.0;
+  return maximum<T>(minimum<T>(x * full<T>(empty_shape, slope, x.dtype()) +
+                                   full<T>(empty_shape, offset, x.dtype()),
+                               full<T>(empty_shape, MAX_VALUE, x.dtype())),
+                    full<T>(empty_shape, MIN_VALUE, x.dtype()));
 }
 
 template <typename T>
@@ -1142,6 +1181,73 @@ Tensor square_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor sigmoid_cross_entropy_with_logits_decomp(
+    const Tensor& x,
+    const Tensor& label,
+    const paddle::optional<Tensor>& pos_weight,
+    bool normalize,
+    int ignore_index) {
+  auto dims = x.shape();
+  const Tensor zero = full<T>(dims, 0, x.type());
+  const Tensor one = full<T>(dims, 1, x.type());
+  Tensor pos_weight_tensor;
+  if (pos_weight) {
+    pos_weight_tensor = pos_weight.get();
+  } else {
+    pos_weight_tensor = one;
+  }
+  auto term1 = where<T>(x > zero, x, zero);
+  auto term2 = x * label;
+  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
+  const Tensor ignore_index_tensor = full<T>(dims, ignore_index, label.type());
+  auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
+  if (normalize) {
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps1 = full<T>(dims, 1e-6, x.type());
+    auto diff = label - ignore_index_tensor;
+    const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps2 = full<T>(empty_shape, 1e-5, x.type());
+    auto norm = where<T>(tmp_norm > eps2, tmp_norm, eps2);
+    out = out / norm;
+  }
+  return out;
+}
+
+template <typename T>
+Tensor mean_all_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+  auto x_shape = x.shape();
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor ans;
+  if (has_dynamic_shape(x_shape)) {
+    Tensor x_shape_tensor = shape<T>(x_cast);
+    Tensor value = get_slice<T>(x_shape_tensor, 0);
+    for (size_t i = 1; i < x_shape.size(); i++) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
+    value = reshape<T>(value, {});
+    ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
+  } else {
+    ans = sum<T>(x_cast) / x_cast.numel();
+  }
+
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
 Tensor embedding_decomp(const Tensor& x,
                         const Tensor& weight,
                         const int64_t padding_idx,
@@ -1169,7 +1275,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = squeeze<T>(res, {0});
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
       auto x_t_shape = shape<T>(x);
@@ -1192,7 +1298,7 @@ Tensor embedding_decomp(const Tensor& x,
         res = std::get<0>(squeeze_decomp<T>(res, {0}));
       }
     } else {
-      std::vector<int64_t> tar_shape{-1, 1};
+      std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
 

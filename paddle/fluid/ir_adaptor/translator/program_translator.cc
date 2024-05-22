@@ -649,7 +649,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
-    if ((*op_desc)->Type() == "data") {
+    if ((*op_desc)->Type() == "data" || (*op_desc)->Type() == "feed") {
       continue;
     }
 

@@ -3111,7 +3111,8 @@ int GraphTable::parse_feature(int idx,
 // thread safe shard vector merge
 class MergeShardVector {
  public:
-  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num) {
+  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num)
+      : _shard_keys() {
     _slice_num = slice_num;
     _shard_keys = output;
     _shard_keys->resize(slice_num);

@@ -18,13 +18,20 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/kgroup.h"
 #include "paddle/cinn/adt/schedule_dim.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
                                          const List<LoopType>& loop_types) {
   const auto& sched_dims = GetOutputDimValues(sched_mesh);
-  CHECK_EQ(sched_dims->size(), loop_types->size());
+  PADDLE_ENFORCE_EQ(
+      sched_dims->size(),
+      loop_types->size(),
+      phi::errors::InvalidArgument(
+          "The size of sched_dims and loop_types should be equal, but got "
+          "sched_dims size = %d, loop_types size = %d.",
+          sched_dims->size(),
+          loop_types->size()));
   LoopDescriptors ret{};
   for (std::size_t i = 0; i < sched_dims->size(); ++i) {
     ret->emplace_back(LoopDescriptor{loop_types->at(i), sched_dims->at(i)});

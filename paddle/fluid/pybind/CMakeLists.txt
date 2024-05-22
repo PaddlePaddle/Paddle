@@ -15,6 +15,7 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     parallel_executor
+    compiled_program
     profiler
     layer
     tracer
@@ -129,6 +130,7 @@ set(PYBIND_SRCS
     exception.cc
     op_function_common.cc
     parallel_executor.cc
+    compiled_program.cc
     tensor.cc
     place.cc
     const_value.cc
@@ -153,7 +155,8 @@ set(PYBIND_SRCS
     eval_frame_tools.cc
     cpython_internals.c
     eval_frame.c
-    op_callstack_utils.cc)
+    op_callstack_utils.cc
+    python_callable_registry.cc)
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

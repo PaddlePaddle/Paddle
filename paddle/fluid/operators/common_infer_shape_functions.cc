@@ -27,8 +27,8 @@ namespace paddle {
 namespace operators {
 namespace details {
 
-inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
-                                   const framework::DDim &y_dims,
+inline void GetBroadcastDimsArrays(const phi::DDim &x_dims,
+                                   const phi::DDim &y_dims,
                                    int *x_dims_array,
                                    int *y_dims_array,
                                    int *out_dims_array,
@@ -87,9 +87,9 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
   }
 }
 
-framework::DDim BroadcastTwoDims(const framework::DDim &x_dims,
-                                 const framework::DDim &y_dims,
-                                 int axis) {
+phi::DDim BroadcastTwoDims(const phi::DDim &x_dims,
+                           const phi::DDim &y_dims,
+                           int axis) {
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
   std::vector<int> x_dims_array(max_dim);
