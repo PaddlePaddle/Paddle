@@ -79,7 +79,7 @@ void SequenceConvGradXPUKernel(const Context& dev_ctx,
   xpu::VectorParam<int> lodx = {
       cpu_lodx.data(), static_cast<int>(cpu_lodx.size()), nullptr};
 
-  auto xpu_context = dev_ctx;
+  auto* xpu_context = &dev_ctx;
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
   phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
   xpu::ctx_guard RAII_GUARD(xpu_context);

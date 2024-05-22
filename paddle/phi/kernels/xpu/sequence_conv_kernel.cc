@@ -59,7 +59,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
       2,
       phi::errors::InvalidArgument("Only support down_pad equal 2."));
 
-  auto xpu_context = dev_ctx;
+  auto* xpu_context = &dev_ctx;
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
   phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
   xpu::ctx_guard RAII_GUARD(xpu_context);
