@@ -103,6 +103,26 @@ class CudnnFrontendConvHelper {
         .build();
   }
 
+  static cudnn_frontend::Tensor GetFP32TensorDescriptor(
+      const phi::DenseTensor* tensor,
+      int64_t id,
+      cudnnTensorFormat_t layout_format) {
+    auto transformed_dims = common::vectorize<int64_t>(tensor->dims());
+    if (layout_format == CUDNN_TENSOR_NHWC) {
+      transformed_dims =
+          phi::backends::gpu::TransformDimOrder(transformed_dims);
+    }
+    std::vector<int64_t> strides =
+        GenerateStrides(transformed_dims, layout_format);
+    return cudnn_frontend::TensorBuilder()
+        .setDim(transformed_dims.size(), transformed_dims.data())
+        .setStrides(strides.size(), strides.data())
+        .setId(id)
+        .setAlignment(GetAlignment(tensor))
+        .setDataType(CUDNN_DATA_FLOAT)
+        .build();
+  }
+
   static inline cudnn_frontend::Tensor GetGeneralTensorDescriptor(
       std::vector<int64_t> dims,
       cudnnTensorFormat_t layout,

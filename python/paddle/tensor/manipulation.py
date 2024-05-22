@@ -219,6 +219,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )
@@ -236,6 +238,8 @@ def cast(x, dtype):
                 'int64',
                 'uint8',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'cast',
         )

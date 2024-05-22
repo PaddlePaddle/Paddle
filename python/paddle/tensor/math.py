@@ -2805,7 +2805,16 @@ def max(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'float8_e4m3fn',
+                'float8_e5m2',
+            ],
             'max',
         )
         if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):

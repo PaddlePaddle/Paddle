@@ -956,6 +956,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'complex64',
                 'complex128',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'fill_constant',
         )

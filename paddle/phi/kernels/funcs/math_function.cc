@@ -77,20 +77,22 @@ template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
 #endif
 
-#define DEFINE_CPU_TRANS(RANK)                                            \
-  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;  \
-  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>; \
-  template struct Transpose<phi::CPUContext, float, RANK>;                \
-  template struct Transpose<phi::CPUContext, double, RANK>;               \
-  template struct Transpose<phi::CPUContext, int, RANK>;                  \
-  template struct Transpose<phi::CPUContext, int64_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, bool, RANK>;                 \
-  template struct Transpose<phi::CPUContext, int16_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, uint8_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, int8_t, RANK>;               \
-  template struct Transpose<phi::CPUContext,                              \
-                            phi::dtype::complex<float>,                   \
-                            RANK>;                                        \
+#define DEFINE_CPU_TRANS(RANK)                                                 \
+  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;       \
+  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>;      \
+  template struct Transpose<phi::CPUContext, phi::dtype::float8_e4m3fn, RANK>; \
+  template struct Transpose<phi::CPUContext, phi::dtype::float8_e5m2, RANK>;   \
+  template struct Transpose<phi::CPUContext, float, RANK>;                     \
+  template struct Transpose<phi::CPUContext, double, RANK>;                    \
+  template struct Transpose<phi::CPUContext, int, RANK>;                       \
+  template struct Transpose<phi::CPUContext, int64_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, bool, RANK>;                      \
+  template struct Transpose<phi::CPUContext, int16_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, uint8_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, int8_t, RANK>;                    \
+  template struct Transpose<phi::CPUContext,                                   \
+                            phi::dtype::complex<float>,                        \
+                            RANK>;                                             \
   template struct Transpose<phi::CPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_CPU_TRANS(1);
@@ -131,7 +133,10 @@ void TransposeNormal<DeviceContext, T>::operator()(
 // define transpose normal
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::CPUContext, TYPE>
-
+#if CUDA_VERSION >= 11800
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
+#endif
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::float16);
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(float);
