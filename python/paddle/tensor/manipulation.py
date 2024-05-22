@@ -6845,12 +6845,12 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         return output
 
 
-def block_diag(*inputs, name=None):
+def block_diag(inputs, name=None):
     """
     Create a block diagonal matrix from provided tensors.
 
     Args:
-        *input (Tensor): One or more tensors with 0, 1, or 2 dimensions.
+        input (list|tuple): ``input`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
