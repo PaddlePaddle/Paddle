@@ -14,16 +14,22 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void LogOpMapper(const paddle::cpp::OpDesc& op_desc,
                  const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of log op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of log op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
@@ -35,9 +41,15 @@ void LogOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void Log2OpMapper(const paddle::cpp::OpDesc& op_desc,
                   const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of log2 op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of log2 op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
@@ -49,9 +61,15 @@ void Log2OpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void Log10OpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of log10 op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of log10 op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
@@ -63,9 +81,15 @@ void Log10OpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void Log1pOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of log1p op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of log1p op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
