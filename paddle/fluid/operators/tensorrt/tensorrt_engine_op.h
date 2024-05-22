@@ -309,8 +309,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
              t.dtype() == phi::DataType::INT64) &&
             is_shape_tensor) {
           std::vector<int> int32_host(t.numel());
-          paddle::phi::DeviceContextPool &pool =
-              paddle::phi::DeviceContextPool::Instance();
+          phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
 
           if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;

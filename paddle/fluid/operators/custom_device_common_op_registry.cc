@@ -609,7 +609,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::phi::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -643,7 +643,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::phi::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -701,7 +701,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::phi::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -1019,7 +1019,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = paddle::phi::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
@@ -1230,7 +1230,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = paddle::phi::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
