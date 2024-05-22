@@ -1008,21 +1008,8 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
 template <typename T>
 Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
-  auto min_reshape = min;
-  auto max_reshape = max;
-
-  if (has_dynamic_shape(x.shape())) {
-    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
-    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
-  } else {
-    min_reshape = expand<T>(min, x.shape());
-    max_reshape = expand<T>(max, x.shape());
-  }
-
-  auto min_expand = cast<T>(min_reshape, x.dtype());
-  auto max_expand = cast<T>(max_reshape, x.dtype());
-
-  auto ans = maximum<T>(minimum<T>(x, max_expand), min_expand);
+  auto ans = maximum<T>(minimum<T>(x, reshape<T>(max, empty_shape)),
+                        reshape<T>(min, empty_shape));
   return ans;
 }
 
