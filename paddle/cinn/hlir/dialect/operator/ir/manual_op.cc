@@ -315,7 +315,8 @@ void GenerateShapeOp::Build(pir::Builder& builder,
                             pir::OperationArgument& argument,
                             const std::vector<pir::Value>& inputs,
                             const std::vector<pir::Attribute>& output_dim_exprs,
-                            const SymbolBindings& symbol_bindings) {
+                            const SymbolBindings& symbol_bindings,
+                            const pir::Type& output_type) {
   if (inputs.empty()) {
     VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
@@ -330,13 +331,7 @@ void GenerateShapeOp::Build(pir::Builder& builder,
   argument.AddAttribute(
       "symbol_bindings",
       ConvertSymbolBindingsToAttribute(builder, symbol_bindings));
-  argument.AddOutputs({[&]() {
-    auto* ctx = pir::IrContext::Instance();
-    auto type = pir::Int64Type::get(ctx);
-    auto dim =
-        ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
-    return DenseTensorType::get(ctx, type, dim);
-  }()});
+  argument.AddOutput(output_type);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 

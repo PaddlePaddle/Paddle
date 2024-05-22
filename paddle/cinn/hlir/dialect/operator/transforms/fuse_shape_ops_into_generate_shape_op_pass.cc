@@ -207,24 +207,6 @@ std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
   return ops;
 }
 
-void InferSymbolicShapeForSubgraph(
-    const std::vector<pir::Operation*>& ops,
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  for (auto* op : ops) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    if (infer_symbolic_shape_interface) {
-      // TODO(Hongqing-work): delete this after the shape analysis reconstruct
-      // is done.
-      infer_symbolic_shape_interface.InferSymbolicShape(
-          shape_analysis->GetInferSymbolicShapeContext());
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-    }
-  }
-}
-
 void UpdateLocalShapeAnalysis(
     const std::vector<pir::Value>& input_tensors,
     pir::Value shape,
@@ -261,10 +243,6 @@ void UpdateLocalShapeAnalysis(
           input_tensor, symbol::TensorShapeOrDataDimExprs(new_shape));
     }
   }
-  // infer new symbol shape for shape value
-  std::vector<pir::Operation*> sub_graph_ops =
-      GetSubGraphFromOutputToInputsValue(input_tensors, shape);
-  InferSymbolicShapeForSubgraph(sub_graph_ops, shape_analysis);
 }
 
 std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
@@ -335,9 +313,18 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
                                               &output_dim_expr_attrs,
                                               &symbol_bindings);
   if (!success) return std::nullopt;
+  auto out_type = [&]() -> pir::Type {
+    if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      return shape.type();
+    }
+    return paddle::dialect::DenseTensorType::get(
+        rewriter->ir_context(),
+        pir::Int64Type::get(rewriter->ir_context()),
+        ::common::make_ddim({output_dim_expr_attrs.size()}));
+  }();
   return rewriter
       ->Build<cinn::dialect::GenerateShapeOp>(
-          input_tensors, output_dim_expr_attrs, symbol_bindings)
+          input_tensors, output_dim_expr_attrs, symbol_bindings, out_type)
       .out();
 }
 
@@ -345,6 +332,7 @@ bool ReplaceShapeOpsToGenerateShape(
     pir::Value shape_operand,
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  if (shape_operand.defining_op() == nullptr) return false;
   if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>() ||
       shape_operand.defining_op()->num_operands() == 0) {
     return false;
@@ -358,9 +346,10 @@ bool ReplaceShapeOpsToGenerateShape(
       GetOutOfRewrittenGenerateShapeOp(
           shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  shape_analysis->SetShapeOrDataForValue(
-      opt_generated_shape.value(), ShapeOrDataDimExprs4Value(shape_operand));
   rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
+  if (shape_operand.defining_op()->use_empty()) {
+    rewriter->EraseOp(shape_operand.defining_op());
+  }
   return true;
 }
 
@@ -403,12 +392,15 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     if (!IsSingleElementShapeOp(op, &shape_analysis)) return false;
+    if (op->isa<cinn::dialect::GenerateShapeOp>()) return false;
 
     // all user op's output should has no data of shape expr
     pir::Value output = op->result(0);
     if (output.use_empty()) return false;
     for (auto iter = output.use_begin(); iter != output.use_end(); ++iter) {
-      if (IsSingleElementShapeOp(iter->owner(), &shape_analysis)) return false;
+      auto* user = iter->owner();
+      if (IsSingleElementShapeOp(user, &shape_analysis)) return false;
+      if (user->isa<cinn::dialect::GenerateShapeOp>()) return false;
     }
 
     return true;
@@ -432,7 +424,6 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
       pir::ShapeConstraintIRAnalysis* shape_analysis) const {
     if (op->num_operands() == 0) return false;
     if (op->num_results() != 1) return false;
-    if (op->isa<cinn::dialect::GenerateShapeOp>()) return false;
 
     pir::Value output = op->result(0);
     const auto& out_shape = shape_analysis->GetShapeOrDataForValue(output);

@@ -15,7 +15,6 @@
 #pragma once
 #include <variant>
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -159,7 +158,8 @@ class IR_API GenerateShapeOp
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
                     const std::vector<pir::Attribute> &output_dim_exprs,
-                    const SymbolBindings &symbol_bindings);
+                    const SymbolBindings &symbol_bindings,
+                    const pir::Type &output_type);
 
   void VerifySig() {}
 
