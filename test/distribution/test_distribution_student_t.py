@@ -266,7 +266,7 @@ class StudentTTestError(unittest.TestCase):
     @parameterize_func([(10,)])  # not sequence object sample shape
     def test_bad_sample_shape(self, shape):
         with paddle.base.dygraph.guard(self.place):
-            t = StudentT(5, 0.0, 1.0)
+            t = StudentT(5.0, 0.0, 1.0)
             self.assertRaises(TypeError, t.sample, shape)
 
 
