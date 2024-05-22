@@ -117,14 +117,12 @@ class TestStateKeepVars(unittest.TestCase):
         y = model(x)
         y.backward()
         st = model.state_dict()
-        detached_from_graph = (
-            False
-            if (st["linear.weight"].grad == model.linear.weight.grad).all()
+        has_grad = (
+            (st["linear.weight"].grad == model.linear.weight.grad).all()
             and (st["linear.bias"].grad == model.linear.bias.grad).all()
             and st["model_buffer"].grad == model.model_buffer.grad
-            else True
         )
-        self.assertEqual(detached_from_graph, False)
+        self.assertEqual(has_grad, True)
 
     def test_false(self):
         model = MyModel3()
@@ -132,14 +130,12 @@ class TestStateKeepVars(unittest.TestCase):
         y = model(x)
         y.backward()
         st = model.state_dict(keep_vars=False)
-        detached_from_graph = (
-            True
-            if (st["linear.weight"].grad is None)
-            and (st["linear.bias"].grad is None)
-            and (st["model_buffer"].grad is None)
-            else False
+        has_grad = (
+            (st["linear.weight"].grad is not None)
+            or (st["linear.bias"].grad is not None)
+            or (st["model_buffer"].grad is not None)
         )
-        self.assertEqual(detached_from_graph, True)
+        self.assertEqual(has_grad, False)
 
 
 if __name__ == "__main__":
