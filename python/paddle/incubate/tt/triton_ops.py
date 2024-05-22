@@ -457,9 +457,9 @@ def adaptive_layer_norm_kernel(
     _var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
     for col_off in range(0, N, BLOCK_SIZE):
         cols = col_off + tl.arange(0, BLOCK_SIZE)
-        x = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
-        x = tl.where(cols < N, x - mean, 0.0)
-        _var += x * x
+        eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
+        eles = tl.where(cols < N, eles - mean, 0.0)
+        _var += eles * eles
     var = tl.sum(_var, axis=0) / N
     rstd = 1 / tl.sqrt(var + epsilon)
     # Compute output
@@ -512,7 +512,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   }
 
   auto run_triton_kernel = [&](int algo_id) -> CUresult{
-      return triton_adaptive_layer_norm_kernel(y.stream(),
+      return ${op_name}_kernel(y.stream(),
                                                dev_x,
                                                dev_y,
                                                dev_weight,
@@ -554,17 +554,16 @@ PD_BUILD_OP(${op_name})
 
 
 def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
-    ## 函数界限检查 和 参数准备
     assert (
         len(x.shape) == 3
     ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
     if weight is not None:
-        assert len(weight.shape) == 1
+        assert len(weight.shape) == 1, "weight should be 1-dim [feature_dim]"
         assert (
             weight.shape[-1] == x.shape[-1]
         ), "x and weight should have same shape[-1] == feature_dim"
     if bias is not None:
-        assert len(bias.shape) == 1
+        assert len(bias.shape) == 1, "bias should be 1-dim [feature_dim]"
         assert (
             bias.shape[-1] == x.shape[-1]
         ), "x and bias should have same shape[-1] == feature_dim"
@@ -583,10 +582,8 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     seq_size = x.shape[1]
     BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
 
-    ## 暂时这样对齐动态图
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
-
     #     adaptive_layer_norm_kernel[(M,)](
     #         x,
     #         y,
@@ -603,7 +600,16 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     #     return y
 
     op_name = "triton_adaptive_layer_norm"
-    ## 如果在动态图模式下且算子已经添加好了，则直接调用自定义算子
+    if x.dtype == paddle.float16:
+        op_name += "_fp16"
+    elif x.dtype == paddle.float32:
+        op_name += "_fp32"
+    else:
+        raise NotImplementedError(
+            "triton_adaptive_layer_norm now supports only fp16 and fp32 dtype."
+        )
+
+    # if in_dynamic_or_pir_mode && op is already registered, call it directly.
     if (
         op_name in OpProtoHolder.instance().op_proto_map.keys()
         and in_dynamic_or_pir_mode()
@@ -671,7 +677,6 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         assert so_path is not None
         paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
 
-    ## 执行算子
     if in_dynamic_or_pir_mode():
         print(f"== we are in dynamic mode, op_name: {op_name}")
         outs = _C_ops._run_custom_op(
@@ -680,7 +685,6 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         return outs[0]
     else:
         print(f"== we are in static mode, op_name: {op_name}")
-        ## check_variable_and_dtype
         helper = LayerHelper(op_name, **locals())
         inputs = {
             'x': x,
