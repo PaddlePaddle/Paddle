@@ -115,8 +115,8 @@ class TestLlamaModel(unittest.TestCase):
         )
         ops = {op.name() for op in main_program.global_block().ops}
         ops = list(ops)
-        ops.sort()
-        print("ops************ \n", ops)
+        assert "pd_op.sum" in ops
+        assert "pd_op.sum_grad" not in ops
         return res[0], np.abs(res[1]).mean()
 
     def test_static(self):
