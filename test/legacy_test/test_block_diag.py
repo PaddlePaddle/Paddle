@@ -28,7 +28,7 @@ class TestBlockDiagError(unittest.TestCase):
             B = np.array([[5, 6], [7, 8]])
             C = np.array([[9, 10], [11, 12]])
             with paddle.static.program_guard(base.Program()):
-                out = paddle.block_diag(A, B, C)
+                out = paddle.block_diag([A, B, C])
 
         self.assertRaises(TypeError, test_type_error)
 
@@ -37,7 +37,7 @@ class TestBlockDiagError(unittest.TestCase):
             B = paddle.to_tensor([[[5, 6], [7, 8]]])
             C = paddle.to_tensor([[[9, 10], [11, 12]]])
             with paddle.static.program_guard(base.Program()):
-                out = paddle.block_diag(A, B, C)
+                out = paddle.block_diag([A, B, C])
 
         self.assertRaises(ValueError, test_dime_error)
 
@@ -65,7 +65,7 @@ class TestBlockDiag(unittest.TestCase):
                 A_tensor = paddle.to_tensor(A)
                 B_tensor = paddle.to_tensor(B)
                 C_tensor = paddle.to_tensor(C)
-                out = paddle.block_diag(A_tensor, B_tensor, C_tensor)
+                out = paddle.block_diag([A_tensor, B_tensor, C_tensor])
                 np.testing.assert_allclose(out.numpy(), s_out)
 
     def test_static(self):
@@ -82,7 +82,7 @@ class TestBlockDiag(unittest.TestCase):
                     A_tensor = paddle.static.data('A', [2, 3], i)
                     B_tensor = paddle.static.data('B', [2], i)
                     C_tensor = paddle.static.data('C', [4, 1], i)
-                    out = paddle.block_diag(A_tensor, B_tensor, C_tensor)
+                    out = paddle.block_diag([A_tensor, B_tensor, C_tensor])
                     exe = paddle.static.Executor(place)
                     res = exe.run(
                         feed={'A': A, 'B': B, 'C': C},

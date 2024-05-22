@@ -6884,7 +6884,7 @@ def block_diag(inputs, name=None):
             >>> C = paddle.to_tensor(1)
             >>> D = paddle.to_tensor([[5, 4, 3], [2, 1, 0]])
             >>> E = paddle.to_tensor([[8, 7], [7, 8]])
-            >>> out = paddle.block_diag(A, B, C, D, E)
+            >>> out = paddle.block_diag([A, B, C, D, E])
             >>> print(out)
             Tensor(shape=[9, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
