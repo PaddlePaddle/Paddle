@@ -1660,7 +1660,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
           "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
           filename.c_str()));
 
-  struct stat sb;
+  struct stat sb = {};
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
