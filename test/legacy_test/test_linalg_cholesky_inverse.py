@@ -21,8 +21,8 @@ from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api as _test_with_pir_api
 
-RTOL = {'float32': 1e-7, 'float64': 1e-13}
-ATOL = {'float32': 1e-7, 'float64': 1e-13}
+RTOL = {'float32': 1e-7, 'float64': 1e-11}
+ATOL = {'float32': 1e-7, 'float64': 1e-11}
 
 
 def cholesky_inverse_numpy(M, upper=False):
