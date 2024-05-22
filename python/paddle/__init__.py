@@ -210,6 +210,7 @@ from .tensor.linalg import (  # noqa: F401
     bmm,
     cdist,
     cholesky,
+    cholesky_inverse,
     cross,
     dist,
     dot,
@@ -1023,4 +1024,5 @@ __all__ = [
     'diagonal_scatter',
     'combinations',
     'signbit',
+    'cholesky_inverse',
 ]
