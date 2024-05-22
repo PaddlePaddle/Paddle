@@ -2623,13 +2623,16 @@ class TestRound_ZeroDim(TestRound):
     def init_shape(self):
         self.shape = []
 
+
 class TestRound_decimals1(TestRound):
     def init_decimals(self):
         self.decimals = 2
 
+
 class TestRound_decimals2(TestRound):
     def init_decimals(self):
         self.decimals = -1
+
 
 class TestRelu(TestActivation):
     def setUp(self):

@@ -155,13 +155,10 @@ void RoundKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const int decimals,
                  DenseTensor* out) {
-
-
   RoundOneDNNFunctor<T> functor;
 
   functor(dev_ctx, x, 0, 0, out);
 }
-
 
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)

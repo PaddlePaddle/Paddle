@@ -47,7 +47,6 @@ __inplace_unary_func__ = [
     'rsqrt_',
     'ceil_',
     'floor_',
-    'round_',
     'reciprocal_',
     'sigmoid_',
     'abs_',
@@ -855,6 +854,15 @@ def round(x, decimals=0, name=None):
             type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def round_(x, decimals=0, name=None):
+    r"""
+    Inplace version of ``round`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_round`.
+    """
+    return _C_ops.round_(x, decimals)
 
 
 def rsqrt(x, name=None):
