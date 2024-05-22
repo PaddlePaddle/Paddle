@@ -261,11 +261,7 @@ Tensor squared_l2_norm_decomp(const Tensor& x) {
     }
     reduce_x = reshape<T>(x, {reduce_num});
   }
-  auto res =
-      sum<T>(elementwise_pow<T>(reduce_x, full<T>(empty_shape, 2, x.dtype())),
-             {0},
-             x.dtype(),
-             true);
+  auto res = sum<T>(reduce_x * reduce_x, {0}, x.dtype(), true);
   return res;
 }
 
