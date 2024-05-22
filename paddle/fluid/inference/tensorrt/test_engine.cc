@@ -82,8 +82,10 @@ TEST_F(TensorRTEngineTest, add_layer) {
   std::vector<void *> buffers(2);  // TRT binded inputs
 
   LOG(INFO) << "create weights";
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight.data(), size);
-  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias.data(), size);
+  TensorRTEngine::Weight weight(
+      nvinfer1::DataType::kFLOAT, raw_weight.data(), size);
+  TensorRTEngine::Weight bias(
+      nvinfer1::DataType::kFLOAT, raw_bias.data(), size);
   auto *x = engine_->DeclareInput(
       "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 1, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(
@@ -126,7 +128,8 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   std::vector<float> raw_bias = {1.3, 2.4};
   std::vector<void *> buffers(2);  // TRT binded inputs
 
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight.data(), 4);
+  TensorRTEngine::Weight weight(
+      nvinfer1::DataType::kFLOAT, raw_weight.data(), 4);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias.data(), 2);
   auto *x = engine_->DeclareInput(
       "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 2, 1});
@@ -171,7 +174,8 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   std::vector<float> raw_bias = {0};
   std::vector<void *> buffers(2);  // TRT binded inputs
 
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight.data(), 9);
+  TensorRTEngine::Weight weight(
+      nvinfer1::DataType::kFLOAT, raw_weight.data(), 9);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias.data(), 1);
   auto *x = engine_->DeclareInput(
       "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 3, 3});
