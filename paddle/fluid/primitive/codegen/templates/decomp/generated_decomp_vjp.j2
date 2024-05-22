@@ -143,12 +143,12 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
     stop_gradients[{{k}}].push_back(
         stop_gradients_attr[{{k}}].dyn_cast<pir::BoolAttribute>().data());
     {% endfor %} 
-    VLOG(0) << " stop_gradients is set ";
+    VLOG(4) << " stop_gradients is set ";
   } else {
     {% for k in range(outputs|length) %} 
     stop_gradients[{{k}}].push_back(false);
     {% endfor %}
-    VLOG(0) << " stop_gradients is not set ";
+    VLOG(4) << " stop_gradients is not set ";
   }
 
   std::vector<std::vector<paddle::Tensor>> tensor_res;

@@ -61,11 +61,11 @@ using IntArray = paddle::experimental::IntArray;
 //         stop_gradients_attr[0].dyn_cast<pir::BoolAttribute>().data());
 //     stop_gradients[1].push_back(
 //         stop_gradients_attr[1].dyn_cast<pir::BoolAttribute>().data());
-//     VLOG(0) << " stop_gradients is set ";
+//     VLOG(4) << " stop_gradients is set ";
 //   } else {
 //     stop_gradients[0].push_back(false);
 //     stop_gradients[1].push_back(false);
-//     VLOG(0) << " stop_gradients is not set ";
+//     VLOG(4) << " stop_gradients is not set ";
 //   }
 
 //   std::vector<std::vector<paddle::Tensor>> tensor_res;
@@ -119,10 +119,10 @@ using IntArray = paddle::experimental::IntArray;
 //                                    .AsVector();
 //     stop_gradients[0].push_back(
 //         stop_gradients_attr[0].dyn_cast<pir::BoolAttribute>().data());
-//     VLOG(0) << " stop_gradients is set ";
+//     VLOG(4) << " stop_gradients is set ";
 //   } else {
 //     stop_gradients[0].push_back(false);
-//     VLOG(0) << " stop_gradients is not set ";
+//     VLOG(4) << " stop_gradients is not set ";
 //   }
 
 //   std::vector<std::vector<paddle::Tensor>> tensor_res;
@@ -149,57 +149,133 @@ using IntArray = paddle::experimental::IntArray;
 //   return res;
 // }
 
-std::vector<std::vector<pir::Value>> MatmulGradOp::DecompVjp(
-    pir::Operation* op) {
-  VLOG(4) << "Decomp call matmul_grad's decomp interface begin";
+// std::vector<std::vector<pir::Value>> MatmulGradOp::DecompVjp(
+//     pir::Operation* op) {
+//   VLOG(4) << "Decomp call matmul_grad's decomp interface begin";
 
-  MatmulGradOp op_obj = op->dyn_cast<MatmulGradOp>();
+//   MatmulGradOp op_obj = op->dyn_cast<MatmulGradOp>();
+//   (void)op_obj;
+
+//   FLAGS_tensor_operants_mode = "static";
+
+//   VLOG(6) << "Decomp Prepare inputs of matmul_grad";
+
+//   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+//   Tensor y(std::make_shared<primitive::LazyTensor>(op_obj.y()));
+//   Tensor
+//   out_grad(std::make_shared<primitive::LazyTensor>(op_obj.out_grad()));
+
+//   VLOG(6) << "Decomp prepare attributes of matmul_grad";
+//   bool transpose_x =
+//       op->attribute("transpose_x").dyn_cast<pir::BoolAttribute>().data();
+//   bool transpose_y =
+//       op->attribute("transpose_y").dyn_cast<pir::BoolAttribute>().data();
+
+//   VLOG(6) << "Decomp call matmul_grad's composite rule prepare";
+
+//   std::vector<std::vector<bool>> stop_gradients(op->results().size());
+//   if (op->HasAttribute(kAttrStopGradients)) {
+//     auto stop_gradients_attr = op->attribute(kAttrStopGradients)
+//                                    .dyn_cast<pir::ArrayAttribute>()
+//                                    .AsVector();
+//     stop_gradients[0].push_back(
+//         stop_gradients_attr[0].dyn_cast<pir::BoolAttribute>().data());
+//     stop_gradients[1].push_back(
+//         stop_gradients_attr[1].dyn_cast<pir::BoolAttribute>().data());
+//     VLOG(4) << " stop_gradients is set ";
+//   } else {
+//     stop_gradients[0].push_back(false);
+//     stop_gradients[1].push_back(false);
+//     VLOG(4) << " stop_gradients is not set ";
+//   }
+
+//   std::vector<std::vector<paddle::Tensor>> tensor_res;
+//   for (auto arg : stop_gradients) {
+//     tensor_res.push_back(std::vector<paddle::Tensor>(arg.size()));
+//   }
+//   std::string op_name = "matmul_grad";
+//   FLAGS_tensor_operants_mode = "static";
+//   VLOG(4) << "Call Pir Decomposed backward op matmul_grad";
+//   paddle::Tensor* x_grad = !stop_gradients[0][0] ? &tensor_res[0][0] :
+//   nullptr; paddle::Tensor* y_grad = !stop_gradients[1][0] ? &tensor_res[1][0]
+//   : nullptr; paddle::primitive::details::matmul_grad<primitive::LazyTensor>(
+//       x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad);
+//   std::vector<std::vector<pir::Value>> res(tensor_res.size());
+//   for (size_t i = 0; i < tensor_res.size(); ++i) {
+//     res[i].resize(tensor_res[i].size());
+//     for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+//       if (tensor_res[i][j].defined()) {
+//         res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+//                         tensor_res[i][j].impl())
+//                         ->value();
+//       }
+//     }
+//   }
+//   return res;
+// }
+
+std::vector<std::vector<pir::Value>> StackGradOp::DecompVjp(
+    pir::Operation* op) {
+  VLOG(4) << "Decomp call stack_grad's decomp interface begin";
+
+  StackGradOp op_obj = op->dyn_cast<StackGradOp>();
   (void)op_obj;
 
   FLAGS_tensor_operants_mode = "static";
 
-  VLOG(6) << "Decomp Prepare inputs of matmul_grad";
+  VLOG(6) << "Decomp Prepare inputs of stack_grad";
 
-  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
-  Tensor y(std::make_shared<primitive::LazyTensor>(op_obj.y()));
+  pir::CombineOp combine_op_obj_x =
+      op_obj.x().defining_op()->dyn_cast<pir::CombineOp>();
+  std::vector<Tensor> x;
+  for (size_t idx = 0; idx < combine_op_obj_x.inputs().size(); idx++) {
+    x.emplace_back(std::make_shared<primitive::LazyTensor>(
+        combine_op_obj_x.inputs()[idx]));
+  }
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(op_obj.out_grad()));
 
-  VLOG(6) << "Decomp prepare attributes of matmul_grad";
-  bool transpose_x =
-      op->attribute("transpose_x").dyn_cast<pir::BoolAttribute>().data();
-  bool transpose_y =
-      op->attribute("transpose_y").dyn_cast<pir::BoolAttribute>().data();
+  VLOG(6) << "Decomp prepare attributes of stack_grad";
+  int axis = op->attribute("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  VLOG(6) << "Decomp call matmul_grad's composite rule prepare";
+  VLOG(6) << "Decomp call stack_grad's backward composite rule prepare";
 
   std::vector<std::vector<bool>> stop_gradients(op->results().size());
-  if (op->HasAttribute(kAttrStopGradients)) {
+  if (combine_op_obj_x->HasAttribute(kAttrStopGradients)) {
     auto stop_gradients_attr = op->attribute(kAttrStopGradients)
                                    .dyn_cast<pir::ArrayAttribute>()
                                    .AsVector();
-    stop_gradients[0].push_back(
-        stop_gradients_attr[0].dyn_cast<pir::BoolAttribute>().data());
-    stop_gradients[1].push_back(
-        stop_gradients_attr[1].dyn_cast<pir::BoolAttribute>().data());
-    VLOG(0) << " stop_gradients is set ";
+    for (size_t i = 0; i < stop_gradients[0].size(); ++i) {
+      stop_gradients[0].push_back(
+          stop_gradients_attr[i].dyn_cast<pir::BoolAttribute>().data());
+    }
+
+    VLOG(4) << " stop_gradients is set ";
   } else {
-    stop_gradients[0].push_back(false);
-    stop_gradients[1].push_back(false);
-    VLOG(0) << " stop_gradients is not set ";
+    std::vector<bool> x_grad_stop_gradient(combine_op_obj_x.inputs().size(),
+                                           false);
+    stop_gradients[0] = x_grad_stop_gradient;
+    VLOG(4) << " stop_gradients is not set ";
   }
 
   std::vector<std::vector<paddle::Tensor>> tensor_res;
   for (auto arg : stop_gradients) {
     tensor_res.push_back(std::vector<paddle::Tensor>(arg.size()));
   }
-  std::string op_name = "matmul_grad";
+  std::string op_name = "stack_grad";
   FLAGS_tensor_operants_mode = "static";
-  VLOG(4) << "Call Pir Decomposed backward op matmul_grad";
-  paddle::Tensor* x_grad = !stop_gradients[0][0] ? &tensor_res[0][0] : nullptr;
-  paddle::Tensor* y_grad = !stop_gradients[1][0] ? &tensor_res[1][0] : nullptr;
-  paddle::primitive::details::matmul_grad<primitive::LazyTensor>(
-      x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad);
+  VLOG(4) << "Call Pir Decomposed backward op stack_grad";
+
+  // paddle::Tensor* x_grad = !stop_gradients[0][0] ? &tensor_res[0][0] :
+  // nullptr;
+  std::vector<paddle::Tensor*> x_grad(stop_gradients[0].size(), nullptr);
+  for (size_t i = 0; i < stop_gradients[0].size(); i++) {
+    x_grad[i] = !stop_gradients[0][i] ? &tensor_res[0][i] : nullptr;
+  }
+
+  paddle::primitive::details::stack_grad<primitive::LazyTensor>(
+      x, out_grad, axis, x_grad);
   std::vector<std::vector<pir::Value>> res(tensor_res.size());
+
   for (size_t i = 0; i < tensor_res.size(); ++i) {
     res[i].resize(tensor_res[i].size());
     for (size_t j = 0; j < tensor_res[i].size(); ++j) {
@@ -210,6 +286,8 @@ std::vector<std::vector<pir::Value>> MatmulGradOp::DecompVjp(
       }
     }
   }
+
+  VLOG(4) << "Decomp call stack_grad's decomp interface end";
   return res;
 }
 
