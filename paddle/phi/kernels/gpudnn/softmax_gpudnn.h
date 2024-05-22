@@ -1031,6 +1031,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
                                const bool log_mode,
                                const std::vector<int>& tensor_dims,
                                T* out_data) {
+  printf("ShangShang SoftmaxForwardCudnnKernel%s %d \n", __FILE__, __LINE__);
   auto handle = dev_ctx.cudnn_handle();
   GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 
@@ -1113,6 +1114,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
                                 const bool log_mode,
                                 const std::vector<int>& tensor_dims,
                                 T* dx_data) {
+  printf("ShangShang %s %d SoftmaxBackwardCudnnKernel \n", __FILE__, __LINE__);
   auto handle = dev_ctx.cudnn_handle();
   GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 

@@ -32,6 +32,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
     const DeviceContext& context,
     const phi::DenseTensor* X,
     phi::DenseTensor* Y) {
+  printf("ShangShang %s %d  SoftmaxCUDNNFunctor\n", __FILE__, __LINE__);
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
@@ -95,6 +96,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
     const phi::DenseTensor* Y,
     const phi::DenseTensor* YGrad,
     phi::DenseTensor* XGrad) {
+  printf("ShangShang %s %d  SoftmaxGradCUDNNFunctor\n", __FILE__, __LINE__);
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
