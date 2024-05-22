@@ -191,7 +191,7 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to sparse api yaml file',
-        default='paddle/phi/api/yaml/sparse_backward.yaml',
+        default='paddle/phi/ops/yaml/sparse_backward.yaml',
     )
 
     parser.add_argument(

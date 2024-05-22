@@ -34,7 +34,7 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option)
-    : CommContext(rank, size) {
+    : CommContext(rank, size), nccl_version_(0), nccl_comm_(nullptr) {
   if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
