@@ -1332,19 +1332,21 @@ ir::Tensor Gather(const ir::Tensor& x,
         auto index_indice = std::vector<Expr>({indice[axis]});
 
         if (index.ndims() > 1) {
+          std::stringstream ss_index;
+          ss_index << index;
           PADDLE_ENFORCE_EQ(
               index.ndims(),
               2,
               phi::errors::InvalidArgument(
                   "index.ndims() should be 2 when index.ndims() is not 0 or 1"
-                  "in gather_op, but received value is [%d].",
-                  index.ndims()));
+                  "in gather_op, but received value is [%d], index is [%s]",
+                  index.ndims(), ss_index.str());
           PADDLE_ENFORCE_EQ(
               index->shape[1],
               Expr(1),
               phi::errors::InvalidArgument(
                   "index->shape[1] should be 1 when index.ndims() = 2"
-                  "in gather_op."));
+                  "in gather_op, index is [%s].", ss_index.str());
 
           index_indice.push_back(Expr(0));
         }
