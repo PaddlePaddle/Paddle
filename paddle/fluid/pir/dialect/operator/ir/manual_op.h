@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <array>
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -229,7 +228,7 @@ class CreateArrayLikeOp : public pir::Op<CreateArrayLikeOp,
   using Op::Op;
   static const char *name() { return "pd_op.create_array_like"; }
   static constexpr uint32_t attributes_num = 1;
-  static std::array<const char *, 1> attributes_name;
+  static const char *attributes_name[attributes_num];
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
