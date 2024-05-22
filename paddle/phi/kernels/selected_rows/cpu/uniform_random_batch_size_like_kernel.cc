@@ -40,7 +40,6 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
   out->set_rows(input.rows());
   out->set_height(input.height());
   phi::DenseTensor* tensor = out->mutable_value();
-  tensor->Resize(common::make_ddim(shape));
   T* data = dev_ctx.template Alloc<T>(tensor);
   int64_t size = tensor->numel();
 

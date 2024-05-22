@@ -36,7 +36,6 @@ void CPUUniformRandomKernel(const Context& dev_ctx,
                             float diag_val,
                             DataType dtype,
                             DenseTensor* out) {
-  out->Resize(common::make_ddim(shape));
   T* data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
   phi::funcs::UniformRealDistribution<T>(

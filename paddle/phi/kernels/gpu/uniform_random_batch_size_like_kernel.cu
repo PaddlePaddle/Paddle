@@ -30,7 +30,6 @@ void GPUUniformRandomKernel(const Context& dev_ctx,
                             float diag_val,
                             DataType dtype,
                             DenseTensor* out) {
-  out->Resize(common::make_ddim(shape));
   phi::funcs::UniformRandom<T>(
       dev_ctx, out, seed, min, max, diag_num, diag_step, diag_val);
 }
