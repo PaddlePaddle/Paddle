@@ -2921,13 +2921,12 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            is_ignore = label == ignore_index
-            mask = ~is_ignore
-            if paddle.count_nonzero(is_ignore) > 0:  # ignore label
+            if ignore_index >= 0:  # ignore label
                 out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
+                mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
