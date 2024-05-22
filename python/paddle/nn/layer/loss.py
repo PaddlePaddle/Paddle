@@ -2253,7 +2253,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     .. math::
         \lfloor \frac{\text{in\_features}}{\text{div\_value}^{idx}} \rfloor
 
-    where :math:``idx`` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:``1``).
+    where :math:`idx` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:`1`).
 
     For :attr:`head_bias` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details. Set to False in the official implementation.
 
@@ -2277,7 +2277,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input (Tensor): The input tensor. The shapes is [N, in_features]. N is batch size.
+        - input (Tensor): The input tensor. The shapes is ``[N, in_features]``. N is batch size.
         - label (Tensor): target. The shapes is ``[N]``
         - output1 (Tensor): The shape is ``[N]``
         - output2 (Scalar).
@@ -2316,8 +2316,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
     Note:
         Labels passed as inputs to this module should be sorted according to their frequency. This means that the most
-        frequent label should be represented by the index `0`, and the least frequent label should be represented by
-        the index `n_classes - 1`. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
+        frequent label should be represented by the index ``0``, and the least frequent label should be represented by
+        the index ``n_classes - 1``. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
     """
 
     def __init__(
