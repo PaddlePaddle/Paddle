@@ -1,3 +1,9 @@
+# These operators have been unified for both dynamic and static modes in the new IR and have been moved to the 'ops.yaml'.
+# However, these operators are inconsistent between dynamic and static modes in the old IR.
+# So when generating static graph operator definitions from ’ops.yaml‘ in the old IR, these operators need to be skipped
+# to avoid generating duplicate or incorrect definitions.
+# This file should be removed after the old IR is deprecated.
+
 - all
 - amax
 - amin

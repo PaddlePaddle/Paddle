@@ -1,3 +1,7 @@
+# These backward operators have been unified for both dynamic and static modes in the new IR and have been moved to the 'backward.yaml'.
+# Just like the operators in 'ops_exclude.yaml', these operators need to be skipped when generating static graph operator definitions.
+# This file should be removed after the old IR is deprecated.
+
 - amax_grad
 - amin_grad
 - channel_shuffle_grad
