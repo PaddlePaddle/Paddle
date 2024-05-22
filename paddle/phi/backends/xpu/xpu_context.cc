@@ -180,10 +180,10 @@ struct XPUContext::Impl {
 
     if (std::getenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD") == nullptr) {
       // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
-      XPUStream s = context_->get_stream();
-      auto overload_alloc_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_,
-                                &place = place_,
-                                &s = s](size_t size) -> void* {
+      auto overload_alloc_fn =
+          [&xhpc_buf_mgr = xhpc_buf_mgr_,
+           &place = place_,
+           s = context_->get_stream()](size_t size) -> void* {
         return xhpc_buf_mgr.Alloc(place, size, s);
       };
       auto overload_save_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
