@@ -1126,7 +1126,7 @@ OperatorWithKernel::OperatorWithKernel(const std::string& type,
                                        const VariableNameMap& inputs,
                                        const VariableNameMap& outputs,
                                        const AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : OperatorBase(type, inputs, outputs, attrs), impl_(nullptr) {}
 
 OperatorWithKernel::~OperatorWithKernel() = default;
 
@@ -1276,7 +1276,8 @@ struct OperatorWithKernel::CacheImpl {
       : kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
         tensors_(tensors),
-        not_allow_infer_shape_cache_(not_allow_infer_shape_cache) {}
+        not_allow_infer_shape_cache_(not_allow_infer_shape_cache),
+        last_ddims_() {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
