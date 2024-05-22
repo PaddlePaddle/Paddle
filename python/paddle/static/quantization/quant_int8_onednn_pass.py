@@ -248,7 +248,7 @@ class QuantInt8MkldnnPass:
                 'data_format': 'MKLDNNLAYOUT',
                 'use_mkldnn': 1,
                 'Scale': scale_in,
-                'is_negative_input': False,
+                'is_negative_input': 1,
             },
             inputs={'Input': input_var_node},
             outputs={'Output': output_var_node},
