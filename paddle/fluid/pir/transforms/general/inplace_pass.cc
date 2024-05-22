@@ -179,7 +179,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 }
 
 bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
-  if (op.dialect()->name() == paddle::dialect::KernelDialect::name()) {
+  if (op->dialect()->name() == paddle::dialect::KernelDialect::name()) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
