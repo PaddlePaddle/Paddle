@@ -627,32 +627,6 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
-    } else if (phi::SparseCsrTensor::classof(fwd_in_tensor.impl().get())) {
-      phi::SparseCsrTensor* sparse_tensor =
-          static_cast<phi::SparseCsrTensor*>(fwd_in_tensor.impl().get());
-      const phi::DenseTensor dense_tensor =
-          static_cast<const phi::DenseTensor>(sparse_tensor->values());
-      PADDLE_ENFORCE_NE(
-          dense_tensor.dtype(),
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
-      meta.SetTensorMeta(dense_tensor.meta());
-      meta.SetPlace(fwd_in_tensor.place());
-    } else if (phi::SparseCooTensor::classof(fwd_in_tensor.impl().get())) {
-      phi::SparseCooTensor* sparse_tensor =
-          static_cast<phi::SparseCooTensor*>(fwd_in_tensor.impl().get());
-      const phi::DenseTensor dense_tensor =
-          static_cast<const phi::DenseTensor>(sparse_tensor->values());
-      PADDLE_ENFORCE_NE(
-          dense_tensor.dtype(),
-          phi::DataType::UNDEFINED,
-          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
-                                          "with phi::DataType::UNDEFINED,"
-                                          "which is illegal."));
-      meta.SetTensorMeta(dense_tensor.meta());
-      meta.SetPlace(fwd_in_tensor.place());
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
