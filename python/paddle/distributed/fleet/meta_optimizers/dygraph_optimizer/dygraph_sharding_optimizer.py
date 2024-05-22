@@ -631,7 +631,9 @@ class DygraphShardingOptimizerV2:
 
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
-        self.pp_release_grads = pp_config.release_gradients
+        self.sd_release_grads = (
+            pp_config.release_gradients or sharding_config.release_gradients
+        )
 
         # Check nccl reduce_avg setting
         self.use_reduce_avg = sharding_config.use_reduce_avg
@@ -731,7 +733,7 @@ class DygraphShardingOptimizerV2:
                 comm_group,
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
-                release_grads=self.pp_release_grads,
+                release_grads=self.sd_release_grads,
                 use_reduce_avg=self.use_reduce_avg,
             )
             self._comm_buffer_list.append(buffer)
@@ -740,7 +742,7 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        if not self.pp_release_grads:
+        if not self.sd_release_grads:
             assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
@@ -764,7 +766,7 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
-        if self.pp_release_grads and not self.pp_overlap:
+        if self.sd_release_grads and not self.pp_overlap:
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer._clear_grad_storage()
 
@@ -790,7 +792,7 @@ class DygraphShardingOptimizerV2:
 
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
-                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                if self.sd_release_grads and comm_buffer.grad_storage is None:
                     for param in comm_buffer.params:
                         comm_buffer._copy_grad_to_buffer(param)
 
@@ -886,7 +888,7 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
-                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                if self.sd_release_grads and hasattr(slice_param, "main_grad"):
                     assert not slice_param.main_grad._is_initialized()
                     del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)
