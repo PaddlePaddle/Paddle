@@ -18,8 +18,8 @@
 #include <string>
 #include <unordered_map>
 #include "glog/logging.h"
-
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
@@ -489,9 +489,15 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName ||
-        item.first == ::pir::kSymbolBindings) {
+    if (item.first == ::pir::kStopGradientAttrName) {
       continue;
+    } else if (item.first == ::pir::kSymbolBindings) {
+      auto symbol_bindings =
+          cinn::dialect::ConvertAttributeToSymbolBindings(item.second);
+      PADDLE_ENFORCE(symbol_bindings.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required symbol_bindings.has_value()==true."));
+      dst_attrs[::pir::kSymbolBindings] = symbol_bindings.value();
     } else if (item.first == ::pir::kOutputDimExprs) {
       auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
       PADDLE_ENFORCE(dim_exprs.has_value(),

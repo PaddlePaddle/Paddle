@@ -361,8 +361,13 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
           phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
     }
     void operator()(const std::vector<symbol::DimExpr> &) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<symbol::DimExpr>"));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<symbol::DimExpr>"));
+    }
+    void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type "
+          "std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);
@@ -1276,40 +1281,54 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute generate_shape_compute([=](lang::Args args,
-                                                    lang::RetValue *ret) {
-    PADDLE_ENFORCE(!args.empty(),
-                   ::common::errors::InvalidArgument(
-                       "Invalid argument. The input arguments of "
-                       "generate_shape compute is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(pack_args->size(),
-                      1U,
-                      ::common::errors::InvalidArgument(
-                          "At least 1 input tensors for generate_shape "
-                          "compute, but now get %d.",
-                          pack_args->size()));
-    PADDLE_ENFORCE(
-        attrs.attr_store.count("output_dim_exprs"),
-        ::common::errors::InvalidArgument("Expected attribute output_dim_exprs "
-                                          "in strategy for generate shape op"));
-    auto stages = CreateStages({});
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("output_dim_exprs"),
+      ::common::errors::InvalidArgument("Expected attribute output_dim_exprs "
+                                        "in strategy for generate shape op"));
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("symbol_bindings"),
+      ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
+                                        "in strategy for generate shape op"));
+  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+      attrs.attr_store.at("output_dim_exprs"));
+  // PADDLE_ENFORCE_EQ(output_dim_exprs.size(),
+  //                   1,
+  //                   ::common::errors::InvalidArgument(
+  //                       "Invalid argument. StrategyForGenerateShapeSymbolic "
+  //                       "only support output_dim_exprs.size() == 1."));
+  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+      attrs.attr_store.at("symbol_bindings"));
 
-    std::string tensor_name = pack_args.back().operator std::string();
-    auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
-        attrs.attr_store.at("output_dim_exprs"));
-    ir::Tensor out = pe::GenerateShape(output_dim_exprs, tensor_name);
-    std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(out));
-    PADDLE_ENFORCE(!out_type.empty(),
-                   ::common::errors::InvalidArgument(
-                       "Invalid argument. The output type of "
-                       "generate_shape is empty! Please check."));
+  framework::CINNCompute generate_shape_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE(!args.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The input arguments of "
+                           "generate_shape compute is empty! Please check."));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_GE(pack_args->size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "At least 1 input tensors for generate_shape "
+                              "compute, but now get %d.",
+                              pack_args->size()));
+        auto stages = CreateStages({});
 
-    res.push_back(CINNValue(stages));
-    *ret = CINNValuePack{res};
-  });
+        std::string tensor_name = pack_args.back().operator std::string();
+
+        ir::Tensor out = pe::GenerateShape(
+            inputs, symbol_bindings, output_dim_exprs, tensor_name);
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        PADDLE_ENFORCE(!out_type.empty(),
+                       ::common::errors::InvalidArgument(
+                           "Invalid argument. The output type of "
+                           "generate_shape is empty! Please check."));
+
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

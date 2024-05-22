@@ -157,6 +157,8 @@ ir::Tensor Tril(const ir::Tensor& A,
                 const std::string& name = UniqName("T_Elementwise_Tril_out"));
 
 ir::Tensor GenerateShape(
+    const std::vector<ir::Tensor>& inputs,
+    const cinn::dialect::SymbolBindings& symbol_bindings,
     const std::vector<symbol::DimExpr>& output_dim_exprs,
     const std::string& name = UniqName("T_Generate_Shape_out"));
 

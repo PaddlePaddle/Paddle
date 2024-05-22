@@ -355,12 +355,15 @@ ir::Tensor Tril(const ir::Tensor& A,
   return res;
 }
 
-ir::Tensor GenerateShape(const std::vector<symbol::DimExpr>& output_dim_exprs,
+ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
+                         const cinn::dialect::SymbolBindings& symbol_bindings,
+                         const std::vector<symbol::DimExpr>& output_dim_exprs,
                          const std::string& name) {
-  cinn::common::DimExprConverter converter;
+  cinn::common::DimExprConverterWithSymbolBindings converter(inputs,
+                                                             symbol_bindings);
   auto res = Compute(
       {Expr(1)},
-      [=](const std::vector<Expr>& indice) {
+      [=, &converter](const std::vector<Expr>& indice) {
         return converter.ConvertToIrExpr(output_dim_exprs[0]);
       },
       name);

@@ -248,7 +248,7 @@ class BlockDimExprsAsserter {
     };
     std::vector<pir::Value> input_tensors{};
     std::vector<pir::Attribute> output_dim_expr_attrs{};
-    GenerateShapeOp::SymbolBindings symbol_bindings{};
+    SymbolBindings symbol_bindings{};
     bool success =
         MakeGenerateShapeOpAttribute(ir_ctx_,
                                      LocalDimExprs4Value,

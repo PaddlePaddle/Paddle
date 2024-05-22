@@ -340,7 +340,7 @@ DimExpr SubstituteDimExpr(
 namespace {
 
 std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
-    const GenerateShapeOp::DataSymbolBinding& symbol_binding,
+    const DataSymbolBinding& symbol_binding,
     const std::function<const symbol::ShapeOrDataDimExprs&(int in_tensor_idx)>&
         DimExpr4InputDim) {
   const symbol::ShapeOrDataDimExprs& shape_or_data_dim_expr =
@@ -353,7 +353,7 @@ std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
 }
 
 std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
-    const GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
+    const ShapeSymbolBinding& symbol_binding,
     const std::function<const symbol::ShapeOrDataDimExprs&(int in_tensor_idx)>&
         DimExpr4InputDim) {
   const symbol::ShapeOrDataDimExprs& shape_or_data_dim_expr =
@@ -363,8 +363,7 @@ std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
   return shape_or_data_dim_expr.shape().at(dim_idx);
 }
 
-std::string GetSymbolNameBySymbolBinding(
-    const GenerateShapeOp::SymbolBinding& symbol_binding) {
+std::string GetSymbolNameBySymbolBinding(const SymbolBinding& symbol_binding) {
   return std::visit([](const auto& impl) { return impl.symbol_name; },
                     symbol_binding);
 }
@@ -373,10 +372,10 @@ std::string GetSymbolNameBySymbolBinding(
 
 std::function<std::optional<DimExpr>(const std::string& symbol_name)>
 MakeGetterDimExpr4SymbolName(
-    const GenerateShapeOp::SymbolBindings& symbol_bindings,
+    const SymbolBindings& symbol_bindings,
     const std::function<const symbol::ShapeOrDataDimExprs&(int in_tensor_idx)>&
         DimExpr4InputDim) {
-  std::unordered_map<std::string, std::vector<GenerateShapeOp::SymbolBinding>>
+  std::unordered_map<std::string, std::vector<SymbolBinding>>
       symbol_name2symbol_bindins{};
   for (const auto& symbol_binding : symbol_bindings) {
     symbol_name2symbol_bindins[GetSymbolNameBySymbolBinding(symbol_binding)]
@@ -542,7 +541,7 @@ template <typename SymbolBindingsT>
 void AppendSymbolBindings(const std::vector<symbol::DimExpr>& dim_exprs,
                           const std::set<std::string>& symbol_names,
                           int in_tensor_idx,
-                          GenerateShapeOp::SymbolBindings* symbol_bindings) {
+                          SymbolBindings* symbol_bindings) {
   for (int in_tensor_dim_idx = 0; in_tensor_dim_idx < dim_exprs.size();
        ++in_tensor_dim_idx) {
     const auto& dim_expr = dim_exprs.at(in_tensor_dim_idx);
@@ -562,14 +561,14 @@ void GenerateSymbolBindings(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<pir::Value>& input_tensors,
     const std::set<std::string>& symbol_names,
-    GenerateShapeOp::SymbolBindings* symbol_bindings) {
+    SymbolBindings* symbol_bindings) {
   for (int i = 0; i < input_tensors.size(); ++i) {
     const auto& input_tensor = input_tensors.at(i);
     const auto& dim_exprs = ShapeOrDataDimExprs4Value(input_tensor);
-    AppendSymbolBindings<GenerateShapeOp::ShapeSymbolBinding>(
+    AppendSymbolBindings<ShapeSymbolBinding>(
         dim_exprs.shape(), symbol_names, i, symbol_bindings);
     if (dim_exprs.data().has_value()) {
-      AppendSymbolBindings<GenerateShapeOp::DataSymbolBinding>(
+      AppendSymbolBindings<DataSymbolBinding>(
           dim_exprs.data().value(), symbol_names, i, symbol_bindings);
     }
   }
@@ -619,7 +618,7 @@ bool MakeGenerateShapeOpAttribute(
     const std::vector<pir::Value>& origin_inputs,
     std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
-    GenerateShapeOp::SymbolBindings* symbol_bindings) {
+    SymbolBindings* symbol_bindings) {
   *minimal_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
   if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minimal_inputs)) {
     VLOG(4) << "input dim_exprs are not as simple as symbols, please make sure "
@@ -664,6 +663,132 @@ bool MakeGenerateShapeOpAttribute(
     }
   }
   return true;
+}
+
+namespace {
+
+const char* GetSymbolBindingTypeImpl(const DataSymbolBinding& binding) {
+  return "DataSymbolBinding";
+}
+
+const char* GetSymbolBindingTypeImpl(const ShapeSymbolBinding& binding) {
+  return "ShapeSymbolBinding";
+}
+
+const char* GetSymbolBindingType(const SymbolBinding& binding) {
+  return std::visit(
+      [](const auto& impl) { return GetSymbolBindingTypeImpl(impl); }, binding);
+}
+
+const SymbolBindingBase* GetSymbolBindingBaseImpl(
+    const DataSymbolBinding& binding) {
+  return &binding;
+}
+
+const SymbolBindingBase* GetSymbolBindingBaseImpl(
+    const ShapeSymbolBinding& binding) {
+  return &binding;
+}
+
+const SymbolBindingBase* GetSymbolBindingBase(const SymbolBinding& binding) {
+  return std::visit(
+      [](const auto& impl) { return GetSymbolBindingBaseImpl(impl); }, binding);
+}
+
+typedef SymbolBinding (*SymbolBindingConstructorT)(
+    const std::string& symbol_name,
+    int64_t input_tensor_idx,
+    int64_t input_tensor_dim_idx);
+
+SymbolBinding MakeDataSymbolBinding(const std::string& symbol_name,
+                                    int64_t input_tensor_idx,
+                                    int64_t input_tensor_dim_idx) {
+  return DataSymbolBinding{symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+SymbolBinding MakeShapeSymbolBinding(const std::string& symbol_name,
+                                     int64_t input_tensor_idx,
+                                     int64_t input_tensor_dim_idx) {
+  return ShapeSymbolBinding{
+      symbol_name, input_tensor_idx, input_tensor_dim_idx};
+}
+
+std::optional<SymbolBindingConstructorT> GetMakerSymbolBinding(
+    const std::string& type) {
+  static std::map<std::string, SymbolBindingConstructorT> map{
+      {GetSymbolBindingTypeImpl(DataSymbolBinding{}), &MakeDataSymbolBinding},
+      {GetSymbolBindingTypeImpl(ShapeSymbolBinding{}), &MakeShapeSymbolBinding},
+  };
+  const auto& iter = map.find(type);
+  if (iter == map.end()) return std::nullopt;
+  return iter->second;
+}
+
+std::optional<SymbolBinding> MakeSymbolBinding(const std::string& type,
+                                               const std::string& symbol_name,
+                                               int64_t input_tensor_idx,
+                                               int64_t input_tensor_dim_idx) {
+  auto opt_creator = GetMakerSymbolBinding(type);
+  if (!opt_creator.has_value()) return std::nullopt;
+  return opt_creator.value()(
+      symbol_name, input_tensor_idx, input_tensor_dim_idx);
+}
+
+}  // namespace
+
+pir::Attribute ConvertSymbolBindingsToAttribute(
+    pir::Builder& builder, const SymbolBindings& symbol_bindings) {  // NOLINT
+  const auto& ConvertSymbolBindingToAttr = [&](const SymbolBinding& binding) {
+    const auto* type = GetSymbolBindingType(binding);
+    const auto& [symbol_name, input_tensor_idx, input_tensor_dim_idx] =
+        *GetSymbolBindingBase(binding);
+    return builder.array_attr({
+        builder.str_attr(type),
+        builder.str_attr(symbol_name),
+        builder.int64_attr(input_tensor_idx),
+        builder.int64_attr(input_tensor_dim_idx),
+    });
+  };
+  std::vector<pir::Attribute> bindings_attr{};
+  for (const auto& symbol_binding : symbol_bindings) {
+    bindings_attr.push_back(ConvertSymbolBindingToAttr(symbol_binding));
+  }
+  return builder.array_attr(bindings_attr);
+}
+
+std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
+    const pir::Attribute& symbol_bindings) {
+  if (!symbol_bindings.isa<pir::ArrayAttribute>()) return std::nullopt;
+  const auto& symbol_bindings_array_attr =
+      symbol_bindings.dyn_cast<pir::ArrayAttribute>();
+  SymbolBindings ret{SymbolBindings{}};
+  for (int i = 0; i < symbol_bindings_array_attr.size(); ++i) {
+    const auto& symbol_binding = symbol_bindings_array_attr.at(i);
+    if (!symbol_binding.isa<pir::ArrayAttribute>()) return std::nullopt;
+    const auto& symbol_binding_array_attr =
+        symbol_binding.dyn_cast<pir::ArrayAttribute>();
+    if (symbol_binding_array_attr.size() != 4) return std::nullopt;
+    if (!symbol_binding_array_attr.at(0).isa<pir::StrAttribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(1).isa<pir::StrAttribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(2).isa<pir::Int64Attribute>())
+      return std::nullopt;
+    if (!symbol_binding_array_attr.at(3).isa<pir::Int64Attribute>())
+      return std::nullopt;
+    const auto& opt_symbol_binding = MakeSymbolBinding(
+        symbol_binding_array_attr.at(0)
+            .dyn_cast<pir::StrAttribute>()
+            .AsString(),
+        symbol_binding_array_attr.at(1)
+            .dyn_cast<pir::StrAttribute>()
+            .AsString(),
+        symbol_binding_array_attr.at(2).dyn_cast<pir::Int64Attribute>().data(),
+        symbol_binding_array_attr.at(3).dyn_cast<pir::Int64Attribute>().data());
+    if (!opt_symbol_binding.has_value()) return std::nullopt;
+    ret.emplace_back(opt_symbol_binding.value());
+  }
+  return std::move(ret);
 }
 
 }  // namespace cinn::dialect

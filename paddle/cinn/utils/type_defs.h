@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
 #include <absl/container/flat_hash_map.h>
 #include <absl/types/variant.h>
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
-
 #include <string>
 #include <vector>
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace utils {
@@ -38,7 +37,8 @@ using Attribute = absl::variant<bool,
                                 std::vector<int64_t>,
                                 std::vector<double>,
                                 // the followings are only for generate shape op
-                                std::vector<symbol::DimExpr>>;
+                                std::vector<symbol::DimExpr>,
+                                cinn::dialect::SymbolBindings>;
 using AttributeMap = absl::flat_hash_map<std::string, Attribute>;
 
 // shape type defs
