@@ -206,9 +206,9 @@ execute_process(
     ${ops_yaml_dir}/op_compat.yaml --output_op_path "${generated_op_path_1}.tmp"
     "${generated_op_path_2}.tmp" "${generated_op_path_3}.tmp"
     "${generated_op_path_4}.tmp" --output_arg_map_path
-    "${generated_argument_mapping_path}.tmp" --exclude_ops_yaml_path
-    ${ops_yaml_dir}/legacy/static_ops.yaml --exclude_backward_yaml_path
-    ${ops_yaml_dir}/legacy/static_backward.yaml
+    "${generated_argument_mapping_path}.tmp" --ops_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/ops_exclude.yaml --backward_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/backward_exclude.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "operator codegen failed, exiting.")

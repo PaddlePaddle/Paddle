@@ -605,8 +605,8 @@ def main(
     op_version_yaml_path,
     output_op_path,
     output_arg_map_path,
-    exclude_ops_yaml_path,
-    exclude_backward_yaml_path,
+    ops_exclude_yaml_path,
+    backward_exclude_yaml_path,
 ):
     with open(ops_yaml_path, "rt") as f:
         ops = yaml.safe_load(f)
@@ -631,20 +631,18 @@ def main(
             )
 
     # exclude ops in specific yaml file
-    if exclude_ops_yaml_path is not None:
-        with open(exclude_ops_yaml_path, "rt") as f:
+    if ops_exclude_yaml_path is not None:
+        with open(ops_exclude_yaml_path, "rt") as f:
             exclude_ops = yaml.safe_load(f)
-            exclude_ops = [op['op'] for op in exclude_ops]
+            exclude_ops = [op.rstrip('_') for op in exclude_ops]
         for op_name in exclude_ops:
             if op_name in forward_op_dict:
                 del forward_op_dict[op_name]
         ops = [op for op in ops if op['name'] not in exclude_ops]
-    if exclude_backward_yaml_path is not None:
-        with open(exclude_backward_yaml_path, "rt") as f:
+    if backward_exclude_yaml_path is not None:
+        with open(backward_exclude_yaml_path, "rt") as f:
             exclude_backward_ops = yaml.safe_load(f)
-            exclude_backward_ops = [
-                bw_op['backward_op'] for bw_op in exclude_backward_ops
-            ]
+            exclude_ops = [op.rstrip('_') for op in exclude_ops]
         for op_name in exclude_backward_ops:
             if op_name in backward_op_dict:
                 del backward_op_dict[op_name]
@@ -755,13 +753,13 @@ if __name__ == "__main__":
         help="path to save generated argument mapping functions.",
     )
     parser.add_argument(
-        "--exclude_ops_yaml_path",
+        "--ops_exclude_yaml_path",
         type=str,
         default=None,
         help="yaml file to exclude ops",
     )
     parser.add_argument(
-        "--exclude_backward_yaml_path",
+        "--backward_exclude_yaml_path",
         type=str,
         default=None,
         help="yaml file to exclude backward ops",
@@ -775,6 +773,6 @@ if __name__ == "__main__":
         args.op_version_yaml_path,
         args.output_op_path,
         args.output_arg_map_path,
-        args.exclude_ops_yaml_path,
-        args.exclude_backward_yaml_path,
+        args.ops_exclude_yaml_path,
+        args.backward_exclude_yaml_path,
     )
