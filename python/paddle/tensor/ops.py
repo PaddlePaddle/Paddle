@@ -50,6 +50,10 @@ __inplace_unary_func__ = [
     'square_',
 ]
 
+__enhance_func__ = {
+    "round_": 0
+}
+
 __all__ = []
 
 # It is a hot fix in some unittest using:
@@ -57,7 +61,10 @@ __all__ = []
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 for _OP in set(__inplace_unary_func__):
-    func = generate_inplace_fn(_OP)
+    if _OP in __enhance_func__:
+        func = generate_inplace_fn(_OP, __enhance_func__[_OP])
+    else:
+        func = generate_inplace_fn(_OP)
     func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
