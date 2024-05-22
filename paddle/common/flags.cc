@@ -1665,6 +1665,17 @@ PHI_DEFINE_EXPORTED_bool(
     "shape between dynamic shape and static shape.");
 
 /**
+ * Name: manually_trans_conv_filter
+ * Since Version: 3.0.0 Beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(
+    manually_trans_conv_filter,
+    false,
+    "Whether to manually transpose the filter of conv2d. This pass can "
+    "accelerate the performance of conv2d since it transpose filter ahead");
+
+/**
  * Apply CSE optimize pass in Dy2St
  * Name: enable_cse_in_dy2st
  * Since Version: 3.0.0
