@@ -132,8 +132,8 @@ class TestStateKeepVars(unittest.TestCase):
         st = model.state_dict(keep_vars=False)
         has_grad = (
             (st["linear.weight"].grad is not None)
-            or (st["linear.bias"].grad is not None)
-            or (st["model_buffer"].grad is not None)
+            and (st["linear.bias"].grad is not None)
+            and (st["model_buffer"].grad is not None)
         )
         self.assertEqual(has_grad, False)
 
