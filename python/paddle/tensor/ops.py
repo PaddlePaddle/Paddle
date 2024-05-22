@@ -56,7 +56,6 @@ __all__ = []
 #   paddle.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
-globals()['_round'] = generate_layer_fn('round')
 for _OP in set(__inplace_unary_func__):
     func = generate_inplace_fn(_OP)
     func.__module__ = __name__
