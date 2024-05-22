@@ -1129,9 +1129,9 @@ ir::Tensor Slice(const ir::Tensor& A,
 }
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<int>& starts,
+                         const std::vector<Expr>& starts,
                          const std::vector<int>& const_axes,
-                         const std::vector<int>& strides,
+                         const std::vector<Expr>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
                          const std::string& output_name) {
@@ -1140,11 +1140,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<Expr> new_starts;
-  std::transform(starts.begin(),
-                 starts.end(),
-                 std::back_inserter(new_starts),
-                 [](const int start) { return ir::Expr(start); });
+  std::vector<Expr> new_starts = starts;
   std::vector<int> axes;
   std::transform(const_axes.begin(),
                  const_axes.end(),

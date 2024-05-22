@@ -99,7 +99,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-  list(REMOVE_ITEM TEST_OPS test_downpoursgd)
+  list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
@@ -453,8 +453,8 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_lod_reset_op
-                     test_scatter_op test_slice_op)
+set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_scatter_op
+                     test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -514,7 +514,8 @@ endif()
 
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
+                                                           "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
@@ -714,7 +715,8 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
-set_tests_properties(test_generator_dataloader PROPERTIES TIMEOUT 120)
+set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
+                                                                     120)
 set_tests_properties(test_partial_concat_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
@@ -724,7 +726,7 @@ set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
-set_tests_properties(test_conv2d_api PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)

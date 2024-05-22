@@ -461,6 +461,8 @@ class AttributeManager {
     return instance;
   }
 
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
   ~AttributeManager() {
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {

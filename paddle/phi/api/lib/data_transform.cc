@@ -972,7 +972,7 @@ PrepareDataForDistTensor(
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
-  for (auto tensor_in : input) {
+  for (const auto& tensor_in : input) {
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
