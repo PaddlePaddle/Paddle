@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/onednn/conv_activation_onednn_fuse_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -38,10 +40,10 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   ConvActivationFusePattern(size_t activation_count,
-                            const std::string &activation_name,
+                            std::string activation_name,
                             int fused_level)
       : activation_count_(activation_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -224,8 +226,9 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
   const int fused_level_;
 
  public:
-  ConvGeluFusePattern(const std::string &activation_name, int fused_level)
-      : activation_name_(activation_name), fused_level_(fused_level) {}
+  ConvGeluFusePattern(std::string activation_name, int fused_level)
+      : activation_name_(std::move(activation_name)),
+        fused_level_(fused_level) {}
 
   std::string name() const override { return "ConvGeluFusePattern"; }
 
@@ -367,8 +370,9 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
   const int fused_level_;
 
  public:
-  ConvClipFusePattern(const std::string &activation_name, int fused_level)
-      : activation_name_(activation_name), fused_level_(fused_level) {}
+  ConvClipFusePattern(std::string activation_name, int fused_level)
+      : activation_name_(std::move(activation_name)),
+        fused_level_(fused_level) {}
 
   std::string name() const override { return "ConvClipFusePattern"; }
 
