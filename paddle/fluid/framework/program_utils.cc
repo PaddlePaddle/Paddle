@@ -153,9 +153,9 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_inputs = op->MutableInputs();
       std::vector<std::string> *op_input_var_vec = nullptr;
       VLOG(3) << "op_type:>>>>>>" << op_type;
-      if (op_type.compare("while") == 0) {
+      if (op_type == "while") {
         op_input_var_vec = &((*op_inputs)["kX"]);
-      } else if (op_type.compare("conditional_block") == 0) {
+      } else if (op_type == "conditional_block") {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       } else {
         // Only support while_op and conditional_block_op now

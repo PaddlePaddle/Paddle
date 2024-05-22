@@ -155,7 +155,7 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+  if ((strcmp(op->dialect()->name(), paddle::dialect::KernelDialect::name()) ==
        0) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
