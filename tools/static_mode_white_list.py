@@ -144,7 +144,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_distributed_strategy',
     'test_distributions',
     'test_dot_op',
-    'test_downpoursgd',
+    'test_downpoursgd_deprecated',
     'test_dpsgd_op',
     'test_dropout_op',
     'test_dygraph_multi_forward',

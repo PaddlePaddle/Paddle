@@ -35,6 +35,10 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 namespace detail {
 
@@ -620,10 +624,13 @@ void ConvInferMeta(const MetaTensor& input,
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
+  const auto filter_channels = channel_last && FLAGS_manually_trans_conv_filter
+                                   ? filter_dims[filter_dims.size() - 1]
+                                   : filter_dims[1];
 
   PADDLE_ENFORCE_EQ(
       input_channels,
-      filter_dims[1] * groups,
+      filter_channels * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
           "* groups for Op(Conv). But received: the input's channels is %d, "
@@ -632,7 +639,7 @@ void ConvInferMeta(const MetaTensor& input,
           "The error may come from wrong data_format setting.",
           input_channels,
           in_dims,
-          filter_dims[1],
+          filter_channels,
           filter_dims,
           groups,
           data_format));
@@ -663,8 +670,13 @@ void ConvInferMeta(const MetaTensor& input,
     in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim filter_data_dims;
+  if (channel_last && FLAGS_manually_trans_conv_filter) {
+    filter_data_dims =
+        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+  } else {
+    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
+  }
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
