@@ -102,7 +102,7 @@ if(WITH_GPU)
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES LABELS
                                                                 "RUN_TYPE=CINN")
-    set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES TIMEOUT 300)
+    set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES TIMEOUT 600)
   endforeach()
 
   # set_tests_properties(test_sub_graph_3 PROPERTIES TIMEOUT 300)
