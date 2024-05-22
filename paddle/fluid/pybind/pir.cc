@@ -310,32 +310,6 @@ py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
   return new_obj;
 }
 
-void Prune(Program *prog, const std::vector<Operation *> &reserved_ops) {
-  auto block = prog->block();
-  std::unordered_set<Value> values;
-  std::unordered_set<Operation *> ops(reserved_ops.begin(), reserved_ops.end());
-  std::vector<Operation *> del_ops;
-  for (auto iter = block->rbegin(); iter != block->rend(); ++iter) {
-    bool reserve = ops.find(&(*iter)) != ops.end();
-    if (!reserve) {
-      for (auto value : iter->results()) {
-        if (values.find(value) != values.end()) {
-          reserve = true;
-          break;
-        }
-      }
-    }
-    if (reserve) {
-      auto vals = iter->operands_source();
-      values.insert(vals.begin(), vals.end());
-    } else {
-      del_ops.push_back(&(*iter));
-    }
-  }
-  for (auto op : del_ops) {
-    op->Erase();
-  }
-}
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
@@ -433,7 +407,6 @@ void BindProgram(py::module *m) {
            [](Program &self, IrMapping &ir_mapper) {
              return Clone(self, &ir_mapper);
            })
-      .def("prune", Prune)
       .def(
           "list_vars",
           [](std::shared_ptr<Program> self) {

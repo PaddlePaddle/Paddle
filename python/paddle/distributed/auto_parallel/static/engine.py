@@ -1063,15 +1063,13 @@ class Engine:
             # 5. amp init adaption
             # 6. vpp init adaption
 
-            self.program_helper.init_pir(
-                self._pir_dist_main_progs[mode], self._place
-            )
             # self._init_lr(self._pir_dense_main_progs[mode])
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
-                reserved_ops = []
                 startup_prog = self._startup_progs[mode].clone()
-                for op in startup_prog.global_block().ops:
+                del_ops = []
+                block = startup_prog.global_block()
+                for op in block.ops:
                     if op.name() == "builtin.set_parameter":
                         para_name = op.str_attr("parameter_name")
                         scope_var = global_scope().find_var(para_name)
@@ -1079,11 +1077,19 @@ class Engine:
                             scope_var
                             and scope_var.get_tensor()._is_initialized()
                         ):
+                            param = op.operand_source(0)
+                            initial_op = param.get_defining_op()
+                            paddle.pir.set_insertion_point(initial_op)
+                            new_param = block.add_kwarg(para_name, param.type())
+                            param.replace_all_use_with(new_param)
+                            del_ops.append(initial_op)
                             continue
-                        reserved_ops.append(op)
-                if len(reserved_ops) > 0:
-                    startup_prog.prune(reserved_ops)
-                    self._executor.run(startup_prog)
+                for del_op in del_ops:
+                    del_op.erase()
+                self._executor.run(startup_prog)
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
 
             return
 
