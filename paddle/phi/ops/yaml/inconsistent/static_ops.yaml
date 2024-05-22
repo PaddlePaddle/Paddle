@@ -27,15 +27,6 @@
     func: add_n
     param: [inputs]
 
-- op : all
-  args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceInferMeta
-    spmd_rule : ReductionAllInferSpmdDynamic
-  kernel :
-    func : all
-
 - op : all_reduce
   args : (Tensor x, int ring_id = 0, int reduce_type = 0)
   output : Tensor(out)

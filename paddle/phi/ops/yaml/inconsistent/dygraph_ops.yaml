@@ -18,15 +18,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : all
-  args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceInferMeta
-    spmd_rule : ReductionAllInferSpmdDynamic
-  kernel :
-    func : all
-
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
