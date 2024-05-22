@@ -42,7 +42,11 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
   int64_t local_dim_expr_id = 0;
   for (; output_dim_idx < output_shape.size(); ++output_dim_idx) {
     const auto& dim_expr = output_shape.at(output_dim_idx);
-    if (dim_expr.isa<int64_t>()) continue;
+    if (dim_expr.isa<int64_t>()) {
+      output_dim_expr_attrs.emplace_back(
+          ConvertDimExprToAttribute(rewriter.ir_context(), dim_expr));
+      continue;
+    }
     for (int next_input_dim_idx = input_dim_idx;
          next_input_dim_idx < input_shape.size();
          ++next_input_dim_idx) {
