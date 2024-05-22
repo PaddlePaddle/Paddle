@@ -663,7 +663,6 @@ if is_compiled_with_cuda():
                 os.getenv(cuda_path_var, default_path), 'bin'
             )
 
-            dll_paths.extend(filter(os.path.exists, [cuda_path]))
             import ctypes
 
             kernel32 = ctypes.WinDLL('kernel32.dll', use_last_error=True)
@@ -704,7 +703,7 @@ if is_compiled_with_cuda():
                 is_loaded = False
                 print("dll:", dll)
                 if with_load_library_flags:
-                    res = kernel32.LoadLibraryW(dll)
+                    res = kernel32.LoadLibraryExW(dll, None, 0x00001100)
                     last_error = ctypes.get_last_error()
                     if res is None and last_error != 126:
                         err = ctypes.WinError(last_error)
@@ -714,11 +713,15 @@ if is_compiled_with_cuda():
                         is_loaded = True
                 if not is_loaded:
                     if not path_patched:
+                        dll_paths.extend(filter(os.path.exists, [cuda_path]))
+                        prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
                             dll_paths + [os.environ['PATH']]
                         )
                         path_patched = True
                     res = kernel32.LoadLibraryW(dll)
+                    if path_patched:
+                        os.environ['PATH'] = prev_path
                     if res is None:
                         err = ctypes.WinError(ctypes.get_last_error())
                         err.strerror += f' Error loading "{dll}" or one of its dependencies.'
