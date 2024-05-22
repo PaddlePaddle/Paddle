@@ -464,6 +464,12 @@ def load_vars_pir(
         if main_program is None:
             main_program = default_main_program()
 
+        if not isinstance(main_program, paddle.static.Program):
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
+                % type(main_program)
+            )
+
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
 
