@@ -123,8 +123,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   auto y_shape = common::vectorize(y.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int y_ndim = static_cast<int>(y_shape.size());
-  auto x_dist_attr_src = x.dist_attr();
-  auto y_dist_attr_src = y.dist_attr();
+  const auto& x_dist_attr_src = x.dist_attr();
+  const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -338,7 +338,7 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   auto infer_y_dist_attr = get_attr(fwd_spmd_info.first[1]);
   auto is_dist_attr_equal = [&](const TensorDistAttr& dist_attr,
                                 const ArgDistAttr& arg_dist_attr) -> bool {
-    auto infer_dist_attr = get_attr(arg_dist_attr);
+    const auto& infer_dist_attr = get_attr(arg_dist_attr);
     return (dist_attr.process_mesh() != infer_dist_attr.process_mesh() ||
             dist_attr.dims_mapping() != infer_dist_attr.dims_mapping() ||
             dist_attr.partial_status() != infer_dist_attr.partial_status());

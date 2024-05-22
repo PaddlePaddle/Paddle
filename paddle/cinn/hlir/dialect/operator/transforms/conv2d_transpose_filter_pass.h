@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/interface_support.h"
+#pragma once
 
-namespace pir {
-InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
-  type_id_ = val.type_id_;
-  model_ = std::move(val.model_);
-}
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
-  swap(std::move(val));
-  return *this;
+namespace cinn::dialect::ir {
+std::unique_ptr<pir::Pass> CreateConv2dTransposeFilterPass();
 }
-}  // namespace pir

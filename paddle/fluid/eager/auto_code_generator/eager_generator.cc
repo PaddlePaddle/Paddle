@@ -139,6 +139,11 @@ static void PrepareAttrMapForOps() {
 /* --- Helper Objects --- */
 class ForwardGenerationInfo {
  public:
+  ForwardGenerationInfo()
+      : fwd_inputs_name_pos_map_(),
+        fwd_outputs_name_pos_map_(),
+        in_vars_(),
+        out_vars_() {}
   const std::string& GetOpType() const { return op_type_; }
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
 
@@ -622,7 +627,7 @@ static bool BeSameAsInput(const std::string& output_name,
 static void PurifyForwardOpProto(const proto::OpProto& op_proto,
                                  ForwardGenerationInfo* fwd_info) {
   // Op Name
-  const std::string op_name = op_proto.type();
+  const std::string& op_name = op_proto.type();
 
   auto* in_vars = fwd_info->GetMutableInVars();
   auto* out_vars = fwd_info->GetMutableOutVars();
