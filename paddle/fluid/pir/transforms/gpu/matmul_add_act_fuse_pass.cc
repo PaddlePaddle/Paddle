@@ -96,6 +96,9 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
           }
           return y_dims.at(y_dims.size() - 1) == w_dims.at(1);
         }
+        if (w_dims[0] % 8 != 0 || w_dims[1] % 8 != 0) {
+          return false;
+        }
       }
       return false;
     });
