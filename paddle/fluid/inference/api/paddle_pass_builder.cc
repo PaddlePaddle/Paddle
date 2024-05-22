@@ -259,11 +259,15 @@ const std::vector<std::string> CpuBasicPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "map_op_to_another_pass",                                           //
-        "is_test_pass",                                                 //
-        "simplify_with_basic_ops_pass",                                 //
-        "delete_quant_dequant_linear_op_pass",                          //
-        "delete_weight_dequant_linear_op_pass",                         //
+    "map_op_to_another_pass",                    //
+        "is_test_pass",                          //
+        "simplify_with_basic_ops_pass",          //
+        "delete_quant_dequant_linear_op_pass",   //
+        "delete_weight_dequant_linear_op_pass",  //
+#if defined _WIN32  // Windows does not support sparse_conv3d_implicit_gemm
+#else
+        "sparse_conv_optim_pass",              //
+#endif
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
@@ -603,6 +607,7 @@ const std::vector<std::string> kPirGpuPasses{
     "conv2d_add_act_fuse_pass",
     "conv2d_add_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
+    "fused_flash_attn_pass",
     "multihead_matmul_fuse_pass",
     "matmul_add_act_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
@@ -619,31 +624,36 @@ const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "conv2d_bn_xpu_fuse_pass",
                                              "group_norm_silu_xpu_fuse_pass"};
 
-const std::vector<std::string> kPirMkldnnPasses{
-    "depthwise_conv_onednn_pass",
-    "squeeze_transpose_onednn_fuse_pass",
-    "conv2d_bias_fuse_pass",
-    "conv2d_transpose_bias_fuse_pass",
-    "conv3d_bias_fuse_pass",
-    "batch_norm_act_fuse_pass",
-    "scale_matmul_fuse_pass",
-    "reshape_transpose_matmul_fuse_pass",
-    "matmul_transpose_reshape_fuse_pass",
-    "matmul_elementwise_add_fuse_pass",
-    "matmul_activation_fuse_pass",
-    "matmul_add_act_fuse_pass",
-    "fc_onednn_enable_pass",
-    "fc_activation_fuse_pass",
-    "self_attention_fuse_pass",
-    "softplus_activation_fuse_pass",
-    "operator_reshape_onednn_fuse_pass",
-    "conv_elementwise_add_onednn_fuse_pass",
-    "conv_activation_onednn_fuse_pass",
-    "conv_concat_activation_onednn_fuse_pass",
-    "elementwise_act_onednn_fuse_pass",
-    "operator_unsqueeze_onednn_fuse_pass",
-    "operator_scale_onednn_fuse_pass",
-    "onednn_placement_pass"};
+const std::vector<std::string> kPirMkldnnPasses {
+  "depthwise_conv_onednn_pass",              //
+      "squeeze_transpose_onednn_fuse_pass",  //
+      "conv2d_bias_fuse_pass",               //
+      "conv2d_transpose_bias_fuse_pass",     //
+      "conv3d_bias_fuse_pass",               //
+      "batch_norm_act_fuse_pass",            //
+      "scale_matmul_fuse_pass",              //
+      "reshape_transpose_matmul_fuse_pass",  //
+      "matmul_transpose_reshape_fuse_pass",  //
+      "matmul_elementwise_add_fuse_pass",    //
+      "matmul_activation_fuse_pass",         //
+      "matmul_add_act_fuse_pass",            //
+      "fc_onednn_enable_pass",               //
+      "fc_activation_fuse_pass",             //
+#if defined(PADDLE_WITH_AVX512F) && defined(PADDLE_WITH_MKLML) && \
+    defined(PADDLE_WITH_DNNL)
+      "self_attention_fuse_pass",  //
+#endif
+      "softplus_activation_fuse_pass",            //
+      "shuffle_channel_detect_pass",              //
+      "operator_reshape_onednn_fuse_pass",        //
+      "conv_elementwise_add_onednn_fuse_pass",    //
+      "conv_activation_onednn_fuse_pass",         //
+      "conv_concat_activation_onednn_fuse_pass",  //
+      "elementwise_act_onednn_fuse_pass",         //
+      "operator_unsqueeze_onednn_fuse_pass",      //
+      "operator_scale_onednn_fuse_pass",          //
+      "onednn_placement_pass"                     //
+};
 
 const std::vector<std::string> kPirCpuPasses{};
 

@@ -34,12 +34,13 @@ from .batch import batch
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_math_tensor, monkey_patch_variable
-from .pir import monkey_patch_program, monkey_patch_value
+from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
+monkey_patch_dtype()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -492,6 +493,8 @@ from .tensor.math import (  # noqa: F401
     signbit,
     sin,
     sin_,
+    sinc,
+    sinc_,
     sinh,
     sinh_,
     sqrt,
@@ -513,6 +516,7 @@ from .tensor.math import (  # noqa: F401
 )
 from .tensor.random import (
     bernoulli,
+    bernoulli_,
     binomial,
     check_shape,
     multinomial,
@@ -805,11 +809,14 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'bernoulli_',
     'binomial',
     'poisson',
     'standard_gamma',
     'sinh',
     'sinh_',
+    'sinc',
+    'sinc_',
     'round',
     'DataParallel',
     'argmin',
