@@ -16,8 +16,6 @@
 # Add docstring, attributes, methods and alias with type annotaions for `Tensor`
 # if not conveniently coding in original place (like c++ source file).
 
-from __future__ import annotations
-
 from typing import Any, Generic, TypeVar, overload
 
 import numpy.typing as npt
