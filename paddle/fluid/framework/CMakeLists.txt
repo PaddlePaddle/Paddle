@@ -860,8 +860,15 @@ else()
          monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      conditional_block_op_helper pylayer_op_helper)
+target_link_libraries(
+  executor
+  while_op_helper
+  executor_gc_helper
+  static_prim_api
+  static_utils
+  get_expected_kernel_func
+  conditional_block_op_helper
+  pylayer_op_helper)
 
 cc_library(
   parallel_executor
