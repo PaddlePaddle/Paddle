@@ -18,7 +18,6 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -60,6 +59,54 @@ class GpuAndCpuSearchSortedCompute {
   static HOSTDEVICE bool IsInf(int x UNUSED) { return false; }
   static HOSTDEVICE bool IsInf(int64_t x UNUSED) { return false; }
 
+  HOSTDEVICE inline size_t LowerBound(const T1* x, size_t num, const T2& val) {
+    // @{ Group LowerBound
+    // The following code is from
+    // https://en.cppreference.com/w/cpp/algorithm/lower_bound
+    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
+    MT2 val_mt = static_cast<MT2>(val);
+
+    auto* first = x;
+    int64_t count = static_cast<int64_t>(num);
+    while (count > 0) {
+      int64_t step = (count >> 1);
+      auto* it = first + step;
+      MT1 it_mt = static_cast<MT1>(*it);
+      if (it_mt < val_mt) {
+        first = ++it;
+        count -= (step + 1);
+      } else {
+        count = step;
+      }
+    }
+    return static_cast<size_t>(first - x);
+  }
+
+  HOSTDEVICE inline size_t UpperBound(const T1* x, size_t num, const T2& val) {
+    // @{ Group UpperBound
+    // The following code is from
+    // https://en.cppreference.com/w/cpp/algorithm/upper_bound
+    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
+    MT2 val_mt = static_cast<MT2>(val);
+
+    auto* first = x;
+    int64_t count = static_cast<int64_t>(num);
+    while (count > 0) {
+      auto step = (count >> 1);
+      auto* it = first + step;
+      MT1 it_mt = static_cast<MT1>(*it);
+      if (val_mt < it_mt) {
+        count = step;
+      } else {
+        first = ++it;
+        count -= (step + 1);
+      }
+    }
+    return static_cast<size_t>(first - x);
+  }
+
   HOSTDEVICE GpuAndCpuSearchSortedCompute(const T1* sequence_data,
                                           const T2* value_data,
                                           bool right,
@@ -77,19 +124,19 @@ class GpuAndCpuSearchSortedCompute {
   HOSTDEVICE void operator()(int64_t idx) {
     using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
     const T2* value_ptr = value_data_ + idx;
-    const MT2 value = static_cast<MT2>(*value_ptr);
+    const MT2 value_mt = static_cast<MT2>(*value_ptr);
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
-    if (IsInf(value) || IsNan(value)) {
+    if (IsInf(value_mt) || IsNan(value_mt)) {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
         out_data_[idx] = static_cast<OutType>(
-            phi::funcs::UpperBound<T1, MT2>(sequence_ptr, seq_size_, value));
+            UpperBound(sequence_ptr, seq_size_, *value_ptr));
       } else {
         out_data_[idx] = static_cast<OutType>(
-            phi::funcs::LowerBound<T1, MT2>(sequence_ptr, seq_size_, value));
+            LowerBound(sequence_ptr, seq_size_, *value_ptr));
       }
     }
   }
@@ -125,15 +172,6 @@ class SearchSortedFunctor {
     const phi::DDim& seq_dims = sorted_sequence_->dims();
     const phi::DDim& val_dims = value_->dims();
 
-    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
-    DenseTensor* sorted_sequence_mt = new DenseTensor();
-    sorted_sequence_mt->Resize(seq_dims);
-    MT1* sorted_sequence_mt_data =
-        context_.template Alloc<MT1>(sorted_sequence_mt);
-    for (int i = 0; i < sorted_sequence_->numel(); ++i) {
-      sorted_sequence_mt_data[i] = static_cast<MT1>(sequence_data[i]);
-    }
-
     bool is_1d_boundaries = seq_dims.size() == 1;
     int64_t val_size = 0;
     int64_t seq_size = 0;
@@ -149,8 +187,8 @@ class SearchSortedFunctor {
     }
 
     funcs::ForRange<Context> for_range(context_, value_->numel());
-    GpuAndCpuSearchSortedCompute<MT1, T2, OutType>
-        gpu_and_cpu_search_sorted_compute(sorted_sequence_mt_data,
+    GpuAndCpuSearchSortedCompute<T1, T2, OutType>
+        gpu_and_cpu_search_sorted_compute(sequence_data,
                                           value_data,
                                           right_,
                                           is_1d_boundaries,
