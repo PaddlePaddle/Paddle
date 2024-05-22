@@ -158,9 +158,10 @@ struct Expression {
 
   bool equal_to(const Expression& other) const {
     if (hash() != other.hash()) {
-      // NOTE(SigureMo): This is a default behavior of std::unordered_set. But
-      // it always calls equal_to on Windows. So we need to check hash first
-      // to avoid expensive equal_to call.
+      // NOTE(SigureMo): This is a default behavior of std::unordered_set on
+      // Linux. But it is not guaranteed by the standard. On Windows, it always
+      // calls equal_to even if hash is different. So we need to check hash
+      // first to avoid expensive equal_to call.
       return false;
     }
     bool is_equal = CheckOperationEqual(op_, other.op());
