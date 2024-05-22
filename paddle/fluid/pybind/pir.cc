@@ -282,6 +282,7 @@ std::string GetValueName(Value value) {
 }
 
 void BindProgram(py::module *m) {
+  static int64_t global_prog_seed = 0;
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
@@ -346,7 +347,9 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_shared<Program>(pir::IrContext::Instance());
+        auto prog = std::make_shared<Program>(pir::IrContext::Instance());
+        SetProgramInt64Attr(prog, "random_seed", global_prog_seed);
+        return prog;
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
@@ -410,6 +413,19 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property(
+          "_seed",
+          [](const std::shared_ptr<Program> &self) {
+            return GetProgramInt64Attr(self, "random_seed", 0);
+          },
+          [](std::shared_ptr<Program> self, int64_t random_seed) {
+            SetProgramInt64Attr(self, "random_seed", random_seed);
+          })
+      .def("global_seed",
+           [](std::shared_ptr<Program> self, int64_t random_seed) {
+             global_prog_seed = random_seed;
+             SetProgramInt64Attr(self, "random_seed", random_seed);
+           })
       .def_property_readonly(
           "blocks",
           [](const std::shared_ptr<Program> &self) {

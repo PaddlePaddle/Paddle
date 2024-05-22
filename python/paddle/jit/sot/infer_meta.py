@@ -145,18 +145,7 @@ class VariableCreator(metaclass=Singleton):
 
     @cached_property
     def pir_programs(self):
-        main_program, startup_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        main_program.random_seed = (
-            paddle.static.default_main_program().random_seed
-        )
-        startup_program.random_seed = (
-            paddle.static.default_startup_program().random_seed
-        )
-
-        return (main_program, startup_program)
+        return (paddle.static.Program(), paddle.static.Program())
 
     @property
     def main_program(self):

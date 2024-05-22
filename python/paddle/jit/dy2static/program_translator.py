@@ -21,6 +21,7 @@ import warnings
 import weakref
 from typing import TYPE_CHECKING
 
+import paddle
 import paddle.pir.core as ir_static
 from paddle import decomposition, get_flags
 from paddle.base import core, framework
@@ -1176,8 +1177,6 @@ class ConcreteProgram:
         # Note: The random seed should be synchronized into cached program
         # if set in `fluid.dygraph_guard` because some ops rely on it, such as
         # `fluid.layers.dropout`.
-        import paddle
-
         main_program.random_seed = (
             paddle.static.default_main_program().random_seed
         )
@@ -1278,8 +1277,6 @@ class ConcreteProgram:
         # Note: The random seed should be synchronized into cached program
         # if set in `base.dygraph_guard` because some ops rely on it, such as
         # `base.layers.dropout`.
-        import paddle
-
         main_program.random_seed = (
             paddle.static.default_main_program().random_seed
         )
