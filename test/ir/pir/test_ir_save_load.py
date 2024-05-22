@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import tempfile
 import os
+import tempfile
+import unittest
 
 import paddle
 from paddle import base
@@ -45,7 +45,8 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
                 y = paddle.add(x, bias)
 
             file_path = os.path.join(
-            self.temp_dir.name,"test_save_program1.json")
+                self.temp_dir.name, "test_save_program1.json"
+            )
             pir_version = 1
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version
@@ -83,7 +84,8 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
                 y = paddle.add(x, bias)
 
             file_path = os.path.join(
-                self.temp_dir.name,"test_save_program1_0.json")
+                self.temp_dir.name, "test_save_program1_0.json"
+            )
             pir_version = 1
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version, True, True, False
@@ -114,7 +116,8 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
                 out = paddle.concat([out1, out2], axis=1)
 
             file_path = os.path.join(
-                self.temp_dir.name,"test_save_program2.json")
+                self.temp_dir.name, "test_save_program2.json"
+            )
             pir_version = 1
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version, True, True, True
@@ -134,6 +137,7 @@ class TestSaveModuleWithCommonOp(unittest.TestCase):
                     main_program.global_block().ops[i].name(),
                     recover_program.global_block().ops[i].name(),
                 )
+
 
 def true_func():
     a = paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
@@ -167,7 +171,7 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
             y.stop_gradient = False
             paddle.static.nn.cond(x < y, lambda: x + y, lambda: x - y)
         return main_program
-    
+
     def check_block(self, org_block, load_block):
         self.assertEqual(len(org_block.ops), len(load_block.ops))
         for i in range(len(org_block.ops)):
@@ -178,25 +182,30 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
                 load_op.name(),
             )
 
-            for org_block_in, load_block_in in zip(org_op.blocks(), load_op.blocks()):
+            for org_block_in, load_block_in in zip(
+                org_op.blocks(), load_op.blocks()
+            ):
                 self.check_block(org_block_in, load_block_in)
 
     def test_if_with_single_output(self):
         with paddle.pir_utils.IrGuard():
             main_program = self.construct_program_with_if()
             file_path = os.path.join(
-                self.temp_dir.name,"test_save_program_if.json")
+                self.temp_dir.name, "test_save_program_if.json"
+            )
             pir_version = 1
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version
             )
-            
+
             recover_program = paddle.static.Program()
             base.core.deserialize_pir_program(
                 file_path, recover_program, pir_version
             )
-    
-            self.check_block(main_program.global_block(), recover_program.global_block())    
+
+            self.check_block(
+                main_program.global_block(), recover_program.global_block()
+            )
 
     def test_if_with_multiple_output(self):
         with paddle.pir_utils.IrGuard():
@@ -204,20 +213,24 @@ class TestSaveModuleWithIfOp(unittest.TestCase):
             cond_value = main_program.global_block().ops[-1].operand_source(0)
             with paddle.pir.core.program_guard(main_program):
                 paddle.static.nn.cond(cond_value, true_func, false_func)
-            
+
             file_path = os.path.join(
-            self.temp_dir.name,"test_save_program_if2.json")
+                self.temp_dir.name, "test_save_program_if2.json"
+            )
             pir_version = 1
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version
             )
-            
+
             recover_program = paddle.static.Program()
             base.core.deserialize_pir_program(
                 file_path, recover_program, pir_version
             )
 
-            self.check_block(main_program.global_block(), recover_program.global_block())    
+            self.check_block(
+                main_program.global_block(), recover_program.global_block()
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

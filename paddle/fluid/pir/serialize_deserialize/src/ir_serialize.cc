@@ -66,8 +66,8 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
     args_json.emplace_back(arg_json);
   }
   block_json[BLOCKARGS] = args_json;
-  VLOG(6) << "Finish Write blockarguments ";
-  
+  VLOG(6) << "Finish Write blockarguments .";
+
   if (block->kwargs_size() > 0) {
     VLOG(6) << "Block has kwargs.";
     Json kwargs_json = Json::array();
@@ -77,7 +77,7 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
       kwargs_json.emplace_back(arg_json);
     }
     block_json[KEYWORDBLOCKARGS] = args_json;
-    VLOG(6) << "Finish Write keyword blockarguments ";
+    VLOG(6) << "Finish Write keyword blockarguments. ";
   }
 
   Json ops_json = Json::array();
@@ -87,7 +87,7 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
   }
   block_json[BLOCKOPS] = ops_json;
 
-  VLOG(6) << "Finish write " << block_name;
+  VLOG(6) << "Finish write " << block_name << ".";
   return block_json;
 }
 
@@ -98,7 +98,7 @@ Json ProgramWriter::WriteBlockArg(const pir::Value& value) {
   arg_json[ID] = blockarg_id_;
   arg_json[TYPE_TYPE] = var;
 
-  VLOG(6) << "Finish write blockargument " << blockarg_id_;
+  VLOG(6) << "Finish write blockargument " << blockarg_id_ << ".";
   blockarg_id_--;
 
   return arg_json;
@@ -109,7 +109,7 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   if (value) {
     value_id_map[value] = value_id_;
     var_json[ID] = value_id_;
-    VLOG(6) << "Finish write value " << value_id_;
+    VLOG(6) << "Finish write value " << value_id_ << ".";
     value_id_++;
   } else {
     var_json[ID] = 0;  // NULL_TYPE
@@ -142,7 +142,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   op_json[OPRESULTS] = opresults_json;
   VLOG(6) << "Finish write OP's OpOpresult.";
 
-  if (op.num_regions() > 0){
+  if (op.num_regions() > 0) {
     VLOG(4) << "OP has " << op.num_regions() << " regions ...";
     for (size_t i = 0; i < op.num_regions(); ++i) {
       std::string region_name = "region_" + std::to_string(region_id_++);
@@ -150,7 +150,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
       auto region_json = WriteRegion(&region, region_name);
       op_json[REGIONS].emplace_back(region_json);
     }
-    VLOG(4) << "Finish write OP's regions";
+    VLOG(4) << "Finish write OP's regions.";
   }
   // serialize attributes
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
@@ -159,7 +159,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
   }
 
-  VLOG(6) << "Finish write Operation " << op.name();
+  VLOG(6) << "Finish write Operation " << op.name() << ".";
   return op_json;
 }
 
@@ -168,7 +168,7 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   if (op_operand.source()) {
     int64_t id = value_id_map[op_operand.source()];
     operand_json[ID] = id;
-    VLOG(6) << "Finish write OpOperand " << id;
+    VLOG(6) << "Finish write OpOperand " << id << ".";
   } else {
     operand_json[ID] = 0;  // NULL_VALUE
     VLOG(6) << "Finish write NULL_VALUE OpOperand.";
@@ -181,27 +181,28 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
                                              const AttributeMap& attr_map) {
   Json attrs_json = Json::array();
   VLOG(6) << "Start write Opinfo AttributeMap ...";
-  if (op->dialect()->name() == "pd_op" && op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
-      auto [_1, attr_info, _3, _4, _5] =
-          op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-      if (attr_info.size() != 0) {
-        for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
-          if (attr_map.find(it->name) != attr_map.end()) {
-            attrs_json.emplace_back(
-                WriteAttribute(it->name, attr_map.at(it->name)));
-          }
+  if (op->dialect()->name() == "pd_op" &&
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
+    auto [_1, attr_info, _3, _4, _5] =
+        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+    if (attr_info.size() != 0) {
+      for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
+        if (attr_map.find(it->name) != attr_map.end()) {
+          attrs_json.emplace_back(
+              WriteAttribute(it->name, attr_map.at(it->name)));
         }
       }
-    } else {
-      for (auto& attr : attr_map) {
-        if (attr.first != "stop_gradient" && attr.first != "persistable" &&
-            attr.first != "op_callstack") {
-          attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
-        }
+    }
+  } else {
+    for (auto& attr : attr_map) {
+      if (attr.first != "stop_gradient" && attr.first != "persistable" &&
+          attr.first != "op_callstack") {
+        attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
       }
+    }
   }
 
-  VLOG(6) << "Finish write Opinfo AttributeMap ";
+  VLOG(6) << "Finish write Opinfo AttributeMap. ";
   return attrs_json;
 }
 
@@ -214,7 +215,7 @@ Json ProgramWriter::WriteAttributesMapOther(const AttributeMap& attr_map) {
     }
   }
 
-  VLOG(6) << "Finish write Other AttributeMap ";
+  VLOG(6) << "Finish write Other AttributeMap. ";
   return operesult_attrs_json;
 }
 
