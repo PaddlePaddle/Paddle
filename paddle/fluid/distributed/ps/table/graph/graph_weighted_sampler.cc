@@ -30,7 +30,7 @@ std::vector<int> RandomSampler::sample_k(
   if (k >= n) {
     k = n;
     std::vector<int> sample_result;
-    sample_result.reserve(k);
+    // sample_result.reserve(k);
     for (int i = 0; i < k; i++) {
       sample_result.push_back(i);
     }
@@ -117,7 +117,7 @@ std::vector<int> WeightedSampler::sample_k(
   if (k >= count) {
     k = count;
     std::vector<int> sample_result;
-    sample_result.reserve(k);
+    // sample_result.reserve(k);
     for (int i = 0; i < k; i++) {
       sample_result.push_back(i);
     }
