@@ -2263,7 +2263,6 @@
     func: sequence_conv_grad
     data_type: out_grad
   optional: padding_data
-  no_need_buffer: padding_data
 
 - backward_op : sigmoid_cross_entropy_with_logits_grad
   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100) -> Tensor(out)

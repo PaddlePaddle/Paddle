@@ -18,13 +18,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math/context_project.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void SequenceConvKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const DenseTensor& padding_data,
+                        const paddle::optional<DenseTensor>& padding_data,
                         const DenseTensor& filter,
                         int context_length,
                         bool padding_trainable,
@@ -48,7 +49,7 @@ void SequenceConvKernel(const Context& dev_ctx,
 
   const phi::DenseTensor* padding_data_p = nullptr;
   if (padding_trainable) {
-    padding_data_p = &padding_data;
+    padding_data_p = padding_data.get_ptr();
   }
 
   int up_pad = std::max(0, -context_start);
@@ -82,7 +83,7 @@ void SequenceConvKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SequenceConvGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& padding_data,
+                            const paddle::optional<DenseTensor>& padding_data,
                             const DenseTensor& filter,
                             const DenseTensor& out_grad,
                             int context_length,
@@ -169,12 +170,11 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(filter_g);
     set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
-    phi::DenseTensor filter_grad = *filter_g;
     phi::DenseTensor out_grad = *out_g;
 
     const phi::DenseTensor* padding_data_p = nullptr;
     if (padding_trainable) {
-      padding_data_p = &padding_data;
+      padding_data_p = padding_data.get_ptr();
     }
 
     seq_project_functor(dev_ctx,
@@ -188,7 +188,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
                         down_pad,
                         &col);
 
-    blas.MatMul(col, true, out_grad, false, &filter_grad);
+    blas.MatMul(col, true, out_grad, false, filter_g);
   }
 }
 
