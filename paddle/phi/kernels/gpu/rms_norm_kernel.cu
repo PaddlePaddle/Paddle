@@ -1093,7 +1093,6 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
-<<<<<<< HEAD
 #if defined(PADDLE_WITH_HIP)
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else
@@ -1126,8 +1125,7 @@ void RmsNormKernel(const Context& dev_ctx,
                           "quant_min_bound!=0, but quant_min_bound = %f ",
                           quant_scale));
   }
-=======
->>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
+
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   const T* x_data = x.data<T>();

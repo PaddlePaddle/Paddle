@@ -984,25 +984,26 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          MetaTensor* reordered_c0,
                          MetaTensor* checked_cell);
 
-<<<<<<< HEAD
-void FP8OutBF16GemmFusedInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     const MetaTensor& bias,
-                     const bool trans_x,
-                     const bool trans_y,
-                     const float scale, // only support per-tensor quantization
-                     const std::string& activation_type,
-                     MetaTensor* out);
+void FP8OutBF16GemmFusedInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& bias,
+    const bool trans_x,
+    const bool trans_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& activation_type,
+    MetaTensor* out);
 
-void FP8OutFP16GemmFusedInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     const MetaTensor& bias,
-                     const bool trans_x,
-                     const bool trans_y,
-                     const float scale, // only support per-tensor quantization
-                     const std::string& activation_type,
-                     MetaTensor* out);
-=======
+void FP8OutFP16GemmFusedInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& bias,
+    const bool trans_x,
+    const bool trans_y,
+    const float scale,  // only support per-tensor quantization
+    const std::string& activation_type,
+    MetaTensor* out);
+
 void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      const MetaTensor& cvm,
                                      const std::string& pooltype,
@@ -1020,5 +1021,4 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                               MetaTensor* slimmed_x,
                               MetaTensor* cls_inds);
 
->>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
 }  // namespace phi

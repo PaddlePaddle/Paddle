@@ -24,6 +24,8 @@ from .tensor.linalg import (
     eigh,
     eigvals,
     eigvalsh,
+    fp8_fp8_bf16_gemm_fused,
+    fp8_fp8_fp16_gemm_fused,
     householder_product,
     lstsq,
     lu,
@@ -44,8 +46,6 @@ from .tensor.linalg import (
     svd_lowrank,
     triangular_solve,
     vector_norm,
-    fp8_fp8_fp16_gemm_fused,
-    fp8_fp8_bf16_gemm_fused,    
 )
 
 __all__ = [
@@ -79,10 +79,7 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
-<<<<<<< HEAD
     'fp8_fp8_fp16_gemm_fused',
-    'fp8_fp8_bf16_gemm_fused',   
-=======
+    'fp8_fp8_bf16_gemm_fused',
     'ormqr',
->>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
 ]
