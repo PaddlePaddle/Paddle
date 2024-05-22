@@ -181,8 +181,8 @@ phi::KernelKey OneDNNPhiKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
-const char* OneDNNMixedPhiKernelOp::attributes_name[attributes_num] =
-    {  // NOLINT
+const char* OneDNNMixedPhiKernelOp::attributes_name[attributes_num] =  // NOLINT
+    {  
         "op_name",
         "kernel_name",
         "kernel_key"};

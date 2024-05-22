@@ -248,11 +248,11 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
             reinterpret_cast<char *>(request_bucket[request_idx].data()),
             sizeof(int64_t) * node_num);
     if (add_weight) {
-      bool weighted[is_weighted_bucket[request_idx].size() + 1];
+      std::vector<bool> weighted(is_weighted_bucket[request_idx].size() + 1);
       for (size_t j = 0; j < is_weighted_bucket[request_idx].size(); j++)
         weighted[j] = is_weighted_bucket[request_idx][j];
       closure->request(request_idx)
-          ->add_params(reinterpret_cast<char *>(weighted),
+          ->add_params(reinterpret_cast<char *>(weighted.data()),
                        sizeof(bool) * is_weighted_bucket[request_idx].size());
     }
     // PsService_Stub rpc_stub(GetCmdChannel(server_index));
