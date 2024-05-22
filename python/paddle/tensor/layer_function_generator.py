@@ -215,7 +215,7 @@ def generate_activation_fn(op_type):
     return func
 
 
-def generate_inplace_fn(inplace_op_type):
+def generate_inplace_fn(inplace_op_type, args=None):
     """Register the Python layer for an Inplace Operator without Attribute.
 
     Args:
@@ -227,13 +227,14 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
+        
         if in_dynamic_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)
-                return op(x)
+                return op(x, *args) if args else op(x)
             else:
                 op = getattr(_legacy_C_ops, inplace_op_type)
-                return op(x)
+                return op(x, *args) if args else op(x)
 
     func.__name__ = inplace_op_type
     func.__doc__ = f"""
