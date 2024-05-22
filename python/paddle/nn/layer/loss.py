@@ -2242,20 +2242,20 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     should also be cheap to compute -- that is, contain a small number of assigned labels. We highly recommend taking
     a look at the original paper for more details.
 
-    For :attr:``cutoffs`` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
+    For :attr:`cutoffs` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
     clusters and the partitioning of targets into clusters. For example setting ``cutoffs = [10, 100, 1000]`` means that
     first ``10`` targets will be assigned to the 'head' of the adaptive softmax, targets ``11, 12, ..., 100`` will be assigned
     to the first cluster, and targets ``101, 102, ..., 1000`` will be assigned to the second cluster, while targets
     ``1001, 1002, ..., n_classes - 1`` will be assigned to the last, third cluster.
 
-    For :attr:``div_value`` is used to compute the size of each additional cluster, which is given as follow:
+    For :attr:`div_value` is used to compute the size of each additional cluster, which is given as follow:
 
     .. math::
         \lfloor \frac{\text{in\_features}}{\text{div\_value}^{idx}} \rfloor
 
     where :math:``idx`` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:``1``).
 
-    For :attr:``head_bias`` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details. Set to False in the official implementation.
+    For :attr:`head_bias` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details. Set to False in the official implementation.
 
 
     Args:
@@ -2278,14 +2278,14 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
     Shape:
         - input (Tensor): The input tensor. The shapes is [N, in_features]. N is batch size.
-        - label (Tensor): target. The shapes is `[N]`
-        - output1 (Tensor): The shape is `[N]`
+        - label (Tensor): target. The shapes is ``[N]``
+        - output1 (Tensor): The shape is ``[N]``
         - output2 (Scalar).
 
     Returns:
         A callable object of AdaptiveLogSoftmaxWithLoss.
 
-     Examples:
+    Examples:
         .. code-block:: python
 
             >>> import paddle
