@@ -179,6 +179,11 @@ struct Expression {
     return GetOperationCanBeSafeToReplace(op_);
   }
 
+  std::pair<size_t, bool> CalcOpInfo() {
+    return {CalcOperationHash(op_), CalcOperationCanBeSafeToReplace(op_)};
+  }
+
+ private:
   size_t GetOperationHash(pir::Operation* op) const {
     PADDLE_ENFORCE_EQ(
         op_info_registry_->count(reinterpret_cast<void*>(op)),
@@ -400,7 +405,6 @@ struct Expression {
     return true;
   }
 
- private:
   pir::Operation* op_;
   std::unordered_map<void*, std::pair<size_t, bool>>*
       op_info_registry_;  // owned by ExpressionTable
@@ -423,16 +427,13 @@ struct ExpressionTable {
  public:
   ExpressionTable() = default;
   void RegisiterExpression(Expression expr) {
-    auto op_hash = expr.CalcOperationHash(expr.op());
-    auto op_can_be_safe_to_replace =
-        expr.CalcOperationCanBeSafeToReplace(expr.op());
+    auto op_info = expr.CalcOpInfo();
     VLOG(7) << "[RegisiterExpression] op " << expr.op()->name() << " ["
             << expr.op() << "]"
-            << "\n  hash: " << op_hash
+            << "\n  hash: " << op_info.first
             << "\n  can_be_safe_to_replace: " << std::boolalpha
-            << op_can_be_safe_to_replace;
-    op_info_registry_[reinterpret_cast<void*>(expr.op())] = {
-        op_hash, op_can_be_safe_to_replace};
+            << op_info.second;
+    op_info_registry_[reinterpret_cast<void*>(expr.op())] = op_info;
   }
 
   Expression CreateExpression(pir::Operation* op) {
