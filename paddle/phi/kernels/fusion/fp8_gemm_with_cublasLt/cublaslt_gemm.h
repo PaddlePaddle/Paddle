@@ -106,8 +106,6 @@ class CublasLtAlgoCache {
                                           &param.algo,
                                           &heuristic_result);
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCheck);
-    // if (status != CUBLAS_STATUS_SUCCESS ||
-    //     heuristic_result.workspaceSize > param.workspace_size)
     if (status != CUBLAS_STATUS_SUCCESS) {
       param.time = std::numeric_limits<float>::max();
       return;
@@ -154,6 +152,7 @@ class CublasLtAlgoCache {
                                            int m,
                                            int n,
                                            int k,
+                                           int batch_count,
                                            const InT* a,
                                            const InT* b,
                                            OutT* c,
@@ -247,6 +246,19 @@ class CublasLtAlgoCache {
       // enough space to store it
       // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoCapGetAttribute
       size_t attr_size = 0;
+
+      int batch_support;
+      status = dyl::cublasLtMatmulAlgoCapGetAttribute(
+          &algo,
+          CUBLASLT_ALGO_CAP_STRIDED_BATCH_SUPPORT,
+          &batch_support,
+          sizeof(batch_support),
+          &attr_size);
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
+      if (batch_count > 1 && batch_support == 0) {
+        continue;
+      }
+
       status = dyl::cublasLtMatmulAlgoCapGetAttribute(
           &algo, CUBLASLT_ALGO_CAP_TILE_IDS, nullptr, 0, &attr_size);
       PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCapGetAttribute);
@@ -410,8 +422,6 @@ class CublasLtAlgoCache {
                         algo_select_params.split_k_val = split_k_val;
                         algo_select_params.reduction_scheme = reduction_scheme;
                         algo_select_params.stages = stages[stage_id];
-                        // algo_select_params.workspace_size = workspace_size;
-                        // algo_select_params.workspace = workspace;
                         algo_select_params.workspace_size = temp_storage_bytes;
                         algo_select_params.workspace = d_temp_storage->ptr();
                         params.emplace_back(algo_select_params);
@@ -448,8 +458,6 @@ class CublasLtAlgoCache {
                     algo_select_params.split_k_val = split_k_val;
                     algo_select_params.reduction_scheme = reduction_scheme;
                     algo_select_params.stages = stages[stage_id];
-                    // algo_select_params.workspace_size = workspace_size;
-                    // algo_select_params.workspace = workspace;
                     algo_select_params.workspace_size = temp_storage_bytes;
                     algo_select_params.workspace = d_temp_storage->ptr();
                     params.emplace_back(algo_select_params);
@@ -592,6 +600,7 @@ class CublasLtAlgoCache {
     size_t size_to_write;
     int trans_a, trans_b;
     uint32_t epilogue;
+    int8_t fast_accum;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         dyl::cublasLtMatmulDescGetAttribute(desc,
@@ -616,6 +625,14 @@ class CublasLtAlgoCache {
                                             sizeof(epilogue),
                                             &size_to_write));
     HashValue_(seed, hash_fn, static_cast<int64_t>(epilogue));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dyl::cublasLtMatmulDescGetAttribute(desc,
+                                            CUBLASLT_MATMUL_DESC_FAST_ACCUM,
+                                            &fast_accum,
+                                            sizeof(fast_accum),
+                                            &size_to_write));
+    HashValue_(seed, hash_fn, static_cast<int64_t>(fast_accum));
   }
 
   void HashMatrixLayoutDesc_(cublasLtMatrixLayout_t desc,
@@ -713,10 +730,6 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                        const paddle::optional<DenseTensor>& bias,
                        const std::string& activation_type,
                        phi::DenseTensor* out) {
-  // int m = mat_a.dims()[0];
-  // int k = mat_a.dims()[1];
-  // int n = mat_b.dims()[1];
-
   // init data structure
   cublasStatus_t status;
   auto A_type = CUDA_R_8F_E4M3;
@@ -733,11 +746,21 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F;
   status =
       dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType, CUDA_R_32F);
+  PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescCreate);
+
   cublasOperation_t op_transpose = CUBLAS_OP_T;
   status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
                                                CUBLASLT_MATMUL_DESC_TRANSA,
                                                &op_transpose,
                                                sizeof(op_transpose));
+  PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
+
+  int8_t fast_accum = 1;
+  status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                               CUBLASLT_MATMUL_DESC_FAST_ACCUM,
+                                               &fast_accum,
+                                               sizeof(fast_accum));
+  PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
 
   cublasLtEpilogue_t epilogue;
   const T* bias_ptr = nullptr;
@@ -748,6 +771,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                             CUBLASLT_MATMUL_DESC_BIAS_POINTER,
                                             &bias_ptr,
                                             sizeof(bias_ptr));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     if (activation_type == "" || activation_type == "identity") {
       epilogue = CUBLASLT_EPILOGUE_BIAS;
       status =
@@ -755,6 +779,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                               CUBLASLT_MATMUL_DESC_EPILOGUE,
                                               &epilogue,
                                               sizeof(epilogue));
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     } else if (activation_type == "gelu") {
       epilogue = CUBLASLT_EPILOGUE_GELU_BIAS;
       status =
@@ -762,6 +787,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                               CUBLASLT_MATMUL_DESC_EPILOGUE,
                                               &epilogue,
                                               sizeof(epilogue));
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     } else if (activation_type == "relu") {
       epilogue = CUBLASLT_EPILOGUE_RELU_BIAS;
       status =
@@ -769,6 +795,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                               CUBLASLT_MATMUL_DESC_EPILOGUE,
                                               &epilogue,
                                               sizeof(epilogue));
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     }
   } else {
     if (activation_type == "gelu") {
@@ -778,6 +805,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                               CUBLASLT_MATMUL_DESC_EPILOGUE,
                                               &epilogue,
                                               sizeof(epilogue));
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     } else if (activation_type == "relu") {
       epilogue = CUBLASLT_EPILOGUE_RELU;
       status =
@@ -785,12 +813,15 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                               CUBLASLT_MATMUL_DESC_EPILOGUE,
                                               &epilogue,
                                               sizeof(epilogue));
+      PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     }
   }
 
   status = dyl::cublasLtMatrixLayoutCreate(&B_desc_, B_type, k, n, k);
   status = dyl::cublasLtMatrixLayoutCreate(&A_desc_, A_type, k, m, k);
   status = dyl::cublasLtMatrixLayoutCreate(&C_desc_, C_type, n, m, n);
+  PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatrixLayoutCreate);
+
   if (batch_count > 1) {
     int64_t strideb = n * k;
     int64_t stridea = m * k;
@@ -800,34 +831,38 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
         CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
         &batch_count,
         sizeof(batch_count));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     status = dyl::cublasLtMatrixLayoutSetAttribute(
         B_desc_,
         CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
         &strideb,
         sizeof(strideb));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     status = dyl::cublasLtMatrixLayoutSetAttribute(
         A_desc_,
         CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
         &batch_count,
         sizeof(batch_count));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     status = dyl::cublasLtMatrixLayoutSetAttribute(
         A_desc_,
         CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
         &stridea,
         sizeof(stridea));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     status = dyl::cublasLtMatrixLayoutSetAttribute(
         C_desc_,
         CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
         &batch_count,
         sizeof(batch_count));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
     status = dyl::cublasLtMatrixLayoutSetAttribute(
         C_desc_,
         CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
         &stridec,
         sizeof(stridec));
+    PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulDescSetAttribute);
   }
-
-  // size_t work_space_size = workspace->numel();
 
 #if CUDA_VERSION >= 11020
   cublasLtMatmulAlgo_t* algo = CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
@@ -835,6 +870,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
       m,
       n,
       k,
+      batch_count,
       mat_b.data<phi::dtype::float8_e4m3fn>(),
       mat_a.data<phi::dtype::float8_e4m3fn>(),
       out->data<T>(),
@@ -849,9 +885,37 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
       B_type,
       A_type,
       C_type,
-      //  reinterpret_cast<void*>(workspace->data<int8_t>()),
-      //  work_space_size,
       dev_ctx.stream());
+
+  if (algo == nullptr) {
+    int returnedResults = 0;
+    cublasLtMatmulHeuristicResult_t heuristicResult = {};
+    cublasLtMatmulPreference_t preference = NULL;
+
+    size_t workspace_size = 64 * 1024 * 1024;
+    status = dyl::cublasLtMatmulPreferenceCreate(&preference);
+    status = dyl::cublasLtMatmulPreferenceSetAttribute(
+        preference,
+        CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+        &workspace_size,
+        sizeof(workspace_size));
+    status = dyl::cublasLtMatmulAlgoGetHeuristic(dev_ctx.cublaslt_handle(),
+                                                 matmul_desc_,
+                                                 B_desc_,
+                                                 A_desc_,
+                                                 C_desc_,
+                                                 C_desc_,
+                                                 preference,
+                                                 1,
+                                                 &heuristicResult,
+                                                 &returnedResults);
+
+    PADDLE_ENFORCE_NE(
+        returnedResults,
+        0,
+        phi::errors::NotFound("Unable to find suitable cuBLAS GEMM algorithm"));
+    algo = &heuristicResult.algo;
+  }
 
 #endif
 
@@ -864,33 +928,35 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                         C_desc_,
                                         algo,
                                         &heurResult);
-  if (status == CUBLAS_STATUS_SUCCESS) {
-    size_t temp_workspace_size = heurResult.workspaceSize;
-    auto temp_workspace = phi::memory_utils::Alloc(
-        phi::GPUPlace(backends::gpu::GetCurrentDeviceId()),
-        temp_workspace_size);
+  PADDLE_ENFORCE_EQ(
+      status,
+      CUBLAS_STATUS_SUCCESS,
+      phi::errors::External("cuBLAS GEMM algorithm check failed"));
 
-    cublasStatus_t matmul_status =
-        dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
-                            matmul_desc_,
-                            &alpha_,
-                            mat_b.data<phi::dtype::float8_e4m3fn>(),
-                            B_desc_,
-                            mat_a.data<phi::dtype::float8_e4m3fn>(),
-                            A_desc_,
-                            &beta_,
-                            out->data<T>(),
-                            C_desc_,
-                            out->data<T>(),
-                            C_desc_,
-                            // nullptr,
-                            algo,
-                            //  nullptr,
-                            temp_workspace->ptr(),  // NOLINT
-                            // 0,
-                            temp_workspace_size,
-                            dev_ctx.stream());
-  }
+  size_t temp_workspace_size = heurResult.workspaceSize;
+  auto temp_workspace = phi::memory_utils::Alloc(
+      phi::GPUPlace(backends::gpu::GetCurrentDeviceId()), temp_workspace_size);
+
+  status = dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
+                               matmul_desc_,
+                               &alpha_,
+                               mat_b.data<phi::dtype::float8_e4m3fn>(),
+                               B_desc_,
+                               mat_a.data<phi::dtype::float8_e4m3fn>(),
+                               A_desc_,
+                               &beta_,
+                               out->data<T>(),
+                               C_desc_,
+                               out->data<T>(),
+                               C_desc_,
+                               // nullptr,
+                               algo,
+                               //  nullptr,
+                               temp_workspace->ptr(),  // NOLINT
+                               // 0,
+                               temp_workspace_size,
+                               dev_ctx.stream());
+  PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmul);
 }
 
 template <typename Context>
@@ -913,6 +979,8 @@ void cublaslt_fp8_fp8_fp16_gemm(
   int n = y.dims()[rank - 1];
   int k = x.dims()[rank - 1];
 
+  LOG(INFO) << "m, n, k: " << m << ", " << n << ", " << k;
+
   PADDLE_ENFORCE_EQ(x.dims()[rank - 1],
                     y.dims()[rank - 2],
                     "x_dims[rank-1] needs to equal to y_dims[rank-2]");
@@ -933,7 +1001,6 @@ void cublaslt_fp8_fp8_fp16_gemm(
   for (size_t i = 0; i < rank - 2; ++i) {
     batch_count *= x.dims()[i];
   }
-  LOG(INFO) << "batch_count: " << batch_count;
   CublasLtMatmulFP8<phi::dtype::float16>(
       ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
@@ -978,8 +1045,6 @@ void cublaslt_fp8_fp8_bf16_gemm(
   for (size_t i = 0; i < rank - 2; ++i) {
     batch_count *= x.dims()[i];
   }
-  LOG(INFO) << "batch_count: " << batch_count;
-
   CublasLtMatmulFP8<phi::dtype::bfloat16>(
       ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
