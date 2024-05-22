@@ -519,7 +519,10 @@ class PipelineLayer(nn.Layer):
                                 )
                             )
 
-                        group = paddle.distributed.new_group(ranks=shared_ranks)
+                        group = paddle.distributed.new_group(
+                            ranks=shared_ranks,
+                            recorder_name="pipe_shared_comm",
+                        )
                         if self.global_rank in shared_ranks:
                             assert key in self.shared_layers
                             if key in self.shared_layers:

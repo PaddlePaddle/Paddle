@@ -1578,6 +1578,19 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          false,
                          "enable collective async trace");
 
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_time_profiler
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async time profiler.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_async_time_profiler,
+                         false,
+                         "enable collective async time profiler");
+
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
 
 PHI_DEFINE_EXPORTED_bool(

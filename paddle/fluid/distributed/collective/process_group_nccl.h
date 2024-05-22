@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -70,6 +71,15 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
     int gid_;
   };
 
+  // struct NCCLGroupTimer {
+  //   friend std::ostream& operator<<(std::ostream& os, const NCCLGroupTimer&
+  //   dt);
+
+  //   void ResetTime() { time = 0.f; }
+  //   int   gid;
+  //   int   rank;
+  //   float time;
+  // };
  public:
   static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
       const std::shared_ptr<phi::distributed::Store>& store,
@@ -77,14 +87,16 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       int size,
       int gid,
       int64_t timeout,
-      int nccl_comm_init_option);
+      int nccl_comm_init_option,
+      std::string recorder_name);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid,
                    int64_t timeout = 30 * 60 * 1000,
-                   int nccl_comm_init_option = 0);
+                   int nccl_comm_init_option = 0,
+                   std::string recorder_name = "");
   ~ProcessGroupNCCL();
 
   std::string GetBackendName() const override { return "NCCL"; }
@@ -177,6 +189,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   static void GroupEnd();
 
+  static void LogOneStep();
+
   ncclComm_t NCCLComm(const Place& place) const;
 
   const bool GetNCCLCommInitOption() { return nccl_comm_init_option_; }
@@ -256,6 +270,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs;
+
+  std::string recorder_name_;
 };
 
 }  //  namespace distributed

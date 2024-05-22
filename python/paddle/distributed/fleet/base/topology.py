@@ -332,20 +332,19 @@ class HybridCommunicateGroup:
     def _check_sep_exist(self):
         assert self._sep_degree > 1, "sep not exist"
 
-    def _set_comm_group(self, parallel_method="data"):
+    def _set_comm_group(self, recorder_name="data"):
         parallel_group = []
         parallel_comm_group = None
-        parallel_groups = self._topo.get_comm_list(parallel_method)
+        parallel_groups = self._topo.get_comm_list(recorder_name)
 
         group_nccl_comm_init_option = (
-            g_pipeline_nccl_comm_init_option
-            if (parallel_method == "pipe")
-            else 0
+            g_pipeline_nccl_comm_init_option if (recorder_name == "pipe") else 0
         )
         for group in parallel_groups:
             comm_group = paddle.distributed.new_group(
                 ranks=group,
                 nccl_comm_init_option=group_nccl_comm_init_option,
+                recorder_name=recorder_name,
             )
             if self.global_rank in group:
                 parallel_group = group
@@ -355,17 +354,20 @@ class HybridCommunicateGroup:
         assert parallel_comm_group is not None
 
         logger.info(
-            f"Total {len(parallel_groups)} {parallel_method} comm group(s) create successfully!"
+            f"Total {len(parallel_groups)} {recorder_name} comm group(s) create successfully!"
         )
         return parallel_group, parallel_comm_group
 
-    def _set_check_group(self, parallel_method="data"):
+    def _set_check_group(self, recorder_name="data"):
         parallel_group = []
         parallel_comm_group = None
-        parallel_size = self._topo.get_dim(parallel_method)
+        parallel_size = self._topo.get_dim(recorder_name)
         for idx in range(parallel_size):
-            parallel_groups = self._topo.get_axis_list(parallel_method, idx)
-            comm_group = paddle.distributed.new_group(ranks=parallel_groups)
+            parallel_groups = self._topo.get_axis_list(recorder_name, idx)
+            comm_group = paddle.distributed.new_group(
+                ranks=parallel_groups,
+                recorder_name="check_" + recorder_name,
+            )
             if self.global_rank in parallel_groups:
                 parallel_group = parallel_groups
                 parallel_comm_group = comm_group
@@ -413,7 +415,7 @@ class HybridCommunicateGroup:
                 prev_rank = comm_ranks[(idx - 1) % self._pp_degree]
 
                 next_group = paddle.distributed.new_group(
-                    ranks=[curr_rank, next_rank]
+                    ranks=[curr_rank, next_rank], recorder_name="pipe next"
                 )
                 if self.global_rank == curr_rank:
                     self.send_next_group = next_group
@@ -421,7 +423,7 @@ class HybridCommunicateGroup:
                     self.recv_prev_group = next_group
 
                 prev_group = paddle.distributed.new_group(
-                    ranks=[prev_rank, curr_rank]
+                    ranks=[prev_rank, curr_rank], recorder_name="pipe prev"
                 )
 
                 if self.global_rank == curr_rank:
@@ -561,8 +563,14 @@ class HybridCommunicateGroup:
         parallel_groups = self._topo.get_fused_ranks(fused_strategy_list)
         parallel_groups.sort()
 
+        strategy_name = "fused"
+        for strategy in fused_strategy_list:
+            strategy_name += "_" + strategy
+
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group, recorder_name=strategy_name
+            )
             if self.global_rank in group:
                 parallel_group.append(group)
                 parallel_comm_group.append(comm_group)
