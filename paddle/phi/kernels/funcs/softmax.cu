@@ -64,8 +64,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   auto& cudnn_x_desc =
       xDesc.descriptor<T>(X->data<T>(), layout, cudnn_tensor_dims);
   auto& cudnn_y_desc =
-      yDesc.descriptor<T>(context.template Alloc<T>(Y),
-		          layout, cudnn_tensor_dims);
+      yDesc.descriptor<T>(context.template Alloc<T>(Y), layout, cudnn_tensor_dims);
   backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
   softmax_desc.descriptor(dynload::Softmax::Mode::SOFTMAX,
                           dynload::Softmax::Algorithm::ACCURATE,
