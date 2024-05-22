@@ -489,7 +489,7 @@ class VScheduleCreator:
                             - self._stage_current_time[stage_id]
                             > max_stage_bubble - stage_bubble
                         ):
-                            if chunk_id == 0 or fill_w_before_b:
+                            if fill_w_before_b:
                                 self._put_w_job_into_schedule(stage_id)
 
                         self._put_job_into_schedule(
