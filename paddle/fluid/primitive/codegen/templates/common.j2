@@ -33,10 +33,10 @@ template <typename T>
 {%- endmacro -%}
 
 
-{%- macro args(inputs, attrs) -%}  {#- Arguments are variable pass into method -#}
-  {{sequence('', '', ', ', inputs)}}
-  {%- if inputs|length>0 and attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between inputs and attrs -#}
-  {{sequence('', '', ', ', attrs)}}
+{%- macro args(arg1, arg2) -%}  {#- Arguments are variable pass into method -#}
+  {{sequence('', '', ', ', arg1)}}
+  {%- if arg1|length>0 and arg2|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between arg1 and arg2 -#}
+  {{sequence('', '', ', ', arg2)}}
 {%- endmacro -%}
 
 

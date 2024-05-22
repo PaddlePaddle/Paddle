@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
@@ -203,6 +204,11 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   context_->target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
@@ -222,6 +228,11 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   context_->target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },

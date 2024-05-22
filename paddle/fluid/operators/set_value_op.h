@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -31,12 +30,11 @@
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 // check whether the tensor with dimension of second can assign to the
 // tensor with dimension of first
-inline void CheckIsDimsMatch(const framework::DDim first,
-                             const framework::DDim second) {
+inline void CheckIsDimsMatch(const phi::DDim first, const phi::DDim second) {
   int ignore_axis1 = 0, ignore_axis2 = 0;
   for (; ignore_axis1 < first.size(); ++ignore_axis1) {
     if (first[ignore_axis1] != 1) {
