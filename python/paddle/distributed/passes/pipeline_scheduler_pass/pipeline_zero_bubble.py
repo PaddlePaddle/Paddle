@@ -156,11 +156,11 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self.program_max_mem_usages = []
         self.base_memory = []
         self.program_runtime = {
-            "forward": 50,
-            "backward_b": 55,
-            "backward_w": 45,
-            "loss": 10,
-            "communication": 5,
+            "forward": 61,
+            "backward_b": 72,
+            "backward_w": 71,
+            "loss": 34,
+            "communication": 3,
         }
 
     def _create_job_list(self):
