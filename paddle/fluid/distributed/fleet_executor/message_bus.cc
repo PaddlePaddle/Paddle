@@ -228,10 +228,10 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   brpc::Controller ctrl;
   ctrl.set_log_id(0);
   if (interceptor_message.ctrl_message()) {
-    stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, NULL);
+    stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, nullptr);
   } else {
     stub.ReceiveInterceptorMessage(
-        &ctrl, &interceptor_message, &response, NULL);
+        &ctrl, &interceptor_message, &response, nullptr);
   }
   if (!ctrl.Failed()) {
     if (response.rst()) {

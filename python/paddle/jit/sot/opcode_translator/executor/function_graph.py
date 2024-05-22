@@ -40,7 +40,6 @@ from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
-    ENV_SHOW_TRACKERS,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -446,12 +445,6 @@ class FunctionGraph:
         self.restore_print_stmts(self._print_variables)
         self.restore_side_effects(self.side_effects.proxy_variables)
         self.pycode_gen.gen_enable_eval_frame()
-
-        tracker_output_path = ENV_SHOW_TRACKERS.get()
-        if tracker_output_path:
-            from .tracker_viewer import view_tracker
-
-            view_tracker(list(ret_vars), tracker_output_path, format="png")
 
     def call_paddle_api(
         self,

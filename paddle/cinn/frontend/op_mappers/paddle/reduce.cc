@@ -15,7 +15,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -23,9 +23,15 @@ namespace paddle_mappers {
 void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx,
                     const std::string& reduce_type) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of reduce op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of reduce op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto axis = utils::ToShapeType(

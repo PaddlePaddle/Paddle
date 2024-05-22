@@ -1181,6 +1181,73 @@ Tensor square_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor sigmoid_cross_entropy_with_logits_decomp(
+    const Tensor& x,
+    const Tensor& label,
+    const paddle::optional<Tensor>& pos_weight,
+    bool normalize,
+    int ignore_index) {
+  auto dims = x.shape();
+  const Tensor zero = full<T>(dims, 0, x.type());
+  const Tensor one = full<T>(dims, 1, x.type());
+  Tensor pos_weight_tensor;
+  if (pos_weight) {
+    pos_weight_tensor = pos_weight.get();
+  } else {
+    pos_weight_tensor = one;
+  }
+  auto term1 = where<T>(x > zero, x, zero);
+  auto term2 = x * label;
+  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
+  const Tensor ignore_index_tensor = full<T>(dims, ignore_index, label.type());
+  auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
+  if (normalize) {
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps1 = full<T>(dims, 1e-6, x.type());
+    auto diff = label - ignore_index_tensor;
+    const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps2 = full<T>(empty_shape, 1e-5, x.type());
+    auto norm = where<T>(tmp_norm > eps2, tmp_norm, eps2);
+    out = out / norm;
+  }
+  return out;
+}
+
+template <typename T>
+Tensor mean_all_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+  auto x_shape = x.shape();
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor ans;
+  if (has_dynamic_shape(x_shape)) {
+    Tensor x_shape_tensor = shape<T>(x_cast);
+    Tensor value = get_slice<T>(x_shape_tensor, 0);
+    for (size_t i = 1; i < x_shape.size(); i++) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
+    value = reshape<T>(value, {});
+    ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
+  } else {
+    ans = sum<T>(x_cast) / x_cast.numel();
+  }
+
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
 Tensor embedding_decomp(const Tensor& x,
                         const Tensor& weight,
                         const int64_t padding_idx,
