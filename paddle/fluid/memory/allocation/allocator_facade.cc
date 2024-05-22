@@ -1685,7 +1685,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
-    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
     return m->GetAllocator(p, s, /* create_if_not_found = */ true)
         ->Allocate(size);
   } else {
@@ -1703,7 +1703,7 @@ bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
