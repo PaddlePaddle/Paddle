@@ -61,8 +61,10 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -790,7 +792,8 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "pir_program" << *(pir_program_.get());
 
     std::vector<std::string> param_names;
-    std::string params_file = config_.params_file();
+    const std::string params_file = config_.params_file();
+    LOG(INFO) << "param_file" << params_file;
 
     // 获取程序块
     pir::Block *block = pir_program_->block();
@@ -798,26 +801,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       LOG(ERROR) << "block is null";
       return false;
     }
-
-    // for (auto it = block->begin(); it != block->end(); ++it) {
-    //   pir::Operation &op = *it;
-    //   LOG(INFO) << "op " << op.name();
-    //   if (op.name() == "builtin.parameter") {
-    //     auto attrs = op.attributes();
-    //     auto iter = attrs.find("persistable");
-    //     if (iter != attrs.end() && iter->second) {
-    //       {
-    //         auto param_name_iter = attrs.find("parameter_name");
-    //         LOG(INFO) << "param_name " << param_name_iter->second;
-    //         std::stringstream ss;
-    //         ss << param_name_iter->second;
-    //         std::string param_name = ss.str();
-    //         LOG(INFO) << "param_name " << param_name;
-    //         param_names.push_back(param_name);
-    //       }
-    //     }
-    //   }
-    // }
 
     std::vector<pir::Value> vars;
     for (auto op : block->ops()) {
@@ -829,44 +812,36 @@ bool AnalysisPredictor::PreparePirProgram() {
           LOG(INFO) << "var_name你猜有没有" << var_name;
           param_names.push_back(var_name);
           vars.push_back(var);
-        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
-          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          LOG(INFO) << "var_name的Data Op " << var_name;
-        } else if (auto block_args = var.dyn_cast<pir::BlockArgument>()) {
-          if (block_args.is_kwarg()) {
-            var_name = block_args.keyword();
-            LOG(INFO) << "var_name的Block Argument " << var_name;
-          }
-        } else if (var.first_use()) {
-          auto nextOp = var.first_use().owner();
-          if (nextOp->isa<::pir::ShadowOutputOp>()) {
-            var_name =
-                nextOp->attribute<pir::StrAttribute>("output_name").AsString();
-            LOG(INFO) << "var_name的first use " << var_name;
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "Currently, we can only get name of Value which is "
-                "shadowoutput "));
-          }
-        } else {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Currently, we can only get name of Value that "
-              "is persistable"));
         }
       }
     }
-
-    paddle::framework::Variable *var = nullptr;
-    for (const auto &param : param_names) {
-      LOG(INFO) << "param的名字是啥啊" << param;
-      auto *raw_scope = scope_.get();
-      var = raw_scope->FindVar(param);
-      LOG(INFO) << "var->Type() " << var->Type();
+    size_t len = vars.size();
+    std::vector<phi::DenseTensor *> tensor_out;
+    for (size_t i = 0; i < len; ++i) {
+      LOG(INFO) << "params_names[i]" << param_names[i];
+      auto *var = scope_->FindVar(param_names[i]);
+      pir::Value value = vars[i];
+      if (var == nullptr) {
+        LOG(INFO) << "Variable not found, creating new variable: "
+                  << param_names[i];
+        var = scope_->Var(param_names[i]);
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        tensor_temp->Resize(common::make_ddim(
+            phi::vectorize(paddle::pybind::GetValueDims(value))));
+        LOG(INFO) << "Found variable: " << param_names[i]
+                  << " with type: " << var->Type();
+        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+        const phi::DeviceContext *dev_ctx = nullptr;
+        dev_ctx = pool.Get(place_);
+        dev_ctx->Alloc(tensor_temp, paddle::pybind::GetValueDtype(value));
+      }
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_out.push_back(tensor_temp);
     }
+    pir::LoadCombineFunction(
+        params_file, param_names, &tensor_out, false, place_);
 
-    // paddle::framework::Variable *var = nullptr;
     // std::vector<phi::DenseTensor *> tensor_pointers;
-    // int i=0;
     // for (const auto &param : param_names) {
     //   i++;
     //   auto *raw_scope = scope_.get();
@@ -2474,7 +2449,9 @@ void AnalysisPredictor::PrepareFeedFetch() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::InvalidArgument(
                               "The sub_scope should not be nullptr."));
+  LOG(INFO) << "sub_scope_ is not null";
   CreateFeedFetchVar(sub_scope_);
+  LOG(INFO) << "Create FeedFetchVar";
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == framework::kFeedOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
@@ -2499,10 +2476,13 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument("The scope should not be nullptr."));
+  LOG(INFO) << "create FeedFetchVar in scope";
   auto *var = scope->Var(framework::kFeedOpType);
   var->GetMutable<framework::FeedList>();
+  LOG(INFO) << "Created FeedList var";
   var = scope->Var(framework::kFetchOpType);
   var->GetMutable<framework::FetchList>();
+  LOG(INFO) << "Created FetchList var";
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
