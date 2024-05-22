@@ -388,16 +388,18 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
     std::vector<std::pair<std::string, std::vector<int64_t>>>
         axes_sharding_info;
     auto x_dims_mapping = dist_attrs[0].dims_mapping();
+    auto out_grad_dims_mapping = dist_attrs[3].dims_mapping();
     std::fill(
         x_dims_mapping.begin() + begin_norm_axis, x_dims_mapping.end(), -1);
-
+    std::fill(out_grad_dims_mapping.begin() + begin_norm_axis,
+              out_grad_dims_mapping.end(),
+              -1);
     axes_sharding_info.emplace_back(annotations[0], x_dims_mapping);
     axes_sharding_info.emplace_back(annotations[1],
                                     dist_attrs[1].dims_mapping());
     axes_sharding_info.emplace_back(annotations[2],
                                     dist_attrs[2].dims_mapping());
-    axes_sharding_info.emplace_back(annotations[3],
-                                    dist_attrs[3].dims_mapping());
+    axes_sharding_info.emplace_back(annotations[3], out_grad_dims_mapping);
     std::unordered_map<std::string, int64_t> axis_to_dim_map =
         ShardingMergeForTensors(axes_sharding_info);
 
