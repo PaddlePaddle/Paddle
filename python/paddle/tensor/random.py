@@ -109,7 +109,7 @@ def bernoulli_(x, p=0.5, name=None):
     """
     This is the inplace version of api ``bernoulli``, which returns a Tensor filled
     with random values sampled from a bernoulli distribution. The output Tensor will
-    be inplaced with input ``x``. Please refer to :ref:`api_tensor_bernoulli`.
+    be inplaced with input ``x``. Please refer to :ref:`api_paddle_bernoulli`.
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
@@ -128,25 +128,24 @@ def bernoulli_(x, p=0.5, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(200)
             >>> x = paddle.randn([3, 4])
             >>> x.bernoulli_()
-            >>> # doctest: +SKIP('random check')
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 0., 1., 0.],
-             [0., 1., 1., 0.],
-             [0., 1., 1., 1.]])
+            [[0., 1., 0., 1.],
+             [1., 1., 0., 1.],
+             [0., 1., 0., 0.]])
 
             >>> x = paddle.randn([3, 4])
             >>> p = paddle.randn([3, 1])
             >>> x.bernoulli_(p)
-            >>> # doctest: +SKIP('random check')
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 0., 0., 1.],
-             [1., 0., 1., 0.],
-             [1., 0., 0., 0.]])
-
+            [[1., 1., 1., 1.],
+             [0., 0., 0., 0.],
+             [0., 0., 0., 0.]])
     """
     x.uniform_(0.0, 1.0)
     ones_mask = x > p
