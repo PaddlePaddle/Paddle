@@ -42,6 +42,7 @@ def get_cuda_version():
 )
 class TestSparseAttentionAPI1(unittest.TestCase):
     def setUp(self):
+        paddle.seed(0)
         self.batch_size = 16
         self.num_heads = 16
         self.seq_len = 128
@@ -134,6 +135,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
 
 class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
     def setUp(self):
+        super().setUp()
         self.batch_size = 16
         self.num_heads = 16
         self.seq_len = 128
@@ -144,6 +146,7 @@ class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
 
 class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
     def setUp(self):
+        super().setUp()
         self.batch_size = 16
         self.num_heads = 16
         self.seq_len = 512
@@ -154,6 +157,7 @@ class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
 
 class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
     def setUp(self):
+        super().setUp()
         self.batch_size = 16
         self.num_heads = 16
         self.seq_len = 512
@@ -164,6 +168,7 @@ class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
 
 class TestSparseAttentionAPI5(TestSparseAttentionAPI1):
     def setUp(self):
+        super().setUp()
         self.batch_size = 16
         self.num_heads = 16
         self.seq_len = 512

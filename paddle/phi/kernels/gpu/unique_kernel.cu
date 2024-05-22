@@ -26,7 +26,14 @@
 #include <iostream>
 #include <vector>
 
+#ifdef PADDLE_WITH_CUDA
 #include "cub/cub.cuh"
+#elif defined(PADDLE_WITH_MUSA)
+#include "cub/cub.cuh"
+#else
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -170,8 +177,11 @@ UniqueFlattendCUDATensor(const Context& context,
 #elif defined(PADDLE_WITH_MUSA)
     musaMemsetAsync(inv_loc_data_ptr, 0, sizeof(IndexT), context.stream());
 #else
-    cudaMemsetAsync(inv_loc_data_ptr, 0, sizeof(IndexT), context.stream());
+    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
+    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
 #endif
+
+#ifdef PADDLE_WITH_HIP
     size_t temp_storage_bytes = 0;
     cub::DeviceScan::InclusiveSum(NULL,
                                   temp_storage_bytes,
@@ -187,6 +197,12 @@ UniqueFlattendCUDATensor(const Context& context,
                                   inv_loc_data_ptr,
                                   num_input,
                                   context.stream());
+#else
+    thrust::inclusive_scan(exec_policy,
+                           inv_loc_data_ptr,
+                           inv_loc_data_ptr + num_input,
+                           inv_loc_data_ptr);
+#endif
     thrust::scatter(exec_policy,
                     inv_loc_data_ptr,
                     inv_loc_data_ptr + num_input,
@@ -390,9 +406,11 @@ static void ComputeUniqueDims(const Context& context,
   // 3. counts: 'counts'
   counts->Resize(common::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(exec_policy, count_data, count_data + row, 0);
-  thrust::adjacent_difference(
-      exec_policy, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
+  thrust::fill(exec_policy, count_data, count_data + num_out, 0);
+  thrust::adjacent_difference(exec_policy,
+                              range_data_ptr + 1,
+                              range_data_ptr + num_out + 1,
+                              count_data);
 }
 
 // Calculate unique when 'axis' is set

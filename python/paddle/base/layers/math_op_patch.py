@@ -538,8 +538,10 @@ def monkey_patch_variable():
                             op_type, lhs_dtype, rhs_dtype
                         )
                         warnings.warn(
-                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, "
-                            "the output will be auto-promoted to {common_dtype}"
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted to {common_dtype}"
+                        )
+                        warnings.filterwarnings(
+                            "ignore", message="The input dtypes of OP"
                         )
                         if rhs_dtype != common_dtype:
                             other_var = astype(other_var, common_dtype)

@@ -77,6 +77,8 @@ if(WITH_MUSA)
     "selected_rows/gpu/clip_by_norm_kernel.cu"
     "gpu/softmax_grad_kernel.cu"
     "gpu/softmax_kernel.cu"
+    "gpu/put_along_axis_grad_kernel.cu"
+    "gpu/put_along_axis_kernel.cu"
     )
 endif()
 
@@ -217,6 +219,32 @@ if(NOT WITH_CUDNN_FRONTEND)
     "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu")
 endif()
 
+# Note(qili93): remove kernels not supported on DCU yet
+if(WITH_ROCM)
+  list(
+    REMOVE_ITEM
+    kernel_cu
+    "gpu/affine_grid_grad_kernel.cu"
+    "gpu/apply_per_channel_scale_kernel.cu"
+    "gpu/cholesky_solve_kernel.cu"
+    "gpu/eigh_kernel.cu"
+    "gpu/eigvalsh_kernel.cu"
+    "gpu/lstsq_kernel.cu"
+    "gpu/lu_kernel.cu"
+    "gpu/matrix_rank_kernel.cu"
+    "gpu/matrix_rank_tol_kernel.cu"
+    "gpu/multiclass_nms3_kernel.cu"
+    "gpu/put_along_axis_grad_kernel.cu"
+    "gpu/put_along_axis_kernel.cu"
+    "gpu/qr_kernel.cu"
+    "gpu/svd_kernel.cu"
+    "gpudnn/mha_cudnn_frontend.cu"
+    "fusion/gpu/block_multi_head_attention_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
+    "fusion/gpu/fused_bn_add_activation_kernel.cu"
+    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
+endif()
+
 set(cc_search_pattern
     "*.cc"
     "cpu/*.cc"
@@ -241,6 +269,10 @@ endif()
 if(WITH_MKLDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
                         "fusion/onednn/*.cc")
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  set(cc_search_pattern ${cc_search_pattern} "custom/*.cc")
 endif()
 
 file(

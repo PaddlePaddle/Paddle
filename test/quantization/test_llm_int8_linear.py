@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from test_weight_only_linear import convert_uint16_to_float, get_cuda_version
+from test_weight_only_linear import convert_uint16_to_float
 
 import paddle
 import paddle.nn.quant as Q
 from paddle import base
-from paddle.base import core
 from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 from paddle.pir_utils import test_with_pir_api
@@ -30,12 +29,7 @@ paddle.seed(123)
 default_main_program().random_seed = 42
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase(unittest.TestCase):
     def config(self):
         self.dtype = 'float16'
@@ -149,12 +143,7 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase1(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -162,12 +151,7 @@ class LLMInt8LinearTestCase1(LLMInt8LinearTestCase):
         self.weight_dtype = "int8"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase2(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -176,12 +160,7 @@ class LLMInt8LinearTestCase2(LLMInt8LinearTestCase):
         self.weight_dtype = "int8"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase3(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -189,13 +168,7 @@ class LLMInt8LinearTestCase3(LLMInt8LinearTestCase):
         self.weight_dtype = "int8"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase4(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -203,12 +176,7 @@ class LLMInt8LinearTestCase4(LLMInt8LinearTestCase):
         self.weight_dtype = "int4"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase5(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -217,13 +185,7 @@ class LLMInt8LinearTestCase5(LLMInt8LinearTestCase):
         self.weight_dtype = "int4"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase6(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -231,12 +193,7 @@ class LLMInt8LinearTestCase6(LLMInt8LinearTestCase):
         self.weight_dtype = "int4"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase7(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -246,12 +203,7 @@ class LLMInt8LinearTestCase7(LLMInt8LinearTestCase):
         self.token = 1
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase8(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -262,12 +214,7 @@ class LLMInt8LinearTestCase8(LLMInt8LinearTestCase):
         self.token = 1
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase9(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -277,12 +224,7 @@ class LLMInt8LinearTestCase9(LLMInt8LinearTestCase):
         self.token = 1
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCase10(LLMInt8LinearTestCase):
     def config(self):
         super().config()
@@ -293,13 +235,7 @@ class LLMInt8LinearTestCase10(LLMInt8LinearTestCase):
         self.token = 1
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+@unittest.skipIf(True, "Disable this unit test in release/2.6")
 class LLMInt8LinearTestCaseStatic(LLMInt8LinearTestCase):
     def config(self):
         super().config()

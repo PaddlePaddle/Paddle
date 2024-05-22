@@ -726,7 +726,12 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval(f'{dtype}(var)')
+        assert dtype in [
+            'bool',
+            'int',
+            'float',
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        return eval(dtype)(var)
 
 
 def convert_assert(cond, message=""):

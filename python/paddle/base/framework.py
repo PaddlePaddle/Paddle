@@ -5582,8 +5582,7 @@ class IrGraph:
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call(
-                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
-                shell=True,
+                ['dot', '-Tpdf', dot_file_path, '-o', pdf_save_path]
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')

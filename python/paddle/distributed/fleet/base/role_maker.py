@@ -13,6 +13,7 @@
 # limitations under the License.
 """Definition of Role Makers."""
 import os
+import re
 import time
 import warnings
 from multiprocessing import Manager, Process
@@ -988,7 +989,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     raise ValueError(
                         "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                     )
-                self._stage_trainers = eval(self._stage_trainers)
+                self._stage_trainers = tuple(
+                    [int(x) for x in re.findall(r'\d+', self._stage_trainers)]
+                )
             cur_port = os.getenv("PADDLE_PORT", None)
             if cur_port is None:
                 raise ValueError(
@@ -1040,7 +1043,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 raise ValueError(
                     "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                 )
-            self._stage_trainers = eval(self._stage_trainers)
+            self._stage_trainers = tuple(
+                [int(x) for x in re.findall(r'\d+', self._stage_trainers)]
+            )
 
             self._heter_trainer_device_type = os.getenv(
                 "HETER_DEVICE_TYPE", None
