@@ -66,6 +66,19 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
     args_json.emplace_back(arg_json);
   }
   block_json[BLOCKARGS] = args_json;
+  VLOG(6) << "Finish Write blockarguments ";
+  
+  if (block->kwargs_size() > 0) {
+    VLOG(6) << "Block has kwargs.";
+    Json kwargs_json = Json::array();
+    for (auto item : block->kwargs()) {
+      auto arg_json = WriteBlockArg(item.second);
+      arg_json[KEYWORDNAME] = item.first;
+      kwargs_json.emplace_back(arg_json);
+    }
+    block_json[KEYWORDBLOCKARGS] = args_json;
+    VLOG(6) << "Finish Write keyword blockarguments ";
+  }
 
   Json ops_json = Json::array();
   for (auto op : block->ops()) {
@@ -119,7 +132,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     operands_json.emplace_back(operand_json);
   }
   op_json[OPOPERANDS] = operands_json;
-
+  VLOG(6) << "Finish write OP's OpOperand.";
   // serialize opresults
   Json opresults_json = Json::array();
   for (auto& opresult : op.results()) {
@@ -127,7 +140,18 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     opresults_json.emplace_back(opresult_json);
   }
   op_json[OPRESULTS] = opresults_json;
+  VLOG(6) << "Finish write OP's OpOpresult.";
 
+  if (op.num_regions() > 0){
+    VLOG(4) << "OP has " << op.num_regions() << " regions ...";
+    for (size_t i = 0; i < op.num_regions(); ++i) {
+      std::string region_name = "region_" + std::to_string(region_id_++);
+      auto& region = op.region(i);
+      auto region_json = WriteRegion(&region, region_name);
+      op_json[REGIONS].emplace_back(region_json);
+    }
+    VLOG(4) << "Finish write OP's regions";
+  }
   // serialize attributes
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
                                             op.attributes());
@@ -156,9 +180,8 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
 Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
                                              const AttributeMap& attr_map) {
   Json attrs_json = Json::array();
-
-  if (op->dialect()->name() == "pd_op") {
-    if (op->dyn_cast<paddle::dialect::OpYamlInfoInterface>() != nullptr) {
+  VLOG(6) << "Start write Opinfo AttributeMap ...";
+  if (op->dialect()->name() == "pd_op" && op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
       auto [_1, attr_info, _3, _4, _5] =
           op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
       if (attr_info.size() != 0) {
@@ -170,16 +193,12 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
         }
       }
     } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "the %s do not has OpYamlInfoInterface", op->name()));
-    }
-  } else {
-    for (auto& attr : attr_map) {
-      if (attr.first != "stop_gradient" && attr.first != "persistable" &&
-          attr.first != "op_callstack") {
-        attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
+      for (auto& attr : attr_map) {
+        if (attr.first != "stop_gradient" && attr.first != "persistable" &&
+            attr.first != "op_callstack") {
+          attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
+        }
       }
-    }
   }
 
   VLOG(6) << "Finish write Opinfo AttributeMap ";

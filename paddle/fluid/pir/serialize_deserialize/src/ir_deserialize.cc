@@ -39,15 +39,17 @@ void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
   return;
 }
 
-void ProgramReader::ReadRegion(Json* region_json, pir::Region* region) {
+void ProgramReader::ReadRegion(Json* region_json,
+                               pir::Region* region) {
   auto region_name = region_json->at(ID).template get<std::string>();
   for (auto& block_json : region_json->at(BLOCKS)) {
-    auto& block = region->emplace_back();
-    ReadBlock(&block_json, &block);
+    region->emplace_back();
+    ReadBlock(&block_json, &(region->back()));
   }
   VLOG(6) << "Finish Read " << region_name;
   return;
-}
+  }
+
 
 void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
   auto block_name = block_json->at(ID).template get<std::string>();
@@ -60,6 +62,21 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
       id_value_map[arg_id_] = value;
       VLOG(6) << "Finish Read blockargument " << arg_id_;
     }
+    VLOG(6) << "Finish Read blockarguments ";
+  }
+
+  if (block_json->contains(KEYWORDBLOCKARGS)) {
+    Json& kwargs_json = block_json->at(KEYWORDBLOCKARGS);
+    if (!kwargs_json.empty()) {
+      for (auto& kwarg_json : kwargs_json) {
+        int64_t arg_id_ = kwarg_json.at(ID).template get<int64_t>();
+        auto value = block->AddKwarg(kwarg_json.at(KEYWORDNAME),
+                                     ReadType(&(kwarg_json.at(TYPE_TYPE))));
+        id_value_map[arg_id_] = value;
+        VLOG(6) << "Finish Read keyword blockargument " << arg_id_;
+      }
+      VLOG(6) << "Finish Read keyword blockarguments ";
+    }
   }
 
   Json& ops_json = block_json->at(BLOCKOPS);
@@ -67,15 +84,16 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
     for (auto& op_json : ops_json) {
       block->push_back(ReadOp(&op_json));
     }
+    VLOG(6) << "read block size" << block->size();
   }
 
-  VLOG(6) << "Finish Read " << block_name;
+  VLOG(4) << "Finish Read " << block_name;
   return;
 }
 
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   auto op_name = op_json->at(ID).template get<std::string>();
-
+  VLOG(4) << "Read op_name = " << op_name;
   // deserialize opoperands (find value)
   Json& operands_json = op_json->at(OPOPERANDS);
   std::vector<pir::Value> inputs;
@@ -83,7 +101,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     int64_t id = operand_json.at(ID).template get<int64_t>();
     inputs.push_back(id_value_map[id]);
   }
-
+  VLOG(6) << "Finish Read OP's OpOperand.";
   // deserialize opresults (find type)
   Json& opresults_json = op_json->at(OPRESULTS);
   std::vector<pir::Type> output_types;
@@ -94,6 +112,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
     VLOG(6) << "Finish Read value " << value_id_;
   }
+  VLOG(6) << "Finish Read OP's OpResult.";
 
   // serialize necessary attributes
   Json& attrs_json = op_json->at(ATTRS);
@@ -110,11 +129,26 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   pir::IrContext* ctx_ = pir::IrContext::Instance();
   // prepare opinfo
   pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(op_name);
-
+  
+  size_t num_regions = 0;
+  if (op_json->contains(REGIONS)) {
+    num_regions = op_json->at(REGIONS).size();
+  }
   // deserialize op
-  pir::Operation* op =
-      Operation::Create(inputs, attributes, output_types, op_info);
-
+  pir::Operation* op = Operation::Create(
+      inputs, attributes, output_types, op_info, num_regions);
+    
+  // deserialize op's regions
+  if (op_json->contains(REGIONS)) {
+    Json& regions_json = op_json->at(REGIONS);
+    VLOG(6) << op->name() << " has "<< num_regions <<  " regions.";
+    for (uint64_t i = 0; i < regions_json.size(); i++) {
+      auto region_json = regions_json.at(i);
+      ReadRegion(&region_json, &(op->region(i)));
+    }
+    VLOG(6) << "Finish Read OP's regions.";
+  }
+  
   PADDLE_ENFORCE_EQ(
       output_ids.size(),
       static_cast<size_t>(op->num_results()),
@@ -127,7 +161,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     id_value_map[output_ids[i]] = op->result(i);
   }
 
-  VLOG(6) << "Finish Read Operation " << op->name();
+  VLOG(4) << "Finish Read Operation " << op->name();
   return op;
 }
 
@@ -143,7 +177,7 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     attributes.insert({attr_name, ReadAttribute(&attr_json)});
   }
-  VLOG(6) << "Finish Read Opresults_AttributeMap ";
+  VLOG(4) << "Finish Read Opresults_AttributeMap ";
   return attributes;
 }
 
