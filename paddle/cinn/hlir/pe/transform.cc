@@ -1340,13 +1340,15 @@ ir::Tensor Gather(const ir::Tensor& x,
               phi::errors::InvalidArgument(
                   "index.ndims() should be 2 when index.ndims() is not 0 or 1"
                   "in gather_op, but received value is [%d], index is [%s]",
-                  index.ndims(), ss_index.str());
+                  index.ndims(),
+                  ss_index.str()));
           PADDLE_ENFORCE_EQ(
               index->shape[1],
               Expr(1),
               phi::errors::InvalidArgument(
                   "index->shape[1] should be 1 when index.ndims() = 2"
-                  "in gather_op, index is [%s].", ss_index.str());
+                  "in gather_op, index is [%s].",
+                  ss_index.str()));
 
           index_indice.push_back(Expr(0));
         }
