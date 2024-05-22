@@ -19,6 +19,7 @@
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_device_util.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -70,6 +71,17 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
   node_attrs.attr_store = std::move(attrs);
 
   return node_attrs;
+}
+
+std::optional<std::vector<ir::Expr>> GetTensorValueFromShapeOrData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  if (!shape_or_data.data()) return std::nullopt;
+  std::vector<ir::Expr> result;
+  result.reserve(shape_or_data.data()->size());
+  for (const auto& data : *shape_or_data.data()) {
+    result.push_back(common::DimExprConverter().ConvertToIrExpr(data));
+  }
+  return result;
 }
 
 }  // namespace details
@@ -871,7 +883,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
-    VLOG(4) << "start lowering op:" << op->name();
+    VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
 
     VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
@@ -1089,8 +1101,14 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     if (sym_shape.empty()) {
       sym_shape.emplace_back(input_id, symbol::DimExpr{1});
     }
-    return lang::CreatePlaceHolder(
+    auto tensor = lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+    const auto& tensor_value = details::GetTensorValueFromShapeOrData(
+        group->GetShapeOrDataExprs(value));
+    if (tensor_value.has_value()) {
+      tensor->set_value(*tensor_value);
+    }
+    return tensor;
   } else {
     auto shape = ::common::vectorize<int>(type_info.dims());
     return lang::CreatePlaceHolder(
