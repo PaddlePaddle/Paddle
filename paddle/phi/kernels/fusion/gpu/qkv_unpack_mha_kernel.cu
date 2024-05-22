@@ -27,41 +27,14 @@ constexpr unsigned int str2int(const char *str, int h = 0) {
 }
 
 template <typename T>
-struct Masked_multihead_attention_params {
-  // output buffer, [B, 1(seq_len), num_head * dim_head]
-  const T *q;
-  const T *k;
-  const T *v;
+struct QkvUnpackMhaParams {
+  const T *q;  // B, 1, num_head * dim_head
+  const T *k;  // B, seq_len), num_head * dim_head
+  const T *v;  // B, seq_len, num_head * dim_head
   T *out;
-  // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
-  const T *qkv;
-  // bias, [3, num_head, dim_head]
-  T *qkv_bias;
-  // [bsz, seq_len]
-  const int *cum_offsets;
-  // TODO(wangxi): optimize with input_lengths and max_input_len?
-  // [bsz, 1, 1, time_step(cache_seq_length)+1]
+
   const T *attn_mask;
   int mask_length;
-  // whether to broadcast num_heads(2nd) dimension for attn_mask
-  // in MMHA, if false, attn_mask shape should be
-  // [bsz, num_heads, 1, time_step(cache_seq_length)+1]
-  bool mask_broadcast_num_heads;
-
-  // [2, B, num_head, max_seq_len(valid cache_seq_len), dim_head]
-  // k [B, num_head, dim_head/x, max_seq_len, x], that is `seq_len` first
-  // v [B, num_head, max_seq_len, dim_head]
-  T *cache_kv;
-  // [B, max_seq_len]
-  const int *beam_cache_offset = nullptr;
-
-  const int *sequence_lengths{nullptr};
-
-  // The RoPE embedding, [2, B, rotary_seq_len, 1, dim_head]
-  // rotary_emb_dims = 1 if pos_ids_extra is null else 2
-  const float *rotary_emb;
-  int rotary_emb_dims;
-  int rotary_seq_len = 1;
 
   int batch_size;  // batch * beam
   int beam_width;
@@ -71,14 +44,9 @@ struct Masked_multihead_attention_params {
   // kv_num_head = k_num_head && kv_num_head == v_num_head
   int kv_num_head;
   int timestep;  // cache_seq_length
-  int seq_len;
-  int max_seq_length;
 
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
-
-  bool add_qkv_bias;
-  bool neox_rotary_style;
 };
 
 template <typename T,
@@ -89,11 +57,9 @@ template <typename T,
           int THREADS_PER_BLOCK,
           typename LoadFunc,
           typename StoreFunc>
-__global__ void qkv_attention_kernel(
-    Masked_multihead_attention_params<T> params,
-    LoadFunc load_func,
-    StoreFunc store_func) {
-  // printf("-------------\n");
+__global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
+                                     LoadFunc load_func,
+                                     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
 
@@ -130,42 +96,27 @@ __global__ void qkv_attention_kernel(
 
   const int kv_num_head = params.kv_num_head;
   const int num_head_per_group = params.num_head / kv_num_head;
-  // hi means the head index in query processed by this cuda thread.
-  // kv_bhi means the merged batch and head index in key and value processed by
-  // this cuda thread.
+
   const int kv_bhi = bi * kv_num_head + hi / num_head_per_group;
 
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
-  const int ti =
-      params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
-  const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
-  const int tid = threadIdx.x;
 
-  const int bi_seq_len_offset = bi * params.max_seq_length;
+  const int tid = threadIdx.x;
 
   float qk_max = -FLT_MAX;
   float qk = 0;
 
   int act_time_step = params.timestep;
 
-  // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
-  // this hi means the head index in query!
   int qkv_base_offset = bi * (params.num_head) * Dh + hi * Dh;
 
-  // QK_VEC_SIZE == 4??
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
-  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE, "");
-  // WARPS_PER_BLOCK = 128 / 4 = 32
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
 
-  // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
-  // x == 4/8 for FP32/FP16, 128bit, 16Byte
-  constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);       // 8
-  constexpr int QK_VECS_IN_16B = 16 / sizeof(Qk_vec);  // 2
-
-  // printf("qk vec  %d %d\n", QK_VEC_SIZE, QK_VECS_PER_WARP);
+  constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
+  constexpr int QK_VECS_IN_16B = 16 / sizeof(Qk_vec);
 
   // load q element to q smem
   if (tid < QK_VECS_PER_WARP) {
@@ -175,9 +126,6 @@ __global__ void qkv_attention_kernel(
 
     Qk_vec q;
     zero(q);
-    // q = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-    //         ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_offset])
-    //         : q;
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
       load_func.template load<Qk_vec>(q, qk_offset);
     }
@@ -188,10 +136,10 @@ __global__ void qkv_attention_kernel(
   __syncthreads();
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
-  constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);  // 4
+  constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
-  constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;  // 128 / 2 = 64
-  constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;  // 16
+  constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
+  constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
 
   int ko = tid / THREADS_PER_KEY;
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
@@ -205,11 +153,9 @@ __global__ void qkv_attention_kernel(
         &q_smem[ki + i * THREADS_PER_KEY * K_VEC_SIZE]);
   }
 
-  constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;  // 128 2 = 64
-  constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;          // ==2
+  constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
+  constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
-  T *k_cache = &params.cache_kv[kv_bhi * params.max_seq_length * Dh + ki];
-  T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
   // each thread process act_time_step
@@ -220,7 +166,6 @@ __global__ void qkv_attention_kernel(
 
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-      int jj = ii * params.max_seq_length + ti;
       if (ti < act_time_step) {
         k[ii] = *reinterpret_cast<const K_vec *>(
             &params.k[ti * params.num_head * Dh + ki +
@@ -359,11 +304,10 @@ __global__ void qkv_attention_kernel(
 }
 
 template <typename T>
-inline size_t smem_size_in_bytes(
-    const Masked_multihead_attention_params<T> &params,
-    int dim_head,
-    int threads_per_value,
-    int threads_per_block) {
+inline size_t smem_size_in_bytes(const QkvUnpackMhaParams<T> &params,
+                                 int dim_head,
+                                 int threads_per_value,
+                                 int threads_per_block) {
   size_t qk_sz = div_up(params.timestep + 1, 4) * 16;
   size_t logits_sz = 0;
 
@@ -408,7 +352,7 @@ inline size_t smem_size_in_bytes(
       params, load_func, store_func)
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
-void q_kv_fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
+void q_kv_fmha_launch_kernel(const QkvUnpackMhaParams<T> &params,
                              const cudaStream_t &stream,
                              LoadFunc load_func,
                              StoreFunc store_func) {
@@ -455,7 +399,7 @@ void q_kv_fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 
 template <typename T, typename LoadFunc, typename StoreFunc>
 void fmha_impl_qkv(const phi::GPUContext &dev_ctx,
-                   const Masked_multihead_attention_params<T> &params,
+                   const QkvUnpackMhaParams<T> &params,
                    int dim_head,
                    LoadFunc load_func,
                    StoreFunc store_func) {
@@ -497,7 +441,7 @@ void fmha_impl_qkv(const phi::GPUContext &dev_ctx,
 template <typename T>
 void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &q,
-                  const Masked_multihead_attention_params<T> &params,
+                  const QkvUnpackMhaParams<T> &params,
                   int dim_head,
                   phi::DenseTensor *out_tensor) {
   MMHALoad<T> load_func(q.data<T>());
@@ -525,16 +469,13 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   // this num_head means query's head
   int num_head = q.dims()[2];
 
-  Masked_multihead_attention_params<T> params;
-  bool mask_broadcast_num_heads = true;
+  QkvUnpackMhaParams<T> params;
 
   dev_ctx.template Alloc<T>(out);
 
   params.q = q.data<T>();
   params.k = k.data<T>();
   params.v = v.data<T>();
-
-  params.mask_broadcast_num_heads = mask_broadcast_num_heads;
 
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
@@ -564,7 +505,7 @@ void QKVMMHAKernel(const Context &dev_ctx,
 }  // namespace phi
 
 #if CUDA_VERSION >= 11000
-PD_REGISTER_KERNEL(qkv_mha,
+PD_REGISTER_KERNEL(qkv_unpack_mha,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::QKVMMHAKernel,
@@ -572,7 +513,7 @@ PD_REGISTER_KERNEL(qkv_mha,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
-PD_REGISTER_KERNEL(qkv_mha,
+PD_REGISTER_KERNEL(qkv_unpack_mha,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::QKVMMHAKernel,
