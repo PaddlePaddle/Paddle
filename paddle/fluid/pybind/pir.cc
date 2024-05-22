@@ -1751,9 +1751,10 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   pir::PassManager pm(pir::IrContext::Instance(), 3);
   pm.AddPass(pir::CreateFusedBnAddActPass());
   pm.Run(program.get());
-
-  std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
-  std::cout << *program << std::endl;
+  if (FLAGS_print_ir) {
+    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
   return program;
 }
 

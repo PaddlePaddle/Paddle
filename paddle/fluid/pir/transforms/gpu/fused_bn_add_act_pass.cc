@@ -22,96 +22,11 @@
 
 namespace {
 
-// std::vector<int> GetBnOpIndex(paddle::dialect::AddOp op) {
-//   std::vector<int> index;
-//   for (auto &i : {0, 1}) {
-//     if (pir::GetDefiningOpForInput(op, i)
-//             ->isa<paddle::dialect::BatchNormOp>()) {
-//       index.push_back(i);
-//     }
-//   }
-//   return index;
-// }
-
-// class FusedBnAddActPattern
-//     : public pir::OpRewritePattern<paddle::dialect::AddOp> {
-//  public:
-//   using pir::OpRewritePattern<paddle::dialect::AddOp>::OpRewritePattern;
-
-//   bool MatchAndRewrite(
-//       paddle::dialect::AddOp op,
-//       pir::PatternRewriter &rewriter) const override {  // NOLINT
-//     auto index = GetBnOpIndex(op);
-//     if (index.size() == 0) {
-//       return false;
-//     }
-
-//     auto bn_op = pir::GetDefiningOpForInput(op, index[0])
-//                      ->dyn_cast<paddle::dialect::BatchNormOp>();
-//     if (!bn_op) {
-//       return false;
-//     }
-
-//     auto bn_out = bn_op.out();
-//     if (!bn_out.HasOneUse()) {
-//       return false;
-//     }
-
-//     auto add_input = op.result(index[0]);
-//     PADDLE_ENFORCE_EQ(
-//         add_input,
-//         bn_out,
-//         phi::errors::PreconditionNotMet("The type of add input should be the
-//         "
-//                                         "same as the type of bn's out."));
-
-//     auto add_out = op.out();
-//     if (!add_out.HasOneUse()) {
-//       return false;
-//     }
-
-//     auto next_op_list = pir::GetUseOpsForOutput(op, 0);
-//     if (next_op_list.size() != 1) {
-//       return false;
-//     }
-
-//     auto next_op = next_op_list[0].first;
-//     if (!next_op->isa<paddle::dialect::ReluOp>()) {
-//         return false;
-//     }
-
-//     auto bn_op_attributes = bn_op.attributes();
-//     float momentum =
-//     bn_op_attributes.at("momentum").dyn_cast<pir::FloatAttribute>().data();
-//     float epsilon =
-//     bn_op_attributes.at("epsilon").dyn_cast<pir::FloatAttribute>().data();
-//     std::string act_type = "relu";
-//     auto fused_bn_add_act_op =
-//     rewriter.Build<paddle::dialect::FusedBnAddActivationOp>(
-//       bn_op.x(),
-//       index[0]==0 ? op.y(): op.x(),
-//       bn_op.scale(),
-//       bn_op.bias(),
-//       bn_op.mean(),
-//       bn_op.variance(),
-//       momentum,
-//       epsilon,
-//       act_type
-//     );
-//     rewriter.ReplaceOp(next_op,
-//                        std::vector<pir::Value>{fused_bn_add_act_op.out()});
-//     rewriter.EraseOp(op);
-//     rewriter.EraseOp(bn_op);
-//     return true;
-//   }
-// };
-
 class FusedBnAddActPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedBnAddActPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    VLOG(1) << "FusedBnAddActPattern.";
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     const auto &bn =
@@ -142,17 +57,12 @@ class FusedBnAddActPattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       auto x = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x.isa<pir::Float16Type>()) {
-        VLOG(1) << "FusedBnAddActPattern !x.isa<pir::Float16Type>(): "
-                << "false";
         return false;
       }
       auto data_format = match_ctx.Attr<std::string>("data_format");
-      VLOG(1) << "data_format: " << data_format;
       if (data_format != "NHWC") {
         return false;
       }
-      VLOG(1) << "FusedBnAddActPattern !x.isa<pir::Float16Type>(): "
-              << "true";
       return true;
     });
 
@@ -184,7 +94,6 @@ class FusedBnAddActGradPattern : public paddle::drr::DrrPatternBase {
   std::string name() const override { return "FusedBnAddActGradPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    VLOG(1) << "FusedBnAddActGradPattern.";
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     const auto &bn =
@@ -259,17 +168,12 @@ class FusedBnAddActGradPattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
       auto x = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x.isa<pir::Float16Type>()) {
-        VLOG(1) << "FusedBnAddActGradPattern !x.isa<pir::Float16Type>(): "
-                << "false";
         return false;
       }
       auto data_format = match_ctx.Attr<std::string>("data_format");
-      VLOG(1) << "data_format: " << data_format;
       if (data_format != "NHWC") {
         return false;
       }
-      VLOG(1) << "FusedBnAddActGradPattern !x.isa<pir::Float16Type>(): "
-              << "true";
       return true;
     });
 
