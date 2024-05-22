@@ -103,7 +103,6 @@ class TestLlamaModel(unittest.TestCase):
                 decomp.decompose_dist_program(main_program)
 
         exe.run(paddle.static.default_startup_program())
-        # print("main_program************ \n", main_program)
 
         res = exe.run(
             feed={
@@ -122,15 +121,13 @@ class TestLlamaModel(unittest.TestCase):
     def test_static(self):
         ref = [90.609924, 0.16003144]
         prim_res = self.run_static(mode="prim")
-        print(prim_res)
-        # breakpoint()
         for i in range(len(ref)):
             np.testing.assert_allclose(
                 ref[i],
                 prim_res[i],
                 rtol=1e-05,
                 atol=1e-05,
-                err_msg=f"{i}th value check failed******",
+                err_msg=f"***** {i}th value check failed ******",
             )
 
 
