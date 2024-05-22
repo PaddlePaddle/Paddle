@@ -165,17 +165,12 @@ struct Expression {
       return false;
     }
     bool is_equal = CheckOperationEqual(op_, other.op());
-    // TODO(SigureMo): clean this check before merge
     if (!is_equal) {
-      VLOG(0) << "Hash collision detected. lhs: " << op_->name() << " [" << op_
+      VLOG(7) << "Hash collision detected. lhs: " << op_->name() << " [" << op_
               << "] hash: " << GetOperationHash(op_)
               << " vs rhs: " << other.op()->name() << " [" << other.op()
               << "] hash: " << GetOperationHash(other.op());
     }
-    PADDLE_ENFORCE_EQ(
-        is_equal,
-        true,
-        common::errors::PreconditionNotMet("Hash collision detected."));
     return is_equal;
   }
 

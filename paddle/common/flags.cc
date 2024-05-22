@@ -1673,7 +1673,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Note: If True, will apply CSE optimize pass in Dy2St.
  */
 PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
-                         true,
+                         false,
                          "Apply CSE optimize pass in Dy2St");
 
 /**
