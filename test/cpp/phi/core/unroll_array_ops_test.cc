@@ -28,7 +28,7 @@ bool CheckEquality(const T* p, size_t n, T val) {
 
 template <int D1, int D2>
 bool FillConstantTestMain() {
-  static_assert(D1 >= D2, "");
+  static_assert(D1 >= D2);
   std::array<int, D1> arr;
   arr.fill(0);
 
