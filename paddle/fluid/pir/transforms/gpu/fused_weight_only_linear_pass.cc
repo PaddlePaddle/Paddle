@@ -280,7 +280,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
         sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    std::string algo = "weight_only_int4";
+    std::string algo = "weight_only_int8";
     if (Has("weight_only_algo")) {
       algo = Get<std::string>("weight_only_algo");
     }
