@@ -14,18 +14,27 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void GatherNdOpMapper(const paddle::cpp::OpDesc& op_desc,
                       const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of gather_nd op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Index").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Index").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input index of gather_nd op should be one."));
   auto index_name = op_desc.Input("Index").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of gather_nd op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
