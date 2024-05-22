@@ -18,7 +18,11 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_vpp
+from ..pass_utils import (
+    _program_for_vpp,
+    _program_for_vpp_split_bwk,
+    split_matmul_grad_to_matmul,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -51,6 +55,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         stage_id = self.get_attr("pp_stage")
         num_stages = self.get_attr("pp_degree")
         num_model_chunks = self.get_attr("vpp_degree")
+        split_backward = self.get_attr("split_backward", False)
         for i in range(num_model_chunks):
             self._forward_micro_step_counter[i] = 0
             self._backward_micro_step_counter[i] = 0
@@ -73,6 +78,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             warmup_steps = min(warmup_steps, total_num_steps)
 
         steady_steps = total_num_steps - warmup_steps
+        real_split_backward = (
+            accumulate_steps == num_stages
+        ) and split_backward
 
         job_list = []
         for micro_step in range(warmup_steps):
@@ -101,26 +109,75 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             bwd_micro_batch_id = self._record_bwd_micro_step(
                 bwd_virtual_pp_rank
             )
-            bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
+            if real_split_backward:
+                bwd_job = core.Job(BACKWARD + "_b" + str(bwd_virtual_pp_rank))
+            else:
+                bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
             bwd_job.set_micro_batch_id(bwd_micro_batch_id)
             job_list.append(bwd_job)
 
         for micro_step in range(steady_steps, total_num_steps):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=False)
             micro_batch_id = self._record_bwd_micro_step(virtual_pp_rank)
-            bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
+            if real_split_backward:
+                bwd_job = core.Job(BACKWARD + "_b" + str(virtual_pp_rank))
+            else:
+                bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
             bwd_job.set_micro_batch_id(micro_batch_id)
             job_list.append(bwd_job)
+            # TODO(lizhiyu): Inserting 'backward_b' and 'backward_w' interleavedly can decrease the memory,
+            #                but it reduces the speed. We should find the better way to use the code here.
+            # next_virtual_pp_rank = _get_virtual_pp_rank(micro_step + 1, forward=False)
+            # if next_virtual_pp_rank != virtual_pp_rank:
+            #     for micro_batch_id in range(0, accumulate_steps):
+            #         w_job = core.Job(BACKWARD + "_w" + str(virtual_pp_rank))
+            #         w_job.set_micro_batch_id(micro_batch_id)
+            #         job_list.append(w_job)
+
+        if real_split_backward:
+            for chunk_id in range(num_model_chunks - 1, -1, -1):
+                for micro_batch_id in range(0, accumulate_steps):
+                    w_job = core.Job(BACKWARD + "_w" + str(chunk_id))
+                    w_job.set_micro_batch_id(micro_batch_id)
+                    job_list.append(w_job)
 
         opt_job = core.Job(OPT)
         job_list.append(opt_job)
         return job_list
 
+    def _split_matmul_grad_ops_to_matmul(self, program, dist_context):
+        for block in program.blocks:
+            matmul_grad_op_idx = []
+            ops = block.ops
+            for i, op_i in enumerate(ops):
+                if (
+                    op_i.type == "matmul_v2_grad"
+                    and not op_i.attr("trans_x")
+                    and not op_i.attr("trans_y")
+                ):
+                    matmul_grad_op_idx.append(i)
+
+            for matmul_grad_id in reversed(matmul_grad_op_idx):
+                split_matmul_grad_to_matmul(
+                    block, matmul_grad_id, dist_context=dist_context
+                )
+
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        accumulate_steps = self.get_attr("num_micro_batches")
+        num_stages = self.get_attr("pp_degree")
+        split_backward = self.get_attr("split_backward", False)
         types, sub_program_list = _program_for_vpp(
             program, num_model_chunks, dist_context, enable_send_recv_overlap
         )
+        if split_backward and accumulate_steps == num_stages:
+            self._split_matmul_grad_ops_to_matmul(program, dist_context)
+            types, sub_program_list = _program_for_vpp_split_bwk(
+                program,
+                num_model_chunks,
+                dist_context,
+                enable_send_recv_overlap,
+            )
         return types, sub_program_list
